@@ -105,6 +105,17 @@ tags:
     description: >
       Interfaccia interna del servizio git verso core (creazione su disco,
       cestino, cancellazione). Non esposta dal gateway, implementata a mano.
+  - name: ci
+    description: >
+      Workflow compatibili con GitHub Actions, esecuzioni, job, artefatti, cache,
+      segreti e variabili (CI1-CI7 [c_baa86c8ddb5db70d]). Serviti da core.
+  - name: registry
+    description: >
+      Metadati e politiche del registry OCI (RG1-RG2 [c_71844eeffde33356]). Il
+      protocollo di distribuzione delle immagini e' lo standard OCI Distribution
+      Specification e non fa parte di questo contratto REST.
+  - name: releases
+    description: Release, note e allegati di un repository (REL1 [c_776d5e1e3d1df05c]).
 
 paths:
   /health:
@@ -6762,6 +6773,57 @@ paths:
             schema:
               $ref: "#/components/schemas/CreateWebhookInput"
       callbacks:
+        workflow_run:
+          "{$request.body#/url}":
+            post:
+              summary: Consegna dell'evento workflow_run (CI)
+              description: >
+                POST con `X-GitStack-Event: workflow_run` quando una esecuzione cambia stato.
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: "#/components/schemas/WebhookWorkflowRunPayload"
+              responses:
+                "200":
+                  description: Consegnato (qualunque 2xx).
+                "4XX":
+                  description: Rifiutato dal ricevitore; un 410 ferma le consegne, gli altri 4xx non si ritentano (C7).
+        workflow_job:
+          "{$request.body#/url}":
+            post:
+              summary: Consegna dell'evento workflow_job (CI)
+              description: >
+                POST con `X-GitStack-Event: workflow_job` quando un job cambia stato.
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: "#/components/schemas/WebhookWorkflowJobPayload"
+              responses:
+                "200":
+                  description: Consegnato (qualunque 2xx).
+                "4XX":
+                  description: Rifiutato dal ricevitore; un 410 ferma le consegne, gli altri 4xx non si ritentano (C7).
+        release:
+          "{$request.body#/url}":
+            post:
+              summary: Consegna dell'evento release (REL1)
+              description: >
+                POST con `X-GitStack-Event: release` quando una release e' creata, pubblicata, modificata o eliminata.
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: "#/components/schemas/WebhookReleasePayload"
+              responses:
+                "200":
+                  description: Consegnato (qualunque 2xx).
+                "4XX":
+                  description: Rifiutato dal ricevitore; un 410 ferma le consegne, gli altri 4xx non si ritentano (C7).
         pull_request:
           "{$request.body#/url}":
             post:
@@ -7389,6 +7451,625 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  # ---------------------------------------------------------------------
+  # CI, registry e release (v2; GIT-275). Gli handler sono intenzionalmente
+  # stub 501 finche' gli item d'implementazione non arrivano.
+  # ---------------------------------------------------------------------
+  /repos/{owner}/{repo}/workflows:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}]
+    get:
+      operationId: listWorkflows
+      tags: [ci]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: workflow_list
+        destructive: false
+      summary: Elenca i workflow del repository
+      responses:
+        "200": {description: Workflow trovati., content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /repos/{owner}/{repo}/workflows/{workflow}/dispatches:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/WorkflowParam"}]
+    post:
+      operationId: dispatchWorkflow
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: workflow_dispatch
+        destructive: false
+      summary: Avvia manualmente un workflow
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowDispatchInput"}}}}
+      responses:
+        "202": {description: Esecuzione accodata., content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowRun"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /repos/{owner}/{repo}/actions/runs:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}]
+    get:
+      operationId: listWorkflowRuns
+      tags: [ci]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: workflow_run_list
+        destructive: false
+      summary: Elenca le esecuzioni dei workflow
+      responses:
+        "200": {description: Esecuzioni., content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowRunList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /repos/{owner}/{repo}/actions/runs/{runId}:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/RunIdParam"}]
+    get:
+      operationId: getWorkflowRun
+      tags: [ci]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: workflow_run_view
+        destructive: false
+      summary: Legge un'esecuzione
+      responses:
+        "200": {description: Esecuzione., content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowRun"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /repos/{owner}/{repo}/actions/runs/{runId}/cancel:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/RunIdParam"}]
+    post:
+      operationId: cancelWorkflowRun
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: workflow_run_cancel
+        destructive: true
+      summary: Annulla un'esecuzione in corso
+      responses:
+        "202": {description: Annullamento richiesto., content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowRun"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /repos/{owner}/{repo}/actions/runs/{runId}/rerun:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/RunIdParam"}]
+    post:
+      operationId: rerunWorkflowRun
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: workflow_run_rerun
+        destructive: false
+      summary: Riesegue un workflow
+      responses:
+        "202": {description: Nuova esecuzione accodata., content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowRun"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /repos/{owner}/{repo}/actions/jobs/{jobId}:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/JobIdParam"}]
+    get:
+      operationId: getWorkflowJob
+      tags: [ci]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: workflow_job_view
+        destructive: false
+      summary: Legge un job
+      responses:
+        "200": {description: Job., content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowJob"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /repos/{owner}/{repo}/actions/jobs/{jobId}/logs:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/JobIdParam"}]
+    get:
+      operationId: getWorkflowJobLog
+      tags: [ci]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: workflow_job_log
+        destructive: false
+      summary: Legge il log, anche mentre il job e' in esecuzione
+      description: Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni e non sono nei backup (CI5).
+      parameters: [{name: follow, in: query, schema: {type: boolean, default: false}}]
+      responses:
+        "200": {description: Log del job., content: {text/plain: {schema: {type: string}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /repos/{owner}/{repo}/actions/runs/{runId}/artifacts:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/RunIdParam"}]
+    get:
+      operationId: listWorkflowArtifacts
+      tags: [ci]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: workflow_artifact_list
+        destructive: false
+      summary: Elenca gli artefatti di un'esecuzione
+      description: Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno, fuori dai backup (CI5).
+      responses:
+        "200": {description: Artefatti., content: {application/json: {schema: {$ref: "#/components/schemas/ArtifactList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /repos/{owner}/{repo}/actions/artifacts/{artifactId}/download:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/ArtifactIdParam"}]
+    get:
+      operationId: downloadWorkflowArtifact
+      tags: [ci]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: workflow_artifact_download
+        destructive: false
+      summary: Scarica un artefatto ZIP
+      responses:
+        "200": {description: Archivio ZIP., content: {application/zip: {schema: {type: string, format: binary}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /repos/{owner}/{repo}/actions/caches:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}]
+    get:
+      operationId: listActionsCaches
+      tags: [ci]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: workflow_cache_list
+        destructive: false
+      summary: Elenca le cache CI del repository e l'uso della quota
+      description: >
+        Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5):
+        a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti
+        30 giorni fino a 2 GB, cache 10 GB per repo, con job di pulizia. Log, artefatti e cache stanno su un volume
+        di core escluso dai backup.
+      parameters:
+        - {name: key, in: query, schema: {type: string}, description: Prefisso della chiave.}
+        - {name: ref, in: query, schema: {type: string}, description: Ref (ramo o tag) della cache.}
+      responses:
+        "200": {description: Cache e quota., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsCacheList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    delete:
+      operationId: deleteActionsCaches
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: workflow_cache_purge
+        destructive: true
+      summary: Elimina tutte le cache CI del repository
+      description: >
+        Serve `write` sul repo (403 altrimenti, 404 se non lo si legge). Con `key` o `ref` elimina solo le cache
+        corrispondenti. Un repo archiviato rifiuta la modifica con 409 `archived`. Risponde col numero di cache
+        eliminate.
+      parameters:
+        - {name: key, in: query, schema: {type: string}, description: Prefisso della chiave.}
+        - {name: ref, in: query, schema: {type: string}, description: Ref della cache.}
+      responses:
+        "200": {description: Cache eliminate., content: {application/json: {schema: {type: object, additionalProperties: false, required: [deleted], properties: {deleted: {type: integer}}}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /repos/{owner}/{repo}/actions/caches/{cacheId}:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/CacheIdParam"}]
+    get:
+      operationId: getActionsCache
+      tags: [ci]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: workflow_cache_get
+        destructive: false
+      summary: Legge i metadati di una cache CI
+      responses:
+        "200": {description: Cache., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsCache"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    delete:
+      operationId: deleteActionsCache
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: workflow_cache_delete
+        destructive: true
+      summary: Elimina una cache CI
+      description: Serve `write` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato.
+      responses:
+        "204": {description: Cache eliminata.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /repos/{owner}/{repo}/actions/variables:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}]
+    get:
+      operationId: listRepositoryActionsVariables
+      tags: [ci]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: repository_variable_list
+        destructive: false
+      summary: Elenca le variabili CI del repository
+      responses:
+        "200": {description: Variabili., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsVariableList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    put:
+      operationId: putRepositoryActionsVariable
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repository_variable_put
+        destructive: false
+      summary: Crea o sostituisce una variabile CI
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ActionsVariableInput"}}}}
+      responses:
+        "200": {description: Variabile salvata., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsVariable"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /repos/{owner}/{repo}/actions/secrets:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}]
+    get:
+      operationId: listRepositoryActionsSecrets
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repository_secret_list
+        destructive: false
+      summary: Elenca i metadati dei segreti CI del repository
+      responses:
+        "200": {description: "Segreti, mai i loro valori.", content: {application/json: {schema: {$ref: "#/components/schemas/ActionsSecretList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    put:
+      operationId: putRepositoryActionsSecret
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repository_secret_put
+        destructive: false
+      summary: Crea o sostituisce un segreto CI
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ActionsSecretInput"}}}}
+      responses:
+        "200": {description: Segreto salvato., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsSecret"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /orgs/{org}/actions/variables:
+    parameters: [{$ref: "#/components/parameters/OrgParam"}]
+    get:
+      operationId: listOrganizationActionsVariables
+      tags: [ci]
+      x-required-scopes: ["admin:org"]
+      x-mcp:
+        expose: false
+        name: organization_variable_list
+        destructive: false
+      summary: Elenca le variabili CI dell'organizzazione
+      responses:
+        "200": {description: Variabili., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsVariableList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    put:
+      operationId: putOrganizationActionsVariable
+      tags: [ci]
+      x-required-scopes: ["admin:org"]
+      x-mcp:
+        expose: false
+        name: organization_variable_put
+        destructive: false
+      summary: Crea o sostituisce una variabile CI dell'organizzazione
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ActionsVariableInput"}}}}
+      responses:
+        "200": {description: Variabile salvata., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsVariable"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /orgs/{org}/actions/secrets:
+    parameters: [{$ref: "#/components/parameters/OrgParam"}]
+    get:
+      operationId: listOrganizationActionsSecrets
+      tags: [ci]
+      x-required-scopes: ["admin:org"]
+      x-mcp:
+        expose: false
+        name: organization_secret_list
+        destructive: false
+      summary: Elenca i metadati dei segreti CI dell'organizzazione
+      responses:
+        "200": {description: "Segreti, mai i loro valori.", content: {application/json: {schema: {$ref: "#/components/schemas/ActionsSecretList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    put:
+      operationId: putOrganizationActionsSecret
+      tags: [ci]
+      x-required-scopes: ["admin:org"]
+      x-mcp:
+        expose: false
+        name: organization_secret_put
+        destructive: false
+      summary: Crea o sostituisce un segreto CI dell'organizzazione
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ActionsSecretInput"}}}}
+      responses:
+        "200": {description: Segreto salvato., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsSecret"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /admin/ci/runners:
+    get:
+      operationId: listCiRunners
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: ci_runner_list
+        destructive: false
+      summary: Elenca i runner esterni (solo amministratore)
+      description: >
+        Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una
+        sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+      responses:
+        "200": {description: Runner., content: {application/json: {schema: {$ref: "#/components/schemas/CiRunnerList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/ci/runners/registration-token:
+    post:
+      operationId: createCiRunnerRegistrationToken
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: ci_runner_registration_token_create
+        destructive: false
+      summary: Crea un token monouso per registrare un runner esterno (solo amministratore)
+      description: >
+        Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una
+        sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+      responses:
+        "201": {description: Token di registrazione., content: {application/json: {schema: {$ref: "#/components/schemas/CiRunnerRegistrationToken"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/ci/runners/{runnerId}:
+    parameters: [{$ref: "#/components/parameters/RunnerIdParam"}]
+    delete:
+      operationId: deleteCiRunner
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: ci_runner_delete
+        destructive: true
+      summary: Revoca un runner esterno (solo amministratore)
+      description: >
+        Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una
+        sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+      responses:
+        "204": {description: Runner revocato.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /admin/ci/queue:
+    get:
+      operationId: getCiQueue
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: ci_queue_view
+        destructive: false
+      summary: Legge coda e concorrenza CI (solo amministratore)
+      description: >
+        Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una
+        sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+      responses:
+        "200": {description: Coda e limiti., content: {application/json: {schema: {$ref: "#/components/schemas/CiQueue"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /repos/{owner}/{repo}/packages:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}]
+    get:
+      operationId: listRepositoryPackages
+      tags: [registry]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: package_list
+        destructive: false
+      summary: Elenca i pacchetti OCI del repository
+      description: I manifest e i blob sono serviti esclusivamente dall'OCI Distribution Specification, non da questa API.
+      responses:
+        "200": {description: Pacchetti., content: {application/json: {schema: {$ref: "#/components/schemas/PackageList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /repos/{owner}/{repo}/packages/settings:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}]
+    get:
+      operationId: getRepositoryPackageSettings
+      tags: [registry]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: package_settings_view
+        destructive: false
+      summary: Legge regole di tag protetti, pulizia e backup
+      responses:
+        "200": {description: Impostazioni del registry., content: {application/json: {schema: {$ref: "#/components/schemas/PackageSettings"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    patch:
+      operationId: updateRepositoryPackageSettings
+      tags: [registry]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: package_settings_update
+        destructive: false
+      summary: Modifica regole di tag protetti, pulizia e backup
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/PackageSettingsInput"}}}}
+      responses:
+        "200": {description: Impostazioni aggiornate., content: {application/json: {schema: {$ref: "#/components/schemas/PackageSettings"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /repos/{owner}/{repo}/releases:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}]
+    get:
+      operationId: listReleases
+      tags: [releases]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: release_list
+        destructive: false
+      summary: Elenca le release
+      responses:
+        "200": {description: Release., content: {application/json: {schema: {$ref: "#/components/schemas/ReleaseList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    post:
+      operationId: createRelease
+      tags: [releases]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: release_create
+        destructive: false
+      summary: Crea una release per un tag
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateReleaseInput"}}}}
+      responses:
+        "201": {description: Release creata., content: {application/json: {schema: {$ref: "#/components/schemas/Release"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /repos/{owner}/{repo}/releases/{releaseId}:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/ReleaseIdParam"}]
+    get:
+      operationId: getRelease
+      tags: [releases]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: release_view
+        destructive: false
+      summary: Legge una release
+      responses:
+        "200": {description: Release., content: {application/json: {schema: {$ref: "#/components/schemas/Release"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    patch:
+      operationId: updateRelease
+      tags: [releases]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: release_update
+        destructive: false
+      summary: Modifica titolo, note e stato di una release
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpdateReleaseInput"}}}}
+      responses:
+        "200": {description: Release aggiornata., content: {application/json: {schema: {$ref: "#/components/schemas/Release"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    delete:
+      operationId: deleteRelease
+      tags: [releases]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: release_delete
+        destructive: true
+      summary: Elimina una release senza eliminare il tag Git
+      responses:
+        "204": {description: Release eliminata.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /repos/{owner}/{repo}/releases/{releaseId}/assets:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/ReleaseIdParam"}]
+    post:
+      operationId: uploadReleaseAsset
+      tags: [releases]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: release_asset_upload
+        destructive: false
+      summary: Carica un allegato di release
+      description: >
+        File fino a 2 GiB; il server calcola e restituisce SHA-256. Il nome del file e' il parametro query `name`
+        (obbligatorio): da 1 a 255 caratteri, senza `/`, `\` o caratteri di controllo e diverso da `.` e `..`;
+        altrimenti 422 (`details.fields.name`). Un allegato con lo stesso nome nella stessa release e' 409 `conflict`.
+        Serve `write` sul repo; una release pubblicata e' modificabile solo da chi ha `write`.
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema: {type: string, minLength: 1, maxLength: 255, pattern: '^[^/\\\x00-\x1f]+$'}
+          description: Nome del file allegato.
+      requestBody: {required: true, content: {application/octet-stream: {schema: {type: string, format: binary}}}}
+      responses:
+        "201": {description: Allegato caricato., content: {application/json: {schema: {$ref: "#/components/schemas/ReleaseAsset"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "413": {$ref: "#/components/responses/PayloadTooLarge"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+  /repos/{owner}/{repo}/releases/{releaseId}/assets/{assetId}/download:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/ReleaseIdParam"}, {$ref: "#/components/parameters/AssetIdParam"}]
+    get:
+      operationId: downloadReleaseAsset
+      tags: [releases]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: release_asset_download
+        destructive: false
+      summary: Scarica un allegato di release
+      responses:
+        "200": {description: Contenuto dell'allegato., content: {application/octet-stream: {schema: {type: string, format: binary}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
   /internal/verify:
     post:
       operationId: verifyCredential
@@ -9188,7 +9869,261 @@ components:
         type: boolean
       description: "`true` solo le conversazioni risolte, `false` solo quelle aperte; senza il parametro tutte."
 
+    WorkflowParam:
+      name: workflow
+      in: path
+      required: true
+      schema: {type: string}
+    RunIdParam:
+      name: runId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    JobIdParam:
+      name: jobId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    ArtifactIdParam:
+      name: artifactId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    CacheIdParam:
+      name: cacheId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    RunnerIdParam:
+      name: runnerId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    ReleaseIdParam:
+      name: releaseId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    AssetIdParam:
+      name: assetId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+
   schemas:
+    WorkflowList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties: {items: {type: array, items: {$ref: "#/components/schemas/Workflow"}}}
+    Workflow:
+      type: object
+      additionalProperties: false
+      required: [id, path, name, state]
+      properties:
+        id: {type: string}
+        path: {type: string, description: Percorso sotto `.gitstack/workflows/` o `.github/workflows/`.}
+        name: {type: string}
+        state: {type: string, enum: [active, disabled]}
+    WorkflowDispatchInput:
+      type: object
+      additionalProperties: false
+      required: [ref]
+      properties:
+        ref: {type: string}
+        inputs: {type: object, additionalProperties: {type: string}}
+    WorkflowRunList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties: {items: {type: array, items: {$ref: "#/components/schemas/WorkflowRun"}}}
+    WorkflowRun:
+      type: object
+      additionalProperties: false
+      required: [id, workflowId, status, event, ref, sha, createdAt, jobs]
+      properties:
+        id: {type: string, format: uuid}
+        workflowId: {type: string}
+        status: {type: string, description: "queued, in_progress, completed o cancelled"}
+        conclusion: {type: string, nullable: true, description: "success, failure, cancelled, skipped o timed_out quando conclusa"}
+        event: {type: string, enum: [push, pull_request, workflow_dispatch, schedule]}
+        ref: {type: string}
+        sha: {type: string}
+        createdAt: {type: string, format: date-time}
+        startedAt: {type: string, format: date-time, nullable: true}
+        completedAt: {type: string, format: date-time, nullable: true}
+        jobs: {type: array, items: {$ref: "#/components/schemas/WorkflowJob"}}
+    WorkflowJob:
+      type: object
+      additionalProperties: false
+      required: [id, name, status, runnerType, permissions]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        status: {type: string, description: "queued, in_progress, completed o cancelled"}
+        conclusion: {type: string, nullable: true, description: "success, failure, cancelled, skipped o timed_out quando concluso"}
+        runnerType: {type: string, enum: [internal_pod, external]}
+        runnerName: {type: string, nullable: true}
+        permissions: {$ref: "#/components/schemas/JobTokenPermissions"}
+        startedAt: {type: string, format: date-time, nullable: true}
+        completedAt: {type: string, format: date-time, nullable: true}
+    ActionsCache:
+      type: object
+      additionalProperties: false
+      required: [id, key, ref, sizeBytes, createdAt, lastUsedAt]
+      properties:
+        id: {type: string, format: uuid}
+        key: {type: string}
+        ref: {type: string}
+        sizeBytes: {type: integer, format: int64}
+        createdAt: {type: string, format: date-time}
+        lastUsedAt: {type: string, format: date-time}
+    ActionsCacheList:
+      type: object
+      additionalProperties: false
+      required: [items, usedBytes, quotaBytes]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/ActionsCache"}}
+        usedBytes: {type: integer, format: int64}
+        quotaBytes: {type: integer, format: int64, example: 10737418240, description: "Quota per repository: 10 GB (CI5)."}
+    JobTokenPermissions:
+      type: object
+      additionalProperties: false
+      description: >
+        Permessi effettivi del token effimero del job (CI4). Ogni livello e' il minimo fra tre limiti: quello
+        richiesto dal workflow (`permissions:`), quello consentito dal repository e quello di chi avvia
+        l'esecuzione (l'attore di push, pull_request, workflow_dispatch o Riesegui). Un attore con soli permessi di
+        lettura non ottiene mai `write` nel token, qualunque cosa chieda il workflow; per `schedule`, che non ha un
+        attore, vale il limite del repository. Senza `permissions:` il default e' `read`. Il token non puo' mai
+        eccedere l'attore e scade con il job.
+      required: [contents, packages, actions]
+      properties:
+        cappedByActor: {type: boolean, description: "true se almeno un livello e' stato ridotto perche' l'attore ha meno permessi di quelli richiesti."}
+        contents: {type: string, enum: [none, read, write]}
+        packages: {type: string, enum: [none, read, write]}
+        actions: {type: string, enum: [none, read, write]}
+    ArtifactList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties: {items: {type: array, items: {$ref: "#/components/schemas/Artifact"}}}
+    Artifact:
+      type: object
+      additionalProperties: false
+      required: [id, name, sizeBytes, expiresAt]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        sizeBytes: {type: integer, format: int64}
+        expiresAt: {type: string, format: date-time}
+    ActionsVariableList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties: {items: {type: array, items: {$ref: "#/components/schemas/ActionsVariable"}}}
+    ActionsVariable:
+      type: object
+      additionalProperties: false
+      required: [name, value, updatedAt]
+      properties: {name: {type: string, pattern: '^[A-Z_][A-Z0-9_]*$'}, value: {type: string}, updatedAt: {type: string, format: date-time}}
+    ActionsVariableInput:
+      type: object
+      additionalProperties: false
+      required: [name, value]
+      properties: {name: {type: string, pattern: '^[A-Z_][A-Z0-9_]*$'}, value: {type: string}}
+    ActionsSecretList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties: {items: {type: array, items: {$ref: "#/components/schemas/ActionsSecret"}}}
+    ActionsSecret:
+      type: object
+      additionalProperties: false
+      required: [name, updatedAt]
+      properties: {name: {type: string, pattern: '^[A-Z_][A-Z0-9_]*$'}, updatedAt: {type: string, format: date-time}}
+    ActionsSecretInput:
+      type: object
+      additionalProperties: false
+      required: [name, value]
+      properties: {name: {type: string, pattern: '^[A-Z_][A-Z0-9_]*$'}, value: {type: string, writeOnly: true}}
+    CiRunnerList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties: {items: {type: array, items: {$ref: "#/components/schemas/CiRunner"}}}
+    CiRunner:
+      type: object
+      additionalProperties: false
+      required: [id, name, labels, status]
+      properties: {id: {type: string, format: uuid}, name: {type: string}, labels: {type: array, items: {type: string}}, status: {type: string, enum: [online, offline, busy]}}
+    CiRunnerRegistrationToken:
+      type: object
+      additionalProperties: false
+      required: [token, expiresAt]
+      properties: {token: {type: string, writeOnly: true}, expiresAt: {type: string, format: date-time}}
+    CiQueue:
+      type: object
+      additionalProperties: false
+      required: [queuedJobs, runningJobs, maxConcurrentJobs, resourceLimits]
+      properties:
+        queuedJobs: {type: integer}
+        runningJobs: {type: integer}
+        maxConcurrentJobs: {type: integer, minimum: 1, maximum: 3}
+        resourceLimits: {type: object, additionalProperties: false, required: [cpuCores, memoryBytes, ephemeralStorageBytes, maxDurationSeconds], properties: {cpuCores: {type: integer, example: 2}, memoryBytes: {type: integer, format: int64, example: 4294967296}, ephemeralStorageBytes: {type: integer, format: int64, example: 21474836480}, maxDurationSeconds: {type: integer, example: 3600}}}
+    PackageList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties: {items: {type: array, items: {$ref: "#/components/schemas/Package"}}}
+    Package:
+      type: object
+      additionalProperties: false
+      required: [name, tags, sizeBytes, updatedAt]
+      properties: {name: {type: string}, tags: {type: array, items: {type: string}}, sizeBytes: {type: integer, format: int64}, updatedAt: {type: string, format: date-time}}
+    PackageSettings:
+      allOf: [{$ref: "#/components/schemas/PackageSettingsInput"}]
+    PackageSettingsInput:
+      type: object
+      additionalProperties: false
+      required: [protectedTagPatterns, deleteUntaggedAfterDays, includeInBackup]
+      properties:
+        protectedTagPatterns: {type: array, items: {type: string}, description: Tag che non possono essere sovrascritti o eliminati.}
+        deleteUntaggedAfterDays: {type: integer, minimum: 1, default: 7}
+        includeInBackup: {type: boolean, default: false}
+    ReleaseList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties: {items: {type: array, items: {$ref: "#/components/schemas/Release"}}}
+    Release:
+      type: object
+      additionalProperties: false
+      required: [id, tagName, name, body, draft, prerelease, latest, assets, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        tagName: {type: string}
+        name: {type: string}
+        body: {type: string, description: Note Markdown.}
+        draft: {type: boolean}
+        prerelease: {type: boolean}
+        latest: {type: boolean}
+        assets: {type: array, items: {$ref: "#/components/schemas/ReleaseAsset"}}
+        createdAt: {type: string, format: date-time}
+        publishedAt: {type: string, format: date-time, nullable: true}
+    CreateReleaseInput:
+      type: object
+      additionalProperties: false
+      required: [tagName, name]
+      properties: {tagName: {type: string}, name: {type: string}, body: {type: string}, draft: {type: boolean, default: false}, prerelease: {type: boolean, default: false}, generateNotes: {type: boolean, default: false}}
+    UpdateReleaseInput:
+      type: object
+      additionalProperties: false
+      properties: {name: {type: string}, body: {type: string}, draft: {type: boolean}, prerelease: {type: boolean}}
+    ReleaseAsset:
+      type: object
+      additionalProperties: false
+      required: [id, name, sizeBytes, sha256]
+      properties: {id: {type: string, format: uuid}, name: {type: string}, sizeBytes: {type: integer, format: int64}, sha256: {type: string, pattern: '^[a-f0-9]{64}$'}}
     Health:
       type: object
       additionalProperties: false
@@ -12808,7 +13743,7 @@ components:
         (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in
         docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e
         `WebhookCommitStatusPayload`.
-      enum: [push, issues, issue_comment, repository, pull_request, pull_request_review, commit_status]
+      enum: [push, issues, issue_comment, repository, pull_request, pull_request_review, commit_status, workflow_run, workflow_job, release]
     RepoMirrorState:
       type: string
       description: >
@@ -14690,6 +15625,46 @@ components:
           maxItems: 20
           items:
             type: string
+    WebhookWorkflowRunPayload:
+      type: object
+      additionalProperties: false
+      required: [version, event, action, time, repository, sender, workflowRun]
+      properties:
+        version: {type: integer, enum: [1]}
+        event: {type: string, enum: [workflow_run]}
+        action: {type: string, enum: [queued, in_progress, completed, cancelled]}
+        time: {type: string, format: date-time}
+        repository: {$ref: "#/components/schemas/WebhookRepositoryRef"}
+        organization: {$ref: "#/components/schemas/WebhookOrganizationRef"}
+        sender: {allOf: [{$ref: "#/components/schemas/WebhookSender"}], nullable: true, type: object}
+        workflowRun: {$ref: "#/components/schemas/WorkflowRun"}
+    WebhookWorkflowJobPayload:
+      type: object
+      additionalProperties: false
+      required: [version, event, action, time, repository, sender, workflowRun, workflowJob]
+      properties:
+        version: {type: integer, enum: [1]}
+        event: {type: string, enum: [workflow_job]}
+        action: {type: string, enum: [queued, in_progress, completed, cancelled]}
+        time: {type: string, format: date-time}
+        repository: {$ref: "#/components/schemas/WebhookRepositoryRef"}
+        organization: {$ref: "#/components/schemas/WebhookOrganizationRef"}
+        sender: {allOf: [{$ref: "#/components/schemas/WebhookSender"}], nullable: true, type: object}
+        workflowRun: {$ref: "#/components/schemas/WorkflowRun"}
+        workflowJob: {$ref: "#/components/schemas/WorkflowJob"}
+    WebhookReleasePayload:
+      type: object
+      additionalProperties: false
+      required: [version, event, action, time, repository, sender, release]
+      properties:
+        version: {type: integer, enum: [1]}
+        event: {type: string, enum: [release]}
+        action: {type: string, enum: [created, edited, published, deleted]}
+        time: {type: string, format: date-time}
+        repository: {$ref: "#/components/schemas/WebhookRepositoryRef"}
+        organization: {$ref: "#/components/schemas/WebhookOrganizationRef"}
+        sender: {allOf: [{$ref: "#/components/schemas/WebhookSender"}], nullable: true, type: object}
+        release: {$ref: "#/components/schemas/Release"}
 
   headers:
     ContentTypeOptions:

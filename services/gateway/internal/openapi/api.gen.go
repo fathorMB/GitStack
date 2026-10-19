@@ -180,6 +180,27 @@ func (e AdminSystemVersionsK3sUpdate) Valid() bool {
 	}
 }
 
+// Defines values for CiRunnerStatus.
+const (
+	Busy    CiRunnerStatus = "busy"
+	Offline CiRunnerStatus = "offline"
+	Online  CiRunnerStatus = "online"
+)
+
+// Valid indicates whether the value is a known member of the CiRunnerStatus enum.
+func (e CiRunnerStatus) Valid() bool {
+	switch e {
+	case Busy:
+		return true
+	case Offline:
+		return true
+	case Online:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CodeUserKind.
 const (
 	CodeUserKindAgent CodeUserKind = "agent"
@@ -440,19 +461,19 @@ func (e HealthStatus) Valid() bool {
 
 // Defines values for IssueCloseReason.
 const (
-	Completed  IssueCloseReason = "completed"
-	Duplicate  IssueCloseReason = "duplicate"
-	NotPlanned IssueCloseReason = "not_planned"
+	IssueCloseReasonCompleted  IssueCloseReason = "completed"
+	IssueCloseReasonDuplicate  IssueCloseReason = "duplicate"
+	IssueCloseReasonNotPlanned IssueCloseReason = "not_planned"
 )
 
 // Valid indicates whether the value is a known member of the IssueCloseReason enum.
 func (e IssueCloseReason) Valid() bool {
 	switch e {
-	case Completed:
+	case IssueCloseReasonCompleted:
 		return true
-	case Duplicate:
+	case IssueCloseReasonDuplicate:
 		return true
-	case NotPlanned:
+	case IssueCloseReasonNotPlanned:
 		return true
 	default:
 		return false
@@ -609,6 +630,69 @@ func (e IssueUserKind) Valid() bool {
 	case IssueUserKindAgent:
 		return true
 	case IssueUserKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for JobTokenPermissionsActions.
+const (
+	JobTokenPermissionsActionsNone  JobTokenPermissionsActions = "none"
+	JobTokenPermissionsActionsRead  JobTokenPermissionsActions = "read"
+	JobTokenPermissionsActionsWrite JobTokenPermissionsActions = "write"
+)
+
+// Valid indicates whether the value is a known member of the JobTokenPermissionsActions enum.
+func (e JobTokenPermissionsActions) Valid() bool {
+	switch e {
+	case JobTokenPermissionsActionsNone:
+		return true
+	case JobTokenPermissionsActionsRead:
+		return true
+	case JobTokenPermissionsActionsWrite:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for JobTokenPermissionsContents.
+const (
+	JobTokenPermissionsContentsNone  JobTokenPermissionsContents = "none"
+	JobTokenPermissionsContentsRead  JobTokenPermissionsContents = "read"
+	JobTokenPermissionsContentsWrite JobTokenPermissionsContents = "write"
+)
+
+// Valid indicates whether the value is a known member of the JobTokenPermissionsContents enum.
+func (e JobTokenPermissionsContents) Valid() bool {
+	switch e {
+	case JobTokenPermissionsContentsNone:
+		return true
+	case JobTokenPermissionsContentsRead:
+		return true
+	case JobTokenPermissionsContentsWrite:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for JobTokenPermissionsPackages.
+const (
+	JobTokenPermissionsPackagesNone  JobTokenPermissionsPackages = "none"
+	JobTokenPermissionsPackagesRead  JobTokenPermissionsPackages = "read"
+	JobTokenPermissionsPackagesWrite JobTokenPermissionsPackages = "write"
+)
+
+// Valid indicates whether the value is a known member of the JobTokenPermissionsPackages enum.
+func (e JobTokenPermissionsPackages) Valid() bool {
+	switch e {
+	case JobTokenPermissionsPackagesNone:
+		return true
+	case JobTokenPermissionsPackagesRead:
+		return true
+	case JobTokenPermissionsPackagesWrite:
 		return true
 	default:
 		return false
@@ -1367,7 +1451,10 @@ const (
 	WebhookEventPullRequest       WebhookEvent = "pull_request"
 	WebhookEventPullRequestReview WebhookEvent = "pull_request_review"
 	WebhookEventPush              WebhookEvent = "push"
+	WebhookEventRelease           WebhookEvent = "release"
 	WebhookEventRepository        WebhookEvent = "repository"
+	WebhookEventWorkflowJob       WebhookEvent = "workflow_job"
+	WebhookEventWorkflowRun       WebhookEvent = "workflow_run"
 )
 
 // Valid indicates whether the value is a known member of the WebhookEvent enum.
@@ -1385,7 +1472,13 @@ func (e WebhookEvent) Valid() bool {
 		return true
 	case WebhookEventPush:
 		return true
+	case WebhookEventRelease:
+		return true
 	case WebhookEventRepository:
+		return true
+	case WebhookEventWorkflowJob:
+		return true
+	case WebhookEventWorkflowRun:
 		return true
 	default:
 		return false
@@ -1512,6 +1605,60 @@ func (e WebhookPullRequestReviewPayloadVersion) Valid() bool {
 	}
 }
 
+// Defines values for WebhookReleasePayloadAction.
+const (
+	WebhookReleasePayloadActionCreated   WebhookReleasePayloadAction = "created"
+	WebhookReleasePayloadActionDeleted   WebhookReleasePayloadAction = "deleted"
+	WebhookReleasePayloadActionEdited    WebhookReleasePayloadAction = "edited"
+	WebhookReleasePayloadActionPublished WebhookReleasePayloadAction = "published"
+)
+
+// Valid indicates whether the value is a known member of the WebhookReleasePayloadAction enum.
+func (e WebhookReleasePayloadAction) Valid() bool {
+	switch e {
+	case WebhookReleasePayloadActionCreated:
+		return true
+	case WebhookReleasePayloadActionDeleted:
+		return true
+	case WebhookReleasePayloadActionEdited:
+		return true
+	case WebhookReleasePayloadActionPublished:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookReleasePayloadEvent.
+const (
+	WebhookReleasePayloadEventRelease WebhookReleasePayloadEvent = "release"
+)
+
+// Valid indicates whether the value is a known member of the WebhookReleasePayloadEvent enum.
+func (e WebhookReleasePayloadEvent) Valid() bool {
+	switch e {
+	case WebhookReleasePayloadEventRelease:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookReleasePayloadVersion.
+const (
+	WebhookReleasePayloadVersionN1 WebhookReleasePayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookReleasePayloadVersion enum.
+func (e WebhookReleasePayloadVersion) Valid() bool {
+	switch e {
+	case WebhookReleasePayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WebhookScope.
 const (
 	Org  WebhookScope = "org"
@@ -1542,6 +1689,174 @@ func (e WebhookSenderType) Valid() bool {
 	case WebhookSenderTypeAgent:
 		return true
 	case WebhookSenderTypeHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowJobPayloadAction.
+const (
+	WebhookWorkflowJobPayloadActionCancelled  WebhookWorkflowJobPayloadAction = "cancelled"
+	WebhookWorkflowJobPayloadActionCompleted  WebhookWorkflowJobPayloadAction = "completed"
+	WebhookWorkflowJobPayloadActionInProgress WebhookWorkflowJobPayloadAction = "in_progress"
+	WebhookWorkflowJobPayloadActionQueued     WebhookWorkflowJobPayloadAction = "queued"
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowJobPayloadAction enum.
+func (e WebhookWorkflowJobPayloadAction) Valid() bool {
+	switch e {
+	case WebhookWorkflowJobPayloadActionCancelled:
+		return true
+	case WebhookWorkflowJobPayloadActionCompleted:
+		return true
+	case WebhookWorkflowJobPayloadActionInProgress:
+		return true
+	case WebhookWorkflowJobPayloadActionQueued:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowJobPayloadEvent.
+const (
+	WebhookWorkflowJobPayloadEventWorkflowJob WebhookWorkflowJobPayloadEvent = "workflow_job"
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowJobPayloadEvent enum.
+func (e WebhookWorkflowJobPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookWorkflowJobPayloadEventWorkflowJob:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowJobPayloadVersion.
+const (
+	WebhookWorkflowJobPayloadVersionN1 WebhookWorkflowJobPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowJobPayloadVersion enum.
+func (e WebhookWorkflowJobPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookWorkflowJobPayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowRunPayloadAction.
+const (
+	WebhookWorkflowRunPayloadActionCancelled  WebhookWorkflowRunPayloadAction = "cancelled"
+	WebhookWorkflowRunPayloadActionCompleted  WebhookWorkflowRunPayloadAction = "completed"
+	WebhookWorkflowRunPayloadActionInProgress WebhookWorkflowRunPayloadAction = "in_progress"
+	WebhookWorkflowRunPayloadActionQueued     WebhookWorkflowRunPayloadAction = "queued"
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowRunPayloadAction enum.
+func (e WebhookWorkflowRunPayloadAction) Valid() bool {
+	switch e {
+	case WebhookWorkflowRunPayloadActionCancelled:
+		return true
+	case WebhookWorkflowRunPayloadActionCompleted:
+		return true
+	case WebhookWorkflowRunPayloadActionInProgress:
+		return true
+	case WebhookWorkflowRunPayloadActionQueued:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowRunPayloadEvent.
+const (
+	WebhookWorkflowRunPayloadEventWorkflowRun WebhookWorkflowRunPayloadEvent = "workflow_run"
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowRunPayloadEvent enum.
+func (e WebhookWorkflowRunPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookWorkflowRunPayloadEventWorkflowRun:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowRunPayloadVersion.
+const (
+	WebhookWorkflowRunPayloadVersionN1 WebhookWorkflowRunPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowRunPayloadVersion enum.
+func (e WebhookWorkflowRunPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookWorkflowRunPayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkflowState.
+const (
+	Active   WorkflowState = "active"
+	Disabled WorkflowState = "disabled"
+)
+
+// Valid indicates whether the value is a known member of the WorkflowState enum.
+func (e WorkflowState) Valid() bool {
+	switch e {
+	case Active:
+		return true
+	case Disabled:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkflowJobRunnerType.
+const (
+	WorkflowJobRunnerTypeExternal    WorkflowJobRunnerType = "external"
+	WorkflowJobRunnerTypeInternalPod WorkflowJobRunnerType = "internal_pod"
+)
+
+// Valid indicates whether the value is a known member of the WorkflowJobRunnerType enum.
+func (e WorkflowJobRunnerType) Valid() bool {
+	switch e {
+	case WorkflowJobRunnerTypeExternal:
+		return true
+	case WorkflowJobRunnerTypeInternalPod:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkflowRunEvent.
+const (
+	WorkflowRunEventPullRequest      WorkflowRunEvent = "pull_request"
+	WorkflowRunEventPush             WorkflowRunEvent = "push"
+	WorkflowRunEventSchedule         WorkflowRunEvent = "schedule"
+	WorkflowRunEventWorkflowDispatch WorkflowRunEvent = "workflow_dispatch"
+)
+
+// Valid indicates whether the value is a known member of the WorkflowRunEvent enum.
+func (e WorkflowRunEvent) Valid() bool {
+	switch e {
+	case WorkflowRunEventPullRequest:
+		return true
+	case WorkflowRunEventPush:
+		return true
+	case WorkflowRunEventSchedule:
+		return true
+	case WorkflowRunEventWorkflowDispatch:
 		return true
 	default:
 		return false
@@ -1970,6 +2285,62 @@ type AccessSource struct {
 // AccessSourceKind defines model for AccessSource.Kind.
 type AccessSourceKind string
 
+// ActionsCache defines model for ActionsCache.
+type ActionsCache struct {
+	CreatedAt  time.Time          `json:"createdAt"`
+	Id         openapi_types.UUID `json:"id"`
+	Key        string             `json:"key"`
+	LastUsedAt time.Time          `json:"lastUsedAt"`
+	Ref        string             `json:"ref"`
+	SizeBytes  int64              `json:"sizeBytes"`
+}
+
+// ActionsCacheList defines model for ActionsCacheList.
+type ActionsCacheList struct {
+	Items []ActionsCache `json:"items"`
+
+	// QuotaBytes Quota per repository: 10 GB (CI5).
+	//
+	// Example: 10737418240
+	QuotaBytes int64 `json:"quotaBytes"`
+	UsedBytes  int64 `json:"usedBytes"`
+}
+
+// ActionsSecret defines model for ActionsSecret.
+type ActionsSecret struct {
+	Name      string    `json:"name"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// ActionsSecretInput defines model for ActionsSecretInput.
+type ActionsSecretInput struct {
+	Name  string  `json:"name"`
+	Value *string `json:"value,omitempty"`
+}
+
+// ActionsSecretList defines model for ActionsSecretList.
+type ActionsSecretList struct {
+	Items []ActionsSecret `json:"items"`
+}
+
+// ActionsVariable defines model for ActionsVariable.
+type ActionsVariable struct {
+	Name      string    `json:"name"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Value     string    `json:"value"`
+}
+
+// ActionsVariableInput defines model for ActionsVariableInput.
+type ActionsVariableInput struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// ActionsVariableList defines model for ActionsVariableList.
+type ActionsVariableList struct {
+	Items []ActionsVariable `json:"items"`
+}
+
 // AdminSystem Stato dell'installazione per Admin · System (mockup 16). Nessun segreto. `published` dice se l'host ha pubblicato le sue informazioni: se no, le sezioni dell'host hanno `configured: false` o stati `none`.
 type AdminSystem struct {
 	// Access Come si raggiunge GitStack. Nessun segreto.
@@ -2195,6 +2566,19 @@ type AdminSystemVersions struct {
 // AdminSystemVersionsK3sUpdate `patch`: applicata da `gitstack upgrade`; `minor`: serve `gitstack upgrade --k3s`.
 type AdminSystemVersionsK3sUpdate string
 
+// Artifact defines model for Artifact.
+type Artifact struct {
+	ExpiresAt time.Time          `json:"expiresAt"`
+	Id        openapi_types.UUID `json:"id"`
+	Name      string             `json:"name"`
+	SizeBytes int64              `json:"sizeBytes"`
+}
+
+// ArtifactList defines model for ArtifactList.
+type ArtifactList struct {
+	Items []Artifact `json:"items"`
+}
+
 // Blame defines model for Blame.
 type Blame struct {
 	Path   string       `json:"path"`
@@ -2250,6 +2634,48 @@ type BranchSettings struct {
 
 	// RequiredStatusContexts Contesti di stato (PR9) che devono essere `success` sulla punta della PR per unire.
 	RequiredStatusContexts []string `json:"requiredStatusContexts"`
+}
+
+// CiQueue defines model for CiQueue.
+type CiQueue struct {
+	MaxConcurrentJobs int `json:"maxConcurrentJobs"`
+	QueuedJobs        int `json:"queuedJobs"`
+	ResourceLimits    struct {
+		// CpuCores Example: 2
+		CpuCores int `json:"cpuCores"`
+
+		// EphemeralStorageBytes Example: 21474836480
+		EphemeralStorageBytes int64 `json:"ephemeralStorageBytes"`
+
+		// MaxDurationSeconds Example: 3600
+		MaxDurationSeconds int `json:"maxDurationSeconds"`
+
+		// MemoryBytes Example: 4294967296
+		MemoryBytes int64 `json:"memoryBytes"`
+	} `json:"resourceLimits"`
+	RunningJobs int `json:"runningJobs"`
+}
+
+// CiRunner defines model for CiRunner.
+type CiRunner struct {
+	Id     openapi_types.UUID `json:"id"`
+	Labels []string           `json:"labels"`
+	Name   string             `json:"name"`
+	Status CiRunnerStatus     `json:"status"`
+}
+
+// CiRunnerStatus defines model for CiRunner.Status.
+type CiRunnerStatus string
+
+// CiRunnerList defines model for CiRunnerList.
+type CiRunnerList struct {
+	Items []CiRunner `json:"items"`
+}
+
+// CiRunnerRegistrationToken defines model for CiRunnerRegistrationToken.
+type CiRunnerRegistrationToken struct {
+	ExpiresAt time.Time `json:"expiresAt"`
+	Token     *string   `json:"token,omitempty"`
 }
 
 // CloseIssueInput defines model for CloseIssueInput.
@@ -2508,6 +2934,16 @@ type CreatePullRequestReviewInput struct {
 
 	// Event Esito scelto all'invio (PR5).
 	Event ReviewEvent `json:"event"`
+}
+
+// CreateReleaseInput defines model for CreateReleaseInput.
+type CreateReleaseInput struct {
+	Body          *string `json:"body,omitempty"`
+	Draft         *bool   `json:"draft,omitempty"`
+	GenerateNotes *bool   `json:"generateNotes,omitempty"`
+	Name          string  `json:"name"`
+	Prerelease    *bool   `json:"prerelease,omitempty"`
+	TagName       string  `json:"tagName"`
 }
 
 // CreateRepoMirrorInput Example: {"token":"ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","url":"https://github.com/example/gitstack.git","username":"gitstack-mirror"}
@@ -3000,6 +3436,25 @@ type IssueViaToken struct {
 	Name string             `json:"name"`
 }
 
+// JobTokenPermissions Permessi effettivi del token effimero del job (CI4). Ogni livello e' il minimo fra tre limiti: quello richiesto dal workflow (`permissions:`), quello consentito dal repository e quello di chi avvia l'esecuzione (l'attore di push, pull_request, workflow_dispatch o Riesegui). Un attore con soli permessi di lettura non ottiene mai `write` nel token, qualunque cosa chieda il workflow; per `schedule`, che non ha un attore, vale il limite del repository. Senza `permissions:` il default e' `read`. Il token non puo' mai eccedere l'attore e scade con il job.
+type JobTokenPermissions struct {
+	Actions JobTokenPermissionsActions `json:"actions"`
+
+	// CappedByActor true se almeno un livello e' stato ridotto perche' l'attore ha meno permessi di quelli richiesti.
+	CappedByActor *bool                       `json:"cappedByActor,omitempty"`
+	Contents      JobTokenPermissionsContents `json:"contents"`
+	Packages      JobTokenPermissionsPackages `json:"packages"`
+}
+
+// JobTokenPermissionsActions defines model for JobTokenPermissions.Actions.
+type JobTokenPermissionsActions string
+
+// JobTokenPermissionsContents defines model for JobTokenPermissions.Contents.
+type JobTokenPermissionsContents string
+
+// JobTokenPermissionsPackages defines model for JobTokenPermissions.Packages.
+type JobTokenPermissionsPackages string
+
 // Label defines model for Label.
 type Label struct {
 	// Color Colore esadecimale a sei cifre, senza `#`.
@@ -3220,6 +3675,31 @@ type NotificationWebhook struct {
 
 // OwnerType defines model for OwnerType.
 type OwnerType string
+
+// Package defines model for Package.
+type Package struct {
+	Name      string    `json:"name"`
+	SizeBytes int64     `json:"sizeBytes"`
+	Tags      []string  `json:"tags"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// PackageList defines model for PackageList.
+type PackageList struct {
+	Items []Package `json:"items"`
+}
+
+// PackageSettings defines model for PackageSettings.
+type PackageSettings = PackageSettingsInput
+
+// PackageSettingsInput defines model for PackageSettingsInput.
+type PackageSettingsInput struct {
+	DeleteUntaggedAfterDays int  `json:"deleteUntaggedAfterDays"`
+	IncludeInBackup         bool `json:"includeInBackup"`
+
+	// ProtectedTagPatterns Tag che non possono essere sovrascritti o eliminati.
+	ProtectedTagPatterns []string `json:"protectedTagPatterns"`
+}
 
 // PullMirror Example: {"attempts":0,"createdAt":"2026-10-10T08:00:00Z","divergedRefs":[{"detectedAt":"2026-10-11T22:10:00Z","kind":"rewritten","localSha":"4f1c2a9e0b7d3c5a6e8f1b2c3d4e5f60718293a4","ref":"refs/heads/old-feature","remoteSha":"9a8b7c6d5e4f30211203f4e5d6c7b8a998877665"}],"hasToken":true,"id":"5c1f0a3e-2b7d-4e68-9a41-0d8f6b2c7e19","intervalSeconds":600,"lastAttemptAt":"2026-10-12T09:40:00Z","lastError":null,"lastSyncedAt":"2026-10-12T09:40:00Z","mode":"mirror","nextSyncAt":"2026-10-12T09:50:00Z","origin":"https://github.com/example/gitstack.git","state":"in_sync","updatedAt":"2026-10-12T09:40:00Z","username":"gitstack-backup"}
 type PullMirror struct {
@@ -3646,6 +4126,35 @@ type PullRequestThreadList struct {
 	Page    int                 `json:"page"`
 	PerPage int                 `json:"perPage"`
 	Total   int                 `json:"total"`
+}
+
+// Release defines model for Release.
+type Release struct {
+	Assets []ReleaseAsset `json:"assets"`
+
+	// Body Note Markdown.
+	Body        string             `json:"body"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	Draft       bool               `json:"draft"`
+	Id          openapi_types.UUID `json:"id"`
+	Latest      bool               `json:"latest"`
+	Name        string             `json:"name"`
+	Prerelease  bool               `json:"prerelease"`
+	PublishedAt *time.Time         `json:"publishedAt,omitempty"`
+	TagName     string             `json:"tagName"`
+}
+
+// ReleaseAsset defines model for ReleaseAsset.
+type ReleaseAsset struct {
+	Id        openapi_types.UUID `json:"id"`
+	Name      string             `json:"name"`
+	Sha256    string             `json:"sha256"`
+	SizeBytes int64              `json:"sizeBytes"`
+}
+
+// ReleaseList defines model for ReleaseList.
+type ReleaseList struct {
+	Items []Release `json:"items"`
 }
 
 // RepoCloneUrls Indirizzi di clone dell'installazione (R1, R7). L'indirizzo SSH e' sempre quello completo `ssh://git@<host>:<porta>/<owner>/<repo>.git`.
@@ -4125,6 +4634,14 @@ type UpdatePullRequestInput struct {
 	Title        *string `json:"title,omitempty"`
 }
 
+// UpdateReleaseInput defines model for UpdateReleaseInput.
+type UpdateReleaseInput struct {
+	Body       *string `json:"body,omitempty"`
+	Draft      *bool   `json:"draft,omitempty"`
+	Name       *string `json:"name,omitempty"`
+	Prerelease *bool   `json:"prerelease,omitempty"`
+}
+
 // UpdateRepoMirrorInput defines model for UpdateRepoMirrorInput.
 type UpdateRepoMirrorInput struct {
 	Enabled *bool `json:"enabled,omitempty"`
@@ -4409,6 +4926,27 @@ type WebhookPullRequestReviewPayloadEvent string
 // WebhookPullRequestReviewPayloadVersion defines model for WebhookPullRequestReviewPayload.Version.
 type WebhookPullRequestReviewPayloadVersion int
 
+// WebhookReleasePayload defines model for WebhookReleasePayload.
+type WebhookReleasePayload struct {
+	Action       WebhookReleasePayloadAction  `json:"action"`
+	Event        WebhookReleasePayloadEvent   `json:"event"`
+	Organization *WebhookOrganizationRef      `json:"organization,omitempty"`
+	Release      Release                      `json:"release"`
+	Repository   WebhookRepositoryRef         `json:"repository"`
+	Sender       *WebhookSender               `json:"sender"`
+	Time         time.Time                    `json:"time"`
+	Version      WebhookReleasePayloadVersion `json:"version"`
+}
+
+// WebhookReleasePayloadAction defines model for WebhookReleasePayload.Action.
+type WebhookReleasePayloadAction string
+
+// WebhookReleasePayloadEvent defines model for WebhookReleasePayload.Event.
+type WebhookReleasePayloadEvent string
+
+// WebhookReleasePayloadVersion defines model for WebhookReleasePayload.Version.
+type WebhookReleasePayloadVersion int
+
 // WebhookRepositoryRef defines model for WebhookRepositoryRef.
 type WebhookRepositoryRef struct {
 	Archived      bool               `json:"archived"`
@@ -4435,8 +4973,133 @@ type WebhookSender struct {
 // WebhookSenderType defines model for WebhookSender.Type.
 type WebhookSenderType string
 
+// WebhookWorkflowJobPayload defines model for WebhookWorkflowJobPayload.
+type WebhookWorkflowJobPayload struct {
+	Action       WebhookWorkflowJobPayloadAction  `json:"action"`
+	Event        WebhookWorkflowJobPayloadEvent   `json:"event"`
+	Organization *WebhookOrganizationRef          `json:"organization,omitempty"`
+	Repository   WebhookRepositoryRef             `json:"repository"`
+	Sender       *WebhookSender                   `json:"sender"`
+	Time         time.Time                        `json:"time"`
+	Version      WebhookWorkflowJobPayloadVersion `json:"version"`
+	WorkflowJob  WorkflowJob                      `json:"workflowJob"`
+	WorkflowRun  WorkflowRun                      `json:"workflowRun"`
+}
+
+// WebhookWorkflowJobPayloadAction defines model for WebhookWorkflowJobPayload.Action.
+type WebhookWorkflowJobPayloadAction string
+
+// WebhookWorkflowJobPayloadEvent defines model for WebhookWorkflowJobPayload.Event.
+type WebhookWorkflowJobPayloadEvent string
+
+// WebhookWorkflowJobPayloadVersion defines model for WebhookWorkflowJobPayload.Version.
+type WebhookWorkflowJobPayloadVersion int
+
+// WebhookWorkflowRunPayload defines model for WebhookWorkflowRunPayload.
+type WebhookWorkflowRunPayload struct {
+	Action       WebhookWorkflowRunPayloadAction  `json:"action"`
+	Event        WebhookWorkflowRunPayloadEvent   `json:"event"`
+	Organization *WebhookOrganizationRef          `json:"organization,omitempty"`
+	Repository   WebhookRepositoryRef             `json:"repository"`
+	Sender       *WebhookSender                   `json:"sender"`
+	Time         time.Time                        `json:"time"`
+	Version      WebhookWorkflowRunPayloadVersion `json:"version"`
+	WorkflowRun  WorkflowRun                      `json:"workflowRun"`
+}
+
+// WebhookWorkflowRunPayloadAction defines model for WebhookWorkflowRunPayload.Action.
+type WebhookWorkflowRunPayloadAction string
+
+// WebhookWorkflowRunPayloadEvent defines model for WebhookWorkflowRunPayload.Event.
+type WebhookWorkflowRunPayloadEvent string
+
+// WebhookWorkflowRunPayloadVersion defines model for WebhookWorkflowRunPayload.Version.
+type WebhookWorkflowRunPayloadVersion int
+
+// Workflow defines model for Workflow.
+type Workflow struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+
+	// Path Percorso sotto `.gitstack/workflows/` o `.github/workflows/`.
+	Path  string        `json:"path"`
+	State WorkflowState `json:"state"`
+}
+
+// WorkflowState defines model for Workflow.State.
+type WorkflowState string
+
+// WorkflowDispatchInput defines model for WorkflowDispatchInput.
+type WorkflowDispatchInput struct {
+	Inputs *map[string]string `json:"inputs,omitempty"`
+	Ref    string             `json:"ref"`
+}
+
+// WorkflowJob defines model for WorkflowJob.
+type WorkflowJob struct {
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+
+	// Conclusion success, failure, cancelled, skipped o timed_out quando concluso
+	Conclusion *string            `json:"conclusion,omitempty"`
+	Id         openapi_types.UUID `json:"id"`
+	Name       string             `json:"name"`
+
+	// Permissions Permessi effettivi del token effimero del job (CI4). Ogni livello e' il minimo fra tre limiti: quello richiesto dal workflow (`permissions:`), quello consentito dal repository e quello di chi avvia l'esecuzione (l'attore di push, pull_request, workflow_dispatch o Riesegui). Un attore con soli permessi di lettura non ottiene mai `write` nel token, qualunque cosa chieda il workflow; per `schedule`, che non ha un attore, vale il limite del repository. Senza `permissions:` il default e' `read`. Il token non puo' mai eccedere l'attore e scade con il job.
+	Permissions JobTokenPermissions   `json:"permissions"`
+	RunnerName  *string               `json:"runnerName,omitempty"`
+	RunnerType  WorkflowJobRunnerType `json:"runnerType"`
+	StartedAt   *time.Time            `json:"startedAt,omitempty"`
+
+	// Status queued, in_progress, completed o cancelled
+	Status string `json:"status"`
+}
+
+// WorkflowJobRunnerType defines model for WorkflowJob.RunnerType.
+type WorkflowJobRunnerType string
+
+// WorkflowList defines model for WorkflowList.
+type WorkflowList struct {
+	Items []Workflow `json:"items"`
+}
+
+// WorkflowRun defines model for WorkflowRun.
+type WorkflowRun struct {
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+
+	// Conclusion success, failure, cancelled, skipped o timed_out quando conclusa
+	Conclusion *string            `json:"conclusion,omitempty"`
+	CreatedAt  time.Time          `json:"createdAt"`
+	Event      WorkflowRunEvent   `json:"event"`
+	Id         openapi_types.UUID `json:"id"`
+	Jobs       []WorkflowJob      `json:"jobs"`
+	Ref        string             `json:"ref"`
+	Sha        string             `json:"sha"`
+	StartedAt  *time.Time         `json:"startedAt,omitempty"`
+
+	// Status queued, in_progress, completed o cancelled
+	Status     string `json:"status"`
+	WorkflowId string `json:"workflowId"`
+}
+
+// WorkflowRunEvent defines model for WorkflowRun.Event.
+type WorkflowRunEvent string
+
+// WorkflowRunList defines model for WorkflowRunList.
+type WorkflowRunList struct {
+	Items []WorkflowRun `json:"items"`
+}
+
 // ArchiveFormatParam defines model for ArchiveFormatParam.
 type ArchiveFormatParam string
+
+// ArtifactIdParam defines model for ArtifactIdParam.
+type ArtifactIdParam = openapi_types.UUID
+
+// AssetIdParam defines model for AssetIdParam.
+type AssetIdParam = openapi_types.UUID
+
+// CacheIdParam defines model for CacheIdParam.
+type CacheIdParam = openapi_types.UUID
 
 // CodeSearchQueryParam defines model for CodeSearchQueryParam.
 type CodeSearchQueryParam = string
@@ -4500,6 +5163,9 @@ type IssueSortParam string
 
 // IssueStateFilter defines model for IssueStateFilter.
 type IssueStateFilter string
+
+// JobIdParam defines model for JobIdParam.
+type JobIdParam = openapi_types.UUID
 
 // LabelNameParam defines model for LabelNameParam.
 type LabelNameParam = string
@@ -4577,6 +5243,9 @@ type RefAndPathParam = string
 // RefParam defines model for RefParam.
 type RefParam = string
 
+// ReleaseIdParam defines model for ReleaseIdParam.
+type ReleaseIdParam = openapi_types.UUID
+
 // RepoNameParam Nome di un repo (R11): lettere maiuscole e minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono conservate come scritte; l'unicita' per owner e il lookup non distinguono maiuscole e minuscole (`GitStack` e `gitstack` sono lo stesso repo).
 //
 // Example: my-app
@@ -4597,6 +5266,12 @@ type ResourceIdParam = openapi_types.UUID
 
 // ResourceTypeFilter defines model for ResourceTypeFilter.
 type ResourceTypeFilter = string
+
+// RunIdParam defines model for RunIdParam.
+type RunIdParam = openapi_types.UUID
+
+// RunnerIdParam defines model for RunnerIdParam.
+type RunnerIdParam = openapi_types.UUID
 
 // SessionIdParam defines model for SessionIdParam.
 type SessionIdParam = openapi_types.UUID
@@ -4625,6 +5300,9 @@ type WebhookDeliveryIdParam = openapi_types.UUID
 
 // WebhookIdParam defines model for WebhookIdParam.
 type WebhookIdParam = openapi_types.UUID
+
+// WorkflowParam defines model for WorkflowParam.
+type WorkflowParam = string
 
 // BadRequest Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type BadRequest = Error
@@ -4716,6 +5394,29 @@ type ListRepositoriesParams struct {
 type ListDeletedRepositoriesParams struct {
 	// Owner Filtra per nome dell'utente o dell'organizzazione proprietaria.
 	Owner *RepoOwnerFilter `form:"owner,omitempty" json:"owner,omitempty"`
+}
+
+// DeleteActionsCachesParams defines parameters for DeleteActionsCaches.
+type DeleteActionsCachesParams struct {
+	// Key Prefisso della chiave.
+	Key *string `form:"key,omitempty" json:"key,omitempty"`
+
+	// Ref Ref della cache.
+	Ref *string `form:"ref,omitempty" json:"ref,omitempty"`
+}
+
+// ListActionsCachesParams defines parameters for ListActionsCaches.
+type ListActionsCachesParams struct {
+	// Key Prefisso della chiave.
+	Key *string `form:"key,omitempty" json:"key,omitempty"`
+
+	// Ref Ref (ramo o tag) della cache.
+	Ref *string `form:"ref,omitempty" json:"ref,omitempty"`
+}
+
+// GetWorkflowJobLogParams defines parameters for GetWorkflowJobLog.
+type GetWorkflowJobLogParams struct {
+	Follow *bool `form:"follow,omitempty" json:"follow,omitempty"`
 }
 
 // GetRepositoryArchiveParams defines parameters for GetRepositoryArchive.
@@ -4983,6 +5684,12 @@ type GetRepositoryReadmeParams struct {
 	Path *PathParam `form:"path,omitempty" json:"path,omitempty"`
 }
 
+// UploadReleaseAssetParams defines parameters for UploadReleaseAsset.
+type UploadReleaseAssetParams struct {
+	// Name Nome del file allegato.
+	Name string `form:"name" json:"name"`
+}
+
 // SearchRepositoryCodeParams defines parameters for SearchRepositoryCode.
 type SearchRepositoryCodeParams struct {
 	// Q Testo da cercare (sottostringa letterale, senza distinguere maiuscole), da 2 a 256 caratteri.
@@ -5046,6 +5753,12 @@ type GetUserAccessParams struct {
 // UpdateNotificationJSONRequestBody defines body for UpdateNotification for application/json ContentType.
 type UpdateNotificationJSONRequestBody = UpdateNotificationInput
 
+// PutOrganizationActionsSecretJSONRequestBody defines body for PutOrganizationActionsSecret for application/json ContentType.
+type PutOrganizationActionsSecretJSONRequestBody = ActionsSecretInput
+
+// PutOrganizationActionsVariableJSONRequestBody defines body for PutOrganizationActionsVariable for application/json ContentType.
+type PutOrganizationActionsVariableJSONRequestBody = ActionsVariableInput
+
 // CreateOrgWebhookJSONRequestBody defines body for CreateOrgWebhook for application/json ContentType.
 type CreateOrgWebhookJSONRequestBody = CreateWebhookInput
 
@@ -5060,6 +5773,12 @@ type ImportRepositoryJSONRequestBody = ImportRepositoryInput
 
 // UpdateRepositoryJSONRequestBody defines body for UpdateRepository for application/json ContentType.
 type UpdateRepositoryJSONRequestBody = UpdateRepositoryInput
+
+// PutRepositoryActionsSecretJSONRequestBody defines body for PutRepositoryActionsSecret for application/json ContentType.
+type PutRepositoryActionsSecretJSONRequestBody = ActionsSecretInput
+
+// PutRepositoryActionsVariableJSONRequestBody defines body for PutRepositoryActionsVariable for application/json ContentType.
+type PutRepositoryActionsVariableJSONRequestBody = ActionsVariableInput
 
 // UpdateBranchSettingsJSONRequestBody defines body for UpdateBranchSettings for application/json ContentType.
 type UpdateBranchSettingsJSONRequestBody = UpdateBranchSettingsInput
@@ -5124,6 +5843,9 @@ type CreateRepoMirrorJSONRequestBody = CreateRepoMirrorInput
 // UpdateRepoMirrorJSONRequestBody defines body for UpdateRepoMirror for application/json ContentType.
 type UpdateRepoMirrorJSONRequestBody = UpdateRepoMirrorInput
 
+// UpdateRepositoryPackageSettingsJSONRequestBody defines body for UpdateRepositoryPackageSettings for application/json ContentType.
+type UpdateRepositoryPackageSettingsJSONRequestBody = PackageSettingsInput
+
 // UpdateRepoPullMirrorJSONRequestBody defines body for UpdateRepoPullMirror for application/json ContentType.
 type UpdateRepoPullMirrorJSONRequestBody = UpdatePullMirrorInput
 
@@ -5157,8 +5879,17 @@ type CreatePullRequestReviewJSONRequestBody = CreatePullRequestReviewInput
 // SetPullRequestFileViewedJSONRequestBody defines body for SetPullRequestFileViewed for application/json ContentType.
 type SetPullRequestFileViewedJSONRequestBody = SetFileViewedInput
 
+// CreateReleaseJSONRequestBody defines body for CreateRelease for application/json ContentType.
+type CreateReleaseJSONRequestBody = CreateReleaseInput
+
+// UpdateReleaseJSONRequestBody defines body for UpdateRelease for application/json ContentType.
+type UpdateReleaseJSONRequestBody = UpdateReleaseInput
+
 // SetRepoWatchJSONRequestBody defines body for SetRepoWatch for application/json ContentType.
 type SetRepoWatchJSONRequestBody = SetRepoWatchInput
+
+// DispatchWorkflowJSONRequestBody defines body for DispatchWorkflow for application/json ContentType.
+type DispatchWorkflowJSONRequestBody = WorkflowDispatchInput
 
 // CreateResourceJSONRequestBody defines body for CreateResource for application/json ContentType.
 type CreateResourceJSONRequestBody = CreateResourceInput
@@ -5178,8 +5909,29 @@ type PullRequestJSONRequestBody = WebhookPullRequestPayload
 // PullRequestReviewJSONRequestBody defines body for PullRequestReview for application/json ContentType.
 type PullRequestReviewJSONRequestBody = WebhookPullRequestReviewPayload
 
+// ReleaseJSONRequestBody defines body for Release for application/json ContentType.
+type ReleaseJSONRequestBody = WebhookReleasePayload
+
+// WorkflowJobJSONRequestBody defines body for WorkflowJob for application/json ContentType.
+type WorkflowJobJSONRequestBody = WebhookWorkflowJobPayload
+
+// WorkflowRunJSONRequestBody defines body for WorkflowRun for application/json ContentType.
+type WorkflowRunJSONRequestBody = WebhookWorkflowRunPayload
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// GetCiQueue Legge coda e concorrenza CI (solo amministratore)
+	// (GET /admin/ci/queue)
+	GetCiQueue(w http.ResponseWriter, r *http.Request)
+	// ListCiRunners Elenca i runner esterni (solo amministratore)
+	// (GET /admin/ci/runners)
+	ListCiRunners(w http.ResponseWriter, r *http.Request)
+	// CreateCiRunnerRegistrationToken Crea un token monouso per registrare un runner esterno (solo amministratore)
+	// (POST /admin/ci/runners/registration-token)
+	CreateCiRunnerRegistrationToken(w http.ResponseWriter, r *http.Request)
+	// DeleteCiRunner Revoca un runner esterno (solo amministratore)
+	// (DELETE /admin/ci/runners/{runnerId})
+	DeleteCiRunner(w http.ResponseWriter, r *http.Request, runnerId RunnerIdParam)
 	// GetAdminSystem Stato dell'installazione (Admin · System)
 	// (GET /admin/system)
 	GetAdminSystem(w http.ResponseWriter, r *http.Request)
@@ -5207,6 +5959,18 @@ type ServerInterface interface {
 	// UpdateNotification Segna come letta/non letta o archivia
 	// (PATCH /notifications/{notificationId})
 	UpdateNotification(w http.ResponseWriter, r *http.Request, notificationId NotificationIdParam)
+	// ListOrganizationActionsSecrets Elenca i metadati dei segreti CI dell'organizzazione
+	// (GET /orgs/{org}/actions/secrets)
+	ListOrganizationActionsSecrets(w http.ResponseWriter, r *http.Request, org OrgParam)
+	// PutOrganizationActionsSecret Crea o sostituisce un segreto CI dell'organizzazione
+	// (PUT /orgs/{org}/actions/secrets)
+	PutOrganizationActionsSecret(w http.ResponseWriter, r *http.Request, org OrgParam)
+	// ListOrganizationActionsVariables Elenca le variabili CI dell'organizzazione
+	// (GET /orgs/{org}/actions/variables)
+	ListOrganizationActionsVariables(w http.ResponseWriter, r *http.Request, org OrgParam)
+	// PutOrganizationActionsVariable Crea o sostituisce una variabile CI dell'organizzazione
+	// (PUT /orgs/{org}/actions/variables)
+	PutOrganizationActionsVariable(w http.ResponseWriter, r *http.Request, org OrgParam)
 	// ListOrgWebhooks Elenca i webhook di un'organizzazione
 	// (GET /orgs/{org}/hooks)
 	ListOrgWebhooks(w http.ResponseWriter, r *http.Request, org OrgParam, params ListOrgWebhooksParams)
@@ -5258,6 +6022,54 @@ type ServerInterface interface {
 	// UpdateRepository Modifica le impostazioni di un repo
 	// (PATCH /repos/{owner}/{repo})
 	UpdateRepository(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// DownloadWorkflowArtifact Scarica un artefatto ZIP
+	// (GET /repos/{owner}/{repo}/actions/artifacts/{artifactId}/download)
+	DownloadWorkflowArtifact(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, artifactId ArtifactIdParam)
+	// DeleteActionsCaches Elimina tutte le cache CI del repository
+	// (DELETE /repos/{owner}/{repo}/actions/caches)
+	DeleteActionsCaches(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params DeleteActionsCachesParams)
+	// ListActionsCaches Elenca le cache CI del repository e l'uso della quota
+	// (GET /repos/{owner}/{repo}/actions/caches)
+	ListActionsCaches(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params ListActionsCachesParams)
+	// DeleteActionsCache Elimina una cache CI
+	// (DELETE /repos/{owner}/{repo}/actions/caches/{cacheId})
+	DeleteActionsCache(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam)
+	// GetActionsCache Legge i metadati di una cache CI
+	// (GET /repos/{owner}/{repo}/actions/caches/{cacheId})
+	GetActionsCache(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam)
+	// GetWorkflowJob Legge un job
+	// (GET /repos/{owner}/{repo}/actions/jobs/{jobId})
+	GetWorkflowJob(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam)
+	// GetWorkflowJobLog Legge il log, anche mentre il job e' in esecuzione
+	// (GET /repos/{owner}/{repo}/actions/jobs/{jobId}/logs)
+	GetWorkflowJobLog(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam, params GetWorkflowJobLogParams)
+	// ListWorkflowRuns Elenca le esecuzioni dei workflow
+	// (GET /repos/{owner}/{repo}/actions/runs)
+	ListWorkflowRuns(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// GetWorkflowRun Legge un'esecuzione
+	// (GET /repos/{owner}/{repo}/actions/runs/{runId})
+	GetWorkflowRun(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam)
+	// ListWorkflowArtifacts Elenca gli artefatti di un'esecuzione
+	// (GET /repos/{owner}/{repo}/actions/runs/{runId}/artifacts)
+	ListWorkflowArtifacts(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam)
+	// CancelWorkflowRun Annulla un'esecuzione in corso
+	// (POST /repos/{owner}/{repo}/actions/runs/{runId}/cancel)
+	CancelWorkflowRun(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam)
+	// RerunWorkflowRun Riesegue un workflow
+	// (POST /repos/{owner}/{repo}/actions/runs/{runId}/rerun)
+	RerunWorkflowRun(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam)
+	// ListRepositoryActionsSecrets Elenca i metadati dei segreti CI del repository
+	// (GET /repos/{owner}/{repo}/actions/secrets)
+	ListRepositoryActionsSecrets(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// PutRepositoryActionsSecret Crea o sostituisce un segreto CI
+	// (PUT /repos/{owner}/{repo}/actions/secrets)
+	PutRepositoryActionsSecret(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// ListRepositoryActionsVariables Elenca le variabili CI del repository
+	// (GET /repos/{owner}/{repo}/actions/variables)
+	ListRepositoryActionsVariables(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// PutRepositoryActionsVariable Crea o sostituisce una variabile CI
+	// (PUT /repos/{owner}/{repo}/actions/variables)
+	PutRepositoryActionsVariable(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
 	// GetRepositoryArchive Archivio ZIP o tar.gz di un ref (streaming)
 	// (GET /repos/{owner}/{repo}/archive)
 	GetRepositoryArchive(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryArchiveParams)
@@ -5456,6 +6268,15 @@ type ServerInterface interface {
 	// SyncRepoMirror Sincronizza ora un mirror in push
 	// (POST /repos/{owner}/{repo}/mirrors/{mirrorId}/sync)
 	SyncRepoMirror(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam)
+	// ListRepositoryPackages Elenca i pacchetti OCI del repository
+	// (GET /repos/{owner}/{repo}/packages)
+	ListRepositoryPackages(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// GetRepositoryPackageSettings Legge regole di tag protetti, pulizia e backup
+	// (GET /repos/{owner}/{repo}/packages/settings)
+	GetRepositoryPackageSettings(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// UpdateRepositoryPackageSettings Modifica regole di tag protetti, pulizia e backup
+	// (PATCH /repos/{owner}/{repo}/packages/settings)
+	UpdateRepositoryPackageSettings(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
 	// GetRepoPullMirror Legge il mirror in pull di un repo (con il suo stato)
 	// (GET /repos/{owner}/{repo}/pull-mirror)
 	GetRepoPullMirror(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
@@ -5567,6 +6388,27 @@ type ServerInterface interface {
 	// GetRepositoryReadme README di una cartella
 	// (GET /repos/{owner}/{repo}/readme)
 	GetRepositoryReadme(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryReadmeParams)
+	// ListReleases Elenca le release
+	// (GET /repos/{owner}/{repo}/releases)
+	ListReleases(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// CreateRelease Crea una release per un tag
+	// (POST /repos/{owner}/{repo}/releases)
+	CreateRelease(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// DeleteRelease Elimina una release senza eliminare il tag Git
+	// (DELETE /repos/{owner}/{repo}/releases/{releaseId})
+	DeleteRelease(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam)
+	// GetRelease Legge una release
+	// (GET /repos/{owner}/{repo}/releases/{releaseId})
+	GetRelease(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam)
+	// UpdateRelease Modifica titolo, note e stato di una release
+	// (PATCH /repos/{owner}/{repo}/releases/{releaseId})
+	UpdateRelease(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam)
+	// UploadReleaseAsset Carica un allegato di release
+	// (POST /repos/{owner}/{repo}/releases/{releaseId}/assets)
+	UploadReleaseAsset(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, params UploadReleaseAssetParams)
+	// DownloadReleaseAsset Scarica un allegato di release
+	// (GET /repos/{owner}/{repo}/releases/{releaseId}/assets/{assetId}/download)
+	DownloadReleaseAsset(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, assetId AssetIdParam)
 	// SearchRepositoryCode Cerca un testo nel codice di un ref ("Search code")
 	// (GET /repos/{owner}/{repo}/search)
 	SearchRepositoryCode(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params SearchRepositoryCodeParams)
@@ -5585,6 +6427,12 @@ type ServerInterface interface {
 	// SetRepoWatch Imposta il Watch del repo
 	// (PUT /repos/{owner}/{repo}/watch)
 	SetRepoWatch(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// ListWorkflows Elenca i workflow del repository
+	// (GET /repos/{owner}/{repo}/workflows)
+	ListWorkflows(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// DispatchWorkflow Avvia manualmente un workflow
+	// (POST /repos/{owner}/{repo}/workflows/{workflow}/dispatches)
+	DispatchWorkflow(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, workflow WorkflowParam)
 	// ListResources Elenca le risorse
 	// (GET /resources)
 	ListResources(w http.ResponseWriter, r *http.Request, params ListResourcesParams)
@@ -5625,6 +6473,74 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// GetCiQueue operation middleware
+func (siw *ServerInterfaceWrapper) GetCiQueue(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCiQueue(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListCiRunners operation middleware
+func (siw *ServerInterfaceWrapper) ListCiRunners(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCiRunners(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateCiRunnerRegistrationToken operation middleware
+func (siw *ServerInterfaceWrapper) CreateCiRunnerRegistrationToken(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateCiRunnerRegistrationToken(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteCiRunner operation middleware
+func (siw *ServerInterfaceWrapper) DeleteCiRunner(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "runnerId" -------------
+	var runnerId RunnerIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "runnerId", r.PathValue("runnerId"), &runnerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "runnerId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteCiRunner(w, r, runnerId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetAdminSystem operation middleware
 func (siw *ServerInterfaceWrapper) GetAdminSystem(w http.ResponseWriter, r *http.Request) {
@@ -5927,6 +6843,110 @@ func (siw *ServerInterfaceWrapper) UpdateNotification(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateNotification(w, r, notificationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListOrganizationActionsSecrets operation middleware
+func (siw *ServerInterfaceWrapper) ListOrganizationActionsSecrets(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListOrganizationActionsSecrets(w, r, org)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PutOrganizationActionsSecret operation middleware
+func (siw *ServerInterfaceWrapper) PutOrganizationActionsSecret(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutOrganizationActionsSecret(w, r, org)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListOrganizationActionsVariables operation middleware
+func (siw *ServerInterfaceWrapper) ListOrganizationActionsVariables(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListOrganizationActionsVariables(w, r, org)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PutOrganizationActionsVariable operation middleware
+func (siw *ServerInterfaceWrapper) PutOrganizationActionsVariable(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutOrganizationActionsVariable(w, r, org)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6564,6 +7584,721 @@ func (siw *ServerInterfaceWrapper) UpdateRepository(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateRepository(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DownloadWorkflowArtifact operation middleware
+func (siw *ServerInterfaceWrapper) DownloadWorkflowArtifact(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "artifactId" -------------
+	var artifactId ArtifactIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "artifactId", r.PathValue("artifactId"), &artifactId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "artifactId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DownloadWorkflowArtifact(w, r, owner, repo, artifactId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteActionsCaches operation middleware
+func (siw *ServerInterfaceWrapper) DeleteActionsCaches(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteActionsCachesParams
+
+	// ------------- Optional query parameter "key" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "key", r.URL.Query(), &params.Key, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "key"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "ref" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ref", r.URL.Query(), &params.Ref, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ref"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteActionsCaches(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListActionsCaches operation middleware
+func (siw *ServerInterfaceWrapper) ListActionsCaches(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListActionsCachesParams
+
+	// ------------- Optional query parameter "key" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "key", r.URL.Query(), &params.Key, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "key"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "ref" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ref", r.URL.Query(), &params.Ref, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ref"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListActionsCaches(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteActionsCache operation middleware
+func (siw *ServerInterfaceWrapper) DeleteActionsCache(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "cacheId" -------------
+	var cacheId CacheIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "cacheId", r.PathValue("cacheId"), &cacheId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cacheId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteActionsCache(w, r, owner, repo, cacheId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetActionsCache operation middleware
+func (siw *ServerInterfaceWrapper) GetActionsCache(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "cacheId" -------------
+	var cacheId CacheIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "cacheId", r.PathValue("cacheId"), &cacheId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cacheId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetActionsCache(w, r, owner, repo, cacheId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetWorkflowJob operation middleware
+func (siw *ServerInterfaceWrapper) GetWorkflowJob(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "jobId" -------------
+	var jobId JobIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "jobId", r.PathValue("jobId"), &jobId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "jobId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetWorkflowJob(w, r, owner, repo, jobId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetWorkflowJobLog operation middleware
+func (siw *ServerInterfaceWrapper) GetWorkflowJobLog(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "jobId" -------------
+	var jobId JobIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "jobId", r.PathValue("jobId"), &jobId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "jobId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetWorkflowJobLogParams
+
+	// ------------- Optional query parameter "follow" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "follow", r.URL.Query(), &params.Follow, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "follow"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "follow", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetWorkflowJobLog(w, r, owner, repo, jobId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListWorkflowRuns operation middleware
+func (siw *ServerInterfaceWrapper) ListWorkflowRuns(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListWorkflowRuns(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetWorkflowRun operation middleware
+func (siw *ServerInterfaceWrapper) GetWorkflowRun(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "runId" -------------
+	var runId RunIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "runId", r.PathValue("runId"), &runId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "runId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetWorkflowRun(w, r, owner, repo, runId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListWorkflowArtifacts operation middleware
+func (siw *ServerInterfaceWrapper) ListWorkflowArtifacts(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "runId" -------------
+	var runId RunIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "runId", r.PathValue("runId"), &runId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "runId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListWorkflowArtifacts(w, r, owner, repo, runId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CancelWorkflowRun operation middleware
+func (siw *ServerInterfaceWrapper) CancelWorkflowRun(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "runId" -------------
+	var runId RunIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "runId", r.PathValue("runId"), &runId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "runId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CancelWorkflowRun(w, r, owner, repo, runId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RerunWorkflowRun operation middleware
+func (siw *ServerInterfaceWrapper) RerunWorkflowRun(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "runId" -------------
+	var runId RunIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "runId", r.PathValue("runId"), &runId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "runId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RerunWorkflowRun(w, r, owner, repo, runId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListRepositoryActionsSecrets operation middleware
+func (siw *ServerInterfaceWrapper) ListRepositoryActionsSecrets(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListRepositoryActionsSecrets(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PutRepositoryActionsSecret operation middleware
+func (siw *ServerInterfaceWrapper) PutRepositoryActionsSecret(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutRepositoryActionsSecret(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListRepositoryActionsVariables operation middleware
+func (siw *ServerInterfaceWrapper) ListRepositoryActionsVariables(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListRepositoryActionsVariables(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PutRepositoryActionsVariable operation middleware
+func (siw *ServerInterfaceWrapper) PutRepositoryActionsVariable(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutRepositoryActionsVariable(w, r, owner, repo)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -10005,6 +11740,111 @@ func (siw *ServerInterfaceWrapper) SyncRepoMirror(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// ListRepositoryPackages operation middleware
+func (siw *ServerInterfaceWrapper) ListRepositoryPackages(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListRepositoryPackages(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepositoryPackageSettings operation middleware
+func (siw *ServerInterfaceWrapper) GetRepositoryPackageSettings(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepositoryPackageSettings(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateRepositoryPackageSettings operation middleware
+func (siw *ServerInterfaceWrapper) UpdateRepositoryPackageSettings(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateRepositoryPackageSettings(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetRepoPullMirror operation middleware
 func (siw *ServerInterfaceWrapper) GetRepoPullMirror(w http.ResponseWriter, r *http.Request) {
 
@@ -11938,6 +13778,321 @@ func (siw *ServerInterfaceWrapper) GetRepositoryReadme(w http.ResponseWriter, r 
 	handler.ServeHTTP(w, r)
 }
 
+// ListReleases operation middleware
+func (siw *ServerInterfaceWrapper) ListReleases(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListReleases(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateRelease operation middleware
+func (siw *ServerInterfaceWrapper) CreateRelease(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateRelease(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteRelease operation middleware
+func (siw *ServerInterfaceWrapper) DeleteRelease(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "releaseId" -------------
+	var releaseId ReleaseIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "releaseId", r.PathValue("releaseId"), &releaseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "releaseId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteRelease(w, r, owner, repo, releaseId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRelease operation middleware
+func (siw *ServerInterfaceWrapper) GetRelease(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "releaseId" -------------
+	var releaseId ReleaseIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "releaseId", r.PathValue("releaseId"), &releaseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "releaseId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRelease(w, r, owner, repo, releaseId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateRelease operation middleware
+func (siw *ServerInterfaceWrapper) UpdateRelease(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "releaseId" -------------
+	var releaseId ReleaseIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "releaseId", r.PathValue("releaseId"), &releaseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "releaseId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateRelease(w, r, owner, repo, releaseId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UploadReleaseAsset operation middleware
+func (siw *ServerInterfaceWrapper) UploadReleaseAsset(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "releaseId" -------------
+	var releaseId ReleaseIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "releaseId", r.PathValue("releaseId"), &releaseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "releaseId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UploadReleaseAssetParams
+
+	// ------------- Required query parameter "name" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "name", r.URL.Query(), &params.Name, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "name"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UploadReleaseAsset(w, r, owner, repo, releaseId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DownloadReleaseAsset operation middleware
+func (siw *ServerInterfaceWrapper) DownloadReleaseAsset(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "releaseId" -------------
+	var releaseId ReleaseIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "releaseId", r.PathValue("releaseId"), &releaseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "releaseId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "assetId" -------------
+	var assetId AssetIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "assetId", r.PathValue("assetId"), &assetId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "assetId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DownloadReleaseAsset(w, r, owner, repo, releaseId, assetId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // SearchRepositoryCode operation middleware
 func (siw *ServerInterfaceWrapper) SearchRepositoryCode(w http.ResponseWriter, r *http.Request) {
 
@@ -12197,6 +14352,85 @@ func (siw *ServerInterfaceWrapper) SetRepoWatch(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SetRepoWatch(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListWorkflows operation middleware
+func (siw *ServerInterfaceWrapper) ListWorkflows(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListWorkflows(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DispatchWorkflow operation middleware
+func (siw *ServerInterfaceWrapper) DispatchWorkflow(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "workflow" -------------
+	var workflow WorkflowParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workflow", r.PathValue("workflow"), &workflow, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workflow", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DispatchWorkflow(w, r, owner, repo, workflow)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -12849,6 +15083,42 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/orgs/{org}/hooks/{hookId}/deliveries", wrapper.ListOrgWebhookDeliveries)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/orgs/{org}/hooks/{hookId}/deliveries/{deliveryId}", wrapper.GetOrgWebhookDelivery)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/orgs/{org}/hooks/{hookId}/deliveries/{deliveryId}/redeliver", wrapper.RedeliverOrgWebhookDelivery)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/workflows", wrapper.ListWorkflows)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/workflows/{workflow}/dispatches", wrapper.DispatchWorkflow)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/runs", wrapper.ListWorkflowRuns)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/runs/{runId}", wrapper.GetWorkflowRun)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/runs/{runId}/cancel", wrapper.CancelWorkflowRun)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/runs/{runId}/rerun", wrapper.RerunWorkflowRun)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/jobs/{jobId}", wrapper.GetWorkflowJob)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/jobs/{jobId}/logs", wrapper.GetWorkflowJobLog)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/runs/{runId}/artifacts", wrapper.ListWorkflowArtifacts)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/artifacts/{artifactId}/download", wrapper.DownloadWorkflowArtifact)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/caches", wrapper.DeleteActionsCaches)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/caches", wrapper.ListActionsCaches)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/caches/{cacheId}", wrapper.DeleteActionsCache)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/caches/{cacheId}", wrapper.GetActionsCache)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/variables", wrapper.ListRepositoryActionsVariables)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/variables", wrapper.PutRepositoryActionsVariable)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/secrets", wrapper.ListRepositoryActionsSecrets)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/secrets", wrapper.PutRepositoryActionsSecret)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/orgs/{org}/actions/variables", wrapper.ListOrganizationActionsVariables)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/orgs/{org}/actions/variables", wrapper.PutOrganizationActionsVariable)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/orgs/{org}/actions/secrets", wrapper.ListOrganizationActionsSecrets)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/orgs/{org}/actions/secrets", wrapper.PutOrganizationActionsSecret)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/ci/runners", wrapper.ListCiRunners)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/admin/ci/runners/registration-token", wrapper.CreateCiRunnerRegistrationToken)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/admin/ci/runners/{runnerId}", wrapper.DeleteCiRunner)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/ci/queue", wrapper.GetCiQueue)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/packages", wrapper.ListRepositoryPackages)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/packages/settings", wrapper.GetRepositoryPackageSettings)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/packages/settings", wrapper.UpdateRepositoryPackageSettings)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/releases", wrapper.ListReleases)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/releases", wrapper.CreateRelease)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/releases/{releaseId}", wrapper.DeleteRelease)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/releases/{releaseId}", wrapper.GetRelease)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/releases/{releaseId}", wrapper.UpdateRelease)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/releases/{releaseId}/assets", wrapper.UploadReleaseAsset)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/releases/{releaseId}/assets/{assetId}/download", wrapper.DownloadReleaseAsset)
 
 	return m
 }
@@ -12868,6 +15138,15 @@ type CallbackReceiverInterface interface {
 	// Consegna dell'evento pull_request_review (PR11)
 	// HandlePullRequestReviewCallback handles the POST callback for pull_request_review.
 	HandlePullRequestReviewCallback(w http.ResponseWriter, r *http.Request)
+	// Consegna dell'evento release (REL1)
+	// HandleReleaseCallback handles the POST callback for release.
+	HandleReleaseCallback(w http.ResponseWriter, r *http.Request)
+	// Consegna dell'evento workflow_job (CI)
+	// HandleWorkflowJobCallback handles the POST callback for workflow_job.
+	HandleWorkflowJobCallback(w http.ResponseWriter, r *http.Request)
+	// Consegna dell'evento workflow_run (CI)
+	// HandleWorkflowRunCallback handles the POST callback for workflow_run.
+	HandleWorkflowRunCallback(w http.ResponseWriter, r *http.Request)
 }
 
 // CallbackReceiverMiddlewareFunc wraps an http.Handler with cross-
@@ -12927,6 +15206,66 @@ func PullRequestReviewCallbackHandler(si CallbackReceiverInterface, errHandler f
 	}
 	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		si.HandlePullRequestReviewCallback(w, r)
+	})
+	for _, mw := range middlewares {
+		h = mw(h)
+	}
+	return h
+}
+
+// ReleaseCallbackHandler returns the http.Handler for the release callback.
+// Mount this at the URL path advertised to callback senders. errHandler
+// may be nil; if so, parameter-binding errors return 400 with the error
+// message. Middlewares are applied in the order provided -- the last
+// argument becomes the outermost wrapper.
+func ReleaseCallbackHandler(si CallbackReceiverInterface, errHandler func(w http.ResponseWriter, r *http.Request, err error), middlewares ...CallbackReceiverMiddlewareFunc) http.Handler {
+	if errHandler == nil {
+		errHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		si.HandleReleaseCallback(w, r)
+	})
+	for _, mw := range middlewares {
+		h = mw(h)
+	}
+	return h
+}
+
+// WorkflowJobCallbackHandler returns the http.Handler for the workflow_job callback.
+// Mount this at the URL path advertised to callback senders. errHandler
+// may be nil; if so, parameter-binding errors return 400 with the error
+// message. Middlewares are applied in the order provided -- the last
+// argument becomes the outermost wrapper.
+func WorkflowJobCallbackHandler(si CallbackReceiverInterface, errHandler func(w http.ResponseWriter, r *http.Request, err error), middlewares ...CallbackReceiverMiddlewareFunc) http.Handler {
+	if errHandler == nil {
+		errHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		si.HandleWorkflowJobCallback(w, r)
+	})
+	for _, mw := range middlewares {
+		h = mw(h)
+	}
+	return h
+}
+
+// WorkflowRunCallbackHandler returns the http.Handler for the workflow_run callback.
+// Mount this at the URL path advertised to callback senders. errHandler
+// may be nil; if so, parameter-binding errors return 400 with the error
+// message. Middlewares are applied in the order provided -- the last
+// argument becomes the outermost wrapper.
+func WorkflowRunCallbackHandler(si CallbackReceiverInterface, errHandler func(w http.ResponseWriter, r *http.Request, err error), middlewares ...CallbackReceiverMiddlewareFunc) http.Handler {
+	if errHandler == nil {
+		errHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		si.HandleWorkflowRunCallback(w, r)
 	})
 	for _, mw := range middlewares {
 		h = mw(h)

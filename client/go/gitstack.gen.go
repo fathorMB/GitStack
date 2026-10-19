@@ -183,6 +183,27 @@ func (e AdminSystemVersionsK3sUpdate) Valid() bool {
 	}
 }
 
+// Defines values for CiRunnerStatus.
+const (
+	Busy    CiRunnerStatus = "busy"
+	Offline CiRunnerStatus = "offline"
+	Online  CiRunnerStatus = "online"
+)
+
+// Valid indicates whether the value is a known member of the CiRunnerStatus enum.
+func (e CiRunnerStatus) Valid() bool {
+	switch e {
+	case Busy:
+		return true
+	case Offline:
+		return true
+	case Online:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CodeUserKind.
 const (
 	CodeUserKindAgent CodeUserKind = "agent"
@@ -545,19 +566,19 @@ func (e HealthStatus) Valid() bool {
 
 // Defines values for IssueCloseReason.
 const (
-	Completed  IssueCloseReason = "completed"
-	Duplicate  IssueCloseReason = "duplicate"
-	NotPlanned IssueCloseReason = "not_planned"
+	IssueCloseReasonCompleted  IssueCloseReason = "completed"
+	IssueCloseReasonDuplicate  IssueCloseReason = "duplicate"
+	IssueCloseReasonNotPlanned IssueCloseReason = "not_planned"
 )
 
 // Valid indicates whether the value is a known member of the IssueCloseReason enum.
 func (e IssueCloseReason) Valid() bool {
 	switch e {
-	case Completed:
+	case IssueCloseReasonCompleted:
 		return true
-	case Duplicate:
+	case IssueCloseReasonDuplicate:
 		return true
-	case NotPlanned:
+	case IssueCloseReasonNotPlanned:
 		return true
 	default:
 		return false
@@ -714,6 +735,69 @@ func (e IssueUserKind) Valid() bool {
 	case IssueUserKindAgent:
 		return true
 	case IssueUserKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for JobTokenPermissionsActions.
+const (
+	JobTokenPermissionsActionsNone  JobTokenPermissionsActions = "none"
+	JobTokenPermissionsActionsRead  JobTokenPermissionsActions = "read"
+	JobTokenPermissionsActionsWrite JobTokenPermissionsActions = "write"
+)
+
+// Valid indicates whether the value is a known member of the JobTokenPermissionsActions enum.
+func (e JobTokenPermissionsActions) Valid() bool {
+	switch e {
+	case JobTokenPermissionsActionsNone:
+		return true
+	case JobTokenPermissionsActionsRead:
+		return true
+	case JobTokenPermissionsActionsWrite:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for JobTokenPermissionsContents.
+const (
+	JobTokenPermissionsContentsNone  JobTokenPermissionsContents = "none"
+	JobTokenPermissionsContentsRead  JobTokenPermissionsContents = "read"
+	JobTokenPermissionsContentsWrite JobTokenPermissionsContents = "write"
+)
+
+// Valid indicates whether the value is a known member of the JobTokenPermissionsContents enum.
+func (e JobTokenPermissionsContents) Valid() bool {
+	switch e {
+	case JobTokenPermissionsContentsNone:
+		return true
+	case JobTokenPermissionsContentsRead:
+		return true
+	case JobTokenPermissionsContentsWrite:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for JobTokenPermissionsPackages.
+const (
+	JobTokenPermissionsPackagesNone  JobTokenPermissionsPackages = "none"
+	JobTokenPermissionsPackagesRead  JobTokenPermissionsPackages = "read"
+	JobTokenPermissionsPackagesWrite JobTokenPermissionsPackages = "write"
+)
+
+// Valid indicates whether the value is a known member of the JobTokenPermissionsPackages enum.
+func (e JobTokenPermissionsPackages) Valid() bool {
+	switch e {
+	case JobTokenPermissionsPackagesNone:
+		return true
+	case JobTokenPermissionsPackagesRead:
+		return true
+	case JobTokenPermissionsPackagesWrite:
 		return true
 	default:
 		return false
@@ -1706,7 +1790,10 @@ const (
 	WebhookEventPullRequest       WebhookEvent = "pull_request"
 	WebhookEventPullRequestReview WebhookEvent = "pull_request_review"
 	WebhookEventPush              WebhookEvent = "push"
+	WebhookEventRelease           WebhookEvent = "release"
 	WebhookEventRepository        WebhookEvent = "repository"
+	WebhookEventWorkflowJob       WebhookEvent = "workflow_job"
+	WebhookEventWorkflowRun       WebhookEvent = "workflow_run"
 )
 
 // Valid indicates whether the value is a known member of the WebhookEvent enum.
@@ -1724,7 +1811,13 @@ func (e WebhookEvent) Valid() bool {
 		return true
 	case WebhookEventPush:
 		return true
+	case WebhookEventRelease:
+		return true
 	case WebhookEventRepository:
+		return true
+	case WebhookEventWorkflowJob:
+		return true
+	case WebhookEventWorkflowRun:
 		return true
 	default:
 		return false
@@ -1851,6 +1944,60 @@ func (e WebhookPullRequestReviewPayloadVersion) Valid() bool {
 	}
 }
 
+// Defines values for WebhookReleasePayloadAction.
+const (
+	WebhookReleasePayloadActionCreated   WebhookReleasePayloadAction = "created"
+	WebhookReleasePayloadActionDeleted   WebhookReleasePayloadAction = "deleted"
+	WebhookReleasePayloadActionEdited    WebhookReleasePayloadAction = "edited"
+	WebhookReleasePayloadActionPublished WebhookReleasePayloadAction = "published"
+)
+
+// Valid indicates whether the value is a known member of the WebhookReleasePayloadAction enum.
+func (e WebhookReleasePayloadAction) Valid() bool {
+	switch e {
+	case WebhookReleasePayloadActionCreated:
+		return true
+	case WebhookReleasePayloadActionDeleted:
+		return true
+	case WebhookReleasePayloadActionEdited:
+		return true
+	case WebhookReleasePayloadActionPublished:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookReleasePayloadEvent.
+const (
+	WebhookReleasePayloadEventRelease WebhookReleasePayloadEvent = "release"
+)
+
+// Valid indicates whether the value is a known member of the WebhookReleasePayloadEvent enum.
+func (e WebhookReleasePayloadEvent) Valid() bool {
+	switch e {
+	case WebhookReleasePayloadEventRelease:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookReleasePayloadVersion.
+const (
+	WebhookReleasePayloadVersionN1 WebhookReleasePayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookReleasePayloadVersion enum.
+func (e WebhookReleasePayloadVersion) Valid() bool {
+	switch e {
+	case WebhookReleasePayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WebhookScope.
 const (
 	Org  WebhookScope = "org"
@@ -1881,6 +2028,174 @@ func (e WebhookSenderType) Valid() bool {
 	case WebhookSenderTypeAgent:
 		return true
 	case WebhookSenderTypeHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowJobPayloadAction.
+const (
+	WebhookWorkflowJobPayloadActionCancelled  WebhookWorkflowJobPayloadAction = "cancelled"
+	WebhookWorkflowJobPayloadActionCompleted  WebhookWorkflowJobPayloadAction = "completed"
+	WebhookWorkflowJobPayloadActionInProgress WebhookWorkflowJobPayloadAction = "in_progress"
+	WebhookWorkflowJobPayloadActionQueued     WebhookWorkflowJobPayloadAction = "queued"
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowJobPayloadAction enum.
+func (e WebhookWorkflowJobPayloadAction) Valid() bool {
+	switch e {
+	case WebhookWorkflowJobPayloadActionCancelled:
+		return true
+	case WebhookWorkflowJobPayloadActionCompleted:
+		return true
+	case WebhookWorkflowJobPayloadActionInProgress:
+		return true
+	case WebhookWorkflowJobPayloadActionQueued:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowJobPayloadEvent.
+const (
+	WebhookWorkflowJobPayloadEventWorkflowJob WebhookWorkflowJobPayloadEvent = "workflow_job"
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowJobPayloadEvent enum.
+func (e WebhookWorkflowJobPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookWorkflowJobPayloadEventWorkflowJob:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowJobPayloadVersion.
+const (
+	WebhookWorkflowJobPayloadVersionN1 WebhookWorkflowJobPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowJobPayloadVersion enum.
+func (e WebhookWorkflowJobPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookWorkflowJobPayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowRunPayloadAction.
+const (
+	WebhookWorkflowRunPayloadActionCancelled  WebhookWorkflowRunPayloadAction = "cancelled"
+	WebhookWorkflowRunPayloadActionCompleted  WebhookWorkflowRunPayloadAction = "completed"
+	WebhookWorkflowRunPayloadActionInProgress WebhookWorkflowRunPayloadAction = "in_progress"
+	WebhookWorkflowRunPayloadActionQueued     WebhookWorkflowRunPayloadAction = "queued"
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowRunPayloadAction enum.
+func (e WebhookWorkflowRunPayloadAction) Valid() bool {
+	switch e {
+	case WebhookWorkflowRunPayloadActionCancelled:
+		return true
+	case WebhookWorkflowRunPayloadActionCompleted:
+		return true
+	case WebhookWorkflowRunPayloadActionInProgress:
+		return true
+	case WebhookWorkflowRunPayloadActionQueued:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowRunPayloadEvent.
+const (
+	WebhookWorkflowRunPayloadEventWorkflowRun WebhookWorkflowRunPayloadEvent = "workflow_run"
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowRunPayloadEvent enum.
+func (e WebhookWorkflowRunPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookWorkflowRunPayloadEventWorkflowRun:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowRunPayloadVersion.
+const (
+	WebhookWorkflowRunPayloadVersionN1 WebhookWorkflowRunPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowRunPayloadVersion enum.
+func (e WebhookWorkflowRunPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookWorkflowRunPayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkflowState.
+const (
+	Active   WorkflowState = "active"
+	Disabled WorkflowState = "disabled"
+)
+
+// Valid indicates whether the value is a known member of the WorkflowState enum.
+func (e WorkflowState) Valid() bool {
+	switch e {
+	case Active:
+		return true
+	case Disabled:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkflowJobRunnerType.
+const (
+	WorkflowJobRunnerTypeExternal    WorkflowJobRunnerType = "external"
+	WorkflowJobRunnerTypeInternalPod WorkflowJobRunnerType = "internal_pod"
+)
+
+// Valid indicates whether the value is a known member of the WorkflowJobRunnerType enum.
+func (e WorkflowJobRunnerType) Valid() bool {
+	switch e {
+	case WorkflowJobRunnerTypeExternal:
+		return true
+	case WorkflowJobRunnerTypeInternalPod:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkflowRunEvent.
+const (
+	WorkflowRunEventPullRequest      WorkflowRunEvent = "pull_request"
+	WorkflowRunEventPush             WorkflowRunEvent = "push"
+	WorkflowRunEventSchedule         WorkflowRunEvent = "schedule"
+	WorkflowRunEventWorkflowDispatch WorkflowRunEvent = "workflow_dispatch"
+)
+
+// Valid indicates whether the value is a known member of the WorkflowRunEvent enum.
+func (e WorkflowRunEvent) Valid() bool {
+	switch e {
+	case WorkflowRunEventPullRequest:
+		return true
+	case WorkflowRunEventPush:
+		return true
+	case WorkflowRunEventSchedule:
+		return true
+	case WorkflowRunEventWorkflowDispatch:
 		return true
 	default:
 		return false
@@ -2327,6 +2642,62 @@ type AccessSource struct {
 // AccessSourceKind defines model for AccessSource.Kind.
 type AccessSourceKind string
 
+// ActionsCache defines model for ActionsCache.
+type ActionsCache struct {
+	CreatedAt  time.Time          `json:"createdAt"`
+	Id         openapi_types.UUID `json:"id"`
+	Key        string             `json:"key"`
+	LastUsedAt time.Time          `json:"lastUsedAt"`
+	Ref        string             `json:"ref"`
+	SizeBytes  int64              `json:"sizeBytes"`
+}
+
+// ActionsCacheList defines model for ActionsCacheList.
+type ActionsCacheList struct {
+	Items []ActionsCache `json:"items"`
+
+	// QuotaBytes Quota per repository: 10 GB (CI5).
+	//
+	// Example: 10737418240
+	QuotaBytes int64 `json:"quotaBytes"`
+	UsedBytes  int64 `json:"usedBytes"`
+}
+
+// ActionsSecret defines model for ActionsSecret.
+type ActionsSecret struct {
+	Name      string    `json:"name"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// ActionsSecretInput defines model for ActionsSecretInput.
+type ActionsSecretInput struct {
+	Name  string  `json:"name"`
+	Value *string `json:"value,omitempty"`
+}
+
+// ActionsSecretList defines model for ActionsSecretList.
+type ActionsSecretList struct {
+	Items []ActionsSecret `json:"items"`
+}
+
+// ActionsVariable defines model for ActionsVariable.
+type ActionsVariable struct {
+	Name      string    `json:"name"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Value     string    `json:"value"`
+}
+
+// ActionsVariableInput defines model for ActionsVariableInput.
+type ActionsVariableInput struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// ActionsVariableList defines model for ActionsVariableList.
+type ActionsVariableList struct {
+	Items []ActionsVariable `json:"items"`
+}
+
 // AddSshKeyInput defines model for AddSshKeyInput.
 type AddSshKeyInput struct {
 	// PublicKey Riga in formato `authorized_keys` (tipo, base64, commento facoltativo).
@@ -2561,6 +2932,19 @@ type AdminSystemVersions struct {
 // AdminSystemVersionsK3sUpdate `patch`: applicata da `gitstack upgrade`; `minor`: serve `gitstack upgrade --k3s`.
 type AdminSystemVersionsK3sUpdate string
 
+// Artifact defines model for Artifact.
+type Artifact struct {
+	ExpiresAt time.Time          `json:"expiresAt"`
+	Id        openapi_types.UUID `json:"id"`
+	Name      string             `json:"name"`
+	SizeBytes int64              `json:"sizeBytes"`
+}
+
+// ArtifactList defines model for ArtifactList.
+type ArtifactList struct {
+	Items []Artifact `json:"items"`
+}
+
 // Blame defines model for Blame.
 type Blame struct {
 	Path   string       `json:"path"`
@@ -2639,6 +3023,48 @@ type CheckPermissionInput struct {
 type CheckPermissionResult struct {
 	Allowed       bool          `json:"allowed"`
 	EffectiveRole *ResourceRole `json:"effectiveRole,omitempty"`
+}
+
+// CiQueue defines model for CiQueue.
+type CiQueue struct {
+	MaxConcurrentJobs int `json:"maxConcurrentJobs"`
+	QueuedJobs        int `json:"queuedJobs"`
+	ResourceLimits    struct {
+		// CpuCores Example: 2
+		CpuCores int `json:"cpuCores"`
+
+		// EphemeralStorageBytes Example: 21474836480
+		EphemeralStorageBytes int64 `json:"ephemeralStorageBytes"`
+
+		// MaxDurationSeconds Example: 3600
+		MaxDurationSeconds int `json:"maxDurationSeconds"`
+
+		// MemoryBytes Example: 4294967296
+		MemoryBytes int64 `json:"memoryBytes"`
+	} `json:"resourceLimits"`
+	RunningJobs int `json:"runningJobs"`
+}
+
+// CiRunner defines model for CiRunner.
+type CiRunner struct {
+	Id     openapi_types.UUID `json:"id"`
+	Labels []string           `json:"labels"`
+	Name   string             `json:"name"`
+	Status CiRunnerStatus     `json:"status"`
+}
+
+// CiRunnerStatus defines model for CiRunner.Status.
+type CiRunnerStatus string
+
+// CiRunnerList defines model for CiRunnerList.
+type CiRunnerList struct {
+	Items []CiRunner `json:"items"`
+}
+
+// CiRunnerRegistrationToken defines model for CiRunnerRegistrationToken.
+type CiRunnerRegistrationToken struct {
+	ExpiresAt time.Time `json:"expiresAt"`
+	Token     *string   `json:"token,omitempty"`
 }
 
 // CloseIssueInput defines model for CloseIssueInput.
@@ -2920,6 +3346,16 @@ type CreatePullRequestReviewInput struct {
 
 	// Event Esito scelto all'invio (PR5).
 	Event ReviewEvent `json:"event"`
+}
+
+// CreateReleaseInput defines model for CreateReleaseInput.
+type CreateReleaseInput struct {
+	Body          *string `json:"body,omitempty"`
+	Draft         *bool   `json:"draft,omitempty"`
+	GenerateNotes *bool   `json:"generateNotes,omitempty"`
+	Name          string  `json:"name"`
+	Prerelease    *bool   `json:"prerelease,omitempty"`
+	TagName       string  `json:"tagName"`
 }
 
 // CreateRepoMirrorInput Example: {"token":"ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","url":"https://github.com/example/gitstack.git","username":"gitstack-mirror"}
@@ -3599,6 +4035,25 @@ type IssueViaToken struct {
 	Name string             `json:"name"`
 }
 
+// JobTokenPermissions Permessi effettivi del token effimero del job (CI4). Ogni livello e' il minimo fra tre limiti: quello richiesto dal workflow (`permissions:`), quello consentito dal repository e quello di chi avvia l'esecuzione (l'attore di push, pull_request, workflow_dispatch o Riesegui). Un attore con soli permessi di lettura non ottiene mai `write` nel token, qualunque cosa chieda il workflow; per `schedule`, che non ha un attore, vale il limite del repository. Senza `permissions:` il default e' `read`. Il token non puo' mai eccedere l'attore e scade con il job.
+type JobTokenPermissions struct {
+	Actions JobTokenPermissionsActions `json:"actions"`
+
+	// CappedByActor true se almeno un livello e' stato ridotto perche' l'attore ha meno permessi di quelli richiesti.
+	CappedByActor *bool                       `json:"cappedByActor,omitempty"`
+	Contents      JobTokenPermissionsContents `json:"contents"`
+	Packages      JobTokenPermissionsPackages `json:"packages"`
+}
+
+// JobTokenPermissionsActions defines model for JobTokenPermissions.Actions.
+type JobTokenPermissionsActions string
+
+// JobTokenPermissionsContents defines model for JobTokenPermissions.Contents.
+type JobTokenPermissionsContents string
+
+// JobTokenPermissionsPackages defines model for JobTokenPermissions.Packages.
+type JobTokenPermissionsPackages string
+
 // Label defines model for Label.
 type Label struct {
 	// Color Colore esadecimale a sei cifre, senza `#`.
@@ -3971,6 +4426,31 @@ type OwnerRef struct {
 
 // OwnerType defines model for OwnerType.
 type OwnerType string
+
+// Package defines model for Package.
+type Package struct {
+	Name      string    `json:"name"`
+	SizeBytes int64     `json:"sizeBytes"`
+	Tags      []string  `json:"tags"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// PackageList defines model for PackageList.
+type PackageList struct {
+	Items []Package `json:"items"`
+}
+
+// PackageSettings defines model for PackageSettings.
+type PackageSettings = PackageSettingsInput
+
+// PackageSettingsInput defines model for PackageSettingsInput.
+type PackageSettingsInput struct {
+	DeleteUntaggedAfterDays int  `json:"deleteUntaggedAfterDays"`
+	IncludeInBackup         bool `json:"includeInBackup"`
+
+	// ProtectedTagPatterns Tag che non possono essere sovrascritti o eliminati.
+	ProtectedTagPatterns []string `json:"protectedTagPatterns"`
+}
 
 // Principal Chi ha presentato la credenziale.
 type Principal struct {
@@ -4444,6 +4924,35 @@ type ReadableResourcesInput struct {
 type ReadableResourcesResult struct {
 	All         bool                 `json:"all"`
 	ResourceIds []openapi_types.UUID `json:"resourceIds"`
+}
+
+// Release defines model for Release.
+type Release struct {
+	Assets []ReleaseAsset `json:"assets"`
+
+	// Body Note Markdown.
+	Body        string             `json:"body"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	Draft       bool               `json:"draft"`
+	Id          openapi_types.UUID `json:"id"`
+	Latest      bool               `json:"latest"`
+	Name        string             `json:"name"`
+	Prerelease  bool               `json:"prerelease"`
+	PublishedAt *time.Time         `json:"publishedAt,omitempty"`
+	TagName     string             `json:"tagName"`
+}
+
+// ReleaseAsset defines model for ReleaseAsset.
+type ReleaseAsset struct {
+	Id        openapi_types.UUID `json:"id"`
+	Name      string             `json:"name"`
+	Sha256    string             `json:"sha256"`
+	SizeBytes int64              `json:"sizeBytes"`
+}
+
+// ReleaseList defines model for ReleaseList.
+type ReleaseList struct {
+	Items []Release `json:"items"`
 }
 
 // RepoCloneUrls Indirizzi di clone dell'installazione (R1, R7). L'indirizzo SSH e' sempre quello completo `ssh://git@<host>:<porta>/<owner>/<repo>.git`.
@@ -5162,6 +5671,14 @@ type UpdatePullRequestInput struct {
 	Title        *string `json:"title,omitempty"`
 }
 
+// UpdateReleaseInput defines model for UpdateReleaseInput.
+type UpdateReleaseInput struct {
+	Body       *string `json:"body,omitempty"`
+	Draft      *bool   `json:"draft,omitempty"`
+	Name       *string `json:"name,omitempty"`
+	Prerelease *bool   `json:"prerelease,omitempty"`
+}
+
 // UpdateRepoMirrorInput defines model for UpdateRepoMirrorInput.
 type UpdateRepoMirrorInput struct {
 	Enabled *bool `json:"enabled,omitempty"`
@@ -5539,6 +6056,27 @@ type WebhookPullRequestReviewPayloadEvent string
 // WebhookPullRequestReviewPayloadVersion defines model for WebhookPullRequestReviewPayload.Version.
 type WebhookPullRequestReviewPayloadVersion int
 
+// WebhookReleasePayload defines model for WebhookReleasePayload.
+type WebhookReleasePayload struct {
+	Action       WebhookReleasePayloadAction  `json:"action"`
+	Event        WebhookReleasePayloadEvent   `json:"event"`
+	Organization *WebhookOrganizationRef      `json:"organization,omitempty"`
+	Release      Release                      `json:"release"`
+	Repository   WebhookRepositoryRef         `json:"repository"`
+	Sender       *WebhookSender               `json:"sender"`
+	Time         time.Time                    `json:"time"`
+	Version      WebhookReleasePayloadVersion `json:"version"`
+}
+
+// WebhookReleasePayloadAction defines model for WebhookReleasePayload.Action.
+type WebhookReleasePayloadAction string
+
+// WebhookReleasePayloadEvent defines model for WebhookReleasePayload.Event.
+type WebhookReleasePayloadEvent string
+
+// WebhookReleasePayloadVersion defines model for WebhookReleasePayload.Version.
+type WebhookReleasePayloadVersion int
+
 // WebhookRepositoryRef defines model for WebhookRepositoryRef.
 type WebhookRepositoryRef struct {
 	Archived      bool               `json:"archived"`
@@ -5565,8 +6103,133 @@ type WebhookSender struct {
 // WebhookSenderType defines model for WebhookSender.Type.
 type WebhookSenderType string
 
+// WebhookWorkflowJobPayload defines model for WebhookWorkflowJobPayload.
+type WebhookWorkflowJobPayload struct {
+	Action       WebhookWorkflowJobPayloadAction  `json:"action"`
+	Event        WebhookWorkflowJobPayloadEvent   `json:"event"`
+	Organization *WebhookOrganizationRef          `json:"organization,omitempty"`
+	Repository   WebhookRepositoryRef             `json:"repository"`
+	Sender       *WebhookSender                   `json:"sender"`
+	Time         time.Time                        `json:"time"`
+	Version      WebhookWorkflowJobPayloadVersion `json:"version"`
+	WorkflowJob  WorkflowJob                      `json:"workflowJob"`
+	WorkflowRun  WorkflowRun                      `json:"workflowRun"`
+}
+
+// WebhookWorkflowJobPayloadAction defines model for WebhookWorkflowJobPayload.Action.
+type WebhookWorkflowJobPayloadAction string
+
+// WebhookWorkflowJobPayloadEvent defines model for WebhookWorkflowJobPayload.Event.
+type WebhookWorkflowJobPayloadEvent string
+
+// WebhookWorkflowJobPayloadVersion defines model for WebhookWorkflowJobPayload.Version.
+type WebhookWorkflowJobPayloadVersion int
+
+// WebhookWorkflowRunPayload defines model for WebhookWorkflowRunPayload.
+type WebhookWorkflowRunPayload struct {
+	Action       WebhookWorkflowRunPayloadAction  `json:"action"`
+	Event        WebhookWorkflowRunPayloadEvent   `json:"event"`
+	Organization *WebhookOrganizationRef          `json:"organization,omitempty"`
+	Repository   WebhookRepositoryRef             `json:"repository"`
+	Sender       *WebhookSender                   `json:"sender"`
+	Time         time.Time                        `json:"time"`
+	Version      WebhookWorkflowRunPayloadVersion `json:"version"`
+	WorkflowRun  WorkflowRun                      `json:"workflowRun"`
+}
+
+// WebhookWorkflowRunPayloadAction defines model for WebhookWorkflowRunPayload.Action.
+type WebhookWorkflowRunPayloadAction string
+
+// WebhookWorkflowRunPayloadEvent defines model for WebhookWorkflowRunPayload.Event.
+type WebhookWorkflowRunPayloadEvent string
+
+// WebhookWorkflowRunPayloadVersion defines model for WebhookWorkflowRunPayload.Version.
+type WebhookWorkflowRunPayloadVersion int
+
+// Workflow defines model for Workflow.
+type Workflow struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+
+	// Path Percorso sotto `.gitstack/workflows/` o `.github/workflows/`.
+	Path  string        `json:"path"`
+	State WorkflowState `json:"state"`
+}
+
+// WorkflowState defines model for Workflow.State.
+type WorkflowState string
+
+// WorkflowDispatchInput defines model for WorkflowDispatchInput.
+type WorkflowDispatchInput struct {
+	Inputs *map[string]string `json:"inputs,omitempty"`
+	Ref    string             `json:"ref"`
+}
+
+// WorkflowJob defines model for WorkflowJob.
+type WorkflowJob struct {
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+
+	// Conclusion success, failure, cancelled, skipped o timed_out quando concluso
+	Conclusion *string            `json:"conclusion,omitempty"`
+	Id         openapi_types.UUID `json:"id"`
+	Name       string             `json:"name"`
+
+	// Permissions Permessi effettivi del token effimero del job (CI4). Ogni livello e' il minimo fra tre limiti: quello richiesto dal workflow (`permissions:`), quello consentito dal repository e quello di chi avvia l'esecuzione (l'attore di push, pull_request, workflow_dispatch o Riesegui). Un attore con soli permessi di lettura non ottiene mai `write` nel token, qualunque cosa chieda il workflow; per `schedule`, che non ha un attore, vale il limite del repository. Senza `permissions:` il default e' `read`. Il token non puo' mai eccedere l'attore e scade con il job.
+	Permissions JobTokenPermissions   `json:"permissions"`
+	RunnerName  *string               `json:"runnerName,omitempty"`
+	RunnerType  WorkflowJobRunnerType `json:"runnerType"`
+	StartedAt   *time.Time            `json:"startedAt,omitempty"`
+
+	// Status queued, in_progress, completed o cancelled
+	Status string `json:"status"`
+}
+
+// WorkflowJobRunnerType defines model for WorkflowJob.RunnerType.
+type WorkflowJobRunnerType string
+
+// WorkflowList defines model for WorkflowList.
+type WorkflowList struct {
+	Items []Workflow `json:"items"`
+}
+
+// WorkflowRun defines model for WorkflowRun.
+type WorkflowRun struct {
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+
+	// Conclusion success, failure, cancelled, skipped o timed_out quando conclusa
+	Conclusion *string            `json:"conclusion,omitempty"`
+	CreatedAt  time.Time          `json:"createdAt"`
+	Event      WorkflowRunEvent   `json:"event"`
+	Id         openapi_types.UUID `json:"id"`
+	Jobs       []WorkflowJob      `json:"jobs"`
+	Ref        string             `json:"ref"`
+	Sha        string             `json:"sha"`
+	StartedAt  *time.Time         `json:"startedAt,omitempty"`
+
+	// Status queued, in_progress, completed o cancelled
+	Status     string `json:"status"`
+	WorkflowId string `json:"workflowId"`
+}
+
+// WorkflowRunEvent defines model for WorkflowRun.Event.
+type WorkflowRunEvent string
+
+// WorkflowRunList defines model for WorkflowRunList.
+type WorkflowRunList struct {
+	Items []WorkflowRun `json:"items"`
+}
+
 // ArchiveFormatParam defines model for ArchiveFormatParam.
 type ArchiveFormatParam string
+
+// ArtifactIdParam defines model for ArtifactIdParam.
+type ArtifactIdParam = openapi_types.UUID
+
+// AssetIdParam defines model for AssetIdParam.
+type AssetIdParam = openapi_types.UUID
+
+// CacheIdParam defines model for CacheIdParam.
+type CacheIdParam = openapi_types.UUID
 
 // CodeSearchQueryParam defines model for CodeSearchQueryParam.
 type CodeSearchQueryParam = string
@@ -5633,6 +6296,9 @@ type IssueSortParam string
 
 // IssueStateFilter defines model for IssueStateFilter.
 type IssueStateFilter string
+
+// JobIdParam defines model for JobIdParam.
+type JobIdParam = openapi_types.UUID
 
 // LabelNameParam defines model for LabelNameParam.
 type LabelNameParam = string
@@ -5710,6 +6376,9 @@ type RefAndPathParam = string
 // RefParam defines model for RefParam.
 type RefParam = string
 
+// ReleaseIdParam defines model for ReleaseIdParam.
+type ReleaseIdParam = openapi_types.UUID
+
 // RepoNameParam Nome di un repo (R11): lettere maiuscole e minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono conservate come scritte; l'unicita' per owner e il lookup non distinguono maiuscole e minuscole (`GitStack` e `gitstack` sono lo stesso repo).
 //
 // Example: my-app
@@ -5730,6 +6399,12 @@ type ResourceIdParam = openapi_types.UUID
 
 // ResourceTypeFilter defines model for ResourceTypeFilter.
 type ResourceTypeFilter = string
+
+// RunIdParam defines model for RunIdParam.
+type RunIdParam = openapi_types.UUID
+
+// RunnerIdParam defines model for RunnerIdParam.
+type RunnerIdParam = openapi_types.UUID
 
 // SessionIdParam defines model for SessionIdParam.
 type SessionIdParam = openapi_types.UUID
@@ -5758,6 +6433,9 @@ type WebhookDeliveryIdParam = openapi_types.UUID
 
 // WebhookIdParam defines model for WebhookIdParam.
 type WebhookIdParam = openapi_types.UUID
+
+// WorkflowParam defines model for WorkflowParam.
+type WorkflowParam = string
 
 // BadRequest Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type BadRequest = Error
@@ -6007,6 +6685,29 @@ type ListRepositoriesParams struct {
 type ListDeletedRepositoriesParams struct {
 	// Owner Filtra per nome dell'utente o dell'organizzazione proprietaria.
 	Owner *RepoOwnerFilter `form:"owner,omitempty" json:"owner,omitempty"`
+}
+
+// DeleteActionsCachesParams defines parameters for DeleteActionsCaches.
+type DeleteActionsCachesParams struct {
+	// Key Prefisso della chiave.
+	Key *string `form:"key,omitempty" json:"key,omitempty"`
+
+	// Ref Ref della cache.
+	Ref *string `form:"ref,omitempty" json:"ref,omitempty"`
+}
+
+// ListActionsCachesParams defines parameters for ListActionsCaches.
+type ListActionsCachesParams struct {
+	// Key Prefisso della chiave.
+	Key *string `form:"key,omitempty" json:"key,omitempty"`
+
+	// Ref Ref (ramo o tag) della cache.
+	Ref *string `form:"ref,omitempty" json:"ref,omitempty"`
+}
+
+// GetWorkflowJobLogParams defines parameters for GetWorkflowJobLog.
+type GetWorkflowJobLogParams struct {
+	Follow *bool `form:"follow,omitempty" json:"follow,omitempty"`
 }
 
 // GetRepositoryArchiveParams defines parameters for GetRepositoryArchive.
@@ -6274,6 +6975,12 @@ type GetRepositoryReadmeParams struct {
 	Path *PathParam `form:"path,omitempty" json:"path,omitempty"`
 }
 
+// UploadReleaseAssetParams defines parameters for UploadReleaseAsset.
+type UploadReleaseAssetParams struct {
+	// Name Nome del file allegato.
+	Name string `form:"name" json:"name"`
+}
+
 // SearchRepositoryCodeParams defines parameters for SearchRepositoryCode.
 type SearchRepositoryCodeParams struct {
 	// Q Testo da cercare (sottostringa letterale, senza distinguere maiuscole), da 2 a 256 caratteri.
@@ -6417,6 +7124,12 @@ type CreateOrganizationJSONRequestBody = CreateOrganizationInput
 // UpdateOrganizationJSONRequestBody defines body for UpdateOrganization for application/json ContentType.
 type UpdateOrganizationJSONRequestBody = UpdateOrganizationInput
 
+// PutOrganizationActionsSecretJSONRequestBody defines body for PutOrganizationActionsSecret for application/json ContentType.
+type PutOrganizationActionsSecretJSONRequestBody = ActionsSecretInput
+
+// PutOrganizationActionsVariableJSONRequestBody defines body for PutOrganizationActionsVariable for application/json ContentType.
+type PutOrganizationActionsVariableJSONRequestBody = ActionsVariableInput
+
 // CreateOrgWebhookJSONRequestBody defines body for CreateOrgWebhook for application/json ContentType.
 type CreateOrgWebhookJSONRequestBody = CreateWebhookInput
 
@@ -6443,6 +7156,12 @@ type ImportRepositoryJSONRequestBody = ImportRepositoryInput
 
 // UpdateRepositoryJSONRequestBody defines body for UpdateRepository for application/json ContentType.
 type UpdateRepositoryJSONRequestBody = UpdateRepositoryInput
+
+// PutRepositoryActionsSecretJSONRequestBody defines body for PutRepositoryActionsSecret for application/json ContentType.
+type PutRepositoryActionsSecretJSONRequestBody = ActionsSecretInput
+
+// PutRepositoryActionsVariableJSONRequestBody defines body for PutRepositoryActionsVariable for application/json ContentType.
+type PutRepositoryActionsVariableJSONRequestBody = ActionsVariableInput
 
 // UpdateBranchSettingsJSONRequestBody defines body for UpdateBranchSettings for application/json ContentType.
 type UpdateBranchSettingsJSONRequestBody = UpdateBranchSettingsInput
@@ -6507,6 +7226,9 @@ type CreateRepoMirrorJSONRequestBody = CreateRepoMirrorInput
 // UpdateRepoMirrorJSONRequestBody defines body for UpdateRepoMirror for application/json ContentType.
 type UpdateRepoMirrorJSONRequestBody = UpdateRepoMirrorInput
 
+// UpdateRepositoryPackageSettingsJSONRequestBody defines body for UpdateRepositoryPackageSettings for application/json ContentType.
+type UpdateRepositoryPackageSettingsJSONRequestBody = PackageSettingsInput
+
 // UpdateRepoPullMirrorJSONRequestBody defines body for UpdateRepoPullMirror for application/json ContentType.
 type UpdateRepoPullMirrorJSONRequestBody = UpdatePullMirrorInput
 
@@ -6540,8 +7262,17 @@ type CreatePullRequestReviewJSONRequestBody = CreatePullRequestReviewInput
 // SetPullRequestFileViewedJSONRequestBody defines body for SetPullRequestFileViewed for application/json ContentType.
 type SetPullRequestFileViewedJSONRequestBody = SetFileViewedInput
 
+// CreateReleaseJSONRequestBody defines body for CreateRelease for application/json ContentType.
+type CreateReleaseJSONRequestBody = CreateReleaseInput
+
+// UpdateReleaseJSONRequestBody defines body for UpdateRelease for application/json ContentType.
+type UpdateReleaseJSONRequestBody = UpdateReleaseInput
+
 // SetRepoWatchJSONRequestBody defines body for SetRepoWatch for application/json ContentType.
 type SetRepoWatchJSONRequestBody = SetRepoWatchInput
+
+// DispatchWorkflowJSONRequestBody defines body for DispatchWorkflow for application/json ContentType.
+type DispatchWorkflowJSONRequestBody = WorkflowDispatchInput
 
 // CreateResourceJSONRequestBody defines body for CreateResource for application/json ContentType.
 type CreateResourceJSONRequestBody = CreateResourceInput
@@ -6584,6 +7315,15 @@ type PullRequestJSONRequestBody = WebhookPullRequestPayload
 
 // PullRequestReviewJSONRequestBody defines body for PullRequestReview for application/json ContentType.
 type PullRequestReviewJSONRequestBody = WebhookPullRequestReviewPayload
+
+// ReleaseJSONRequestBody defines body for Release for application/json ContentType.
+type ReleaseJSONRequestBody = WebhookReleasePayload
+
+// WorkflowJobJSONRequestBody defines body for WorkflowJob for application/json ContentType.
+type WorkflowJobJSONRequestBody = WebhookWorkflowJobPayload
+
+// WorkflowRunJSONRequestBody defines body for WorkflowRun for application/json ContentType.
+type WorkflowRunJSONRequestBody = WebhookWorkflowRunPayload
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -6658,6 +7398,34 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+
+	// GetCiQueue Legge coda e concorrenza CI (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+	//
+	// Corresponds with GET /admin/ci/queue (the `GetCiQueue` operationId).
+	GetCiQueue(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListCiRunners Elenca i runner esterni (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+	//
+	// Corresponds with GET /admin/ci/runners (the `ListCiRunners` operationId).
+	ListCiRunners(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateCiRunnerRegistrationToken Crea un token monouso per registrare un runner esterno (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+	//
+	// Corresponds with POST /admin/ci/runners/registration-token (the `CreateCiRunnerRegistrationToken` operationId).
+	CreateCiRunnerRegistrationToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteCiRunner Revoca un runner esterno (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+	//
+	// Corresponds with DELETE /admin/ci/runners/{runnerId} (the `DeleteCiRunner` operationId).
+	DeleteCiRunner(ctx context.Context, runnerId RunnerIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetAdminSystem Stato dell'installazione (Admin · System)
 	//
@@ -7253,6 +8021,44 @@ type ClientInterface interface {
 	// Corresponds with PATCH /orgs/{org} (the `UpdateOrganization` operationId).
 	UpdateOrganization(ctx context.Context, org OrgParam, body UpdateOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListOrganizationActionsSecrets Elenca i metadati dei segreti CI dell'organizzazione
+	//
+	// Corresponds with GET /orgs/{org}/actions/secrets (the `ListOrganizationActionsSecrets` operationId).
+	ListOrganizationActionsSecrets(ctx context.Context, org OrgParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutOrganizationActionsSecretWithBody Crea o sostituisce un segreto CI dell'organizzazione
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /orgs/{org}/actions/secrets (the `PutOrganizationActionsSecret` operationId).
+	PutOrganizationActionsSecretWithBody(ctx context.Context, org OrgParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutOrganizationActionsSecret Crea o sostituisce un segreto CI dell'organizzazione
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /orgs/{org}/actions/secrets (the `PutOrganizationActionsSecret` operationId).
+	PutOrganizationActionsSecret(ctx context.Context, org OrgParam, body PutOrganizationActionsSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListOrganizationActionsVariables Elenca le variabili CI dell'organizzazione
+	//
+	// Corresponds with GET /orgs/{org}/actions/variables (the `ListOrganizationActionsVariables` operationId).
+	ListOrganizationActionsVariables(ctx context.Context, org OrgParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutOrganizationActionsVariableWithBody Crea o sostituisce una variabile CI dell'organizzazione
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /orgs/{org}/actions/variables (the `PutOrganizationActionsVariable` operationId).
+	PutOrganizationActionsVariableWithBody(ctx context.Context, org OrgParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutOrganizationActionsVariable Crea o sostituisce una variabile CI dell'organizzazione
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /orgs/{org}/actions/variables (the `PutOrganizationActionsVariable` operationId).
+	PutOrganizationActionsVariable(ctx context.Context, org OrgParam, body PutOrganizationActionsVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListOrgWebhooks Elenca i webhook di un'organizzazione
 	//
 	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
@@ -7533,6 +8339,114 @@ type ClientInterface interface {
 	//
 	// Corresponds with PATCH /repos/{owner}/{repo} (the `UpdateRepository` operationId).
 	UpdateRepository(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DownloadWorkflowArtifact Scarica un artefatto ZIP
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/artifacts/{artifactId}/download (the `DownloadWorkflowArtifact` operationId).
+	DownloadWorkflowArtifact(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, artifactId ArtifactIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteActionsCaches Elimina tutte le cache CI del repository
+	//
+	// Serve `write` sul repo (403 altrimenti, 404 se non lo si legge). Con `key` o `ref` elimina solo le cache corrispondenti. Un repo archiviato rifiuta la modifica con 409 `archived`. Risponde col numero di cache eliminate.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/actions/caches (the `DeleteActionsCaches` operationId).
+	DeleteActionsCaches(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *DeleteActionsCachesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListActionsCaches Elenca le cache CI del repository e l'uso della quota
+	//
+	// Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5): a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo, con job di pulizia. Log, artefatti e cache stanno su un volume di core escluso dai backup.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/caches (the `ListActionsCaches` operationId).
+	ListActionsCaches(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListActionsCachesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteActionsCache Elimina una cache CI
+	//
+	// Serve `write` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/actions/caches/{cacheId} (the `DeleteActionsCache` operationId).
+	DeleteActionsCache(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetActionsCache Legge i metadati di una cache CI
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/caches/{cacheId} (the `GetActionsCache` operationId).
+	GetActionsCache(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetWorkflowJob Legge un job
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/jobs/{jobId} (the `GetWorkflowJob` operationId).
+	GetWorkflowJob(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetWorkflowJobLog Legge il log, anche mentre il job e' in esecuzione
+	//
+	// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni e non sono nei backup (CI5).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/jobs/{jobId}/logs (the `GetWorkflowJobLog` operationId).
+	GetWorkflowJobLog(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam, params *GetWorkflowJobLogParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListWorkflowRuns Elenca le esecuzioni dei workflow
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/runs (the `ListWorkflowRuns` operationId).
+	ListWorkflowRuns(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetWorkflowRun Legge un'esecuzione
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/runs/{runId} (the `GetWorkflowRun` operationId).
+	GetWorkflowRun(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListWorkflowArtifacts Elenca gli artefatti di un'esecuzione
+	//
+	// Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno, fuori dai backup (CI5).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/runs/{runId}/artifacts (the `ListWorkflowArtifacts` operationId).
+	ListWorkflowArtifacts(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CancelWorkflowRun Annulla un'esecuzione in corso
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/actions/runs/{runId}/cancel (the `CancelWorkflowRun` operationId).
+	CancelWorkflowRun(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RerunWorkflowRun Riesegue un workflow
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/actions/runs/{runId}/rerun (the `RerunWorkflowRun` operationId).
+	RerunWorkflowRun(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListRepositoryActionsSecrets Elenca i metadati dei segreti CI del repository
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/secrets (the `ListRepositoryActionsSecrets` operationId).
+	ListRepositoryActionsSecrets(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutRepositoryActionsSecretWithBody Crea o sostituisce un segreto CI
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/actions/secrets (the `PutRepositoryActionsSecret` operationId).
+	PutRepositoryActionsSecretWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutRepositoryActionsSecret Crea o sostituisce un segreto CI
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/actions/secrets (the `PutRepositoryActionsSecret` operationId).
+	PutRepositoryActionsSecret(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListRepositoryActionsVariables Elenca le variabili CI del repository
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/variables (the `ListRepositoryActionsVariables` operationId).
+	ListRepositoryActionsVariables(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutRepositoryActionsVariableWithBody Crea o sostituisce una variabile CI
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/actions/variables (the `PutRepositoryActionsVariable` operationId).
+	PutRepositoryActionsVariableWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutRepositoryActionsVariable Crea o sostituisce una variabile CI
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/actions/variables (the `PutRepositoryActionsVariable` operationId).
+	PutRepositoryActionsVariable(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRepositoryArchive Archivio ZIP o tar.gz di un ref (streaming)
 	//
@@ -8218,6 +9132,32 @@ type ClientInterface interface {
 	// Corresponds with POST /repos/{owner}/{repo}/mirrors/{mirrorId}/sync (the `SyncRepoMirror` operationId).
 	SyncRepoMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListRepositoryPackages Elenca i pacchetti OCI del repository
+	//
+	// I manifest e i blob sono serviti esclusivamente dall'OCI Distribution Specification, non da questa API.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/packages (the `ListRepositoryPackages` operationId).
+	ListRepositoryPackages(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepositoryPackageSettings Legge regole di tag protetti, pulizia e backup
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/packages/settings (the `GetRepositoryPackageSettings` operationId).
+	GetRepositoryPackageSettings(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateRepositoryPackageSettingsWithBody Modifica regole di tag protetti, pulizia e backup
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/packages/settings (the `UpdateRepositoryPackageSettings` operationId).
+	UpdateRepositoryPackageSettingsWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateRepositoryPackageSettings Modifica regole di tag protetti, pulizia e backup
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/packages/settings (the `UpdateRepositoryPackageSettings` operationId).
+	UpdateRepositoryPackageSettings(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryPackageSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetRepoPullMirror Legge il mirror in pull di un repo (con il suo stato)
 	//
 	// Serve `admin` sul repo o l'amministratore dell'installazione (MP3); un repo che non si legge risponde 404, uno senza `admin` 403. Un repo ha al massimo un mirror in pull. E' l'operazione di stato (MP2, MP4, MP7): origine, intervallo, `lastSyncedAt` (ultimo aggiornamento riuscito), `lastError`, `state` e l'elenco dei ref `diverged` (MP1). Il token non torna mai: `hasToken` dice solo che c'e'. Un repo che non ha mai avuto un mirror in pull risponde 404 `not_found`; un mirror interrotto (MP6) risponde con `state: stopped`.
@@ -8598,6 +9538,63 @@ type ClientInterface interface {
 	// Corresponds with GET /repos/{owner}/{repo}/readme (the `GetRepositoryReadme` operationId).
 	GetRepositoryReadme(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryReadmeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListReleases Elenca le release
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/releases (the `ListReleases` operationId).
+	ListReleases(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateReleaseWithBody Crea una release per un tag
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/releases (the `CreateRelease` operationId).
+	CreateReleaseWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateRelease Crea una release per un tag
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/releases (the `CreateRelease` operationId).
+	CreateRelease(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateReleaseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteRelease Elimina una release senza eliminare il tag Git
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/releases/{releaseId} (the `DeleteRelease` operationId).
+	DeleteRelease(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRelease Legge una release
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/releases/{releaseId} (the `GetRelease` operationId).
+	GetRelease(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateReleaseWithBody Modifica titolo, note e stato di una release
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/releases/{releaseId} (the `UpdateRelease` operationId).
+	UpdateReleaseWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateRelease Modifica titolo, note e stato di una release
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/releases/{releaseId} (the `UpdateRelease` operationId).
+	UpdateRelease(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, body UpdateReleaseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UploadReleaseAssetWithBody Carica un allegato di release
+	//
+	// File fino a 2 GiB; il server calcola e restituisce SHA-256. Il nome del file e' il parametro query `name` (obbligatorio): da 1 a 255 caratteri, senza `/`, `\` o caratteri di controllo e diverso da `.` e `..`; altrimenti 422 (`details.fields.name`). Un allegato con lo stesso nome nella stessa release e' 409 `conflict`. Serve `write` sul repo; una release pubblicata e' modificabile solo da chi ha `write`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/releases/{releaseId}/assets (the `UploadReleaseAsset` operationId).
+	UploadReleaseAssetWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, params *UploadReleaseAssetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DownloadReleaseAsset Scarica un allegato di release
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/releases/{releaseId}/assets/{assetId}/download (the `DownloadReleaseAsset` operationId).
+	DownloadReleaseAsset(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, assetId AssetIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SearchRepositoryCode Cerca un testo nel codice di un ref ("Search code")
 	//
 	// Regola B5: cerca `q` (sottostringa letterale, senza distinguere maiuscole) nei file di testo di `ref`, senza indice. Al massimo 100 risultati con percorso, riga e frammento (`limitReached` se ce ne sono altri), tempo massimo 10 secondi (`timedOut` se interrotta). Un `q` piu' corto di 2 caratteri risponde 400. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
@@ -8650,6 +9647,25 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /repos/{owner}/{repo}/watch (the `SetRepoWatch` operationId).
 	SetRepoWatch(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body SetRepoWatchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListWorkflows Elenca i workflow del repository
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/workflows (the `ListWorkflows` operationId).
+	ListWorkflows(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DispatchWorkflowWithBody Avvia manualmente un workflow
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/workflows/{workflow}/dispatches (the `DispatchWorkflow` operationId).
+	DispatchWorkflowWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, workflow WorkflowParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DispatchWorkflow Avvia manualmente un workflow
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/workflows/{workflow}/dispatches (the `DispatchWorkflow` operationId).
+	DispatchWorkflow(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, workflow WorkflowParam, body DispatchWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListResources Elenca le risorse
 	//
@@ -8996,6 +10012,74 @@ type ClientInterface interface {
 	//
 	// Corresponds with DELETE /users/{username}/totp (the `ResetUserTotp` operationId).
 	ResetUserTotp(ctx context.Context, username UsernameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+// GetCiQueue Legge coda e concorrenza CI (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+//
+// Corresponds with GET /admin/ci/queue (the `GetCiQueue` operationId).
+func (c *Client) GetCiQueue(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCiQueueRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListCiRunners Elenca i runner esterni (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+//
+// Corresponds with GET /admin/ci/runners (the `ListCiRunners` operationId).
+func (c *Client) ListCiRunners(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListCiRunnersRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateCiRunnerRegistrationToken Crea un token monouso per registrare un runner esterno (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+//
+// Corresponds with POST /admin/ci/runners/registration-token (the `CreateCiRunnerRegistrationToken` operationId).
+func (c *Client) CreateCiRunnerRegistrationToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateCiRunnerRegistrationTokenRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteCiRunner Revoca un runner esterno (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+//
+// Corresponds with DELETE /admin/ci/runners/{runnerId} (the `DeleteCiRunner` operationId).
+func (c *Client) DeleteCiRunner(ctx context.Context, runnerId RunnerIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteCiRunnerRequest(c.Server, runnerId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 // GetAdminSystem Stato dell'installazione (Admin · System)
@@ -10352,6 +11436,104 @@ func (c *Client) UpdateOrganization(ctx context.Context, org OrgParam, body Upda
 	return c.Client.Do(req)
 }
 
+// ListOrganizationActionsSecrets Elenca i metadati dei segreti CI dell'organizzazione
+//
+// Corresponds with GET /orgs/{org}/actions/secrets (the `ListOrganizationActionsSecrets` operationId).
+func (c *Client) ListOrganizationActionsSecrets(ctx context.Context, org OrgParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListOrganizationActionsSecretsRequest(c.Server, org)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutOrganizationActionsSecretWithBody Crea o sostituisce un segreto CI dell'organizzazione
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /orgs/{org}/actions/secrets (the `PutOrganizationActionsSecret` operationId).
+func (c *Client) PutOrganizationActionsSecretWithBody(ctx context.Context, org OrgParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutOrganizationActionsSecretRequestWithBody(c.Server, org, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutOrganizationActionsSecret Crea o sostituisce un segreto CI dell'organizzazione
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /orgs/{org}/actions/secrets (the `PutOrganizationActionsSecret` operationId).
+func (c *Client) PutOrganizationActionsSecret(ctx context.Context, org OrgParam, body PutOrganizationActionsSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutOrganizationActionsSecretRequest(c.Server, org, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListOrganizationActionsVariables Elenca le variabili CI dell'organizzazione
+//
+// Corresponds with GET /orgs/{org}/actions/variables (the `ListOrganizationActionsVariables` operationId).
+func (c *Client) ListOrganizationActionsVariables(ctx context.Context, org OrgParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListOrganizationActionsVariablesRequest(c.Server, org)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutOrganizationActionsVariableWithBody Crea o sostituisce una variabile CI dell'organizzazione
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /orgs/{org}/actions/variables (the `PutOrganizationActionsVariable` operationId).
+func (c *Client) PutOrganizationActionsVariableWithBody(ctx context.Context, org OrgParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutOrganizationActionsVariableRequestWithBody(c.Server, org, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutOrganizationActionsVariable Crea o sostituisce una variabile CI dell'organizzazione
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /orgs/{org}/actions/variables (the `PutOrganizationActionsVariable` operationId).
+func (c *Client) PutOrganizationActionsVariable(ctx context.Context, org OrgParam, body PutOrganizationActionsVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutOrganizationActionsVariableRequest(c.Server, org, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListOrgWebhooks Elenca i webhook di un'organizzazione
 //
 // Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
@@ -10993,6 +12175,294 @@ func (c *Client) UpdateRepositoryWithBody(ctx context.Context, owner RepoOwnerPa
 // Corresponds with PATCH /repos/{owner}/{repo} (the `UpdateRepository` operationId).
 func (c *Client) UpdateRepository(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateRepositoryRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DownloadWorkflowArtifact Scarica un artefatto ZIP
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/artifacts/{artifactId}/download (the `DownloadWorkflowArtifact` operationId).
+func (c *Client) DownloadWorkflowArtifact(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, artifactId ArtifactIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDownloadWorkflowArtifactRequest(c.Server, owner, repo, artifactId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteActionsCaches Elimina tutte le cache CI del repository
+//
+// Serve `write` sul repo (403 altrimenti, 404 se non lo si legge). Con `key` o `ref` elimina solo le cache corrispondenti. Un repo archiviato rifiuta la modifica con 409 `archived`. Risponde col numero di cache eliminate.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/actions/caches (the `DeleteActionsCaches` operationId).
+func (c *Client) DeleteActionsCaches(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *DeleteActionsCachesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteActionsCachesRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListActionsCaches Elenca le cache CI del repository e l'uso della quota
+//
+// Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5): a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo, con job di pulizia. Log, artefatti e cache stanno su un volume di core escluso dai backup.
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/caches (the `ListActionsCaches` operationId).
+func (c *Client) ListActionsCaches(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListActionsCachesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListActionsCachesRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteActionsCache Elimina una cache CI
+//
+// Serve `write` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/actions/caches/{cacheId} (the `DeleteActionsCache` operationId).
+func (c *Client) DeleteActionsCache(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteActionsCacheRequest(c.Server, owner, repo, cacheId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetActionsCache Legge i metadati di una cache CI
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/caches/{cacheId} (the `GetActionsCache` operationId).
+func (c *Client) GetActionsCache(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetActionsCacheRequest(c.Server, owner, repo, cacheId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetWorkflowJob Legge un job
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/jobs/{jobId} (the `GetWorkflowJob` operationId).
+func (c *Client) GetWorkflowJob(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetWorkflowJobRequest(c.Server, owner, repo, jobId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetWorkflowJobLog Legge il log, anche mentre il job e' in esecuzione
+//
+// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni e non sono nei backup (CI5).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/jobs/{jobId}/logs (the `GetWorkflowJobLog` operationId).
+func (c *Client) GetWorkflowJobLog(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam, params *GetWorkflowJobLogParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetWorkflowJobLogRequest(c.Server, owner, repo, jobId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListWorkflowRuns Elenca le esecuzioni dei workflow
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/runs (the `ListWorkflowRuns` operationId).
+func (c *Client) ListWorkflowRuns(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListWorkflowRunsRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetWorkflowRun Legge un'esecuzione
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/runs/{runId} (the `GetWorkflowRun` operationId).
+func (c *Client) GetWorkflowRun(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetWorkflowRunRequest(c.Server, owner, repo, runId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListWorkflowArtifacts Elenca gli artefatti di un'esecuzione
+//
+// Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno, fuori dai backup (CI5).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/runs/{runId}/artifacts (the `ListWorkflowArtifacts` operationId).
+func (c *Client) ListWorkflowArtifacts(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListWorkflowArtifactsRequest(c.Server, owner, repo, runId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CancelWorkflowRun Annulla un'esecuzione in corso
+//
+// Corresponds with POST /repos/{owner}/{repo}/actions/runs/{runId}/cancel (the `CancelWorkflowRun` operationId).
+func (c *Client) CancelWorkflowRun(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCancelWorkflowRunRequest(c.Server, owner, repo, runId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RerunWorkflowRun Riesegue un workflow
+//
+// Corresponds with POST /repos/{owner}/{repo}/actions/runs/{runId}/rerun (the `RerunWorkflowRun` operationId).
+func (c *Client) RerunWorkflowRun(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRerunWorkflowRunRequest(c.Server, owner, repo, runId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListRepositoryActionsSecrets Elenca i metadati dei segreti CI del repository
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/secrets (the `ListRepositoryActionsSecrets` operationId).
+func (c *Client) ListRepositoryActionsSecrets(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListRepositoryActionsSecretsRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutRepositoryActionsSecretWithBody Crea o sostituisce un segreto CI
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/actions/secrets (the `PutRepositoryActionsSecret` operationId).
+func (c *Client) PutRepositoryActionsSecretWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutRepositoryActionsSecretRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutRepositoryActionsSecret Crea o sostituisce un segreto CI
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/actions/secrets (the `PutRepositoryActionsSecret` operationId).
+func (c *Client) PutRepositoryActionsSecret(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutRepositoryActionsSecretRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListRepositoryActionsVariables Elenca le variabili CI del repository
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/variables (the `ListRepositoryActionsVariables` operationId).
+func (c *Client) ListRepositoryActionsVariables(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListRepositoryActionsVariablesRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutRepositoryActionsVariableWithBody Crea o sostituisce una variabile CI
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/actions/variables (the `PutRepositoryActionsVariable` operationId).
+func (c *Client) PutRepositoryActionsVariableWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutRepositoryActionsVariableRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutRepositoryActionsVariable Crea o sostituisce una variabile CI
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/actions/variables (the `PutRepositoryActionsVariable` operationId).
+func (c *Client) PutRepositoryActionsVariable(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutRepositoryActionsVariableRequest(c.Server, owner, repo, body)
 	if err != nil {
 		return nil, err
 	}
@@ -12547,6 +14017,72 @@ func (c *Client) SyncRepoMirror(ctx context.Context, owner RepoOwnerParam, repo 
 	return c.Client.Do(req)
 }
 
+// ListRepositoryPackages Elenca i pacchetti OCI del repository
+//
+// I manifest e i blob sono serviti esclusivamente dall'OCI Distribution Specification, non da questa API.
+//
+// Corresponds with GET /repos/{owner}/{repo}/packages (the `ListRepositoryPackages` operationId).
+func (c *Client) ListRepositoryPackages(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListRepositoryPackagesRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepositoryPackageSettings Legge regole di tag protetti, pulizia e backup
+//
+// Corresponds with GET /repos/{owner}/{repo}/packages/settings (the `GetRepositoryPackageSettings` operationId).
+func (c *Client) GetRepositoryPackageSettings(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryPackageSettingsRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateRepositoryPackageSettingsWithBody Modifica regole di tag protetti, pulizia e backup
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/packages/settings (the `UpdateRepositoryPackageSettings` operationId).
+func (c *Client) UpdateRepositoryPackageSettingsWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateRepositoryPackageSettingsRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateRepositoryPackageSettings Modifica regole di tag protetti, pulizia e backup
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/packages/settings (the `UpdateRepositoryPackageSettings` operationId).
+func (c *Client) UpdateRepositoryPackageSettings(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryPackageSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateRepositoryPackageSettingsRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetRepoPullMirror Legge il mirror in pull di un repo (con il suo stato)
 //
 // Serve `admin` sul repo o l'amministratore dell'installazione (MP3); un repo che non si legge risponde 404, uno senza `admin` 403. Un repo ha al massimo un mirror in pull. E' l'operazione di stato (MP2, MP4, MP7): origine, intervallo, `lastSyncedAt` (ultimo aggiornamento riuscito), `lastError`, `state` e l'elenco dei ref `diverged` (MP1). Il token non torna mai: `hasToken` dice solo che c'e'. Un repo che non ha mai avuto un mirror in pull risponde 404 `not_found`; un mirror interrotto (MP6) risponde con `state: stopped`.
@@ -13407,6 +14943,153 @@ func (c *Client) GetRepositoryReadme(ctx context.Context, owner RepoOwnerParam, 
 	return c.Client.Do(req)
 }
 
+// ListReleases Elenca le release
+//
+// Corresponds with GET /repos/{owner}/{repo}/releases (the `ListReleases` operationId).
+func (c *Client) ListReleases(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListReleasesRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateReleaseWithBody Crea una release per un tag
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/releases (the `CreateRelease` operationId).
+func (c *Client) CreateReleaseWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateReleaseRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateRelease Crea una release per un tag
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/releases (the `CreateRelease` operationId).
+func (c *Client) CreateRelease(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateReleaseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateReleaseRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteRelease Elimina una release senza eliminare il tag Git
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/releases/{releaseId} (the `DeleteRelease` operationId).
+func (c *Client) DeleteRelease(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteReleaseRequest(c.Server, owner, repo, releaseId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRelease Legge una release
+//
+// Corresponds with GET /repos/{owner}/{repo}/releases/{releaseId} (the `GetRelease` operationId).
+func (c *Client) GetRelease(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetReleaseRequest(c.Server, owner, repo, releaseId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateReleaseWithBody Modifica titolo, note e stato di una release
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/releases/{releaseId} (the `UpdateRelease` operationId).
+func (c *Client) UpdateReleaseWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateReleaseRequestWithBody(c.Server, owner, repo, releaseId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateRelease Modifica titolo, note e stato di una release
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/releases/{releaseId} (the `UpdateRelease` operationId).
+func (c *Client) UpdateRelease(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, body UpdateReleaseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateReleaseRequest(c.Server, owner, repo, releaseId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UploadReleaseAssetWithBody Carica un allegato di release
+//
+// File fino a 2 GiB; il server calcola e restituisce SHA-256. Il nome del file e' il parametro query `name` (obbligatorio): da 1 a 255 caratteri, senza `/`, `\` o caratteri di controllo e diverso da `.` e `..`; altrimenti 422 (`details.fields.name`). Un allegato con lo stesso nome nella stessa release e' 409 `conflict`. Serve `write` sul repo; una release pubblicata e' modificabile solo da chi ha `write`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/releases/{releaseId}/assets (the `UploadReleaseAsset` operationId).
+func (c *Client) UploadReleaseAssetWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, params *UploadReleaseAssetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUploadReleaseAssetRequestWithBody(c.Server, owner, repo, releaseId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DownloadReleaseAsset Scarica un allegato di release
+//
+// Corresponds with GET /repos/{owner}/{repo}/releases/{releaseId}/assets/{assetId}/download (the `DownloadReleaseAsset` operationId).
+func (c *Client) DownloadReleaseAsset(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, assetId AssetIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDownloadReleaseAssetRequest(c.Server, owner, repo, releaseId, assetId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // SearchRepositoryCode Cerca un testo nel codice di un ref ("Search code")
 //
 // Regola B5: cerca `q` (sottostringa letterale, senza distinguere maiuscole) nei file di testo di `ref`, senza indice. Al massimo 100 risultati con percorso, riga e frammento (`limitReached` se ce ne sono altri), tempo massimo 10 secondi (`timedOut` se interrotta). Un `q` piu' corto di 2 caratteri risponde 400. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
@@ -13520,6 +15203,55 @@ func (c *Client) SetRepoWatchWithBody(ctx context.Context, owner RepoOwnerParam,
 // Corresponds with PUT /repos/{owner}/{repo}/watch (the `SetRepoWatch` operationId).
 func (c *Client) SetRepoWatch(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body SetRepoWatchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSetRepoWatchRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListWorkflows Elenca i workflow del repository
+//
+// Corresponds with GET /repos/{owner}/{repo}/workflows (the `ListWorkflows` operationId).
+func (c *Client) ListWorkflows(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListWorkflowsRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DispatchWorkflowWithBody Avvia manualmente un workflow
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/workflows/{workflow}/dispatches (the `DispatchWorkflow` operationId).
+func (c *Client) DispatchWorkflowWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, workflow WorkflowParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDispatchWorkflowRequestWithBody(c.Server, owner, repo, workflow, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DispatchWorkflow Avvia manualmente un workflow
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/workflows/{workflow}/dispatches (the `DispatchWorkflow` operationId).
+func (c *Client) DispatchWorkflow(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, workflow WorkflowParam, body DispatchWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDispatchWorkflowRequest(c.Server, owner, repo, workflow, body)
 	if err != nil {
 		return nil, err
 	}
@@ -14334,6 +16066,121 @@ func (c *Client) ResetUserTotp(ctx context.Context, username UsernameParam, reqE
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewGetCiQueueRequest constructs an http.Request for the GetCiQueue method
+func NewGetCiQueueRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/ci/queue")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListCiRunnersRequest constructs an http.Request for the ListCiRunners method
+func NewListCiRunnersRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/ci/runners")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateCiRunnerRegistrationTokenRequest constructs an http.Request for the CreateCiRunnerRegistrationToken method
+func NewCreateCiRunnerRegistrationTokenRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/ci/runners/registration-token")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteCiRunnerRequest constructs an http.Request for the DeleteCiRunner method
+func NewDeleteCiRunnerRequest(server string, runnerId RunnerIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "runnerId", runnerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/ci/runners/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewGetAdminSystemRequest constructs an http.Request for the GetAdminSystem method
@@ -17122,6 +18969,168 @@ func NewUpdateOrganizationRequestWithBody(server string, org OrgParam, contentTy
 	return req, nil
 }
 
+// NewListOrganizationActionsSecretsRequest constructs an http.Request for the ListOrganizationActionsSecrets method
+func NewListOrganizationActionsSecretsRequest(server string, org OrgParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "org", org, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/orgs/%s/actions/secrets", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutOrganizationActionsSecretRequest calls the generic PutOrganizationActionsSecret builder with application/json body
+func NewPutOrganizationActionsSecretRequest(server string, org OrgParam, body PutOrganizationActionsSecretJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutOrganizationActionsSecretRequestWithBody(server, org, "application/json", bodyReader)
+}
+
+// NewPutOrganizationActionsSecretRequestWithBody constructs an http.Request for the PutOrganizationActionsSecret method, with any body, and a specified content type
+func NewPutOrganizationActionsSecretRequestWithBody(server string, org OrgParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "org", org, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/orgs/%s/actions/secrets", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListOrganizationActionsVariablesRequest constructs an http.Request for the ListOrganizationActionsVariables method
+func NewListOrganizationActionsVariablesRequest(server string, org OrgParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "org", org, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/orgs/%s/actions/variables", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutOrganizationActionsVariableRequest calls the generic PutOrganizationActionsVariable builder with application/json body
+func NewPutOrganizationActionsVariableRequest(server string, org OrgParam, body PutOrganizationActionsVariableJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutOrganizationActionsVariableRequestWithBody(server, org, "application/json", bodyReader)
+}
+
+// NewPutOrganizationActionsVariableRequestWithBody constructs an http.Request for the PutOrganizationActionsVariable method, with any body, and a specified content type
+func NewPutOrganizationActionsVariableRequestWithBody(server string, org OrgParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "org", org, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/orgs/%s/actions/variables", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListOrgWebhooksRequest constructs an http.Request for the ListOrgWebhooks method
 func NewListOrgWebhooksRequest(server string, org OrgParam, params *ListOrgWebhooksParams) (*http.Request, error) {
 	var err error
@@ -18593,6 +20602,856 @@ func NewUpdateRepositoryRequestWithBody(server string, owner RepoOwnerParam, rep
 	}
 
 	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDownloadWorkflowArtifactRequest constructs an http.Request for the DownloadWorkflowArtifact method
+func NewDownloadWorkflowArtifactRequest(server string, owner RepoOwnerParam, repo RepoNameParam, artifactId ArtifactIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "artifactId", artifactId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/artifacts/%s/download", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteActionsCachesRequest constructs an http.Request for the DeleteActionsCaches method
+func NewDeleteActionsCachesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *DeleteActionsCachesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/caches", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Key != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "key", *params.Key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Ref != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", *params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListActionsCachesRequest constructs an http.Request for the ListActionsCaches method
+func NewListActionsCachesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *ListActionsCachesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/caches", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Key != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "key", *params.Key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Ref != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", *params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteActionsCacheRequest constructs an http.Request for the DeleteActionsCache method
+func NewDeleteActionsCacheRequest(server string, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "cacheId", cacheId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/caches/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetActionsCacheRequest constructs an http.Request for the GetActionsCache method
+func NewGetActionsCacheRequest(server string, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "cacheId", cacheId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/caches/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetWorkflowJobRequest constructs an http.Request for the GetWorkflowJob method
+func NewGetWorkflowJobRequest(server string, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "jobId", jobId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/jobs/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetWorkflowJobLogRequest constructs an http.Request for the GetWorkflowJobLog method
+func NewGetWorkflowJobLogRequest(server string, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam, params *GetWorkflowJobLogParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "jobId", jobId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/jobs/%s/logs", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Follow != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "follow", *params.Follow, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListWorkflowRunsRequest constructs an http.Request for the ListWorkflowRuns method
+func NewListWorkflowRunsRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/runs", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetWorkflowRunRequest constructs an http.Request for the GetWorkflowRun method
+func NewGetWorkflowRunRequest(server string, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/runs/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListWorkflowArtifactsRequest constructs an http.Request for the ListWorkflowArtifacts method
+func NewListWorkflowArtifactsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/runs/%s/artifacts", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCancelWorkflowRunRequest constructs an http.Request for the CancelWorkflowRun method
+func NewCancelWorkflowRunRequest(server string, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/runs/%s/cancel", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRerunWorkflowRunRequest constructs an http.Request for the RerunWorkflowRun method
+func NewRerunWorkflowRunRequest(server string, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/runs/%s/rerun", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListRepositoryActionsSecretsRequest constructs an http.Request for the ListRepositoryActionsSecrets method
+func NewListRepositoryActionsSecretsRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/secrets", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutRepositoryActionsSecretRequest calls the generic PutRepositoryActionsSecret builder with application/json body
+func NewPutRepositoryActionsSecretRequest(server string, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsSecretJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutRepositoryActionsSecretRequestWithBody(server, owner, repo, "application/json", bodyReader)
+}
+
+// NewPutRepositoryActionsSecretRequestWithBody constructs an http.Request for the PutRepositoryActionsSecret method, with any body, and a specified content type
+func NewPutRepositoryActionsSecretRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/secrets", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListRepositoryActionsVariablesRequest constructs an http.Request for the ListRepositoryActionsVariables method
+func NewListRepositoryActionsVariablesRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/variables", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutRepositoryActionsVariableRequest calls the generic PutRepositoryActionsVariable builder with application/json body
+func NewPutRepositoryActionsVariableRequest(server string, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsVariableJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutRepositoryActionsVariableRequestWithBody(server, owner, repo, "application/json", bodyReader)
+}
+
+// NewPutRepositoryActionsVariableRequestWithBody constructs an http.Request for the PutRepositoryActionsVariable method, with any body, and a specified content type
+func NewPutRepositoryActionsVariableRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/variables", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -22766,6 +25625,142 @@ func NewSyncRepoMirrorRequest(server string, owner RepoOwnerParam, repo RepoName
 	return req, nil
 }
 
+// NewListRepositoryPackagesRequest constructs an http.Request for the ListRepositoryPackages method
+func NewListRepositoryPackagesRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/packages", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepositoryPackageSettingsRequest constructs an http.Request for the GetRepositoryPackageSettings method
+func NewGetRepositoryPackageSettingsRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/packages/settings", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateRepositoryPackageSettingsRequest calls the generic UpdateRepositoryPackageSettings builder with application/json body
+func NewUpdateRepositoryPackageSettingsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryPackageSettingsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateRepositoryPackageSettingsRequestWithBody(server, owner, repo, "application/json", bodyReader)
+}
+
+// NewUpdateRepositoryPackageSettingsRequestWithBody constructs an http.Request for the UpdateRepositoryPackageSettings method, with any body, and a specified content type
+func NewUpdateRepositoryPackageSettingsRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/packages/settings", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetRepoPullMirrorRequest constructs an http.Request for the GetRepoPullMirror method
 func NewGetRepoPullMirrorRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
 	var err error
@@ -25094,6 +28089,386 @@ func NewGetRepositoryReadmeRequest(server string, owner RepoOwnerParam, repo Rep
 	return req, nil
 }
 
+// NewListReleasesRequest constructs an http.Request for the ListReleases method
+func NewListReleasesRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/releases", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateReleaseRequest calls the generic CreateRelease builder with application/json body
+func NewCreateReleaseRequest(server string, owner RepoOwnerParam, repo RepoNameParam, body CreateReleaseJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateReleaseRequestWithBody(server, owner, repo, "application/json", bodyReader)
+}
+
+// NewCreateReleaseRequestWithBody constructs an http.Request for the CreateRelease method, with any body, and a specified content type
+func NewCreateReleaseRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/releases", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteReleaseRequest constructs an http.Request for the DeleteRelease method
+func NewDeleteReleaseRequest(server string, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "releaseId", releaseId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/releases/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetReleaseRequest constructs an http.Request for the GetRelease method
+func NewGetReleaseRequest(server string, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "releaseId", releaseId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/releases/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateReleaseRequest calls the generic UpdateRelease builder with application/json body
+func NewUpdateReleaseRequest(server string, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, body UpdateReleaseJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateReleaseRequestWithBody(server, owner, repo, releaseId, "application/json", bodyReader)
+}
+
+// NewUpdateReleaseRequestWithBody constructs an http.Request for the UpdateRelease method, with any body, and a specified content type
+func NewUpdateReleaseRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "releaseId", releaseId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/releases/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewUploadReleaseAssetRequestWithBody constructs an http.Request for the UploadReleaseAsset method, with any body, and a specified content type
+func NewUploadReleaseAssetRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, params *UploadReleaseAssetParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "releaseId", releaseId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/releases/%s/assets", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "name", params.Name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDownloadReleaseAssetRequest constructs an http.Request for the DownloadReleaseAsset method
+func NewDownloadReleaseAssetRequest(server string, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, assetId AssetIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "releaseId", releaseId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "assetId", assetId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/releases/%s/assets/%s/download", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSearchRepositoryCodeRequest constructs an http.Request for the SearchRepositoryCode method
 func NewSearchRepositoryCodeRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *SearchRepositoryCodeParams) (*http.Request, error) {
 	var err error
@@ -25418,6 +28793,108 @@ func NewSetRepoWatchRequestWithBody(server string, owner RepoOwnerParam, repo Re
 	}
 
 	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListWorkflowsRequest constructs an http.Request for the ListWorkflows method
+func NewListWorkflowsRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/workflows", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDispatchWorkflowRequest calls the generic DispatchWorkflow builder with application/json body
+func NewDispatchWorkflowRequest(server string, owner RepoOwnerParam, repo RepoNameParam, workflow WorkflowParam, body DispatchWorkflowJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewDispatchWorkflowRequestWithBody(server, owner, repo, workflow, "application/json", bodyReader)
+}
+
+// NewDispatchWorkflowRequestWithBody constructs an http.Request for the DispatchWorkflow method, with any body, and a specified content type
+func NewDispatchWorkflowRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, workflow WorkflowParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "workflow", workflow, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/workflows/%s/dispatches", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -27150,6 +30627,42 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 
+	// GetCiQueueWithResponse Legge coda e concorrenza CI (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/ci/queue (the `GetCiQueue` operationId).
+	GetCiQueueWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCiQueueResponse, error)
+
+	// ListCiRunnersWithResponse Elenca i runner esterni (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/ci/runners (the `ListCiRunners` operationId).
+	ListCiRunnersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCiRunnersResponse, error)
+
+	// CreateCiRunnerRegistrationTokenWithResponse Crea un token monouso per registrare un runner esterno (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/ci/runners/registration-token (the `CreateCiRunnerRegistrationToken` operationId).
+	CreateCiRunnerRegistrationTokenWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CreateCiRunnerRegistrationTokenResponse, error)
+
+	// DeleteCiRunnerWithResponse Revoca un runner esterno (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /admin/ci/runners/{runnerId} (the `DeleteCiRunner` operationId).
+	DeleteCiRunnerWithResponse(ctx context.Context, runnerId RunnerIdParam, reqEditors ...RequestEditorFn) (*DeleteCiRunnerResponse, error)
+
 	// GetAdminSystemWithResponse Stato dell'installazione (Admin · System)
 	//
 	// Database (interno o esterno, N8), backup locale e S3 con l'esito dell'ultimo caricamento (N7), rete aziendale (N9) e versioni di GitStack e k3s con l'aggiornamento disponibile (N10). Solo l'amministratore dell'installazione. Le informazioni dell'host le pubblica `gitstack` in un ConfigMap che core legge da un file montato: niente accesso all'host dai servizi. La versione del server Postgres è quella letta ora da core sulla sua connessione. Mai segreti: né password, né chiavi S3, né credenziali del proxy.
@@ -27828,6 +31341,48 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PATCH /orgs/{org} (the `UpdateOrganization` operationId).
 	UpdateOrganizationWithResponse(ctx context.Context, org OrgParam, body UpdateOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationResponse, error)
 
+	// ListOrganizationActionsSecretsWithResponse Elenca i metadati dei segreti CI dell'organizzazione
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /orgs/{org}/actions/secrets (the `ListOrganizationActionsSecrets` operationId).
+	ListOrganizationActionsSecretsWithResponse(ctx context.Context, org OrgParam, reqEditors ...RequestEditorFn) (*ListOrganizationActionsSecretsResponse, error)
+
+	// PutOrganizationActionsSecretWithBodyWithResponse Crea o sostituisce un segreto CI dell'organizzazione
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /orgs/{org}/actions/secrets (the `PutOrganizationActionsSecret` operationId).
+	PutOrganizationActionsSecretWithBodyWithResponse(ctx context.Context, org OrgParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutOrganizationActionsSecretResponse, error)
+
+	// PutOrganizationActionsSecretWithResponse Crea o sostituisce un segreto CI dell'organizzazione
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /orgs/{org}/actions/secrets (the `PutOrganizationActionsSecret` operationId).
+	PutOrganizationActionsSecretWithResponse(ctx context.Context, org OrgParam, body PutOrganizationActionsSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*PutOrganizationActionsSecretResponse, error)
+
+	// ListOrganizationActionsVariablesWithResponse Elenca le variabili CI dell'organizzazione
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /orgs/{org}/actions/variables (the `ListOrganizationActionsVariables` operationId).
+	ListOrganizationActionsVariablesWithResponse(ctx context.Context, org OrgParam, reqEditors ...RequestEditorFn) (*ListOrganizationActionsVariablesResponse, error)
+
+	// PutOrganizationActionsVariableWithBodyWithResponse Crea o sostituisce una variabile CI dell'organizzazione
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /orgs/{org}/actions/variables (the `PutOrganizationActionsVariable` operationId).
+	PutOrganizationActionsVariableWithBodyWithResponse(ctx context.Context, org OrgParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutOrganizationActionsVariableResponse, error)
+
+	// PutOrganizationActionsVariableWithResponse Crea o sostituisce una variabile CI dell'organizzazione
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /orgs/{org}/actions/variables (the `PutOrganizationActionsVariable` operationId).
+	PutOrganizationActionsVariableWithResponse(ctx context.Context, org OrgParam, body PutOrganizationActionsVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*PutOrganizationActionsVariableResponse, error)
+
 	// ListOrgWebhooksWithResponse Elenca i webhook di un'organizzazione
 	//
 	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
@@ -28146,6 +31701,142 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PATCH /repos/{owner}/{repo} (the `UpdateRepository` operationId).
 	UpdateRepositoryWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRepositoryResponse, error)
+
+	// DownloadWorkflowArtifactWithResponse Scarica un artefatto ZIP
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/artifacts/{artifactId}/download (the `DownloadWorkflowArtifact` operationId).
+	DownloadWorkflowArtifactWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, artifactId ArtifactIdParam, reqEditors ...RequestEditorFn) (*DownloadWorkflowArtifactResponse, error)
+
+	// DeleteActionsCachesWithResponse Elimina tutte le cache CI del repository
+	//
+	// Serve `write` sul repo (403 altrimenti, 404 se non lo si legge). Con `key` o `ref` elimina solo le cache corrispondenti. Un repo archiviato rifiuta la modifica con 409 `archived`. Risponde col numero di cache eliminate.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/actions/caches (the `DeleteActionsCaches` operationId).
+	DeleteActionsCachesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *DeleteActionsCachesParams, reqEditors ...RequestEditorFn) (*DeleteActionsCachesResponse, error)
+
+	// ListActionsCachesWithResponse Elenca le cache CI del repository e l'uso della quota
+	//
+	// Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5): a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo, con job di pulizia. Log, artefatti e cache stanno su un volume di core escluso dai backup.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/caches (the `ListActionsCaches` operationId).
+	ListActionsCachesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListActionsCachesParams, reqEditors ...RequestEditorFn) (*ListActionsCachesResponse, error)
+
+	// DeleteActionsCacheWithResponse Elimina una cache CI
+	//
+	// Serve `write` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/actions/caches/{cacheId} (the `DeleteActionsCache` operationId).
+	DeleteActionsCacheWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam, reqEditors ...RequestEditorFn) (*DeleteActionsCacheResponse, error)
+
+	// GetActionsCacheWithResponse Legge i metadati di una cache CI
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/caches/{cacheId} (the `GetActionsCache` operationId).
+	GetActionsCacheWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam, reqEditors ...RequestEditorFn) (*GetActionsCacheResponse, error)
+
+	// GetWorkflowJobWithResponse Legge un job
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/jobs/{jobId} (the `GetWorkflowJob` operationId).
+	GetWorkflowJobWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam, reqEditors ...RequestEditorFn) (*GetWorkflowJobResponse, error)
+
+	// GetWorkflowJobLogWithResponse Legge il log, anche mentre il job e' in esecuzione
+	//
+	// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni e non sono nei backup (CI5).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/jobs/{jobId}/logs (the `GetWorkflowJobLog` operationId).
+	GetWorkflowJobLogWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam, params *GetWorkflowJobLogParams, reqEditors ...RequestEditorFn) (*GetWorkflowJobLogResponse, error)
+
+	// ListWorkflowRunsWithResponse Elenca le esecuzioni dei workflow
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/runs (the `ListWorkflowRuns` operationId).
+	ListWorkflowRunsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ListWorkflowRunsResponse, error)
+
+	// GetWorkflowRunWithResponse Legge un'esecuzione
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/runs/{runId} (the `GetWorkflowRun` operationId).
+	GetWorkflowRunWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*GetWorkflowRunResponse, error)
+
+	// ListWorkflowArtifactsWithResponse Elenca gli artefatti di un'esecuzione
+	//
+	// Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno, fuori dai backup (CI5).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/runs/{runId}/artifacts (the `ListWorkflowArtifacts` operationId).
+	ListWorkflowArtifactsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*ListWorkflowArtifactsResponse, error)
+
+	// CancelWorkflowRunWithResponse Annulla un'esecuzione in corso
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/actions/runs/{runId}/cancel (the `CancelWorkflowRun` operationId).
+	CancelWorkflowRunWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*CancelWorkflowRunResponse, error)
+
+	// RerunWorkflowRunWithResponse Riesegue un workflow
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/actions/runs/{runId}/rerun (the `RerunWorkflowRun` operationId).
+	RerunWorkflowRunWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*RerunWorkflowRunResponse, error)
+
+	// ListRepositoryActionsSecretsWithResponse Elenca i metadati dei segreti CI del repository
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/secrets (the `ListRepositoryActionsSecrets` operationId).
+	ListRepositoryActionsSecretsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ListRepositoryActionsSecretsResponse, error)
+
+	// PutRepositoryActionsSecretWithBodyWithResponse Crea o sostituisce un segreto CI
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/actions/secrets (the `PutRepositoryActionsSecret` operationId).
+	PutRepositoryActionsSecretWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRepositoryActionsSecretResponse, error)
+
+	// PutRepositoryActionsSecretWithResponse Crea o sostituisce un segreto CI
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/actions/secrets (the `PutRepositoryActionsSecret` operationId).
+	PutRepositoryActionsSecretWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*PutRepositoryActionsSecretResponse, error)
+
+	// ListRepositoryActionsVariablesWithResponse Elenca le variabili CI del repository
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/variables (the `ListRepositoryActionsVariables` operationId).
+	ListRepositoryActionsVariablesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ListRepositoryActionsVariablesResponse, error)
+
+	// PutRepositoryActionsVariableWithBodyWithResponse Crea o sostituisce una variabile CI
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/actions/variables (the `PutRepositoryActionsVariable` operationId).
+	PutRepositoryActionsVariableWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRepositoryActionsVariableResponse, error)
+
+	// PutRepositoryActionsVariableWithResponse Crea o sostituisce una variabile CI
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/actions/variables (the `PutRepositoryActionsVariable` operationId).
+	PutRepositoryActionsVariableWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*PutRepositoryActionsVariableResponse, error)
 
 	// GetRepositoryArchiveWithResponse Archivio ZIP o tar.gz di un ref (streaming)
 	//
@@ -28921,6 +32612,36 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /repos/{owner}/{repo}/mirrors/{mirrorId}/sync (the `SyncRepoMirror` operationId).
 	SyncRepoMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*SyncRepoMirrorResponse, error)
 
+	// ListRepositoryPackagesWithResponse Elenca i pacchetti OCI del repository
+	//
+	// I manifest e i blob sono serviti esclusivamente dall'OCI Distribution Specification, non da questa API.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/packages (the `ListRepositoryPackages` operationId).
+	ListRepositoryPackagesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ListRepositoryPackagesResponse, error)
+
+	// GetRepositoryPackageSettingsWithResponse Legge regole di tag protetti, pulizia e backup
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/packages/settings (the `GetRepositoryPackageSettings` operationId).
+	GetRepositoryPackageSettingsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*GetRepositoryPackageSettingsResponse, error)
+
+	// UpdateRepositoryPackageSettingsWithBodyWithResponse Modifica regole di tag protetti, pulizia e backup
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/packages/settings (the `UpdateRepositoryPackageSettings` operationId).
+	UpdateRepositoryPackageSettingsWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateRepositoryPackageSettingsResponse, error)
+
+	// UpdateRepositoryPackageSettingsWithResponse Modifica regole di tag protetti, pulizia e backup
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/packages/settings (the `UpdateRepositoryPackageSettings` operationId).
+	UpdateRepositoryPackageSettingsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryPackageSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRepositoryPackageSettingsResponse, error)
+
 	// GetRepoPullMirrorWithResponse Legge il mirror in pull di un repo (con il suo stato)
 	//
 	// Serve `admin` sul repo o l'amministratore dell'installazione (MP3); un repo che non si legge risponde 404, uno senza `admin` 403. Un repo ha al massimo un mirror in pull. E' l'operazione di stato (MP2, MP4, MP7): origine, intervallo, `lastSyncedAt` (ultimo aggiornamento riuscito), `lastError`, `state` e l'elenco dei ref `diverged` (MP1). Il token non torna mai: `hasToken` dice solo che c'e'. Un repo che non ha mai avuto un mirror in pull risponde 404 `not_found`; un mirror interrotto (MP6) risponde con `state: stopped`.
@@ -29353,6 +33074,71 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /repos/{owner}/{repo}/readme (the `GetRepositoryReadme` operationId).
 	GetRepositoryReadmeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryReadmeParams, reqEditors ...RequestEditorFn) (*GetRepositoryReadmeResponse, error)
 
+	// ListReleasesWithResponse Elenca le release
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/releases (the `ListReleases` operationId).
+	ListReleasesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ListReleasesResponse, error)
+
+	// CreateReleaseWithBodyWithResponse Crea una release per un tag
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/releases (the `CreateRelease` operationId).
+	CreateReleaseWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateReleaseResponse, error)
+
+	// CreateReleaseWithResponse Crea una release per un tag
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/releases (the `CreateRelease` operationId).
+	CreateReleaseWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateReleaseJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateReleaseResponse, error)
+
+	// DeleteReleaseWithResponse Elimina una release senza eliminare il tag Git
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/releases/{releaseId} (the `DeleteRelease` operationId).
+	DeleteReleaseWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, reqEditors ...RequestEditorFn) (*DeleteReleaseResponse, error)
+
+	// GetReleaseWithResponse Legge una release
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/releases/{releaseId} (the `GetRelease` operationId).
+	GetReleaseWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, reqEditors ...RequestEditorFn) (*GetReleaseResponse, error)
+
+	// UpdateReleaseWithBodyWithResponse Modifica titolo, note e stato di una release
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/releases/{releaseId} (the `UpdateRelease` operationId).
+	UpdateReleaseWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateReleaseResponse, error)
+
+	// UpdateReleaseWithResponse Modifica titolo, note e stato di una release
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/releases/{releaseId} (the `UpdateRelease` operationId).
+	UpdateReleaseWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, body UpdateReleaseJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateReleaseResponse, error)
+
+	// UploadReleaseAssetWithBodyWithResponse Carica un allegato di release
+	//
+	// File fino a 2 GiB; il server calcola e restituisce SHA-256. Il nome del file e' il parametro query `name` (obbligatorio): da 1 a 255 caratteri, senza `/`, `\` o caratteri di controllo e diverso da `.` e `..`; altrimenti 422 (`details.fields.name`). Un allegato con lo stesso nome nella stessa release e' 409 `conflict`. Serve `write` sul repo; una release pubblicata e' modificabile solo da chi ha `write`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/releases/{releaseId}/assets (the `UploadReleaseAsset` operationId).
+	UploadReleaseAssetWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, params *UploadReleaseAssetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadReleaseAssetResponse, error)
+
+	// DownloadReleaseAssetWithResponse Scarica un allegato di release
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/releases/{releaseId}/assets/{assetId}/download (the `DownloadReleaseAsset` operationId).
+	DownloadReleaseAssetWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, assetId AssetIdParam, reqEditors ...RequestEditorFn) (*DownloadReleaseAssetResponse, error)
+
 	// SearchRepositoryCodeWithResponse Cerca un testo nel codice di un ref ("Search code")
 	//
 	// Regola B5: cerca `q` (sottostringa letterale, senza distinguere maiuscole) nei file di testo di `ref`, senza indice. Al massimo 100 risultati con percorso, riga e frammento (`limitReached` se ce ne sono altri), tempo massimo 10 secondi (`timedOut` se interrotta). Un `q` piu' corto di 2 caratteri risponde 400. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
@@ -29415,6 +33201,27 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /repos/{owner}/{repo}/watch (the `SetRepoWatch` operationId).
 	SetRepoWatchWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body SetRepoWatchJSONRequestBody, reqEditors ...RequestEditorFn) (*SetRepoWatchResponse, error)
+
+	// ListWorkflowsWithResponse Elenca i workflow del repository
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/workflows (the `ListWorkflows` operationId).
+	ListWorkflowsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ListWorkflowsResponse, error)
+
+	// DispatchWorkflowWithBodyWithResponse Avvia manualmente un workflow
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/workflows/{workflow}/dispatches (the `DispatchWorkflow` operationId).
+	DispatchWorkflowWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, workflow WorkflowParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DispatchWorkflowResponse, error)
+
+	// DispatchWorkflowWithResponse Avvia manualmente un workflow
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/workflows/{workflow}/dispatches (the `DispatchWorkflow` operationId).
+	DispatchWorkflowWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, workflow WorkflowParam, body DispatchWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*DispatchWorkflowResponse, error)
 
 	// ListResourcesWithResponse Elenca le risorse
 	//
@@ -29809,6 +33616,226 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with DELETE /users/{username}/totp (the `ResetUserTotp` operationId).
 	ResetUserTotpWithResponse(ctx context.Context, username UsernameParam, reqEditors ...RequestEditorFn) (*ResetUserTotpResponse, error)
+}
+
+type GetCiQueueResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CiQueue
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetCiQueueResponse) GetJSON200() *CiQueue {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetCiQueueResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetCiQueueResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r GetCiQueueResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCiQueueResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCiQueueResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCiQueueResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListCiRunnersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CiRunnerList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListCiRunnersResponse) GetJSON200() *CiRunnerList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListCiRunnersResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListCiRunnersResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r ListCiRunnersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListCiRunnersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListCiRunnersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListCiRunnersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateCiRunnerRegistrationTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *CiRunnerRegistrationToken
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateCiRunnerRegistrationTokenResponse) GetJSON201() *CiRunnerRegistrationToken {
+	return r.JSON201
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateCiRunnerRegistrationTokenResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateCiRunnerRegistrationTokenResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateCiRunnerRegistrationTokenResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateCiRunnerRegistrationTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateCiRunnerRegistrationTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateCiRunnerRegistrationTokenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteCiRunnerResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteCiRunnerResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteCiRunnerResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteCiRunnerResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteCiRunnerResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteCiRunnerResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteCiRunnerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteCiRunnerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetAdminSystemResponse struct {
@@ -33684,6 +37711,254 @@ func (r UpdateOrganizationResponse) ContentType() string {
 	return ""
 }
 
+type ListOrganizationActionsSecretsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActionsSecretList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListOrganizationActionsSecretsResponse) GetJSON200() *ActionsSecretList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListOrganizationActionsSecretsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListOrganizationActionsSecretsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListOrganizationActionsSecretsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListOrganizationActionsSecretsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListOrganizationActionsSecretsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListOrganizationActionsSecretsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListOrganizationActionsSecretsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PutOrganizationActionsSecretResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActionsSecret
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PutOrganizationActionsSecretResponse) GetJSON200() *ActionsSecret {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r PutOrganizationActionsSecretResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r PutOrganizationActionsSecretResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r PutOrganizationActionsSecretResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r PutOrganizationActionsSecretResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PutOrganizationActionsSecretResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutOrganizationActionsSecretResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PutOrganizationActionsSecretResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListOrganizationActionsVariablesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActionsVariableList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListOrganizationActionsVariablesResponse) GetJSON200() *ActionsVariableList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListOrganizationActionsVariablesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListOrganizationActionsVariablesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListOrganizationActionsVariablesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListOrganizationActionsVariablesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListOrganizationActionsVariablesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListOrganizationActionsVariablesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListOrganizationActionsVariablesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PutOrganizationActionsVariableResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActionsVariable
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PutOrganizationActionsVariableResponse) GetJSON200() *ActionsVariable {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r PutOrganizationActionsVariableResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r PutOrganizationActionsVariableResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r PutOrganizationActionsVariableResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r PutOrganizationActionsVariableResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PutOrganizationActionsVariableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutOrganizationActionsVariableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PutOrganizationActionsVariableResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListOrgWebhooksResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -35862,6 +40137,1009 @@ func (r UpdateRepositoryResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateRepositoryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DownloadWorkflowArtifactResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DownloadWorkflowArtifactResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DownloadWorkflowArtifactResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DownloadWorkflowArtifactResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r DownloadWorkflowArtifactResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DownloadWorkflowArtifactResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DownloadWorkflowArtifactResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DownloadWorkflowArtifactResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteActionsCachesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Deleted int `json:"deleted"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteActionsCachesResponse) GetJSON200() *struct {
+	Deleted int `json:"deleted"`
+} {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteActionsCachesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteActionsCachesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteActionsCachesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteActionsCachesResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteActionsCachesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteActionsCachesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteActionsCachesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteActionsCachesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListActionsCachesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActionsCacheList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListActionsCachesResponse) GetJSON200() *ActionsCacheList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListActionsCachesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListActionsCachesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListActionsCachesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListActionsCachesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListActionsCachesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListActionsCachesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListActionsCachesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteActionsCacheResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteActionsCacheResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteActionsCacheResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteActionsCacheResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteActionsCacheResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteActionsCacheResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteActionsCacheResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteActionsCacheResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteActionsCacheResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetActionsCacheResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActionsCache
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetActionsCacheResponse) GetJSON200() *ActionsCache {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetActionsCacheResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetActionsCacheResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetActionsCacheResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetActionsCacheResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetActionsCacheResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetActionsCacheResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetActionsCacheResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetWorkflowJobResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkflowJob
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetWorkflowJobResponse) GetJSON200() *WorkflowJob {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetWorkflowJobResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetWorkflowJobResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetWorkflowJobResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetWorkflowJobResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetWorkflowJobResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetWorkflowJobResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetWorkflowJobResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetWorkflowJobLogResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetWorkflowJobLogResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetWorkflowJobLogResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetWorkflowJobLogResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetWorkflowJobLogResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetWorkflowJobLogResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetWorkflowJobLogResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetWorkflowJobLogResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListWorkflowRunsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkflowRunList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListWorkflowRunsResponse) GetJSON200() *WorkflowRunList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListWorkflowRunsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListWorkflowRunsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListWorkflowRunsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListWorkflowRunsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListWorkflowRunsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListWorkflowRunsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListWorkflowRunsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetWorkflowRunResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkflowRun
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetWorkflowRunResponse) GetJSON200() *WorkflowRun {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetWorkflowRunResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetWorkflowRunResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetWorkflowRunResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetWorkflowRunResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetWorkflowRunResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetWorkflowRunResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetWorkflowRunResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListWorkflowArtifactsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ArtifactList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListWorkflowArtifactsResponse) GetJSON200() *ArtifactList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListWorkflowArtifactsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListWorkflowArtifactsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListWorkflowArtifactsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListWorkflowArtifactsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListWorkflowArtifactsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListWorkflowArtifactsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListWorkflowArtifactsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CancelWorkflowRunResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *WorkflowRun
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r CancelWorkflowRunResponse) GetJSON202() *WorkflowRun {
+	return r.JSON202
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CancelWorkflowRunResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CancelWorkflowRunResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CancelWorkflowRunResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CancelWorkflowRunResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r CancelWorkflowRunResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CancelWorkflowRunResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CancelWorkflowRunResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CancelWorkflowRunResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RerunWorkflowRunResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *WorkflowRun
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r RerunWorkflowRunResponse) GetJSON202() *WorkflowRun {
+	return r.JSON202
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RerunWorkflowRunResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RerunWorkflowRunResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RerunWorkflowRunResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r RerunWorkflowRunResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r RerunWorkflowRunResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RerunWorkflowRunResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RerunWorkflowRunResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RerunWorkflowRunResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListRepositoryActionsSecretsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActionsSecretList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListRepositoryActionsSecretsResponse) GetJSON200() *ActionsSecretList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListRepositoryActionsSecretsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListRepositoryActionsSecretsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListRepositoryActionsSecretsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListRepositoryActionsSecretsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListRepositoryActionsSecretsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListRepositoryActionsSecretsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListRepositoryActionsSecretsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PutRepositoryActionsSecretResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActionsSecret
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PutRepositoryActionsSecretResponse) GetJSON200() *ActionsSecret {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r PutRepositoryActionsSecretResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r PutRepositoryActionsSecretResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r PutRepositoryActionsSecretResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r PutRepositoryActionsSecretResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PutRepositoryActionsSecretResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutRepositoryActionsSecretResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PutRepositoryActionsSecretResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListRepositoryActionsVariablesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActionsVariableList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListRepositoryActionsVariablesResponse) GetJSON200() *ActionsVariableList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListRepositoryActionsVariablesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListRepositoryActionsVariablesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListRepositoryActionsVariablesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListRepositoryActionsVariablesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListRepositoryActionsVariablesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListRepositoryActionsVariablesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListRepositoryActionsVariablesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PutRepositoryActionsVariableResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActionsVariable
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PutRepositoryActionsVariableResponse) GetJSON200() *ActionsVariable {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r PutRepositoryActionsVariableResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r PutRepositoryActionsVariableResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r PutRepositoryActionsVariableResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r PutRepositoryActionsVariableResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PutRepositoryActionsVariableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutRepositoryActionsVariableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PutRepositoryActionsVariableResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -41212,6 +46490,199 @@ func (r SyncRepoMirrorResponse) ContentType() string {
 	return ""
 }
 
+type ListRepositoryPackagesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PackageList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListRepositoryPackagesResponse) GetJSON200() *PackageList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListRepositoryPackagesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListRepositoryPackagesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListRepositoryPackagesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListRepositoryPackagesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListRepositoryPackagesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListRepositoryPackagesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListRepositoryPackagesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepositoryPackageSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PackageSettings
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepositoryPackageSettingsResponse) GetJSON200() *PackageSettings {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryPackageSettingsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryPackageSettingsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryPackageSettingsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryPackageSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryPackageSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryPackageSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryPackageSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateRepositoryPackageSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PackageSettings
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateRepositoryPackageSettingsResponse) GetJSON200() *PackageSettings {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateRepositoryPackageSettingsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateRepositoryPackageSettingsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateRepositoryPackageSettingsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateRepositoryPackageSettingsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateRepositoryPackageSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateRepositoryPackageSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateRepositoryPackageSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateRepositoryPackageSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetRepoPullMirrorResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -44273,6 +49744,468 @@ func (r GetRepositoryReadmeResponse) ContentType() string {
 	return ""
 }
 
+type ListReleasesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ReleaseList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListReleasesResponse) GetJSON200() *ReleaseList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListReleasesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListReleasesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListReleasesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListReleasesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListReleasesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListReleasesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListReleasesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateReleaseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Release
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateReleaseResponse) GetJSON201() *Release {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateReleaseResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateReleaseResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateReleaseResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateReleaseResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateReleaseResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateReleaseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateReleaseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateReleaseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateReleaseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteReleaseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteReleaseResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteReleaseResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteReleaseResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteReleaseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteReleaseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteReleaseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteReleaseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetReleaseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Release
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetReleaseResponse) GetJSON200() *Release {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetReleaseResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetReleaseResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetReleaseResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetReleaseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetReleaseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetReleaseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetReleaseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateReleaseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Release
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateReleaseResponse) GetJSON200() *Release {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateReleaseResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateReleaseResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateReleaseResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateReleaseResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateReleaseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateReleaseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateReleaseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateReleaseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UploadReleaseAssetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *ReleaseAsset
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *PayloadTooLarge
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r UploadReleaseAssetResponse) GetJSON201() *ReleaseAsset {
+	return r.JSON201
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UploadReleaseAssetResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UploadReleaseAssetResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UploadReleaseAssetResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UploadReleaseAssetResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r UploadReleaseAssetResponse) GetJSON413() *PayloadTooLarge {
+	return r.JSON413
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UploadReleaseAssetResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UploadReleaseAssetResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UploadReleaseAssetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UploadReleaseAssetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UploadReleaseAssetResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DownloadReleaseAssetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DownloadReleaseAssetResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DownloadReleaseAssetResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DownloadReleaseAssetResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r DownloadReleaseAssetResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DownloadReleaseAssetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DownloadReleaseAssetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DownloadReleaseAssetResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type SearchRepositoryCodeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -44709,6 +50642,144 @@ func (r SetRepoWatchResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SetRepoWatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListWorkflowsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkflowList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListWorkflowsResponse) GetJSON200() *WorkflowList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListWorkflowsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListWorkflowsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListWorkflowsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListWorkflowsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListWorkflowsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListWorkflowsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListWorkflowsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DispatchWorkflowResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *WorkflowRun
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r DispatchWorkflowResponse) GetJSON202() *WorkflowRun {
+	return r.JSON202
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DispatchWorkflowResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DispatchWorkflowResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DispatchWorkflowResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DispatchWorkflowResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DispatchWorkflowResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DispatchWorkflowResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DispatchWorkflowResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DispatchWorkflowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DispatchWorkflowResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -47256,6 +53327,66 @@ func (r ResetUserTotpResponse) ContentType() string {
 	return ""
 }
 
+// GetCiQueueWithResponse Legge coda e concorrenza CI (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/ci/queue (the `GetCiQueue` operationId).
+func (c *ClientWithResponses) GetCiQueueWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCiQueueResponse, error) {
+	rsp, err := c.GetCiQueue(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCiQueueResponse(rsp)
+}
+
+// ListCiRunnersWithResponse Elenca i runner esterni (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/ci/runners (the `ListCiRunners` operationId).
+func (c *ClientWithResponses) ListCiRunnersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCiRunnersResponse, error) {
+	rsp, err := c.ListCiRunners(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListCiRunnersResponse(rsp)
+}
+
+// CreateCiRunnerRegistrationTokenWithResponse Crea un token monouso per registrare un runner esterno (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/ci/runners/registration-token (the `CreateCiRunnerRegistrationToken` operationId).
+func (c *ClientWithResponses) CreateCiRunnerRegistrationTokenWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CreateCiRunnerRegistrationTokenResponse, error) {
+	rsp, err := c.CreateCiRunnerRegistrationToken(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCiRunnerRegistrationTokenResponse(rsp)
+}
+
+// DeleteCiRunnerWithResponse Revoca un runner esterno (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /admin/ci/runners/{runnerId} (the `DeleteCiRunner` operationId).
+func (c *ClientWithResponses) DeleteCiRunnerWithResponse(ctx context.Context, runnerId RunnerIdParam, reqEditors ...RequestEditorFn) (*DeleteCiRunnerResponse, error) {
+	rsp, err := c.DeleteCiRunner(ctx, runnerId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteCiRunnerResponse(rsp)
+}
+
 // GetAdminSystemWithResponse Stato dell'installazione (Admin · System)
 //
 // Database (interno o esterno, N8), backup locale e S3 con l'esito dell'ultimo caricamento (N7), rete aziendale (N9) e versioni di GitStack e k3s con l'aggiornamento disponibile (N10). Solo l'amministratore dell'installazione. Le informazioni dell'host le pubblica `gitstack` in un ConfigMap che core legge da un file montato: niente accesso all'host dai servizi. La versione del server Postgres è quella letta ora da core sulla sua connessione. Mai segreti: né password, né chiavi S3, né credenziali del proxy.
@@ -48390,6 +54521,84 @@ func (c *ClientWithResponses) UpdateOrganizationWithResponse(ctx context.Context
 	return ParseUpdateOrganizationResponse(rsp)
 }
 
+// ListOrganizationActionsSecretsWithResponse Elenca i metadati dei segreti CI dell'organizzazione
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /orgs/{org}/actions/secrets (the `ListOrganizationActionsSecrets` operationId).
+func (c *ClientWithResponses) ListOrganizationActionsSecretsWithResponse(ctx context.Context, org OrgParam, reqEditors ...RequestEditorFn) (*ListOrganizationActionsSecretsResponse, error) {
+	rsp, err := c.ListOrganizationActionsSecrets(ctx, org, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListOrganizationActionsSecretsResponse(rsp)
+}
+
+// PutOrganizationActionsSecretWithBodyWithResponse Crea o sostituisce un segreto CI dell'organizzazione
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /orgs/{org}/actions/secrets (the `PutOrganizationActionsSecret` operationId).
+func (c *ClientWithResponses) PutOrganizationActionsSecretWithBodyWithResponse(ctx context.Context, org OrgParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutOrganizationActionsSecretResponse, error) {
+	rsp, err := c.PutOrganizationActionsSecretWithBody(ctx, org, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutOrganizationActionsSecretResponse(rsp)
+}
+
+// PutOrganizationActionsSecretWithResponse Crea o sostituisce un segreto CI dell'organizzazione
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /orgs/{org}/actions/secrets (the `PutOrganizationActionsSecret` operationId).
+func (c *ClientWithResponses) PutOrganizationActionsSecretWithResponse(ctx context.Context, org OrgParam, body PutOrganizationActionsSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*PutOrganizationActionsSecretResponse, error) {
+	rsp, err := c.PutOrganizationActionsSecret(ctx, org, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutOrganizationActionsSecretResponse(rsp)
+}
+
+// ListOrganizationActionsVariablesWithResponse Elenca le variabili CI dell'organizzazione
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /orgs/{org}/actions/variables (the `ListOrganizationActionsVariables` operationId).
+func (c *ClientWithResponses) ListOrganizationActionsVariablesWithResponse(ctx context.Context, org OrgParam, reqEditors ...RequestEditorFn) (*ListOrganizationActionsVariablesResponse, error) {
+	rsp, err := c.ListOrganizationActionsVariables(ctx, org, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListOrganizationActionsVariablesResponse(rsp)
+}
+
+// PutOrganizationActionsVariableWithBodyWithResponse Crea o sostituisce una variabile CI dell'organizzazione
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /orgs/{org}/actions/variables (the `PutOrganizationActionsVariable` operationId).
+func (c *ClientWithResponses) PutOrganizationActionsVariableWithBodyWithResponse(ctx context.Context, org OrgParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutOrganizationActionsVariableResponse, error) {
+	rsp, err := c.PutOrganizationActionsVariableWithBody(ctx, org, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutOrganizationActionsVariableResponse(rsp)
+}
+
+// PutOrganizationActionsVariableWithResponse Crea o sostituisce una variabile CI dell'organizzazione
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /orgs/{org}/actions/variables (the `PutOrganizationActionsVariable` operationId).
+func (c *ClientWithResponses) PutOrganizationActionsVariableWithResponse(ctx context.Context, org OrgParam, body PutOrganizationActionsVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*PutOrganizationActionsVariableResponse, error) {
+	rsp, err := c.PutOrganizationActionsVariable(ctx, org, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutOrganizationActionsVariableResponse(rsp)
+}
+
 // ListOrgWebhooksWithResponse Elenca i webhook di un'organizzazione
 //
 // Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
@@ -48929,6 +55138,250 @@ func (c *ClientWithResponses) UpdateRepositoryWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseUpdateRepositoryResponse(rsp)
+}
+
+// DownloadWorkflowArtifactWithResponse Scarica un artefatto ZIP
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/artifacts/{artifactId}/download (the `DownloadWorkflowArtifact` operationId).
+func (c *ClientWithResponses) DownloadWorkflowArtifactWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, artifactId ArtifactIdParam, reqEditors ...RequestEditorFn) (*DownloadWorkflowArtifactResponse, error) {
+	rsp, err := c.DownloadWorkflowArtifact(ctx, owner, repo, artifactId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDownloadWorkflowArtifactResponse(rsp)
+}
+
+// DeleteActionsCachesWithResponse Elimina tutte le cache CI del repository
+//
+// Serve `write` sul repo (403 altrimenti, 404 se non lo si legge). Con `key` o `ref` elimina solo le cache corrispondenti. Un repo archiviato rifiuta la modifica con 409 `archived`. Risponde col numero di cache eliminate.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/actions/caches (the `DeleteActionsCaches` operationId).
+func (c *ClientWithResponses) DeleteActionsCachesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *DeleteActionsCachesParams, reqEditors ...RequestEditorFn) (*DeleteActionsCachesResponse, error) {
+	rsp, err := c.DeleteActionsCaches(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteActionsCachesResponse(rsp)
+}
+
+// ListActionsCachesWithResponse Elenca le cache CI del repository e l'uso della quota
+//
+// Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5): a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo, con job di pulizia. Log, artefatti e cache stanno su un volume di core escluso dai backup.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/caches (the `ListActionsCaches` operationId).
+func (c *ClientWithResponses) ListActionsCachesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListActionsCachesParams, reqEditors ...RequestEditorFn) (*ListActionsCachesResponse, error) {
+	rsp, err := c.ListActionsCaches(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListActionsCachesResponse(rsp)
+}
+
+// DeleteActionsCacheWithResponse Elimina una cache CI
+//
+// Serve `write` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/actions/caches/{cacheId} (the `DeleteActionsCache` operationId).
+func (c *ClientWithResponses) DeleteActionsCacheWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam, reqEditors ...RequestEditorFn) (*DeleteActionsCacheResponse, error) {
+	rsp, err := c.DeleteActionsCache(ctx, owner, repo, cacheId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteActionsCacheResponse(rsp)
+}
+
+// GetActionsCacheWithResponse Legge i metadati di una cache CI
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/caches/{cacheId} (the `GetActionsCache` operationId).
+func (c *ClientWithResponses) GetActionsCacheWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam, reqEditors ...RequestEditorFn) (*GetActionsCacheResponse, error) {
+	rsp, err := c.GetActionsCache(ctx, owner, repo, cacheId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetActionsCacheResponse(rsp)
+}
+
+// GetWorkflowJobWithResponse Legge un job
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/jobs/{jobId} (the `GetWorkflowJob` operationId).
+func (c *ClientWithResponses) GetWorkflowJobWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam, reqEditors ...RequestEditorFn) (*GetWorkflowJobResponse, error) {
+	rsp, err := c.GetWorkflowJob(ctx, owner, repo, jobId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetWorkflowJobResponse(rsp)
+}
+
+// GetWorkflowJobLogWithResponse Legge il log, anche mentre il job e' in esecuzione
+//
+// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni e non sono nei backup (CI5).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/jobs/{jobId}/logs (the `GetWorkflowJobLog` operationId).
+func (c *ClientWithResponses) GetWorkflowJobLogWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam, params *GetWorkflowJobLogParams, reqEditors ...RequestEditorFn) (*GetWorkflowJobLogResponse, error) {
+	rsp, err := c.GetWorkflowJobLog(ctx, owner, repo, jobId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetWorkflowJobLogResponse(rsp)
+}
+
+// ListWorkflowRunsWithResponse Elenca le esecuzioni dei workflow
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/runs (the `ListWorkflowRuns` operationId).
+func (c *ClientWithResponses) ListWorkflowRunsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ListWorkflowRunsResponse, error) {
+	rsp, err := c.ListWorkflowRuns(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListWorkflowRunsResponse(rsp)
+}
+
+// GetWorkflowRunWithResponse Legge un'esecuzione
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/runs/{runId} (the `GetWorkflowRun` operationId).
+func (c *ClientWithResponses) GetWorkflowRunWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*GetWorkflowRunResponse, error) {
+	rsp, err := c.GetWorkflowRun(ctx, owner, repo, runId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetWorkflowRunResponse(rsp)
+}
+
+// ListWorkflowArtifactsWithResponse Elenca gli artefatti di un'esecuzione
+//
+// Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno, fuori dai backup (CI5).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/runs/{runId}/artifacts (the `ListWorkflowArtifacts` operationId).
+func (c *ClientWithResponses) ListWorkflowArtifactsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*ListWorkflowArtifactsResponse, error) {
+	rsp, err := c.ListWorkflowArtifacts(ctx, owner, repo, runId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListWorkflowArtifactsResponse(rsp)
+}
+
+// CancelWorkflowRunWithResponse Annulla un'esecuzione in corso
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/actions/runs/{runId}/cancel (the `CancelWorkflowRun` operationId).
+func (c *ClientWithResponses) CancelWorkflowRunWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*CancelWorkflowRunResponse, error) {
+	rsp, err := c.CancelWorkflowRun(ctx, owner, repo, runId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCancelWorkflowRunResponse(rsp)
+}
+
+// RerunWorkflowRunWithResponse Riesegue un workflow
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/actions/runs/{runId}/rerun (the `RerunWorkflowRun` operationId).
+func (c *ClientWithResponses) RerunWorkflowRunWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*RerunWorkflowRunResponse, error) {
+	rsp, err := c.RerunWorkflowRun(ctx, owner, repo, runId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRerunWorkflowRunResponse(rsp)
+}
+
+// ListRepositoryActionsSecretsWithResponse Elenca i metadati dei segreti CI del repository
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/secrets (the `ListRepositoryActionsSecrets` operationId).
+func (c *ClientWithResponses) ListRepositoryActionsSecretsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ListRepositoryActionsSecretsResponse, error) {
+	rsp, err := c.ListRepositoryActionsSecrets(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListRepositoryActionsSecretsResponse(rsp)
+}
+
+// PutRepositoryActionsSecretWithBodyWithResponse Crea o sostituisce un segreto CI
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/actions/secrets (the `PutRepositoryActionsSecret` operationId).
+func (c *ClientWithResponses) PutRepositoryActionsSecretWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRepositoryActionsSecretResponse, error) {
+	rsp, err := c.PutRepositoryActionsSecretWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutRepositoryActionsSecretResponse(rsp)
+}
+
+// PutRepositoryActionsSecretWithResponse Crea o sostituisce un segreto CI
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/actions/secrets (the `PutRepositoryActionsSecret` operationId).
+func (c *ClientWithResponses) PutRepositoryActionsSecretWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*PutRepositoryActionsSecretResponse, error) {
+	rsp, err := c.PutRepositoryActionsSecret(ctx, owner, repo, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutRepositoryActionsSecretResponse(rsp)
+}
+
+// ListRepositoryActionsVariablesWithResponse Elenca le variabili CI del repository
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/variables (the `ListRepositoryActionsVariables` operationId).
+func (c *ClientWithResponses) ListRepositoryActionsVariablesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ListRepositoryActionsVariablesResponse, error) {
+	rsp, err := c.ListRepositoryActionsVariables(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListRepositoryActionsVariablesResponse(rsp)
+}
+
+// PutRepositoryActionsVariableWithBodyWithResponse Crea o sostituisce una variabile CI
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/actions/variables (the `PutRepositoryActionsVariable` operationId).
+func (c *ClientWithResponses) PutRepositoryActionsVariableWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRepositoryActionsVariableResponse, error) {
+	rsp, err := c.PutRepositoryActionsVariableWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutRepositoryActionsVariableResponse(rsp)
+}
+
+// PutRepositoryActionsVariableWithResponse Crea o sostituisce una variabile CI
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/actions/variables (the `PutRepositoryActionsVariable` operationId).
+func (c *ClientWithResponses) PutRepositoryActionsVariableWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*PutRepositoryActionsVariableResponse, error) {
+	rsp, err := c.PutRepositoryActionsVariable(ctx, owner, repo, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutRepositoryActionsVariableResponse(rsp)
 }
 
 // GetRepositoryArchiveWithResponse Archivio ZIP o tar.gz di un ref (streaming)
@@ -50221,6 +56674,60 @@ func (c *ClientWithResponses) SyncRepoMirrorWithResponse(ctx context.Context, ow
 	return ParseSyncRepoMirrorResponse(rsp)
 }
 
+// ListRepositoryPackagesWithResponse Elenca i pacchetti OCI del repository
+//
+// I manifest e i blob sono serviti esclusivamente dall'OCI Distribution Specification, non da questa API.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/packages (the `ListRepositoryPackages` operationId).
+func (c *ClientWithResponses) ListRepositoryPackagesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ListRepositoryPackagesResponse, error) {
+	rsp, err := c.ListRepositoryPackages(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListRepositoryPackagesResponse(rsp)
+}
+
+// GetRepositoryPackageSettingsWithResponse Legge regole di tag protetti, pulizia e backup
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/packages/settings (the `GetRepositoryPackageSettings` operationId).
+func (c *ClientWithResponses) GetRepositoryPackageSettingsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*GetRepositoryPackageSettingsResponse, error) {
+	rsp, err := c.GetRepositoryPackageSettings(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryPackageSettingsResponse(rsp)
+}
+
+// UpdateRepositoryPackageSettingsWithBodyWithResponse Modifica regole di tag protetti, pulizia e backup
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/packages/settings (the `UpdateRepositoryPackageSettings` operationId).
+func (c *ClientWithResponses) UpdateRepositoryPackageSettingsWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateRepositoryPackageSettingsResponse, error) {
+	rsp, err := c.UpdateRepositoryPackageSettingsWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateRepositoryPackageSettingsResponse(rsp)
+}
+
+// UpdateRepositoryPackageSettingsWithResponse Modifica regole di tag protetti, pulizia e backup
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/packages/settings (the `UpdateRepositoryPackageSettings` operationId).
+func (c *ClientWithResponses) UpdateRepositoryPackageSettingsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryPackageSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRepositoryPackageSettingsResponse, error) {
+	rsp, err := c.UpdateRepositoryPackageSettings(ctx, owner, repo, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateRepositoryPackageSettingsResponse(rsp)
+}
+
 // GetRepoPullMirrorWithResponse Legge il mirror in pull di un repo (con il suo stato)
 //
 // Serve `admin` sul repo o l'amministratore dell'installazione (MP3); un repo che non si legge risponde 404, uno senza `admin` 403. Un repo ha al massimo un mirror in pull. E' l'operazione di stato (MP2, MP4, MP7): origine, intervallo, `lastSyncedAt` (ultimo aggiornamento riuscito), `lastError`, `state` e l'elenco dei ref `diverged` (MP1). Il token non torna mai: `hasToken` dice solo che c'e'. Un repo che non ha mai avuto un mirror in pull risponde 404 `not_found`; un mirror interrotto (MP6) risponde con `state: stopped`.
@@ -50941,6 +57448,125 @@ func (c *ClientWithResponses) GetRepositoryReadmeWithResponse(ctx context.Contex
 	return ParseGetRepositoryReadmeResponse(rsp)
 }
 
+// ListReleasesWithResponse Elenca le release
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/releases (the `ListReleases` operationId).
+func (c *ClientWithResponses) ListReleasesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ListReleasesResponse, error) {
+	rsp, err := c.ListReleases(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListReleasesResponse(rsp)
+}
+
+// CreateReleaseWithBodyWithResponse Crea una release per un tag
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/releases (the `CreateRelease` operationId).
+func (c *ClientWithResponses) CreateReleaseWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateReleaseResponse, error) {
+	rsp, err := c.CreateReleaseWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateReleaseResponse(rsp)
+}
+
+// CreateReleaseWithResponse Crea una release per un tag
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/releases (the `CreateRelease` operationId).
+func (c *ClientWithResponses) CreateReleaseWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateReleaseJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateReleaseResponse, error) {
+	rsp, err := c.CreateRelease(ctx, owner, repo, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateReleaseResponse(rsp)
+}
+
+// DeleteReleaseWithResponse Elimina una release senza eliminare il tag Git
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/releases/{releaseId} (the `DeleteRelease` operationId).
+func (c *ClientWithResponses) DeleteReleaseWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, reqEditors ...RequestEditorFn) (*DeleteReleaseResponse, error) {
+	rsp, err := c.DeleteRelease(ctx, owner, repo, releaseId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteReleaseResponse(rsp)
+}
+
+// GetReleaseWithResponse Legge una release
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/releases/{releaseId} (the `GetRelease` operationId).
+func (c *ClientWithResponses) GetReleaseWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, reqEditors ...RequestEditorFn) (*GetReleaseResponse, error) {
+	rsp, err := c.GetRelease(ctx, owner, repo, releaseId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetReleaseResponse(rsp)
+}
+
+// UpdateReleaseWithBodyWithResponse Modifica titolo, note e stato di una release
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/releases/{releaseId} (the `UpdateRelease` operationId).
+func (c *ClientWithResponses) UpdateReleaseWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateReleaseResponse, error) {
+	rsp, err := c.UpdateReleaseWithBody(ctx, owner, repo, releaseId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateReleaseResponse(rsp)
+}
+
+// UpdateReleaseWithResponse Modifica titolo, note e stato di una release
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/releases/{releaseId} (the `UpdateRelease` operationId).
+func (c *ClientWithResponses) UpdateReleaseWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, body UpdateReleaseJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateReleaseResponse, error) {
+	rsp, err := c.UpdateRelease(ctx, owner, repo, releaseId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateReleaseResponse(rsp)
+}
+
+// UploadReleaseAssetWithBodyWithResponse Carica un allegato di release
+//
+// File fino a 2 GiB; il server calcola e restituisce SHA-256. Il nome del file e' il parametro query `name` (obbligatorio): da 1 a 255 caratteri, senza `/`, `\` o caratteri di controllo e diverso da `.` e `..`; altrimenti 422 (`details.fields.name`). Un allegato con lo stesso nome nella stessa release e' 409 `conflict`. Serve `write` sul repo; una release pubblicata e' modificabile solo da chi ha `write`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/releases/{releaseId}/assets (the `UploadReleaseAsset` operationId).
+func (c *ClientWithResponses) UploadReleaseAssetWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, params *UploadReleaseAssetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadReleaseAssetResponse, error) {
+	rsp, err := c.UploadReleaseAssetWithBody(ctx, owner, repo, releaseId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUploadReleaseAssetResponse(rsp)
+}
+
+// DownloadReleaseAssetWithResponse Scarica un allegato di release
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/releases/{releaseId}/assets/{assetId}/download (the `DownloadReleaseAsset` operationId).
+func (c *ClientWithResponses) DownloadReleaseAssetWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, assetId AssetIdParam, reqEditors ...RequestEditorFn) (*DownloadReleaseAssetResponse, error) {
+	rsp, err := c.DownloadReleaseAsset(ctx, owner, repo, releaseId, assetId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDownloadReleaseAssetResponse(rsp)
+}
+
 // SearchRepositoryCodeWithResponse Cerca un testo nel codice di un ref ("Search code")
 //
 // Regola B5: cerca `q` (sottostringa letterale, senza distinguere maiuscole) nei file di testo di `ref`, senza indice. Al massimo 100 risultati con percorso, riga e frammento (`limitReached` se ce ne sono altri), tempo massimo 10 secondi (`timedOut` se interrotta). Un `q` piu' corto di 2 caratteri risponde 400. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
@@ -51044,6 +57670,45 @@ func (c *ClientWithResponses) SetRepoWatchWithResponse(ctx context.Context, owne
 		return nil, err
 	}
 	return ParseSetRepoWatchResponse(rsp)
+}
+
+// ListWorkflowsWithResponse Elenca i workflow del repository
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/workflows (the `ListWorkflows` operationId).
+func (c *ClientWithResponses) ListWorkflowsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ListWorkflowsResponse, error) {
+	rsp, err := c.ListWorkflows(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListWorkflowsResponse(rsp)
+}
+
+// DispatchWorkflowWithBodyWithResponse Avvia manualmente un workflow
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/workflows/{workflow}/dispatches (the `DispatchWorkflow` operationId).
+func (c *ClientWithResponses) DispatchWorkflowWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, workflow WorkflowParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DispatchWorkflowResponse, error) {
+	rsp, err := c.DispatchWorkflowWithBody(ctx, owner, repo, workflow, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDispatchWorkflowResponse(rsp)
+}
+
+// DispatchWorkflowWithResponse Avvia manualmente un workflow
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/workflows/{workflow}/dispatches (the `DispatchWorkflow` operationId).
+func (c *ClientWithResponses) DispatchWorkflowWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, workflow WorkflowParam, body DispatchWorkflowJSONRequestBody, reqEditors ...RequestEditorFn) (*DispatchWorkflowResponse, error) {
+	rsp, err := c.DispatchWorkflow(ctx, owner, repo, workflow, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDispatchWorkflowResponse(rsp)
 }
 
 // ListResourcesWithResponse Elenca le risorse
@@ -51714,6 +58379,169 @@ func (c *ClientWithResponses) ResetUserTotpWithResponse(ctx context.Context, use
 		return nil, err
 	}
 	return ParseResetUserTotpResponse(rsp)
+}
+
+// ParseGetCiQueueResponse parses an HTTP response from a GetCiQueueWithResponse call
+func ParseGetCiQueueResponse(rsp *http.Response) (*GetCiQueueResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCiQueueResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CiQueue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListCiRunnersResponse parses an HTTP response from a ListCiRunnersWithResponse call
+func ParseListCiRunnersResponse(rsp *http.Response) (*ListCiRunnersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListCiRunnersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CiRunnerList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateCiRunnerRegistrationTokenResponse parses an HTTP response from a CreateCiRunnerRegistrationTokenWithResponse call
+func ParseCreateCiRunnerRegistrationTokenResponse(rsp *http.Response) (*CreateCiRunnerRegistrationTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateCiRunnerRegistrationTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CiRunnerRegistrationToken
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteCiRunnerResponse parses an HTTP response from a DeleteCiRunnerWithResponse call
+func ParseDeleteCiRunnerResponse(rsp *http.Response) (*DeleteCiRunnerResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteCiRunnerResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseGetAdminSystemResponse parses an HTTP response from a GetAdminSystemWithResponse call
@@ -54821,6 +61649,194 @@ func ParseUpdateOrganizationResponse(rsp *http.Response) (*UpdateOrganizationRes
 	return response, nil
 }
 
+// ParseListOrganizationActionsSecretsResponse parses an HTTP response from a ListOrganizationActionsSecretsWithResponse call
+func ParseListOrganizationActionsSecretsResponse(rsp *http.Response) (*ListOrganizationActionsSecretsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListOrganizationActionsSecretsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActionsSecretList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutOrganizationActionsSecretResponse parses an HTTP response from a PutOrganizationActionsSecretWithResponse call
+func ParsePutOrganizationActionsSecretResponse(rsp *http.Response) (*PutOrganizationActionsSecretResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutOrganizationActionsSecretResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActionsSecret
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListOrganizationActionsVariablesResponse parses an HTTP response from a ListOrganizationActionsVariablesWithResponse call
+func ParseListOrganizationActionsVariablesResponse(rsp *http.Response) (*ListOrganizationActionsVariablesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListOrganizationActionsVariablesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActionsVariableList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutOrganizationActionsVariableResponse parses an HTTP response from a PutOrganizationActionsVariableWithResponse call
+func ParsePutOrganizationActionsVariableResponse(rsp *http.Response) (*PutOrganizationActionsVariableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutOrganizationActionsVariableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActionsVariable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListOrgWebhooksResponse parses an HTTP response from a ListOrgWebhooksWithResponse call
 func ParseListOrgWebhooksResponse(rsp *http.Response) (*ListOrgWebhooksResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -56612,6 +63628,770 @@ func ParseUpdateRepositoryResponse(rsp *http.Response) (*UpdateRepositoryRespons
 			return nil, err
 		}
 		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDownloadWorkflowArtifactResponse parses an HTTP response from a DownloadWorkflowArtifactWithResponse call
+func ParseDownloadWorkflowArtifactResponse(rsp *http.Response) (*DownloadWorkflowArtifactResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DownloadWorkflowArtifactResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteActionsCachesResponse parses an HTTP response from a DeleteActionsCachesWithResponse call
+func ParseDeleteActionsCachesResponse(rsp *http.Response) (*DeleteActionsCachesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteActionsCachesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Deleted int `json:"deleted"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListActionsCachesResponse parses an HTTP response from a ListActionsCachesWithResponse call
+func ParseListActionsCachesResponse(rsp *http.Response) (*ListActionsCachesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListActionsCachesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActionsCacheList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteActionsCacheResponse parses an HTTP response from a DeleteActionsCacheWithResponse call
+func ParseDeleteActionsCacheResponse(rsp *http.Response) (*DeleteActionsCacheResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteActionsCacheResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetActionsCacheResponse parses an HTTP response from a GetActionsCacheWithResponse call
+func ParseGetActionsCacheResponse(rsp *http.Response) (*GetActionsCacheResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetActionsCacheResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActionsCache
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetWorkflowJobResponse parses an HTTP response from a GetWorkflowJobWithResponse call
+func ParseGetWorkflowJobResponse(rsp *http.Response) (*GetWorkflowJobResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetWorkflowJobResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkflowJob
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetWorkflowJobLogResponse parses an HTTP response from a GetWorkflowJobLogWithResponse call
+func ParseGetWorkflowJobLogResponse(rsp *http.Response) (*GetWorkflowJobLogResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetWorkflowJobLogResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListWorkflowRunsResponse parses an HTTP response from a ListWorkflowRunsWithResponse call
+func ParseListWorkflowRunsResponse(rsp *http.Response) (*ListWorkflowRunsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListWorkflowRunsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkflowRunList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetWorkflowRunResponse parses an HTTP response from a GetWorkflowRunWithResponse call
+func ParseGetWorkflowRunResponse(rsp *http.Response) (*GetWorkflowRunResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetWorkflowRunResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkflowRun
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListWorkflowArtifactsResponse parses an HTTP response from a ListWorkflowArtifactsWithResponse call
+func ParseListWorkflowArtifactsResponse(rsp *http.Response) (*ListWorkflowArtifactsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListWorkflowArtifactsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ArtifactList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCancelWorkflowRunResponse parses an HTTP response from a CancelWorkflowRunWithResponse call
+func ParseCancelWorkflowRunResponse(rsp *http.Response) (*CancelWorkflowRunResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CancelWorkflowRunResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest WorkflowRun
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRerunWorkflowRunResponse parses an HTTP response from a RerunWorkflowRunWithResponse call
+func ParseRerunWorkflowRunResponse(rsp *http.Response) (*RerunWorkflowRunResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RerunWorkflowRunResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest WorkflowRun
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListRepositoryActionsSecretsResponse parses an HTTP response from a ListRepositoryActionsSecretsWithResponse call
+func ParseListRepositoryActionsSecretsResponse(rsp *http.Response) (*ListRepositoryActionsSecretsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListRepositoryActionsSecretsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActionsSecretList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutRepositoryActionsSecretResponse parses an HTTP response from a PutRepositoryActionsSecretWithResponse call
+func ParsePutRepositoryActionsSecretResponse(rsp *http.Response) (*PutRepositoryActionsSecretResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutRepositoryActionsSecretResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActionsSecret
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListRepositoryActionsVariablesResponse parses an HTTP response from a ListRepositoryActionsVariablesWithResponse call
+func ParseListRepositoryActionsVariablesResponse(rsp *http.Response) (*ListRepositoryActionsVariablesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListRepositoryActionsVariablesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActionsVariableList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutRepositoryActionsVariableResponse parses an HTTP response from a PutRepositoryActionsVariableWithResponse call
+func ParsePutRepositoryActionsVariableResponse(rsp *http.Response) (*PutRepositoryActionsVariableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutRepositoryActionsVariableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActionsVariable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -61071,6 +68851,154 @@ func ParseSyncRepoMirrorResponse(rsp *http.Response) (*SyncRepoMirrorResponse, e
 	return response, nil
 }
 
+// ParseListRepositoryPackagesResponse parses an HTTP response from a ListRepositoryPackagesWithResponse call
+func ParseListRepositoryPackagesResponse(rsp *http.Response) (*ListRepositoryPackagesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListRepositoryPackagesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PackageList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepositoryPackageSettingsResponse parses an HTTP response from a GetRepositoryPackageSettingsWithResponse call
+func ParseGetRepositoryPackageSettingsResponse(rsp *http.Response) (*GetRepositoryPackageSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryPackageSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PackageSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateRepositoryPackageSettingsResponse parses an HTTP response from a UpdateRepositoryPackageSettingsWithResponse call
+func ParseUpdateRepositoryPackageSettingsResponse(rsp *http.Response) (*UpdateRepositoryPackageSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateRepositoryPackageSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PackageSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetRepoPullMirrorResponse parses an HTTP response from a GetRepoPullMirrorWithResponse call
 func ParseGetRepoPullMirrorResponse(rsp *http.Response) (*GetRepoPullMirrorResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -63625,6 +71553,366 @@ func ParseGetRepositoryReadmeResponse(rsp *http.Response) (*GetRepositoryReadmeR
 	return response, nil
 }
 
+// ParseListReleasesResponse parses an HTTP response from a ListReleasesWithResponse call
+func ParseListReleasesResponse(rsp *http.Response) (*ListReleasesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListReleasesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ReleaseList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateReleaseResponse parses an HTTP response from a CreateReleaseWithResponse call
+func ParseCreateReleaseResponse(rsp *http.Response) (*CreateReleaseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateReleaseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Release
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteReleaseResponse parses an HTTP response from a DeleteReleaseWithResponse call
+func ParseDeleteReleaseResponse(rsp *http.Response) (*DeleteReleaseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteReleaseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetReleaseResponse parses an HTTP response from a GetReleaseWithResponse call
+func ParseGetReleaseResponse(rsp *http.Response) (*GetReleaseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetReleaseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Release
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateReleaseResponse parses an HTTP response from a UpdateReleaseWithResponse call
+func ParseUpdateReleaseResponse(rsp *http.Response) (*UpdateReleaseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateReleaseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Release
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUploadReleaseAssetResponse parses an HTTP response from a UploadReleaseAssetWithResponse call
+func ParseUploadReleaseAssetResponse(rsp *http.Response) (*UploadReleaseAssetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UploadReleaseAssetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ReleaseAsset
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDownloadReleaseAssetResponse parses an HTTP response from a DownloadReleaseAssetWithResponse call
+func ParseDownloadReleaseAssetResponse(rsp *http.Response) (*DownloadReleaseAssetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DownloadReleaseAssetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseSearchRepositoryCodeResponse parses an HTTP response from a SearchRepositoryCodeWithResponse call
 func ParseSearchRepositoryCodeResponse(rsp *http.Response) (*SearchRepositoryCodeResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -63974,6 +72262,114 @@ func ParseSetRepoWatchResponse(rsp *http.Response) (*SetRepoWatchResponse, error
 			return nil, err
 		}
 		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListWorkflowsResponse parses an HTTP response from a ListWorkflowsWithResponse call
+func ParseListWorkflowsResponse(rsp *http.Response) (*ListWorkflowsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListWorkflowsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkflowList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDispatchWorkflowResponse parses an HTTP response from a DispatchWorkflowWithResponse call
+func ParseDispatchWorkflowResponse(rsp *http.Response) (*DispatchWorkflowResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DispatchWorkflowResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest WorkflowRun
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 
@@ -66140,6 +74536,21 @@ type CallbackInitiatorInterface interface {
 	PullRequestReviewWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PullRequestReview(ctx context.Context, targetURL string, body PullRequestReviewJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReleaseWithBody fires the release callback with any body
+	ReleaseWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	Release(ctx context.Context, targetURL string, body ReleaseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkflowJobWithBody fires the workflow_job callback with any body
+	WorkflowJobWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	WorkflowJob(ctx context.Context, targetURL string, body WorkflowJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkflowRunWithBody fires the workflow_run callback with any body
+	WorkflowRunWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	WorkflowRun(ctx context.Context, targetURL string, body WorkflowRunJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (p *CallbackInitiator) CommitStatusWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -66204,6 +74615,78 @@ func (p *CallbackInitiator) PullRequestReviewWithBody(ctx context.Context, targe
 
 func (p *CallbackInitiator) PullRequestReview(ctx context.Context, targetURL string, body PullRequestReviewJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPullRequestReviewCallbackRequest(targetURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) ReleaseWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReleaseCallbackRequestWithBody(targetURL, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) Release(ctx context.Context, targetURL string, body ReleaseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReleaseCallbackRequest(targetURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) WorkflowJobWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkflowJobCallbackRequestWithBody(targetURL, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) WorkflowJob(ctx context.Context, targetURL string, body WorkflowJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkflowJobCallbackRequest(targetURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) WorkflowRunWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkflowRunCallbackRequestWithBody(targetURL, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) WorkflowRun(ctx context.Context, targetURL string, body WorkflowRunJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkflowRunCallbackRequest(targetURL, body)
 	if err != nil {
 		return nil, err
 	}
@@ -66289,6 +74772,99 @@ func NewPullRequestReviewCallbackRequest(targetURL string, body PullRequestRevie
 
 // NewPullRequestReviewCallbackRequestWithBody builds a POST request for the pull_request_review callback with any body
 func NewPullRequestReviewCallbackRequestWithBody(targetURL string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+	_ = err
+
+	reqURL, err := url.Parse(targetURL)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, reqURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewReleaseCallbackRequest builds a application/json POST request for the release callback
+func NewReleaseCallbackRequest(targetURL string, body ReleaseJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewReleaseCallbackRequestWithBody(targetURL, "application/json", bodyReader)
+}
+
+// NewReleaseCallbackRequestWithBody builds a POST request for the release callback with any body
+func NewReleaseCallbackRequestWithBody(targetURL string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+	_ = err
+
+	reqURL, err := url.Parse(targetURL)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, reqURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewWorkflowJobCallbackRequest builds a application/json POST request for the workflow_job callback
+func NewWorkflowJobCallbackRequest(targetURL string, body WorkflowJobJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewWorkflowJobCallbackRequestWithBody(targetURL, "application/json", bodyReader)
+}
+
+// NewWorkflowJobCallbackRequestWithBody builds a POST request for the workflow_job callback with any body
+func NewWorkflowJobCallbackRequestWithBody(targetURL string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+	_ = err
+
+	reqURL, err := url.Parse(targetURL)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, reqURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewWorkflowRunCallbackRequest builds a application/json POST request for the workflow_run callback
+func NewWorkflowRunCallbackRequest(targetURL string, body WorkflowRunJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewWorkflowRunCallbackRequestWithBody(targetURL, "application/json", bodyReader)
+}
+
+// NewWorkflowRunCallbackRequestWithBody builds a POST request for the workflow_run callback with any body
+func NewWorkflowRunCallbackRequestWithBody(targetURL string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 	_ = err
 
