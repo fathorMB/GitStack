@@ -656,13 +656,15 @@ func (e LicenseTemplate) Valid() bool {
 
 // Defines values for MergeBlockerCode.
 const (
-	MergeBlockerCodeApprovalsRequired MergeBlockerCode = "approvals_required"
-	MergeBlockerCodeChangesRequested  MergeBlockerCode = "changes_requested"
-	MergeBlockerCodeConflicts         MergeBlockerCode = "conflicts"
-	MergeBlockerCodeDraft             MergeBlockerCode = "draft"
-	MergeBlockerCodeNotOpen           MergeBlockerCode = "not_open"
-	MergeBlockerCodeStatusFailed      MergeBlockerCode = "status_failed"
-	MergeBlockerCodeStatusRequired    MergeBlockerCode = "status_required"
+	MergeBlockerCodeApprovalsRequired  MergeBlockerCode = "approvals_required"
+	MergeBlockerCodeChangesRequested   MergeBlockerCode = "changes_requested"
+	MergeBlockerCodeConflicts          MergeBlockerCode = "conflicts"
+	MergeBlockerCodeDraft              MergeBlockerCode = "draft"
+	MergeBlockerCodeNotOpen            MergeBlockerCode = "not_open"
+	MergeBlockerCodeNothingToMerge     MergeBlockerCode = "nothing_to_merge"
+	MergeBlockerCodeStatusFailed       MergeBlockerCode = "status_failed"
+	MergeBlockerCodeStatusRequired     MergeBlockerCode = "status_required"
+	MergeBlockerCodeUnrelatedHistories MergeBlockerCode = "unrelated_histories"
 )
 
 // Valid indicates whether the value is a known member of the MergeBlockerCode enum.
@@ -678,9 +680,13 @@ func (e MergeBlockerCode) Valid() bool {
 		return true
 	case MergeBlockerCodeNotOpen:
 		return true
+	case MergeBlockerCodeNothingToMerge:
+		return true
 	case MergeBlockerCodeStatusFailed:
 		return true
 	case MergeBlockerCodeStatusRequired:
+		return true
+	case MergeBlockerCodeUnrelatedHistories:
 		return true
 	default:
 		return false
@@ -938,6 +944,7 @@ func (e PullMirrorState) Valid() bool {
 
 // Defines values for PullRequestEventType.
 const (
+	PullRequestEventTypeBranchDeleted    PullRequestEventType = "branch_deleted"
 	PullRequestEventTypeClosed           PullRequestEventType = "closed"
 	PullRequestEventTypeConvertedToDraft PullRequestEventType = "converted_to_draft"
 	PullRequestEventTypeEdited           PullRequestEventType = "edited"
@@ -952,6 +959,8 @@ const (
 // Valid indicates whether the value is a known member of the PullRequestEventType enum.
 func (e PullRequestEventType) Valid() bool {
 	switch e {
+	case PullRequestEventTypeBranchDeleted:
+		return true
 	case PullRequestEventTypeClosed:
 		return true
 	case PullRequestEventTypeConvertedToDraft:
@@ -3033,7 +3042,7 @@ type MarkedNotifications struct {
 
 // MergeBlocker defines model for MergeBlocker.
 type MergeBlocker struct {
-	// Code Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9).
+	// Code Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9), `nothing_to_merge` (il branch di origine e' gia' contenuto nella destinazione) e `unrelated_histories` (nessuna storia in comune).
 	Code MergeBlockerCode `json:"code"`
 
 	// Contexts I contesti coinvolti, per `status_required` e `status_failed`.
@@ -3041,7 +3050,7 @@ type MergeBlocker struct {
 	Message  string    `json:"message"`
 }
 
-// MergeBlockerCode Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9).
+// MergeBlockerCode Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9), `nothing_to_merge` (il branch di origine e' gia' contenuto nella destinazione) e `unrelated_histories` (nessuna storia in comune).
 type MergeBlockerCode string
 
 // MergeMethod Metodo di merge (PR3). Il rebase non esiste.
@@ -3443,7 +3452,7 @@ type PullRequestEvent struct {
 	Actor     *IssueUser `json:"actor,omitempty"`
 	CreatedAt time.Time  `json:"createdAt"`
 
-	// Data Dettagli per tipo: `opened` ha `draft`, `sourceBranch` e `targetBranch`; `renamed` ha `from` e `to`; `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`.
+	// Data Dettagli per tipo: `opened` ha `draft`, `sourceBranch` e `targetBranch`; `renamed` ha `from` e `to`; `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`; `branch_deleted` ha `branch`.
 	Data *map[string]interface{} `json:"data,omitempty"`
 	Id   openapi_types.UUID      `json:"id"`
 	Type PullRequestEventType    `json:"type"`
@@ -3505,6 +3514,9 @@ type PullRequestMergeability struct {
 	// ConflictFiles File in conflitto (percorsi), vuoto se non ce ne sono. Al massimo 100: oltre, `conflictFilesTruncated`.
 	ConflictFiles          []string `json:"conflictFiles"`
 	ConflictFilesTruncated *bool    `json:"conflictFilesTruncated,omitempty"`
+
+	// ConflictInstructions Con `state` uguale a `conflicts`, i comandi per risolvere i conflitti in locale (PR7), uno per riga: `gs pr checkout <numero>`, `git merge origin/<destinazione>`, poi commit e push. Vuoto negli altri stati.
+	ConflictInstructions *[]string `json:"conflictInstructions,omitempty"`
 
 	// DefaultMethod Metodo di merge (PR3). Il rebase non esiste.
 	DefaultMethod MergeMethod `json:"defaultMethod"`

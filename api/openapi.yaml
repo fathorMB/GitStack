@@ -13753,7 +13753,7 @@ components:
           format: uuid
         type:
           type: string
-          enum: [opened, renamed, edited, retargeted, ready_for_review, converted_to_draft, closed, reopened, merged]
+          enum: [opened, renamed, edited, retargeted, ready_for_review, converted_to_draft, closed, reopened, merged, branch_deleted]
         actor:
           allOf:
             - $ref: "#/components/schemas/IssueUser"
@@ -13765,7 +13765,7 @@ components:
           additionalProperties: true
           description: >
             Dettagli per tipo: `opened` ha `draft`, `sourceBranch` e `targetBranch`; `renamed` ha `from` e `to`;
-            `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`.
+            `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`; `branch_deleted` ha `branch`.
         createdAt:
           type: string
           format: date-time
@@ -13869,10 +13869,13 @@ components:
             - changes_requested
             - status_required
             - status_failed
+            - nothing_to_merge
+            - unrelated_histories
           description: >
             Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e
             `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e
-            `status_failed` (contesto obbligatorio `failure` o `error`, PR9).
+            `status_failed` (contesto obbligatorio `failure` o `error`, PR9), `nothing_to_merge` (il branch di origine e' gia'
+            contenuto nella destinazione) e `unrelated_histories` (nessuna storia in comune).
         message:
           type: string
         contexts:
@@ -13903,6 +13906,13 @@ components:
             type: string
         conflictFilesTruncated:
           type: boolean
+        conflictInstructions:
+          type: array
+          description: >
+            Con `state` uguale a `conflicts`, i comandi per risolvere i conflitti in locale (PR7), uno per riga:
+            `gs pr checkout <numero>`, `git merge origin/<destinazione>`, poi commit e push. Vuoto negli altri stati.
+          items:
+            type: string
         behindBy:
           type: integer
           minimum: 0

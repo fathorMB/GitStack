@@ -15,14 +15,6 @@ func pullsNotImplemented(w http.ResponseWriter) {
 	writeError(w, http.StatusNotImplemented, "not_implemented", "operazione prevista dalla v1.1, non ancora implementata")
 }
 
-func (s *apiServer) GetBranchSettings(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam) {
-	pullsNotImplemented(w)
-}
-
-func (s *apiServer) UpdateBranchSettings(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam) {
-	pullsNotImplemented(w)
-}
-
 func (s *apiServer) GetCombinedCommitStatus(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.CommitShaParam) {
 	pullsNotImplemented(w)
 }
@@ -35,18 +27,6 @@ func (s *apiServer) CreateCommitStatus(w http.ResponseWriter, r *http.Request, _
 	pullsNotImplemented(w)
 }
 
-func (s *apiServer) DeletePullRequestBranch(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam) {
-	pullsNotImplemented(w)
-}
-
 func (s *apiServer) DeletePullRequestComment(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam, _ openapi.PullCommentIdParam) {
-	pullsNotImplemented(w)
-}
-
-func (s *apiServer) MergePullRequest(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam) {
-	pullsNotImplemented(w)
-}
-
-func (s *apiServer) GetPullRequestMergeability(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam) {
 	pullsNotImplemented(w)
 }
