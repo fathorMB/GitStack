@@ -12,10 +12,11 @@ instance.
 | Create, browse, archive a repository | [Repositories](./repositories.md) |
 | Copy a repository from GitHub, or publish to it | [Mirrors and import](./mirrors.md) |
 | Track work | [Issues](./issues.md) |
-| Review code | [Pull requests](./pull-requests.md) (planned for v1.1) |
+| Review and merge code, commit statuses | [Pull requests](./pull-requests.md) |
 | Authenticate Git | [Tokens and SSH keys](./tokens-and-ssh.md) |
 | React to events | [Webhooks](./webhooks.md) |
 | Work from the terminal or with an agent | [gs and skills for agents](./gs-and-agents.md) |
+| Let an AI assistant use GitStack | [MCP for assistants](./mcp.md) |
 
 Generated references:
 
