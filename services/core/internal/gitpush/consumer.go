@@ -26,6 +26,8 @@ const (
 	DurableIssueLinks = "core-issue-linker"
 	// DurableMirrors: mirror in push verso un altro server Git (V8, internal/mirrors).
 	DurableMirrors = "core-mirrors-git"
+	// DurablePullSync: nuovi commit e conflitti delle Pull Request (GIT-265).
+	DurablePullSync = "core-pull-sync"
 )
 
 // Handler gestisce un git.push. Un errore fa ritentare il messaggio (Nak con

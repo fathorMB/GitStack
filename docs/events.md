@@ -395,6 +395,18 @@ La rinomina e il trasferimento non esistono nella v1 (R3): niente eventi.
 | `issue_comment.edited` | `issue_comment` / `edited` | `mentioned` (nuovi menzionati) |
 | `issue_comment.deleted` | `issue_comment` / `deleted` | nessuna |
 | `repository.*` | `repository` / azione omonima | nessuna |
+| `pull_request.opened` | `pull_request` / `opened` | `mentioned`, `subscribed` (Watch `all`, non per una bozza) |
+| `pull_request.edited` | `pull_request` / `edited` | `mentioned` (nuovi menzionati nel testo) |
+| `pull_request.closed`, `reopened`, `merged` | `pull_request` / azione omonima | `state_change` a chi segue la PR |
+| `pull_request.ready_for_review` | `pull_request` / `ready_for_review` | `state_change` a chi segue, `subscribed` (Watch `all`) |
+| `pull_request.converted_to_draft`, `synchronize` | `pull_request` / azione omonima | nessuna |
+| `pull_request.review_requested` | `pull_request` / `review_requested` | `review_requested` al revisore |
+| `pull_request.review_request_removed` | `pull_request` / `review_request_removed` | nessuna |
+| `pull_request.conflicts`, `checks_failed` | nessuno | `state_change` all'autore, sulla propria PR |
+| `pull_request_review.submitted` | `pull_request_review` / `submitted` | `mentioned`, `participating`, `subscribed` |
+| `pull_request_review.dismissed` | `pull_request_review` / `dismissed` | nessuna |
+| `pull_request_comment.created` | nessuno | `mentioned`, `participating`, `subscribed` |
+| `commit_status.created` | `commit_status` / `created` | nessuna |
 
 Chi riceve una notifica lo decide il consumer: iscritti alla issue
 (`core.issue_subscriptions`), watch del repo (`core.repo_watches`), menzioni e
@@ -403,10 +415,27 @@ Watch `ignore` non notifica, salvo le menzioni dirette. La notifica
 `webhook` (C7) non nasce da un evento NATS: la scrive il job di consegna
 quando disattiva un webhook.
 
+Le Pull Request (v1.1, GIT-265, PR11) hanno gli stessi percorsi: gli eventi
+`pull_request.*`, `pull_request_review.*`, `pull_request_comment.created` e
+`commit_status.created` entrano nell'outbox nella transazione della modifica,
+con gli stream `PULL_REQUEST`, `PULL_REQUEST_REVIEW`, `PULL_REQUEST_COMMENT` e
+`COMMIT_STATUS`. Il payload porta `repo`, `actor` e `pull` (id, numero, titolo,
+stato `open|closed|merged`, bozza, autore, branch); per i webhook `snapshot` è la
+PR come in `GET …/pulls/{number}` al momento dell'evento (e `reviewSnapshot`
+la review). I revisori richiesti entrano fra chi segue la PR
+(`core.pull_request_subscriptions`); `review_requested` ha l'email attiva di
+default come `mentioned` e `assigned`. Con Watch `ignore` non arriva niente, nemmeno
+la richiesta di review. Il consumer `core-pull-sync` su `git.push` aggiorna la
+punta delle PR aperte (`pull_request.synchronize`, e `pull_request_review.dismissed`
+per le approvazioni valide sul commit precedente) e avvisa l'autore alla comparsa
+dei conflitti (`pull_request.conflicts`, una volta finché non spariscono). Gli stati
+obbligatori che diventano rossi (`pull_request.checks_failed`) nascono dalla
+scrittura dello stato del commit.
+
 Consumer durevoli (convenzione `<servizio>-<scopo>`; un consumer JetStream
 appartiene a uno stream, quindi si aggiunge il dominio): `core-webhooks-git`
-(webhook `push`, `internal/gitpush` in core) e `core-issue-linker` (su
-`git.push`). Le notifiche (GIT-133) e i webhook `issues`, `issue_comment` e
+(webhook `push`, `internal/gitpush` in core), `core-issue-linker` e `core-pull-sync`
+(su `git.push`). Le notifiche (GIT-133) e i webhook `issues`, `issue_comment` e
 `repository` (GIT-135) non usano consumer NATS: leggono gli eventi di dominio
 dall'outbox di core (`core.event_outbox`, con un segno di lettura ciascuno:
 `notified_at`, `webhooked_at`), nella stessa transazione in cui scrivono il loro

@@ -556,6 +556,8 @@ func (s *apiServer) MergePullRequest(w http.ResponseWriter, r *http.Request, own
 		return
 	}
 	author, pusher := s.mergeActor(ctx, ia)
+	curPR, _ := getPR(ctx, s.pool, ia.repo.ID, number, false)
+	gs := s.pullGitBestEffort(ctx, ia, curPR)
 
 	// Il lock sulla riga della PR serializza due merge della stessa PR: il
 	// secondo, dopo il primo, la trova unita (409 already_merged). Due PR sulla
@@ -629,6 +631,9 @@ func (s *apiServer) MergePullRequest(w http.ResponseWriter, r *http.Request, own
 		slog.Default().Error("merge eseguito in git ma evento non scritto", "repo", ia.repo.ID, "pull", p.Number, "err", err)
 		writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
 		return
+	}
+	if merged, err := getPR(ctx, tx, ia.repo.ID, number, false); err == nil {
+		s.afterMerge(ctx, tx, ia, gs, merged)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		slog.Default().Error("merge eseguito in git ma commit non riuscito", "repo", ia.repo.ID, "pull", p.Number, "sha", res.Sha, "err", err)

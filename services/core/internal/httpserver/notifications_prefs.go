@@ -24,7 +24,7 @@ func WithEmail(enabled bool) Option {
 }
 
 // defaultEmail: i tipi con l'email attiva senza preferenza esplicita (C5).
-var defaultEmail = map[string]bool{"mentioned": true, "assigned": true}
+var defaultEmail = map[string]bool{"mentioned": true, "assigned": true, "review_requested": true}
 
 // emailPrefs ritorna le preferenze dell'utente con tutti i tipi presenti.
 func (s *apiServer) emailPrefs(r *http.Request, userID uuid.UUID) (map[string]bool, error) {

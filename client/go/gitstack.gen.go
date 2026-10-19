@@ -890,15 +890,16 @@ func (e NotificationIssueState) Valid() bool {
 
 // Defines values for NotificationReason.
 const (
-	NotificationReasonAssigned      NotificationReason = "assigned"
-	NotificationReasonCommitLinked  NotificationReason = "commit_linked"
-	NotificationReasonCredential    NotificationReason = "credential"
-	NotificationReasonMentioned     NotificationReason = "mentioned"
-	NotificationReasonMirror        NotificationReason = "mirror"
-	NotificationReasonParticipating NotificationReason = "participating"
-	NotificationReasonStateChange   NotificationReason = "state_change"
-	NotificationReasonSubscribed    NotificationReason = "subscribed"
-	NotificationReasonWebhook       NotificationReason = "webhook"
+	NotificationReasonAssigned        NotificationReason = "assigned"
+	NotificationReasonCommitLinked    NotificationReason = "commit_linked"
+	NotificationReasonCredential      NotificationReason = "credential"
+	NotificationReasonMentioned       NotificationReason = "mentioned"
+	NotificationReasonMirror          NotificationReason = "mirror"
+	NotificationReasonParticipating   NotificationReason = "participating"
+	NotificationReasonReviewRequested NotificationReason = "review_requested"
+	NotificationReasonStateChange     NotificationReason = "state_change"
+	NotificationReasonSubscribed      NotificationReason = "subscribed"
+	NotificationReasonWebhook         NotificationReason = "webhook"
 )
 
 // Valid indicates whether the value is a known member of the NotificationReason enum.
@@ -915,6 +916,8 @@ func (e NotificationReason) Valid() bool {
 	case NotificationReasonMirror:
 		return true
 	case NotificationReasonParticipating:
+		return true
+	case NotificationReasonReviewRequested:
 		return true
 	case NotificationReasonStateChange:
 		return true
@@ -3819,7 +3822,7 @@ type Notification struct {
 	Read   bool               `json:"read"`
 	ReadAt *time.Time         `json:"readAt,omitempty"`
 
-	// Reason Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7); `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha una storia diversa (V8); `credential`: avviso di sicurezza sulle credenziali dell'utente (cambio password, reset da un amministratore, nuovo token personale, nuova chiave SSH, token in scadenza, F13): senza repo ne' issue, `event` e' `credential.<tipo>`, sempre anche per email se l'SMTP e' attivo.
+	// Reason Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7); `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha una storia diversa (V8); `credential`: avviso di sicurezza sulle credenziali dell'utente (cambio password, reset da un amministratore, nuovo token personale, nuova chiave SSH, token in scadenza, F13): senza repo ne' issue, `event` e' `credential.<tipo>`, sempre anche per email se l'SMTP e' attivo; `review_requested`: all'utente e' stata chiesta la review di una Pull Request (PR11), con l'email attiva di default come per `mentioned` e `assigned`. Le notifiche delle Pull Request riempiono `issue` con il numero condiviso (I1), il titolo e lo `state` (`closed` anche se unita) e hanno `event` `pull_request.*`, `pull_request_review.submitted` o `pull_request_comment.created`.
 	Reason     NotificationReason `json:"reason"`
 	Repository *NotificationRepo  `json:"repository,omitempty"`
 
@@ -3860,7 +3863,7 @@ type NotificationPreferences struct {
 	EmailAvailable bool `json:"emailAvailable"`
 }
 
-// NotificationReason Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7); `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha una storia diversa (V8); `credential`: avviso di sicurezza sulle credenziali dell'utente (cambio password, reset da un amministratore, nuovo token personale, nuova chiave SSH, token in scadenza, F13): senza repo ne' issue, `event` e' `credential.<tipo>`, sempre anche per email se l'SMTP e' attivo.
+// NotificationReason Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7); `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha una storia diversa (V8); `credential`: avviso di sicurezza sulle credenziali dell'utente (cambio password, reset da un amministratore, nuovo token personale, nuova chiave SSH, token in scadenza, F13): senza repo ne' issue, `event` e' `credential.<tipo>`, sempre anche per email se l'SMTP e' attivo; `review_requested`: all'utente e' stata chiesta la review di una Pull Request (PR11), con l'email attiva di default come per `mentioned` e `assigned`. Le notifiche delle Pull Request riempiono `issue` con il numero condiviso (I1), il titolo e lo `state` (`closed` anche se unita) e hanno `event` `pull_request.*`, `pull_request_review.submitted` o `pull_request_comment.created`.
 type NotificationReason string
 
 // NotificationRepo defines model for NotificationRepo.

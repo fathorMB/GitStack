@@ -246,6 +246,7 @@ func (s *apiServer) CreatePullRequestReview(w http.ResponseWriter, r *http.Reque
 		writeIssueFailure(w, "verifica del tipo di account non riuscita", err)
 		return
 	}
+	gs := s.pullGitBestEffort(ctx, ia, cur)
 
 	tx, p, ok := s.beginPullWrite(w, r, ia, number)
 	if !ok {
@@ -283,6 +284,10 @@ func (s *apiServer) CreatePullRequestReview(w http.ResponseWriter, r *http.Reque
 	}
 	if _, err := tx.Exec(ctx, `UPDATE core.pull_requests SET updated_at = now() WHERE id = $1`, p.ID); err != nil {
 		writeIssueFailure(w, "aggiornamento della Pull Request non riuscito", err)
+		return
+	}
+	if err := s.emitReviewSubmitted(ctx, tx, ia, gs, p, reviewID, head); err != nil {
+		writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
 		return
 	}
 	if err := tx.Commit(ctx); err != nil {

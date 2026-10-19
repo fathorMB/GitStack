@@ -15,6 +15,8 @@ export interface ReferenceSource {
   repository: string;
   number: number;
   title: string;
+  /** PR8: la PR chiude questa issue al merge (parole chiave di C2 nel suo testo). */
+  willClose: boolean;
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
@@ -34,7 +36,8 @@ export function sourceOf(e: IssueEvent): ReferenceSource | null {
   const o = s as Record<string, unknown>;
   const number = typeof o.number === 'number' ? o.number : Number(o.number);
   if (!Number.isInteger(number) || !str(o.repository)) return null;
-  return { kind: str(o.kind) || 'issue', repository: str(o.repository), number, title: str(o.title) };
+  const willClose = (e.data as Record<string, unknown>).willClose === true;
+  return { kind: str(o.kind) || 'issue', repository: str(o.repository), number, title: str(o.title), willClose };
 }
 
 /** `refs/heads/main` -> `main`. */

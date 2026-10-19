@@ -12578,7 +12578,11 @@ components:
         `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha
         una storia diversa (V8); `credential`: avviso di sicurezza sulle credenziali dell'utente (cambio
         password, reset da un amministratore, nuovo token personale, nuova chiave SSH, token in scadenza, F13):
-        senza repo ne' issue, `event` e' `credential.<tipo>`, sempre anche per email se l'SMTP e' attivo.
+        senza repo ne' issue, `event` e' `credential.<tipo>`, sempre anche per email se l'SMTP e' attivo;
+        `review_requested`: all'utente e' stata chiesta la review di una Pull Request (PR11), con l'email attiva di
+        default come per `mentioned` e `assigned`. Le notifiche delle Pull Request riempiono `issue` con il numero
+        condiviso (I1), il titolo e lo `state` (`closed` anche se unita) e hanno `event` `pull_request.*`,
+        `pull_request_review.submitted` o `pull_request_comment.created`.
       enum:
         - assigned
         - mentioned
@@ -12589,6 +12593,7 @@ components:
         - webhook
         - mirror
         - credential
+        - review_requested
     NotificationRepo:
       type: object
       additionalProperties: false

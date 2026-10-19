@@ -269,10 +269,10 @@ Nella v1 non c'è l'azione di rinomina né di trasferimento (R3).
 
 Contratto fissato da GIT-258 (schemi `WebhookPullRequestPayload`,
 `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload` in
-`api/openapi.yaml`, callback di `createRepoWebhook`); la consegna vera arriva
-con gli item a valle. Valgono corpo comune, intestazioni, firma e tentativi
-di sopra; `X-GitStack-Event` ne è il nome. Il numero `number` di una PR è
-quello condiviso con le issues (I1).
+`api/openapi.yaml`, callback di `createRepoWebhook`), consegnato da GIT-265.
+Valgono corpo comune, intestazioni, firma, tentativi e Redeliver di sopra;
+`X-GitStack-Event` ne è il nome. Il numero `number` di una PR è quello
+condiviso con le issues (I1).
 
 | Evento | Quando | Valori di `action` | Campi in più |
 |---|---|---|---|
@@ -282,7 +282,11 @@ quello condiviso con le issues (I1).
 
 Si selezionano con `events` come gli altri (`WebhookEvent`). Nessuna
 consegna per i commenti sulle righe: arrivano dentro `pull_request_review`.
-Come per le issues, i campi sono quelli di quando il motore elabora l'evento.
+A differenza delle issues, `pullRequest`, `review` e `commitStatus` sono lo stato
+al momento dell'evento: li compone core nella transazione della modifica, quindi
+una consegna ritardata o una Redeliver mostrano la PR com'era allora. `synchronize`
+e `dismissed` arrivano dal push (consumer `core-pull-sync`): `dismissed` ha la
+review con `stale: true` e `countsAsApproval: false`.
 
 ## Da dove nascono
 

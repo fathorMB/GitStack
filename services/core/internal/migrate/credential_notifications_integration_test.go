@@ -25,7 +25,7 @@ func TestMigration0017_NotificheSulleCredenziali(t *testing.T) {
 	_, err := pool.Exec(ctx, ins, uuid.New(), user, "inventato")
 	wantCode(t, err, "23514")
 
-	if err := migrate.Down(ctx, pool, dsn, 5); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 6); err != nil {
 		t.Fatalf("down 0017: %v", err)
 	}
 	var n int

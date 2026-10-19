@@ -237,6 +237,10 @@ type occurrence struct {
 	name    string
 	repoID  uuid.UUID
 	issueID uuid.UUID
+	// pullID: la PR dell'evento (eventi di PR, pulls.go); uuid.Nil per le issues.
+	pullID uuid.UUID
+	// draft: la PR dell'evento è una bozza.
+	draft bool
 	// actor è chi ha agito; uuid.Nil = sistema (nessuno da escludere). Vale
 	// anche per le azioni fatte con un token personale: l'attore è sempre
 	// l'utente del token (C3).
@@ -255,6 +259,9 @@ type occurrence struct {
 }
 
 func (e *Engine) handle(ctx context.Context, tx pgx.Tx, ev outboxEvent) error {
+	if isPullEvent(ev.name) {
+		return e.handlePull(ctx, tx, ev)
+	}
 	switch ev.name {
 	case domainevents.IssueCreated, domainevents.IssueEdited, domainevents.IssueClosed,
 		domainevents.IssueReopened, domainevents.IssueAssigned:
@@ -588,17 +595,22 @@ func (e *Engine) insert(ctx context.Context, tx pgx.Tx, o occurrence, cands map[
 		if o.issueID != uuid.Nil {
 			issueID = &o.issueID
 		}
-		// Se il repo o la issue sono spariti nel frattempo (eliminazione
-		// definitiva) non c'è nulla da notificare.
+		var pullID *uuid.UUID
+		if o.pullID != uuid.Nil {
+			pullID = &o.pullID
+		}
+		// Se il repo, la issue o la PR sono spariti nel frattempo
+		// (eliminazione definitiva) non c'è nulla da notificare.
 		if _, err := tx.Exec(ctx, `INSERT INTO core.notifications
-				(id, user_id, reason, repo_id, issue_id, comment_id, actor_id, event_name, data, created_at, email_due_at)
+				(id, user_id, reason, repo_id, issue_id, comment_id, actor_id, event_name, data, created_at, email_due_at, pull_request_id)
 			SELECT $1, $2, $3, r.resource_id, i.id, c.id, $7, $8, $9, clock_timestamp(),
-				`+emailDueSQL+`
+				`+emailDueSQL+`, p.id
 			FROM core.repositories r
 			LEFT JOIN core.issues i ON i.id = $5 AND i.repo_id = r.resource_id
+			LEFT JOIN core.pull_requests p ON p.id = $12::uuid AND p.repo_id = r.resource_id
 			LEFT JOIN core.issue_comments c ON c.id = $6
-			WHERE r.resource_id = $4 AND ($5::uuid IS NULL OR i.id IS NOT NULL)`,
-			uuid.New(), u, cands[u], o.repoID, issueID, o.commentID, actor, o.name, data, emailOn, e.EmailWindow.Seconds()); err != nil {
+			WHERE r.resource_id = $4 AND ($5::uuid IS NULL OR i.id IS NOT NULL) AND ($12::uuid IS NULL OR p.id IS NOT NULL)`,
+			uuid.New(), u, cands[u], o.repoID, issueID, o.commentID, actor, o.name, data, emailOn, e.EmailWindow.Seconds(), pullID); err != nil {
 			return fmt.Errorf("scrittura della notifica: %w", err)
 		}
 	}
@@ -609,7 +621,7 @@ func (e *Engine) insert(ctx context.Context, tx pgx.Tx, o occurrence, cands map[
 // default: sì per menzioni e assegnazioni, no per gli altri tipi.
 const emailPrefSQL = `SELECT COALESCE(
 	(SELECT email_enabled FROM core.notification_preferences WHERE user_id = $1::uuid AND reason = $2::text),
-	$2::text IN ('mentioned', 'assigned'))`
+	$2::text IN ('mentioned', 'assigned', 'review_requested'))`
 
 // emailDueSQL: quando parte l'email di una notifica nuova (C5). Con l'email
 // attiva ($10) e un'altra email già in attesa per la stessa issue e lo stesso
@@ -617,6 +629,7 @@ const emailPrefSQL = `SELECT COALESCE(
 // finestra ($11, secondi). NULL = nessuna email.
 const emailDueSQL = `CASE WHEN $10::boolean THEN COALESCE(
 	(SELECT min(q.email_due_at) FROM core.notifications q
-		WHERE q.user_id = $2::uuid AND $5::uuid IS NOT NULL AND q.issue_id = $5::uuid
+		WHERE q.user_id = $2::uuid
+		AND (($5::uuid IS NOT NULL AND q.issue_id = $5::uuid) OR ($12::uuid IS NOT NULL AND q.pull_request_id = $12::uuid))
 		AND q.email_due_at IS NOT NULL AND q.email_sent_at IS NULL),
 	clock_timestamp() + $11::float8 * interval '1 second') END`
