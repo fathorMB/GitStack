@@ -12,6 +12,7 @@ import { useSettingsUser } from './SettingsLayout';
 const TYPES: { key: string; title: string; hint: string; reasons: string[] }[] = [
   { key: 'mentions', title: 'Mentions', hint: 'Someone writes @you or a team you belong to', reasons: ['mentioned'] },
   { key: 'assignments', title: 'Assignments', hint: 'An issue is assigned to you', reasons: ['assigned'] },
+  { key: 'reviews', title: 'Review requests', hint: 'Someone asks you to review a pull request', reasons: ['review_requested'] },
   {
     key: 'activity',
     title: 'Activity on issues you follow',

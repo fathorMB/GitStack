@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"slices"
 	"sort"
@@ -20,6 +21,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/events"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/notify"
+	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/webhooks"
 	"github.com/google/uuid"
 )
@@ -188,6 +190,27 @@ func (e *pevEnv) pushed(repoID uuid.UUID, branch, before, after string) {
 	if err := e.push(context.Background(), pkgevents.Envelope{}, p); err != nil {
 		e.t.Fatalf("consumer delle PR: %v", err)
 	}
+}
+
+func (e *pevEnv) hookIDOf(rec *httptest.ResponseRecorder) string {
+	e.t.Helper()
+	e.want(rec, http.StatusCreated, "")
+	var w openapi.Webhook
+	if err := json.Unmarshal(rec.Body.Bytes(), &w); err != nil {
+		e.t.Fatalf("webhook non valido: %v: %s", err, rec.Body.String())
+	}
+	return w.Id.String()
+}
+
+func (e *pevEnv) deliveries(repo, hook string) []openapi.WebhookDeliverySummary {
+	e.t.Helper()
+	rec := e.do(http.MethodGet, "/repos/alice/"+repo+"/hooks/"+hook+"/deliveries", "alice", "")
+	e.want(rec, http.StatusOK, "")
+	var l openapi.WebhookDeliveryList
+	if err := json.Unmarshal(rec.Body.Bytes(), &l); err != nil {
+		e.t.Fatal(err)
+	}
+	return l.Items
 }
 
 func (e *pevEnv) count(q string, args ...any) int {

@@ -22,6 +22,18 @@ describe('referenced_from (C1)', () => {
     expect(within(row).getByRole('link', { name: 'acme/web#7' })).toHaveAttribute('href', '/acme/web/issues/7');
   });
 
+  it('una PR con parola chiave mostra «PR #n will close this issue» (PR8)', () => {
+    inRouter(<ReferencedFromEvent e={ev('r', 'referenced_from', { willClose: true, keyword: 'fix', source: { kind: 'pull_request', repository: 'acme/web', number: 12, title: 'Fix ssh' } })} />);
+    const row = screen.getByTestId('event-referenced_from');
+    expect(row).toHaveTextContent('PR #12 will close this issue');
+    expect(row).toHaveAttribute('data-will-close', 'true');
+  });
+
+  it('una PR che cita soltanto la issue resta «referenced this issue from»', () => {
+    inRouter(<ReferencedFromEvent e={ev('r', 'referenced_from', { source: { kind: 'pull_request', repository: 'acme/web', number: 12, title: 'Fix ssh' } })} />);
+    expect(screen.getByTestId('event-referenced_from')).toHaveTextContent('referenced this issue from acme/web#12');
+  });
+
   it('senza source valida non rende nulla', () => {
     inRouter(<ReferencedFromEvent e={ev('r', 'referenced_from', {})} />);
     expect(screen.queryByTestId('event-referenced_from')).not.toBeInTheDocument();

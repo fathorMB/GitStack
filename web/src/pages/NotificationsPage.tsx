@@ -32,6 +32,7 @@ const REASON_LABEL: Record<NotificationReason, string> = {
   webhook: 'Webhook',
   mirror: 'Mirror',
   credential: 'Security',
+  review_requested: 'Review requested',
 };
 
 function initials(name: string): string {
