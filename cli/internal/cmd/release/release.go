@@ -66,7 +66,7 @@ func newList(f *cmdutil.Factory) *cobra.Command {
 		if e != nil {
 			return e
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		var v gitstack.ReleaseList
 		if e = decode(resp.Body, &v); e != nil {
 			return e
@@ -113,7 +113,7 @@ func newView(f *cmdutil.Factory) *cobra.Command {
 		if e != nil {
 			return e
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		var v gitstack.Release
 		if e = decode(resp.Body, &v); e != nil {
 			return e
@@ -151,7 +151,7 @@ func newCreate(f *cmdutil.Factory) *cobra.Command {
 		if e != nil {
 			return e
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		var v gitstack.Release
 		if e = decode(resp.Body, &v); e != nil {
 			return e
@@ -181,7 +181,7 @@ func newUpload(f *cmdutil.Factory) *cobra.Command {
 		if e != nil {
 			return e
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 		cl, e := client(f)
 		if e != nil {
 			return e
@@ -191,7 +191,7 @@ func newUpload(f *cmdutil.Factory) *cobra.Command {
 		if e != nil {
 			return e
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		return nil
 	}}
 	return c
@@ -222,7 +222,7 @@ func newDownload(f *cmdutil.Factory) *cobra.Command {
 		if e != nil {
 			return e
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		dst, e := os.Create(out)
 		if e != nil {
 			return e
