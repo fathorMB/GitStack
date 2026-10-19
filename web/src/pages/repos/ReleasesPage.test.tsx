@@ -58,7 +58,8 @@ function setup(write: boolean) {
   );
 }
 
-describe('pagina Releases (mockup B7)', () => {
+// Timeout ampio: sotto carico i test con userEvent superano i 5 s di default.
+describe('pagina Releases (mockup B7)', { timeout: 30000 }, () => {
   beforeEach(() => {
     vi.mocked(fetchReleases).mockReset();
     vi.mocked(createRelease).mockReset();
