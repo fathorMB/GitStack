@@ -30,3 +30,9 @@ export function messageBody(c: CommitSummary): string {
   const nl = msg.indexOf('\n');
   return nl < 0 ? '' : msg.slice(nl + 1).trim();
 }
+
+/** Link ai dettagli di uno stato (PR9): solo http/https, come vuole il server; altrimenti null. */
+export function safeExternalUrl(u: string | undefined): string | null {
+  if (!u) return null;
+  return /^https?:\/\//i.test(u) ? u : null;
+}

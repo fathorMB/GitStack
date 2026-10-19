@@ -2,11 +2,13 @@ import { Bot, Check, Copy, GitCommitHorizontal, History, Tag as TagIcon } from '
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Button, ErrorAlert } from '../../components';
+import { Button, CommitStatusBadge, ErrorAlert } from '../../components';
 import { commitHref, commitsHref, fetchBranches, fetchCommits, fetchTags, splitRefPath } from '../../lib/codeApi';
 import type { CommitSummary } from '../../lib/codeApi';
 import { groupByDay } from '../../lib/commitView';
 import { timeAgo } from '../../lib/format';
+import { fetchCommitStatus } from '../../lib/pullsApi';
+import type { CombinedCommitStatus } from '../../lib/pullsApi';
 import type { Repository } from '../../lib/reposApi';
 import { useLoad } from '../../lib/useLoad';
 import { RefSwitcher } from './CodeBrowser';
@@ -180,12 +182,19 @@ function CommitRow({ owner, repo, commit, tags }: { owner: string; repo: string;
           {t}
         </span>
       ))}
+      <RowStatus owner={owner} repo={repo} sha={commit.sha} />
       <Link className="sha" to={commitHref(owner, repo, commit.sha)}>
         {short}
       </Link>
       <CopySha sha={commit.sha} />
     </div>
   );
+}
+
+// Stato di sintesi del commit (PR9) nella lista. Se non arriva (501 prima del backend) non c'e' badge, e non e' un errore.
+function RowStatus({ owner, repo, sha }: { owner: string; repo: string; sha: string }) {
+  const { data } = useLoad<CombinedCommitStatus | null>(() => fetchCommitStatus(owner, repo, sha).catch(() => null));
+  return <CommitStatusBadge state={data?.state ?? 'none'} />;
 }
 
 function CopySha({ sha }: { sha: string }) {

@@ -78,6 +78,18 @@ func TestSearchIssues(t *testing.T) {
 	}
 }
 
+// is:pr (PR10): gs passa la query al server così com'è; il filtro lo applica il server (GIT-266).
+func TestSearchIssuesPassaIsPr(t *testing.T) {
+	routes := map[string]string{"/search/issues": `{"items":[` + issueJSON(7, "Correggi") + `],"page":1,"perPage":30,"total":1}`}
+	r := run(t, routes, "search", "issues", "is:pr", "is:open", "review:required")
+	if r.code != 0 || len(r.queries) != 1 {
+		t.Fatalf("%+v", r)
+	}
+	if q := r.queries[0]; !strings.Contains(q, "q=is%3Apr+is%3Aopen+review%3Arequired") {
+		t.Errorf("query: %s", q)
+	}
+}
+
 func TestSearchIssuesMostraSeTroncato(t *testing.T) {
 	routes := map[string]string{"/search/issues": `{"items":[` + issueJSON(1, "Uno") + `],"page":1,"perPage":1,"total":40}`}
 	r := run(t, routes, "search", "issues", "x", "-L", "1")
