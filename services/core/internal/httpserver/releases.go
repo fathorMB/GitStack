@@ -1,0 +1,272 @@
+package httpserver
+
+// Release REL1 (GIT-289). I metadati sono nel database, perciò entrano nel
+// backup; gli asset usano il volume degli allegati e restano fuori dal dump.
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"io"
+	"mime"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/fathorMB/GitStack/services/core/internal/openapi"
+	"github.com/google/uuid"
+)
+
+const maxReleaseAssetBytes int64 = 2 << 30
+
+type releaseRow struct {
+	id                uuid.UUID
+	tag, name, body   string
+	draft, prerelease bool
+	createdAt         time.Time
+	publishedAt       *time.Time
+}
+
+func releaseAccess(w http.ResponseWriter, r *http.Request, s *apiServer, o, n string, write bool) (issueAccess, bool) {
+	ia, ok := s.issueAccessFor(w, r, o, n)
+	if !ok {
+		return ia, false
+	}
+	if write && (!ia.write || ia.rejectArchived(w)) {
+		if !ia.write {
+			writeError(w, http.StatusNotFound, "not_found", "Release non trovata.")
+		}
+		return ia, false
+	}
+	return ia, true
+}
+
+func scanRelease(row interface{ Scan(...any) error }) (releaseRow, error) {
+	var x releaseRow
+	err := row.Scan(&x.id, &x.tag, &x.name, &x.body, &x.draft, &x.prerelease, &x.createdAt, &x.publishedAt)
+	return x, err
+}
+func (s *apiServer) apiRelease(ctx context.Context, x releaseRow) (openapi.Release, error) {
+	rows, err := s.pool.Query(ctx, `SELECT id, name, sha256, size_bytes FROM core.release_assets WHERE release_id=$1 ORDER BY created_at, id`, x.id)
+	if err != nil {
+		return openapi.Release{}, err
+	}
+	defer rows.Close()
+	assets := []openapi.ReleaseAsset{}
+	for rows.Next() {
+		var a openapi.ReleaseAsset
+		if err := rows.Scan(&a.Id, &a.Name, &a.Sha256, &a.SizeBytes); err != nil {
+			return openapi.Release{}, err
+		}
+		assets = append(assets, a)
+	}
+	if err := rows.Err(); err != nil {
+		return openapi.Release{}, err
+	}
+	latest := !x.draft && !x.prerelease && x.publishedAt != nil
+	if latest {
+		err = s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM core.releases WHERE repo_id=(SELECT repo_id FROM core.releases WHERE id=$1) AND id<>$1 AND NOT draft AND NOT prerelease AND published_at > $2)`, x.id, x.publishedAt).Scan(&latest)
+		latest = !latest
+	}
+	return openapi.Release{Id: x.id, TagName: x.tag, Name: x.name, Body: x.body, Draft: x.draft, Prerelease: x.prerelease, CreatedAt: x.createdAt, PublishedAt: x.publishedAt, Latest: latest, Assets: assets}, err
+}
+func decodeRelease(w http.ResponseWriter, r *http.Request, v any) bool {
+	d := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
+	d.DisallowUnknownFields()
+	if err := d.Decode(v); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_body", "Corpo JSON non valido.")
+		return false
+	}
+	return true
+}
+
+func (s *apiServer) ListReleases(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
+	ia, ok := releaseAccess(w, r, s, string(o), string(n), false)
+	if !ok {
+		return
+	}
+	rows, err := s.pool.Query(r.Context(), `SELECT id,tag_name,name,body,draft,prerelease,created_at,published_at FROM core.releases WHERE repo_id=$1 ORDER BY created_at DESC`, ia.repo.ID)
+	if err != nil {
+		writeError(w, 500, "internal_error", "Lettura delle release non riuscita.")
+		return
+	}
+	defer rows.Close()
+	out := openapi.ReleaseList{Items: []openapi.Release{}}
+	for rows.Next() {
+		x, e := scanRelease(rows)
+		if e != nil {
+			writeError(w, 500, "internal_error", "Lettura delle release non riuscita.")
+			return
+		}
+		a, e := s.apiRelease(r.Context(), x)
+		if e != nil {
+			writeError(w, 500, "internal_error", "Lettura delle release non riuscita.")
+			return
+		}
+		out.Items = append(out.Items, a)
+	}
+	writeJSON(w, 200, out)
+}
+func (s *apiServer) CreateRelease(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
+	ia, ok := releaseAccess(w, r, s, string(o), string(n), true)
+	if !ok {
+		return
+	}
+	var in openapi.CreateReleaseInput
+	if !decodeRelease(w, r, &in) {
+		return
+	}
+	if strings.TrimSpace(in.TagName) == "" || strings.TrimSpace(in.Name) == "" {
+		writeError(w, 400, "invalid_body", "tagName e name sono obbligatori.")
+		return
+	}
+	draft := in.Draft != nil && *in.Draft
+	pre := in.Prerelease != nil && *in.Prerelease
+	body := ""
+	if in.Body != nil {
+		body = *in.Body
+	}
+	id := uuid.New()
+	now := s.now()
+	var pub *time.Time
+	if !draft {
+		pub = &now
+	}
+	x, err := scanRelease(s.pool.QueryRow(r.Context(), `INSERT INTO core.releases(id,repo_id,tag_name,name,body,draft,prerelease,created_by,created_at,published_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id,tag_name,name,body,draft,prerelease,created_at,published_at`, id, ia.repo.ID, in.TagName, in.Name, body, draft, pre, ia.userID, now, pub))
+	if err != nil {
+		writeError(w, 409, "conflict", "Esiste già una release per questo tag.")
+		return
+	}
+	out, _ := s.apiRelease(r.Context(), x)
+	writeJSON(w, 201, out)
+}
+func (s *apiServer) GetRelease(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam) {
+	ia, ok := releaseAccess(w, r, s, string(o), string(n), false)
+	if !ok {
+		return
+	}
+	x, err := scanRelease(s.pool.QueryRow(r.Context(), `SELECT id,tag_name,name,body,draft,prerelease,created_at,published_at FROM core.releases WHERE id=$1 AND repo_id=$2`, uuid.UUID(id), ia.repo.ID))
+	if err != nil {
+		writeError(w, 404, "not_found", "Release non trovata.")
+		return
+	}
+	out, err := s.apiRelease(r.Context(), x)
+	if err != nil {
+		writeError(w, 500, "internal_error", "Lettura della release non riuscita.")
+		return
+	}
+	writeJSON(w, 200, out)
+}
+func (s *apiServer) UpdateRelease(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam) {
+	ia, ok := releaseAccess(w, r, s, string(o), string(n), true)
+	if !ok {
+		return
+	}
+	var in openapi.UpdateReleaseInput
+	if !decodeRelease(w, r, &in) {
+		return
+	}
+	x, err := scanRelease(s.pool.QueryRow(r.Context(), `UPDATE core.releases SET name=COALESCE($3,name),body=COALESCE($4,body),draft=COALESCE($5,draft),prerelease=COALESCE($6,prerelease),published_at=CASE WHEN COALESCE($5,draft) THEN NULL WHEN published_at IS NULL THEN $7 ELSE published_at END WHERE id=$1 AND repo_id=$2 RETURNING id,tag_name,name,body,draft,prerelease,created_at,published_at`, uuid.UUID(id), ia.repo.ID, in.Name, in.Body, in.Draft, in.Prerelease, s.now()))
+	if err != nil {
+		writeError(w, 404, "not_found", "Release non trovata.")
+		return
+	}
+	out, _ := s.apiRelease(r.Context(), x)
+	writeJSON(w, 200, out)
+}
+func (s *apiServer) DeleteRelease(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam) {
+	ia, ok := releaseAccess(w, r, s, string(o), string(n), true)
+	if !ok {
+		return
+	}
+	tag, err := s.pool.Exec(r.Context(), `DELETE FROM core.releases WHERE id=$1 AND repo_id=$2`, uuid.UUID(id), ia.repo.ID)
+	if err != nil {
+		writeError(w, 500, "internal_error", "Eliminazione della release non riuscita.")
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		writeError(w, 404, "not_found", "Release non trovata.")
+		return
+	}
+	w.WriteHeader(204)
+}
+
+func (s *apiServer) UploadReleaseAsset(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam, p openapi.UploadReleaseAssetParams) {
+	ia, ok := releaseAccess(w, r, s, string(o), string(n), true)
+	if !ok {
+		return
+	}
+	if s.attachments.Disk == nil {
+		writeError(w, 503, "attachments_unavailable", "Volume degli allegati non configurato.")
+		return
+	}
+	if strings.TrimSpace(p.Name) == "" {
+		writeError(w, 400, "invalid_name", "name è obbligatorio.")
+		return
+	}
+	var exists bool
+	if err := s.pool.QueryRow(r.Context(), `SELECT EXISTS(SELECT 1 FROM core.releases WHERE id=$1 AND repo_id=$2)`, uuid.UUID(id), ia.repo.ID).Scan(&exists); err != nil || !exists {
+		writeError(w, 404, "not_found", "Release non trovata.")
+		return
+	}
+	if r.ContentLength > maxReleaseAssetBytes {
+		writeError(w, 413, "asset_too_large", "Allegato oltre 2 GB.")
+		return
+	}
+	aid := uuid.New()
+	ctype, size, err := s.attachments.Disk.Save(ia.repo.ID, aid, http.MaxBytesReader(w, r.Body, maxReleaseAssetBytes), maxReleaseAssetBytes)
+	if err != nil {
+		writeError(w, 422, "invalid_asset", "Impossibile salvare l'allegato.")
+		return
+	}
+	_ = ctype
+	f, err := s.attachments.Disk.Open(ia.repo.ID, aid)
+	if err != nil {
+		writeError(w, 500, "internal_error", "Impossibile calcolare SHA-256.")
+		return
+	}
+	h := sha256.New()
+	_, err = io.Copy(h, f)
+	_ = f.Close()
+	if err != nil {
+		_ = s.attachments.Disk.Remove(ia.repo.ID, aid)
+		writeError(w, 500, "internal_error", "Impossibile calcolare SHA-256.")
+		return
+	}
+	sum := hex.EncodeToString(h.Sum(nil))
+	_, err = s.pool.Exec(r.Context(), `INSERT INTO core.release_assets(id,release_id,name,sha256,size_bytes,created_at) VALUES($1,$2,$3,$4,$5,$6)`, aid, uuid.UUID(id), attachmentFilename(p.Name), sum, size, s.now())
+	if err != nil {
+		_ = s.attachments.Disk.Remove(ia.repo.ID, aid)
+		writeError(w, 409, "conflict", "Esiste già un allegato con questo nome.")
+		return
+	}
+	writeJSON(w, 201, openapi.ReleaseAsset{Id: aid, Name: attachmentFilename(p.Name), Sha256: sum, SizeBytes: size})
+}
+func (s *apiServer) DownloadReleaseAsset(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam, aid openapi.AssetIdParam) {
+	ia, ok := releaseAccess(w, r, s, string(o), string(n), false)
+	if !ok {
+		return
+	}
+	var name, ctype string
+	var size int64
+	err := s.pool.QueryRow(r.Context(), `SELECT a.name,a.size_bytes FROM core.release_assets a JOIN core.releases x ON x.id=a.release_id WHERE a.id=$1 AND a.release_id=$2 AND x.repo_id=$3`, uuid.UUID(aid), uuid.UUID(id), ia.repo.ID).Scan(&name, &size)
+	if err != nil {
+		writeError(w, 404, "not_found", "Allegato non trovato.")
+		return
+	}
+	f, err := s.attachments.Disk.Open(ia.repo.ID, uuid.UUID(aid))
+	if err != nil {
+		writeError(w, 404, "not_found", "Allegato non trovato.")
+		return
+	}
+	defer f.Close()
+	ctype = "application/octet-stream"
+	w.Header().Set("Content-Type", ctype)
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": name}))
+	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(200)
+	_, _ = io.Copy(w, f)
+}
