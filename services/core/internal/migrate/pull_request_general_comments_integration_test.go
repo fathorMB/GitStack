@@ -54,7 +54,7 @@ func TestMigration0021_CommentiGenerali(t *testing.T) {
 	mustExec(t, pool, `INSERT INTO core.pull_request_comments (id, thread_id, pull_request_id, author_id, body) VALUES ($1, $2, $3, $4, 'resta')`, uuid.New(), th2, pr, user)
 
 	// Giù con i commenti generali e il segnaposto presenti.
-	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
 		t.Fatalf("down 0021 con commenti generali: %v", err)
 	}
 	var total, generalLeft, hasCols int
