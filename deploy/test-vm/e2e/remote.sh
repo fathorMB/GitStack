@@ -179,6 +179,7 @@ jetstream_count() {
   # stdout e stderr. Il pod gira fino in fondo, si attende la fase finale e
   # il JSON si legge da 'kubectl logs' (solo stdout del container). Il pod
   # viene cancellato dal trap EXIT dello script, anche in caso di errore.
+  # shellcheck disable=SC2016 # lo script tra apici singoli lo espande la sh del pod ($1 passato come argomento), non questa shell
   if ! k3s_kubectl run "${pod_name}" --namespace "${ns}" --restart=Never \
       --labels="app.kubernetes.io/name=core,app.kubernetes.io/instance=${release},app.kubernetes.io/part-of=gitstack" \
       --image="${NATS_BOX_IMAGE}" --command -- \
