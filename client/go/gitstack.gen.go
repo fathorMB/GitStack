@@ -2698,6 +2698,16 @@ type CombinedCommitStatus struct {
 	TotalCount int            `json:"totalCount"`
 }
 
+// CombinedCommitStatusBatch defines model for CombinedCommitStatusBatch.
+type CombinedCommitStatusBatch struct {
+	Items []struct {
+		Sha string `json:"sha"`
+
+		// State Sintesi degli ultimi stati dei contesti (PR9): `failure` o `error` se uno lo e', altrimenti `pending` se uno e' in corso, altrimenti `success`; `none` se non ce ne sono.
+		State CombinedCommitStatusState `json:"state"`
+	} `json:"items"`
+}
+
 // CombinedCommitStatusState Sintesi degli ultimi stati dei contesti (PR9): `failure` o `error` se uno lo e', altrimenti `pending` se uno e' in corso, altrimenti `success`; `none` se non ce ne sono.
 type CombinedCommitStatusState string
 
@@ -6033,6 +6043,11 @@ type GetRepositoryCommitsParams struct {
 	PerPage *CommitPerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// ListCombinedCommitStatusesParams defines parameters for ListCombinedCommitStatuses.
+type ListCombinedCommitStatusesParams struct {
+	Sha []string `form:"sha" json:"sha"`
+}
+
 // GetRepositoryCommitParams defines parameters for GetRepositoryCommit.
 type GetRepositoryCommitParams struct {
 	// Path Se presente, `files` porta solo questo file (core filtra la risposta del servizio git). Con `listOnly` il patch non c'e': per il diff intero si usa `getRepositoryCommitPatch`. 404 se il file non e' nel commit.
@@ -7568,6 +7583,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/commits (the `GetRepositoryCommits` operationId).
 	GetRepositoryCommits(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryCommitsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListCombinedCommitStatuses Stato complessivo di piu' commit insieme
+	//
+	// Versione batch di `getCombinedCommitStatus` per i badge della lista dei commit (una richiesta per pagina invece di una per commit). `sha` si ripete (`?sha=…&sha=…`), da 1 a 100 sha completi (40-64 caratteri esadecimali minuscoli); oltre 100, o uno sha non valido, risponde 422. Risponde un elemento per ogni sha distinto, nell'ordine della richiesta, con lo stesso `state` della sintesi singola (`none` se il commit non ha stati o non esiste nel repo: il batch non risolve gli sha). Stessi permessi in lettura della sintesi singola: un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/commits/statuses (the `ListCombinedCommitStatuses` operationId).
+	ListCombinedCommitStatuses(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListCombinedCommitStatusesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRepositoryCommit Dettaglio di un commit con diff per file
 	//
@@ -11091,6 +11113,23 @@ func (c *Client) GetRepositoryBranches(ctx context.Context, owner RepoOwnerParam
 // Corresponds with GET /repos/{owner}/{repo}/commits (the `GetRepositoryCommits` operationId).
 func (c *Client) GetRepositoryCommits(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryCommitsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetRepositoryCommitsRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListCombinedCommitStatuses Stato complessivo di piu' commit insieme
+//
+// Versione batch di `getCombinedCommitStatus` per i badge della lista dei commit (una richiesta per pagina invece di una per commit). `sha` si ripete (`?sha=…&sha=…`), da 1 a 100 sha completi (40-64 caratteri esadecimali minuscoli); oltre 100, o uno sha non valido, risponde 422. Risponde un elemento per ogni sha distinto, nell'ordine della richiesta, con lo stesso `state` della sintesi singola (`none` se il commit non ha stati o non esiste nel repo: il batch non risolve gli sha). Stessi permessi in lettura della sintesi singola: un repo che l'utente non puo' leggere risponde 404.
+//
+// Corresponds with GET /repos/{owner}/{repo}/commits/statuses (the `ListCombinedCommitStatuses` operationId).
+func (c *Client) ListCombinedCommitStatuses(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListCombinedCommitStatusesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListCombinedCommitStatusesRequest(c.Server, owner, repo, params)
 	if err != nil {
 		return nil, err
 	}
@@ -18945,6 +18984,74 @@ func NewGetRepositoryCommitsRequest(server string, owner RepoOwnerParam, repo Re
 		if params.PerPage != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListCombinedCommitStatusesRequest constructs an http.Request for the ListCombinedCommitStatuses method
+func NewListCombinedCommitStatusesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *ListCombinedCommitStatusesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/commits/statuses", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Sha != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "sha", params.Sha, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -28100,6 +28207,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /repos/{owner}/{repo}/commits (the `GetRepositoryCommits` operationId).
 	GetRepositoryCommitsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryCommitsParams, reqEditors ...RequestEditorFn) (*GetRepositoryCommitsResponse, error)
 
+	// ListCombinedCommitStatusesWithResponse Stato complessivo di piu' commit insieme
+	//
+	// Versione batch di `getCombinedCommitStatus` per i badge della lista dei commit (una richiesta per pagina invece di una per commit). `sha` si ripete (`?sha=…&sha=…`), da 1 a 100 sha completi (40-64 caratteri esadecimali minuscoli); oltre 100, o uno sha non valido, risponde 422. Risponde un elemento per ogni sha distinto, nell'ordine della richiesta, con lo stesso `state` della sintesi singola (`none` se il commit non ha stati o non esiste nel repo: il batch non risolve gli sha). Stessi permessi in lettura della sintesi singola: un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/commits/statuses (the `ListCombinedCommitStatuses` operationId).
+	ListCombinedCommitStatusesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListCombinedCommitStatusesParams, reqEditors ...RequestEditorFn) (*ListCombinedCommitStatusesResponse, error)
+
 	// GetRepositoryCommitWithResponse Dettaglio di un commit con diff per file
 	//
 	// Messaggio, autore e diff per file (mockup 10), con i limiti progressivi della regola B6 (costanti in `x-code-read-limits`; le righe sono quelle cambiate, aggiunte piu' tolte). Un file e' `collapsed` (chiuso di default) con `collapseReason` `large` se ha oltre 500 righe cambiate, `lock` o `generated` per un file di lock o generato (elenco in docs/repos.md); il patch c'e' comunque, se non e' stato omesso per i limiti. Oltre 300 file o 20 000 righe cambiate in totale `listOnly` e' true: solo l'elenco dei file con righe aggiunte e tolte, senza patch (il diff intero si scarica con `getRepositoryCommitPatch`). Resta il limite di 1 MB di patch per file (`truncated`). `ignoreWhitespace` calcola il diff con `git diff -w` (`ignoreWhitespace` e' riportato nella risposta). `path` restringe `files` a quel file. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
@@ -36215,6 +36331,89 @@ func (r GetRepositoryCommitsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetRepositoryCommitsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListCombinedCommitStatusesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CombinedCommitStatusBatch
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListCombinedCommitStatusesResponse) GetJSON200() *CombinedCommitStatusBatch {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListCombinedCommitStatusesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListCombinedCommitStatusesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListCombinedCommitStatusesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListCombinedCommitStatusesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListCombinedCommitStatusesResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListCombinedCommitStatusesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListCombinedCommitStatusesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListCombinedCommitStatusesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListCombinedCommitStatusesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListCombinedCommitStatusesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -48834,6 +49033,21 @@ func (c *ClientWithResponses) GetRepositoryCommitsWithResponse(ctx context.Conte
 	return ParseGetRepositoryCommitsResponse(rsp)
 }
 
+// ListCombinedCommitStatusesWithResponse Stato complessivo di piu' commit insieme
+//
+// Versione batch di `getCombinedCommitStatus` per i badge della lista dei commit (una richiesta per pagina invece di una per commit). `sha` si ripete (`?sha=…&sha=…`), da 1 a 100 sha completi (40-64 caratteri esadecimali minuscoli); oltre 100, o uno sha non valido, risponde 422. Risponde un elemento per ogni sha distinto, nell'ordine della richiesta, con lo stesso `state` della sintesi singola (`none` se il commit non ha stati o non esiste nel repo: il batch non risolve gli sha). Stessi permessi in lettura della sintesi singola: un repo che l'utente non puo' leggere risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/commits/statuses (the `ListCombinedCommitStatuses` operationId).
+func (c *ClientWithResponses) ListCombinedCommitStatusesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListCombinedCommitStatusesParams, reqEditors ...RequestEditorFn) (*ListCombinedCommitStatusesResponse, error) {
+	rsp, err := c.ListCombinedCommitStatuses(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListCombinedCommitStatusesResponse(rsp)
+}
+
 // GetRepositoryCommitWithResponse Dettaglio di un commit con diff per file
 //
 // Messaggio, autore e diff per file (mockup 10), con i limiti progressivi della regola B6 (costanti in `x-code-read-limits`; le righe sono quelle cambiate, aggiunte piu' tolte). Un file e' `collapsed` (chiuso di default) con `collapseReason` `large` se ha oltre 500 righe cambiate, `lock` o `generated` per un file di lock o generato (elenco in docs/repos.md); il patch c'e' comunque, se non e' stato omesso per i limiti. Oltre 300 file o 20 000 righe cambiate in totale `listOnly` e' true: solo l'elenco dei file con righe aggiunte e tolte, senza patch (il diff intero si scarica con `getRepositoryCommitPatch`). Resta il limite di 1 MB di patch per file (`truncated`). `ignoreWhitespace` calcola il diff con `git diff -w` (`ignoreWhitespace` e' riportato nella risposta). `path` restringe `files` a quel file. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
@@ -56788,6 +57002,74 @@ func ParseGetRepositoryCommitsResponse(rsp *http.Response) (*GetRepositoryCommit
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListCombinedCommitStatusesResponse parses an HTTP response from a ListCombinedCommitStatusesWithResponse call
+func ParseListCombinedCommitStatusesResponse(rsp *http.Response) (*ListCombinedCommitStatusesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListCombinedCommitStatusesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CombinedCommitStatusBatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError

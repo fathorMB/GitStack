@@ -16,11 +16,11 @@ vi.mock('../../lib/codeApi', async (orig) => ({
   fetchBranches: vi.fn(),
   fetchTags: vi.fn(),
 }));
-vi.mock('../../lib/pullsApi', async (orig) => ({ ...(await orig<typeof import('../../lib/pullsApi')>()), fetchCommitStatus: vi.fn() }));
+vi.mock('../../lib/pullsApi', async (orig) => ({ ...(await orig<typeof import('../../lib/pullsApi')>()), fetchCommitStatus: vi.fn(), fetchCommitStatuses: vi.fn() }));
 
 import { fetchSession } from '../../lib/authApi';
 import { fetchBranches, fetchCommit, fetchCommits, fetchTags } from '../../lib/codeApi';
-import { fetchCommitStatus } from '../../lib/pullsApi';
+import { fetchCommitStatus, fetchCommitStatuses } from '../../lib/pullsApi';
 import { fetchRepo } from '../../lib/reposApi';
 
 const SHA = 'a'.repeat(40);
@@ -127,21 +127,34 @@ describe('stati dei commit (PR9) nella vista commit e nella lista', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('lista dei commit: badge di sintesi per riga', async () => {
-    vi.mocked(fetchCommits).mockResolvedValue({ items: [commit()], page: 1, perPage: 30, hasMore: false });
-    vi.mocked(fetchCommitStatus).mockResolvedValue(status({ state: 'success' }));
+  it('lista dei commit: una sola richiesta per pagina e il badge giusto su ogni riga', async () => {
+    const SHA2 = 'b'.repeat(40);
+    const SHA3 = 'c'.repeat(40);
+    vi.mocked(fetchCommits).mockResolvedValue({
+      items: [commit(), commit({ sha: SHA2, subject: 'fix: second' }), commit({ sha: SHA3, subject: 'chore: third' })],
+      page: 1,
+      perPage: 30,
+      hasMore: false,
+    });
+    vi.mocked(fetchCommitStatuses).mockResolvedValue({ [SHA]: 'success', [SHA2]: 'failure', [SHA3]: 'none' });
     renderAt('/acme/api/commits');
-    const link = await screen.findByRole('link', { name: 'feat: checks' });
-    const row = link.closest('.list-row') as HTMLElement;
-    expect(await within(row).findByText('Success')).toBeInTheDocument();
+    const rowOf = async (subject: string) => (await screen.findByRole('link', { name: subject })).closest('.list-row') as HTMLElement;
+    expect(await within(await rowOf('feat: checks')).findByText('Success')).toBeInTheDocument();
+    expect(await within(await rowOf('fix: second')).findByText('Failure')).toBeInTheDocument();
+    expect(within(await rowOf('chore: third')).queryByText(/Success|Failure|Pending|Error/)).toBeNull();
+    expect(fetchCommitStatuses).toHaveBeenCalledTimes(1);
+    expect(fetchCommitStatuses).toHaveBeenCalledWith('acme', 'api', [SHA, SHA2, SHA3]);
+    expect(fetchCommitStatus).not.toHaveBeenCalled();
   });
 
-  it('lista dei commit: senza stati (none) o con errore non mostra badge', async () => {
+  it('lista dei commit: se il batch fallisce non c\'e\' badge e nessun errore', async () => {
     vi.mocked(fetchCommits).mockResolvedValue({ items: [commit()], page: 1, perPage: 30, hasMore: false });
-    vi.mocked(fetchCommitStatus).mockRejectedValue(new Error('501'));
+    vi.mocked(fetchCommitStatuses).mockRejectedValue(new Error('501'));
     renderAt('/acme/api/commits');
     const link = await screen.findByRole('link', { name: 'feat: checks' });
     const row = link.closest('.list-row') as HTMLElement;
+    await vi.waitFor(() => expect(fetchCommitStatuses).toHaveBeenCalled());
     expect(within(row).queryByText(/Success|Failure|Pending|Error/)).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });

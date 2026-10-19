@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -277,6 +278,73 @@ func (s *apiServer) ListCommitStatuses(w http.ResponseWriter, r *http.Request, o
 		return
 	}
 	writeJSON(w, http.StatusOK, openapi.CommitStatusList{Items: items, Page: page, PerPage: perPage, Total: total})
+}
+
+// maxBatchStatusShas è il tetto di sha per ListCombinedCommitStatuses.
+const maxBatchStatusShas = 100
+
+var batchShaRe = regexp.MustCompile(`^[0-9a-f]{40,64}$`)
+
+// ListCombinedCommitStatuses implementa GET …/commits/statuses?sha=…: la
+// sintesi di getCombinedCommitStatus per più sha con una sola query. Non
+// risolve gli sha (nessuna chiamata a git): uno sha senza stati o inesistente
+// vale `none`.
+func (s *apiServer) ListCombinedCommitStatuses(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, params openapi.ListCombinedCommitStatusesParams) {
+	ia, ok := s.issueAccessFor(w, r, owner, name)
+	if !ok {
+		return
+	}
+	if len(params.Sha) == 0 {
+		writeError(w, http.StatusUnprocessableEntity, "validation_failed", "Serve almeno uno sha.")
+		return
+	}
+	if len(params.Sha) > maxBatchStatusShas {
+		writeError(w, http.StatusUnprocessableEntity, "validation_failed", fmt.Sprintf("Al massimo %d sha per richiesta.", maxBatchStatusShas))
+		return
+	}
+	order := make([]string, 0, len(params.Sha))
+	seen := map[string]bool{}
+	for _, sha := range params.Sha {
+		if !batchShaRe.MatchString(sha) {
+			writeError(w, http.StatusUnprocessableEntity, "validation_failed", "Ogni sha deve essere completo (40-64 caratteri esadecimali minuscoli).")
+			return
+		}
+		if !seen[sha] {
+			seen[sha] = true
+			order = append(order, sha)
+		}
+	}
+	rows, err := s.pool.Query(r.Context(), `SELECT sha, state FROM core.commit_statuses WHERE repo_id = $1 AND sha = ANY($2)`, ia.repo.ID, order)
+	if err != nil {
+		writeIssueFailure(w, "lettura degli stati non riuscita", err)
+		return
+	}
+	defer rows.Close()
+	bySha := map[string][]string{}
+	for rows.Next() {
+		var sha, st string
+		if err := rows.Scan(&sha, &st); err != nil {
+			writeIssueFailure(w, "lettura degli stati non riuscita", err)
+			return
+		}
+		bySha[sha] = append(bySha[sha], st)
+	}
+	if err := rows.Err(); err != nil {
+		writeIssueFailure(w, "lettura degli stati non riuscita", err)
+		return
+	}
+	items := make([]batchStatusItem, 0, len(order))
+	for _, sha := range order {
+		items = append(items, batchStatusItem{Sha: sha, State: combinedState(bySha[sha])})
+	}
+	writeJSON(w, http.StatusOK, struct {
+		Items []batchStatusItem `json:"items"`
+	}{items})
+}
+
+type batchStatusItem struct {
+	Sha   string                            `json:"sha"`
+	State openapi.CombinedCommitStatusState `json:"state"`
 }
 
 // CreateCommitStatus implementa POST …/commits/{sha}/statuses: serve write

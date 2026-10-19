@@ -5441,6 +5441,59 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /repos/{owner}/{repo}/commits/statuses:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: listCombinedCommitStatuses
+      tags: [pulls]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: commit_status_batch
+        destructive: false
+      summary: Stato complessivo di piu' commit insieme
+      description: >
+        Versione batch di `getCombinedCommitStatus` per i badge della lista dei commit (una richiesta per pagina
+        invece di una per commit). `sha` si ripete (`?sha=…&sha=…`), da 1 a 100 sha completi (40-64 caratteri
+        esadecimali minuscoli); oltre 100, o uno sha non valido, risponde 422. Risponde un elemento per ogni sha
+        distinto, nell'ordine della richiesta, con lo stesso `state` della sintesi singola (`none` se il commit non ha stati
+        o non esiste nel repo: il batch non risolve gli sha). Stessi permessi in lettura della sintesi singola: un
+        repo che l'utente non puo' leggere risponde 404.
+      parameters:
+        - name: sha
+          in: query
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 100
+            items:
+              type: string
+              pattern: "^[0-9a-f]{40,64}$"
+      responses:
+        "200":
+          description: Stati complessivi.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CombinedCommitStatusBatch"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /repos/{owner}/{repo}/commits/{sha}/statuses:
     parameters:
       - $ref: "#/components/parameters/RepoOwnerParam"
@@ -14359,6 +14412,23 @@ components:
         satisfied:
           type: boolean
           description: True solo con ultimo stato `success`.
+    CombinedCommitStatusBatch:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [sha, state]
+            properties:
+              sha:
+                type: string
+                pattern: "^[0-9a-f]{40,64}$"
+              state:
+                $ref: "#/components/schemas/CombinedCommitStatusState"
     CombinedCommitStatus:
       type: object
       additionalProperties: false
