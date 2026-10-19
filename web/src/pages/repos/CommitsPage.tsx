@@ -7,7 +7,7 @@ import { commitHref, commitsHref, fetchBranches, fetchCommits, fetchTags, splitR
 import type { CommitSummary } from '../../lib/codeApi';
 import { groupByDay } from '../../lib/commitView';
 import { timeAgo } from '../../lib/format';
-import { fetchCommitStatus } from '../../lib/pullsApi';
+import { fetchCommitStatuses } from '../../lib/pullsApi';
 import type { CombinedCommitStatus } from '../../lib/pullsApi';
 import type { Repository } from '../../lib/reposApi';
 import { useLoad } from '../../lib/useLoad';
@@ -120,22 +120,9 @@ function CommitPageList({ owner, repo, refName, path, author, page, refs, onPage
   if (error) return <ErrorAlert message={error} />;
   if (!data) return <p className="muted">Loading commits…</p>;
   if (data.items.length === 0) return <p className="muted">{author ? 'No commits by this author.' : 'No commits.'}</p>;
-  const groups = groupByDay(data.items);
   return (
     <>
-      {groups.map((g, i) => (
-        <section key={g.day} aria-label={`Commits on ${g.day}`}>
-          <div className="commit-day" style={i > 0 ? { marginTop: 22 } : undefined}>
-            <GitCommitHorizontal size={16} aria-hidden="true" />
-            Commits on {g.day}
-          </div>
-          <div className="list">
-            {g.commits.map((c) => (
-              <CommitRow key={c.sha} owner={owner} repo={repo} commit={c} tags={tagsBySha.get(c.sha) ?? []} />
-            ))}
-          </div>
-        </section>
-      ))}
+      <CommitGroups owner={owner} repo={repo} commits={data.items} tagsBySha={tagsBySha} />
       <nav className="row" style={{ justifyContent: 'center', marginTop: 18 }} aria-label="Pagination">
         <span className="btn-group">
           <Button size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
@@ -146,6 +133,36 @@ function CommitPageList({ owner, repo, refName, path, author, page, refs, onPage
           </Button>
         </span>
       </nav>
+    </>
+  );
+}
+
+// Un'unica richiesta batch per gli stati dei commit della pagina (una per pagina, non una per riga).
+// Se non arrivano non c'e' badge, e non e' un errore.
+function CommitGroups({ owner, repo, commits, tagsBySha }: { owner: string; repo: string; commits: CommitSummary[]; tagsBySha: Map<string, string[]> }) {
+  const { data: statuses } = useLoad<Record<string, CombinedCommitStatus['state']>>(() =>
+    fetchCommitStatuses(
+      owner,
+      repo,
+      commits.map((c) => c.sha),
+    ).catch(() => ({})),
+  );
+  const groups = groupByDay(commits);
+  return (
+    <>
+      {groups.map((g, i) => (
+        <section key={g.day} aria-label={`Commits on ${g.day}`}>
+          <div className="commit-day" style={i > 0 ? { marginTop: 22 } : undefined}>
+            <GitCommitHorizontal size={16} aria-hidden="true" />
+            Commits on {g.day}
+          </div>
+          <div className="list">
+            {g.commits.map((c) => (
+              <CommitRow key={c.sha} owner={owner} repo={repo} commit={c} tags={tagsBySha.get(c.sha) ?? []} status={statuses?.[c.sha] ?? 'none'} />
+            ))}
+          </div>
+        </section>
+      ))}
     </>
   );
 }
@@ -163,7 +180,7 @@ export function CommitAuthor({ commit }: { commit: CommitSummary }) {
   );
 }
 
-function CommitRow({ owner, repo, commit, tags }: { owner: string; repo: string; commit: CommitSummary; tags: string[] }) {
+function CommitRow({ owner, repo, commit, tags, status }: { owner: string; repo: string; commit: CommitSummary; tags: string[]; status: CombinedCommitStatus['state'] }) {
   const short = commit.sha.slice(0, 7);
   return (
     <div className="list-row hover">
@@ -182,19 +199,13 @@ function CommitRow({ owner, repo, commit, tags }: { owner: string; repo: string;
           {t}
         </span>
       ))}
-      <RowStatus owner={owner} repo={repo} sha={commit.sha} />
+      <CommitStatusBadge state={status} />
       <Link className="sha" to={commitHref(owner, repo, commit.sha)}>
         {short}
       </Link>
       <CopySha sha={commit.sha} />
     </div>
   );
-}
-
-// Stato di sintesi del commit (PR9) nella lista. Se non arriva (501 prima del backend) non c'e' badge, e non e' un errore.
-function RowStatus({ owner, repo, sha }: { owner: string; repo: string; sha: string }) {
-  const { data } = useLoad<CombinedCommitStatus | null>(() => fetchCommitStatus(owner, repo, sha).catch(() => null));
-  return <CommitStatusBadge state={data?.state ?? 'none'} />;
 }
 
 function CopySha({ sha }: { sha: string }) {

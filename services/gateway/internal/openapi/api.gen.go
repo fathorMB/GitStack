@@ -2309,6 +2309,16 @@ type CombinedCommitStatus struct {
 	TotalCount int            `json:"totalCount"`
 }
 
+// CombinedCommitStatusBatch defines model for CombinedCommitStatusBatch.
+type CombinedCommitStatusBatch struct {
+	Items []struct {
+		Sha string `json:"sha"`
+
+		// State Sintesi degli ultimi stati dei contesti (PR9): `failure` o `error` se uno lo e', altrimenti `pending` se uno e' in corso, altrimenti `success`; `none` se non ce ne sono.
+		State CombinedCommitStatusState `json:"state"`
+	} `json:"items"`
+}
+
 // CombinedCommitStatusState Sintesi degli ultimi stati dei contesti (PR9): `failure` o `error` se uno lo e', altrimenti `pending` se uno e' in corso, altrimenti `success`; `none` se non ce ne sono.
 type CombinedCommitStatusState string
 
@@ -4742,6 +4752,11 @@ type GetRepositoryCommitsParams struct {
 	PerPage *CommitPerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// ListCombinedCommitStatusesParams defines parameters for ListCombinedCommitStatuses.
+type ListCombinedCommitStatusesParams struct {
+	Sha []string `form:"sha" json:"sha"`
+}
+
 // GetRepositoryCommitParams defines parameters for GetRepositoryCommit.
 type GetRepositoryCommitParams struct {
 	// Path Se presente, `files` porta solo questo file (core filtra la risposta del servizio git). Con `listOnly` il patch non c'e': per il diff intero si usa `getRepositoryCommitPatch`. 404 se il file non e' nel commit.
@@ -5258,6 +5273,9 @@ type ServerInterface interface {
 	// GetRepositoryCommits Storico dei commit, paginato
 	// (GET /repos/{owner}/{repo}/commits)
 	GetRepositoryCommits(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryCommitsParams)
+	// ListCombinedCommitStatuses Stato complessivo di piu' commit insieme
+	// (GET /repos/{owner}/{repo}/commits/statuses)
+	ListCombinedCommitStatuses(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params ListCombinedCommitStatusesParams)
 	// GetRepositoryCommit Dettaglio di un commit con diff per file
 	// (GET /repos/{owner}/{repo}/commits/{sha})
 	GetRepositoryCommit(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params GetRepositoryCommitParams)
@@ -6879,6 +6897,57 @@ func (siw *ServerInterfaceWrapper) GetRepositoryCommits(w http.ResponseWriter, r
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetRepositoryCommits(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListCombinedCommitStatuses operation middleware
+func (siw *ServerInterfaceWrapper) ListCombinedCommitStatuses(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCombinedCommitStatusesParams
+
+	// ------------- Required query parameter "sha" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "sha", r.URL.Query(), &params.Sha, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sha"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sha", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCombinedCommitStatuses(w, r, owner, repo, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -12724,6 +12793,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/unresolve", wrapper.UnresolvePullRequestThread)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/requested-reviewers", wrapper.RequestPullRequestReviewers)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/requested-reviewers/{username}", wrapper.RemovePullRequestReviewer)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/commits/statuses", wrapper.ListCombinedCommitStatuses)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/commits/{sha}/statuses", wrapper.ListCommitStatuses)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/commits/{sha}/statuses", wrapper.CreateCommitStatus)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/commits/{sha}/status", wrapper.GetCombinedCommitStatus)

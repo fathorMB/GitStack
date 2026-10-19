@@ -313,3 +313,87 @@ func TestMergeGate_MirrorInPullERepoRequirePullRequest(t *testing.T) {
 		t.Fatal("git non doveva essere chiamato")
 	}
 }
+
+// GIT-304: stato combinato di più sha con una sola richiesta (badge RowStatus).
+func TestStatuses_BatchCombinato(t *testing.T) {
+	e := newMergeEnv(t)
+	repoID := e.repo("app", true)
+	e.id.grantWrite(repoID, "bob")
+	e.branch(repoID, "feat")
+	e.branch(repoID, "other")
+	e.branch(repoID, "plain")
+	feat, other, plain := e.git.of(repoID)["feat"], e.git.of(repoID)["other"], e.git.of(repoID)["plain"]
+	missing := strings.Repeat("e", 40)
+	e.want(e.postStatus("app", "bob", feat, `{"state":"success","context":"lint"}`), http.StatusCreated, "")
+	e.want(e.postStatus("app", "bob", feat, `{"state":"failure","context":"test"}`), http.StatusCreated, "")
+	e.want(e.postStatus("app", "bob", other, `{"state":"pending","context":"ci"}`), http.StatusCreated, "")
+
+	batch := func(user string, shas ...string) *httptest.ResponseRecorder {
+		q := make([]string, 0, len(shas))
+		for _, s := range shas {
+			q = append(q, "sha="+s)
+		}
+		return e.do(http.MethodGet, "/repos/alice/app/commits/statuses?"+strings.Join(q, "&"), user, "")
+	}
+
+	t.Run("sha_misti_con_stati_senza_stati_e_inesistente", func(t *testing.T) {
+		rec := batch("carol", feat, plain, missing, other, feat)
+		e.want(rec, http.StatusOK, "")
+		var out openapi.CombinedCommitStatusBatch
+		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+			t.Fatal(err)
+		}
+		got := make([]string, 0, len(out.Items))
+		for _, it := range out.Items {
+			got = append(got, it.Sha[:3]+"="+string(it.State))
+		}
+		want := []string{feat[:3] + "=failure", plain[:3] + "=none", "eee=none", other[:3] + "=pending"}
+		if !slices.Equal(got, want) {
+			t.Fatalf("elementi %v, voluti %v (ordine della richiesta, sha duplicato una volta sola)", got, want)
+		}
+		if out.Items[0].Sha != feat || out.Items[2].Sha != missing {
+			t.Fatalf("sha non riportati per intero: %+v", out.Items)
+		}
+		// coerente con la sintesi singola
+		if c := e.combined("app", "carol", feat); c.State != out.Items[0].State {
+			t.Fatalf("singola %s, batch %s", c.State, out.Items[0].State)
+		}
+	})
+
+	t.Run("tetto_100_sha_e_validazione_422", func(t *testing.T) {
+		many := make([]string, 100)
+		for i := range many {
+			many[i] = fmt.Sprintf("d%039x", i+1)
+		}
+		rec := batch("carol", many...)
+		e.want(rec, http.StatusOK, "")
+		var out openapi.CombinedCommitStatusBatch
+		_ = json.Unmarshal(rec.Body.Bytes(), &out)
+		if len(out.Items) != 100 {
+			t.Fatalf("elementi %d, voluti 100", len(out.Items))
+		}
+		e.want(batch("carol", append(many, feat)...), http.StatusUnprocessableEntity, "validation_failed")
+		e.want(batch("carol", "zzzz"), http.StatusUnprocessableEntity, "validation_failed")
+		e.want(batch("carol", strings.Repeat("F", 40)), http.StatusUnprocessableEntity, "validation_failed")
+		e.want(batch("carol", feat[:10]), http.StatusUnprocessableEntity, "validation_failed")
+	})
+
+	t.Run("permessi_repo_privato_e_anonimo", func(t *testing.T) {
+		sid := e.repo("secret", false)
+		e.branch(sid, "feat")
+		sh := e.git.of(sid)["feat"]
+		e.want(e.do(http.MethodGet, "/repos/alice/secret/commits/statuses?sha="+sh, "carol", ""), http.StatusNotFound, "not_found")
+		e.want(e.do(http.MethodGet, "/repos/alice/secret/commits/statuses?sha="+sh, "alice", ""), http.StatusOK, "")
+		// 404 prima della validazione: un repo non leggibile non rivela niente
+		e.want(e.do(http.MethodGet, "/repos/alice/secret/commits/statuses?sha=zz", "carol", ""), http.StatusNotFound, "not_found")
+		// anonimo: senza identità firmata core risponde come per la sintesi singola
+		req := httptest.NewRequest(http.MethodGet, "/repos/alice/app/commits/statuses?sha="+feat, nil)
+		anon := httptest.NewRecorder()
+		e.router.ServeHTTP(anon, req)
+		single := httptest.NewRecorder()
+		e.router.ServeHTTP(single, httptest.NewRequest(http.MethodGet, "/repos/alice/app/commits/"+feat+"/status", nil))
+		if anon.Code == http.StatusOK || anon.Code != single.Code {
+			t.Fatalf("anonimo: batch %d, singola %d", anon.Code, single.Code)
+		}
+	})
+}

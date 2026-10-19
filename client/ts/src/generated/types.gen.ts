@@ -2945,6 +2945,13 @@ export type RequiredStatusContext = {
     satisfied: boolean;
 };
 
+export type CombinedCommitStatusBatch = {
+    items: Array<{
+        sha: string;
+        state: CombinedCommitStatusState;
+    }>;
+};
+
 export type CombinedCommitStatus = {
     sha: string;
     state: CombinedCommitStatusState;
@@ -11383,6 +11390,64 @@ export type RemovePullRequestReviewerResponses = {
 };
 
 export type RemovePullRequestReviewerResponse = RemovePullRequestReviewerResponses[keyof RemovePullRequestReviewerResponses];
+
+export type ListCombinedCommitStatusesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query: {
+        sha: Array<string>;
+    };
+    url: '/repos/{owner}/{repo}/commits/statuses';
+};
+
+export type ListCombinedCommitStatusesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListCombinedCommitStatusesError = ListCombinedCommitStatusesErrors[keyof ListCombinedCommitStatusesErrors];
+
+export type ListCombinedCommitStatusesResponses = {
+    /**
+     * Stati complessivi.
+     */
+    200: CombinedCommitStatusBatch;
+};
+
+export type ListCombinedCommitStatusesResponse = ListCombinedCommitStatusesResponses[keyof ListCombinedCommitStatusesResponses];
 
 export type ListCommitStatusesData = {
     body?: never;
