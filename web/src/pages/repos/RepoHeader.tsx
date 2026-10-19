@@ -1,4 +1,4 @@
-import { CircleDot, FileCode, GitPullRequest, Settings, Tag } from 'lucide-react';
+import { CircleDot, FileCode, GitPullRequest, Play, Settings, Tag } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { PullMirrorBadge } from '../../components';
@@ -27,6 +27,8 @@ export type RepoHeaderMode =
   | 'pull'
   | 'newpull'
   | 'pullfiles'
+  | 'actions'
+  | 'run'
   | 'settings'
   | 'webhooks';
 
@@ -35,6 +37,7 @@ const CODE_MODES: readonly RepoHeaderMode[] = ['tree', 'commits', 'commit', 'sea
 const RELEASES_MODES: readonly RepoHeaderMode[] = ['releases', 'tags'];
 const ISSUES_MODES: readonly RepoHeaderMode[] = ['issues', 'issue', 'newissue', 'labels', 'milestones'];
 const PULLS_MODES: readonly RepoHeaderMode[] = ['pulls', 'pull', 'pullfiles', 'newpull'];
+const ACTIONS_MODES: readonly RepoHeaderMode[] = ['actions', 'run'];
 const SETTINGS_MODES: readonly RepoHeaderMode[] = ['settings', 'webhooks'];
 
 // Intestazione del repo condivisa (titolo, badge, Watch, descrizione, schede):
@@ -105,6 +108,10 @@ export function RepoHeader({ repo, mode, admin }: { repo: Repository; mode: Repo
         <NavLink className={tab(PULLS_MODES.includes(mode))} to={`${base}/pulls`}>
           <GitPullRequest size={16} aria-hidden="true" />
           Pull requests {openPulls !== null ? <span className="counter">{openPulls}</span> : null}
+        </NavLink>
+        <NavLink className={tab(ACTIONS_MODES.includes(mode))} to={`${base}/actions`}>
+          <Play size={16} aria-hidden="true" />
+          Actions
         </NavLink>
         <NavLink className={tab(RELEASES_MODES.includes(mode))} to={`${base}/releases`}>
           <Tag size={16} aria-hidden="true" />
