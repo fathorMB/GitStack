@@ -469,3 +469,22 @@ ul.list{margin:0;padding:0;list-style:none}
 .rel{display:grid;grid-template-columns:180px 1fr;gap:24px;padding:18px 0;border-top:1px solid var(--border)}
 .rel:first-child{border-top:0;padding-top:0}
 .rel:last-child{padding-bottom:0}
+
+/* Actions ed esecuzioni (mockup B1 e B2 della v2). I colori del log non sono nei token generati. */
+:root{--log-bg:#0f0c18;--log-fg:#d9d4ea}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--log-bg:#08060d}}
+:root[data-theme="dark"]{--log-bg:#08060d}
+.badge-ok{background:var(--success-soft);border-color:transparent;color:var(--success)}
+.badge-err{background:var(--danger-soft);border-color:transparent;color:var(--danger)}
+.badge-run{background:var(--warning-soft);border-color:transparent;color:var(--warning)}
+.st{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.st svg{stroke-width:2.6}
+.st.ok{background:var(--success);color:#fff}.st.err{background:var(--danger);color:#fff}.st.run{border:2px solid var(--warning);border-right-color:transparent}.st.skip{background:var(--surface-3);color:var(--text-subtle)}.st.wait{border:2px dashed var(--border-strong)}
+.log{background:var(--log-bg);color:var(--log-fg);font:12.5px/1.65 var(--font-mono);border-radius:0 0 var(--r-lg) var(--r-lg);padding:8px 0;overflow:auto;max-height:560px}
+.log div{padding:0 14px;white-space:pre}.log .n{color:#6c6584;display:inline-block;width:34px;text-align:right;margin-right:12px;user-select:none}
+.log .er{background:rgba(255,107,118,.14);color:#ff8f98}.log .gr{color:#9479ff}
+.jobs a{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r);color:var(--text);font-size:13px}
+.jobs a.active{background:var(--surface);border:1px solid var(--border);box-shadow:inset 3px 0 0 var(--accent)}
+.jobs a:hover{background:var(--surface-2);text-decoration:none}
+.two{display:grid;grid-template-columns:240px 1fr;gap:24px;align-items:start}
+@media (max-width:1100px){.two{grid-template-columns:1fr}}
