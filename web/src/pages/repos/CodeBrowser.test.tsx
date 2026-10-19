@@ -113,7 +113,7 @@ describe('CodeBrowser', () => {
     expect(rows).toEqual(['cmd', 'internal', 'LICENSE', 'README.md']); // cartelle prima
     expect(within(files).getByLabelText('Latest commit')).toHaveTextContent('head of main');
     expect(within(files).getByText('agent')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /2 tags/ })).toHaveAttribute('href', '/acme/api-gateway/tags');
+    expect(screen.getByRole('link', { name: /2 tags/ })).toHaveAttribute('href', '/acme/api-gateway/releases');
     expect(screen.getByText(/3/, { selector: 'b' })).toBeInTheDocument();
     const about = screen.getByLabelText('About');
     expect(within(about).getByText('Single entry point')).toBeInTheDocument();

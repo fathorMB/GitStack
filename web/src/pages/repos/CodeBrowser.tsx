@@ -77,7 +77,7 @@ function TreeView({ repo, refs, refName, path, defaultRef, mirror }: { repo: Rep
           <span className="muted small">
             <GitBranch size={14} aria-hidden="true" /> <b>{refs.branches.total}</b> {refs.branches.total === 1 ? 'branch' : 'branches'} ·{' '}
             <TagIcon size={14} aria-hidden="true" />{' '}
-            <Link to={`/${owner}/${name}/tags`}>
+            <Link to={`/${owner}/${name}/releases`}>
               <b>{refs.tags.total}</b> {refs.tags.total === 1 ? 'tag' : 'tags'}
             </Link>
           </span>
