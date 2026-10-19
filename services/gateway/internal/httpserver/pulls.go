@@ -26,6 +26,10 @@ func (s *apiServer) ListCommitStatuses(w http.ResponseWriter, r *http.Request, _
 	s.proxy.ServeHTTP(w, r)
 }
 
+func (s *apiServer) ListCombinedCommitStatuses(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.ListCombinedCommitStatusesParams) {
+	s.proxy.ServeHTTP(w, r)
+}
+
 func (s *apiServer) CreateCommitStatus(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.CommitShaParam) {
 	s.proxy.ServeHTTP(w, r)
 }
