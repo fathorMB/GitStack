@@ -7,9 +7,12 @@ import { blobHref, commitDownloadUrl, commitHref, fetchCommit } from '../../lib/
 import type { CommitDetail, FileDiff } from '../../lib/codeApi';
 import { messageBody } from '../../lib/commitView';
 import { timeAgo } from '../../lib/format';
+import { fetchCommitStatus } from '../../lib/pullsApi';
+import type { CombinedCommitStatus } from '../../lib/pullsApi';
 import type { Repository } from '../../lib/reposApi';
 import { useLoad } from '../../lib/useLoad';
 import { CommitAuthor } from './CommitsPage';
+import { CommitChecks } from './CommitChecks';
 
 /** Pagina di dettaglio di un commit (mockup 10): `sha` dalla rotta /commit/:sha. */
 export function CommitPage({ repo }: { repo: Repository }) {
@@ -30,12 +33,28 @@ function CommitLoader({ repo, sha, ...view }: { repo: Repository; sha: string } 
   const owner = repo.owner.name;
   const name = repo.name;
   const { data, error } = useLoad(() => fetchCommit(owner, name, sha, view.ignoreWs));
+  // Stati dei commit (PR9): se non arrivano (per esempio 501 prima del backend) non c'e' nessun badge, e non e' un errore.
+  const checks = useLoad<CombinedCommitStatus | null>(() => fetchCommitStatus(owner, name, sha).catch(() => null));
   if (error) return <ErrorAlert message={error} />;
   if (!data) return <p className="muted">Loading commit…</p>;
-  return <CommitDetailView owner={owner} repo={name} detail={data} {...view} />;
+  return <CommitDetailView owner={owner} repo={name} detail={data} checks={checks.data} {...view} />;
 }
 
-function CommitDetailView({ owner, repo, detail, ignoreWs, onIgnoreWs, mode, onMode }: { owner: string; repo: string; detail: CommitDetail } & ViewState) {
+function CommitDetailView({
+  owner,
+  repo,
+  detail,
+  checks,
+  ignoreWs,
+  onIgnoreWs,
+  mode,
+  onMode,
+}: {
+  owner: string;
+  repo: string;
+  detail: CommitDetail;
+  checks: CombinedCommitStatus | null;
+} & ViewState) {
   const c = detail.commit;
   const body = messageBody(c);
   const sameCommitter = c.committer.email === c.author.email && c.committer.name === c.author.name;
@@ -86,6 +105,8 @@ function CommitDetailView({ owner, repo, detail, ignoreWs, onIgnoreWs, mode, onM
           </span>
         </div>
       </div>
+
+      {checks ? <CommitChecks status={checks} /> : null}
 
       <div className="row" style={{ marginBottom: 12 }}>
         <span className="muted">
