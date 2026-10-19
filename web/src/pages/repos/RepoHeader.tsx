@@ -1,4 +1,4 @@
-import { CircleDot, FileCode, GitPullRequest, Settings } from 'lucide-react';
+import { CircleDot, FileCode, GitPullRequest, Settings, Tag } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { PullMirrorBadge } from '../../components';
@@ -14,6 +14,7 @@ export type RepoHeaderMode =
   | 'commits'
   | 'commit'
   | 'tags'
+  | 'releases'
   | 'search'
   | 'blob'
   | 'blame'
@@ -30,7 +31,8 @@ export type RepoHeaderMode =
   | 'webhooks';
 
 // Regola dell'attiva per elenco esplicito: un mode nuovo non accende nessuna scheda.
-const CODE_MODES: readonly RepoHeaderMode[] = ['tree', 'commits', 'commit', 'tags', 'search', 'blob', 'blame'];
+const CODE_MODES: readonly RepoHeaderMode[] = ['tree', 'commits', 'commit', 'search', 'blob', 'blame'];
+const RELEASES_MODES: readonly RepoHeaderMode[] = ['releases', 'tags'];
 const ISSUES_MODES: readonly RepoHeaderMode[] = ['issues', 'issue', 'newissue', 'labels', 'milestones'];
 const PULLS_MODES: readonly RepoHeaderMode[] = ['pulls', 'pull', 'pullfiles', 'newpull'];
 const SETTINGS_MODES: readonly RepoHeaderMode[] = ['settings', 'webhooks'];
@@ -103,6 +105,10 @@ export function RepoHeader({ repo, mode, admin }: { repo: Repository; mode: Repo
         <NavLink className={tab(PULLS_MODES.includes(mode))} to={`${base}/pulls`}>
           <GitPullRequest size={16} aria-hidden="true" />
           Pull requests {openPulls !== null ? <span className="counter">{openPulls}</span> : null}
+        </NavLink>
+        <NavLink className={tab(RELEASES_MODES.includes(mode))} to={`${base}/releases`}>
+          <Tag size={16} aria-hidden="true" />
+          Releases
         </NavLink>
         {admin ? (
           <NavLink className={tab(SETTINGS_MODES.includes(mode))} to={`${base}/settings`}>

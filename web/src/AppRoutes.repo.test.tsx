@@ -35,6 +35,7 @@ describe('rotte del browser del codice', () => {
     ['/acme/api/commits/main/cmd/main.go', 'commits'],
     ['/acme/api/commit/4e1a9c0', 'commit'],
     ['/acme/api/tags', 'tags'],
+    ['/acme/api/releases', 'releases'],
     ['/acme/api/issues', 'issues'],
     ['/acme/api/issues/41', 'issue'],
     ['/acme/api/issues/new', 'newissue'],

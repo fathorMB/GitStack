@@ -461,3 +461,11 @@ ul.list{margin:0;padding:0;list-style:none}
 .linklike{all:unset;cursor:pointer;color:var(--accent-text)}
 .linklike:hover{text-decoration:underline}
 .linklike:focus-visible{box-shadow:var(--focus)}
+
+/* Releases (REL1, mockup B7) */
+.seg a{display:inline-flex;align-items:center;padding:5px 12px;font-size:13px;font-weight:500;color:var(--text-muted);text-decoration:none}
+.seg a.active{background:var(--accent-soft);color:var(--accent-text)}
+.badge-latest{background:var(--success);border-color:var(--success);color:var(--accent-fg)}
+.rel{display:grid;grid-template-columns:180px 1fr;gap:24px;padding:18px 0;border-top:1px solid var(--border)}
+.rel:first-child{border-top:0;padding-top:0}
+.rel:last-child{padding-bottom:0}

@@ -110,11 +110,17 @@ describe('RepoHeader: schede', () => {
     expect(within(title).queryByRole('link', { name: /Settings/ })).not.toBeInTheDocument();
   });
 
-  it.each(['tree', 'commits', 'commit', 'tags', 'search', 'blob', 'blame'] as RepoHeaderMode[])('Code e\' attiva su %s', (mode) => {
+  it.each(['tree', 'commits', 'commit', 'search', 'blob', 'blame'] as RepoHeaderMode[])('Code e\' attiva su %s', (mode) => {
     renderHeader(mode, true);
     expect(tab('Code')).toHaveClass('active');
     expect(tab('Issues')).not.toHaveClass('active');
     expect(tab('Settings')).not.toHaveClass('active');
+  });
+
+  it.each(['releases', 'tags'] as RepoHeaderMode[])('Releases e\' attiva su %s e Code no', (mode) => {
+    renderHeader(mode, true);
+    expect(tab('Releases')).toHaveClass('active');
+    expect(tab('Code')).not.toHaveClass('active');
   });
 
   it.each(['issues', 'issue', 'newissue', 'labels', 'milestones'] as RepoHeaderMode[])('Issues e\' attiva su %s', (mode) => {
