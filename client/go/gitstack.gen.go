@@ -2642,6 +2642,27 @@ type AccessSource struct {
 // AccessSourceKind defines model for AccessSource.Kind.
 type AccessSourceKind string
 
+// ActionsCache defines model for ActionsCache.
+type ActionsCache struct {
+	CreatedAt  time.Time          `json:"createdAt"`
+	Id         openapi_types.UUID `json:"id"`
+	Key        string             `json:"key"`
+	LastUsedAt time.Time          `json:"lastUsedAt"`
+	Ref        string             `json:"ref"`
+	SizeBytes  int64              `json:"sizeBytes"`
+}
+
+// ActionsCacheList defines model for ActionsCacheList.
+type ActionsCacheList struct {
+	Items []ActionsCache `json:"items"`
+
+	// QuotaBytes Quota per repository: 10 GB (CI5).
+	//
+	// Example: 10737418240
+	QuotaBytes int64 `json:"quotaBytes"`
+	UsedBytes  int64 `json:"usedBytes"`
+}
+
 // ActionsSecret defines model for ActionsSecret.
 type ActionsSecret struct {
 	Name      string    `json:"name"`
@@ -4014,11 +4035,14 @@ type IssueViaToken struct {
 	Name string             `json:"name"`
 }
 
-// JobTokenPermissions Permessi effettivi del token effimero del job; non puo' eccedere quelli del workflow e del repository.
+// JobTokenPermissions Permessi effettivi del token effimero del job (CI4). Ogni livello e' il minimo fra tre limiti: quello richiesto dal workflow (`permissions:`), quello consentito dal repository e quello di chi avvia l'esecuzione (l'attore di push, pull_request, workflow_dispatch o Riesegui). Un attore con soli permessi di lettura non ottiene mai `write` nel token, qualunque cosa chieda il workflow; per `schedule`, che non ha un attore, vale il limite del repository. Senza `permissions:` il default e' `read`. Il token non puo' mai eccedere l'attore e scade con il job.
 type JobTokenPermissions struct {
-	Actions  JobTokenPermissionsActions  `json:"actions"`
-	Contents JobTokenPermissionsContents `json:"contents"`
-	Packages JobTokenPermissionsPackages `json:"packages"`
+	Actions JobTokenPermissionsActions `json:"actions"`
+
+	// CappedByActor true se almeno un livello e' stato ridotto perche' l'attore ha meno permessi di quelli richiesti.
+	CappedByActor *bool                       `json:"cappedByActor,omitempty"`
+	Contents      JobTokenPermissionsContents `json:"contents"`
+	Packages      JobTokenPermissionsPackages `json:"packages"`
 }
 
 // JobTokenPermissionsActions defines model for JobTokenPermissions.Actions.
@@ -6150,7 +6174,7 @@ type WorkflowJob struct {
 	Id         openapi_types.UUID `json:"id"`
 	Name       string             `json:"name"`
 
-	// Permissions Permessi effettivi del token effimero del job; non puo' eccedere quelli del workflow e del repository.
+	// Permissions Permessi effettivi del token effimero del job (CI4). Ogni livello e' il minimo fra tre limiti: quello richiesto dal workflow (`permissions:`), quello consentito dal repository e quello di chi avvia l'esecuzione (l'attore di push, pull_request, workflow_dispatch o Riesegui). Un attore con soli permessi di lettura non ottiene mai `write` nel token, qualunque cosa chieda il workflow; per `schedule`, che non ha un attore, vale il limite del repository. Senza `permissions:` il default e' `read`. Il token non puo' mai eccedere l'attore e scade con il job.
 	Permissions JobTokenPermissions   `json:"permissions"`
 	RunnerName  *string               `json:"runnerName,omitempty"`
 	RunnerType  WorkflowJobRunnerType `json:"runnerType"`
@@ -6203,6 +6227,9 @@ type ArtifactIdParam = openapi_types.UUID
 
 // AssetIdParam defines model for AssetIdParam.
 type AssetIdParam = openapi_types.UUID
+
+// CacheIdParam defines model for CacheIdParam.
+type CacheIdParam = openapi_types.UUID
 
 // CodeSearchQueryParam defines model for CodeSearchQueryParam.
 type CodeSearchQueryParam = string
@@ -6660,6 +6687,24 @@ type ListDeletedRepositoriesParams struct {
 	Owner *RepoOwnerFilter `form:"owner,omitempty" json:"owner,omitempty"`
 }
 
+// DeleteActionsCachesParams defines parameters for DeleteActionsCaches.
+type DeleteActionsCachesParams struct {
+	// Key Prefisso della chiave.
+	Key *string `form:"key,omitempty" json:"key,omitempty"`
+
+	// Ref Ref della cache.
+	Ref *string `form:"ref,omitempty" json:"ref,omitempty"`
+}
+
+// ListActionsCachesParams defines parameters for ListActionsCaches.
+type ListActionsCachesParams struct {
+	// Key Prefisso della chiave.
+	Key *string `form:"key,omitempty" json:"key,omitempty"`
+
+	// Ref Ref (ramo o tag) della cache.
+	Ref *string `form:"ref,omitempty" json:"ref,omitempty"`
+}
+
 // GetWorkflowJobLogParams defines parameters for GetWorkflowJobLog.
 type GetWorkflowJobLogParams struct {
 	Follow *bool `form:"follow,omitempty" json:"follow,omitempty"`
@@ -6928,6 +6973,12 @@ type GetRepositoryReadmeParams struct {
 
 	// Path Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
 	Path *PathParam `form:"path,omitempty" json:"path,omitempty"`
+}
+
+// UploadReleaseAssetParams defines parameters for UploadReleaseAsset.
+type UploadReleaseAssetParams struct {
+	// Name Nome del file allegato.
+	Name string `form:"name" json:"name"`
 }
 
 // SearchRepositoryCodeParams defines parameters for SearchRepositoryCode.
@@ -7348,22 +7399,30 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 
-	// GetCiQueue Legge coda e concorrenza CI
+	// GetCiQueue Legge coda e concorrenza CI (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
 	//
 	// Corresponds with GET /admin/ci/queue (the `GetCiQueue` operationId).
 	GetCiQueue(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListCiRunners Elenca i runner esterni
+	// ListCiRunners Elenca i runner esterni (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
 	//
 	// Corresponds with GET /admin/ci/runners (the `ListCiRunners` operationId).
 	ListCiRunners(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateCiRunnerRegistrationToken Crea un token monouso per registrare un runner esterno
+	// CreateCiRunnerRegistrationToken Crea un token monouso per registrare un runner esterno (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
 	//
 	// Corresponds with POST /admin/ci/runners/registration-token (the `CreateCiRunnerRegistrationToken` operationId).
 	CreateCiRunnerRegistrationToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteCiRunner Revoca un runner esterno
+	// DeleteCiRunner Revoca un runner esterno (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
 	//
 	// Corresponds with DELETE /admin/ci/runners/{runnerId} (the `DeleteCiRunner` operationId).
 	DeleteCiRunner(ctx context.Context, runnerId RunnerIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8286,6 +8345,32 @@ type ClientInterface interface {
 	// Corresponds with GET /repos/{owner}/{repo}/actions/artifacts/{artifactId}/download (the `DownloadWorkflowArtifact` operationId).
 	DownloadWorkflowArtifact(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, artifactId ArtifactIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteActionsCaches Elimina tutte le cache CI del repository
+	//
+	// Serve `write` sul repo (403 altrimenti, 404 se non lo si legge). Con `key` o `ref` elimina solo le cache corrispondenti. Un repo archiviato rifiuta la modifica con 409 `archived`. Risponde col numero di cache eliminate.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/actions/caches (the `DeleteActionsCaches` operationId).
+	DeleteActionsCaches(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *DeleteActionsCachesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListActionsCaches Elenca le cache CI del repository e l'uso della quota
+	//
+	// Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5): a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo, con job di pulizia. Log, artefatti e cache stanno su un volume di core escluso dai backup.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/caches (the `ListActionsCaches` operationId).
+	ListActionsCaches(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListActionsCachesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteActionsCache Elimina una cache CI
+	//
+	// Serve `write` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/actions/caches/{cacheId} (the `DeleteActionsCache` operationId).
+	DeleteActionsCache(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetActionsCache Legge i metadati di una cache CI
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/caches/{cacheId} (the `GetActionsCache` operationId).
+	GetActionsCache(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetWorkflowJob Legge un job
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/actions/jobs/{jobId} (the `GetWorkflowJob` operationId).
@@ -8293,7 +8378,7 @@ type ClientInterface interface {
 
 	// GetWorkflowJobLog Legge il log, anche mentre il job e' in esecuzione
 	//
-	// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job.
+	// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni e non sono nei backup (CI5).
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/actions/jobs/{jobId}/logs (the `GetWorkflowJobLog` operationId).
 	GetWorkflowJobLog(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam, params *GetWorkflowJobLogParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8309,6 +8394,8 @@ type ClientInterface interface {
 	GetWorkflowRun(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListWorkflowArtifacts Elenca gli artefatti di un'esecuzione
+	//
+	// Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno, fuori dai backup (CI5).
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/actions/runs/{runId}/artifacts (the `ListWorkflowArtifacts` operationId).
 	ListWorkflowArtifacts(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9496,12 +9583,12 @@ type ClientInterface interface {
 
 	// UploadReleaseAssetWithBody Carica un allegato di release
 	//
-	// File fino a 2 GiB; il server calcola e restituisce SHA-256.
+	// File fino a 2 GiB; il server calcola e restituisce SHA-256. Il nome del file e' il parametro query `name` (obbligatorio): da 1 a 255 caratteri, senza `/`, `\` o caratteri di controllo e diverso da `.` e `..`; altrimenti 422 (`details.fields.name`). Un allegato con lo stesso nome nella stessa release e' 409 `conflict`. Serve `write` sul repo; una release pubblicata e' modificabile solo da chi ha `write`.
 	//
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with POST /repos/{owner}/{repo}/releases/{releaseId}/assets (the `UploadReleaseAsset` operationId).
-	UploadReleaseAssetWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UploadReleaseAssetWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, params *UploadReleaseAssetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DownloadReleaseAsset Scarica un allegato di release
 	//
@@ -9927,7 +10014,9 @@ type ClientInterface interface {
 	ResetUserTotp(ctx context.Context, username UsernameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-// GetCiQueue Legge coda e concorrenza CI
+// GetCiQueue Legge coda e concorrenza CI (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
 //
 // Corresponds with GET /admin/ci/queue (the `GetCiQueue` operationId).
 func (c *Client) GetCiQueue(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -9942,7 +10031,9 @@ func (c *Client) GetCiQueue(ctx context.Context, reqEditors ...RequestEditorFn) 
 	return c.Client.Do(req)
 }
 
-// ListCiRunners Elenca i runner esterni
+// ListCiRunners Elenca i runner esterni (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
 //
 // Corresponds with GET /admin/ci/runners (the `ListCiRunners` operationId).
 func (c *Client) ListCiRunners(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -9957,7 +10048,9 @@ func (c *Client) ListCiRunners(ctx context.Context, reqEditors ...RequestEditorF
 	return c.Client.Do(req)
 }
 
-// CreateCiRunnerRegistrationToken Crea un token monouso per registrare un runner esterno
+// CreateCiRunnerRegistrationToken Crea un token monouso per registrare un runner esterno (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
 //
 // Corresponds with POST /admin/ci/runners/registration-token (the `CreateCiRunnerRegistrationToken` operationId).
 func (c *Client) CreateCiRunnerRegistrationToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -9972,7 +10065,9 @@ func (c *Client) CreateCiRunnerRegistrationToken(ctx context.Context, reqEditors
 	return c.Client.Do(req)
 }
 
-// DeleteCiRunner Revoca un runner esterno
+// DeleteCiRunner Revoca un runner esterno (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
 //
 // Corresponds with DELETE /admin/ci/runners/{runnerId} (the `DeleteCiRunner` operationId).
 func (c *Client) DeleteCiRunner(ctx context.Context, runnerId RunnerIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -12105,6 +12200,72 @@ func (c *Client) DownloadWorkflowArtifact(ctx context.Context, owner RepoOwnerPa
 	return c.Client.Do(req)
 }
 
+// DeleteActionsCaches Elimina tutte le cache CI del repository
+//
+// Serve `write` sul repo (403 altrimenti, 404 se non lo si legge). Con `key` o `ref` elimina solo le cache corrispondenti. Un repo archiviato rifiuta la modifica con 409 `archived`. Risponde col numero di cache eliminate.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/actions/caches (the `DeleteActionsCaches` operationId).
+func (c *Client) DeleteActionsCaches(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *DeleteActionsCachesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteActionsCachesRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListActionsCaches Elenca le cache CI del repository e l'uso della quota
+//
+// Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5): a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo, con job di pulizia. Log, artefatti e cache stanno su un volume di core escluso dai backup.
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/caches (the `ListActionsCaches` operationId).
+func (c *Client) ListActionsCaches(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListActionsCachesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListActionsCachesRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteActionsCache Elimina una cache CI
+//
+// Serve `write` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/actions/caches/{cacheId} (the `DeleteActionsCache` operationId).
+func (c *Client) DeleteActionsCache(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteActionsCacheRequest(c.Server, owner, repo, cacheId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetActionsCache Legge i metadati di una cache CI
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/caches/{cacheId} (the `GetActionsCache` operationId).
+func (c *Client) GetActionsCache(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetActionsCacheRequest(c.Server, owner, repo, cacheId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetWorkflowJob Legge un job
 //
 // Corresponds with GET /repos/{owner}/{repo}/actions/jobs/{jobId} (the `GetWorkflowJob` operationId).
@@ -12122,7 +12283,7 @@ func (c *Client) GetWorkflowJob(ctx context.Context, owner RepoOwnerParam, repo 
 
 // GetWorkflowJobLog Legge il log, anche mentre il job e' in esecuzione
 //
-// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job.
+// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni e non sono nei backup (CI5).
 //
 // Corresponds with GET /repos/{owner}/{repo}/actions/jobs/{jobId}/logs (the `GetWorkflowJobLog` operationId).
 func (c *Client) GetWorkflowJobLog(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam, params *GetWorkflowJobLogParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -12168,6 +12329,8 @@ func (c *Client) GetWorkflowRun(ctx context.Context, owner RepoOwnerParam, repo 
 }
 
 // ListWorkflowArtifacts Elenca gli artefatti di un'esecuzione
+//
+// Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno, fuori dai backup (CI5).
 //
 // Corresponds with GET /repos/{owner}/{repo}/actions/runs/{runId}/artifacts (the `ListWorkflowArtifacts` operationId).
 func (c *Client) ListWorkflowArtifacts(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -14895,13 +15058,13 @@ func (c *Client) UpdateRelease(ctx context.Context, owner RepoOwnerParam, repo R
 
 // UploadReleaseAssetWithBody Carica un allegato di release
 //
-// File fino a 2 GiB; il server calcola e restituisce SHA-256.
+// File fino a 2 GiB; il server calcola e restituisce SHA-256. Il nome del file e' il parametro query `name` (obbligatorio): da 1 a 255 caratteri, senza `/`, `\` o caratteri di controllo e diverso da `.` e `..`; altrimenti 422 (`details.fields.name`). Un allegato con lo stesso nome nella stessa release e' 409 `conflict`. Serve `write` sul repo; una release pubblicata e' modificabile solo da chi ha `write`.
 //
 // Takes any type of body and a specified content type.
 //
 // Corresponds with POST /repos/{owner}/{repo}/releases/{releaseId}/assets (the `UploadReleaseAsset` operationId).
-func (c *Client) UploadReleaseAssetWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUploadReleaseAssetRequestWithBody(c.Server, owner, repo, releaseId, contentType, body)
+func (c *Client) UploadReleaseAssetWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, params *UploadReleaseAssetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUploadReleaseAssetRequestWithBody(c.Server, owner, repo, releaseId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -20479,6 +20642,262 @@ func NewDownloadWorkflowArtifactRequest(server string, owner RepoOwnerParam, rep
 	}
 
 	operationPath := fmt.Sprintf("/repos/%s/%s/actions/artifacts/%s/download", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteActionsCachesRequest constructs an http.Request for the DeleteActionsCaches method
+func NewDeleteActionsCachesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *DeleteActionsCachesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/caches", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Key != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "key", *params.Key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Ref != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", *params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListActionsCachesRequest constructs an http.Request for the ListActionsCaches method
+func NewListActionsCachesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *ListActionsCachesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/caches", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Key != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "key", *params.Key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Ref != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", *params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteActionsCacheRequest constructs an http.Request for the DeleteActionsCache method
+func NewDeleteActionsCacheRequest(server string, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "cacheId", cacheId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/caches/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetActionsCacheRequest constructs an http.Request for the GetActionsCache method
+func NewGetActionsCacheRequest(server string, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "cacheId", cacheId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/caches/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -27923,7 +28342,7 @@ func NewUpdateReleaseRequestWithBody(server string, owner RepoOwnerParam, repo R
 }
 
 // NewUploadReleaseAssetRequestWithBody constructs an http.Request for the UploadReleaseAsset method, with any body, and a specified content type
-func NewUploadReleaseAssetRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, contentType string, body io.Reader) (*http.Request, error) {
+func NewUploadReleaseAssetRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, params *UploadReleaseAssetParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -27960,6 +28379,29 @@ func NewUploadReleaseAssetRequestWithBody(server string, owner RepoOwnerParam, r
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "name", params.Name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
@@ -30185,28 +30627,36 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 
-	// GetCiQueueWithResponse Legge coda e concorrenza CI
+	// GetCiQueueWithResponse Legge coda e concorrenza CI (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /admin/ci/queue (the `GetCiQueue` operationId).
 	GetCiQueueWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCiQueueResponse, error)
 
-	// ListCiRunnersWithResponse Elenca i runner esterni
+	// ListCiRunnersWithResponse Elenca i runner esterni (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /admin/ci/runners (the `ListCiRunners` operationId).
 	ListCiRunnersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCiRunnersResponse, error)
 
-	// CreateCiRunnerRegistrationTokenWithResponse Crea un token monouso per registrare un runner esterno
+	// CreateCiRunnerRegistrationTokenWithResponse Crea un token monouso per registrare un runner esterno (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /admin/ci/runners/registration-token (the `CreateCiRunnerRegistrationToken` operationId).
 	CreateCiRunnerRegistrationTokenWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CreateCiRunnerRegistrationTokenResponse, error)
 
-	// DeleteCiRunnerWithResponse Revoca un runner esterno
+	// DeleteCiRunnerWithResponse Revoca un runner esterno (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -31259,6 +31709,40 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /repos/{owner}/{repo}/actions/artifacts/{artifactId}/download (the `DownloadWorkflowArtifact` operationId).
 	DownloadWorkflowArtifactWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, artifactId ArtifactIdParam, reqEditors ...RequestEditorFn) (*DownloadWorkflowArtifactResponse, error)
 
+	// DeleteActionsCachesWithResponse Elimina tutte le cache CI del repository
+	//
+	// Serve `write` sul repo (403 altrimenti, 404 se non lo si legge). Con `key` o `ref` elimina solo le cache corrispondenti. Un repo archiviato rifiuta la modifica con 409 `archived`. Risponde col numero di cache eliminate.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/actions/caches (the `DeleteActionsCaches` operationId).
+	DeleteActionsCachesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *DeleteActionsCachesParams, reqEditors ...RequestEditorFn) (*DeleteActionsCachesResponse, error)
+
+	// ListActionsCachesWithResponse Elenca le cache CI del repository e l'uso della quota
+	//
+	// Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5): a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo, con job di pulizia. Log, artefatti e cache stanno su un volume di core escluso dai backup.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/caches (the `ListActionsCaches` operationId).
+	ListActionsCachesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListActionsCachesParams, reqEditors ...RequestEditorFn) (*ListActionsCachesResponse, error)
+
+	// DeleteActionsCacheWithResponse Elimina una cache CI
+	//
+	// Serve `write` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/actions/caches/{cacheId} (the `DeleteActionsCache` operationId).
+	DeleteActionsCacheWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam, reqEditors ...RequestEditorFn) (*DeleteActionsCacheResponse, error)
+
+	// GetActionsCacheWithResponse Legge i metadati di una cache CI
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/caches/{cacheId} (the `GetActionsCache` operationId).
+	GetActionsCacheWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam, reqEditors ...RequestEditorFn) (*GetActionsCacheResponse, error)
+
 	// GetWorkflowJobWithResponse Legge un job
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -31268,7 +31752,7 @@ type ClientWithResponsesInterface interface {
 
 	// GetWorkflowJobLogWithResponse Legge il log, anche mentre il job e' in esecuzione
 	//
-	// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job.
+	// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni e non sono nei backup (CI5).
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -31290,6 +31774,8 @@ type ClientWithResponsesInterface interface {
 	GetWorkflowRunWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*GetWorkflowRunResponse, error)
 
 	// ListWorkflowArtifactsWithResponse Elenca gli artefatti di un'esecuzione
+	//
+	// Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno, fuori dai backup (CI5).
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -32639,12 +33125,12 @@ type ClientWithResponsesInterface interface {
 
 	// UploadReleaseAssetWithBodyWithResponse Carica un allegato di release
 	//
-	// File fino a 2 GiB; il server calcola e restituisce SHA-256.
+	// File fino a 2 GiB; il server calcola e restituisce SHA-256. Il nome del file e' il parametro query `name` (obbligatorio): da 1 a 255 caratteri, senza `/`, `\` o caratteri di controllo e diverso da `.` e `..`; altrimenti 422 (`details.fields.name`). Un allegato con lo stesso nome nella stessa release e' 409 `conflict`. Serve `write` sul repo; una release pubblicata e' modificabile solo da chi ha `write`.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /repos/{owner}/{repo}/releases/{releaseId}/assets (the `UploadReleaseAsset` operationId).
-	UploadReleaseAssetWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadReleaseAssetResponse, error)
+	UploadReleaseAssetWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, params *UploadReleaseAssetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadReleaseAssetResponse, error)
 
 	// DownloadReleaseAssetWithResponse Scarica un allegato di release
 	//
@@ -39706,6 +40192,265 @@ func (r DownloadWorkflowArtifactResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r DownloadWorkflowArtifactResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteActionsCachesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Deleted int `json:"deleted"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteActionsCachesResponse) GetJSON200() *struct {
+	Deleted int `json:"deleted"`
+} {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteActionsCachesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteActionsCachesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteActionsCachesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteActionsCachesResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteActionsCachesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteActionsCachesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteActionsCachesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteActionsCachesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListActionsCachesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActionsCacheList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListActionsCachesResponse) GetJSON200() *ActionsCacheList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListActionsCachesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListActionsCachesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListActionsCachesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListActionsCachesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListActionsCachesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListActionsCachesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListActionsCachesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteActionsCacheResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteActionsCacheResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteActionsCacheResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteActionsCacheResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteActionsCacheResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteActionsCacheResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteActionsCacheResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteActionsCacheResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteActionsCacheResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetActionsCacheResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActionsCache
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetActionsCacheResponse) GetJSON200() *ActionsCache {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetActionsCacheResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetActionsCacheResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetActionsCacheResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetActionsCacheResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetActionsCacheResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetActionsCacheResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetActionsCacheResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -49334,8 +50079,12 @@ type UploadReleaseAssetResponse struct {
 	JSON403 *Forbidden
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
 	// JSON413 the response for an HTTP 413 `application/json` response
 	JSON413 *PayloadTooLarge
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
 }
 
 // GetJSON201 returns the response for an HTTP 201 `application/json` response
@@ -49358,9 +50107,19 @@ func (r UploadReleaseAssetResponse) GetJSON404() *NotFound {
 	return r.JSON404
 }
 
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UploadReleaseAssetResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
 // GetJSON413 returns the response for an HTTP 413 `application/json` response
 func (r UploadReleaseAssetResponse) GetJSON413() *PayloadTooLarge {
 	return r.JSON413
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UploadReleaseAssetResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
 }
 
 // GetBody returns the raw response body bytes
@@ -52568,7 +53327,9 @@ func (r ResetUserTotpResponse) ContentType() string {
 	return ""
 }
 
-// GetCiQueueWithResponse Legge coda e concorrenza CI
+// GetCiQueueWithResponse Legge coda e concorrenza CI (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -52581,7 +53342,9 @@ func (c *ClientWithResponses) GetCiQueueWithResponse(ctx context.Context, reqEdi
 	return ParseGetCiQueueResponse(rsp)
 }
 
-// ListCiRunnersWithResponse Elenca i runner esterni
+// ListCiRunnersWithResponse Elenca i runner esterni (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -52594,7 +53357,9 @@ func (c *ClientWithResponses) ListCiRunnersWithResponse(ctx context.Context, req
 	return ParseListCiRunnersResponse(rsp)
 }
 
-// CreateCiRunnerRegistrationTokenWithResponse Crea un token monouso per registrare un runner esterno
+// CreateCiRunnerRegistrationTokenWithResponse Crea un token monouso per registrare un runner esterno (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -52607,7 +53372,9 @@ func (c *ClientWithResponses) CreateCiRunnerRegistrationTokenWithResponse(ctx co
 	return ParseCreateCiRunnerRegistrationTokenResponse(rsp)
 }
 
-// DeleteCiRunnerWithResponse Revoca un runner esterno
+// DeleteCiRunnerWithResponse Revoca un runner esterno (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -54386,6 +55153,64 @@ func (c *ClientWithResponses) DownloadWorkflowArtifactWithResponse(ctx context.C
 	return ParseDownloadWorkflowArtifactResponse(rsp)
 }
 
+// DeleteActionsCachesWithResponse Elimina tutte le cache CI del repository
+//
+// Serve `write` sul repo (403 altrimenti, 404 se non lo si legge). Con `key` o `ref` elimina solo le cache corrispondenti. Un repo archiviato rifiuta la modifica con 409 `archived`. Risponde col numero di cache eliminate.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/actions/caches (the `DeleteActionsCaches` operationId).
+func (c *ClientWithResponses) DeleteActionsCachesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *DeleteActionsCachesParams, reqEditors ...RequestEditorFn) (*DeleteActionsCachesResponse, error) {
+	rsp, err := c.DeleteActionsCaches(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteActionsCachesResponse(rsp)
+}
+
+// ListActionsCachesWithResponse Elenca le cache CI del repository e l'uso della quota
+//
+// Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5): a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo, con job di pulizia. Log, artefatti e cache stanno su un volume di core escluso dai backup.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/caches (the `ListActionsCaches` operationId).
+func (c *ClientWithResponses) ListActionsCachesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListActionsCachesParams, reqEditors ...RequestEditorFn) (*ListActionsCachesResponse, error) {
+	rsp, err := c.ListActionsCaches(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListActionsCachesResponse(rsp)
+}
+
+// DeleteActionsCacheWithResponse Elimina una cache CI
+//
+// Serve `write` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/actions/caches/{cacheId} (the `DeleteActionsCache` operationId).
+func (c *ClientWithResponses) DeleteActionsCacheWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam, reqEditors ...RequestEditorFn) (*DeleteActionsCacheResponse, error) {
+	rsp, err := c.DeleteActionsCache(ctx, owner, repo, cacheId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteActionsCacheResponse(rsp)
+}
+
+// GetActionsCacheWithResponse Legge i metadati di una cache CI
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/caches/{cacheId} (the `GetActionsCache` operationId).
+func (c *ClientWithResponses) GetActionsCacheWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam, reqEditors ...RequestEditorFn) (*GetActionsCacheResponse, error) {
+	rsp, err := c.GetActionsCache(ctx, owner, repo, cacheId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetActionsCacheResponse(rsp)
+}
+
 // GetWorkflowJobWithResponse Legge un job
 //
 // Returns a wrapper object for the known response body format(s).
@@ -54401,7 +55226,7 @@ func (c *ClientWithResponses) GetWorkflowJobWithResponse(ctx context.Context, ow
 
 // GetWorkflowJobLogWithResponse Legge il log, anche mentre il job e' in esecuzione
 //
-// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job.
+// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni e non sono nei backup (CI5).
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -54441,6 +55266,8 @@ func (c *ClientWithResponses) GetWorkflowRunWithResponse(ctx context.Context, ow
 }
 
 // ListWorkflowArtifactsWithResponse Elenca gli artefatti di un'esecuzione
+//
+// Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno, fuori dai backup (CI5).
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -56714,13 +57541,13 @@ func (c *ClientWithResponses) UpdateReleaseWithResponse(ctx context.Context, own
 
 // UploadReleaseAssetWithBodyWithResponse Carica un allegato di release
 //
-// File fino a 2 GiB; il server calcola e restituisce SHA-256.
+// File fino a 2 GiB; il server calcola e restituisce SHA-256. Il nome del file e' il parametro query `name` (obbligatorio): da 1 a 255 caratteri, senza `/`, `\` o caratteri di controllo e diverso da `.` e `..`; altrimenti 422 (`details.fields.name`). Un allegato con lo stesso nome nella stessa release e' 409 `conflict`. Serve `write` sul repo; una release pubblicata e' modificabile solo da chi ha `write`.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /repos/{owner}/{repo}/releases/{releaseId}/assets (the `UploadReleaseAsset` operationId).
-func (c *ClientWithResponses) UploadReleaseAssetWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadReleaseAssetResponse, error) {
-	rsp, err := c.UploadReleaseAssetWithBody(ctx, owner, repo, releaseId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UploadReleaseAssetWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, params *UploadReleaseAssetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadReleaseAssetResponse, error) {
+	rsp, err := c.UploadReleaseAssetWithBody(ctx, owner, repo, releaseId, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -62821,6 +63648,206 @@ func ParseDownloadWorkflowArtifactResponse(rsp *http.Response) (*DownloadWorkflo
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteActionsCachesResponse parses an HTTP response from a DeleteActionsCachesWithResponse call
+func ParseDeleteActionsCachesResponse(rsp *http.Response) (*DeleteActionsCachesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteActionsCachesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Deleted int `json:"deleted"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListActionsCachesResponse parses an HTTP response from a ListActionsCachesWithResponse call
+func ParseListActionsCachesResponse(rsp *http.Response) (*ListActionsCachesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListActionsCachesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActionsCacheList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteActionsCacheResponse parses an HTTP response from a DeleteActionsCacheWithResponse call
+func ParseDeleteActionsCacheResponse(rsp *http.Response) (*DeleteActionsCacheResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteActionsCacheResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetActionsCacheResponse parses an HTTP response from a GetActionsCacheWithResponse call
+func ParseGetActionsCacheResponse(rsp *http.Response) (*GetActionsCacheResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetActionsCacheResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActionsCache
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -70820,12 +71847,26 @@ func ParseUploadReleaseAssetResponse(rsp *http.Response) (*UploadReleaseAssetRes
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
 		var dest PayloadTooLarge
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 

@@ -2285,6 +2285,27 @@ type AccessSource struct {
 // AccessSourceKind defines model for AccessSource.Kind.
 type AccessSourceKind string
 
+// ActionsCache defines model for ActionsCache.
+type ActionsCache struct {
+	CreatedAt  time.Time          `json:"createdAt"`
+	Id         openapi_types.UUID `json:"id"`
+	Key        string             `json:"key"`
+	LastUsedAt time.Time          `json:"lastUsedAt"`
+	Ref        string             `json:"ref"`
+	SizeBytes  int64              `json:"sizeBytes"`
+}
+
+// ActionsCacheList defines model for ActionsCacheList.
+type ActionsCacheList struct {
+	Items []ActionsCache `json:"items"`
+
+	// QuotaBytes Quota per repository: 10 GB (CI5).
+	//
+	// Example: 10737418240
+	QuotaBytes int64 `json:"quotaBytes"`
+	UsedBytes  int64 `json:"usedBytes"`
+}
+
 // ActionsSecret defines model for ActionsSecret.
 type ActionsSecret struct {
 	Name      string    `json:"name"`
@@ -3415,11 +3436,14 @@ type IssueViaToken struct {
 	Name string             `json:"name"`
 }
 
-// JobTokenPermissions Permessi effettivi del token effimero del job; non puo' eccedere quelli del workflow e del repository.
+// JobTokenPermissions Permessi effettivi del token effimero del job (CI4). Ogni livello e' il minimo fra tre limiti: quello richiesto dal workflow (`permissions:`), quello consentito dal repository e quello di chi avvia l'esecuzione (l'attore di push, pull_request, workflow_dispatch o Riesegui). Un attore con soli permessi di lettura non ottiene mai `write` nel token, qualunque cosa chieda il workflow; per `schedule`, che non ha un attore, vale il limite del repository. Senza `permissions:` il default e' `read`. Il token non puo' mai eccedere l'attore e scade con il job.
 type JobTokenPermissions struct {
-	Actions  JobTokenPermissionsActions  `json:"actions"`
-	Contents JobTokenPermissionsContents `json:"contents"`
-	Packages JobTokenPermissionsPackages `json:"packages"`
+	Actions JobTokenPermissionsActions `json:"actions"`
+
+	// CappedByActor true se almeno un livello e' stato ridotto perche' l'attore ha meno permessi di quelli richiesti.
+	CappedByActor *bool                       `json:"cappedByActor,omitempty"`
+	Contents      JobTokenPermissionsContents `json:"contents"`
+	Packages      JobTokenPermissionsPackages `json:"packages"`
 }
 
 // JobTokenPermissionsActions defines model for JobTokenPermissions.Actions.
@@ -5020,7 +5044,7 @@ type WorkflowJob struct {
 	Id         openapi_types.UUID `json:"id"`
 	Name       string             `json:"name"`
 
-	// Permissions Permessi effettivi del token effimero del job; non puo' eccedere quelli del workflow e del repository.
+	// Permissions Permessi effettivi del token effimero del job (CI4). Ogni livello e' il minimo fra tre limiti: quello richiesto dal workflow (`permissions:`), quello consentito dal repository e quello di chi avvia l'esecuzione (l'attore di push, pull_request, workflow_dispatch o Riesegui). Un attore con soli permessi di lettura non ottiene mai `write` nel token, qualunque cosa chieda il workflow; per `schedule`, che non ha un attore, vale il limite del repository. Senza `permissions:` il default e' `read`. Il token non puo' mai eccedere l'attore e scade con il job.
 	Permissions JobTokenPermissions   `json:"permissions"`
 	RunnerName  *string               `json:"runnerName,omitempty"`
 	RunnerType  WorkflowJobRunnerType `json:"runnerType"`
@@ -5073,6 +5097,9 @@ type ArtifactIdParam = openapi_types.UUID
 
 // AssetIdParam defines model for AssetIdParam.
 type AssetIdParam = openapi_types.UUID
+
+// CacheIdParam defines model for CacheIdParam.
+type CacheIdParam = openapi_types.UUID
 
 // CodeSearchQueryParam defines model for CodeSearchQueryParam.
 type CodeSearchQueryParam = string
@@ -5369,6 +5396,24 @@ type ListDeletedRepositoriesParams struct {
 	Owner *RepoOwnerFilter `form:"owner,omitempty" json:"owner,omitempty"`
 }
 
+// DeleteActionsCachesParams defines parameters for DeleteActionsCaches.
+type DeleteActionsCachesParams struct {
+	// Key Prefisso della chiave.
+	Key *string `form:"key,omitempty" json:"key,omitempty"`
+
+	// Ref Ref della cache.
+	Ref *string `form:"ref,omitempty" json:"ref,omitempty"`
+}
+
+// ListActionsCachesParams defines parameters for ListActionsCaches.
+type ListActionsCachesParams struct {
+	// Key Prefisso della chiave.
+	Key *string `form:"key,omitempty" json:"key,omitempty"`
+
+	// Ref Ref (ramo o tag) della cache.
+	Ref *string `form:"ref,omitempty" json:"ref,omitempty"`
+}
+
 // GetWorkflowJobLogParams defines parameters for GetWorkflowJobLog.
 type GetWorkflowJobLogParams struct {
 	Follow *bool `form:"follow,omitempty" json:"follow,omitempty"`
@@ -5639,6 +5684,12 @@ type GetRepositoryReadmeParams struct {
 	Path *PathParam `form:"path,omitempty" json:"path,omitempty"`
 }
 
+// UploadReleaseAssetParams defines parameters for UploadReleaseAsset.
+type UploadReleaseAssetParams struct {
+	// Name Nome del file allegato.
+	Name string `form:"name" json:"name"`
+}
+
 // SearchRepositoryCodeParams defines parameters for SearchRepositoryCode.
 type SearchRepositoryCodeParams struct {
 	// Q Testo da cercare (sottostringa letterale, senza distinguere maiuscole), da 2 a 256 caratteri.
@@ -5869,16 +5920,16 @@ type WorkflowRunJSONRequestBody = WebhookWorkflowRunPayload
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// GetCiQueue Legge coda e concorrenza CI
+	// GetCiQueue Legge coda e concorrenza CI (solo amministratore)
 	// (GET /admin/ci/queue)
 	GetCiQueue(w http.ResponseWriter, r *http.Request)
-	// ListCiRunners Elenca i runner esterni
+	// ListCiRunners Elenca i runner esterni (solo amministratore)
 	// (GET /admin/ci/runners)
 	ListCiRunners(w http.ResponseWriter, r *http.Request)
-	// CreateCiRunnerRegistrationToken Crea un token monouso per registrare un runner esterno
+	// CreateCiRunnerRegistrationToken Crea un token monouso per registrare un runner esterno (solo amministratore)
 	// (POST /admin/ci/runners/registration-token)
 	CreateCiRunnerRegistrationToken(w http.ResponseWriter, r *http.Request)
-	// DeleteCiRunner Revoca un runner esterno
+	// DeleteCiRunner Revoca un runner esterno (solo amministratore)
 	// (DELETE /admin/ci/runners/{runnerId})
 	DeleteCiRunner(w http.ResponseWriter, r *http.Request, runnerId RunnerIdParam)
 	// GetAdminSystem Stato dell'installazione (Admin · System)
@@ -5974,6 +6025,18 @@ type ServerInterface interface {
 	// DownloadWorkflowArtifact Scarica un artefatto ZIP
 	// (GET /repos/{owner}/{repo}/actions/artifacts/{artifactId}/download)
 	DownloadWorkflowArtifact(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, artifactId ArtifactIdParam)
+	// DeleteActionsCaches Elimina tutte le cache CI del repository
+	// (DELETE /repos/{owner}/{repo}/actions/caches)
+	DeleteActionsCaches(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params DeleteActionsCachesParams)
+	// ListActionsCaches Elenca le cache CI del repository e l'uso della quota
+	// (GET /repos/{owner}/{repo}/actions/caches)
+	ListActionsCaches(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params ListActionsCachesParams)
+	// DeleteActionsCache Elimina una cache CI
+	// (DELETE /repos/{owner}/{repo}/actions/caches/{cacheId})
+	DeleteActionsCache(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam)
+	// GetActionsCache Legge i metadati di una cache CI
+	// (GET /repos/{owner}/{repo}/actions/caches/{cacheId})
+	GetActionsCache(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, cacheId CacheIdParam)
 	// GetWorkflowJob Legge un job
 	// (GET /repos/{owner}/{repo}/actions/jobs/{jobId})
 	GetWorkflowJob(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam)
@@ -6342,7 +6405,7 @@ type ServerInterface interface {
 	UpdateRelease(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam)
 	// UploadReleaseAsset Carica un allegato di release
 	// (POST /repos/{owner}/{repo}/releases/{releaseId}/assets)
-	UploadReleaseAsset(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam)
+	UploadReleaseAsset(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, params UploadReleaseAssetParams)
 	// DownloadReleaseAsset Scarica un allegato di release
 	// (GET /repos/{owner}/{repo}/releases/{releaseId}/assets/{assetId}/download)
 	DownloadReleaseAsset(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, releaseId ReleaseIdParam, assetId AssetIdParam)
@@ -7565,6 +7628,222 @@ func (siw *ServerInterfaceWrapper) DownloadWorkflowArtifact(w http.ResponseWrite
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DownloadWorkflowArtifact(w, r, owner, repo, artifactId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteActionsCaches operation middleware
+func (siw *ServerInterfaceWrapper) DeleteActionsCaches(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteActionsCachesParams
+
+	// ------------- Optional query parameter "key" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "key", r.URL.Query(), &params.Key, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "key"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "ref" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ref", r.URL.Query(), &params.Ref, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ref"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteActionsCaches(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListActionsCaches operation middleware
+func (siw *ServerInterfaceWrapper) ListActionsCaches(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListActionsCachesParams
+
+	// ------------- Optional query parameter "key" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "key", r.URL.Query(), &params.Key, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "key"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "ref" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ref", r.URL.Query(), &params.Ref, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ref"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListActionsCaches(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteActionsCache operation middleware
+func (siw *ServerInterfaceWrapper) DeleteActionsCache(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "cacheId" -------------
+	var cacheId CacheIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "cacheId", r.PathValue("cacheId"), &cacheId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cacheId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteActionsCache(w, r, owner, repo, cacheId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetActionsCache operation middleware
+func (siw *ServerInterfaceWrapper) GetActionsCache(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "cacheId" -------------
+	var cacheId CacheIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "cacheId", r.PathValue("cacheId"), &cacheId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cacheId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetActionsCache(w, r, owner, repo, cacheId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -13734,8 +14013,24 @@ func (siw *ServerInterfaceWrapper) UploadReleaseAsset(w http.ResponseWriter, r *
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UploadReleaseAssetParams
+
+	// ------------- Required query parameter "name" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "name", r.URL.Query(), &params.Name, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "name"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UploadReleaseAsset(w, r, owner, repo, releaseId)
+		siw.Handler.UploadReleaseAsset(w, r, owner, repo, releaseId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -14798,6 +15093,10 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/jobs/{jobId}/logs", wrapper.GetWorkflowJobLog)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/runs/{runId}/artifacts", wrapper.ListWorkflowArtifacts)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/artifacts/{artifactId}/download", wrapper.DownloadWorkflowArtifact)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/caches", wrapper.DeleteActionsCaches)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/caches", wrapper.ListActionsCaches)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/caches/{cacheId}", wrapper.DeleteActionsCache)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/caches/{cacheId}", wrapper.GetActionsCache)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/variables", wrapper.ListRepositoryActionsVariables)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/variables", wrapper.PutRepositoryActionsVariable)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/secrets", wrapper.ListRepositoryActionsSecrets)

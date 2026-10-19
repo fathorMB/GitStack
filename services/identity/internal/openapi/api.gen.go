@@ -1226,6 +1226,9 @@ type ArtifactIdParam = openapi_types.UUID
 // AssetIdParam defines model for AssetIdParam.
 type AssetIdParam = openapi_types.UUID
 
+// CacheIdParam defines model for CacheIdParam.
+type CacheIdParam = openapi_types.UUID
+
 // CommitShaParam defines model for CommitShaParam.
 type CommitShaParam = string
 

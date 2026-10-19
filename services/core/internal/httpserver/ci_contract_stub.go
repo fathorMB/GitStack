@@ -93,7 +93,7 @@ func (s *apiServer) GetRelease(w http.ResponseWriter, r *http.Request, o openapi
 func (s *apiServer) UpdateRelease(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam) {
 	notImplemented(w)
 }
-func (s *apiServer) UploadReleaseAsset(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam) {
+func (s *apiServer) UploadReleaseAsset(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam, params openapi.UploadReleaseAssetParams) {
 	notImplemented(w)
 }
 func (s *apiServer) DownloadReleaseAsset(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam, asset openapi.AssetIdParam) {
@@ -103,5 +103,17 @@ func (s *apiServer) ListWorkflows(w http.ResponseWriter, r *http.Request, o open
 	notImplemented(w)
 }
 func (s *apiServer) DispatchWorkflow(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, workflow openapi.WorkflowParam) {
+	notImplemented(w)
+}
+func (s *apiServer) ListActionsCaches(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, params openapi.ListActionsCachesParams) {
+	notImplemented(w)
+}
+func (s *apiServer) DeleteActionsCaches(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, params openapi.DeleteActionsCachesParams) {
+	notImplemented(w)
+}
+func (s *apiServer) GetActionsCache(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.CacheIdParam) {
+	notImplemented(w)
+}
+func (s *apiServer) DeleteActionsCache(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.CacheIdParam) {
 	notImplemented(w)
 }

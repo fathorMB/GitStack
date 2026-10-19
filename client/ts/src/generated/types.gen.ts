@@ -67,10 +67,33 @@ export type WorkflowJob = {
     completedAt?: string | null;
 };
 
+export type ActionsCache = {
+    id: string;
+    key: string;
+    ref: string;
+    sizeBytes: number;
+    createdAt: string;
+    lastUsedAt: string;
+};
+
+export type ActionsCacheList = {
+    items: Array<ActionsCache>;
+    usedBytes: number;
+    /**
+     * Quota per repository: 10 GB (CI5).
+     */
+    quotaBytes: number;
+};
+
 /**
- * Permessi effettivi del token effimero del job; non puo' eccedere quelli del workflow e del repository.
+ * Permessi effettivi del token effimero del job (CI4). Ogni livello e' il minimo fra tre limiti: quello richiesto dal workflow (`permissions:`), quello consentito dal repository e quello di chi avvia l'esecuzione (l'attore di push, pull_request, workflow_dispatch o Riesegui). Un attore con soli permessi di lettura non ottiene mai `write` nel token, qualunque cosa chieda il workflow; per `schedule`, che non ha un attore, vale il limite del repository. Senza `permissions:` il default e' `read`. Il token non puo' mai eccedere l'attore e scade con il job.
+ *
  */
 export type JobTokenPermissions = {
+    /**
+     * true se almeno un livello e' stato ridotto perche' l'attore ha meno permessi di quelli richiesti.
+     */
+    cappedByActor?: boolean;
     contents: 'none' | 'read' | 'write';
     packages: 'none' | 'read' | 'write';
     actions: 'none' | 'read' | 'write';
@@ -4029,6 +4052,8 @@ export type RunIdParam = string;
 export type JobIdParam = string;
 
 export type ArtifactIdParam = string;
+
+export type CacheIdParam = string;
 
 export type RunnerIdParam = string;
 
@@ -14840,6 +14865,208 @@ export type DownloadWorkflowArtifactResponses = {
 
 export type DownloadWorkflowArtifactResponse = DownloadWorkflowArtifactResponses[keyof DownloadWorkflowArtifactResponses];
 
+export type DeleteActionsCachesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: {
+        /**
+         * Prefisso della chiave.
+         */
+        key?: string;
+        /**
+         * Ref della cache.
+         */
+        ref?: string;
+    };
+    url: '/repos/{owner}/{repo}/actions/caches';
+};
+
+export type DeleteActionsCachesErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type DeleteActionsCachesError = DeleteActionsCachesErrors[keyof DeleteActionsCachesErrors];
+
+export type DeleteActionsCachesResponses = {
+    /**
+     * Cache eliminate.
+     */
+    200: {
+        deleted: number;
+    };
+};
+
+export type DeleteActionsCachesResponse = DeleteActionsCachesResponses[keyof DeleteActionsCachesResponses];
+
+export type ListActionsCachesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: {
+        /**
+         * Prefisso della chiave.
+         */
+        key?: string;
+        /**
+         * Ref (ramo o tag) della cache.
+         */
+        ref?: string;
+    };
+    url: '/repos/{owner}/{repo}/actions/caches';
+};
+
+export type ListActionsCachesErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListActionsCachesError = ListActionsCachesErrors[keyof ListActionsCachesErrors];
+
+export type ListActionsCachesResponses = {
+    /**
+     * Cache e quota.
+     */
+    200: ActionsCacheList;
+};
+
+export type ListActionsCachesResponse = ListActionsCachesResponses[keyof ListActionsCachesResponses];
+
+export type DeleteActionsCacheData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        cacheId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/caches/{cacheId}';
+};
+
+export type DeleteActionsCacheErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type DeleteActionsCacheError = DeleteActionsCacheErrors[keyof DeleteActionsCacheErrors];
+
+export type DeleteActionsCacheResponses = {
+    /**
+     * Cache eliminata.
+     */
+    204: void;
+};
+
+export type DeleteActionsCacheResponse = DeleteActionsCacheResponses[keyof DeleteActionsCacheResponses];
+
+export type GetActionsCacheData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        cacheId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/caches/{cacheId}';
+};
+
+export type GetActionsCacheErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetActionsCacheError = GetActionsCacheErrors[keyof GetActionsCacheErrors];
+
+export type GetActionsCacheResponses = {
+    /**
+     * Cache.
+     */
+    200: ActionsCache;
+};
+
+export type GetActionsCacheResponse = GetActionsCacheResponses[keyof GetActionsCacheResponses];
+
 export type ListRepositoryActionsVariablesData = {
     body?: never;
     path: {
@@ -15670,7 +15897,12 @@ export type UploadReleaseAssetData = {
         repo: RepoName;
         releaseId: string;
     };
-    query?: never;
+    query: {
+        /**
+         * Nome del file allegato.
+         */
+        name: string;
+    };
     url: '/repos/{owner}/{repo}/releases/{releaseId}/assets';
 };
 
@@ -15689,10 +15921,19 @@ export type UploadReleaseAssetErrors = {
      */
     404: Error;
     /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
      * Corpo o file oltre il limite (`body_too_large`, `attachment_too_large`).
      *
      */
     413: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
 };
 
 export type UploadReleaseAssetError = UploadReleaseAssetErrors[keyof UploadReleaseAssetErrors];

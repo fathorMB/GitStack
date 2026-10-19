@@ -91,7 +91,7 @@ func (s *apiServer) GetRelease(w http.ResponseWriter, r *http.Request, o openapi
 func (s *apiServer) UpdateRelease(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam) {
 	s.ciProxy(w, r)
 }
-func (s *apiServer) UploadReleaseAsset(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam) {
+func (s *apiServer) UploadReleaseAsset(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam, params openapi.UploadReleaseAssetParams) {
 	s.ciProxy(w, r)
 }
 func (s *apiServer) DownloadReleaseAsset(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam, asset openapi.AssetIdParam) {
@@ -101,5 +101,17 @@ func (s *apiServer) ListWorkflows(w http.ResponseWriter, r *http.Request, o open
 	s.ciProxy(w, r)
 }
 func (s *apiServer) DispatchWorkflow(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, workflow openapi.WorkflowParam) {
+	s.ciProxy(w, r)
+}
+func (s *apiServer) ListActionsCaches(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, params openapi.ListActionsCachesParams) {
+	s.ciProxy(w, r)
+}
+func (s *apiServer) DeleteActionsCaches(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, params openapi.DeleteActionsCachesParams) {
+	s.ciProxy(w, r)
+}
+func (s *apiServer) GetActionsCache(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.CacheIdParam) {
+	s.ciProxy(w, r)
+}
+func (s *apiServer) DeleteActionsCache(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.CacheIdParam) {
 	s.ciProxy(w, r)
 }
