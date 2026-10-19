@@ -130,6 +130,42 @@ func pullStatusState(ctx context.Context, q querier, repoID uuid.UUID, sha strin
 	return &st, nil
 }
 
+// pullStatusStates calcola lo statusState di più PR con una query sola: gli
+// ultimi stati di tutte le coppie (repo, sha di testa). La chiave del risultato
+// è l'indice della coppia nell'input.
+func pullStatusStates(ctx context.Context, q querier, repos []uuid.UUID, shas []string) ([]*openapi.CombinedCommitStatusState, error) {
+	out := make([]*openapi.CombinedCommitStatusState, len(repos))
+	type key struct {
+		repo uuid.UUID
+		sha  string
+	}
+	states := map[key][]string{}
+	if len(repos) > 0 {
+		rows, err := q.Query(ctx, `SELECT s.repo_id, s.sha, s.state FROM core.commit_statuses s
+			JOIN unnest($1::uuid[], $2::text[]) AS k(repo_id, sha) ON k.repo_id = s.repo_id AND k.sha = s.sha`, repos, shas)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var k key
+			var st string
+			if err := rows.Scan(&k.repo, &k.sha, &st); err != nil {
+				return nil, err
+			}
+			states[k] = append(states[k], st)
+		}
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+	}
+	for i := range repos {
+		st := combinedState(states[key{repos[i], shas[i]}])
+		out[i] = &st
+	}
+	return out, nil
+}
+
 // resolveStatusSha risolve lo sha (completo o prefisso) di un commit del repo
 // con il servizio git. ok=false dopo aver risposto (400 se non è esadecimale,
 // 404 se non esiste).

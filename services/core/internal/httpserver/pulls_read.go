@@ -118,10 +118,19 @@ func (s *apiServer) pullSummaries(r *http.Request, repoOf map[uuid.UUID]uuid.UUI
 		if err != nil {
 			return nil, err
 		}
-		if sum.StatusState, err = pullStatusState(ctx, s.pool, repoOf[p.ID], sha40(p.HeadSha)); err != nil {
-			return nil, err
-		}
 		items = append(items, sum)
+	}
+	repos := make([]uuid.UUID, len(prs))
+	shas := make([]string, len(prs))
+	for i, p := range prs {
+		repos[i], shas[i] = repoOf[p.ID], sha40(p.HeadSha)
+	}
+	sts, err := pullStatusStates(ctx, s.pool, repos, shas)
+	if err != nil {
+		return nil, err
+	}
+	for i := range items {
+		items[i].StatusState = sts[i]
 	}
 	return items, nil
 }

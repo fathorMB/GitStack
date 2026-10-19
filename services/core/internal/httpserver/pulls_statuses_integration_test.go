@@ -3,16 +3,23 @@
 package httpserver_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 
+	"github.com/fathorMB/GitStack/services/core/internal/dbtest"
+	"github.com/fathorMB/GitStack/services/core/internal/events"
+	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // GIT-264 (v1.1): API degli stati dei commit (PR9) e gate del merge con
@@ -311,5 +318,109 @@ func TestMergeGate_MirrorInPullERepoRequirePullRequest(t *testing.T) {
 	}
 	if e.mg.mergeCount() != 0 {
 		t.Fatal("git non doveva essere chiamato")
+	}
+}
+
+// GIT-305: lo statusState dell'elenco delle PR si calcola con una query sola
+// per pagina. Il tracer conta le query su core.commit_statuses.
+type statusQueryCounter struct{ n atomic.Int64 }
+
+func (c *statusQueryCounter) TraceQueryStart(ctx context.Context, _ *pgx.Conn, d pgx.TraceQueryStartData) context.Context {
+	if strings.Contains(d.SQL, "commit_statuses") {
+		c.n.Add(1)
+	}
+	return ctx
+}
+
+func (c *statusQueryCounter) TraceQueryEnd(context.Context, *pgx.Conn, pgx.TraceQueryEndData) {}
+
+func TestPullList_StatusState_UnaQueryPerPagina_GIT305(t *testing.T) {
+	_, dsn := dbtest.NewPool(t)
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	counter := &statusQueryCounter{}
+	cfg.ConnConfig.Tracer = counter
+	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	pg := &prGit{fakeGit: newFakeGit(), br: map[uuid.UUID]map[string]string{}}
+	mg := &mergeGit{prGit: pg, conflicts: map[string][]string{}, behind: map[string]int{}}
+	ie := &issuesEnv{t: t, pool: pool, id: &issuesIdentity{fakeIdentity: newFakeIdentity(), writers: map[uuid.UUID][]string{}}}
+	ie.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
+		httpserver.WithRepoIdentity(ie.id), httpserver.WithReadableLister(ie.id), httpserver.WithGit(mg),
+		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "https://git.example.com"}))
+	e := &mergeEnv{pullsEnv: &pullsEnv{issuesEnv: ie, git: pg}, mg: mg}
+
+	repoID := e.repo("app", true)
+	e.id.grantWrite(repoID, "bob")
+
+	// Stati per ciclo: success, failure, pending, nessuno, error, misto (success+pending).
+	type post struct{ ctx, state string }
+	cases := []struct {
+		want  string
+		posts []post
+	}{
+		{"success", []post{{"ci/a", "success"}}},
+		{"failure", []post{{"ci/a", "success"}, {"ci/b", "failure"}}},
+		{"pending", []post{{"ci/a", "pending"}}},
+		{"none", nil},
+		{"error", []post{{"ci/a", "error"}}},
+		{"pending", []post{{"ci/a", "success"}, {"ci/b", "pending"}}},
+	}
+	want := map[int64]string{}
+	add := func(i int) {
+		name := fmt.Sprintf("feat-%d", i)
+		head := sha(2000 + i)
+		e.git.setBranch(repoID, name, head)
+		n := e.open("app", "bob", name)
+		c := cases[i%len(cases)]
+		for _, p := range c.posts {
+			e.want(e.postStatus("app", "bob", head, fmt.Sprintf(`{"state":%q,"context":%q}`, p.state, p.ctx)), http.StatusCreated, "")
+		}
+		want[n] = c.want
+	}
+	list := func() (map[int64]string, int64) {
+		before := counter.n.Load()
+		rec := e.do(http.MethodGet, "/repos/alice/app/pulls?perPage=100", "carol", "")
+		e.want(rec, http.StatusOK, "")
+		var l openapi.PullRequestList
+		if err := json.Unmarshal(rec.Body.Bytes(), &l); err != nil {
+			t.Fatal(err)
+		}
+		got := map[int64]string{}
+		for _, it := range l.Items {
+			if it.StatusState == nil {
+				t.Fatalf("PR #%d senza statusState", it.Number)
+			}
+			got[it.Number] = string(*it.StatusState)
+		}
+		return got, counter.n.Load() - before
+	}
+
+	var perSize []int64
+	made := 0
+	for _, size := range []int{1, 5, 20} {
+		for ; made < size; made++ {
+			add(made)
+		}
+		got, q := list()
+		if len(got) != size {
+			t.Fatalf("con %d PR l'elenco ne dà %d", size, len(got))
+		}
+		for n, w := range want {
+			if got[n] != w {
+				t.Errorf("PR #%d: statusState = %q, atteso %q", n, got[n], w)
+			}
+		}
+		perSize = append(perSize, q)
+		t.Logf("%d PR nella pagina: %d query su commit_statuses", size, q)
+	}
+	if perSize[0] != 1 || perSize[1] != perSize[0] || perSize[2] != perSize[0] {
+		t.Fatalf("le query sugli stati non sono costanti: %v", perSize)
 	}
 }
