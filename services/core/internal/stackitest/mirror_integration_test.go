@@ -130,8 +130,8 @@ func (d *mirrorDest) url() string { return "https://" + mirrorDestHost + ":" + d
 // ref è lo sha del ref sulla destinazione ("" se non c'è).
 func (e *gitEnv) destRef(d *mirrorDest, ref string) string {
 	e.t.Helper()
-	out, _ := e.git(e.home, "", "--git-dir="+d.bare, "rev-parse", "--verify", "-q", ref)
-	return strings.TrimSpace(out)
+	out, _ := e.gitOutput(e.home, "", "--git-dir="+d.bare, "rev-parse", "--verify", "-q", ref)
+	return strings.TrimSpace(out.stdout)
 }
 
 // TestMirrorGiroCompleto prova sullo stack vero (gateway, identity, git come

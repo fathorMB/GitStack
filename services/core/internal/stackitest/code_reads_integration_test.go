@@ -53,11 +53,13 @@ func runGit(t *testing.T, dir string, env []string, args ...string) string {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), append([]string{"GIT_CONFIG_GLOBAL=" + os.DevNull, "GIT_CONFIG_NOSYSTEM=1"}, env...)...)
-	out, err := cmd.CombinedOutput()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	err := cmd.Run()
 	if err != nil {
-		t.Fatalf("git %v: %v\n%s", args, err, out)
+		t.Fatalf("git %v: %v\n%s%s", args, err, stdout.String(), stderr.String())
 	}
-	return strings.TrimSpace(string(out))
+	return strings.TrimSpace(stdout.String())
 }
 
 func authorEnv(name, email string) []string {
