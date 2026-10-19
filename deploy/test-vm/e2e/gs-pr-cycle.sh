@@ -15,6 +15,7 @@
 #   GS_AGENT_TOKEN     token read+write:resource dell'utente agente
 #   GS_USER_NAME       la persona
 #   GS_AGENT_NAME      l'utente agente
+#   GS_AGENT_ID        il suo id (il token della persona non ha read:user)
 #   GS_REPO_NAME       nome del repo da creare
 # Ogni passo stampa "STEP ok <nome>"; al primo errore esce con codice != 0
 # dopo aver stampato "STEP FAIL <nome>: <motivo>".
@@ -57,7 +58,7 @@ ok repo_create
 
 # La persona dà write all'agente: il grant sul repo (id dell'agente da gs api).
 rid="$(as_person repo view "$REPO" --json id --jq .id 2>&1)" || fail grant "repo view: $rid"
-aid="$(as_person api "/users/${GS_AGENT_NAME}" --jq .id 2>&1)" || fail grant "utente agente: $aid"
+aid="${GS_AGENT_ID:?id utente agente}"
 as_person api -X POST "/resources/${rid}/grants" -f subjectType=user -f "subjectId=${aid}" -f role=write >/dev/null 2>&1 || fail grant "grant write all'agente"
 ok grant
 
@@ -68,7 +69,7 @@ cd "$W/person" || exit 1
 echo "# ciclo PR" > README.md
 git add README.md
 git commit -q -m "Primo commit" || fail clone "commit del ramo principale"
-git push -q origin HEAD:main 2>&1 || fail clone "push del ramo principale"
+GS_TOKEN="$GS_USER_TOKEN" git push -q origin HEAD:main 2>&1 || fail clone "push del ramo principale"
 ok clone
 
 # La credenziale per git dell'agente: URL con il suo token (non finisce nei log).
@@ -119,7 +120,7 @@ as_agent pr review "$pn" -R "$REPO" --approve >/dev/null 2>&1 && fail review_pro
 ok review_propria
 
 out="$(as_person pr review "$pn" -R "$REPO" --approve --body "Ok" --json state,countsAsApproval 2>&1)" || fail pr_review "$out"
-case "$out" in *approved*true*) ;; *) fail pr_review "approvazione della persona non valida: $out" ;; esac
+case "$out" in *\"state\":\"approved\"*\"countsAsApproval\":true*|*\"countsAsApproval\":true*\"state\":\"approved\"*) ;; *) fail pr_review "approvazione della persona non valida: $out" ;; esac
 dec="$(as_agent pr view "$pn" -R "$REPO" --json reviewDecision --jq .reviewDecision 2>&1)"
 [ "$dec" = approved ] || fail pr_review "reviewDecision = '$dec'"
 ok pr_review
@@ -128,7 +129,7 @@ as_agent pr comment "$pn" -R "$REPO" --body "Grazie, unisco." >/dev/null 2>&1 ||
 ok pr_comment
 
 out="$(as_agent pr merge "$pn" -R "$REPO" --squash --delete-branch --yes --json state,mergeMethod 2>&1)" || fail pr_merge "$out"
-case "$out" in *merged*squash*) ;; *) fail pr_merge "atteso merged/squash in: $out" ;; esac
+case "$out" in *\"mergeMethod\":\"squash\"*\"state\":\"merged\"*|*\"state\":\"merged\"*\"mergeMethod\":\"squash\"*) ;; *) fail pr_merge "atteso merged/squash in: $out" ;; esac
 ok pr_merge
 
 left="$(poll_issue_closed "$num")" || fail issue_chiusa "stato '$left' dopo il merge della PR con fixes #$num"
@@ -179,7 +180,7 @@ ok mcp_pr_create
 
 # la persona approva con gs (PR2); l'agente unisce con lo strumento MCP
 out="$(as_person pr review "$mpn" -R "$REPO" --approve --json state,countsAsApproval 2>&1)" || fail mcp_review "$out"
-case "$out" in *approved*true*) ;; *) fail mcp_review "approvazione della persona non valida: $out" ;; esac
+case "$out" in *\"state\":\"approved\"*\"countsAsApproval\":true*|*\"countsAsApproval\":true*\"state\":\"approved\"*) ;; *) fail mcp_review "approvazione della persona non valida: $out" ;; esac
 ok mcp_review
 
 r="$(mcp_call "$GS_AGENT_TOKEN" - pr_merge "{\"owner\":\"${GS_USER_NAME}\",\"repo\":\"${GS_REPO_NAME}\",\"number\":${mpn},\"body\":{\"method\":\"merge\"}}")"

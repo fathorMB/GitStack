@@ -1140,7 +1140,7 @@ function Main {
             $e9Details += "[$e9Stage] $($_.Exception.Message)"
             if ($e9Started) {
                 $dbgRefs = Invoke-RemoteHelper -RemoteArgs @('mirror-dest-refs') -TimeoutSeconds 30
-                $e9Details += "ref sulla destinazione: $($dbgRefs.StdOut.Trim() -replace '\s+', ' ')"
+                $e9Details += "ref sulla destinazione: $(("$($dbgRefs.StdOut)").Trim() -replace '\s+', ' ')"
             }
             if ($e9MirrorUrl) {
                 $dbgMirror = Invoke-HttpRaw -Uri $e9MirrorUrl -Headers $e9Bearer
@@ -1317,6 +1317,8 @@ function Main {
             $e11Agent = "e2eprag$suffix"
             $mkAgent11 = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users" -Method 'POST' -Cookie $ck -Body (@{ username = $e11Agent; kind = 'agent'; email = "$e11Agent@agents.example.com" } | ConvertTo-Json)
             if ($mkAgent11.StatusCode -ne 201) { throw "creazione utente agente: status $($mkAgent11.StatusCode), corpo '$($mkAgent11.Body)' $($mkAgent11.Error)" }
+            $e11AgentId = ($mkAgent11.Body | ConvertFrom-Json).id
+            if (-not $e11AgentId) { throw "utente agente: risposta senza 'id'" }
             $e11Expires = (Get-Date).ToUniversalTime().AddHours(2).ToString('yyyy-MM-ddTHH:mm:ssZ')
             $mkTok11 = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users/$e11Agent/tokens" -Method 'POST' -Cookie $ck -Body (@{ name = 'e2e-pr-agent'; scopes = @('read:resource', 'write:resource'); expiresAt = $e11Expires } | ConvertTo-Json)
             if ($mkTok11.StatusCode -ne 201) { throw "token dell'agente: status $($mkTok11.StatusCode) $($mkTok11.Body)" }
@@ -1334,7 +1336,7 @@ function Main {
             $e11Env = @(
                 "GS_VM_IP='$($script:VmIp)'", "GS_CA_SHA256='$($script:CaFingerprint)'",
                 "GS_USER_TOKEN='$gitToken'", "GS_AGENT_TOKEN='$e11AgentToken'",
-                "GS_USER_NAME='$gitUser'", "GS_AGENT_NAME='$e11Agent'", "GS_REPO_NAME='gs-pr-$suffix'"
+                "GS_USER_NAME='$gitUser'", "GS_AGENT_NAME='$e11Agent'", "GS_AGENT_ID='$e11AgentId'", "GS_REPO_NAME='gs-pr-$suffix'"
             ) -join ' '
             $run11 = Invoke-VmSsh -Command "$e11Env bash /tmp/gitstack-e2e/gs-pr-cycle.sh" -TimeoutSeconds 900
             Set-Content -LiteralPath (Join-Path $OutDir 'gs-pr-cycle.log') -Value ($run11.StdOut + "`n" + $run11.StdErr) -Encoding utf8

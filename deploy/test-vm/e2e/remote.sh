@@ -171,6 +171,9 @@ jetstream_count() {
   nats_pass="$(k3s_kubectl get secret "${release}-nats-auth" --namespace "${ns}" -o jsonpath='{.data.password}' | base64 -d)"
   [ -n "${nats_pass}" ] || fail "Secret ${release}-nats-auth senza password (namespace ${ns})"
 
+  # Le NetworkPolicy di un pod nuovo arrivano con qualche secondo di ritardo:
+  # finche' non passano, il client NATS risponde "no servers available". Il
+  # pod aspetta quindi che la porta risponda (nc, fino a 30 s) prima di lanciare nats.
   # Niente attach (-i/--rm): con un pod che finisce subito l'attach puo'
   # perdere l'output ("If you don't see a command prompt...") e mescolare
   # stdout e stderr. Il pod gira fino in fondo, si attende la fase finale e
@@ -179,7 +182,8 @@ jetstream_count() {
   if ! k3s_kubectl run "${pod_name}" --namespace "${ns}" --restart=Never \
       --labels="app.kubernetes.io/name=core,app.kubernetes.io/instance=${release},app.kubernetes.io/part-of=gitstack" \
       --image="${NATS_BOX_IMAGE}" --command -- \
-      nats stream info "${stream}" --server "nats://${nats_user}:${nats_pass}@${nats_addr}" --json \
+      sh -c 'for _ in $(seq 1 30); do nc -z -w 2 "${1%%:*}" "${1##*:}" && break; sleep 1; done; shift; exec nats "$@"' _ \
+      "${nats_addr}" stream info "${stream}" --server "nats://${nats_user}:${nats_pass}@${nats_addr}" --json \
       >/dev/null 2>"${err_file}"; then
     fail "creazione del pod ${pod_name} fallita: $(cat "${err_file}")"
   fi
