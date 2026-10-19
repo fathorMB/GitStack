@@ -216,7 +216,7 @@ func (s *apiServer) syncPullClosing(ctx context.Context, tx pgx.Tx, ia issueAcce
 			return err
 		}
 		err := insertIssueEvent(ctx, tx, id, "referenced_from", ia.userID, map[string]any{
-			"source": map[string]any{"kind": "pull_request", "repository": repoFull, "number": p.Number, "title": p.Title},
+			"source":       map[string]any{"kind": "pull_request", "repository": repoFull, "number": p.Number, "title": p.Title},
 			"sourceRepoId": ia.repo.ID.String(), "willClose": true, "keyword": w.keyword,
 		})
 		if err != nil {
