@@ -126,6 +126,18 @@ var Tools = []Tool{
 		Schema:      "{\"additionalProperties\":false,\"properties\":{\"author\":{\"description\":\"Solo i commit il cui autore ha questo nome o email (senza distinguere maiuscole).\",\"maxLength\":255,\"minLength\":1,\"type\":\"string\"},\"owner\":{\"description\":\"Nome dell'utente o dell'organizzazione proprietaria (R1).\",\"maxLength\":39,\"minLength\":1,\"pattern\":\"^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$\",\"type\":\"string\"},\"page\":{\"default\":1,\"minimum\":1,\"type\":\"integer\"},\"path\":{\"description\":\"Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.\",\"maxLength\":4096,\"type\":\"string\"},\"perPage\":{\"default\":30,\"description\":\"Commit per pagina (default 30, massimo 100).\",\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"ref\":{\"description\":\"Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia bra…\",\"maxLength\":255,\"minLength\":1,\"type\":\"string\"},\"repo\":{\"description\":\"Nome del repo.\",\"maxLength\":100,\"minLength\":1,\"pattern\":\"^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$\",\"type\":\"string\"}},\"required\":[\"owner\",\"repo\"],\"type\":\"object\"}",
 	},
 	{
+		Name:        "commit_status_batch",
+		Operation:   "listCombinedCommitStatuses",
+		Method:      "GET",
+		Path:        "/repos/{owner}/{repo}/commits/statuses",
+		Description: "Stato complessivo di piu' commit insieme. Versione batch di `getCombinedCommitStatus` per i badge della lista dei commit (una richiesta per pagina invece di una per commit). `sha` si ripete (`?sha=…&sha=…`), da 1 a 100 sha completi (40-64 caratteri esadecimali minuscoli); oltre 100, o uno sha non valido, risponde 422. Risponde un elemento per ogni sha distinto, nell'ordine della richiesta, con lo stesso `state` della sintesi singola (`none` se il commit non ha stati o non esiste nel repo: il batch non risolve gli sha). Stessi permessi …",
+		Destructive: false,
+		PathParams:  []string{"owner", "repo"},
+		QueryParams: []string{"sha"},
+		Body:        false,
+		Schema:      "{\"additionalProperties\":false,\"properties\":{\"owner\":{\"description\":\"Nome dell'utente o dell'organizzazione proprietaria (R1).\",\"maxLength\":39,\"minLength\":1,\"pattern\":\"^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$\",\"type\":\"string\"},\"repo\":{\"description\":\"Nome del repo.\",\"maxLength\":100,\"minLength\":1,\"pattern\":\"^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$\",\"type\":\"string\"},\"sha\":{\"items\":{\"pattern\":\"^[0-9a-f]{40,64}$\",\"type\":\"string\"},\"maxItems\":100,\"minItems\":1,\"type\":\"array\"}},\"required\":[\"owner\",\"repo\",\"sha\"],\"type\":\"object\"}",
+	},
+	{
 		Name:        "commit_status_create",
 		Operation:   "createCommitStatus",
 		Method:      "POST",

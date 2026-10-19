@@ -5,6 +5,7 @@ import {
   createPullRequestComment,
   deletePullRequestBranch,
   getCombinedCommitStatus,
+  listCombinedCommitStatuses,
   getPullRequest,
   getPullRequestMergeability,
   createPullRequestReview,
@@ -93,6 +94,14 @@ export async function fetchPullCommits(r: PullRef): Promise<CommitSummary[]> {
 
 export async function fetchCommitStatus(owner: string, repo: string, sha: string): Promise<CombinedCommitStatus> {
   return unwrap(await getCombinedCommitStatus({ baseUrl: API_BASE_URL, path: { owner, repo, sha } }));
+}
+
+// Sintesi di piu' commit con una sola richiesta (max 100 sha, il tetto del contratto): sha -> stato.
+export async function fetchCommitStatuses(owner: string, repo: string, shas: string[]): Promise<Record<string, CombinedCommitStatus['state']>> {
+  const unique = [...new Set(shas)].slice(0, 100);
+  if (unique.length === 0) return {};
+  const res = unwrap(await listCombinedCommitStatuses({ baseUrl: API_BASE_URL, path: { owner, repo }, query: { sha: unique } }));
+  return Object.fromEntries(res.items.map((i) => [i.sha, i.state]));
 }
 
 export async function postPullComment(r: PullRef, body: string): Promise<PullRequestComment> {
