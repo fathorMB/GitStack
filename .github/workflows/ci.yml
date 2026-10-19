@@ -806,9 +806,6 @@ jobs:
         run: |
           set -euo pipefail
           source scripts/ci/retry.sh
-          issuer="https://token.actions.githubusercontent.com"
-          identity="${{ steps.wf-id.outputs.identity }}"
-          identity_regexp="${{ steps.wf-id.outputs.regexp }}"
 
           chart_dir="deploy/gitstack"
           chart_name="gitstack"
@@ -850,9 +847,6 @@ jobs:
         run: |
           set -euo pipefail
           source scripts/ci/retry.sh
-          issuer="https://token.actions.githubusercontent.com"
-          identity="${{ steps.wf-id.outputs.identity }}"
-          identity_regexp="${{ steps.wf-id.outputs.regexp }}"
           mkdir -p sign sbom
 
           # Scarica la release (asset già pubblicati da admin-binary e gs-binaries)
