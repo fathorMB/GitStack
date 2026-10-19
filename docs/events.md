@@ -434,8 +434,9 @@ scrittura dello stato del commit.
 
 Consumer durevoli (convenzione `<servizio>-<scopo>`; un consumer JetStream
 appartiene a uno stream, quindi si aggiunge il dominio): `core-webhooks-git`
-(webhook `push`, `internal/gitpush` in core), `core-issue-linker` e `core-pull-sync`
-(su `git.push`). Le notifiche (GIT-133) e i webhook `issues`, `issue_comment` e
+(webhook `push`, `internal/gitpush` in core), `core-issue-linker`, `core-pull-sync` e
+`core-ci-git` (su `git.push`; v2-a, GIT-276: avvia i workflow `push`, aggiorna gli orari
+dei workflow `schedule` sul branch principale e ignora i push del token di un job). Le notifiche (GIT-133) e i webhook `issues`, `issue_comment` e
 `repository` (GIT-135) non usano consumer NATS: leggono gli eventi di dominio
 dall'outbox di core (`core.event_outbox`, con un segno di lettura ciascuno:
 `notified_at`, `webhooked_at`), nella stessa transazione in cui scrivono il loro
