@@ -40,6 +40,7 @@ describe('rotte del browser del codice', () => {
     ['/acme/api/issues/new', 'newissue'],
     ['/acme/api/pulls', 'pulls'],
     ['/acme/api/pulls/58', 'pull'],
+    ['/acme/api/pulls/58/files', 'pullfiles'],
     ['/acme/api/pulls/new', 'newpull'],
     ['/acme/api/labels', 'labels'],
     ['/acme/api/milestones', 'milestones'],

@@ -7,7 +7,13 @@ import {
   getCombinedCommitStatus,
   getPullRequest,
   getPullRequestMergeability,
+  createPullRequestReview,
   listPullRequestCommits,
+  listPullRequestFiles,
+  listPullRequestThreads,
+  resolvePullRequestThread,
+  setPullRequestFileViewed,
+  unresolvePullRequestThread,
   listPullRequestComments,
   listPullRequestReviews,
   listPullRequests,
@@ -20,19 +26,24 @@ import {
 } from '@gitstack/api-client';
 import type {
   CombinedCommitStatus,
+  CreatePullRequestCommentInput,
   CreatePullRequestInput,
+  DiffSide,
   MergeMethod,
   PullRequest,
   PullRequestComment,
+  PullRequestFiles,
   PullRequestList,
   PullRequestMergeability,
   PullRequestReview,
   PullRequestSummary,
+  PullRequestThread,
+  ReviewEvent,
   CommitSummary,
 } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
-export type { CombinedCommitStatus, CreatePullRequestInput, MergeMethod, PullRequest, PullRequestComment, PullRequestList, PullRequestMergeability, PullRequestReview, PullRequestSummary };
+export type { CombinedCommitStatus, CreatePullRequestInput, MergeMethod, PullRequest, DiffSide, PullRequestComment, PullRequestFiles, PullRequestList, PullRequestMergeability, PullRequestReview, PullRequestSummary, PullRequestThread, ReviewEvent };
 
 export interface PullRef {
   owner: string;
@@ -118,4 +129,31 @@ export async function requestReviewers(r: PullRef, reviewers: string[]): Promise
 
 export async function dropReviewer(r: PullRef, username: string): Promise<PullRequest> {
   return unwrap(await removePullRequestReviewer({ baseUrl: API_BASE_URL, path: { owner: r.owner, repo: r.repo, number: r.number, username } }));
+}
+
+/** Diff della PR (B6):  `viewedPaths` porta i file gia' marcati Viewed da chi chiama. */
+export async function fetchPullFiles(r: PullRef, ignoreWhitespace: boolean): Promise<PullRequestFiles> {
+  return unwrap(await listPullRequestFiles({ ...at(r), query: ignoreWhitespace ? { ignoreWhitespace: true } : {} }));
+}
+
+export async function fetchPullThreads(r: PullRef): Promise<PullRequestThread[]> {
+  return unwrap(await listPullRequestThreads({ ...at(r), query: { perPage: 100 } })).items;
+}
+
+/** Commento sulle righe (una o un gruppo, PR5) o risposta a una conversazione (`inReplyTo`). */
+export async function postLineComment(r: PullRef, input: CreatePullRequestCommentInput): Promise<PullRequestComment> {
+  return unwrap(await createPullRequestComment({ ...at(r), body: input }));
+}
+
+export async function submitReview(r: PullRef, event: ReviewEvent, body: string, commitSha?: string): Promise<PullRequestReview> {
+  return unwrap(await createPullRequestReview({ ...at(r), body: { event, ...(body.trim() ? { body: body.trim() } : {}), ...(commitSha ? { commitSha } : {}) } }));
+}
+
+export async function setThreadResolved(r: PullRef, threadId: string, resolved: boolean): Promise<void> {
+  const opts = { baseUrl: API_BASE_URL, path: { owner: r.owner, repo: r.repo, number: r.number, threadId } };
+  unwrap(resolved ? await resolvePullRequestThread(opts) : await unresolvePullRequestThread(opts));
+}
+
+export async function setFileViewed(r: PullRef, path: string, viewed: boolean): Promise<void> {
+  unwrapEmpty(await setPullRequestFileViewed({ ...at(r), body: { path, viewed } }));
 }
