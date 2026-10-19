@@ -38,6 +38,27 @@ type prGit struct {
 	*fakeGit
 	bmu sync.Mutex
 	br  map[uuid.UUID]map[string]string
+	// sinceFiles: i file (JSON) del confronto «da un commit commentato alla
+	// punta» (GIT-262, base di 40 esadecimali); vuoto = nessuna modifica.
+	sinceFiles string
+}
+
+const defaultPRFiles = `[{"path":"a.txt","status":"modified","additions":3,"deletions":1,"binary":false,"truncated":false,"patch":"@@ -1,3 +1,4 @@\n a\n-b\n+c\n+d\n e\n"},{"path":"b.txt","status":"added","additions":2,"deletions":0,"binary":false,"truncated":false,"patch":"@@ -0,0 +1,2 @@\n+x\n+y\n"}]`
+
+func (g *prGit) filesFor(base string) string {
+	if len(base) == 40 && base != mainSha {
+		if g.sinceFiles == "" {
+			return "[]"
+		}
+		return g.sinceFiles
+	}
+	return defaultPRFiles
+}
+
+func (g *prGit) setSince(files string) {
+	g.bmu.Lock()
+	defer g.bmu.Unlock()
+	g.sinceFiles = files
 }
 
 func (g *prGit) of(id uuid.UUID) map[string]string {
@@ -108,9 +129,9 @@ func (g *prGit) ReadJSON(_ context.Context, _ trust.Identity, repo uuid.UUID, pa
 		}
 		return json.RawMessage(fmt.Sprintf(`{"base":%q,"head":%q,"baseSha":%q,"headSha":%q,"mergeBase":%q,"aheadBy":%d,"behindBy":0,
 			"commits":[%s],"commitsTruncated":false,
-			"files":[{"path":"a.txt","status":"modified","additions":3,"deletions":1,"binary":false,"truncated":false},{"path":"b.txt","status":"added","additions":2,"deletions":0,"binary":false,"truncated":false}],
+			"files":%s,
 			"filesChanged":2,"additions":5,"deletions":1,"truncated":false,"listOnly":false}`,
-			q.Get("base"), q.Get("head"), b, h, mainSha, ahead, strings.Join(commits, ","))), nil
+			q.Get("base"), q.Get("head"), b, h, mainSha, ahead, strings.Join(commits, ","), g.filesFor(q.Get("base")))), nil
 	}
 	return nil, &gitclient.APIError{Status: 404, Code: "not_found", Message: "non trovato"}
 }
