@@ -1,0 +1,75 @@
+# Prova di fattibilita' ADR 0001 - k3d v5.9.0 (k3s v1.35.5), act v0.2.89, 2026-10-18
+
+=== A) SENZA NetworkPolicy (controllo: la sonda deve poter raggiungere il cluster)
+phase=Failed
+[poc-due-passi/prova]   ✅  Success - Set up job
+[poc-due-passi/prova] ⭐ Run Main Checkout (copia locale)
+[poc-due-passi/prova]   ✅  Success - Main Checkout (copia locale) [7.176889ms]
+[poc-due-passi/prova] ⭐ Run Main Passo 1 - run con output
+[poc-due-passi/prova]   | uid=10001 gid=10001 host=job-poc
+[poc-due-passi/prova]   ✅  Success - Main Passo 1 - run con output [26.367196ms]
+[poc-due-passi/prova] ⭐ Run Main Passo 2 - action locale e verifica della rete
+[poc-due-passi/prova]   | output del passo 1: ciao-da-gitstack
+[poc-due-passi/prova]   | Uid:	10001	10001	10001	10001
+[poc-due-passi/prova]   | CapEff:	0000000000000000
+[poc-due-passi/prova]   | NoNewPrivs:	1
+[poc-due-passi/prova]   | RAGGIUNGIBILE: api-server-kubernetes 10.43.0.1:443
+[poc-due-passi/prova]   | RAGGIUNGIBILE: dns-del-cluster 10.43.0.10:53
+[poc-due-passi/prova]   | RAGGIUNGIBILE: servizio-pod-vicino 10.42.0.4:8080
+[poc-due-passi/prova]   | ERRORE: la rete del cluster e' raggiungibile
+[poc-due-passi/prova]   ❌  Failure - Main set -u
+[poc-due-passi/prova]   ❌  Failure - Main Passo 2 - action locale e verifica della rete [21.938881ms]
+[poc-due-passi/prova]   ✅  Success - Post Passo 2 - action locale e verifica della rete [18.757µs]
+[poc-due-passi/prova]   ✅  Success - Complete job
+[poc-due-passi/prova] 🏁  Job failed
+Error: Job 'prova' failed
+
+=== B1) CON NetworkPolicy ma SENZA cancello (giro fallito: la policy non era ancora applicata)
+phase=Failed
+[poc-due-passi/prova]   ✅  Success - Set up job
+[poc-due-passi/prova] ⭐ Run Main Checkout (copia locale)
+[poc-due-passi/prova]   ✅  Success - Main Checkout (copia locale) [7.417299ms]
+[poc-due-passi/prova] ⭐ Run Main Passo 1 - run con output
+[poc-due-passi/prova]   | uid=10001 gid=10001 host=job-poc
+[poc-due-passi/prova]   ✅  Success - Main Passo 1 - run con output [11.284423ms]
+[poc-due-passi/prova] ⭐ Run Main Passo 2 - action locale e verifica della rete
+[poc-due-passi/prova]   | output del passo 1: ciao-da-gitstack
+[poc-due-passi/prova]   | Uid:	10001	10001	10001	10001
+[poc-due-passi/prova]   | CapEff:	0000000000000000
+[poc-due-passi/prova]   | NoNewPrivs:	1
+[poc-due-passi/prova]   | RAGGIUNGIBILE: api-server-kubernetes 10.43.0.1:443
+[poc-due-passi/prova]   | RAGGIUNGIBILE: dns-del-cluster 10.43.0.10:53
+[poc-due-passi/prova]   | RAGGIUNGIBILE: servizio-pod-vicino 10.42.0.4:8080
+[poc-due-passi/prova]   | ERRORE: la rete del cluster e' raggiungibile
+[poc-due-passi/prova]   ❌  Failure - Main set -u
+[poc-due-passi/prova]   ❌  Failure - Main Passo 2 - action locale e verifica della rete [63.143095ms]
+Error: Job 'prova' failed
+[poc-due-passi/prova]   ✅  Success - Post Passo 2 - action locale e verifica della rete [18.051µs]
+[poc-due-passi/prova]   ✅  Success - Complete job
+[poc-due-passi/prova] 🏁  Job failed
+
+=== B2) CON NetworkPolicy + cancello (init container gate): giro riuscito
+phase=Succeeded
+gate: rete del cluster chiusa dopo 2 tentativi
+Defaulted container "job" out of: job, gate (init)
+[poc-due-passi/prova]   ✅  Success - Set up job
+[poc-due-passi/prova] ⭐ Run Main Checkout (copia locale)
+[poc-due-passi/prova]   ✅  Success - Main Checkout (copia locale) [7.956305ms]
+[poc-due-passi/prova] ⭐ Run Main Passo 1 - run con output
+[poc-due-passi/prova]   | uid=10001 gid=10001 host=job-poc
+[poc-due-passi/prova]   ✅  Success - Main Passo 1 - run con output [11.702316ms]
+[poc-due-passi/prova] ⭐ Run Main Passo 2 - action locale e verifica della rete
+[poc-due-passi/prova]   | output del passo 1: ciao-da-gitstack
+[poc-due-passi/prova]   | Uid:	10001	10001	10001	10001
+[poc-due-passi/prova]   | CapEff:	0000000000000000
+[poc-due-passi/prova]   | NoNewPrivs:	1
+[poc-due-passi/prova]   | bloccato: api-server-kubernetes 10.43.0.1:443
+[poc-due-passi/prova]   | bloccato: dns-del-cluster 10.43.0.10:53
+[poc-due-passi/prova]   | bloccato: servizio-pod-vicino 10.42.0.4:8080
+[poc-due-passi/prova]   | OK: rete del cluster non raggiungibile
+[poc-due-passi/prova]   | RAGGIUNGIBILE: internet-controllo 1.1.1.1:443
+[poc-due-passi/prova]   ✅  Success - Main set -u
+[poc-due-passi/prova]   ✅  Success - Main Passo 2 - action locale e verifica della rete [3.241615039s]
+[poc-due-passi/prova]   ✅  Success - Post Passo 2 - action locale e verifica della rete [58.792µs]
+[poc-due-passi/prova]   ✅  Success - Complete job
+[poc-due-passi/prova] 🏁  Job succeeded

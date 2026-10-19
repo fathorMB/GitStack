@@ -17,18 +17,20 @@ import (
 )
 
 type fakeCluster struct {
-	mu          sync.Mutex
-	replicas    map[string]int // per nome di Deployment
-	calls       []string
-	paths       map[string]string // pvc -> cartella
-	secrets     []Secret
-	applied     []string
-	dump        string
-	psqlIn      string
-	failDump    bool
-	failWait    bool
-	failRestart bool
-	ctxAtDump   context.Context
+	mu             sync.Mutex
+	replicas       map[string]int // per nome di Deployment
+	calls          []string
+	paths          map[string]string // pvc -> cartella
+	secrets        []Secret
+	applied        []string
+	dump           string
+	psqlIn         string
+	failDump       bool
+	failWait       bool
+	failRestart    bool
+	statefulSets   map[string]bool // StatefulSet presenti
+	failSTSRestart bool
+	ctxAtDump      context.Context
 }
 
 func (f *fakeCluster) note(s string) { f.mu.Lock(); f.calls = append(f.calls, s); f.mu.Unlock() }
@@ -50,6 +52,20 @@ func (f *fakeCluster) WaitStopped(_ context.Context, c string) error {
 	return nil
 }
 func (f *fakeCluster) WaitReady(_ context.Context, d string) error { f.note("ready " + d); return nil }
+func (f *fakeCluster) StatefulSetExists(_ context.Context, n string) (bool, error) {
+	return f.statefulSets[n], nil
+}
+func (f *fakeCluster) RestartStatefulSet(_ context.Context, n string) error {
+	f.note("restart-sts " + n)
+	if f.failSTSRestart {
+		return errors.New("restart fallito")
+	}
+	return nil
+}
+func (f *fakeCluster) WaitStatefulSetReady(_ context.Context, n string) error {
+	f.note("ready-sts " + n)
+	return nil
+}
 func (f *fakeCluster) PGExec(ctx context.Context, stdin io.Reader, stdout io.Writer, args ...string) error {
 	if strings.Contains(strings.Join(args, " "), "pg_dump") {
 		f.note("pg_dump")

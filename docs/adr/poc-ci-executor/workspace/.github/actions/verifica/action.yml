@@ -1,0 +1,31 @@
+name: verifica
+description: Controlla l'output del passo 1 e che la rete del cluster sia irraggiungibile
+inputs:
+  atteso:
+    description: valore passato dal passo 1
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        ATTESO: ${{ inputs.atteso }}
+      run: |
+        set -u
+        echo "output del passo 1: ${ATTESO}"
+        [ "${ATTESO}" = "ciao-da-gitstack" ] || { echo "ERRORE: output errato"; exit 1; }
+        grep -E '^(Uid|NoNewPrivs|CapEff):' /proc/self/status
+        probe() { # nome host porta
+          if timeout 4 bash -c "exec 3<>/dev/tcp/$2/$3" 2>/dev/null; then
+            echo "RAGGIUNGIBILE: $1 $2:$3"; return 0
+          fi
+          echo "bloccato: $1 $2:$3"; return 1
+        }
+        fallito=0
+        probe api-server-kubernetes "${KUBERNETES_SERVICE_HOST}" "${KUBERNETES_SERVICE_PORT}" && fallito=1
+        probe dns-del-cluster 10.43.0.10 53 && fallito=1
+        probe servizio-pod-vicino "${CLUSTER_PEER_IP:-10.42.0.1}" 8080 && fallito=1
+        [ "${fallito}" = 0 ] || { echo "ERRORE: la rete del cluster e' raggiungibile"; exit 1; }
+        echo "OK: rete del cluster non raggiungibile"
+        # Informativo: uscita verso Internet (consentita dalla policy, serve al mirror delle action).
+        probe internet-controllo 1.1.1.1 443 || true

@@ -35,6 +35,10 @@ func (s *stubCluster) VolumePath(_ context.Context, pvc string) (string, error) 
 func (s *stubCluster) Secrets(context.Context) ([]backup.Secret, error) { return nil, nil }
 func (s *stubCluster) ApplySecret(context.Context, backup.Secret) error { return nil }
 
+func (s *stubCluster) StatefulSetExists(context.Context, string) (bool, error) { return false, nil }
+func (s *stubCluster) RestartStatefulSet(context.Context, string) error        { return nil }
+func (s *stubCluster) WaitStatefulSetReady(context.Context, string) error      { return nil }
+
 func backupApp(t *testing.T, tag string) (*App, string) {
 	t.Helper()
 	a, _, _ := newApp(&fakeRunner{}, nil)
@@ -104,6 +108,10 @@ func (f *failCluster) VolumePath(_ context.Context, _ string) (string, error) {
 }
 func (f *failCluster) Secrets(_ context.Context) ([]backup.Secret, error)   { return nil, nil }
 func (f *failCluster) ApplySecret(_ context.Context, _ backup.Secret) error { return nil }
+
+func (f *failCluster) StatefulSetExists(context.Context, string) (bool, error) { return false, nil }
+func (f *failCluster) RestartStatefulSet(context.Context, string) error        { return nil }
+func (f *failCluster) WaitStatefulSetReady(context.Context, string) error      { return nil }
 
 func TestBackupRetention(t *testing.T) {
 	a, cfg := backupApp(t, "sha-aaa")

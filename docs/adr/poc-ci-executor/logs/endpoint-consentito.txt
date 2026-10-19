@@ -1,0 +1,5 @@
+# NetworkPolicy aggiuntiva ci-job-to-gateway (unico endpoint consentito), pod con le stesse etichette del job
+RAGGIUNGIBILE: ci-gateway-finto 10.42.0.4:8080
+bloccato: api-server 10.43.0.1:443
+bloccato: dns-cluster 10.43.0.10:53
+bloccato: peer-altra-porta 10.42.0.4:9999

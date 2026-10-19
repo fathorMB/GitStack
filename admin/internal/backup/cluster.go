@@ -37,6 +37,14 @@ type Cluster interface {
 	// Restart fa ripartire i pod del Deployment (rollout restart); chi
 	// chiama aspetta poi WaitReady.
 	Restart(ctx context.Context, deployment string) error
+	// StatefulSetExists dice se lo StatefulSet esiste (NATS del chart; con
+	// NATS esterno o disattivato non c'è).
+	StatefulSetExists(ctx context.Context, name string) (bool, error)
+	// RestartStatefulSet fa ripartire i pod dello StatefulSet (rollout
+	// restart); chi chiama aspetta poi WaitStatefulSetReady.
+	RestartStatefulSet(ctx context.Context, name string) error
+	// WaitStatefulSetReady aspetta che il rollout dello StatefulSet sia finito.
+	WaitStatefulSetReady(ctx context.Context, name string) error
 	// PGExec esegue `args` nel pod di Postgres (o, con il database esterno,
 	// nel pod client) con stdin/stdout collegati.
 	PGExec(ctx context.Context, stdin io.Reader, stdout io.Writer, args ...string) error
@@ -156,6 +164,25 @@ func (k *KubectlCluster) WaitReady(ctx context.Context, deployment string) error
 // Restart implementa Cluster.
 func (k *KubectlCluster) Restart(ctx context.Context, deployment string) error {
 	return k.run(ctx, nil, io.Discard, "rollout", "restart", "deployment/"+deployment)
+}
+
+// StatefulSetExists implementa Cluster.
+func (k *KubectlCluster) StatefulSetExists(ctx context.Context, name string) (bool, error) {
+	o, err := k.out(ctx, "get", "statefulset", name, "--ignore-not-found", "-o", "name")
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(string(o)) != "", nil
+}
+
+// RestartStatefulSet implementa Cluster.
+func (k *KubectlCluster) RestartStatefulSet(ctx context.Context, name string) error {
+	return k.run(ctx, nil, io.Discard, "rollout", "restart", "statefulset/"+name)
+}
+
+// WaitStatefulSetReady implementa Cluster.
+func (k *KubectlCluster) WaitStatefulSetReady(ctx context.Context, name string) error {
+	return k.run(ctx, nil, io.Discard, "rollout", "status", "statefulset/"+name, "--timeout=300s")
 }
 
 // PGExec implementa Cluster.
