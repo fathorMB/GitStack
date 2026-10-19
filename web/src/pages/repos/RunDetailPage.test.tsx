@@ -93,10 +93,16 @@ describe('RunDetailPage', () => {
     const running = run({ status: 'in_progress', conclusion: null, completedAt: null, jobs: [{ ...run({}).jobs[1]!, status: 'in_progress', conclusion: null, completedAt: null }] });
     setup(running);
     vi.mocked(fetchRun).mockReset();
-    vi.mocked(fetchRun).mockResolvedValueOnce(running).mockRejectedValueOnce(new Error('boom')).mockResolvedValue(running);
+    // Il tentativo dopo l'errore resta in sospeso finché il test non lo rilascia: l'avviso è osservabile anche sotto carico.
+    let release: () => void = () => undefined;
+    const gate = new Promise<WorkflowRun>((resolve) => {
+      release = () => resolve(running);
+    });
+    vi.mocked(fetchRun).mockResolvedValueOnce(running).mockRejectedValueOnce(new Error('boom')).mockReturnValueOnce(gate).mockResolvedValue(running);
     let n = 0;
     vi.mocked(fetchJobLog).mockImplementation(() => Promise.resolve(`riga ${++n}`));
     expect(await screen.findByText(/Aggiornamento interrotto, nuovo tentativo/, undefined, { timeout: 4000 })).toBeInTheDocument();
+    release();
     await waitFor(() => expect(screen.queryByText(/Aggiornamento interrotto/)).not.toBeInTheDocument(), { timeout: 4000 });
     expect(vi.mocked(fetchRun).mock.calls.length).toBeGreaterThanOrEqual(3);
     const before = n;
