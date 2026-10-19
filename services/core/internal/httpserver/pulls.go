@@ -30,4 +30,3 @@ func (s *apiServer) CreateCommitStatus(w http.ResponseWriter, r *http.Request, _
 func (s *apiServer) DeletePullRequestComment(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam, _ openapi.PullCommentIdParam) {
 	pullsNotImplemented(w)
 }
-
