@@ -50,7 +50,3 @@ func (s *apiServer) MergePullRequest(w http.ResponseWriter, r *http.Request, _ o
 func (s *apiServer) GetPullRequestMergeability(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam) {
 	pullsNotImplemented(w)
 }
-
-func (s *apiServer) SetPullRequestFileViewed(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam) {
-	pullsNotImplemented(w)
-}

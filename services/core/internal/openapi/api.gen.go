@@ -1920,6 +1920,27 @@ func (e SearchIssuesParamsSort) Valid() bool {
 	}
 }
 
+// Defines values for SearchPullRequestsParamsSort.
+const (
+	SearchPullRequestsParamsSortComments SearchPullRequestsParamsSort = "comments"
+	SearchPullRequestsParamsSortCreated  SearchPullRequestsParamsSort = "created"
+	SearchPullRequestsParamsSortUpdated  SearchPullRequestsParamsSort = "updated"
+)
+
+// Valid indicates whether the value is a known member of the SearchPullRequestsParamsSort enum.
+func (e SearchPullRequestsParamsSort) Valid() bool {
+	switch e {
+	case SearchPullRequestsParamsSortComments:
+		return true
+	case SearchPullRequestsParamsSortCreated:
+		return true
+	case SearchPullRequestsParamsSortUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
 // AccessSource Una fonte del ruolo su un repo. `direct`: grant all'utente; `team`: grant al team `organization`/`team` (di cui e' membro o la cui organizzazione possiede); `owner`: owner dell'organizzazione proprietaria (`organization`) o proprietario del repo personale (P1, P6), sempre `admin`; `internal`: visibilita' interna (P3), `read`; `installation_admin`: amministratore dell'installazione, `admin`.
 type AccessSource struct {
 	Kind AccessSourceKind `json:"kind"`
@@ -3531,6 +3552,23 @@ type PullRequestReviewList struct {
 	Total   int                 `json:"total"`
 }
 
+// PullRequestSearchResult defines model for PullRequestSearchResult.
+type PullRequestSearchResult struct {
+	// PullRequest Pull Request negli elenchi: senza testo.
+	PullRequest PullRequestSummary `json:"pullRequest"`
+
+	// Repo `owner/nome` del repo.
+	Repo string `json:"repo"`
+}
+
+// PullRequestSearchResultList defines model for PullRequestSearchResultList.
+type PullRequestSearchResultList struct {
+	Items   []PullRequestSearchResult `json:"items"`
+	Page    int                       `json:"page"`
+	PerPage int                       `json:"perPage"`
+	Total   int                       `json:"total"`
+}
+
 // PullRequestState Stato (PR6): `open` (aperta, in bozza o pronta, vedi `draft`), `closed` (chiusa senza merge, si riapre se i branch esistono) o `merged` (unita, definitiva).
 type PullRequestState string
 
@@ -4827,7 +4865,7 @@ type ListRepoPullMirrorRunsParams struct {
 
 // ListPullRequestsParams defines parameters for ListPullRequests.
 type ListPullRequestsParams struct {
-	// Q Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:"nome"`, `no:label`, piu' testo libero (titolo e testo).
+	// Q Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:` e `assignee:` con utente, `@me` o `@agents`, `no:assignee`, piu' testo libero (titolo e testo).
 	Q *PullQueryParam `form:"q,omitempty" json:"q,omitempty"`
 
 	// State Stato (PR6). `closed` sono le PR chiuse senza merge, `merged` le unite.
@@ -4951,6 +4989,20 @@ type SearchIssuesParams struct {
 
 // SearchIssuesParamsSort defines parameters for SearchIssues.
 type SearchIssuesParamsSort string
+
+// SearchPullRequestsParams defines parameters for SearchPullRequests.
+type SearchPullRequestsParams struct {
+	// Q Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:` e `assignee:` con utente, `@me` o `@agents`, `no:assignee`, piu' testo libero (titolo e testo).
+	Q *PullQueryParam `form:"q,omitempty" json:"q,omitempty"`
+
+	// Sort Ordine decrescente per data di apertura, ultimo aggiornamento o numero di commenti.
+	Sort    *SearchPullRequestsParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
+	Page    *PageParam                    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam                 `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// SearchPullRequestsParamsSort defines parameters for SearchPullRequests.
+type SearchPullRequestsParamsSort string
 
 // GetUserAccessParams defines parameters for GetUserAccess.
 type GetUserAccessParams struct {
@@ -5515,6 +5567,9 @@ type ServerInterface interface {
 	// SearchIssues Cerca issues su tutta l'installazione
 	// (GET /search/issues)
 	SearchIssues(w http.ResponseWriter, r *http.Request, params SearchIssuesParams)
+	// SearchPullRequests Cerca Pull Request su tutta l'installazione
+	// (GET /search/pulls)
+	SearchPullRequests(w http.ResponseWriter, r *http.Request, params SearchPullRequestsParams)
 	// GetNotificationPreferences Preferenze email delle notifiche
 	// (GET /user/notification-preferences)
 	GetNotificationPreferences(w http.ResponseWriter, r *http.Request)
@@ -12287,6 +12342,78 @@ func (siw *ServerInterfaceWrapper) SearchIssues(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
+// SearchPullRequests operation middleware
+func (siw *ServerInterfaceWrapper) SearchPullRequests(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchPullRequestsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", r.URL.Query(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sort"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sort", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchPullRequests(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetNotificationPreferences operation middleware
 func (siw *ServerInterfaceWrapper) GetNotificationPreferences(w http.ResponseWriter, r *http.Request) {
 
@@ -12523,6 +12650,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/search", wrapper.SearchRepositoryCode)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/commits/{sha}/patch", wrapper.GetRepositoryCommitPatch)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/search/issues", wrapper.SearchIssues)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/search/pulls", wrapper.SearchPullRequests)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/issues", wrapper.ListIssues)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/issues", wrapper.CreateIssue)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}", wrapper.GetIssue)

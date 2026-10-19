@@ -17,6 +17,21 @@ const (
 	IsOpen   IsValue = "open"
 	IsClosed IsValue = "closed"
 	IsIssue  IsValue = "issue"
+	// Valori delle Pull Request (PR12): is:pr, is:draft, is:merged. Le issues
+	// non sono mai PR, bozze o unite.
+	IsPR     IsValue = "pr"
+	IsDraft  IsValue = "draft"
+	IsMerged IsValue = "merged"
+)
+
+// ReviewValue è il valore di review: (solo Pull Request, PR12).
+type ReviewValue string
+
+// Valori di review:.
+const (
+	ReviewRequired         ReviewValue = "required"
+	ReviewApproved         ReviewValue = "approved"
+	ReviewChangesRequested ReviewValue = "changes-requested"
 )
 
 // Reason è il valore di reason:.
@@ -82,7 +97,8 @@ type Term struct {
 type Query struct {
 	Is         []Cond[IsValue]
 	Reasons    []Cond[Reason]
-	Labels     []Cond[string]
+	Reviews    []Cond[ReviewValue]
+	Labels    []Cond[string]
 	Assignees  []Cond[Actor]
 	Authors    []Cond[Actor]
 	Milestones []Cond[string]
@@ -208,9 +224,9 @@ func (p *parser) value() (string, bool, error) {
 
 func (p *parser) qualifier(q *Query, key string, start int, neg bool) error {
 	switch key {
-	case "is", "reason", "label", "assignee", "author", "milestone", "no", "repo", "org":
+	case "is", "reason", "review", "label", "assignee", "author", "milestone", "no", "repo", "org":
 	default:
-		return &Error{Pos: start, Msg: fmt.Sprintf("qualificatore sconosciuto %q (ammessi: is, reason, label, assignee, author, milestone, no, repo, org)", key)}
+		return &Error{Pos: start, Msg: fmt.Sprintf("qualificatore sconosciuto %q (ammessi: is, reason, review, label, assignee, author, milestone, no, repo, org)", key)}
 	}
 	vpos := p.pos
 	val, _, err := p.value()
@@ -227,10 +243,17 @@ func (p *parser) qualifier(q *Query, key string, start int, neg bool) error {
 	switch key {
 	case "is":
 		switch IsValue(lv) {
-		case IsOpen, IsClosed, IsIssue:
+		case IsOpen, IsClosed, IsIssue, IsPR, IsDraft, IsMerged:
 			q.Is = append(q.Is, Cond[IsValue]{neg, IsValue(lv), start})
 		default:
-			return bad(fmt.Sprintf("%q (ammessi: open, closed, issue)", val))
+			return bad(fmt.Sprintf("%q (ammessi: open, closed, issue, pr, draft, merged)", val))
+		}
+	case "review":
+		switch ReviewValue(lv) {
+		case ReviewRequired, ReviewApproved, ReviewChangesRequested:
+			q.Reviews = append(q.Reviews, Cond[ReviewValue]{neg, ReviewValue(lv), start})
+		default:
+			return bad(fmt.Sprintf("%q (ammessi: required, approved, changes-requested)", val))
 		}
 	case "reason":
 		switch Reason(lv) {
