@@ -543,6 +543,19 @@ networkPolicy:
   # (webhook, mirror e OIDC non funzionano).
   allowInternetEgress: true
 
+# --- CI runner (CI1, CI2, CI7) ---------------------------------------------
+# Il dispatcher di core crea un pod per job in questo namespace restricted.
+# Spento finché non è configurata l'immagine del runner e l'accesso API limitato.
+ci:
+  enabled: false
+  namespace: gitstack-ci-jobs
+  # 1 per il profilo minimo, 3 per quello consigliato; mai oltre 3.
+  capacity: 3
+  runner:
+    image: ""
+    # URL opzionale del mirror amministrato; vuoto usa GitHub.
+    actionMirror: ""
+
 # --- nats (JetStream, D11) -----------------------------------------------
 nats:
   # A differenza di postgres, non c'è (ancora) un'opzione NATS esterno del

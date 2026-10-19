@@ -1,0 +1,62 @@
+{{- if .Values.ci.enabled }}
+{{- if or (lt (.Values.ci.capacity | int) 1) (gt (.Values.ci.capacity | int) 3) }}{{ fail "ci.capacity deve essere fra 1 e 3" }}{{- end }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.ci.namespace }}
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata: {name: gitstack-services}
+value: 1000000
+description: Servizi GitStack
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata: {name: gitstack-apps}
+value: 100000
+description: App ospitate
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata: {name: gitstack-ci-job}
+value: 1000
+preemptionPolicy: Never
+description: Job CI, sempre dopo servizi e app
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ci-jobs
+  namespace: {{ .Values.ci.namespace }}
+spec:
+  hard:
+    pods: {{ .Values.ci.capacity | quote }}
+    requests.cpu: {{ printf "%d" (mul (.Values.ci.capacity | int) 2) | quote }}
+    requests.memory: {{ printf "%dGi" (mul (.Values.ci.capacity | int) 4) | quote }}
+    limits.cpu: {{ printf "%d" (mul (.Values.ci.capacity | int) 2) | quote }}
+    limits.memory: {{ printf "%dGi" (mul (.Values.ci.capacity | int) 4) | quote }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ci-job-egress
+  namespace: {{ .Values.ci.namespace }}
+spec:
+  podSelector:
+    matchLabels: {gitstack.io/ci-job: "true"}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+{{- end }}
