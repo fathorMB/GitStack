@@ -164,6 +164,7 @@ func (c *Client) ResolveRepo(ctx context.Context, caller trust.Identity, owner, 
 		Archived             bool   `json:"archived"`
 		DefaultBranch        string `json:"defaultBranch"`
 		ProtectDefaultBranch bool   `json:"protectDefaultBranch"`
+		RequirePullRequest   bool   `json:"requirePullRequest"`
 		Mirror               *struct {
 			Origin string `json:"origin"`
 		} `json:"mirror"`
@@ -171,7 +172,7 @@ func (c *Client) ResolveRepo(ctx context.Context, caller trust.Identity, owner, 
 	if err := json.Unmarshal(data, &out); err != nil || out.ID == "" {
 		return access.RepoRef{}, errors.New("risposta di core non valida")
 	}
-	ref := access.RepoRef{ID: out.ID, Owner: out.Owner.Name, Name: out.Name, Archived: out.Archived, DefaultBranch: out.DefaultBranch, ProtectDefaultBranch: out.ProtectDefaultBranch}
+	ref := access.RepoRef{ID: out.ID, Owner: out.Owner.Name, Name: out.Name, Archived: out.Archived, DefaultBranch: out.DefaultBranch, ProtectDefaultBranch: out.ProtectDefaultBranch, RequirePullRequest: out.RequirePullRequest}
 	if out.Mirror != nil {
 		ref.MirrorOrigin = out.Mirror.Origin
 	}

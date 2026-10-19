@@ -2915,7 +2915,7 @@ export const removePullRequestReviewer = <ThrowOnError extends boolean = false>(
 /**
  * Storico degli stati di un commit
  *
- * Tutti gli stati inviati per il commit (PR9), dal piu' recente, anche piu' d'uno per contesto. Lo stato che conta per un contesto e' l'ultimo; la sintesi e' in `getCombinedCommitStatus`. `sha` completo o prefisso univoco di almeno 7 caratteri (400 se non e' esadecimale, 404 se non esiste). Un repo che l'utente non puo' leggere risponde 404.
+ * Gli stati dei contesti del commit (PR9), dal piu' recente: uno per contesto, l'ultimo inviato (un nuovo stato dello stesso contesto sostituisce il precedente, non resta uno storico). La sintesi e' in `getCombinedCommitStatus`. `sha` completo o prefisso univoco di almeno 7 caratteri (400 se non e' esadecimale, 404 se non esiste). Un repo che l'utente non puo' leggere risponde 404.
  *
  */
 export const listCommitStatuses = <ThrowOnError extends boolean = false>(options: Options<ListCommitStatusesData, ThrowOnError>): RequestResult<ListCommitStatusesResponses, ListCommitStatusesErrors, ThrowOnError> => (options.client ?? client).get<ListCommitStatusesResponses, ListCommitStatusesErrors, ThrowOnError>({
@@ -2935,7 +2935,7 @@ export const listCommitStatuses = <ThrowOnError extends boolean = false>(options
 /**
  * Invia lo stato di un commit da un sistema esterno
  *
- * Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+ * Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente (aggiorna stato, descrizione e link). Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
  *
  */
 export const createCommitStatus = <ThrowOnError extends boolean = false>(options: Options<CreateCommitStatusData, ThrowOnError>): RequestResult<CreateCommitStatusResponses, CreateCommitStatusErrors, ThrowOnError> => (options.client ?? client).post<CreateCommitStatusResponses, CreateCommitStatusErrors, ThrowOnError>({

@@ -268,11 +268,37 @@ func (e *mergeEval) blocked(code openapi.MergeBlockerCode) bool {
 // (PR6); GIT-264 aggiunge approvazioni e modifiche richieste (PR4) e stati
 // obbligatori (PR9) in questa funzione, e la usano sia la mergeability sia il
 // merge.
-func (s *apiServer) mergeGateBlockers(_ context.Context, _ issueAccess, p prRow, _ *mergeEval) ([]openapi.MergeBlocker, error) {
+func (s *apiServer) mergeGateBlockers(ctx context.Context, ia issueAccess, p prRow, ev *mergeEval) ([]openapi.MergeBlocker, error) {
 	var out []openapi.MergeBlocker
 	if p.Draft {
 		out = append(out, openapi.MergeBlocker{Code: openapi.MergeBlockerCodeDraft,
 			Message: "La Pull Request è una bozza: segnala «Ready for review» prima di unirla."})
+	}
+	// PR4: con «Richiedi una Pull Request» servono le approvazioni di persone
+	// con write sull'ultimo commit (un nuovo commit annulla le precedenti, perché
+	// pullReviewState conta solo quelle sullo sha attuale) e nessuna richiesta
+	// di modifiche aperta.
+	if ev.settings.requirePR {
+		decision, approvals, required, err := pullReviewState(ctx, s.pool, ia.repo.ID, p, ev.status.HeadSha, 0)
+		if err != nil {
+			return nil, err
+		}
+		if decision == openapi.ReviewDecision("changes_requested") {
+			out = append(out, openapi.MergeBlocker{Code: openapi.MergeBlockerCodeChangesRequested,
+				Message: "Un revisore ha chiesto modifiche: serve una nuova approvazione."})
+		}
+		if approvals < required {
+			out = append(out, openapi.MergeBlocker{Code: openapi.MergeBlockerCodeApprovalsRequired,
+				Message: fmt.Sprintf("Servono %d approvazioni di persone con permesso write sull'ultimo commit (%d ricevute).", required, approvals)})
+		}
+	}
+	// PR9: i contesti obbligatori vogliono un success sullo sha attuale.
+	if len(ev.settings.contexts) > 0 {
+		byCtx, err := commitStatusStates(ctx, s.pool, ia.repo.ID, ev.status.HeadSha)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, statusGateBlockers(ev.settings.contexts, byCtx)...)
 	}
 	return out, nil
 }
@@ -317,6 +343,11 @@ func (s *apiServer) evaluateMerge(ctx context.Context, ia issueAccess, g pullGit
 		return nil, err
 	}
 	ev.status.AheadBy, ev.status.BehindBy, ev.status.HeadSha = cmp.AheadBy, cmp.BehindBy, cmp.HeadSha
+	// Le approvazioni valgono sull'ultimo commit: dopo un nuovo commit non contano.
+	_, ev.status.Approvals, ev.status.RequiredApprovals, err = pullReviewState(ctx, s.pool, ia.repo.ID, p, ev.status.HeadSha, 0)
+	if err != nil {
+		return nil, err
+	}
 	raw, err := g.caller.ReadJSON(ctx, g.ia.caller, g.ia.repo.ID, "mergeability",
 		url.Values{"base": {p.TargetBranch}, "head": {p.SourceBranch}})
 	if err != nil {

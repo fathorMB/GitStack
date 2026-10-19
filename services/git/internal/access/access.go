@@ -95,6 +95,11 @@ type RepoRef struct {
 	// con il mirror interrotto. Con un'origine il push è rifiutato
 	// dall'hook pre-receive (receiverules), con un messaggio che la cita.
 	MirrorOrigin string
+	// RequirePullRequest è «Richiedi una Pull Request» (PR4): se true l'hook
+	// pre-receive rifiuta ogni push diretto sul branch principale, admin
+	// compresi. Il merge di una PR e il fetch del mirror in pull scrivono i
+	// ref con update-ref e non passano da receive-pack.
+	RequirePullRequest bool
 }
 
 // Core risolve owner/nome applicando la lettura (core risponde 404 a un repo

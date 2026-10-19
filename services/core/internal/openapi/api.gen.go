@@ -3820,8 +3820,11 @@ type Repository struct {
 	Owner RepoOwner `json:"owner"`
 
 	// ProtectDefaultBranch Force-push ed eliminazione del branch principale rifiutati (R9).
-	ProtectDefaultBranch bool       `json:"protectDefaultBranch"`
-	UpdatedAt            *time.Time `json:"updatedAt,omitempty"`
+	ProtectDefaultBranch bool `json:"protectDefaultBranch"`
+
+	// RequirePullRequest «Richiedi una Pull Request» e' accesa sul branch principale (PR4): nessun push diretto, `admin` compresi. La modifica e' in `updateBranchSettings`. Assente se spenta.
+	RequirePullRequest *bool      `json:"requirePullRequest,omitempty"`
+	UpdatedAt          *time.Time `json:"updatedAt,omitempty"`
 
 	// Visibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
 	Visibility RepoVisibility `json:"visibility"`

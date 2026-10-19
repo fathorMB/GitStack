@@ -45,6 +45,8 @@ const (
 	envProtect = "GITSTACK_RULE_PROTECT_BRANCH"
 	// envMirror: origine del mirror in pull (MP2); se presente ogni push è rifiutato.
 	envMirror = "GITSTACK_RULE_MIRROR_ORIGIN"
+	// envRequirePR: branch principale con «Richiedi una Pull Request» (PR4).
+	envRequirePR = "GITSTACK_RULE_REQUIRE_PR"
 )
 
 // MirrorCode è il codice d'errore stampato dall'hook quando il push è
@@ -146,7 +148,21 @@ func (r *Rules) RepoEnv(ref access.RepoRef) []string {
 		return nil
 	}
 	env := r.Env(ProtectedBranch(ref))
-	return append(env, envMirror+"="+ref.MirrorOrigin)
+	env = append(env, envMirror+"="+ref.MirrorOrigin)
+	return append(env, envRequirePR+"="+RequirePRBranch(ref))
+}
+
+// RequirePRBranch è il branch su cui «Richiedi una Pull Request» (PR4) vieta
+// il push diretto: il branch principale se l'impostazione è accesa,
+// altrimenti stringa vuota.
+func RequirePRBranch(ref access.RepoRef) string {
+	if !ref.RequirePullRequest {
+		return ""
+	}
+	if ref.DefaultBranch == "" {
+		return "main"
+	}
+	return ref.DefaultBranch
 }
 
 // preReceive è l'hook. Rifiuta con exit 1; i messaggi su stderr arrivano al
@@ -160,6 +176,7 @@ max="${GITSTACK_RULE_MAX_BLOB_BYTES:-0}"
 warn="${GITSTACK_RULE_WARN_REPO_BYTES:-0}"
 protect="${GITSTACK_RULE_PROTECT_BRANCH:-}"
 mirror="${GITSTACK_RULE_MIRROR_ORIGIN:-}"
+require_pr="${GITSTACK_RULE_REQUIRE_PR:-}"
 status=0
 tab=$(printf '\t')
 
@@ -172,6 +189,15 @@ if [ -n "$mirror" ]; then
 fi
 
 while read -r old new ref; do
+  # PR4: con «Richiedi una Pull Request» il branch principale cambia solo con
+  # il merge di una PR (che non passa da qui), per tutti, admin compresi.
+  if [ -n "$require_pr" ] && [ "$ref" = "refs/heads/$require_pr" ]; then
+    echo "gitstack: push rifiutato: sul branch principale '$require_pr' è attiva «Richiedi una Pull Request»: nessun push diretto, nemmeno per chi ha il ruolo admin." >&2
+    echo "gitstack: spingi un altro branch e apri una Pull Request (gs pr create). Chi ha il ruolo admin può spegnere l'impostazione in «Branches & merge». Codice: pull_request_required." >&2
+    status=1
+    continue
+  fi
+
   # R9: il branch principale non si riscrive e non si elimina.
   if [ -n "$protect" ] && [ "$ref" = "refs/heads/$protect" ]; then
     if [ "$new" = "$zero" ]; then

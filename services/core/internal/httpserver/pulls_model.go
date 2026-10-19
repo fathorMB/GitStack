@@ -392,6 +392,10 @@ func (s *apiServer) buildPull(ctx context.Context, ia issueAccess, g pullGit, p 
 		return openapi.PullRequest{}, err
 	}
 	out.ReviewDecision, out.Approvals, out.RequiredApprovals, err = pullReviewState(ctx, s.pool, ia.repo.ID, p, out.HeadSha, len(out.RequestedReviewers))
+	if err != nil {
+		return out, err
+	}
+	out.StatusState, err = pullStatusState(ctx, s.pool, ia.repo.ID, out.HeadSha)
 	return out, err
 }
 
