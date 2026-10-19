@@ -566,19 +566,19 @@ func (e HealthStatus) Valid() bool {
 
 // Defines values for IssueCloseReason.
 const (
-	Completed  IssueCloseReason = "completed"
-	Duplicate  IssueCloseReason = "duplicate"
-	NotPlanned IssueCloseReason = "not_planned"
+	IssueCloseReasonCompleted  IssueCloseReason = "completed"
+	IssueCloseReasonDuplicate  IssueCloseReason = "duplicate"
+	IssueCloseReasonNotPlanned IssueCloseReason = "not_planned"
 )
 
 // Valid indicates whether the value is a known member of the IssueCloseReason enum.
 func (e IssueCloseReason) Valid() bool {
 	switch e {
-	case Completed:
+	case IssueCloseReasonCompleted:
 		return true
-	case Duplicate:
+	case IssueCloseReasonDuplicate:
 		return true
-	case NotPlanned:
+	case IssueCloseReasonNotPlanned:
 		return true
 	default:
 		return false
@@ -1944,6 +1944,60 @@ func (e WebhookPullRequestReviewPayloadVersion) Valid() bool {
 	}
 }
 
+// Defines values for WebhookReleasePayloadAction.
+const (
+	WebhookReleasePayloadActionCreated   WebhookReleasePayloadAction = "created"
+	WebhookReleasePayloadActionDeleted   WebhookReleasePayloadAction = "deleted"
+	WebhookReleasePayloadActionEdited    WebhookReleasePayloadAction = "edited"
+	WebhookReleasePayloadActionPublished WebhookReleasePayloadAction = "published"
+)
+
+// Valid indicates whether the value is a known member of the WebhookReleasePayloadAction enum.
+func (e WebhookReleasePayloadAction) Valid() bool {
+	switch e {
+	case WebhookReleasePayloadActionCreated:
+		return true
+	case WebhookReleasePayloadActionDeleted:
+		return true
+	case WebhookReleasePayloadActionEdited:
+		return true
+	case WebhookReleasePayloadActionPublished:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookReleasePayloadEvent.
+const (
+	WebhookReleasePayloadEventRelease WebhookReleasePayloadEvent = "release"
+)
+
+// Valid indicates whether the value is a known member of the WebhookReleasePayloadEvent enum.
+func (e WebhookReleasePayloadEvent) Valid() bool {
+	switch e {
+	case WebhookReleasePayloadEventRelease:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookReleasePayloadVersion.
+const (
+	WebhookReleasePayloadVersionN1 WebhookReleasePayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookReleasePayloadVersion enum.
+func (e WebhookReleasePayloadVersion) Valid() bool {
+	switch e {
+	case WebhookReleasePayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WebhookScope.
 const (
 	Org  WebhookScope = "org"
@@ -1974,6 +2028,114 @@ func (e WebhookSenderType) Valid() bool {
 	case WebhookSenderTypeAgent:
 		return true
 	case WebhookSenderTypeHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowJobPayloadAction.
+const (
+	WebhookWorkflowJobPayloadActionCancelled  WebhookWorkflowJobPayloadAction = "cancelled"
+	WebhookWorkflowJobPayloadActionCompleted  WebhookWorkflowJobPayloadAction = "completed"
+	WebhookWorkflowJobPayloadActionInProgress WebhookWorkflowJobPayloadAction = "in_progress"
+	WebhookWorkflowJobPayloadActionQueued     WebhookWorkflowJobPayloadAction = "queued"
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowJobPayloadAction enum.
+func (e WebhookWorkflowJobPayloadAction) Valid() bool {
+	switch e {
+	case WebhookWorkflowJobPayloadActionCancelled:
+		return true
+	case WebhookWorkflowJobPayloadActionCompleted:
+		return true
+	case WebhookWorkflowJobPayloadActionInProgress:
+		return true
+	case WebhookWorkflowJobPayloadActionQueued:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowJobPayloadEvent.
+const (
+	WebhookWorkflowJobPayloadEventWorkflowJob WebhookWorkflowJobPayloadEvent = "workflow_job"
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowJobPayloadEvent enum.
+func (e WebhookWorkflowJobPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookWorkflowJobPayloadEventWorkflowJob:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowJobPayloadVersion.
+const (
+	WebhookWorkflowJobPayloadVersionN1 WebhookWorkflowJobPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowJobPayloadVersion enum.
+func (e WebhookWorkflowJobPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookWorkflowJobPayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowRunPayloadAction.
+const (
+	WebhookWorkflowRunPayloadActionCancelled  WebhookWorkflowRunPayloadAction = "cancelled"
+	WebhookWorkflowRunPayloadActionCompleted  WebhookWorkflowRunPayloadAction = "completed"
+	WebhookWorkflowRunPayloadActionInProgress WebhookWorkflowRunPayloadAction = "in_progress"
+	WebhookWorkflowRunPayloadActionQueued     WebhookWorkflowRunPayloadAction = "queued"
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowRunPayloadAction enum.
+func (e WebhookWorkflowRunPayloadAction) Valid() bool {
+	switch e {
+	case WebhookWorkflowRunPayloadActionCancelled:
+		return true
+	case WebhookWorkflowRunPayloadActionCompleted:
+		return true
+	case WebhookWorkflowRunPayloadActionInProgress:
+		return true
+	case WebhookWorkflowRunPayloadActionQueued:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowRunPayloadEvent.
+const (
+	WebhookWorkflowRunPayloadEventWorkflowRun WebhookWorkflowRunPayloadEvent = "workflow_run"
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowRunPayloadEvent enum.
+func (e WebhookWorkflowRunPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookWorkflowRunPayloadEventWorkflowRun:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowRunPayloadVersion.
+const (
+	WebhookWorkflowRunPayloadVersionN1 WebhookWorkflowRunPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowRunPayloadVersion enum.
+func (e WebhookWorkflowRunPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookWorkflowRunPayloadVersionN1:
 		return true
 	default:
 		return false
@@ -5870,6 +6032,27 @@ type WebhookPullRequestReviewPayloadEvent string
 // WebhookPullRequestReviewPayloadVersion defines model for WebhookPullRequestReviewPayload.Version.
 type WebhookPullRequestReviewPayloadVersion int
 
+// WebhookReleasePayload defines model for WebhookReleasePayload.
+type WebhookReleasePayload struct {
+	Action       WebhookReleasePayloadAction  `json:"action"`
+	Event        WebhookReleasePayloadEvent   `json:"event"`
+	Organization *WebhookOrganizationRef      `json:"organization,omitempty"`
+	Release      Release                      `json:"release"`
+	Repository   WebhookRepositoryRef         `json:"repository"`
+	Sender       *WebhookSender               `json:"sender"`
+	Time         time.Time                    `json:"time"`
+	Version      WebhookReleasePayloadVersion `json:"version"`
+}
+
+// WebhookReleasePayloadAction defines model for WebhookReleasePayload.Action.
+type WebhookReleasePayloadAction string
+
+// WebhookReleasePayloadEvent defines model for WebhookReleasePayload.Event.
+type WebhookReleasePayloadEvent string
+
+// WebhookReleasePayloadVersion defines model for WebhookReleasePayload.Version.
+type WebhookReleasePayloadVersion int
+
 // WebhookRepositoryRef defines model for WebhookRepositoryRef.
 type WebhookRepositoryRef struct {
 	Archived      bool               `json:"archived"`
@@ -5895,6 +6078,49 @@ type WebhookSender struct {
 
 // WebhookSenderType defines model for WebhookSender.Type.
 type WebhookSenderType string
+
+// WebhookWorkflowJobPayload defines model for WebhookWorkflowJobPayload.
+type WebhookWorkflowJobPayload struct {
+	Action       WebhookWorkflowJobPayloadAction  `json:"action"`
+	Event        WebhookWorkflowJobPayloadEvent   `json:"event"`
+	Organization *WebhookOrganizationRef          `json:"organization,omitempty"`
+	Repository   WebhookRepositoryRef             `json:"repository"`
+	Sender       *WebhookSender                   `json:"sender"`
+	Time         time.Time                        `json:"time"`
+	Version      WebhookWorkflowJobPayloadVersion `json:"version"`
+	WorkflowJob  WorkflowJob                      `json:"workflowJob"`
+	WorkflowRun  WorkflowRun                      `json:"workflowRun"`
+}
+
+// WebhookWorkflowJobPayloadAction defines model for WebhookWorkflowJobPayload.Action.
+type WebhookWorkflowJobPayloadAction string
+
+// WebhookWorkflowJobPayloadEvent defines model for WebhookWorkflowJobPayload.Event.
+type WebhookWorkflowJobPayloadEvent string
+
+// WebhookWorkflowJobPayloadVersion defines model for WebhookWorkflowJobPayload.Version.
+type WebhookWorkflowJobPayloadVersion int
+
+// WebhookWorkflowRunPayload defines model for WebhookWorkflowRunPayload.
+type WebhookWorkflowRunPayload struct {
+	Action       WebhookWorkflowRunPayloadAction  `json:"action"`
+	Event        WebhookWorkflowRunPayloadEvent   `json:"event"`
+	Organization *WebhookOrganizationRef          `json:"organization,omitempty"`
+	Repository   WebhookRepositoryRef             `json:"repository"`
+	Sender       *WebhookSender                   `json:"sender"`
+	Time         time.Time                        `json:"time"`
+	Version      WebhookWorkflowRunPayloadVersion `json:"version"`
+	WorkflowRun  WorkflowRun                      `json:"workflowRun"`
+}
+
+// WebhookWorkflowRunPayloadAction defines model for WebhookWorkflowRunPayload.Action.
+type WebhookWorkflowRunPayloadAction string
+
+// WebhookWorkflowRunPayloadEvent defines model for WebhookWorkflowRunPayload.Event.
+type WebhookWorkflowRunPayloadEvent string
+
+// WebhookWorkflowRunPayloadVersion defines model for WebhookWorkflowRunPayload.Version.
+type WebhookWorkflowRunPayloadVersion int
 
 // Workflow defines model for Workflow.
 type Workflow struct {
@@ -7038,6 +7264,15 @@ type PullRequestJSONRequestBody = WebhookPullRequestPayload
 
 // PullRequestReviewJSONRequestBody defines body for PullRequestReview for application/json ContentType.
 type PullRequestReviewJSONRequestBody = WebhookPullRequestReviewPayload
+
+// ReleaseJSONRequestBody defines body for Release for application/json ContentType.
+type ReleaseJSONRequestBody = WebhookReleasePayload
+
+// WorkflowJobJSONRequestBody defines body for WorkflowJob for application/json ContentType.
+type WorkflowJobJSONRequestBody = WebhookWorkflowJobPayload
+
+// WorkflowRunJSONRequestBody defines body for WorkflowRun for application/json ContentType.
+type WorkflowRunJSONRequestBody = WebhookWorkflowRunPayload
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -73260,6 +73495,21 @@ type CallbackInitiatorInterface interface {
 	PullRequestReviewWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PullRequestReview(ctx context.Context, targetURL string, body PullRequestReviewJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReleaseWithBody fires the release callback with any body
+	ReleaseWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	Release(ctx context.Context, targetURL string, body ReleaseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkflowJobWithBody fires the workflow_job callback with any body
+	WorkflowJobWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	WorkflowJob(ctx context.Context, targetURL string, body WorkflowJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkflowRunWithBody fires the workflow_run callback with any body
+	WorkflowRunWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	WorkflowRun(ctx context.Context, targetURL string, body WorkflowRunJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (p *CallbackInitiator) CommitStatusWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -73324,6 +73574,78 @@ func (p *CallbackInitiator) PullRequestReviewWithBody(ctx context.Context, targe
 
 func (p *CallbackInitiator) PullRequestReview(ctx context.Context, targetURL string, body PullRequestReviewJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPullRequestReviewCallbackRequest(targetURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) ReleaseWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReleaseCallbackRequestWithBody(targetURL, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) Release(ctx context.Context, targetURL string, body ReleaseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReleaseCallbackRequest(targetURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) WorkflowJobWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkflowJobCallbackRequestWithBody(targetURL, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) WorkflowJob(ctx context.Context, targetURL string, body WorkflowJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkflowJobCallbackRequest(targetURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) WorkflowRunWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkflowRunCallbackRequestWithBody(targetURL, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) WorkflowRun(ctx context.Context, targetURL string, body WorkflowRunJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkflowRunCallbackRequest(targetURL, body)
 	if err != nil {
 		return nil, err
 	}
@@ -73409,6 +73731,99 @@ func NewPullRequestReviewCallbackRequest(targetURL string, body PullRequestRevie
 
 // NewPullRequestReviewCallbackRequestWithBody builds a POST request for the pull_request_review callback with any body
 func NewPullRequestReviewCallbackRequestWithBody(targetURL string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+	_ = err
+
+	reqURL, err := url.Parse(targetURL)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, reqURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewReleaseCallbackRequest builds a application/json POST request for the release callback
+func NewReleaseCallbackRequest(targetURL string, body ReleaseJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewReleaseCallbackRequestWithBody(targetURL, "application/json", bodyReader)
+}
+
+// NewReleaseCallbackRequestWithBody builds a POST request for the release callback with any body
+func NewReleaseCallbackRequestWithBody(targetURL string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+	_ = err
+
+	reqURL, err := url.Parse(targetURL)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, reqURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewWorkflowJobCallbackRequest builds a application/json POST request for the workflow_job callback
+func NewWorkflowJobCallbackRequest(targetURL string, body WorkflowJobJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewWorkflowJobCallbackRequestWithBody(targetURL, "application/json", bodyReader)
+}
+
+// NewWorkflowJobCallbackRequestWithBody builds a POST request for the workflow_job callback with any body
+func NewWorkflowJobCallbackRequestWithBody(targetURL string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+	_ = err
+
+	reqURL, err := url.Parse(targetURL)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, reqURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewWorkflowRunCallbackRequest builds a application/json POST request for the workflow_run callback
+func NewWorkflowRunCallbackRequest(targetURL string, body WorkflowRunJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewWorkflowRunCallbackRequestWithBody(targetURL, "application/json", bodyReader)
+}
+
+// NewWorkflowRunCallbackRequestWithBody builds a POST request for the workflow_run callback with any body
+func NewWorkflowRunCallbackRequestWithBody(targetURL string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 	_ = err
 

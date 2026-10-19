@@ -1220,6 +1220,12 @@ type VerifyCredentialResult struct {
 	Principal *Principal `json:"principal,omitempty"`
 }
 
+// ArtifactIdParam defines model for ArtifactIdParam.
+type ArtifactIdParam = openapi_types.UUID
+
+// AssetIdParam defines model for AssetIdParam.
+type AssetIdParam = openapi_types.UUID
+
 // CommitShaParam defines model for CommitShaParam.
 type CommitShaParam = string
 
@@ -1237,6 +1243,9 @@ type IssueCommentIdParam = openapi_types.UUID
 
 // IssueNumberParam defines model for IssueNumberParam.
 type IssueNumberParam = int64
+
+// JobIdParam defines model for JobIdParam.
+type JobIdParam = openapi_types.UUID
 
 // LabelNameParam defines model for LabelNameParam.
 type LabelNameParam = string
@@ -1278,6 +1287,9 @@ type PullThreadIdParam = openapi_types.UUID
 // RefAndPathParam defines model for RefAndPathParam.
 type RefAndPathParam = string
 
+// ReleaseIdParam defines model for ReleaseIdParam.
+type ReleaseIdParam = openapi_types.UUID
+
 // RepoNameParam Nome di un repo (R11): lettere maiuscole e minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono conservate come scritte; l'unicita' per owner e il lookup non distinguono maiuscole e minuscole (`GitStack` e `gitstack` sono lo stesso repo).
 //
 // Example: my-app
@@ -1290,6 +1302,12 @@ type RepoOwnerParam = Name
 
 // ResourceIdParam defines model for ResourceIdParam.
 type ResourceIdParam = openapi_types.UUID
+
+// RunIdParam defines model for RunIdParam.
+type RunIdParam = openapi_types.UUID
+
+// RunnerIdParam defines model for RunnerIdParam.
+type RunnerIdParam = openapi_types.UUID
 
 // SessionIdParam defines model for SessionIdParam.
 type SessionIdParam = openapi_types.UUID
@@ -1315,6 +1333,9 @@ type WebhookDeliveryIdParam = openapi_types.UUID
 
 // WebhookIdParam defines model for WebhookIdParam.
 type WebhookIdParam = openapi_types.UUID
+
+// WorkflowParam defines model for WorkflowParam.
+type WorkflowParam = string
 
 // BadRequest Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type BadRequest = Error

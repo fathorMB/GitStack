@@ -560,7 +560,7 @@ func (s *apiServer) CloseIssue(w http.ResponseWriter, r *http.Request, owner ope
 	if !decodeIssueJSON(w, r, &in, true) {
 		return
 	}
-	reason := openapi.Completed
+	reason := openapi.IssueCloseReasonCompleted
 	if in.Reason != nil {
 		reason = *in.Reason
 	}
@@ -570,13 +570,13 @@ func (s *apiServer) CloseIssue(w http.ResponseWriter, r *http.Request, owner ope
 	}
 	var duplicateOf *int64
 	switch {
-	case reason == openapi.Duplicate && in.DuplicateOf == nil:
+	case reason == openapi.IssueCloseReasonDuplicate && in.DuplicateOf == nil:
 		writeError(w, http.StatusUnprocessableEntity, "validation_failed", "duplicateOf è obbligatorio con reason=duplicate.")
 		return
-	case reason != openapi.Duplicate && in.DuplicateOf != nil:
+	case reason != openapi.IssueCloseReasonDuplicate && in.DuplicateOf != nil:
 		writeError(w, http.StatusUnprocessableEntity, "validation_failed", "duplicateOf è ammesso solo con reason=duplicate.")
 		return
-	case reason == openapi.Duplicate:
+	case reason == openapi.IssueCloseReasonDuplicate:
 		if *in.DuplicateOf < 1 || *in.DuplicateOf == number {
 			writeError(w, http.StatusUnprocessableEntity, "validation_failed", "duplicateOf deve essere un'altra issue del repo.")
 			return

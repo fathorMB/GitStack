@@ -6773,6 +6773,57 @@ paths:
             schema:
               $ref: "#/components/schemas/CreateWebhookInput"
       callbacks:
+        workflow_run:
+          "{$request.body#/url}":
+            post:
+              summary: Consegna dell'evento workflow_run (CI)
+              description: >
+                POST con `X-GitStack-Event: workflow_run` quando una esecuzione cambia stato.
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: "#/components/schemas/WebhookWorkflowRunPayload"
+              responses:
+                "200":
+                  description: Consegnato (qualunque 2xx).
+                "4XX":
+                  description: Rifiutato dal ricevitore; un 410 ferma le consegne, gli altri 4xx non si ritentano (C7).
+        workflow_job:
+          "{$request.body#/url}":
+            post:
+              summary: Consegna dell'evento workflow_job (CI)
+              description: >
+                POST con `X-GitStack-Event: workflow_job` quando un job cambia stato.
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: "#/components/schemas/WebhookWorkflowJobPayload"
+              responses:
+                "200":
+                  description: Consegnato (qualunque 2xx).
+                "4XX":
+                  description: Rifiutato dal ricevitore; un 410 ferma le consegne, gli altri 4xx non si ritentano (C7).
+        release:
+          "{$request.body#/url}":
+            post:
+              summary: Consegna dell'evento release (REL1)
+              description: >
+                POST con `X-GitStack-Event: release` quando una release e' creata, pubblicata, modificata o eliminata.
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: "#/components/schemas/WebhookReleasePayload"
+              responses:
+                "200":
+                  description: Consegnato (qualunque 2xx).
+                "4XX":
+                  description: Rifiutato dal ricevitore; un 410 ferma le consegne, gli altri 4xx non si ritentano (C7).
         pull_request:
           "{$request.body#/url}":
             post:
@@ -7575,7 +7626,7 @@ paths:
       x-mcp: {expose: false, name: repository_secret_list, destructive: false}
       summary: Elenca i metadati dei segreti CI del repository
       responses:
-        "200": {description: Segreti, mai i loro valori., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsSecretList"}}}}
+        "200": {description: "Segreti, mai i loro valori.", content: {application/json: {schema: {$ref: "#/components/schemas/ActionsSecretList"}}}}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
@@ -7625,7 +7676,7 @@ paths:
       x-mcp: {expose: false, name: organization_secret_list, destructive: false}
       summary: Elenca i metadati dei segreti CI dell'organizzazione
       responses:
-        "200": {description: Segreti, mai i loro valori., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsSecretList"}}}}
+        "200": {description: "Segreti, mai i loro valori.", content: {application/json: {schema: {$ref: "#/components/schemas/ActionsSecretList"}}}}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}

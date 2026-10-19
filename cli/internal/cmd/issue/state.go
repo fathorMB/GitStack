@@ -43,20 +43,20 @@ func parseCloseReason(reason, duplicateOf string) (gitstack.CloseIssueInput, err
 			return in, cmdutil.UsageErrorf("--duplicate-of vale solo con il motivo `duplicate`")
 		}
 		if r != "" {
-			c := gitstack.Completed
+			c := gitstack.IssueCloseReasonCompleted
 			in.Reason = &c
 		}
 	case "not_planned":
 		if dup != 0 {
 			return in, cmdutil.UsageErrorf("--duplicate-of vale solo con il motivo `duplicate`")
 		}
-		c := gitstack.NotPlanned
+		c := gitstack.IssueCloseReasonNotPlanned
 		in.Reason = &c
 	case "duplicate":
 		if dup == 0 {
 			return in, cmdutil.UsageErrorf("il motivo `duplicate` vuole la issue originale: --duplicate-of <numero> o `--reason \"duplicate #5\"`")
 		}
-		c := gitstack.Duplicate
+		c := gitstack.IssueCloseReasonDuplicate
 		in.Reason = &c
 		in.DuplicateOf = &dup
 	default:

@@ -461,19 +461,19 @@ func (e HealthStatus) Valid() bool {
 
 // Defines values for IssueCloseReason.
 const (
-	Completed  IssueCloseReason = "completed"
-	Duplicate  IssueCloseReason = "duplicate"
-	NotPlanned IssueCloseReason = "not_planned"
+	IssueCloseReasonCompleted  IssueCloseReason = "completed"
+	IssueCloseReasonDuplicate  IssueCloseReason = "duplicate"
+	IssueCloseReasonNotPlanned IssueCloseReason = "not_planned"
 )
 
 // Valid indicates whether the value is a known member of the IssueCloseReason enum.
 func (e IssueCloseReason) Valid() bool {
 	switch e {
-	case Completed:
+	case IssueCloseReasonCompleted:
 		return true
-	case Duplicate:
+	case IssueCloseReasonDuplicate:
 		return true
-	case NotPlanned:
+	case IssueCloseReasonNotPlanned:
 		return true
 	default:
 		return false
@@ -1605,6 +1605,60 @@ func (e WebhookPullRequestReviewPayloadVersion) Valid() bool {
 	}
 }
 
+// Defines values for WebhookReleasePayloadAction.
+const (
+	WebhookReleasePayloadActionCreated   WebhookReleasePayloadAction = "created"
+	WebhookReleasePayloadActionDeleted   WebhookReleasePayloadAction = "deleted"
+	WebhookReleasePayloadActionEdited    WebhookReleasePayloadAction = "edited"
+	WebhookReleasePayloadActionPublished WebhookReleasePayloadAction = "published"
+)
+
+// Valid indicates whether the value is a known member of the WebhookReleasePayloadAction enum.
+func (e WebhookReleasePayloadAction) Valid() bool {
+	switch e {
+	case WebhookReleasePayloadActionCreated:
+		return true
+	case WebhookReleasePayloadActionDeleted:
+		return true
+	case WebhookReleasePayloadActionEdited:
+		return true
+	case WebhookReleasePayloadActionPublished:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookReleasePayloadEvent.
+const (
+	WebhookReleasePayloadEventRelease WebhookReleasePayloadEvent = "release"
+)
+
+// Valid indicates whether the value is a known member of the WebhookReleasePayloadEvent enum.
+func (e WebhookReleasePayloadEvent) Valid() bool {
+	switch e {
+	case WebhookReleasePayloadEventRelease:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookReleasePayloadVersion.
+const (
+	WebhookReleasePayloadVersionN1 WebhookReleasePayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookReleasePayloadVersion enum.
+func (e WebhookReleasePayloadVersion) Valid() bool {
+	switch e {
+	case WebhookReleasePayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WebhookScope.
 const (
 	Org  WebhookScope = "org"
@@ -1635,6 +1689,114 @@ func (e WebhookSenderType) Valid() bool {
 	case WebhookSenderTypeAgent:
 		return true
 	case WebhookSenderTypeHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowJobPayloadAction.
+const (
+	WebhookWorkflowJobPayloadActionCancelled  WebhookWorkflowJobPayloadAction = "cancelled"
+	WebhookWorkflowJobPayloadActionCompleted  WebhookWorkflowJobPayloadAction = "completed"
+	WebhookWorkflowJobPayloadActionInProgress WebhookWorkflowJobPayloadAction = "in_progress"
+	WebhookWorkflowJobPayloadActionQueued     WebhookWorkflowJobPayloadAction = "queued"
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowJobPayloadAction enum.
+func (e WebhookWorkflowJobPayloadAction) Valid() bool {
+	switch e {
+	case WebhookWorkflowJobPayloadActionCancelled:
+		return true
+	case WebhookWorkflowJobPayloadActionCompleted:
+		return true
+	case WebhookWorkflowJobPayloadActionInProgress:
+		return true
+	case WebhookWorkflowJobPayloadActionQueued:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowJobPayloadEvent.
+const (
+	WebhookWorkflowJobPayloadEventWorkflowJob WebhookWorkflowJobPayloadEvent = "workflow_job"
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowJobPayloadEvent enum.
+func (e WebhookWorkflowJobPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookWorkflowJobPayloadEventWorkflowJob:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowJobPayloadVersion.
+const (
+	WebhookWorkflowJobPayloadVersionN1 WebhookWorkflowJobPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowJobPayloadVersion enum.
+func (e WebhookWorkflowJobPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookWorkflowJobPayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowRunPayloadAction.
+const (
+	WebhookWorkflowRunPayloadActionCancelled  WebhookWorkflowRunPayloadAction = "cancelled"
+	WebhookWorkflowRunPayloadActionCompleted  WebhookWorkflowRunPayloadAction = "completed"
+	WebhookWorkflowRunPayloadActionInProgress WebhookWorkflowRunPayloadAction = "in_progress"
+	WebhookWorkflowRunPayloadActionQueued     WebhookWorkflowRunPayloadAction = "queued"
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowRunPayloadAction enum.
+func (e WebhookWorkflowRunPayloadAction) Valid() bool {
+	switch e {
+	case WebhookWorkflowRunPayloadActionCancelled:
+		return true
+	case WebhookWorkflowRunPayloadActionCompleted:
+		return true
+	case WebhookWorkflowRunPayloadActionInProgress:
+		return true
+	case WebhookWorkflowRunPayloadActionQueued:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowRunPayloadEvent.
+const (
+	WebhookWorkflowRunPayloadEventWorkflowRun WebhookWorkflowRunPayloadEvent = "workflow_run"
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowRunPayloadEvent enum.
+func (e WebhookWorkflowRunPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookWorkflowRunPayloadEventWorkflowRun:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookWorkflowRunPayloadVersion.
+const (
+	WebhookWorkflowRunPayloadVersionN1 WebhookWorkflowRunPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookWorkflowRunPayloadVersion enum.
+func (e WebhookWorkflowRunPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookWorkflowRunPayloadVersionN1:
 		return true
 	default:
 		return false
@@ -4740,6 +4902,27 @@ type WebhookPullRequestReviewPayloadEvent string
 // WebhookPullRequestReviewPayloadVersion defines model for WebhookPullRequestReviewPayload.Version.
 type WebhookPullRequestReviewPayloadVersion int
 
+// WebhookReleasePayload defines model for WebhookReleasePayload.
+type WebhookReleasePayload struct {
+	Action       WebhookReleasePayloadAction  `json:"action"`
+	Event        WebhookReleasePayloadEvent   `json:"event"`
+	Organization *WebhookOrganizationRef      `json:"organization,omitempty"`
+	Release      Release                      `json:"release"`
+	Repository   WebhookRepositoryRef         `json:"repository"`
+	Sender       *WebhookSender               `json:"sender"`
+	Time         time.Time                    `json:"time"`
+	Version      WebhookReleasePayloadVersion `json:"version"`
+}
+
+// WebhookReleasePayloadAction defines model for WebhookReleasePayload.Action.
+type WebhookReleasePayloadAction string
+
+// WebhookReleasePayloadEvent defines model for WebhookReleasePayload.Event.
+type WebhookReleasePayloadEvent string
+
+// WebhookReleasePayloadVersion defines model for WebhookReleasePayload.Version.
+type WebhookReleasePayloadVersion int
+
 // WebhookRepositoryRef defines model for WebhookRepositoryRef.
 type WebhookRepositoryRef struct {
 	Archived      bool               `json:"archived"`
@@ -4765,6 +4948,49 @@ type WebhookSender struct {
 
 // WebhookSenderType defines model for WebhookSender.Type.
 type WebhookSenderType string
+
+// WebhookWorkflowJobPayload defines model for WebhookWorkflowJobPayload.
+type WebhookWorkflowJobPayload struct {
+	Action       WebhookWorkflowJobPayloadAction  `json:"action"`
+	Event        WebhookWorkflowJobPayloadEvent   `json:"event"`
+	Organization *WebhookOrganizationRef          `json:"organization,omitempty"`
+	Repository   WebhookRepositoryRef             `json:"repository"`
+	Sender       *WebhookSender                   `json:"sender"`
+	Time         time.Time                        `json:"time"`
+	Version      WebhookWorkflowJobPayloadVersion `json:"version"`
+	WorkflowJob  WorkflowJob                      `json:"workflowJob"`
+	WorkflowRun  WorkflowRun                      `json:"workflowRun"`
+}
+
+// WebhookWorkflowJobPayloadAction defines model for WebhookWorkflowJobPayload.Action.
+type WebhookWorkflowJobPayloadAction string
+
+// WebhookWorkflowJobPayloadEvent defines model for WebhookWorkflowJobPayload.Event.
+type WebhookWorkflowJobPayloadEvent string
+
+// WebhookWorkflowJobPayloadVersion defines model for WebhookWorkflowJobPayload.Version.
+type WebhookWorkflowJobPayloadVersion int
+
+// WebhookWorkflowRunPayload defines model for WebhookWorkflowRunPayload.
+type WebhookWorkflowRunPayload struct {
+	Action       WebhookWorkflowRunPayloadAction  `json:"action"`
+	Event        WebhookWorkflowRunPayloadEvent   `json:"event"`
+	Organization *WebhookOrganizationRef          `json:"organization,omitempty"`
+	Repository   WebhookRepositoryRef             `json:"repository"`
+	Sender       *WebhookSender                   `json:"sender"`
+	Time         time.Time                        `json:"time"`
+	Version      WebhookWorkflowRunPayloadVersion `json:"version"`
+	WorkflowRun  WorkflowRun                      `json:"workflowRun"`
+}
+
+// WebhookWorkflowRunPayloadAction defines model for WebhookWorkflowRunPayload.Action.
+type WebhookWorkflowRunPayloadAction string
+
+// WebhookWorkflowRunPayloadEvent defines model for WebhookWorkflowRunPayload.Event.
+type WebhookWorkflowRunPayloadEvent string
+
+// WebhookWorkflowRunPayloadVersion defines model for WebhookWorkflowRunPayload.Version.
+type WebhookWorkflowRunPayloadVersion int
 
 // Workflow defines model for Workflow.
 type Workflow struct {
@@ -5631,6 +5857,15 @@ type PullRequestJSONRequestBody = WebhookPullRequestPayload
 
 // PullRequestReviewJSONRequestBody defines body for PullRequestReview for application/json ContentType.
 type PullRequestReviewJSONRequestBody = WebhookPullRequestReviewPayload
+
+// ReleaseJSONRequestBody defines body for Release for application/json ContentType.
+type ReleaseJSONRequestBody = WebhookReleasePayload
+
+// WorkflowJobJSONRequestBody defines body for WorkflowJob for application/json ContentType.
+type WorkflowJobJSONRequestBody = WebhookWorkflowJobPayload
+
+// WorkflowRunJSONRequestBody defines body for WorkflowRun for application/json ContentType.
+type WorkflowRunJSONRequestBody = WebhookWorkflowRunPayload
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -14604,6 +14839,15 @@ type CallbackReceiverInterface interface {
 	// Consegna dell'evento pull_request_review (PR11)
 	// HandlePullRequestReviewCallback handles the POST callback for pull_request_review.
 	HandlePullRequestReviewCallback(w http.ResponseWriter, r *http.Request)
+	// Consegna dell'evento release (REL1)
+	// HandleReleaseCallback handles the POST callback for release.
+	HandleReleaseCallback(w http.ResponseWriter, r *http.Request)
+	// Consegna dell'evento workflow_job (CI)
+	// HandleWorkflowJobCallback handles the POST callback for workflow_job.
+	HandleWorkflowJobCallback(w http.ResponseWriter, r *http.Request)
+	// Consegna dell'evento workflow_run (CI)
+	// HandleWorkflowRunCallback handles the POST callback for workflow_run.
+	HandleWorkflowRunCallback(w http.ResponseWriter, r *http.Request)
 }
 
 // CallbackReceiverMiddlewareFunc wraps an http.Handler with cross-
@@ -14663,6 +14907,66 @@ func PullRequestReviewCallbackHandler(si CallbackReceiverInterface, errHandler f
 	}
 	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		si.HandlePullRequestReviewCallback(w, r)
+	})
+	for _, mw := range middlewares {
+		h = mw(h)
+	}
+	return h
+}
+
+// ReleaseCallbackHandler returns the http.Handler for the release callback.
+// Mount this at the URL path advertised to callback senders. errHandler
+// may be nil; if so, parameter-binding errors return 400 with the error
+// message. Middlewares are applied in the order provided -- the last
+// argument becomes the outermost wrapper.
+func ReleaseCallbackHandler(si CallbackReceiverInterface, errHandler func(w http.ResponseWriter, r *http.Request, err error), middlewares ...CallbackReceiverMiddlewareFunc) http.Handler {
+	if errHandler == nil {
+		errHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		si.HandleReleaseCallback(w, r)
+	})
+	for _, mw := range middlewares {
+		h = mw(h)
+	}
+	return h
+}
+
+// WorkflowJobCallbackHandler returns the http.Handler for the workflow_job callback.
+// Mount this at the URL path advertised to callback senders. errHandler
+// may be nil; if so, parameter-binding errors return 400 with the error
+// message. Middlewares are applied in the order provided -- the last
+// argument becomes the outermost wrapper.
+func WorkflowJobCallbackHandler(si CallbackReceiverInterface, errHandler func(w http.ResponseWriter, r *http.Request, err error), middlewares ...CallbackReceiverMiddlewareFunc) http.Handler {
+	if errHandler == nil {
+		errHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		si.HandleWorkflowJobCallback(w, r)
+	})
+	for _, mw := range middlewares {
+		h = mw(h)
+	}
+	return h
+}
+
+// WorkflowRunCallbackHandler returns the http.Handler for the workflow_run callback.
+// Mount this at the URL path advertised to callback senders. errHandler
+// may be nil; if so, parameter-binding errors return 400 with the error
+// message. Middlewares are applied in the order provided -- the last
+// argument becomes the outermost wrapper.
+func WorkflowRunCallbackHandler(si CallbackReceiverInterface, errHandler func(w http.ResponseWriter, r *http.Request, err error), middlewares ...CallbackReceiverMiddlewareFunc) http.Handler {
+	if errHandler == nil {
+		errHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		si.HandleWorkflowRunCallback(w, r)
 	})
 	for _, mw := range middlewares {
 		h = mw(h)

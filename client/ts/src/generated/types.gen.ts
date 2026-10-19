@@ -4,6 +4,209 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}/v1` | (string & {});
 };
 
+export type WorkflowList = {
+    items: Array<Workflow>;
+};
+
+export type Workflow = {
+    id: string;
+    /**
+     * Percorso sotto `.gitstack/workflows/` o `.github/workflows/`.
+     */
+    path: string;
+    name: string;
+    state: 'active' | 'disabled';
+};
+
+export type WorkflowDispatchInput = {
+    ref: string;
+    inputs?: {
+        [key: string]: string;
+    };
+};
+
+export type WorkflowRunList = {
+    items: Array<WorkflowRun>;
+};
+
+export type WorkflowRun = {
+    id: string;
+    workflowId: string;
+    /**
+     * queued, in_progress, completed o cancelled
+     */
+    status: string;
+    /**
+     * success, failure, cancelled, skipped o timed_out quando conclusa
+     */
+    conclusion?: string | null;
+    event: 'push' | 'pull_request' | 'workflow_dispatch' | 'schedule';
+    ref: string;
+    sha: string;
+    createdAt: string;
+    startedAt?: string | null;
+    completedAt?: string | null;
+    jobs: Array<WorkflowJob>;
+};
+
+export type WorkflowJob = {
+    id: string;
+    name: string;
+    /**
+     * queued, in_progress, completed o cancelled
+     */
+    status: string;
+    /**
+     * success, failure, cancelled, skipped o timed_out quando concluso
+     */
+    conclusion?: string | null;
+    runnerType: 'internal_pod' | 'external';
+    runnerName?: string | null;
+    permissions: JobTokenPermissions;
+    startedAt?: string | null;
+    completedAt?: string | null;
+};
+
+/**
+ * Permessi effettivi del token effimero del job; non puo' eccedere quelli del workflow e del repository.
+ */
+export type JobTokenPermissions = {
+    contents: 'none' | 'read' | 'write';
+    packages: 'none' | 'read' | 'write';
+    actions: 'none' | 'read' | 'write';
+};
+
+export type ArtifactList = {
+    items: Array<Artifact>;
+};
+
+export type Artifact = {
+    id: string;
+    name: string;
+    sizeBytes: number;
+    expiresAt: string;
+};
+
+export type ActionsVariableList = {
+    items: Array<ActionsVariable>;
+};
+
+export type ActionsVariable = {
+    name: string;
+    value: string;
+    updatedAt: string;
+};
+
+export type ActionsVariableInput = {
+    name: string;
+    value: string;
+};
+
+export type ActionsSecretList = {
+    items: Array<ActionsSecret>;
+};
+
+export type ActionsSecret = {
+    name: string;
+    updatedAt: string;
+};
+
+export type ActionsSecretInput = {
+    name: string;
+};
+
+export type CiRunnerList = {
+    items: Array<CiRunner>;
+};
+
+export type CiRunner = {
+    id: string;
+    name: string;
+    labels: Array<string>;
+    status: 'online' | 'offline' | 'busy';
+};
+
+export type CiRunnerRegistrationToken = {
+    expiresAt: string;
+};
+
+export type CiQueue = {
+    queuedJobs: number;
+    runningJobs: number;
+    maxConcurrentJobs: number;
+    resourceLimits: {
+        cpuCores: number;
+        memoryBytes: number;
+        ephemeralStorageBytes: number;
+        maxDurationSeconds: number;
+    };
+};
+
+export type PackageList = {
+    items: Array<Package>;
+};
+
+export type Package = {
+    name: string;
+    tags: Array<string>;
+    sizeBytes: number;
+    updatedAt: string;
+};
+
+export type PackageSettings = PackageSettingsInput;
+
+export type PackageSettingsInput = {
+    /**
+     * Tag che non possono essere sovrascritti o eliminati.
+     */
+    protectedTagPatterns: Array<string>;
+    deleteUntaggedAfterDays: number;
+    includeInBackup: boolean;
+};
+
+export type ReleaseList = {
+    items: Array<Release>;
+};
+
+export type Release = {
+    id: string;
+    tagName: string;
+    name: string;
+    /**
+     * Note Markdown.
+     */
+    body: string;
+    draft: boolean;
+    prerelease: boolean;
+    latest: boolean;
+    assets: Array<ReleaseAsset>;
+    createdAt: string;
+    publishedAt?: string | null;
+};
+
+export type CreateReleaseInput = {
+    tagName: string;
+    name: string;
+    body?: string;
+    draft?: boolean;
+    prerelease?: boolean;
+    generateNotes?: boolean;
+};
+
+export type UpdateReleaseInput = {
+    name?: string;
+    body?: string;
+    draft?: boolean;
+    prerelease?: boolean;
+};
+
+export type ReleaseAsset = {
+    id: string;
+    name: string;
+    sizeBytes: number;
+    sha256: string;
+};
+
 export type Health = {
     status: 'ok' | 'degraded';
     /**
@@ -2002,7 +2205,7 @@ export type WebhookScope = 'repo' | 'org';
  * Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`.
  *
  */
-export type WebhookEvent = 'push' | 'issues' | 'issue_comment' | 'repository' | 'pull_request' | 'pull_request_review' | 'commit_status';
+export type WebhookEvent = 'push' | 'issues' | 'issue_comment' | 'repository' | 'pull_request' | 'pull_request_review' | 'commit_status' | 'workflow_run' | 'workflow_job' | 'release';
 
 /**
  * Stato di un mirror in push. `pending`: in coda (mai spinto, o un push nuovo da fare); `syncing`: un worker lo sta spingendo; `in_sync`: la destinazione ha lo stato dell'ultimo push riuscito; `error`: l'ultimo tentativo e' fallito (rete, credenziale, destinazione non ammessa...), si ritenta con attesa crescente 30 s, 2 min, 10 min, 1 ora fino a 6 ore, tranne un blocco egress (C8) che non si ritenta; `diverged`: la destinazione ha una storia diversa (non fast-forward, o un tag gia' presente con un altro commit): fermo, nessun tentativo automatico e nessuna sovrascrittura, gli admin del repo ricevono una notifica `mirror`; riparte solo con `syncRepoMirror`.
@@ -3088,6 +3291,50 @@ export type WebhookCommitStatusPayload = {
     branches?: Array<string>;
 };
 
+export type WebhookWorkflowRunPayload = {
+    version: 1;
+    event: 'workflow_run';
+    action: 'queued' | 'in_progress' | 'completed' | 'cancelled';
+    time: string;
+    repository: WebhookRepositoryRef;
+    organization?: WebhookOrganizationRef;
+    sender: WebhookSender | null;
+    workflowRun: WorkflowRun;
+};
+
+export type WebhookWorkflowJobPayload = {
+    version: 1;
+    event: 'workflow_job';
+    action: 'queued' | 'in_progress' | 'completed' | 'cancelled';
+    time: string;
+    repository: WebhookRepositoryRef;
+    organization?: WebhookOrganizationRef;
+    sender: WebhookSender | null;
+    workflowRun: WorkflowRun;
+    workflowJob: WorkflowJob;
+};
+
+export type WebhookReleasePayload = {
+    version: 1;
+    event: 'release';
+    action: 'created' | 'edited' | 'published' | 'deleted';
+    time: string;
+    repository: WebhookRepositoryRef;
+    organization?: WebhookOrganizationRef;
+    sender: WebhookSender | null;
+    release: Release;
+};
+
+export type ActionsSecretInputWritable = {
+    name: string;
+    value: string;
+};
+
+export type CiRunnerRegistrationTokenWritable = {
+    token: string;
+    expiresAt: string;
+};
+
 /**
  * Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.
  *
@@ -3774,6 +4021,20 @@ export type PullSortParam = 'created' | 'updated' | 'comments';
  * `true` solo le conversazioni risolte, `false` solo quelle aperte; senza il parametro tutte.
  */
 export type ThreadResolvedFilter = boolean;
+
+export type WorkflowParam = string;
+
+export type RunIdParam = string;
+
+export type JobIdParam = string;
+
+export type ArtifactIdParam = string;
+
+export type RunnerIdParam = string;
+
+export type ReleaseIdParam = string;
+
+export type AssetIdParam = string;
 
 export type GetHealthData = {
     body?: never;
@@ -14122,6 +14383,1373 @@ export type RedeliverOrgWebhookDeliveryResponses = {
 };
 
 export type RedeliverOrgWebhookDeliveryResponse = RedeliverOrgWebhookDeliveryResponses[keyof RedeliverOrgWebhookDeliveryResponses];
+
+export type ListWorkflowsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/workflows';
+};
+
+export type ListWorkflowsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListWorkflowsError = ListWorkflowsErrors[keyof ListWorkflowsErrors];
+
+export type ListWorkflowsResponses = {
+    /**
+     * Workflow trovati.
+     */
+    200: WorkflowList;
+};
+
+export type ListWorkflowsResponse = ListWorkflowsResponses[keyof ListWorkflowsResponses];
+
+export type DispatchWorkflowData = {
+    body: WorkflowDispatchInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        workflow: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/workflows/{workflow}/dispatches';
+};
+
+export type DispatchWorkflowErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type DispatchWorkflowError = DispatchWorkflowErrors[keyof DispatchWorkflowErrors];
+
+export type DispatchWorkflowResponses = {
+    /**
+     * Esecuzione accodata.
+     */
+    202: WorkflowRun;
+};
+
+export type DispatchWorkflowResponse = DispatchWorkflowResponses[keyof DispatchWorkflowResponses];
+
+export type ListWorkflowRunsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/runs';
+};
+
+export type ListWorkflowRunsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListWorkflowRunsError = ListWorkflowRunsErrors[keyof ListWorkflowRunsErrors];
+
+export type ListWorkflowRunsResponses = {
+    /**
+     * Esecuzioni.
+     */
+    200: WorkflowRunList;
+};
+
+export type ListWorkflowRunsResponse = ListWorkflowRunsResponses[keyof ListWorkflowRunsResponses];
+
+export type GetWorkflowRunData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        runId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/runs/{runId}';
+};
+
+export type GetWorkflowRunErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetWorkflowRunError = GetWorkflowRunErrors[keyof GetWorkflowRunErrors];
+
+export type GetWorkflowRunResponses = {
+    /**
+     * Esecuzione.
+     */
+    200: WorkflowRun;
+};
+
+export type GetWorkflowRunResponse = GetWorkflowRunResponses[keyof GetWorkflowRunResponses];
+
+export type CancelWorkflowRunData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        runId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/runs/{runId}/cancel';
+};
+
+export type CancelWorkflowRunErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type CancelWorkflowRunError = CancelWorkflowRunErrors[keyof CancelWorkflowRunErrors];
+
+export type CancelWorkflowRunResponses = {
+    /**
+     * Annullamento richiesto.
+     */
+    202: WorkflowRun;
+};
+
+export type CancelWorkflowRunResponse = CancelWorkflowRunResponses[keyof CancelWorkflowRunResponses];
+
+export type RerunWorkflowRunData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        runId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/runs/{runId}/rerun';
+};
+
+export type RerunWorkflowRunErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type RerunWorkflowRunError = RerunWorkflowRunErrors[keyof RerunWorkflowRunErrors];
+
+export type RerunWorkflowRunResponses = {
+    /**
+     * Nuova esecuzione accodata.
+     */
+    202: WorkflowRun;
+};
+
+export type RerunWorkflowRunResponse = RerunWorkflowRunResponses[keyof RerunWorkflowRunResponses];
+
+export type GetWorkflowJobData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        jobId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/jobs/{jobId}';
+};
+
+export type GetWorkflowJobErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetWorkflowJobError = GetWorkflowJobErrors[keyof GetWorkflowJobErrors];
+
+export type GetWorkflowJobResponses = {
+    /**
+     * Job.
+     */
+    200: WorkflowJob;
+};
+
+export type GetWorkflowJobResponse = GetWorkflowJobResponses[keyof GetWorkflowJobResponses];
+
+export type GetWorkflowJobLogData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        jobId: string;
+    };
+    query?: {
+        follow?: boolean;
+    };
+    url: '/repos/{owner}/{repo}/actions/jobs/{jobId}/logs';
+};
+
+export type GetWorkflowJobLogErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetWorkflowJobLogError = GetWorkflowJobLogErrors[keyof GetWorkflowJobLogErrors];
+
+export type GetWorkflowJobLogResponses = {
+    /**
+     * Log del job.
+     */
+    200: string;
+};
+
+export type GetWorkflowJobLogResponse = GetWorkflowJobLogResponses[keyof GetWorkflowJobLogResponses];
+
+export type ListWorkflowArtifactsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        runId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/runs/{runId}/artifacts';
+};
+
+export type ListWorkflowArtifactsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListWorkflowArtifactsError = ListWorkflowArtifactsErrors[keyof ListWorkflowArtifactsErrors];
+
+export type ListWorkflowArtifactsResponses = {
+    /**
+     * Artefatti.
+     */
+    200: ArtifactList;
+};
+
+export type ListWorkflowArtifactsResponse = ListWorkflowArtifactsResponses[keyof ListWorkflowArtifactsResponses];
+
+export type DownloadWorkflowArtifactData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        artifactId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/artifacts/{artifactId}/download';
+};
+
+export type DownloadWorkflowArtifactErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type DownloadWorkflowArtifactError = DownloadWorkflowArtifactErrors[keyof DownloadWorkflowArtifactErrors];
+
+export type DownloadWorkflowArtifactResponses = {
+    /**
+     * Archivio ZIP.
+     */
+    200: Blob | File;
+};
+
+export type DownloadWorkflowArtifactResponse = DownloadWorkflowArtifactResponses[keyof DownloadWorkflowArtifactResponses];
+
+export type ListRepositoryActionsVariablesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/variables';
+};
+
+export type ListRepositoryActionsVariablesErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListRepositoryActionsVariablesError = ListRepositoryActionsVariablesErrors[keyof ListRepositoryActionsVariablesErrors];
+
+export type ListRepositoryActionsVariablesResponses = {
+    /**
+     * Variabili.
+     */
+    200: ActionsVariableList;
+};
+
+export type ListRepositoryActionsVariablesResponse = ListRepositoryActionsVariablesResponses[keyof ListRepositoryActionsVariablesResponses];
+
+export type PutRepositoryActionsVariableData = {
+    body: ActionsVariableInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/variables';
+};
+
+export type PutRepositoryActionsVariableErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type PutRepositoryActionsVariableError = PutRepositoryActionsVariableErrors[keyof PutRepositoryActionsVariableErrors];
+
+export type PutRepositoryActionsVariableResponses = {
+    /**
+     * Variabile salvata.
+     */
+    200: ActionsVariable;
+};
+
+export type PutRepositoryActionsVariableResponse = PutRepositoryActionsVariableResponses[keyof PutRepositoryActionsVariableResponses];
+
+export type ListRepositoryActionsSecretsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/secrets';
+};
+
+export type ListRepositoryActionsSecretsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListRepositoryActionsSecretsError = ListRepositoryActionsSecretsErrors[keyof ListRepositoryActionsSecretsErrors];
+
+export type ListRepositoryActionsSecretsResponses = {
+    /**
+     * Segreti, mai i loro valori.
+     */
+    200: ActionsSecretList;
+};
+
+export type ListRepositoryActionsSecretsResponse = ListRepositoryActionsSecretsResponses[keyof ListRepositoryActionsSecretsResponses];
+
+export type PutRepositoryActionsSecretData = {
+    body: ActionsSecretInputWritable;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/secrets';
+};
+
+export type PutRepositoryActionsSecretErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type PutRepositoryActionsSecretError = PutRepositoryActionsSecretErrors[keyof PutRepositoryActionsSecretErrors];
+
+export type PutRepositoryActionsSecretResponses = {
+    /**
+     * Segreto salvato.
+     */
+    200: ActionsSecret;
+};
+
+export type PutRepositoryActionsSecretResponse = PutRepositoryActionsSecretResponses[keyof PutRepositoryActionsSecretResponses];
+
+export type ListOrganizationActionsVariablesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+    };
+    query?: never;
+    url: '/orgs/{org}/actions/variables';
+};
+
+export type ListOrganizationActionsVariablesErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListOrganizationActionsVariablesError = ListOrganizationActionsVariablesErrors[keyof ListOrganizationActionsVariablesErrors];
+
+export type ListOrganizationActionsVariablesResponses = {
+    /**
+     * Variabili.
+     */
+    200: ActionsVariableList;
+};
+
+export type ListOrganizationActionsVariablesResponse = ListOrganizationActionsVariablesResponses[keyof ListOrganizationActionsVariablesResponses];
+
+export type PutOrganizationActionsVariableData = {
+    body: ActionsVariableInput;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+    };
+    query?: never;
+    url: '/orgs/{org}/actions/variables';
+};
+
+export type PutOrganizationActionsVariableErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type PutOrganizationActionsVariableError = PutOrganizationActionsVariableErrors[keyof PutOrganizationActionsVariableErrors];
+
+export type PutOrganizationActionsVariableResponses = {
+    /**
+     * Variabile salvata.
+     */
+    200: ActionsVariable;
+};
+
+export type PutOrganizationActionsVariableResponse = PutOrganizationActionsVariableResponses[keyof PutOrganizationActionsVariableResponses];
+
+export type ListOrganizationActionsSecretsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+    };
+    query?: never;
+    url: '/orgs/{org}/actions/secrets';
+};
+
+export type ListOrganizationActionsSecretsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListOrganizationActionsSecretsError = ListOrganizationActionsSecretsErrors[keyof ListOrganizationActionsSecretsErrors];
+
+export type ListOrganizationActionsSecretsResponses = {
+    /**
+     * Segreti, mai i loro valori.
+     */
+    200: ActionsSecretList;
+};
+
+export type ListOrganizationActionsSecretsResponse = ListOrganizationActionsSecretsResponses[keyof ListOrganizationActionsSecretsResponses];
+
+export type PutOrganizationActionsSecretData = {
+    body: ActionsSecretInputWritable;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+    };
+    query?: never;
+    url: '/orgs/{org}/actions/secrets';
+};
+
+export type PutOrganizationActionsSecretErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type PutOrganizationActionsSecretError = PutOrganizationActionsSecretErrors[keyof PutOrganizationActionsSecretErrors];
+
+export type PutOrganizationActionsSecretResponses = {
+    /**
+     * Segreto salvato.
+     */
+    200: ActionsSecret;
+};
+
+export type PutOrganizationActionsSecretResponse = PutOrganizationActionsSecretResponses[keyof PutOrganizationActionsSecretResponses];
+
+export type ListCiRunnersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/ci/runners';
+};
+
+export type ListCiRunnersErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+};
+
+export type ListCiRunnersError = ListCiRunnersErrors[keyof ListCiRunnersErrors];
+
+export type ListCiRunnersResponses = {
+    /**
+     * Runner.
+     */
+    200: CiRunnerList;
+};
+
+export type ListCiRunnersResponse = ListCiRunnersResponses[keyof ListCiRunnersResponses];
+
+export type CreateCiRunnerRegistrationTokenData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/ci/runners/registration-token';
+};
+
+export type CreateCiRunnerRegistrationTokenErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+};
+
+export type CreateCiRunnerRegistrationTokenError = CreateCiRunnerRegistrationTokenErrors[keyof CreateCiRunnerRegistrationTokenErrors];
+
+export type CreateCiRunnerRegistrationTokenResponses = {
+    /**
+     * Token di registrazione.
+     */
+    201: CiRunnerRegistrationToken;
+};
+
+export type CreateCiRunnerRegistrationTokenResponse = CreateCiRunnerRegistrationTokenResponses[keyof CreateCiRunnerRegistrationTokenResponses];
+
+export type DeleteCiRunnerData = {
+    body?: never;
+    path: {
+        runnerId: string;
+    };
+    query?: never;
+    url: '/admin/ci/runners/{runnerId}';
+};
+
+export type DeleteCiRunnerErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type DeleteCiRunnerError = DeleteCiRunnerErrors[keyof DeleteCiRunnerErrors];
+
+export type DeleteCiRunnerResponses = {
+    /**
+     * Runner revocato.
+     */
+    204: void;
+};
+
+export type DeleteCiRunnerResponse = DeleteCiRunnerResponses[keyof DeleteCiRunnerResponses];
+
+export type GetCiQueueData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/ci/queue';
+};
+
+export type GetCiQueueErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+};
+
+export type GetCiQueueError = GetCiQueueErrors[keyof GetCiQueueErrors];
+
+export type GetCiQueueResponses = {
+    /**
+     * Coda e limiti.
+     */
+    200: CiQueue;
+};
+
+export type GetCiQueueResponse = GetCiQueueResponses[keyof GetCiQueueResponses];
+
+export type ListRepositoryPackagesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/packages';
+};
+
+export type ListRepositoryPackagesErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListRepositoryPackagesError = ListRepositoryPackagesErrors[keyof ListRepositoryPackagesErrors];
+
+export type ListRepositoryPackagesResponses = {
+    /**
+     * Pacchetti.
+     */
+    200: PackageList;
+};
+
+export type ListRepositoryPackagesResponse = ListRepositoryPackagesResponses[keyof ListRepositoryPackagesResponses];
+
+export type GetRepositoryPackageSettingsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/packages/settings';
+};
+
+export type GetRepositoryPackageSettingsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetRepositoryPackageSettingsError = GetRepositoryPackageSettingsErrors[keyof GetRepositoryPackageSettingsErrors];
+
+export type GetRepositoryPackageSettingsResponses = {
+    /**
+     * Impostazioni del registry.
+     */
+    200: PackageSettings;
+};
+
+export type GetRepositoryPackageSettingsResponse = GetRepositoryPackageSettingsResponses[keyof GetRepositoryPackageSettingsResponses];
+
+export type UpdateRepositoryPackageSettingsData = {
+    body: PackageSettingsInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/packages/settings';
+};
+
+export type UpdateRepositoryPackageSettingsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type UpdateRepositoryPackageSettingsError = UpdateRepositoryPackageSettingsErrors[keyof UpdateRepositoryPackageSettingsErrors];
+
+export type UpdateRepositoryPackageSettingsResponses = {
+    /**
+     * Impostazioni aggiornate.
+     */
+    200: PackageSettings;
+};
+
+export type UpdateRepositoryPackageSettingsResponse = UpdateRepositoryPackageSettingsResponses[keyof UpdateRepositoryPackageSettingsResponses];
+
+export type ListReleasesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/releases';
+};
+
+export type ListReleasesErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListReleasesError = ListReleasesErrors[keyof ListReleasesErrors];
+
+export type ListReleasesResponses = {
+    /**
+     * Release.
+     */
+    200: ReleaseList;
+};
+
+export type ListReleasesResponse = ListReleasesResponses[keyof ListReleasesResponses];
+
+export type CreateReleaseData = {
+    body: CreateReleaseInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/releases';
+};
+
+export type CreateReleaseErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type CreateReleaseError = CreateReleaseErrors[keyof CreateReleaseErrors];
+
+export type CreateReleaseResponses = {
+    /**
+     * Release creata.
+     */
+    201: Release;
+};
+
+export type CreateReleaseResponse = CreateReleaseResponses[keyof CreateReleaseResponses];
+
+export type DeleteReleaseData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        releaseId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/releases/{releaseId}';
+};
+
+export type DeleteReleaseErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type DeleteReleaseError = DeleteReleaseErrors[keyof DeleteReleaseErrors];
+
+export type DeleteReleaseResponses = {
+    /**
+     * Release eliminata.
+     */
+    204: void;
+};
+
+export type DeleteReleaseResponse = DeleteReleaseResponses[keyof DeleteReleaseResponses];
+
+export type GetReleaseData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        releaseId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/releases/{releaseId}';
+};
+
+export type GetReleaseErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetReleaseError = GetReleaseErrors[keyof GetReleaseErrors];
+
+export type GetReleaseResponses = {
+    /**
+     * Release.
+     */
+    200: Release;
+};
+
+export type GetReleaseResponse = GetReleaseResponses[keyof GetReleaseResponses];
+
+export type UpdateReleaseData = {
+    body: UpdateReleaseInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        releaseId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/releases/{releaseId}';
+};
+
+export type UpdateReleaseErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type UpdateReleaseError = UpdateReleaseErrors[keyof UpdateReleaseErrors];
+
+export type UpdateReleaseResponses = {
+    /**
+     * Release aggiornata.
+     */
+    200: Release;
+};
+
+export type UpdateReleaseResponse = UpdateReleaseResponses[keyof UpdateReleaseResponses];
+
+export type UploadReleaseAssetData = {
+    body: Blob | File;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        releaseId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/releases/{releaseId}/assets';
+};
+
+export type UploadReleaseAssetErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Corpo o file oltre il limite (`body_too_large`, `attachment_too_large`).
+     *
+     */
+    413: Error;
+};
+
+export type UploadReleaseAssetError = UploadReleaseAssetErrors[keyof UploadReleaseAssetErrors];
+
+export type UploadReleaseAssetResponses = {
+    /**
+     * Allegato caricato.
+     */
+    201: ReleaseAsset;
+};
+
+export type UploadReleaseAssetResponse = UploadReleaseAssetResponses[keyof UploadReleaseAssetResponses];
+
+export type DownloadReleaseAssetData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        releaseId: string;
+        assetId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/releases/{releaseId}/assets/{assetId}/download';
+};
+
+export type DownloadReleaseAssetErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type DownloadReleaseAssetError = DownloadReleaseAssetErrors[keyof DownloadReleaseAssetErrors];
+
+export type DownloadReleaseAssetResponses = {
+    /**
+     * Contenuto dell'allegato.
+     */
+    200: Blob | File;
+};
+
+export type DownloadReleaseAssetResponse = DownloadReleaseAssetResponses[keyof DownloadReleaseAssetResponses];
 
 export type VerifyCredentialData = {
     body: VerifyCredentialInputWritable;
