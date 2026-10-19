@@ -318,13 +318,14 @@ func (s *apiServer) runPullSearch(ctx context.Context, p pullSearchParams) ([]pu
 	if err != nil {
 		return nil, nil, 0, err
 	}
+	all, err := pullReviewDecisions(ctx, tx, list, by)
+	if err != nil {
+		return nil, nil, 0, err
+	}
 	decisions := map[uuid.UUID]openapi.ReviewDecision{}
 	var kept []pullSearchRow
 	for _, x := range list {
-		d, _, _, err := pullReviewState(ctx, tx, x.repoID, x.prRow, sha40(x.HeadSha), len(by[x.ID]))
-		if err != nil {
-			return nil, nil, 0, err
-		}
+		d := all[x.ID]
 		if matchesReview(p.q, d) {
 			decisions[x.ID] = d
 			kept = append(kept, x)

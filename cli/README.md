@@ -337,7 +337,7 @@ Il repo è quello del remote `origin` o `-R owner/repo`; l'istanza e il token se
 | Comando | Cosa fa | Flag principali |
 |---|---|---|
 | `search issues <query>` | cerca issue su tutta l'installazione (`GET /search/issues`, I10), nei soli repo leggibili; tabella `REPO # STATO AGGIORNATA TITOLO` | `--sort created\|updated\|comments\|relevance`, `-L/--limit` (30) |
-| `search prs [query]` | cerca Pull Request su tutta l'installazione (`GET /search/pulls`, I10 estesa da PR12), nei soli repo leggibili; tabella `REPO # STATO REVIEW AGGIORNATA TITOLO` | `--sort created|updated|comments`, `-L/--limit` (30) |
+| `search prs [query]` | cerca Pull Request su tutta l'installazione (`GET /search/pulls`, I10 estesa da PR12), nei soli repo leggibili; tabella `REPO # STATO REVIEW AGGIORNATA TITOLO` | `--sort created\|updated\|comments`, `-L/--limit` (30) |
 | `search code <testo>` | cerca un testo nel codice del repo (`GET /repos/{owner}/{repo}/search`, B5): `percorso:riga: frammento` | `--ref` (default: branch principale) |
 | `blame <file>` | per ogni riga: commit, autore (con badge `[agent]` se l'email è di un utente agent), data, numero e testo | `--ref` |
 | `blame --history <file>` | **storico del file** (B4): i commit che lo toccano, dal più recente; `COMMIT DATA AUTORE OGGETTO` | `--ref`, `--author` (nome o email), `-L/--limit` (30) |

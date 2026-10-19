@@ -213,17 +213,90 @@ func pullReviewState(ctx context.Context, q querier, repoID uuid.UUID, p prRow, 
 	if err = rows.Err(); err != nil {
 		return
 	}
+	decision = reviewDecision(changes, approvals, required, requested)
+	return
+}
+
+func reviewDecision(changes, approvals, required, requested int) openapi.ReviewDecision {
 	switch {
 	case changes > 0:
-		decision = openapi.ReviewDecision("changes_requested")
+		return openapi.ReviewDecision("changes_requested")
 	case required > 0 && approvals >= required, required == 0 && approvals > 0:
-		decision = openapi.ReviewDecision("approved")
+		return openapi.ReviewDecision("approved")
 	case required > 0 || requested > 0:
-		decision = openapi.ReviewDecision("required")
+		return openapi.ReviewDecision("required")
 	default:
-		decision = openapi.ReviewDecision("none")
+		return openapi.ReviewDecision("none")
 	}
-	return
+}
+
+// pullReviewDecisions calcola la decisione di review di molte PR con due
+// query, qualunque sia il numero delle PR (stessa logica di pullReviewState).
+// requested: revisori richiesti per PR.
+func pullReviewDecisions(ctx context.Context, q querier, prs []pullSearchRow, requested map[uuid.UUID][]uuid.UUID) (map[uuid.UUID]openapi.ReviewDecision, error) {
+	out := make(map[uuid.UUID]openapi.ReviewDecision, len(prs))
+	if len(prs) == 0 {
+		return out, nil
+	}
+	repoIDs := make([]uuid.UUID, 0, len(prs))
+	prIDs := make([]uuid.UUID, 0, len(prs))
+	byID := make(map[uuid.UUID]pullSearchRow, len(prs))
+	for _, x := range prs {
+		repoIDs = append(repoIDs, x.repoID)
+		prIDs = append(prIDs, x.ID)
+		byID[x.ID] = x
+	}
+	reqRows, err := q.Query(ctx, `SELECT repo_id, required_approvals FROM core.branch_settings
+		WHERE repo_id = ANY($1) AND require_pull_request`, repoIDs)
+	if err != nil {
+		return nil, err
+	}
+	required := map[uuid.UUID]int{}
+	for reqRows.Next() {
+		var id uuid.UUID
+		var n int
+		if err := reqRows.Scan(&id, &n); err != nil {
+			reqRows.Close()
+			return nil, err
+		}
+		required[id] = n
+	}
+	reqRows.Close()
+	if err := reqRows.Err(); err != nil {
+		return nil, err
+	}
+	rows, err := q.Query(ctx, `SELECT pull_request_id, state, commit_sha, by_agent, author_id FROM (
+			SELECT DISTINCT ON (pull_request_id, author_id) pull_request_id, state, commit_sha, by_agent, author_id
+			FROM core.pull_request_reviews WHERE pull_request_id = ANY($1) AND state IN ('approve', 'request_changes') AND NOT by_agent
+			ORDER BY pull_request_id, author_id, created_at DESC) x`, prIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	changes := map[uuid.UUID]int{}
+	approvals := map[uuid.UUID]int{}
+	for rows.Next() {
+		var pr, author uuid.UUID
+		var state, sha string
+		var byAgent bool
+		if err := rows.Scan(&pr, &state, &sha, &byAgent, &author); err != nil {
+			return nil, err
+		}
+		x := byID[pr]
+		switch {
+		case state == "request_changes":
+			changes[pr]++
+		case sha == sha40(x.HeadSha) && !byAgent && author != x.AuthorID:
+			approvals[pr]++
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for _, x := range prs {
+		out[x.ID] = reviewDecision(changes[x.ID], approvals[x.ID], required[x.repoID], len(requested[x.ID]))
+	}
+	return out, nil
 }
 
 // pullReviewers ritorna i revisori richiesti, nell'ordine della richiesta.
