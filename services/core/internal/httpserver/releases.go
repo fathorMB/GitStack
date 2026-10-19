@@ -36,6 +36,21 @@ type releaseRow struct {
 func (s *apiServer) generatedReleaseNotes(ctx context.Context, ia issueAccess, tag string) (string, error) {
 	var base string
 	_ = s.pool.QueryRow(ctx, `SELECT tag_name FROM core.releases WHERE repo_id=$1 AND NOT draft ORDER BY published_at DESC NULLS LAST LIMIT 1`, ia.repo.ID).Scan(&base)
+	tags, err := s.releaseTags(ctx, ia)
+	if err != nil {
+		return "", err
+	}
+	var baseAt, targetAt *time.Time
+	for _, candidate := range tags {
+		if candidate.Name == base {
+			at := candidate.TaggedAt
+			baseAt = &at
+		}
+		if candidate.Name == tag {
+			at := candidate.TaggedAt
+			targetAt = &at
+		}
+	}
 	var b strings.Builder
 	b.WriteString("## Cambiamenti\n")
 	if base != "" {
@@ -67,7 +82,8 @@ func (s *apiServer) generatedReleaseNotes(ctx context.Context, ia issueAccess, t
 	} else {
 		b.WriteString("\nPrima release del repository.\n")
 	}
-	rows, err := s.pool.Query(ctx, `SELECT number,title FROM core.pull_requests WHERE repo_id=$1 AND state='merged' ORDER BY merged_at`, ia.repo.ID)
+	rows, err := s.pool.Query(ctx, `SELECT number,title FROM core.pull_requests WHERE repo_id=$1 AND state='merged'
+		AND ($2::timestamptz IS NULL OR merged_at >= $2) AND ($3::timestamptz IS NULL OR merged_at <= $3) ORDER BY merged_at`, ia.repo.ID, baseAt, targetAt)
 	if err != nil {
 		return "", err
 	}
@@ -87,6 +103,37 @@ func (s *apiServer) generatedReleaseNotes(ctx context.Context, ia issueAccess, t
 		b.WriteByte('\n')
 	}
 	return b.String(), rows.Err()
+}
+
+func (s *apiServer) releaseTags(ctx context.Context, ia issueAccess) ([]openapi.Tag, error) {
+	rd, ok := s.git.(gitclient.Reader)
+	if !ok {
+		return nil, gitclient.ErrUnavailable
+	}
+	raw, err := rd.ReadJSON(ctx, ia.caller, ia.repo.ID, "tags", nil)
+	if err != nil {
+		return nil, err
+	}
+	var tags openapi.TagList
+	if err := json.Unmarshal(raw, &tags); err != nil {
+		return nil, err
+	}
+	return tags.Items, nil
+}
+
+// releaseTagExists impedisce di associare una release a un riferimento che non
+// esiste: una release REL1 e' sempre la presentazione di un tag Git.
+func (s *apiServer) releaseTagExists(ctx context.Context, ia issueAccess, tag string) (bool, error) {
+	tags, err := s.releaseTags(ctx, ia)
+	if err != nil {
+		return false, err
+	}
+	for _, candidate := range tags {
+		if candidate.Name == tag {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func releaseAccess(w http.ResponseWriter, r *http.Request, s *apiServer, o, n string, write bool) (issueAccess, bool) {
@@ -200,6 +247,15 @@ func (s *apiServer) CreateRelease(w http.ResponseWriter, r *http.Request, o open
 	}
 	if strings.TrimSpace(in.TagName) == "" || strings.TrimSpace(in.Name) == "" {
 		writeError(w, 400, "invalid_body", "tagName e name sono obbligatori.")
+		return
+	}
+	knownTag, err := s.releaseTagExists(r.Context(), ia, in.TagName)
+	if err != nil {
+		writeError(w, 502, "git_unavailable", "Impossibile verificare il tag della release.")
+		return
+	}
+	if !knownTag {
+		writeError(w, 422, "tag_not_found", "Il tag della release non esiste.")
 		return
 	}
 	draft := in.Draft != nil && *in.Draft
