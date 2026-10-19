@@ -330,6 +330,11 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	} else {
 		go runPushConsumer(ctx, js, gitpush.DurableWebhooks, hooks.EnqueuePush, logger)
 		go runPushConsumer(ctx, js, gitpush.DurableMirrors, mirrorEng.HandlePush, logger)
+		// PR (GIT-265): nuovi commit sul branch di origine (synchronize, approvazioni
+		// annullate) e conflitti da avvisare; servono identity e git.
+		if gitAPI != nil && repoLookup != nil {
+			go runPushConsumer(ctx, js, gitpush.DurablePullSync, httpserver.NewPullPushHandler(pool, publisher, routerOpts...), logger)
+		}
 		// Commit collegati e chiusura con fixes #n (M-06/C, GIT-131): servono i
 		// permessi di identity; senza, nessun collegamento.
 		if id, ok := repoLookup.(issuelinks.Identity); ok {

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
@@ -211,6 +212,21 @@ func (s *apiServer) CreatePullRequest(w http.ResponseWriter, r *http.Request, ow
 			return
 		}
 	}
+	created, err := getPR(ctx, tx, ia.repo.ID, number, false)
+	if err == nil {
+		err = s.syncPullClosing(ctx, tx, ia, created, body)
+	}
+	gs := pullGitState{srcExists: true, haveCmp: true, live: true, cmp: cmp}
+	if err == nil {
+		err = s.emitPull(ctx, tx, domainevents.PullRequestOpened, ia, gs, number, ia.userID, nil)
+	}
+	if err == nil {
+		err = s.emitReviewRequested(ctx, tx, domainevents.PullRequestReviewRequested, ia, gs, number, reviewers)
+	}
+	if err != nil {
+		writeIssueFailure(w, "scrittura degli eventi non riuscita", err)
+		return
+	}
 	if err := tx.Commit(ctx); err != nil {
 		writeIssueFailure(w, "commit della Pull Request non riuscito", err)
 		return
@@ -310,6 +326,11 @@ func (s *apiServer) UpdatePullRequest(w http.ResponseWriter, r *http.Request, ow
 		}
 	}
 
+	view := cur
+	if retarget {
+		view.TargetBranch = *in.TargetBranch
+	}
+	gs := s.pullGitBestEffort(ctx, ia, view)
 	tx, p, ok := s.beginPullWrite(w, r, ia, number)
 	if !ok {
 		return
@@ -363,6 +384,31 @@ func (s *apiServer) UpdatePullRequest(w http.ResponseWriter, r *http.Request, ow
 			}
 		}
 	}
+	if titleChanged || bodyChanged || retarget {
+		upd, err := getPR(ctx, tx, ia.repo.ID, number, false)
+		if err == nil && bodyChanged {
+			err = s.syncPullClosing(ctx, tx, ia, upd, *in.Body)
+		}
+		if err == nil {
+			err = s.emitPull(ctx, tx, domainevents.PullRequestEdited, ia, gs, number, ia.userID, func(pl *domainevents.PullPayload) {
+				ch := &domainevents.IssueChanges{}
+				if titleChanged {
+					ch.Title = &domainevents.From{From: p.Title}
+				}
+				if bodyChanged {
+					ch.Body = &domainevents.From{From: p.Body}
+				}
+				if retarget {
+					pl.Reason = "retargeted"
+				}
+				pl.Changes = ch
+			})
+		}
+		if err != nil {
+			writeIssueFailure(w, "scrittura degli eventi non riuscita", err)
+			return
+		}
+	}
 	if err := tx.Commit(ctx); err != nil {
 		writeIssueFailure(w, "commit della modifica non riuscito", err)
 		return
@@ -373,7 +419,7 @@ func (s *apiServer) UpdatePullRequest(w http.ResponseWriter, r *http.Request, ow
 // pullTransition esegue una transizione di stato (bozza, pronta, chiusa,
 // riaperta) con le sue regole. check ritorna (codice, messaggio) del 409 se la
 // transizione non è ammessa; apply scrive la modifica e l'evento.
-func (s *apiServer) pullTransition(w http.ResponseWriter, r *http.Request, owner, name string, number int64,
+func (s *apiServer) pullTransition(w http.ResponseWriter, r *http.Request, owner, name string, number int64, event string,
 	pre func(p prRow) (string, string),
 	prepare func(ia issueAccess, p prRow) (extra any, ok bool),
 	apply func(tx pgx.Tx, ia issueAccess, p prRow, extra any) error) {
@@ -394,6 +440,11 @@ func (s *apiServer) pullTransition(w http.ResponseWriter, r *http.Request, owner
 		writeError(w, http.StatusConflict, code, msg)
 		return
 	}
+	view := cur
+	if event == domainevents.PullRequestReopened {
+		view.State = "open" // si legge il confronto fra i branch vivi
+	}
+	gs := s.pullGitBestEffort(ctx, ia, view)
 	var extra any
 	if prepare != nil {
 		if extra, ok = prepare(ia, cur); !ok {
@@ -417,6 +468,10 @@ func (s *apiServer) pullTransition(w http.ResponseWriter, r *http.Request, owner
 		writeIssueFailure(w, "modifica della Pull Request non riuscita", err)
 		return
 	}
+	if err := s.emitPull(ctx, tx, event, ia, gs, number, ia.userID, nil); err != nil {
+		writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
+		return
+	}
 	if err := tx.Commit(ctx); err != nil {
 		writeIssueFailure(w, "commit della modifica non riuscito", err)
 		return
@@ -436,7 +491,7 @@ func notOpen(p prRow) (string, string) {
 
 // MarkPullRequestReady implementa POST .../ready: bozza → Ready for review.
 func (s *apiServer) MarkPullRequestReady(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, number openapi.PullNumberParam) {
-	s.pullTransition(w, r, owner, name, number,
+	s.pullTransition(w, r, owner, name, number, domainevents.PullRequestReadyForReview,
 		func(p prRow) (string, string) {
 			if c, m := notOpen(p); c != "" {
 				return c, m
@@ -456,7 +511,7 @@ func (s *apiServer) MarkPullRequestReady(w http.ResponseWriter, r *http.Request,
 
 // MarkPullRequestDraft implementa POST .../draft: torna una bozza.
 func (s *apiServer) MarkPullRequestDraft(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, number openapi.PullNumberParam) {
-	s.pullTransition(w, r, owner, name, number,
+	s.pullTransition(w, r, owner, name, number, domainevents.PullRequestConvertedToDraft,
 		func(p prRow) (string, string) {
 			if c, m := notOpen(p); c != "" {
 				return c, m
@@ -477,7 +532,7 @@ func (s *apiServer) MarkPullRequestDraft(w http.ResponseWriter, r *http.Request,
 // ClosePullRequest implementa POST .../close: chiude senza unire e non tocca
 // i branch (PR6).
 func (s *apiServer) ClosePullRequest(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, number openapi.PullNumberParam) {
-	s.pullTransition(w, r, owner, name, number,
+	s.pullTransition(w, r, owner, name, number, domainevents.PullRequestClosed,
 		func(p prRow) (string, string) {
 			switch p.State {
 			case "merged":
@@ -506,7 +561,7 @@ type reopenState struct {
 // ReopenPullRequest implementa POST .../reopen: solo se i due branch
 // esistono ancora (PR6); una PR unita è definitiva.
 func (s *apiServer) ReopenPullRequest(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, number openapi.PullNumberParam) {
-	s.pullTransition(w, r, owner, name, number,
+	s.pullTransition(w, r, owner, name, number, domainevents.PullRequestReopened,
 		func(p prRow) (string, string) {
 			switch p.State {
 			case "merged":

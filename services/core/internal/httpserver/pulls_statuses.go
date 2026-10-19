@@ -3,6 +3,7 @@ package httpserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -15,6 +16,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -438,6 +440,7 @@ func (s *apiServer) CreateCommitStatus(w http.ResponseWriter, r *http.Request, o
 	if !ok {
 		return
 	}
+	branchesAt := s.pullBranchesAt(ctx, ia, sha)
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		writeIssueFailure(w, "apertura della transazione non riuscita", err)
@@ -448,6 +451,12 @@ func (s *apiServer) CreateCommitStatus(w http.ResponseWriter, r *http.Request, o
 		writeRepoLockFailure(w, err)
 		return
 	}
+	var prevState string
+	if err := tx.QueryRow(ctx, `SELECT state FROM core.commit_statuses WHERE repo_id = $1 AND sha = $2 AND context = $3`,
+		ia.repo.ID, sha, sctx).Scan(&prevState); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		writeIssueFailure(w, "lettura dello stato precedente non riuscita", err)
+		return
+	}
 	row := tx.QueryRow(ctx, `INSERT INTO core.commit_statuses (id, repo_id, sha, context, state, description, target_url, creator_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (repo_id, sha, context) DO UPDATE SET state = EXCLUDED.state, description = EXCLUDED.description,
@@ -456,6 +465,10 @@ func (s *apiServer) CreateCommitStatus(w http.ResponseWriter, r *http.Request, o
 	x, err := scanStatus(row)
 	if err != nil {
 		writeIssueFailure(w, "scrittura dello stato non riuscita", fmt.Errorf("commit_statuses: %w", err))
+		return
+	}
+	if err := s.emitCommitStatus(ctx, tx, ia, x, prevState, branchesAt); err != nil {
+		writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
 		return
 	}
 	if err := tx.Commit(ctx); err != nil {

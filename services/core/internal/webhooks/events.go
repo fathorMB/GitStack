@@ -19,10 +19,15 @@ const (
 	EventIssues       = "issues"
 	EventIssueComment = "issue_comment"
 	EventRepository   = "repository"
+	// v1.1 (GIT-265, PR11).
+	EventPullRequest       = "pull_request"
+	EventPullRequestReview = "pull_request_review"
+	EventCommitStatus      = "commit_status"
 )
 
 // Events sono gli eventi selezionabili.
-var Events = []string{EventPush, EventIssues, EventIssueComment, EventRepository}
+var Events = []string{EventPush, EventIssues, EventIssueComment, EventRepository,
+	EventPullRequest, EventPullRequestReview, EventCommitStatus}
 
 // issueActions: evento di dominio → action di `issues`. issue.hidden e
 // issue.unhidden non hanno webhook (docs/events.md).
@@ -75,6 +80,9 @@ func (e *Engine) handle(ctx context.Context, tx pgx.Tx, ev outboxEvent) error {
 			b.repositoryPayload(p)
 			return nil
 		})
+	}
+	if handled, err := e.handlePullEvent(ctx, tx, ev); handled || err != nil {
+		return err
 	}
 	return nil // issue.hidden, issue.unhidden e gli eventi che non sono webhook
 }

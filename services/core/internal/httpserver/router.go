@@ -29,6 +29,34 @@ import (
 // firma non valida, rispondono 401. Così chi raggiunge core direttamente
 // (senza passare dal gateway) non può spacciarsi per un utente.
 func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret string, opts ...Option) http.Handler {
+	server, o := newAPIServerWithOptions(pool, publisher, opts...)
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("GET /healthz", healthz)
+	mux.HandleFunc("GET /readyz", readyz(pool))
+
+	openapi.HandlerWithOptions(server, openapi.StdHTTPServerOptions{
+		BaseRouter: mux,
+	})
+	// x-path-tail di getRepositoryRawByPath: il ref può avere `/`, quindi la
+	// coda occupa più segmenti (il codice generato la vede come uno solo).
+	mux.HandleFunc("GET /repos/{owner}/{repo}/raw/{refAndPath...}", func(w http.ResponseWriter, r *http.Request) {
+		server.GetRepositoryRawByPath(w, r, r.PathValue("owner"), r.PathValue("repo"), r.PathValue("refAndPath"))
+	})
+	// Un segreto per chiamante (F9): il gateway può fare tutto, il servizio git
+	// solo risolvere owner/repo. Il Keyring del solo gateway è il caso senza git.
+	ring := trust.NewKeyring(map[string]string{trust.CallerGateway: serviceSecret, trust.CallerGit: o.gitSecret})
+	return trust.RequireRing(ring, callerAllowed, publicPath, o.now)(limitBody(mux))
+}
+
+// newAPIServer costruisce il server con le opzioni del router; serve anche ai
+// consumatori di eventi che riusano la logica delle richieste (pulls_push.go).
+func newAPIServer(pool *pgxpool.Pool, publisher events.Publisher, opts ...Option) *apiServer {
+	s, _ := newAPIServerWithOptions(pool, publisher, opts...)
+	return s
+}
+
+func newAPIServerWithOptions(pool *pgxpool.Pool, publisher events.Publisher, opts ...Option) (*apiServer, routerOptions) {
 	var o routerOptions
 	for _, opt := range opts {
 		opt(&o)
@@ -37,12 +65,7 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 	if now == nil {
 		now = time.Now
 	}
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("GET /healthz", healthz)
-	mux.HandleFunc("GET /readyz", readyz(pool))
-
-	server := &apiServer{
+	return &apiServer{
 		pool:         pool,
 		resources:    store.New(pool),
 		events:       publisher,
@@ -58,20 +81,7 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 		emailEnabled: o.emailEnabled,
 		systemInfo:   o.systemInfo,
 		now:          now,
-	}
-
-	openapi.HandlerWithOptions(server, openapi.StdHTTPServerOptions{
-		BaseRouter: mux,
-	})
-	// x-path-tail di getRepositoryRawByPath: il ref può avere `/`, quindi la
-	// coda occupa più segmenti (il codice generato la vede come uno solo).
-	mux.HandleFunc("GET /repos/{owner}/{repo}/raw/{refAndPath...}", func(w http.ResponseWriter, r *http.Request) {
-		server.GetRepositoryRawByPath(w, r, r.PathValue("owner"), r.PathValue("repo"), r.PathValue("refAndPath"))
-	})
-	// Un segreto per chiamante (F9): il gateway può fare tutto, il servizio git
-	// solo risolvere owner/repo. Il Keyring del solo gateway è il caso senza git.
-	ring := trust.NewKeyring(map[string]string{trust.CallerGateway: serviceSecret, trust.CallerGit: o.gitSecret})
-	return trust.RequireRing(ring, callerAllowed, publicPath, o.now)(limitBody(mux))
+	}, o
 }
 
 // publicPath sono le rotte raggiungibili senza identità: probe k8s e

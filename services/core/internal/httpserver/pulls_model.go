@@ -330,11 +330,46 @@ func sha40(s *string) string {
 // buildPull compone la PR della risposta. Con la PR aperta chiede a git
 // l'ultimo stato dei branch; per chiusa o unita usa gli sha congelati.
 func (s *apiServer) buildPull(ctx context.Context, ia issueAccess, g pullGit, p prRow) (openapi.PullRequest, error) {
-	branches, err := g.branches(ctx)
+	gs, err := readPullGit(ctx, g, p)
 	if err != nil {
 		return openapi.PullRequest{}, err
 	}
+	return s.composePull(ctx, s.pool, ia, gs, p)
+}
+
+// pullGitState è ciò che la composizione della PR legge da git: se il branch
+// di origine esiste e il confronto (commit, file, righe) con la destinazione.
+// Si legge prima di aprire una transazione, così composePull può girare dentro
+// la transazione di una modifica (eventi di dominio, GIT-265) senza chiamare git.
+type pullGitState struct {
+	srcExists bool
+	haveCmp   bool
+	live      bool
+	cmp       pullCompare
+}
+
+func readPullGit(ctx context.Context, g pullGit, p prRow) (pullGitState, error) {
+	branches, err := g.branches(ctx)
+	if err != nil {
+		return pullGitState{}, err
+	}
 	_, srcExists := branches[p.SourceBranch]
+	gs := pullGitState{srcExists: srcExists}
+	if base, head, live, ok := p.refs(branches); ok {
+		c, err := g.compare(ctx, base, head, false)
+		if err != nil {
+			return pullGitState{}, err
+		}
+		gs.haveCmp, gs.live, gs.cmp = true, live, c
+	}
+	return gs, nil
+}
+
+// composePull compone la PR del contratto con le letture di database fatte su
+// q (il pool o la transazione di una modifica) e lo stato di git già letto.
+func (s *apiServer) composePull(ctx context.Context, q querier, ia issueAccess, gs pullGitState, p prRow) (openapi.PullRequest, error) {
+	var err error
+	srcExists := gs.srcExists
 	out := openapi.PullRequest{
 		Id: openapi_types.UUID(p.ID), Number: p.Number, Title: p.Title, Body: p.Body,
 		State: openapi.PullRequestState(p.State), Draft: p.Draft, SourceBranch: p.SourceBranch,
@@ -349,13 +384,10 @@ func (s *apiServer) buildPull(ctx context.Context, ia issueAccess, g pullGit, p 
 	if p.ViaTokenID != nil && p.ViaTokenName != nil {
 		out.ViaToken = &openapi.IssueViaToken{Id: openapi_types.UUID(*p.ViaTokenID), Name: *p.ViaTokenName}
 	}
-	if base, head, live, ok := p.refs(branches); ok {
-		c, err := g.compare(ctx, base, head, false)
-		if err != nil {
-			return openapi.PullRequest{}, err
-		}
+	if gs.haveCmp {
+		c := gs.cmp
 		out.CommitCount, out.ChangedFiles, out.Additions, out.Deletions = c.AheadBy, c.FilesChanged, c.Additions, c.Deletions
-		if live {
+		if gs.live && p.State == "open" {
 			out.HeadSha = c.HeadSha
 			if c.MergeBase != "" {
 				mb := c.MergeBase
@@ -364,7 +396,7 @@ func (s *apiServer) buildPull(ctx context.Context, ia issueAccess, g pullGit, p 
 		}
 	}
 
-	by, all, err := s.pullReviewers(ctx, s.pool, []uuid.UUID{p.ID})
+	by, all, err := s.pullReviewers(ctx, q, []uuid.UUID{p.ID})
 	if err != nil {
 		return openapi.PullRequest{}, err
 	}
@@ -385,17 +417,20 @@ func (s *apiServer) buildPull(ctx context.Context, ia issueAccess, g pullGit, p 
 	for _, id := range by[p.ID] {
 		out.RequestedReviewers = append(out.RequestedReviewers, dir[id])
 	}
-	if err := s.pool.QueryRow(ctx, `SELECT
+	if err := q.QueryRow(ctx, `SELECT
 		(SELECT count(*) FROM core.pull_request_comments c JOIN core.pull_request_threads t ON t.id = c.thread_id WHERE t.pull_request_id = $1),
 		(SELECT count(*) FROM core.pull_request_threads WHERE pull_request_id = $1 AND NOT resolved)`, p.ID).
 		Scan(&out.CommentCount, &out.UnresolvedThreadCount); err != nil {
 		return openapi.PullRequest{}, err
 	}
-	out.ReviewDecision, out.Approvals, out.RequiredApprovals, err = pullReviewState(ctx, s.pool, ia.repo.ID, p, out.HeadSha, len(out.RequestedReviewers))
+	out.ReviewDecision, out.Approvals, out.RequiredApprovals, err = pullReviewState(ctx, q, ia.repo.ID, p, out.HeadSha, len(out.RequestedReviewers))
 	if err != nil {
 		return out, err
 	}
-	out.StatusState, err = pullStatusState(ctx, s.pool, ia.repo.ID, out.HeadSha)
+	out.StatusState, err = pullStatusState(ctx, q, ia.repo.ID, out.HeadSha)
+	if err == nil {
+		out.ClosingIssues, err = pullClosingIssues(ctx, q, ia.repo.ID, p.ID)
+	}
 	return out, err
 }
 

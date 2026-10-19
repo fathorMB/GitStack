@@ -43,6 +43,10 @@ func (s *apiServer) createGeneralPullComment(w http.ResponseWriter, r *http.Requ
 		writeIssueFailure(w, "aggiornamento della Pull Request non riuscito", err)
 		return
 	}
+	if err := s.emitPullComment(ctx, tx, ia, p, id, in.Body); err != nil {
+		writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
+		return
+	}
 	if err := tx.Commit(ctx); err != nil {
 		writeIssueFailure(w, "commit del commento non riuscito", err)
 		return

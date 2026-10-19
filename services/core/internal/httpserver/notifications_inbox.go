@@ -28,7 +28,7 @@ import (
 
 var notificationReasons = map[string]bool{
 	"assigned": true, "mentioned": true, "participating": true, "subscribed": true,
-	"commit_linked": true, "state_change": true, "webhook": true, "mirror": true, "credential": true,
+	"commit_linked": true, "state_change": true, "webhook": true, "mirror": true, "credential": true, "review_requested": true,
 }
 
 type inboxFilter struct {
@@ -138,7 +138,8 @@ func (s *apiServer) scopeFor(w http.ResponseWriter, r *http.Request, userID uuid
 
 const inboxFrom = ` FROM core.notifications n
 	LEFT JOIN core.repositories r ON r.resource_id = n.repo_id
-	LEFT JOIN core.issues i ON i.id = n.issue_id`
+	LEFT JOIN core.issues i ON i.id = n.issue_id
+	LEFT JOIN core.pull_requests pr ON pr.id = n.pull_request_id`
 
 // inboxWhere compone la clausola comune: dell'utente, repo non eliminato,
 // niente issue nascoste dove non è admin, filtri reason e repo. args parte
@@ -258,7 +259,8 @@ func (s *apiServer) ListNotifications(w http.ResponseWriter, r *http.Request, pa
 const inboxWebhookJoin = ` LEFT JOIN core.webhooks wh ON wh.id = n.webhook_id`
 
 const notificationSelect = `SELECT n.id, n.reason, n.read_at, n.archived_at, n.event_name, n.created_at, n.comment_id, n.actor_id,
-	n.repo_id, r.owner_name, r.name, i.number, i.title, i.state, n.data, n.webhook_id, wh.scope, wh.url`
+	n.repo_id, r.owner_name, r.name, COALESCE(i.number, pr.number), COALESCE(i.title, pr.title),
+	COALESCE(i.state, CASE WHEN pr.state = 'open' THEN 'open' WHEN pr.id IS NOT NULL THEN 'closed' END), n.data, n.webhook_id, wh.scope, wh.url`
 
 type notificationRow struct {
 	id                  uuid.UUID
@@ -359,11 +361,22 @@ func notificationSummary(reason, event, actor, repo string, number *int64, title
 	switch reason {
 	case "assigned":
 		return who + " ti ha assegnato " + where
+	case "review_requested":
+		return who + " ti ha chiesto la review di " + where
 	case "mentioned":
 		return who + " ti ha menzionato in " + where
 	case "state_change":
-		if event == "issue.reopened" {
+		switch event {
+		case "issue.reopened", "pull_request.reopened":
 			return who + " ha riaperto " + where
+		case "pull_request.merged":
+			return who + " ha unito " + where
+		case "pull_request.ready_for_review":
+			return who + " ha segnato come pronta " + where
+		case "pull_request.conflicts":
+			return "Conflitti in " + where
+		case "pull_request.checks_failed":
+			return "Controlli obbligatori falliti in " + where
 		}
 		return who + " ha chiuso " + where
 	case "commit_linked":
@@ -384,8 +397,12 @@ func notificationSummary(reason, event, actor, repo string, number *int64, title
 	switch event {
 	case "issue.created":
 		return who + " ha aperto " + where
-	case "issue_comment.created":
+	case "issue_comment.created", "pull_request_comment.created":
 		return who + " ha commentato " + where
+	case "pull_request.opened":
+		return who + " ha aperto " + where
+	case "pull_request_review.submitted":
+		return who + " ha inviato una review su " + where
 	}
 	return who + ": " + where
 }
