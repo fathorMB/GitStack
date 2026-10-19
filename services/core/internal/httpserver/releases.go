@@ -10,10 +10,12 @@ import (
 	"log/slog"
 	"mime"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/google/uuid"
 )
@@ -26,6 +28,65 @@ type releaseRow struct {
 	draft, prerelease bool
 	createdAt         time.Time
 	publishedAt       *time.Time
+}
+
+// generatedReleaseNotes usa il confronto Git fra l'ultima release pubblicata
+// e il tag richiesto. Le PR unite del repo completano la bozza: il corpo resta
+// modificabile prima della pubblicazione.
+func (s *apiServer) generatedReleaseNotes(ctx context.Context, ia issueAccess, tag string) (string, error) {
+	var base string
+	_ = s.pool.QueryRow(ctx, `SELECT tag_name FROM core.releases WHERE repo_id=$1 AND NOT draft ORDER BY published_at DESC NULLS LAST LIMIT 1`, ia.repo.ID).Scan(&base)
+	var b strings.Builder
+	b.WriteString("## Cambiamenti\n")
+	if base != "" {
+		rd, ok := s.git.(gitclient.Reader)
+		if !ok {
+			return "", gitclient.ErrUnavailable
+		}
+		raw, err := rd.ReadJSON(ctx, ia.caller, ia.repo.ID, "compare", url.Values{"base": {base}, "head": {tag}})
+		if err != nil {
+			return "", err
+		}
+		var cmp struct {
+			Commits []openapi.CommitSummary `json:"commits"`
+		}
+		if err := json.Unmarshal(raw, &cmp); err != nil {
+			return "", err
+		}
+		for _, c := range cmp.Commits {
+			b.WriteString("- ")
+			b.WriteString(c.Subject)
+			b.WriteString(" (`")
+			if len(c.Sha) > 7 {
+				b.WriteString(c.Sha[:7])
+			} else {
+				b.WriteString(c.Sha)
+			}
+			b.WriteString("`)\n")
+		}
+	} else {
+		b.WriteString("\nPrima release del repository.\n")
+	}
+	rows, err := s.pool.Query(ctx, `SELECT number,title FROM core.pull_requests WHERE repo_id=$1 AND state='merged' ORDER BY merged_at`, ia.repo.ID)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+	var prs []string
+	for rows.Next() {
+		var n int64
+		var title string
+		if err := rows.Scan(&n, &title); err != nil {
+			return "", err
+		}
+		prs = append(prs, "- #"+strconv.FormatInt(n, 10)+" "+title)
+	}
+	if len(prs) > 0 {
+		b.WriteString("\n## Pull Request\n")
+		b.WriteString(strings.Join(prs, "\n"))
+		b.WriteByte('\n')
+	}
+	return b.String(), rows.Err()
 }
 
 func releaseAccess(w http.ResponseWriter, r *http.Request, s *apiServer, o, n string, write bool) (issueAccess, bool) {
@@ -146,6 +207,14 @@ func (s *apiServer) CreateRelease(w http.ResponseWriter, r *http.Request, o open
 	body := ""
 	if in.Body != nil {
 		body = *in.Body
+	}
+	if in.GenerateNotes != nil && *in.GenerateNotes && body == "" {
+		var err error
+		body, err = s.generatedReleaseNotes(r.Context(), ia, in.TagName)
+		if err != nil {
+			writeError(w, 502, "git_unavailable", "Impossibile generare le note della release.")
+			return
+		}
 	}
 	id := uuid.New()
 	now := s.now()
