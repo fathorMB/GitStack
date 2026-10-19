@@ -35,6 +35,11 @@ const REASON_LABEL: Record<NotificationReason, string> = {
   review_requested: 'Review requested',
 };
 
+/** PR11: gli eventi pull_request.*, pull_request_review.* e pull_request_comment.* riguardano una PR, non una issue (numero condiviso, I1). */
+function isPullEvent(event: string): boolean {
+  return event.startsWith('pull_request.') || event.startsWith('pull_request_review.') || event.startsWith('pull_request_comment.');
+}
+
 function initials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
@@ -53,7 +58,7 @@ function NotificationRow({
   onDelete: (n: Notification) => void;
 }) {
   const repo = n.repository?.fullName;
-  const issueHref = repo && n.issue ? `/${repo}/issues/${n.issue.number}` : null;
+  const issueHref = repo && n.issue ? `/${repo}/${isPullEvent(n.event) ? 'pulls' : 'issues'}/${n.issue.number}` : null;
   const actor = n.actor;
   const isAgent = actor?.kind === 'agent';
   const isMirror = n.reason === 'mirror';
