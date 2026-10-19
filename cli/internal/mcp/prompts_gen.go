@@ -6,6 +6,17 @@ package mcp
 // Prompts sono i prompt MCP (M4): i flussi delle skills di skills/.
 var Prompts = []Prompt{
 	{
+		Name:        "ci_cycle",
+		Title:       "Attendi e correggi la CI",
+		Skill:       "gitstack-ci",
+		Description: "Segue workflow ed esecuzioni CI in GitStack e aiuta a correggere gli errori dai log. Usala quando devi avviare un workflow o verificare i controlli di una modifica.",
+		Arguments: []PromptArgument{
+			{Name: "repo", Description: "Repository nella forma owner/nome.", Required: true},
+			{Name: "run_id", Description: "ID dell'esecuzione da seguire, se già avviata.", Required: false},
+		},
+		Body: "# GitStack: ciclo della CI\n\n## Elenca e avvia\n\n```sh\ngs workflow list --json id,name,path,state\ngs workflow run build.yml --ref feature/mia-modifica --input go-version=1.26\n```\n\nUsa il nome o il percorso del workflow restituito da `gs workflow list`. Fornisci il ref e gli input richiesti dal workflow.\n\n## Aspetta la CI\n\n```sh\ngs run list --json id,workflowId,status,conclusion,ref,sha\ngs run watch <id> --exit-status\n```\n\n`gs run watch` interroga l'esecuzione fino al completamento. Se fallisce, correggi dai log:\n\n```sh\ngs run view <id> --log-failed\n```\n\nLeggi i log dei job falliti, correggi la causa, crea un nuovo commit e controlla la nuova esecuzione con `gs run watch`. Per rieseguire lo stesso run usa `gs run rerun <id>`; per fermarlo usa `gs run cancel <id>`.\n\n## Output per agenti\n\nI comandi supportano `--json` e `--jq`. Gli errori API mantengono i codici G3: 4 per autenticazione, 5 per permessi e 6 per risorsa non trovata; uso errato restituisce 2. `gs run watch --exit-status` restituisce 1 quando la conclusione non è `success`.\n\nNon usare `--yes` su operazioni di eliminazione o archiviazione senza un'istruzione esplicita di una persona (G8).",
+	},
+	{
 		Name:        "issue_to_pr",
 		Title:       "Da una issue alla Pull Request",
 		Skill:       "gitstack-issue-to-commit",
