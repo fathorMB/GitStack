@@ -24,6 +24,7 @@ import (
 	"github.com/fathorMB/GitStack/cli/internal/cmd/milestone"
 	"github.com/fathorMB/GitStack/cli/internal/cmd/notification"
 	"github.com/fathorMB/GitStack/cli/internal/cmd/pr"
+	"github.com/fathorMB/GitStack/cli/internal/cmd/release"
 	"github.com/fathorMB/GitStack/cli/internal/cmd/repo"
 	"github.com/fathorMB/GitStack/cli/internal/cmd/search"
 	"github.com/fathorMB/GitStack/cli/internal/cmd/skills"
@@ -67,6 +68,7 @@ func NewCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(
 		auth.NewCmd(f),
 		repo.NewCmd(f),
+		release.NewCmd(f),
 		issue.NewCmd(f),
 		label.NewCmd(f),
 		milestone.NewCmd(f),

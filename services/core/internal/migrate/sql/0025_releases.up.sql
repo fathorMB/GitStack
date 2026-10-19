@@ -23,3 +23,10 @@ CREATE TABLE core.release_assets (
     created_at TIMESTAMPTZ NOT NULL,
     UNIQUE (release_id, name)
 );
+-- REL1: la consegna usa lo stesso motore firmato dei webhook esistenti.
+ALTER TABLE core.webhooks DROP CONSTRAINT webhooks_events_check;
+ALTER TABLE core.webhooks ADD CONSTRAINT webhooks_events_check CHECK (
+    cardinality(events) >= 1 AND events <@ ARRAY['push','issues','issue_comment','repository','pull_request','pull_request_review','commit_status','release']::TEXT[]);
+ALTER TABLE core.webhook_deliveries DROP CONSTRAINT webhook_deliveries_event_check;
+ALTER TABLE core.webhook_deliveries ADD CONSTRAINT webhook_deliveries_event_check CHECK (
+    event IN ('push','issues','issue_comment','repository','pull_request','pull_request_review','commit_status','release'));
