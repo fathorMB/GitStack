@@ -30,7 +30,7 @@ func TestDiskSaveRawCalcolaDigestESalvaBinario(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	gotBytes, err := io.ReadAll(f)
 	if err != nil || !bytes.Equal(gotBytes, b) {
 		t.Fatalf("file=%x err=%v", gotBytes, err)

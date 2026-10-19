@@ -347,7 +347,7 @@ func (s *apiServer) DownloadReleaseAsset(w http.ResponseWriter, r *http.Request,
 		writeError(w, 404, "not_found", "Allegato non trovato.")
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	ctype = "application/octet-stream"
 	w.Header().Set("Content-Type", ctype)
 	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": name}))
