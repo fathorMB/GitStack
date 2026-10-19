@@ -167,7 +167,11 @@ func (s *apiServer) pullSynchronize(ctx context.Context, ia issueAccess, g pullG
 			return err
 		}
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	s.ciPullEvent(ctx, ia, p.Number, "synchronize")
+	return nil
 }
 
 // emitPullAt come emitPull, con la PR già letta (nella stessa transazione).

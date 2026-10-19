@@ -19,6 +19,9 @@ adapting.
 | `issues` | an issue is opened, edited, closed, reopened, assigned, labeled, milestoned or locked |
 | `issue_comment` | a comment is created, edited or deleted |
 | `repository` | a repository is created, deleted, restored, archived or its visibility changes |
+| `pull_request` | a pull request is opened, edited, marked ready or draft, closed, reopened, merged, or receives new commits |
+| `pull_request_review` | a review is submitted or dismissed |
+| `commit_status` | an external system reports a commit status |
 
 Hidden issues produce no webhook. There is no `ping` event: test a webhook
 with a real delivery and use **Redeliver** from the log.

@@ -231,6 +231,7 @@ func (s *apiServer) CreatePullRequest(w http.ResponseWriter, r *http.Request, ow
 		writeIssueFailure(w, "commit della Pull Request non riuscito", err)
 		return
 	}
+	s.ciPullEvent(ctx, ia, number, "opened")
 	s.respondPull(w, ctx, http.StatusCreated, ia, number, map[string]string{"Location": pullLocation(ia, number)})
 }
 
@@ -475,6 +476,9 @@ func (s *apiServer) pullTransition(w http.ResponseWriter, r *http.Request, owner
 	if err := tx.Commit(ctx); err != nil {
 		writeIssueFailure(w, "commit della modifica non riuscito", err)
 		return
+	}
+	if event == domainevents.PullRequestReopened {
+		s.ciPullEvent(ctx, ia, number, "reopened")
 	}
 	s.respondPull(w, ctx, http.StatusOK, ia, number, nil)
 }

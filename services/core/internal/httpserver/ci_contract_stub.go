@@ -42,12 +42,6 @@ func (s *apiServer) GetWorkflowJob(w http.ResponseWriter, r *http.Request, o ope
 func (s *apiServer) GetWorkflowJobLog(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.JobIdParam, p openapi.GetWorkflowJobLogParams) {
 	notImplemented(w)
 }
-func (s *apiServer) ListWorkflowRuns(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
-	notImplemented(w)
-}
-func (s *apiServer) GetWorkflowRun(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.RunIdParam) {
-	notImplemented(w)
-}
 func (s *apiServer) ListWorkflowArtifacts(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.RunIdParam) {
 	notImplemented(w)
 }
@@ -76,12 +70,6 @@ func (s *apiServer) GetRepositoryPackageSettings(w http.ResponseWriter, r *http.
 	notImplemented(w)
 }
 func (s *apiServer) UpdateRepositoryPackageSettings(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
-	notImplemented(w)
-}
-func (s *apiServer) ListWorkflows(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
-	notImplemented(w)
-}
-func (s *apiServer) DispatchWorkflow(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, workflow openapi.WorkflowParam) {
 	notImplemented(w)
 }
 func (s *apiServer) ListActionsCaches(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, params openapi.ListActionsCachesParams) {
