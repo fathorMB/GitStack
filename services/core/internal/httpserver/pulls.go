@@ -31,6 +31,3 @@ func (s *apiServer) DeletePullRequestComment(w http.ResponseWriter, r *http.Requ
 	pullsNotImplemented(w)
 }
 
-func (s *apiServer) SetPullRequestFileViewed(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam) {
-	pullsNotImplemented(w)
-}

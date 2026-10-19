@@ -25,7 +25,8 @@ si accumulano nell'ordine di scrittura.
 
 | Qualificatore | Valori | Campo |
 |---|---|---|
-| `is:` | `open`, `closed`, `issue` | `Is` |
+| `is:` | `open`, `closed`, `issue`, `pr`, `draft`, `merged` (gli ultimi tre per le Pull Request, PR12) | `Is` |
+| `review:` | `required`, `approved`, `changes-requested` (solo Pull Request, PR12) | `Reviews` |
 | `reason:` | `completed`, `not-planned`, `duplicate` | `Reasons` |
 | `label:` | nome, anche `"con spazi"` | `Labels` |
 | `assignee:` | login (con o senza `@`), `@me`, `@agents` | `Assignees` |

@@ -2553,6 +2553,21 @@ export type PullRequestList = {
     total: number;
 };
 
+export type PullRequestSearchResult = {
+    /**
+     * `owner/nome` del repo.
+     */
+    repo: string;
+    pullRequest: PullRequestSummary;
+};
+
+export type PullRequestSearchResultList = {
+    items: Array<PullRequestSearchResult>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
 export type PullRequestEvent = {
     id: string;
     type: 'opened' | 'renamed' | 'edited' | 'retargeted' | 'ready_for_review' | 'converted_to_draft' | 'closed' | 'reopened' | 'merged' | 'branch_deleted';
@@ -3713,7 +3728,7 @@ export type PullCommentIdParam = string;
 export type PullThreadIdParam = string;
 
 /**
- * Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:"nome"`, `no:label`, piu' testo libero (titolo e testo).
+ * Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:` e `assignee:` con utente, `@me` o `@agents`, `no:assignee`, piu' testo libero (titolo e testo).
  *
  */
 export type PullQueryParam = string;
@@ -7702,6 +7717,61 @@ export type SearchIssuesResponses = {
 
 export type SearchIssuesResponse = SearchIssuesResponses[keyof SearchIssuesResponses];
 
+export type SearchPullRequestsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:` e `assignee:` con utente, `@me` o `@agents`, `no:assignee`, piu' testo libero (titolo e testo).
+         *
+         */
+        q?: string;
+        /**
+         * Ordine decrescente per data di apertura, ultimo aggiornamento o numero di commenti.
+         */
+        sort?: 'created' | 'updated' | 'comments';
+        page?: number;
+        perPage?: number;
+    };
+    url: '/search/pulls';
+};
+
+export type SearchPullRequestsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type SearchPullRequestsError = SearchPullRequestsErrors[keyof SearchPullRequestsErrors];
+
+export type SearchPullRequestsResponses = {
+    /**
+     * Pagina di risultati.
+     */
+    200: PullRequestSearchResultList;
+};
+
+export type SearchPullRequestsResponse = SearchPullRequestsResponses[keyof SearchPullRequestsResponses];
+
 export type ListIssuesData = {
     body?: never;
     path: {
@@ -9685,7 +9755,7 @@ export type ListPullRequestsData = {
     };
     query?: {
         /**
-         * Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:"nome"`, `no:label`, piu' testo libero (titolo e testo).
+         * Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:` e `assignee:` con utente, `@me` o `@agents`, `no:assignee`, piu' testo libero (titolo e testo).
          *
          */
         q?: string;

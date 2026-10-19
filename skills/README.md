@@ -7,7 +7,7 @@ Stato: 6 skills (v1: M-07/I, GIT-170; `gitstack-pr-review` dalla v1.1).
 | Skill | Quando serve |
 | --- | --- |
 | `gitstack-setup` | installare `gs`, login, scelta dell'istanza |
-| `gitstack-issue-to-commit` | lavorare su una issue fino al commit `fixes #n` (C1, C2) |
+| `gitstack-issue-to-commit` | lavorare su una issue fino al commit `fixes #n` (C1, C2), alla Pull Request in bozza (`gs pr create --draft`), a «Ready for review» con `gs pr ready --reviewer` quando è verde, e a `needs-human` se bloccati (PR10) |
 | `gitstack-issue-triage` | cercare, classificare, assegnare e chiudere le issue |
 | `gitstack-repo-admin` | creare, modificare, archiviare, eliminare e recuperare repo |
 | `gitstack-notifications` | ciclo notifiche → lavoro → risposta (C4) |
