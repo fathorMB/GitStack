@@ -268,7 +268,7 @@ func (e *mergeEval) blocked(code openapi.MergeBlockerCode) bool {
 // (PR6); GIT-264 aggiunge approvazioni e modifiche richieste (PR4) e stati
 // obbligatori (PR9) in questa funzione, e la usano sia la mergeability sia il
 // merge.
-func (s *apiServer) mergeGateBlockers(ctx context.Context, ia issueAccess, p prRow, ev *mergeEval) ([]openapi.MergeBlocker, error) {
+func (s *apiServer) mergeGateBlockers(ctx context.Context, q querier, ia issueAccess, p prRow, ev *mergeEval) ([]openapi.MergeBlocker, error) {
 	var out []openapi.MergeBlocker
 	if p.Draft {
 		out = append(out, openapi.MergeBlocker{Code: openapi.MergeBlockerCodeDraft,
@@ -279,7 +279,7 @@ func (s *apiServer) mergeGateBlockers(ctx context.Context, ia issueAccess, p prR
 	// pullReviewState conta solo quelle sullo sha attuale) e nessuna richiesta
 	// di modifiche aperta.
 	if ev.settings.requirePR {
-		decision, approvals, required, err := pullReviewState(ctx, s.pool, ia.repo.ID, p, ev.status.HeadSha, 0)
+		decision, approvals, required, err := pullReviewState(ctx, q, ia.repo.ID, p, ev.status.HeadSha, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -294,7 +294,7 @@ func (s *apiServer) mergeGateBlockers(ctx context.Context, ia issueAccess, p prR
 	}
 	// PR9: i contesti obbligatori vogliono un success sullo sha attuale.
 	if len(ev.settings.contexts) > 0 {
-		byCtx, err := commitStatusStates(ctx, s.pool, ia.repo.ID, ev.status.HeadSha)
+		byCtx, err := commitStatusStates(ctx, q, ia.repo.ID, ev.status.HeadSha)
 		if err != nil {
 			return nil, err
 		}
@@ -304,8 +304,8 @@ func (s *apiServer) mergeGateBlockers(ctx context.Context, ia issueAccess, p prR
 }
 
 // evaluateMerge calcola lo stato di unibilità sui commit attuali.
-func (s *apiServer) evaluateMerge(ctx context.Context, ia issueAccess, g pullGit, p prRow) (*mergeEval, error) {
-	bs, err := loadBranchSettings(ctx, s.pool, ia.repo.ID)
+func (s *apiServer) evaluateMerge(ctx context.Context, q querier, ia issueAccess, g pullGit, p prRow) (*mergeEval, error) {
+	bs, err := loadBranchSettings(ctx, q, ia.repo.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +319,7 @@ func (s *apiServer) evaluateMerge(ctx context.Context, ia issueAccess, g pullGit
 		DefaultMethod: openapi.MergeMethod(bs.defaultMethod), HeadSha: sha40(p.HeadSha),
 		State: openapi.PullRequestMergeabilityStateBlocked,
 	}
-	_, ev.status.Approvals, ev.status.RequiredApprovals, err = pullReviewState(ctx, s.pool, ia.repo.ID, p, ev.status.HeadSha, 0)
+	_, ev.status.Approvals, ev.status.RequiredApprovals, err = pullReviewState(ctx, q, ia.repo.ID, p, ev.status.HeadSha, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -344,7 +344,7 @@ func (s *apiServer) evaluateMerge(ctx context.Context, ia issueAccess, g pullGit
 	}
 	ev.status.AheadBy, ev.status.BehindBy, ev.status.HeadSha = cmp.AheadBy, cmp.BehindBy, cmp.HeadSha
 	// Le approvazioni valgono sull'ultimo commit: dopo un nuovo commit non contano.
-	_, ev.status.Approvals, ev.status.RequiredApprovals, err = pullReviewState(ctx, s.pool, ia.repo.ID, p, ev.status.HeadSha, 0)
+	_, ev.status.Approvals, ev.status.RequiredApprovals, err = pullReviewState(ctx, q, ia.repo.ID, p, ev.status.HeadSha, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +378,7 @@ func (s *apiServer) evaluateMerge(ctx context.Context, ia issueAccess, g pullGit
 	case "unrelated":
 		ev.block(openapi.MergeBlockerCodeUnrelatedHistories, "I due branch non hanno storia in comune.")
 	}
-	gate, err := s.mergeGateBlockers(ctx, ia, p, ev)
+	gate, err := s.mergeGateBlockers(ctx, q, ia, p, ev)
 	if err != nil {
 		return nil, err
 	}
@@ -410,7 +410,7 @@ func (s *apiServer) GetPullRequestMergeability(w http.ResponseWriter, r *http.Re
 	if !ok {
 		return
 	}
-	ev, err := s.evaluateMerge(ctx, ia, g, p)
+	ev, err := s.evaluateMerge(ctx, s.pool, ia, g, p)
 	if err != nil {
 		s.writePullBuildFailure(w, err)
 		return
@@ -569,7 +569,7 @@ func (s *apiServer) MergePullRequest(w http.ResponseWriter, r *http.Request, own
 		writeError(w, http.StatusConflict, "already_merged", "La Pull Request è già stata unita.")
 		return
 	}
-	ev, err := s.evaluateMerge(ctx, ia, g, p)
+	ev, err := s.evaluateMerge(ctx, tx, ia, g, p)
 	if err != nil {
 		s.writePullBuildFailure(w, err)
 		return

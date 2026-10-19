@@ -22,6 +22,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/trust"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // GIT-263 (v1.1): merge delle PR, regole PR3, PR7 e metodi/eliminazione del
@@ -152,10 +153,34 @@ type mergeEnv struct {
 
 func newMergeEnv(t *testing.T) *mergeEnv {
 	t.Helper()
-	pool, _ := dbtest.NewPool(t)
+	return newMergeEnvMaxConns(t, 0)
+}
+
+// newMergeEnvMaxConns: con maxConns > 0 il router usa un pool separato di
+// quella dimensione (le fixture restano sul pool grande), per riprodurre i
+// deadlock da esaurimento del pool.
+func newMergeEnvMaxConns(t *testing.T, maxConns int32) *mergeEnv {
+	t.Helper()
+	pool, dsn := dbtest.NewPool(t)
+	fixtures := pool
+	if maxConns > 0 {
+		cfg, err := pgxpool.ParseConfig(dsn)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg.MaxConns = maxConns
+		small, err := pgxpool.NewWithConfig(context.Background(), cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Close aspetta le connessioni in uso: con un deadlock non tornerebbe mai e il
+		// test resterebbe appeso invece di fallire. Il container lo ferma comunque.
+		t.Cleanup(func() { go small.Close() })
+		pool = small
+	}
 	pg := &prGit{fakeGit: newFakeGit(), br: map[uuid.UUID]map[string]string{}}
 	mg := &mergeGit{prGit: pg, conflicts: map[string][]string{}, behind: map[string]int{}}
-	e := &issuesEnv{t: t, pool: pool, id: &issuesIdentity{fakeIdentity: newFakeIdentity(), writers: map[uuid.UUID][]string{}}}
+	e := &issuesEnv{t: t, pool: fixtures, id: &issuesIdentity{fakeIdentity: newFakeIdentity(), writers: map[uuid.UUID][]string{}}}
 	e.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
 		httpserver.WithRepoIdentity(e.id), httpserver.WithReadableLister(e.id), httpserver.WithGit(mg),
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "https://git.example.com"}))
@@ -488,6 +513,50 @@ func TestPullsMerge_ConcorrentiSullaStessaBase(t *testing.T) {
 			t.Fatalf("riusciti = %d, merge in git = %d", ok, e.mg.mergeCount())
 		}
 	})
+}
+
+// Regressione GIT-306: con la tx della PR aperta, evaluateMerge leggeva da
+// s.pool. Con più merge concorrenti delle connessioni del pool, uno teneva il
+// lock di riga aspettando una connessione e gli altri tenevano le connessioni
+// ferme sul lock: deadlock. Qui il pool ha 2 connessioni e i merge sono 6.
+func TestPullsMerge_PoolPiccoloNonVaInDeadlock(t *testing.T) {
+	e := newMergeEnvMaxConns(t, 2)
+	repoID := e.repo("app", true)
+	e.id.grantWrite(repoID, "bob")
+	e.branch(repoID, "feat")
+	n := e.open("app", "bob", "feat")
+	recs := make([]*httptest.ResponseRecorder, 6)
+	finished := make(chan struct{})
+	go func() {
+		defer close(finished)
+		var done sync.WaitGroup
+		for i := range recs {
+			done.Add(1)
+			go func() {
+				defer done.Done()
+				recs[i] = e.merge("app", n, "bob", `{"method":"squash"}`)
+			}()
+		}
+		done.Wait()
+	}()
+	select {
+	case <-finished:
+	case <-time.After(30 * time.Second):
+		t.Fatal("deadlock: i merge concorrenti non sono terminati in 30 s con il pool a 2 connessioni")
+	}
+	ok := 0
+	for _, rec := range recs {
+		switch {
+		case rec.Code == http.StatusOK:
+			ok++
+		case rec.Code == http.StatusConflict && strings.Contains(rec.Body.String(), `"already_merged"`):
+		default:
+			t.Fatalf("risposta inattesa %d %s", rec.Code, rec.Body.String())
+		}
+	}
+	if ok != 1 || e.mg.mergeCount() != 1 {
+		t.Fatalf("riusciti = %d, merge in git = %d", ok, e.mg.mergeCount())
+	}
 }
 
 func TestPullsMerge_EliminazioneDelBranch(t *testing.T) {
