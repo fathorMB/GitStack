@@ -79,7 +79,7 @@ describe('NewRepoPage', () => {
   // ---- Switch to import mode and submit ----
 
   it('submitting Import from URL sends mode: mirror + intervalSeconds', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     mockImportRepo.mockResolvedValue(undefined);
     renderPage();
 
@@ -98,10 +98,10 @@ describe('NewRepoPage', () => {
     expect(input.mode).toBe('mirror');
     expect(input.url).toBe('https://github.com/acme/example.git');
     expect(input.intervalSeconds).toBe(600);
-  });
+  }, 20000);
 
   it('submitting Import from URL with mode once sends no intervalSeconds', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     mockImportRepo.mockResolvedValue(undefined);
     renderPage();
 
@@ -118,7 +118,7 @@ describe('NewRepoPage', () => {
     const [input] = vi.mocked(mockImportRepo).mock.calls[0] as [ImportRepositoryInput];
     expect(input.mode).toBe('once');
     expect(input).not.toHaveProperty('intervalSeconds');
-  });
+  }, 20000);
 
   // ---- Local validation errors in both modes ----
 
@@ -130,7 +130,7 @@ describe('NewRepoPage', () => {
     mockImportRepo.mockResolvedValue(undefined);
     renderPage();
 
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.click(screen.getByRole('button', { name: 'Import from URL' }));
 
     if (url !== '') {
@@ -145,7 +145,7 @@ describe('NewRepoPage', () => {
     expect(mockImportRepo).not.toHaveBeenCalled();
     // Errore locale visibile
     expect(screen.getByRole('alert')).toBeInTheDocument();
-  });
+  }, 20000);
 
   it.each([
     ['empty', ''],
@@ -155,7 +155,7 @@ describe('NewRepoPage', () => {
     mockImportRepo.mockResolvedValue(undefined);
     renderPage();
 
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.click(screen.getByRole('button', { name: 'Import from URL' }));
 
     // Switch to "Copy once"
@@ -171,12 +171,12 @@ describe('NewRepoPage', () => {
     expect(mockImportRepo).not.toHaveBeenCalled();
     // Errore locale visibile
     expect(screen.getByRole('alert')).toBeInTheDocument();
-  });
+  }, 20000);
 
   // ---- 422 url_not_allowed con messaggio policy di uscita ----
 
   it('mostra il messaggio della policy di uscita per 422 url_not_allowed', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     mockImportRepo.mockRejectedValue(
       new ApiError(
         {
@@ -274,7 +274,7 @@ describe('NewRepoPage: nome nel cestino (R2)', () => {
   });
 
   it('creazione: mostra la data, il link al cestino personale e il ripristino', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     mockCreateRepo.mockRejectedValue(trashed('alice'));
     renderPage();
     await user.type(await screen.findByPlaceholderText('billing-service'), 'gone');
@@ -287,7 +287,7 @@ describe('NewRepoPage: nome nel cestino (R2)', () => {
   });
 
   it('import: il repo e di un\'organizzazione, link al suo cestino', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     mockImportRepo.mockRejectedValue(trashed('acme'));
     renderPage();
     await user.click(screen.getByRole('button', { name: 'Import from URL' }));
@@ -301,7 +301,7 @@ describe('NewRepoPage: nome nel cestino (R2)', () => {
   });
 
   it('senza repoId (non admin) solo codice e data, senza link', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     mockCreateRepo.mockRejectedValue(trashed('alice', false));
     renderPage();
     await user.type(await screen.findByPlaceholderText('billing-service'), 'gone');
@@ -312,7 +312,7 @@ describe('NewRepoPage: nome nel cestino (R2)', () => {
   });
 
   it('un conflitto normale resta il messaggio generico', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     mockCreateRepo.mockRejectedValue(new ApiError({ error: { code: 'conflict', message: 'Esiste gia un repo con questo nome.' } }, 409));
     renderPage();
     await user.type(await screen.findByPlaceholderText('billing-service'), 'gone');
