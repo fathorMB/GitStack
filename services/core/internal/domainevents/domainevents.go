@@ -8,6 +8,8 @@
 // copie divergono, il test diventa rosso.
 package domainevents
 
+import "encoding/json"
+
 // Version è la versione corrente dello schema di tutti gli eventi di dominio.
 const Version = 1
 
@@ -17,10 +19,17 @@ const (
 	DomainIssue        = "issue"
 	DomainIssueComment = "issue_comment"
 	DomainRepository   = "repository"
+
+	// v1.1 (GIT-265, PR11): Pull Request. Un dominio per ogni primo segmento.
+	DomainPullRequest        = "pull_request"
+	DomainPullRequestReview  = "pull_request_review"
+	DomainPullRequestComment = "pull_request_comment"
+	DomainCommitStatus       = "commit_status"
 )
 
 // Domains elenca i domini di core, da assicurare con events.EnsureStream.
-var Domains = []string{DomainIssue, DomainIssueComment, DomainRepository}
+var Domains = []string{DomainIssue, DomainIssueComment, DomainRepository,
+	DomainPullRequest, DomainPullRequestReview, DomainPullRequestComment, DomainCommitStatus}
 
 // Nomi degli eventi (anche subject NATS).
 const (
@@ -174,4 +183,94 @@ type RepositoryPayload struct {
 	Changes   *RepositoryChanges `json:"changes,omitempty"`
 	DeletedAt string             `json:"deletedAt,omitempty"`
 	PurgeAt   string             `json:"purgeAt,omitempty"`
+}
+
+// Eventi delle Pull Request (v1.1, GIT-265, PR11). Come gli altri passano
+// dall'outbox transazionale: notifiche e webhook li leggono da lì.
+const (
+	PullRequestOpened               = "pull_request.opened"
+	PullRequestEdited               = "pull_request.edited"
+	PullRequestClosed               = "pull_request.closed"
+	PullRequestReopened             = "pull_request.reopened"
+	PullRequestMerged               = "pull_request.merged"
+	PullRequestReadyForReview       = "pull_request.ready_for_review"
+	PullRequestConvertedToDraft     = "pull_request.converted_to_draft"
+	PullRequestSynchronize          = "pull_request.synchronize"
+	PullRequestReviewRequested      = "pull_request.review_requested"
+	PullRequestReviewRequestRemoved = "pull_request.review_request_removed"
+	// PullRequestConflicts e PullRequestChecksFailed non hanno un webhook:
+	// avvisano solo l'autore (notifiche, PR11).
+	PullRequestConflicts    = "pull_request.conflicts"
+	PullRequestChecksFailed = "pull_request.checks_failed"
+
+	PullRequestReviewSubmitted = "pull_request_review.submitted"
+	PullRequestReviewDismissed = "pull_request_review.dismissed"
+
+	// PullRequestCommentCreated: commento generale o sulle righe. Solo
+	// notifiche: nessun webhook (i commenti sulle righe viaggiano nella review).
+	PullRequestCommentCreated = "pull_request_comment.created"
+
+	CommitStatusCreated = "commit_status.created"
+)
+
+// PullRequestNames sono gli eventi del dominio pull_request.
+var PullRequestNames = []string{PullRequestOpened, PullRequestEdited, PullRequestClosed, PullRequestReopened,
+	PullRequestMerged, PullRequestReadyForReview, PullRequestConvertedToDraft, PullRequestSynchronize,
+	PullRequestReviewRequested, PullRequestReviewRequestRemoved, PullRequestConflicts, PullRequestChecksFailed}
+
+// Pull è la PR dopo il cambiamento, ridotta a ciò che serve a notifiche e
+// consumatori; la PR completa del contratto sta in PullPayload.Snapshot.
+type Pull struct {
+	ID           string `json:"id"`
+	Number       int64  `json:"number"`
+	Title        string `json:"title"`
+	State        string `json:"state"` // open | closed | merged
+	Draft        bool   `json:"draft"`
+	AuthorID     string `json:"authorId"`
+	SourceBranch string `json:"sourceBranch"`
+	TargetBranch string `json:"targetBranch"`
+	HeadSha      string `json:"headSha,omitempty"`
+}
+
+// PullReview è la review di pull_request_review.*.
+type PullReview struct {
+	ID       string `json:"id"`
+	AuthorID string `json:"authorId"`
+	State    string `json:"state"` // comment | approve | request_changes
+	Body     string `json:"body,omitempty"`
+}
+
+// PullPayload è lo schema v1 degli eventi pull_request.*, pull_request_review.*
+// e pull_request_comment.created. Snapshot è la PR come in GET …/pulls/{n}
+// (schema PullRequest del contratto) al momento dell'evento: i webhook la
+// consegnano così com'è. ReviewSnapshot è la review del contratto.
+type PullPayload struct {
+	Repo              Repo            `json:"repo"`
+	Actor             *User           `json:"actor"`
+	Pull              Pull            `json:"pull"`
+	Snapshot          json.RawMessage `json:"snapshot,omitempty"`
+	Changes           *IssueChanges   `json:"changes,omitempty"`
+	RequestedReviewer *User           `json:"requestedReviewer,omitempty"`
+	Review            *PullReview     `json:"review,omitempty"`
+	ReviewSnapshot    json.RawMessage `json:"reviewSnapshot,omitempty"`
+	Comment           *Comment        `json:"comment,omitempty"`
+	// Reason: per pull_request.edited, "retargeted" se è cambiata la destinazione.
+	Reason string `json:"reason,omitempty"`
+	// Contexts: i contesti obbligatori in errore di pull_request.checks_failed.
+	Contexts []string `json:"contexts,omitempty"`
+	// Files: i file in conflitto di pull_request.conflicts (al massimo 10).
+	Files []string `json:"files,omitempty"`
+}
+
+// CommitStatusPayload è lo schema v1 di commit_status.created. Status è il
+// CommitStatus del contratto; Branches i branch la cui punta è il commit.
+type CommitStatusPayload struct {
+	Repo     Repo            `json:"repo"`
+	Actor    *User           `json:"actor"`
+	Status   json.RawMessage `json:"status"`
+	Sha      string          `json:"sha"`
+	Context  string          `json:"context"`
+	State    string          `json:"state"`
+	Combined string          `json:"combinedState"`
+	Branches []string        `json:"branches"`
 }

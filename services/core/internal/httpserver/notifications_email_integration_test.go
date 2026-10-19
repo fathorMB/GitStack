@@ -73,8 +73,8 @@ func (e *emailEnv) prefs(user string) openapi.NotificationPreferences {
 }
 
 // emailReasons: tutti i tipi di notifica con una preferenza email (C5). Con
-// "credential" (GIT-239 F13) sono 9; la lista è l'unica fonte nei test.
-var emailReasons = []string{"assigned", "commit_linked", "credential", "mentioned", "mirror", "participating", "state_change", "subscribed", "webhook"}
+// "credential" (GIT-239 F13) e "review_requested" (GIT-265) sono 10; la lista è l'unica fonte nei test.
+var emailReasons = []string{"assigned", "commit_linked", "credential", "mentioned", "mirror", "participating", "review_requested", "state_change", "subscribed", "webhook"}
 
 // emailPrefsOK: le preferenze hanno esattamente i tipi attesi e credential
 // c'è ed è spenta di default.
@@ -87,7 +87,7 @@ func emailPrefsOK(p openapi.NotificationPreferences) bool {
 			return false
 		}
 	}
-	return !p.Email["credential"]
+	return !p.Email["credential"] && p.Email["review_requested"] // review_requested: accesa come le menzioni
 }
 
 func TestEmail_PerTipoRaggruppateSoloAlleLettereC5(t *testing.T) {

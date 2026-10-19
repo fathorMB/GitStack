@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/google/uuid"
@@ -46,6 +47,8 @@ func (s *apiServer) RequestPullRequestReviewers(w http.ResponseWriter, r *http.R
 		return
 	}
 	var ids []uuid.UUID
+	var named []assignee
+	gs := s.pullGitBestEffort(ctx, ia, cur)
 	seen := map[string]bool{}
 	for _, n := range in.Reviewers {
 		key := strings.ToLower(n)
@@ -75,6 +78,7 @@ func (s *apiServer) RequestPullRequestReviewers(w http.ResponseWriter, r *http.R
 			return
 		}
 		ids = append(ids, o.ID)
+		named = append(named, assignee{id: o.ID, name: o.Name})
 	}
 
 	tx, p, ok := s.beginPullWrite(w, r, ia, number)
@@ -97,6 +101,10 @@ func (s *apiServer) RequestPullRequestReviewers(w http.ResponseWriter, r *http.R
 	}
 	if _, err := tx.Exec(ctx, `UPDATE core.pull_requests SET updated_at = now() WHERE id = $1`, p.ID); err != nil {
 		writeIssueFailure(w, "aggiornamento della Pull Request non riuscito", err)
+		return
+	}
+	if err := s.emitReviewRequested(ctx, tx, domainevents.PullRequestReviewRequested, ia, gs, number, named); err != nil {
+		writeIssueFailure(w, "scrittura degli eventi non riuscita", err)
 		return
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -132,6 +140,7 @@ func (s *apiServer) RemovePullRequestReviewer(w http.ResponseWriter, r *http.Req
 		writeError(w, http.StatusForbidden, "forbidden", "Tolgono la richiesta l'autore della Pull Request e chi ha write.")
 		return
 	}
+	gs := s.pullGitBestEffort(ctx, ia, cur)
 	o, err := s.repoIdentity.ResolveOwner(ctx, strings.ToLower(username))
 	if errors.Is(err, identityclient.ErrNotFound) || (err == nil && o.Type != "user") {
 		writeError(w, http.StatusNotFound, "not_found", "La persona non è fra i revisori richiesti.")
@@ -157,6 +166,10 @@ func (s *apiServer) RemovePullRequestReviewer(w http.ResponseWriter, r *http.Req
 	}
 	if _, err := tx.Exec(ctx, `UPDATE core.pull_requests SET updated_at = now() WHERE id = $1`, p.ID); err != nil {
 		writeIssueFailure(w, "aggiornamento della Pull Request non riuscito", err)
+		return
+	}
+	if err := s.emitReviewRequested(ctx, tx, domainevents.PullRequestReviewRequestRemoved, ia, gs, number, []assignee{{id: o.ID, name: o.Name}}); err != nil {
+		writeIssueFailure(w, "scrittura degli eventi non riuscita", err)
 		return
 	}
 	if err := tx.Commit(ctx); err != nil {

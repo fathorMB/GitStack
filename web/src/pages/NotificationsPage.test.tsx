@@ -75,6 +75,20 @@ const closed: Notification = {
   readAt: NOW,
 };
 
+const pullN = (id: string, event: string, reason: Notification['reason'], actor: Notification['actor'] = { id: 'u-3', username: 'bob', kind: 'human' }): Notification => ({
+  id,
+  reason,
+  read: false,
+  archived: false,
+  event,
+  summary: 'on',
+  repository: { id: 'r-9', fullName: 'alice/app' },
+  issue: { number: 12, title: 'Add feature', state: 'open' },
+  actor,
+  createdAt: NOW,
+  readAt: null,
+});
+
 function page(items: Notification[], unreadCount = items.filter((i) => !i.read).length) {
   return { items, page: 1, perPage: 30, total: items.length, unreadCount };
 }
@@ -111,6 +125,26 @@ describe('NotificationsPage', () => {
     expect(within(rows[0]).queryByText('agent')).not.toBeInTheDocument();
     expect(mockedList).toHaveBeenCalledWith('unread', 'all');
     expect(screen.getByRole('button', { name: 'Unread 2' })).toBeInTheDocument();
+  });
+
+  it('le notifiche delle PR aprono /pulls/n, quelle delle issue /issues/n (PR11)', async () => {
+    mockedList.mockResolvedValue(
+      page([
+        pullN('p-1', 'pull_request.review_requested', 'review_requested'),
+        pullN('p-2', 'pull_request_review.submitted', 'participating'),
+        pullN('p-3', 'pull_request_comment.created', 'participating'),
+        pullN('p-4', 'pull_request.conflicts', 'state_change', null),
+        pullN('p-5', 'pull_request.checks_failed', 'state_change', null),
+        { ...pullN('i-1', 'issue.comment_created', 'participating'), summary: 'issue' },
+      ]),
+    );
+    renderPage();
+    const rows = await screen.findAllByTestId('notification');
+    expect(rows).toHaveLength(6);
+    for (const row of rows.slice(0, 5)) {
+      expect(within(row).getByRole('link', { name: 'Add feature' })).toHaveAttribute('href', '/alice/app/pulls/12');
+    }
+    expect(within(rows[5]).getByRole('link', { name: 'Add feature' })).toHaveAttribute('href', '/alice/app/issues/12');
   });
 
   it('filtra per motivo', async () => {

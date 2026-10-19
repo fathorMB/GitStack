@@ -16,6 +16,24 @@ export function ReferencedFromEvent({ e }: { e: IssueEvent }) {
   const s = sourceOf(e);
   if (!s) return null;
   const label = `${s.repository}#${s.number}`;
+  // PR8: una PR le cui parole chiave (C2) chiudono questa issue al merge.
+  if (s.kind === 'pull_request' && s.willClose) {
+    return (
+      <div className="ev" data-testid="event-referenced_from" data-will-close="true">
+        <span className="evi">
+          <Link2 size={14} aria-hidden="true" />
+        </span>
+        <span>
+          <span className="mono" title={s.title}>
+            PR #{s.number}
+          </span>{' '}
+          will close this issue
+          {s.repository ? <span className="muted"> ({label})</span> : null}
+          {s.title ? <span className="muted"> {s.title}</span> : null} · {timeAgo(e.createdAt)}
+        </span>
+      </div>
+    );
+  }
   return (
     <div className="ev" data-testid="event-referenced_from">
       <span className="evi">

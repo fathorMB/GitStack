@@ -119,6 +119,7 @@ type emailRow struct {
 	title     *string
 	groupKey  uuid.UUID
 	data      []byte
+	isPull    bool
 }
 
 // Process spedisce le email dovute ora e ritorna quante ne ha consegnate al
@@ -148,12 +149,14 @@ func (d *EmailDispatcher) Process(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	rows, err := conn.Query(ctx, `SELECT n.id, n.user_id, n.issue_id, n.reason, n.actor_id, n.event_name, n.created_at,
-			n.email_attempts, r.owner_name, r.name, i.number, i.title, COALESCE(n.issue_id, n.id), n.data
+			n.email_attempts, r.owner_name, r.name, COALESCE(i.number, p.number), COALESCE(i.title, p.title),
+			COALESCE(n.issue_id, n.pull_request_id, n.id), n.data, n.pull_request_id IS NOT NULL
 		FROM core.notifications n
 		LEFT JOIN core.repositories r ON r.resource_id = n.repo_id
 		LEFT JOIN core.issues i ON i.id = n.issue_id
+		LEFT JOIN core.pull_requests p ON p.id = n.pull_request_id
 		WHERE n.email_due_at IS NOT NULL AND n.email_due_at <= clock_timestamp() AND n.email_sent_at IS NULL
-		ORDER BY n.user_id, COALESCE(n.issue_id, n.id), n.created_at, n.id
+		ORDER BY n.user_id, COALESCE(n.issue_id, n.pull_request_id, n.id), n.created_at, n.id
 		LIMIT 500`)
 	if err != nil {
 		return 0, err
@@ -162,7 +165,7 @@ func (d *EmailDispatcher) Process(ctx context.Context) (int, error) {
 	for rows.Next() {
 		var r emailRow
 		if err := rows.Scan(&r.id, &r.userID, &r.issueID, &r.reason, &r.actorID, &r.eventName, &r.createdAt,
-			&r.attempts, &r.owner, &r.repo, &r.number, &r.title, &r.groupKey, &r.data); err != nil {
+			&r.attempts, &r.owner, &r.repo, &r.number, &r.title, &r.groupKey, &r.data, &r.isPull); err != nil {
 			rows.Close()
 			return 0, err
 		}
@@ -255,23 +258,35 @@ func (d *EmailDispatcher) sendGroup(ctx context.Context, conn *pgxpool.Conn, gro
 }
 
 var reasonText = map[string]string{
-	ReasonAssigned:      "ti è stata assegnata",
-	ReasonMentioned:     "sei stato menzionato",
-	ReasonParticipating: "partecipi alla issue",
-	ReasonSubscribed:    "sei iscritto alla issue",
-	ReasonCommitLinked:  "un commit la cita",
-	ReasonStateChange:   "cambia lo stato di una issue che segui",
-	ReasonWebhook:       "un webhook è stato disattivato",
+	ReasonAssigned:        "ti è stata assegnata",
+	ReasonMentioned:       "sei stato menzionato",
+	ReasonParticipating:   "partecipi alla issue",
+	ReasonSubscribed:      "sei iscritto alla issue",
+	ReasonCommitLinked:    "un commit la cita",
+	ReasonStateChange:     "cambia lo stato di una issue che segui",
+	ReasonWebhook:         "un webhook è stato disattivato",
+	ReasonReviewRequested: "ti è stata chiesta la review",
 }
 
 var eventText = map[string]string{
-	domainevents.IssueCreated:        "ha aperto la issue",
-	domainevents.IssueEdited:         "ha modificato la issue",
-	domainevents.IssueClosed:         "ha chiuso la issue",
-	domainevents.IssueReopened:       "ha riaperto la issue",
-	domainevents.IssueAssigned:       "ha assegnato la issue",
-	domainevents.IssueCommentCreated: "ha commentato",
-	domainevents.IssueCommentEdited:  "ha modificato un commento",
+	domainevents.IssueCreated:               "ha aperto la issue",
+	domainevents.IssueEdited:                "ha modificato la issue",
+	domainevents.IssueClosed:                "ha chiuso la issue",
+	domainevents.IssueReopened:              "ha riaperto la issue",
+	domainevents.IssueAssigned:              "ha assegnato la issue",
+	domainevents.IssueCommentCreated:        "ha commentato",
+	domainevents.IssueCommentEdited:         "ha modificato un commento",
+	domainevents.PullRequestOpened:          "ha aperto la Pull Request",
+	domainevents.PullRequestEdited:          "ha modificato la Pull Request",
+	domainevents.PullRequestClosed:          "ha chiuso la Pull Request",
+	domainevents.PullRequestReopened:        "ha riaperto la Pull Request",
+	domainevents.PullRequestMerged:          "ha unito la Pull Request",
+	domainevents.PullRequestReadyForReview:  "ha segnato la Pull Request come pronta",
+	domainevents.PullRequestReviewRequested: "ti ha chiesto la review della Pull Request",
+	domainevents.PullRequestReviewSubmitted: "ha inviato una review",
+	domainevents.PullRequestCommentCreated:  "ha commentato la Pull Request",
+	domainevents.PullRequestConflicts:       "ha rilevato conflitti nella Pull Request",
+	domainevents.PullRequestChecksFailed:    "ha rilevato controlli obbligatori falliti nella Pull Request",
 }
 
 // compose scrive l'email di un gruppo: oggetto con repo, numero e titolo,
@@ -293,6 +308,10 @@ func (d *EmailDispatcher) compose(to string, group []emailRow, people map[uuid.U
 		subject = fmt.Sprintf("[%s] %s (#%d)", full, title, *first.number)
 		link = fmt.Sprintf("%s/%s/issues/%d", base, full, *first.number)
 		head = fmt.Sprintf("Novità sulla issue %s#%d «%s»:", full, *first.number, title)
+		if first.isPull {
+			link = fmt.Sprintf("%s/%s/pulls/%d", base, full, *first.number)
+			head = fmt.Sprintf("Novità sulla Pull Request %s#%d «%s»:", full, *first.number, title)
+		}
 	default:
 		subject = "GitStack: nuova notifica"
 		link = base + "/notifications"
@@ -310,6 +329,9 @@ func (d *EmailDispatcher) compose(to string, group []emailRow, people map[uuid.U
 		what := eventText[r.eventName]
 		if what == "" {
 			what = "ha aggiornato la issue"
+			if r.isPull {
+				what = "ha aggiornato la Pull Request"
+			}
 		}
 		line := fmt.Sprintf("- %s %s (%s)", who, what, reasonText[r.reason])
 		if r.eventName == "" {
