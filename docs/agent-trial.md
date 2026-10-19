@@ -374,12 +374,30 @@ Strumenti attesi: `issue_view`, poi `pr_create` (con `draft: true` e `fixes #2`)
 
 ### Esito
 
-Nell'item GIT-273 vanno scritti, per ciascuna via: data, istanza e commit (`gitstack version` sulla VM), versione di `gs`, il numero della PR, chi l'ha approvata, l'output dei due controlli sopra e le deviazioni dell'agente. **Alla stesura di questa guida la prova con la persona non è stata ancora eseguita**: la fa il board; l'esito non è inventato qui. Se una via non riesce, si apre una issue sulla skill o sullo strumento che ha fallito.
+Eseguita il **2026-10-19** sulla VM `gitstack-test-vm` (172.29.132.37), installata da zero (reset al checkpoint `clean`, installer con `GITSTACK_REF`, firme verificate con cosign) al commit `8528175` di main: `gitstack version` = `sha-85281758d2a5f786c8aca10c140276cc027b06f5`, `gs version` (binario scaricato da `/downloads` dell'istanza, Linux amd64) = `sha-85281758d2a5f786c8aca10c140276cc027b06f5`. L'agente è Claude Code 2.1.303 (`claude -p`, non interattivo), che lavora sulla VM via ssh con il token di `trial-agent` (solo `read:resource` e `write:resource`) e con le skills installate da `gs skills install --agent claude`. Sul repo `admin/agent-trial` era accesa «Richiedi una Pull Request» con 1 approvazione, quindi le PR erano bloccate (`approvals_required`) finché una persona non le approvava. La persona è l'utente `revisore` (human, ruolo `write` sul repo): l'ha usato il board.
 
 | Via | Data | PR | Approvata da | Unita | Issue chiusa `completed` | Note |
 |---|---|---|---|---|---|---|
-| `gs` | non ancora eseguita | | | | | |
-| MCP (`gs mcp`) | non ancora eseguita | | | | | |
+| `gs` | 2026-10-19 | #3 (ramo `agent/1-conta-parole`, commit `53936d5` con `fixes #1`) | `revisore` (persona, il board), `countsAsApproval: true` | sì, squash, commit `ea34456`, da `trial-agent` su richiesta esplicita | #1: `closed` / `completed` | Vedi sotto. |
+| MCP (`gs mcp`) | 2026-10-19 | #4 (ramo `agent/2-usage-md`, commit `8d68357` con `fixes #2`) | `revisore` (persona, il board), `countsAsApproval: true` | sì, merge commit, commit `e6c8efc`, da `trial-agent` con lo strumento MCP `pr_merge` | #2: `closed` / `completed` | Vedi sotto. |
+
+Controlli finali, in sola lettura (`gs pr view <n> --json state,mergeMethod,mergedBy,closingIssues` e `gs issue view <n> --json state,closeReason`): PR #3 `merged` / `squash` / `trial-agent` / `[1]`; PR #4 `merged` / `merge` / `trial-agent` / `[2]`; issue #1 e #2 `closed` / `completed`. Sul ramo `main` risultano i commit «Conta le parole separate da qualsiasi spazio bianco (#3)» e «Merge pull request #4 from agent/2-usage-md».
+
+**Via `gs` (PR #3).** L'agente ha seguito `gitstack-issue-to-commit`: `gs issue view` e `edit --add-assignee @me`, commento sulla issue, ramo, correzione di `wordcount.py` (`text.split()`; `python3 -m unittest` da 3 test rossi a 4 su 4), commit con `fixes #1` da file (`git commit -F`), `gs pr create --draft`, `gs pr view` e `gs api .../mergeability` (unico blocco: la bozza), `gs pr ready 3 --reviewer revisore`, `gs pr comment`. Non ha unito, approvato né usato `--yes`.
+
+**Via MCP (PR #4).** Con `gs mcp` (stdio, attraverso ssh) l'agente ha usato `issue_view`, `issue_assignees_set`, `issue_comment_create`, `pr_create` (`draft: true`), `pr_mergeability`, `pr_view`, `pr_ready`, `review_request`, `pr_comment_create`; il codice, che MCP non copre, l'ha scritto con `git` sulla VM. Ha aggiunto `USAGE.md` e ne ha eseguito l'esempio (risultato `4`).
+
+**Deviazioni e osservazioni dell'agente**
+
+- Le skills dicono di scrivere `msg.txt` e `pr.txt` con lo strumento di scrittura file; l'agente poteva solo eseguire comandi via ssh e li ha scritti con `printf` in `/tmp`, fuori dal repo.
+- Il clone di lavoro e l'identità git c'erano già: ha saltato `gs repo clone` e `git config`. `gs pr view --comments` non esiste (`unknown flag`): ha usato `gs pr view`.
+- Il revisore era `revisore` perché lo ha indicato il prompt (la issue l'aveva aperta `admin`).
+- PR #4: ha passato a pronta una PR con i test del repo rossi (`main` aveva ancora il difetto della #1, corretto dalla #3). La skill lo sconsiglia; l'agente lo ha motivato (la PR cambia solo documentazione) e lo ha scritto nel commento alla PR.
+- `pr_ready` non accetta un revisore: la review è stata chiesta subito dopo con `review_request`.
+- Senza «Richiedi una Pull Request» la PR sarebbe stata unibile subito (0 approvazioni richieste): l'obbligo di una persona viene dall'impostazione del repo, non dal ciclo di vita della PR. Per la prova è stata accesa.
+- I test hanno lasciato una cartella `__pycache__/` non committata nel clone; l'agente non l'ha cancellata (regola: niente eliminazioni).
+- Il token non è mai stato stampato; nessuna operazione distruttiva.
+- Note del lancio, non dell'agente: `gs` sull'host Windows non si fida della CA interna senza una conferma interattiva (`Import-Certificate`), quindi gs e git girano sulla VM e Claude Code li comanda via ssh; per MCP la configurazione è `--mcp-config` con `command: ssh ... gs-mcp.sh`. Il board ha approvato con l'utente `revisore`.
 
 ## Cosa è già provato e cosa no
 
