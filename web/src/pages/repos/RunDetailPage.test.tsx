@@ -62,6 +62,7 @@ function setup(r: WorkflowRun, write = true) {
 
 beforeEach(() => {
   vi.mocked(fetchRun).mockReset();
+  vi.mocked(fetchArtifacts).mockReset();
   vi.mocked(fetchJobLog).mockReset();
   vi.mocked(cancelRun).mockReset();
   vi.mocked(rerunRun).mockReset();
@@ -87,6 +88,34 @@ describe('RunDetailPage', () => {
     expect(await screen.findByText(/PASS: TestWebhooks/, undefined, { timeout: 3000 })).toBeInTheDocument();
     expect(vi.mocked(fetchJobLog).mock.calls.length).toBeGreaterThan(1);
   });
+
+  it('fetchRun che fallisce una volta: avviso, il polling riparte e il log continua ad aggiornarsi', async () => {
+    const running = run({ status: 'in_progress', conclusion: null, completedAt: null, jobs: [{ ...run({}).jobs[1]!, status: 'in_progress', conclusion: null, completedAt: null }] });
+    setup(running);
+    vi.mocked(fetchRun).mockReset();
+    vi.mocked(fetchRun).mockResolvedValueOnce(running).mockRejectedValueOnce(new Error('boom')).mockResolvedValue(running);
+    let n = 0;
+    vi.mocked(fetchJobLog).mockImplementation(() => Promise.resolve(`riga ${++n}`));
+    expect(await screen.findByText(/Aggiornamento interrotto, nuovo tentativo/, undefined, { timeout: 4000 })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(/Aggiornamento interrotto/)).not.toBeInTheDocument(), { timeout: 4000 });
+    expect(vi.mocked(fetchRun).mock.calls.length).toBeGreaterThanOrEqual(3);
+    const before = n;
+    await waitFor(() => expect(n).toBeGreaterThan(before + 1), { timeout: 4000 });
+  }, 15000);
+
+  it('artefatti: una lettura all’apertura e una al passaggio a completed, non a ogni giro', async () => {
+    const running = run({ status: 'in_progress', conclusion: null, completedAt: null });
+    setup(running);
+    vi.mocked(fetchRun).mockReset();
+    vi.mocked(fetchRun).mockResolvedValue(running);
+    await screen.findByRole('heading', { name: 'ci' });
+    await waitFor(() => expect(vi.mocked(fetchRun).mock.calls.length).toBeGreaterThanOrEqual(6), { timeout: 4000 });
+    expect(fetchArtifacts).toHaveBeenCalledTimes(1);
+    vi.mocked(fetchRun).mockResolvedValue(run({}));
+    await waitFor(() => expect(fetchArtifacts).toHaveBeenCalledTimes(2), { timeout: 4000 });
+    await new Promise((r) => setTimeout(r, 150));
+    expect(fetchArtifacts).toHaveBeenCalledTimes(2);
+  }, 15000);
 
   it('Annulla: senza conferma nessuna chiamata, con conferma la chiamata parte', async () => {
     const user = userEvent.setup();

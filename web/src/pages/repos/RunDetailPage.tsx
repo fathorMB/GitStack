@@ -16,6 +16,8 @@ import { RunDot } from './RunStatus';
 
 /** Millisecondi fra due letture di esecuzione e log finché sono in corso. */
 const POLL_MS = 2000;
+/** Tetto del backoff dopo letture fallite. */
+const MAX_BACKOFF_MS = 30000;
 
 /** Dettaglio di un'esecuzione (CI, mockup B2): job, log in diretta mascherati, artefatti, stati del commit, Riesegui e Annulla. */
 export function RunDetailPage({ repo, pollMs = POLL_MS }: { repo: Repository; pollMs?: number }) {
@@ -37,6 +39,7 @@ function RunDetail({ repo, runId, pollMs }: { repo: Repository; runId: string; p
   const [jobId, setJobId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   const active = run ? isActive(run.status) : true;
 
@@ -44,15 +47,26 @@ function RunDetail({ repo, runId, pollMs }: { repo: Repository; runId: string; p
   useEffect(() => {
     let live = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let failures = 0;
+    let known = false;
     const tick = async () => {
       try {
         const r = await fetchRun(owner, name, runId);
         if (!live) return;
+        failures = 0;
+        known = true;
         setRun(r);
         setError(null);
+        setRetrying(false);
         if (isActive(r.status)) timer = setTimeout(() => void tick(), pollMs);
       } catch (err) {
-        if (live) setError(describeError(err));
+        if (!live) return;
+        setError(describeError(err));
+        // Prima lettura fallita: errore bloccante. Dopo, avviso e nuovo tentativo con backoff.
+        if (!known) return;
+        failures += 1;
+        setRetrying(true);
+        timer = setTimeout(() => void tick(), Math.min(pollMs * 2 ** failures, MAX_BACKOFF_MS));
       }
     };
     void tick();
@@ -88,8 +102,10 @@ function RunDetail({ repo, runId, pollMs }: { repo: Repository; runId: string; p
       live = false;
     };
   }, [owner, name, sha, finished]);
+  // Artefatti: una lettura all'apertura (run caricato) e una al passaggio a stato finale, non a ogni giro.
+  const loaded = run !== null;
   useEffect(() => {
-    if (!run) return;
+    if (!loaded) return;
     let live = true;
     fetchArtifacts(owner, name, runId).then(
       (a) => live && setArtifacts(a),
@@ -98,7 +114,7 @@ function RunDetail({ repo, runId, pollMs }: { repo: Repository; runId: string; p
     return () => {
       live = false;
     };
-  }, [owner, name, runId, run, finished]);
+  }, [owner, name, runId, loaded, finished]);
 
   const doRerun = async () => {
     setBusy(true);
@@ -164,6 +180,11 @@ function RunDetail({ repo, runId, pollMs }: { repo: Repository; runId: string; p
         {duration ? ` · ${duration}` : ''} · <Link to={`/${owner}/${name}/actions`}>All runs</Link>
       </p>
       {actionError ? <ErrorAlert message={actionError} /> : null}
+      {retrying ? (
+        <p className="small muted" role="status">
+          Aggiornamento interrotto, nuovo tentativo…
+        </p>
+      ) : null}
       <div className="two">
         <div className="stack" style={{ gap: 12 }}>
           <nav className="jobs" aria-label="Jobs">
