@@ -20,10 +20,10 @@ import (
 func NewCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "search",
-		Short: "Cerca issue e codice",
+		Short: "Cerca issue, Pull Request e codice",
 		Args:  cmdutil.NoArgs,
 		RunE:  cmdutil.GroupRun,
 	}
-	cmd.AddCommand(newIssuesCmd(f), newCodeCmd(f))
+	cmd.AddCommand(newIssuesCmd(f), newPullsCmd(f), newCodeCmd(f))
 	return cmd
 }

@@ -46,6 +46,9 @@ type Factory struct {
 	OpenBrowser func(url string) error
 	// RunGit esegue git con gli argomenti dati (gs auth setup-git).
 	RunGit func(ctx context.Context, args ...string) error
+	// GitOutput esegue git e dà il suo output senza il fine riga finale
+	// (gs pr: ramo corrente). Nei test si sostituisce.
+	GitOutput func(ctx context.Context, args ...string) (string, error)
 	// Executable è il percorso del binario gs in esecuzione.
 	Executable func() (string, error)
 }
@@ -104,6 +107,13 @@ func New(version string, io *IOStreams) *Factory {
 			return fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
 		}
 		return nil
+	}
+	f.GitOutput = func(ctx context.Context, args ...string) (string, error) {
+		out, err := exec.CommandContext(ctx, "git", args...).Output()
+		if err != nil {
+			return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
+		}
+		return strings.TrimSpace(string(out)), nil
 	}
 	f.Executable = os.Executable
 	return f

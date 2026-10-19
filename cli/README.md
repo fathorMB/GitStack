@@ -30,7 +30,7 @@ Decise dal CTO (GIT-162), tutte con licenza compatibile con Apache-2.0 (D17). Gl
 cmd/gs/main.go            var version = "dev" (-ldflags "-X main.version=<tag>"), chiama root.Run
 internal/cmd/root         comando radice, flag globali, registra TUTTI i gruppi, Run (exit code, errori)
 internal/cmd/<gruppo>     un pacchetto per gruppo, con NewCmd(f *cmdutil.Factory) *cobra.Command:
-                          auth repo issue label milestone search browse blame notification api skills version
+                          auth repo issue pr label milestone search browse blame notification api skills version
 internal/cmdutil          Factory, IOStreams, errori e codici di uscita, ConfirmOrYes (G8)
 internal/config           configurazione multi-istanza, TokenSource, permessi solo-utente
 internal/gsrepo           istanza e owner/repo dal remote origin
@@ -151,6 +151,47 @@ Sono quelli dello schema dell'API (camelCase), più `url` (pagina web). Un campo
 ### Test
 
 `cli/internal/cmd/issue/issue_test.go`: gateway finto, richieste e corpi verificati. `services/core/internal/stackitest/gs_issue_integration_test.go` (`TestGsIssue`, tag `integration`): il binario `gs` vero compilato con `go build` contro lo stack completo (gateway, identity, git, core, Postgres), con un proxy che mappa `/api/v1` su `/v1`. Prova ogni sottocomando, i tre motivi di chiusura, I3, il blocco, R10, l'accordo di `list` con l'API (stessi numeri con filtri e `--search`) e i codici 4, 5 e 6.
+
+## `gs pr` (GIT-270, PR10)
+
+Sottocomandi: `create`, `list` (`ls`), `view`, `checkout`, `diff`, `review`, `comment`, `ready`, `merge`, `close`, `status`. Il repo è quello del remote `origin` o `-R owner/repo`; il numero della PR è `7` o `#7` (condiviso con le issue, I1). Le regole le applica l'API (PR1-PR12): `gs` mostra l'errore e lo traduce nel codice di uscita. Il flusso degli agenti (issue, ramo, PR in bozza, pronta per la review, `needs-human`) è nella skill `gitstack-issue-to-commit`.
+
+| Comando | Cosa fa | Flag principali |
+|---|---|---|
+| `create` | apre una PR; su stdout l'indirizzo web | `-t/--title` (obbligatorio), `-b/--body`, `-F/--body-file` (`-` = stdin), `-H/--head` (predefinito il ramo corrente), `-B/--base` (predefinito il branch principale), `-d/--draft`, `--reviewer` (ripetibile; ignorato per una bozza), `-w/--web` |
+| `list` | elenca (default: aperte, `-L 30`) | `-s/--state open\|closed\|merged\|all` (si manda solo se lo scrivi), `-S/--search` (I10 estesa alle PR), `-H/--head`, `-B/--base`, `--sort created\|updated\|comments`, `-L/--limit` |
+| `view <n>` | stato, rami, revisori richiesti, decisione di review, testo | `-w/--web` |
+| `checkout <n>` | scarica il ramo di origine dal remote `origin` (`git fetch`) e vi passa (`git switch`) | nessuno. Il remote `origin` deve essere il repo della PR; se il ramo locale ha commit diversi, `gs` non fa merge né reset |
+| `diff <n>` | patch dei file (Files changed) | `--name-only`, `-w/--ignore-whitespace` |
+| `review <n>` | invia una review con un esito | esattamente uno fra `--comment`, `--approve`, `--request-changes` (vuole `-b` o `-F`); `--commit <sha>` (409 `head_changed` se la PR è cambiata) |
+| `comment <n>` | commento generale (non sulle righe) | `-b/--body`, `-F/--body-file` (`-` = stdin) |
+| `ready <n>` | bozza → pronta per la review; con `--reviewer` chiede la review dopo | `--reviewer` (ripetibile, senza `@`), `--undo` (torna in bozza, non si combina con `--reviewer`) |
+| `merge <n>` | unisce (G8) | `--merge` o `--squash` (senza: il metodo predefinito del repo), `-t/--title`, `-m/--message`, `--delete-branch`, `--match-head-commit <sha>`, `-y/--yes` |
+| `close <n>` | chiude senza unire (G8) | `-c/--comment` (lasciato dopo la chiusura), `-y/--yes` |
+| `status` | la PR aperta del ramo corrente e le PR aperte create da te | nessuno (`--json current,authored`) |
+
+- **Conferme (G8).** `merge` e `close` chiedono conferma: con un terminale si riscrive `y` o `yes`; senza terminale e senza `--yes` è un uso errato (exit 2) e l'API non viene chiamata.
+- **Codici di uscita.** Quelli di G3: 401 → 4, 403 (anche `own_pull_request` di un'approvazione sulla propria PR) → 5, 404 → 6, 409 e 422 (bozza, `not_open`, `conflicts`, `approvals_required`, `head_changed`, …) → 1, uso errato → 2.
+- **`ready --reviewer`.** La richiesta di review parte dopo che la PR è diventata pronta: una bozza non chiede review (409 `draft`). Se la richiesta fallisce, la PR è già pronta e l'errore lo dice.
+- **Commenti sulle righe.** `review` e `comment` non hanno flag per le righe: si inviano con `gs api` (`POST /repos/{owner}/{repo}/pulls/{n}/reviews` con `comments`, dove `side` è `new` o `old`).
+- **Ricerca.** `gs search issues 'is:pr is:open review:required'` passa la query così com'è; il filtro lo applica il server (GIT-266).
+
+### Campi di `--json`
+
+Sono quelli dello schema dell'API (camelCase), più `url` (pagina web della PR). Un campo facoltativo assente è `null`. `--json` senza campi li elenca; un campo sconosciuto è un uso errato (exit 2).
+
+| Comando | Oggetto | Campi |
+|---|---|---|
+| `view`, `create`, `ready`, `merge`, `close`, `checkout` | `PullRequest` | `id`, `number`, `title`, `body`, `state`, `draft`, `author`, `viaToken`, `sourceBranch`, `targetBranch`, `headSha`, `baseSha`, `sourceBranchExists`, `requestedReviewers`, `reviewDecision`, `approvals`, `requiredApprovals`, `statusState`, `commentCount`, `unresolvedThreadCount`, `closingIssues`, `commitCount`, `changedFiles`, `additions`, `deletions`, `mergeMethod`, `mergeCommitSha`, `mergedBy`, `mergedAt`, `closedAt`, `createdAt`, `updatedAt`, `url` |
+| `list` | lista di `PullRequestSummary` | `number`, `title`, `state`, `draft`, `author`, `sourceBranch`, `targetBranch`, `reviewDecision`, `statusState`, `requestedReviewers`, `commentCount`, `mergedAt`, `closedAt`, `createdAt`, `updatedAt`, `url` |
+| `status` | oggetto | `current` (una `PullRequestSummary` o `null`), `authored` (lista di `PullRequestSummary`) |
+| `review` | `PullRequestReview` | `id`, `author`, `state`, `body`, `commitSha`, `stale`, `countsAsApproval`, `commentCount`, `submittedAt` |
+| `comment` | `PullRequestComment` | `id`, `author`, `body`, `path`, `line`, `side`, `startLine`, `commitSha`, `outdated`, `edited`, `deleted`, `viaToken`, `createdAt`, `updatedAt`, `url` |
+| `diff` | `PullRequestFiles` | `files` (lista di `FileDiff`: `path`, `oldPath`, `status`, `additions`, `deletions`, `binary`, `truncated`, `patch`), `filesChanged`, `additions`, `deletions`, `truncated`, `listOnly`, `ignoreWhitespace`, `viewedPaths`, `headSha`, `baseSha`, `url` |
+
+### Test
+
+`cli/internal/cmd/pr/pr_test.go`: un server di test (httptest) risponde secondo le rotte di `api/openapi.yaml`; ogni comando si prova con `--json`, `--jq`, i codici di uscita (0, 1, 2, 4, 5, 6) e, per `merge` e `close`, la conferma G8 (senza `--yes` nessuna chiamata di unione o chiusura). `checkout` usa un git finto. `TestCampiEDocumentazione` controlla che i campi elencati esistano nell'oggetto dell'API e siano documentati qui. I test non girano contro `core`: le operazioni di review e merge in core arrivano con GIT-262 e GIT-263.
 
 ## `gs repo` (GIT-165, G4)
 
@@ -296,12 +337,14 @@ Il repo è quello del remote `origin` o `-R owner/repo`; l'istanza e il token se
 | Comando | Cosa fa | Flag principali |
 |---|---|---|
 | `search issues <query>` | cerca issue su tutta l'installazione (`GET /search/issues`, I10), nei soli repo leggibili; tabella `REPO # STATO AGGIORNATA TITOLO` | `--sort created\|updated\|comments\|relevance`, `-L/--limit` (30) |
+| `search prs [query]` | cerca Pull Request su tutta l'installazione (`GET /search/pulls`, I10 estesa da PR12), nei soli repo leggibili; tabella `REPO # STATO REVIEW AGGIORNATA TITOLO` | `--sort created\|updated\|comments`, `-L/--limit` (30) |
 | `search code <testo>` | cerca un testo nel codice del repo (`GET /repos/{owner}/{repo}/search`, B5): `percorso:riga: frammento` | `--ref` (default: branch principale) |
 | `blame <file>` | per ogni riga: commit, autore (con badge `[agent]` se l'email è di un utente agent), data, numero e testo | `--ref` |
 | `blame --history <file>` | **storico del file** (B4): i commit che lo toccano, dal più recente; `COMMIT DATA AUTORE OGGETTO` | `--ref`, `--author` (nome o email), `-L/--limit` (30) |
 | `browse [percorso[:riga] \| numero]` | apre la UI: repo, file (`#L<riga>`), cartella (`percorso/`), issue (`12` o `#12`) | `-b/--branch`, `--history`, `--blame`, `--issues`, `-n/--no-browser` |
 
-- **Sintassi di `search issues`.** È quella di I10 (`is:`, `reason:`, `label:`, `assignee:` con `@me` e `@agents`, `author:`, `milestone:`, `no:`, `repo:`, `org:`, testo libero), interpretata dal server come per `gs issue list --search`; più parole sono una sola query. Se i risultati sono più di quelli mostrati (`-L`), `gs` lo dice su stderr («Mostrate N issue su M»). Una query non interpretabile è 422 (exit 1).
+- **Sintassi di `search issues`.** È quella di I10 (`is:`, `reason:`, `label:`, `assignee:` con `@me` e `@agents`, `author:`, `milestone:`, `no:`, `repo:`, `org:`, testo libero), interpretata dal server come per `gs issue list --search`; più parole sono una sola query. Se i risultati sono più di quelli mostrati (`-L`), `gs` lo dice su stderr («Mostrate N issue su M»). Una query non interpretabile è 422 (exit 1). `is:pr` cerca fra le Pull Request (PR10): `gs` passa la query così com'è e il filtro lo applica il server (GIT-266), come `gs pr list --search`.
+- **Sintassi di `search prs`.** È quella di I10 con le estensioni di PR12: `is:open|closed|merged|draft` (`is:pr` è implicito; senza stato valgono le PR aperte), `review:required|approved|changes-requested`, `author:` e `assignee:` con `@me` e `@agents` (per una PR l'assegnatario è un revisore richiesto), `no:assignee`, `repo:`, `org:` e testo libero su titolo e testo. Le PR non hanno etichette né milestone: `label:` e `milestone:` non trovano nulla. Senza query elenca le PR aperte.
 - **Limite di 100 in `search code` (B5).** Il server restituisce al massimo 100 risultati e interrompe dopo 10 secondi. Quando succede `gs` lo scrive su stderr («Risultati limitati ai primi 100: ce ne sono altri…», «Ricerca interrotta dopo 10 secondi…») e in `--json` valgono `limitReached` / `timedOut`: l'elenco su stdout resta pulito. Il testo da cercare ha da 2 a 256 caratteri (altrimenti exit 2, senza rete).
 - **Blame e storico (B4).** Un file binario o oltre 1 MB non ha il blame: l'API risponde 400 `blame_unavailable` e `gs` esce 1 con «blame non disponibile per <file>: il file è binario o supera 1 MB (B4)». Il testo delle righe si legge dal file allo stesso ref (non serve con `--json`). Lo storico nel terminale è `gs blame --history <file>`; nel browser `gs browse --history <file>` (pagina commits del file). `--author` e `-L` valgono solo con `--history`.
 - **`browse`.** Senza `-b` il ref è il branch principale del repo (una chiamata a `GET /repos/{owner}/{repo}`; con `-b` o per issue e `--issues` niente rete). Gli indirizzi sono quelli della UI (`web/src/App.tsx`): `/o/r`, `/o/r/tree/<ref>[/<dir>]`, `/o/r/blob/<ref>/<file>#L<n>`, `/o/r/blame/<ref>/<file>`, `/o/r/commits/<ref>[/<file>]`, `/o/r/issues[/<n>]`; i segmenti sono codificati. Con `--no-browser` l'indirizzo va su stdout e il browser non si apre; altrimenti `gs` scrive «Apro <url> nel browser» su stderr. `--history`, `--blame` e `--issues` sono alternativi (exit 2).
@@ -311,6 +354,7 @@ Il repo è quello del remote `origin` o `-R owner/repo`; l'istanza e il token se
 | Comando | Oggetto | Campi |
 |---|---|---|
 | `search issues` | lista | `repo` (`owner/nome`), `number`, `title`, `state`, `closeReason`, `author`, `labels`, `assignees`, `milestone`, `locked`, `commentCount`, `createdAt`, `updatedAt`, `url` |
+| `search prs` | lista | `repo` (`owner/nome`), `number`, `title`, `state`, `draft`, `reviewDecision`, `author`, `requestedReviewers`, `sourceBranch`, `targetBranch`, `commentCount`, `createdAt`, `updatedAt`, `url` |
 | `search code` | oggetto | `query`, `ref`, `limitReached`, `timedOut`, `results` (lista di `{path, line, fragment, url}`) |
 | `label list` | lista | `id`, `name`, `color`, `description`, `openIssues`, `url` |
 | `label create`, `label edit` | oggetto | `id`, `name`, `color`, `description`, `openIssues`, `url` |
@@ -338,7 +382,7 @@ Installa e aggiorna le skills per agenti di coding (formato Agent Skills, cartel
 | Claude Code | `.claude/skills/<nome>/` | `~/.claude/skills/<nome>/` |
 | Codex | `.agents/skills/<nome>/` | `~/.agents/skills/<nome>/` |
 
-Test: `cli/internal/cmd/skills/` (`skills_test.go`: install, rilevamento, update, `--agents-md`, checksum; `skillsdoc_test.go`: frontmatter delle 5 SKILL.md e verifica che ogni `gs …` citato esista, con i suoi flag, e che `gs <cmd> --help` esca 0).
+Test: `cli/internal/cmd/skills/` (`skills_test.go`: install, rilevamento, update, `--agents-md`, checksum; `skillsdoc_test.go`: frontmatter di tutte le SKILL.md e verifica che ogni `gs …` citato esista, con i suoi flag, e che `gs <cmd> --help` esca 0).
 
 ## Versione e build
 

@@ -28,7 +28,7 @@ func agentsMDSection(names []string) string {
 		sb.WriteString(" `" + n + "`")
 	}
 	sb.WriteString(".\n")
-	sb.WriteString("Un commit che chiude una issue contiene `fixes #<numero>`. Non usare `--yes` su eliminazioni e archiviazioni senza un'istruzione esplicita di una persona.\n")
+	sb.WriteString("Un commit che chiude una issue contiene `fixes #<numero>`. Le Pull Request si aprono in bozza con `gs pr create --draft` e passano a pronte con `gs pr ready --reviewer <nome>`. Non usare `--yes` su eliminazioni e archiviazioni senza un'istruzione esplicita di una persona.\n")
 	sb.WriteString("Sezione gestita da `gs skills`: non modificarla a mano, `gs skills update --agents-md` la riscrive.\n")
 	sb.WriteString(MarkerEnd)
 	return sb.String()

@@ -441,3 +441,23 @@ ul.list{margin:0;padding:0;list-style:none}
 .mb-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface-2);border-radius:0 0 var(--r-lg) var(--r-lg)}
 .checks{display:flex;flex-direction:column;gap:4px;margin-top:6px}.checks>div{display:flex;align-items:center;gap:8px}.checks a{margin-left:auto}
 .timeline .mergebox{margin-left:52px}
+
+/* Pull request · Files changed (mockup 27): review sul diff */
+.review-pop{position:absolute;right:0;top:38px;width:340px;z-index:5;padding:12px}
+.dl.sel .n{box-shadow:inset 3px 0 0 var(--accent)}
+.dh.sel .n{box-shadow:inset 3px 0 0 var(--accent)}
+.ln-btn{all:unset;cursor:pointer;display:block;width:100%;text-align:right}
+.ln-btn:hover{color:var(--accent-text);text-decoration:underline}
+.ln-btn:focus-visible{box-shadow:var(--focus)}
+.thread{margin:6px 12px 10px 108px;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);font:13px var(--font-sans);white-space:normal}
+.thread.outdated{margin-left:12px;opacity:.85}
+.thread.collapsed .th-h{border-bottom:0;border-radius:var(--r-lg)}
+.th-h{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface-2);border-bottom:1px solid var(--border);border-radius:var(--r-lg) var(--r-lg) 0 0}
+.th-c{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border)}.th-c p{margin:4px 0 0}
+.th-c code{background:var(--surface-3);padding:1px 5px;border-radius:4px;font:12.5px var(--font-mono)}
+.th-r{padding:8px 12px}
+.suggest{margin-top:8px;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.sg-h{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--surface-2);border-bottom:1px solid var(--border);font-size:12px;font-weight:600}
+.linklike{all:unset;cursor:pointer;color:var(--accent-text)}
+.linklike:hover{text-decoration:underline}
+.linklike:focus-visible{box-shadow:var(--focus)}

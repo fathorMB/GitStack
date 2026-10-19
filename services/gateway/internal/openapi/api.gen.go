@@ -656,13 +656,15 @@ func (e LicenseTemplate) Valid() bool {
 
 // Defines values for MergeBlockerCode.
 const (
-	MergeBlockerCodeApprovalsRequired MergeBlockerCode = "approvals_required"
-	MergeBlockerCodeChangesRequested  MergeBlockerCode = "changes_requested"
-	MergeBlockerCodeConflicts         MergeBlockerCode = "conflicts"
-	MergeBlockerCodeDraft             MergeBlockerCode = "draft"
-	MergeBlockerCodeNotOpen           MergeBlockerCode = "not_open"
-	MergeBlockerCodeStatusFailed      MergeBlockerCode = "status_failed"
-	MergeBlockerCodeStatusRequired    MergeBlockerCode = "status_required"
+	MergeBlockerCodeApprovalsRequired  MergeBlockerCode = "approvals_required"
+	MergeBlockerCodeChangesRequested   MergeBlockerCode = "changes_requested"
+	MergeBlockerCodeConflicts          MergeBlockerCode = "conflicts"
+	MergeBlockerCodeDraft              MergeBlockerCode = "draft"
+	MergeBlockerCodeNotOpen            MergeBlockerCode = "not_open"
+	MergeBlockerCodeNothingToMerge     MergeBlockerCode = "nothing_to_merge"
+	MergeBlockerCodeStatusFailed       MergeBlockerCode = "status_failed"
+	MergeBlockerCodeStatusRequired     MergeBlockerCode = "status_required"
+	MergeBlockerCodeUnrelatedHistories MergeBlockerCode = "unrelated_histories"
 )
 
 // Valid indicates whether the value is a known member of the MergeBlockerCode enum.
@@ -678,9 +680,13 @@ func (e MergeBlockerCode) Valid() bool {
 		return true
 	case MergeBlockerCodeNotOpen:
 		return true
+	case MergeBlockerCodeNothingToMerge:
+		return true
 	case MergeBlockerCodeStatusFailed:
 		return true
 	case MergeBlockerCodeStatusRequired:
+		return true
+	case MergeBlockerCodeUnrelatedHistories:
 		return true
 	default:
 		return false
@@ -938,6 +944,7 @@ func (e PullMirrorState) Valid() bool {
 
 // Defines values for PullRequestEventType.
 const (
+	PullRequestEventTypeBranchDeleted    PullRequestEventType = "branch_deleted"
 	PullRequestEventTypeClosed           PullRequestEventType = "closed"
 	PullRequestEventTypeConvertedToDraft PullRequestEventType = "converted_to_draft"
 	PullRequestEventTypeEdited           PullRequestEventType = "edited"
@@ -952,6 +959,8 @@ const (
 // Valid indicates whether the value is a known member of the PullRequestEventType enum.
 func (e PullRequestEventType) Valid() bool {
 	switch e {
+	case PullRequestEventTypeBranchDeleted:
+		return true
 	case PullRequestEventTypeClosed:
 		return true
 	case PullRequestEventTypeConvertedToDraft:
@@ -1914,6 +1923,27 @@ func (e SearchIssuesParamsSort) Valid() bool {
 	case SearchIssuesParamsSortRelevance:
 		return true
 	case SearchIssuesParamsSortUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchPullRequestsParamsSort.
+const (
+	SearchPullRequestsParamsSortComments SearchPullRequestsParamsSort = "comments"
+	SearchPullRequestsParamsSortCreated  SearchPullRequestsParamsSort = "created"
+	SearchPullRequestsParamsSortUpdated  SearchPullRequestsParamsSort = "updated"
+)
+
+// Valid indicates whether the value is a known member of the SearchPullRequestsParamsSort enum.
+func (e SearchPullRequestsParamsSort) Valid() bool {
+	switch e {
+	case SearchPullRequestsParamsSortComments:
+		return true
+	case SearchPullRequestsParamsSortCreated:
+		return true
+	case SearchPullRequestsParamsSortUpdated:
 		return true
 	default:
 		return false
@@ -3012,7 +3042,7 @@ type MarkedNotifications struct {
 
 // MergeBlocker defines model for MergeBlocker.
 type MergeBlocker struct {
-	// Code Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9).
+	// Code Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9), `nothing_to_merge` (il branch di origine e' gia' contenuto nella destinazione) e `unrelated_histories` (nessuna storia in comune).
 	Code MergeBlockerCode `json:"code"`
 
 	// Contexts I contesti coinvolti, per `status_required` e `status_failed`.
@@ -3020,7 +3050,7 @@ type MergeBlocker struct {
 	Message  string    `json:"message"`
 }
 
-// MergeBlockerCode Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9).
+// MergeBlockerCode Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9), `nothing_to_merge` (il branch di origine e' gia' contenuto nella destinazione) e `unrelated_histories` (nessuna storia in comune).
 type MergeBlockerCode string
 
 // MergeMethod Metodo di merge (PR3). Il rebase non esiste.
@@ -3422,7 +3452,7 @@ type PullRequestEvent struct {
 	Actor     *IssueUser `json:"actor,omitempty"`
 	CreatedAt time.Time  `json:"createdAt"`
 
-	// Data Dettagli per tipo: `opened` ha `draft`, `sourceBranch` e `targetBranch`; `renamed` ha `from` e `to`; `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`.
+	// Data Dettagli per tipo: `opened` ha `draft`, `sourceBranch` e `targetBranch`; `renamed` ha `from` e `to`; `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`; `branch_deleted` ha `branch`.
 	Data *map[string]interface{} `json:"data,omitempty"`
 	Id   openapi_types.UUID      `json:"id"`
 	Type PullRequestEventType    `json:"type"`
@@ -3485,6 +3515,9 @@ type PullRequestMergeability struct {
 	ConflictFiles          []string `json:"conflictFiles"`
 	ConflictFilesTruncated *bool    `json:"conflictFilesTruncated,omitempty"`
 
+	// ConflictInstructions Con `state` uguale a `conflicts`, i comandi per risolvere i conflitti in locale (PR7), uno per riga: `gs pr checkout <numero>`, `git merge origin/<destinazione>`, poi commit e push. Vuoto negli altri stati.
+	ConflictInstructions *[]string `json:"conflictInstructions,omitempty"`
+
 	// DefaultMethod Metodo di merge (PR3). Il rebase non esiste.
 	DefaultMethod MergeMethod `json:"defaultMethod"`
 
@@ -3529,6 +3562,23 @@ type PullRequestReviewList struct {
 	Page    int                 `json:"page"`
 	PerPage int                 `json:"perPage"`
 	Total   int                 `json:"total"`
+}
+
+// PullRequestSearchResult defines model for PullRequestSearchResult.
+type PullRequestSearchResult struct {
+	// PullRequest Pull Request negli elenchi: senza testo.
+	PullRequest PullRequestSummary `json:"pullRequest"`
+
+	// Repo `owner/nome` del repo.
+	Repo string `json:"repo"`
+}
+
+// PullRequestSearchResultList defines model for PullRequestSearchResultList.
+type PullRequestSearchResultList struct {
+	Items   []PullRequestSearchResult `json:"items"`
+	Page    int                       `json:"page"`
+	PerPage int                       `json:"perPage"`
+	Total   int                       `json:"total"`
 }
 
 // PullRequestState Stato (PR6): `open` (aperta, in bozza o pronta, vedi `draft`), `closed` (chiusa senza merge, si riapre se i branch esistono) o `merged` (unita, definitiva).
@@ -4827,7 +4877,7 @@ type ListRepoPullMirrorRunsParams struct {
 
 // ListPullRequestsParams defines parameters for ListPullRequests.
 type ListPullRequestsParams struct {
-	// Q Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:"nome"`, `no:label`, piu' testo libero (titolo e testo).
+	// Q Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:` e `assignee:` con utente, `@me` o `@agents`, `no:assignee`, piu' testo libero (titolo e testo).
 	Q *PullQueryParam `form:"q,omitempty" json:"q,omitempty"`
 
 	// State Stato (PR6). `closed` sono le PR chiuse senza merge, `merged` le unite.
@@ -4951,6 +5001,20 @@ type SearchIssuesParams struct {
 
 // SearchIssuesParamsSort defines parameters for SearchIssues.
 type SearchIssuesParamsSort string
+
+// SearchPullRequestsParams defines parameters for SearchPullRequests.
+type SearchPullRequestsParams struct {
+	// Q Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:` e `assignee:` con utente, `@me` o `@agents`, `no:assignee`, piu' testo libero (titolo e testo).
+	Q *PullQueryParam `form:"q,omitempty" json:"q,omitempty"`
+
+	// Sort Ordine decrescente per data di apertura, ultimo aggiornamento o numero di commenti.
+	Sort    *SearchPullRequestsParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
+	Page    *PageParam                    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam                 `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// SearchPullRequestsParamsSort defines parameters for SearchPullRequests.
+type SearchPullRequestsParamsSort string
 
 // GetUserAccessParams defines parameters for GetUserAccess.
 type GetUserAccessParams struct {
@@ -5515,6 +5579,9 @@ type ServerInterface interface {
 	// SearchIssues Cerca issues su tutta l'installazione
 	// (GET /search/issues)
 	SearchIssues(w http.ResponseWriter, r *http.Request, params SearchIssuesParams)
+	// SearchPullRequests Cerca Pull Request su tutta l'installazione
+	// (GET /search/pulls)
+	SearchPullRequests(w http.ResponseWriter, r *http.Request, params SearchPullRequestsParams)
 	// GetNotificationPreferences Preferenze email delle notifiche
 	// (GET /user/notification-preferences)
 	GetNotificationPreferences(w http.ResponseWriter, r *http.Request)
@@ -12287,6 +12354,78 @@ func (siw *ServerInterfaceWrapper) SearchIssues(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
+// SearchPullRequests operation middleware
+func (siw *ServerInterfaceWrapper) SearchPullRequests(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchPullRequestsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", r.URL.Query(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sort"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sort", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchPullRequests(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetNotificationPreferences operation middleware
 func (siw *ServerInterfaceWrapper) GetNotificationPreferences(w http.ResponseWriter, r *http.Request) {
 
@@ -12523,6 +12662,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/search", wrapper.SearchRepositoryCode)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/commits/{sha}/patch", wrapper.GetRepositoryCommitPatch)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/search/issues", wrapper.SearchIssues)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/search/pulls", wrapper.SearchPullRequests)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/issues", wrapper.ListIssues)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/issues", wrapper.CreateIssue)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}", wrapper.GetIssue)

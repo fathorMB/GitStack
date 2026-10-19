@@ -797,13 +797,15 @@ func (e LookupIdsResultUsersKind) Valid() bool {
 
 // Defines values for MergeBlockerCode.
 const (
-	MergeBlockerCodeApprovalsRequired MergeBlockerCode = "approvals_required"
-	MergeBlockerCodeChangesRequested  MergeBlockerCode = "changes_requested"
-	MergeBlockerCodeConflicts         MergeBlockerCode = "conflicts"
-	MergeBlockerCodeDraft             MergeBlockerCode = "draft"
-	MergeBlockerCodeNotOpen           MergeBlockerCode = "not_open"
-	MergeBlockerCodeStatusFailed      MergeBlockerCode = "status_failed"
-	MergeBlockerCodeStatusRequired    MergeBlockerCode = "status_required"
+	MergeBlockerCodeApprovalsRequired  MergeBlockerCode = "approvals_required"
+	MergeBlockerCodeChangesRequested   MergeBlockerCode = "changes_requested"
+	MergeBlockerCodeConflicts          MergeBlockerCode = "conflicts"
+	MergeBlockerCodeDraft              MergeBlockerCode = "draft"
+	MergeBlockerCodeNotOpen            MergeBlockerCode = "not_open"
+	MergeBlockerCodeNothingToMerge     MergeBlockerCode = "nothing_to_merge"
+	MergeBlockerCodeStatusFailed       MergeBlockerCode = "status_failed"
+	MergeBlockerCodeStatusRequired     MergeBlockerCode = "status_required"
+	MergeBlockerCodeUnrelatedHistories MergeBlockerCode = "unrelated_histories"
 )
 
 // Valid indicates whether the value is a known member of the MergeBlockerCode enum.
@@ -819,9 +821,13 @@ func (e MergeBlockerCode) Valid() bool {
 		return true
 	case MergeBlockerCodeNotOpen:
 		return true
+	case MergeBlockerCodeNothingToMerge:
+		return true
 	case MergeBlockerCodeStatusFailed:
 		return true
 	case MergeBlockerCodeStatusRequired:
+		return true
+	case MergeBlockerCodeUnrelatedHistories:
 		return true
 	default:
 		return false
@@ -1136,6 +1142,7 @@ func (e PullMirrorState) Valid() bool {
 
 // Defines values for PullRequestEventType.
 const (
+	PullRequestEventTypeBranchDeleted    PullRequestEventType = "branch_deleted"
 	PullRequestEventTypeClosed           PullRequestEventType = "closed"
 	PullRequestEventTypeConvertedToDraft PullRequestEventType = "converted_to_draft"
 	PullRequestEventTypeEdited           PullRequestEventType = "edited"
@@ -1150,6 +1157,8 @@ const (
 // Valid indicates whether the value is a known member of the PullRequestEventType enum.
 func (e PullRequestEventType) Valid() bool {
 	switch e {
+	case PullRequestEventTypeBranchDeleted:
+		return true
 	case PullRequestEventTypeClosed:
 		return true
 	case PullRequestEventTypeConvertedToDraft:
@@ -2271,6 +2280,27 @@ func (e SearchIssuesParamsSort) Valid() bool {
 	case SearchIssuesParamsSortRelevance:
 		return true
 	case SearchIssuesParamsSortUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchPullRequestsParamsSort.
+const (
+	SearchPullRequestsParamsSortComments SearchPullRequestsParamsSort = "comments"
+	SearchPullRequestsParamsSortCreated  SearchPullRequestsParamsSort = "created"
+	SearchPullRequestsParamsSortUpdated  SearchPullRequestsParamsSort = "updated"
+)
+
+// Valid indicates whether the value is a known member of the SearchPullRequestsParamsSort enum.
+func (e SearchPullRequestsParamsSort) Valid() bool {
+	switch e {
+	case SearchPullRequestsParamsSortComments:
+		return true
+	case SearchPullRequestsParamsSortCreated:
+		return true
+	case SearchPullRequestsParamsSortUpdated:
 		return true
 	default:
 		return false
@@ -3674,7 +3704,7 @@ type MarkedNotifications struct {
 
 // MergeBlocker defines model for MergeBlocker.
 type MergeBlocker struct {
-	// Code Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9).
+	// Code Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9), `nothing_to_merge` (il branch di origine e' gia' contenuto nella destinazione) e `unrelated_histories` (nessuna storia in comune).
 	Code MergeBlockerCode `json:"code"`
 
 	// Contexts I contesti coinvolti, per `status_required` e `status_failed`.
@@ -3682,7 +3712,7 @@ type MergeBlocker struct {
 	Message  string    `json:"message"`
 }
 
-// MergeBlockerCode Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9).
+// MergeBlockerCode Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9), `nothing_to_merge` (il branch di origine e' gia' contenuto nella destinazione) e `unrelated_histories` (nessuna storia in comune).
 type MergeBlockerCode string
 
 // MergeMethod Metodo di merge (PR3). Il rebase non esiste.
@@ -4209,7 +4239,7 @@ type PullRequestEvent struct {
 	Actor     *IssueUser `json:"actor,omitempty"`
 	CreatedAt time.Time  `json:"createdAt"`
 
-	// Data Dettagli per tipo: `opened` ha `draft`, `sourceBranch` e `targetBranch`; `renamed` ha `from` e `to`; `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`.
+	// Data Dettagli per tipo: `opened` ha `draft`, `sourceBranch` e `targetBranch`; `renamed` ha `from` e `to`; `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`; `branch_deleted` ha `branch`.
 	Data *map[string]interface{} `json:"data,omitempty"`
 	Id   openapi_types.UUID      `json:"id"`
 	Type PullRequestEventType    `json:"type"`
@@ -4272,6 +4302,9 @@ type PullRequestMergeability struct {
 	ConflictFiles          []string `json:"conflictFiles"`
 	ConflictFilesTruncated *bool    `json:"conflictFilesTruncated,omitempty"`
 
+	// ConflictInstructions Con `state` uguale a `conflicts`, i comandi per risolvere i conflitti in locale (PR7), uno per riga: `gs pr checkout <numero>`, `git merge origin/<destinazione>`, poi commit e push. Vuoto negli altri stati.
+	ConflictInstructions *[]string `json:"conflictInstructions,omitempty"`
+
 	// DefaultMethod Metodo di merge (PR3). Il rebase non esiste.
 	DefaultMethod MergeMethod `json:"defaultMethod"`
 
@@ -4316,6 +4349,23 @@ type PullRequestReviewList struct {
 	Page    int                 `json:"page"`
 	PerPage int                 `json:"perPage"`
 	Total   int                 `json:"total"`
+}
+
+// PullRequestSearchResult defines model for PullRequestSearchResult.
+type PullRequestSearchResult struct {
+	// PullRequest Pull Request negli elenchi: senza testo.
+	PullRequest PullRequestSummary `json:"pullRequest"`
+
+	// Repo `owner/nome` del repo.
+	Repo string `json:"repo"`
+}
+
+// PullRequestSearchResultList defines model for PullRequestSearchResultList.
+type PullRequestSearchResultList struct {
+	Items   []PullRequestSearchResult `json:"items"`
+	Page    int                       `json:"page"`
+	PerPage int                       `json:"perPage"`
+	Total   int                       `json:"total"`
 }
 
 // PullRequestState Stato (PR6): `open` (aperta, in bozza o pronta, vedi `draft`), `closed` (chiusa senza merge, si riapre se i branch esistono) o `merged` (unita, definitiva).
@@ -6118,7 +6168,7 @@ type ListRepoPullMirrorRunsParams struct {
 
 // ListPullRequestsParams defines parameters for ListPullRequests.
 type ListPullRequestsParams struct {
-	// Q Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:"nome"`, `no:label`, piu' testo libero (titolo e testo).
+	// Q Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:` e `assignee:` con utente, `@me` o `@agents`, `no:assignee`, piu' testo libero (titolo e testo).
 	Q *PullQueryParam `form:"q,omitempty" json:"q,omitempty"`
 
 	// State Stato (PR6). `closed` sono le PR chiuse senza merge, `merged` le unite.
@@ -6248,6 +6298,20 @@ type SearchIssuesParams struct {
 
 // SearchIssuesParamsSort defines parameters for SearchIssues.
 type SearchIssuesParamsSort string
+
+// SearchPullRequestsParams defines parameters for SearchPullRequests.
+type SearchPullRequestsParams struct {
+	// Q Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:` e `assignee:` con utente, `@me` o `@agents`, `no:assignee`, piu' testo libero (titolo e testo).
+	Q *PullQueryParam `form:"q,omitempty" json:"q,omitempty"`
+
+	// Sort Ordine decrescente per data di apertura, ultimo aggiornamento o numero di commenti.
+	Sort    *SearchPullRequestsParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
+	Page    *PageParam                    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam                 `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// SearchPullRequestsParamsSort defines parameters for SearchPullRequests.
+type SearchPullRequestsParamsSort string
 
 // ListSshKeysParams defines parameters for ListSshKeys.
 type ListSshKeysParams struct {
@@ -8217,7 +8281,7 @@ type ClientInterface interface {
 
 	// ListPullRequests Elenca e cerca le Pull Request del repo
 	//
-	// Chi puo' leggere il repo legge le sue PR. Il numero `#n` e' quello condiviso con le issues (I1). `q` usa la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:`, `no:`, piu' testo libero; `is:pr` e' implicito. I filtri espliciti si sommano a quelli di `q`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+	// Chi puo' leggere il repo legge le sue PR. Il numero `#n` e' quello condiviso con le issues (I1). `q` usa la sintassi di I10 estesa da PR12: `is:open|closed|merged|draft`, `review:required|approved|changes-requested`, `author:` e `assignee:` (utente, `@me`, `@agents`; per una PR l'assegnatario e' un revisore richiesto), `no:assignee`, piu' testo libero; `is:pr` e' implicito. Non servono `repo:` e `org:` (il repo e' questo; per cercare altrove `searchPullRequests`). I filtri espliciti si sommano a quelli di `q`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/pulls (the `ListPullRequests` operationId).
 	ListPullRequests(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListPullRequestsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8469,7 +8533,7 @@ type ClientInterface interface {
 
 	// SetPullRequestFileViewedWithBody Marca o smarca un file come Viewed
 	//
-	// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. La casella vale per quella versione del file: se un nuovo commit lo cambia torna non vista (il file torna fra i `viewedPaths` solo se si marca di nuovo). `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -8478,7 +8542,7 @@ type ClientInterface interface {
 
 	// SetPullRequestFileViewed Marca o smarca un file come Viewed
 	//
-	// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. La casella vale per quella versione del file: se un nuovo commit lo cambia torna non vista (il file torna fra i `viewedPaths` solo se si marca di nuovo). `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -8665,6 +8729,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /search/issues (the `SearchIssues` operationId).
 	SearchIssues(ctx context.Context, params *SearchIssuesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchPullRequests Cerca Pull Request su tutta l'installazione
+	//
+	// La ricerca I10 estesa alle PR (PR12) su tutti i repo che l'utente puo' leggere, e solo su quelli: `is:open|closed|merged|draft|pr`, `review:required|approved|changes-requested`, `author:` e `assignee:` con `@me` e `@agents` (per una PR l'assegnatario e' un revisore richiesto), `repo:`, `org:`, `no:assignee` e testo libero su titolo e testo. `is:pr` e' implicito. Le PR non hanno etichette, milestone ne' motivo di chiusura: `label:`, `milestone:` e `reason:` non trovano nulla (e la loro negazione trova tutto). Senza uno stato in `q` valgono le PR aperte. Un `q` che non si puo' interpretare risponde 422. Stessa sintassi di `listPullRequests`, che e' la ricerca nel singolo repo.
+	//
+	// Corresponds with GET /search/pulls (the `SearchPullRequests` operationId).
+	SearchPullRequests(ctx context.Context, params *SearchPullRequestsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ExportOwnData Esporta i dati personali dell'utente corrente
 	//
@@ -12632,7 +12703,7 @@ func (c *Client) SyncRepoPullMirror(ctx context.Context, owner RepoOwnerParam, r
 
 // ListPullRequests Elenca e cerca le Pull Request del repo
 //
-// Chi puo' leggere il repo legge le sue PR. Il numero `#n` e' quello condiviso con le issues (I1). `q` usa la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:`, `no:`, piu' testo libero; `is:pr` e' implicito. I filtri espliciti si sommano a quelli di `q`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+// Chi puo' leggere il repo legge le sue PR. Il numero `#n` e' quello condiviso con le issues (I1). `q` usa la sintassi di I10 estesa da PR12: `is:open|closed|merged|draft`, `review:required|approved|changes-requested`, `author:` e `assignee:` (utente, `@me`, `@agents`; per una PR l'assegnatario e' un revisore richiesto), `no:assignee`, piu' testo libero; `is:pr` e' implicito. Non servono `repo:` e `org:` (il repo e' questo; per cercare altrove `searchPullRequests`). I filtri espliciti si sommano a quelli di `q`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
 //
 // Corresponds with GET /repos/{owner}/{repo}/pulls (the `ListPullRequests` operationId).
 func (c *Client) ListPullRequests(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListPullRequestsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -13204,7 +13275,7 @@ func (c *Client) UnresolvePullRequestThread(ctx context.Context, owner RepoOwner
 
 // SetPullRequestFileViewedWithBody Marca o smarca un file come Viewed
 //
-// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. La casella vale per quella versione del file: se un nuovo commit lo cambia torna non vista (il file torna fra i `viewedPaths` solo se si marca di nuovo). `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 //
 // Takes any type of body and a specified content type.
 //
@@ -13223,7 +13294,7 @@ func (c *Client) SetPullRequestFileViewedWithBody(ctx context.Context, owner Rep
 
 // SetPullRequestFileViewed Marca o smarca un file come Viewed
 //
-// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. La casella vale per quella versione del file: se un nuovo commit lo cambia torna non vista (il file torna fra i `viewedPaths` solo se si marca di nuovo). `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 //
 // Takes a body of the `application/json` content type.
 //
@@ -13661,6 +13732,23 @@ func (c *Client) GetMyResourcePermission(ctx context.Context, resourceId Resourc
 // Corresponds with GET /search/issues (the `SearchIssues` operationId).
 func (c *Client) SearchIssues(ctx context.Context, params *SearchIssuesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchIssuesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchPullRequests Cerca Pull Request su tutta l'installazione
+//
+// La ricerca I10 estesa alle PR (PR12) su tutti i repo che l'utente puo' leggere, e solo su quelli: `is:open|closed|merged|draft|pr`, `review:required|approved|changes-requested`, `author:` e `assignee:` con `@me` e `@agents` (per una PR l'assegnatario e' un revisore richiesto), `repo:`, `org:`, `no:assignee` e testo libero su titolo e testo. `is:pr` e' implicito. Le PR non hanno etichette, milestone ne' motivo di chiusura: `label:`, `milestone:` e `reason:` non trovano nulla (e la loro negazione trova tutto). Senza uno stato in `q` valgono le PR aperte. Un `q` che non si puo' interpretare risponde 422. Stessa sintassi di `listPullRequests`, che e' la ricerca nel singolo repo.
+//
+// Corresponds with GET /search/pulls (the `SearchPullRequests` operationId).
+func (c *Client) SearchPullRequests(ctx context.Context, params *SearchPullRequestsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchPullRequestsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -25798,6 +25886,96 @@ func NewSearchIssuesRequest(server string, params *SearchIssuesParams) (*http.Re
 	return req, nil
 }
 
+// NewSearchPullRequestsRequest constructs an http.Request for the SearchPullRequests method
+func NewSearchPullRequestsRequest(server string, params *SearchPullRequestsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/search/pulls")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Q != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "q", *params.Q, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Sort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "sort", *params.Sort, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewExportOwnDataRequest constructs an http.Request for the ExportOwnData method
 func NewExportOwnDataRequest(server string) (*http.Request, error) {
 	var err error
@@ -28722,7 +28900,7 @@ type ClientWithResponsesInterface interface {
 
 	// ListPullRequestsWithResponse Elenca e cerca le Pull Request del repo
 	//
-	// Chi puo' leggere il repo legge le sue PR. Il numero `#n` e' quello condiviso con le issues (I1). `q` usa la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:`, `no:`, piu' testo libero; `is:pr` e' implicito. I filtri espliciti si sommano a quelli di `q`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+	// Chi puo' leggere il repo legge le sue PR. Il numero `#n` e' quello condiviso con le issues (I1). `q` usa la sintassi di I10 estesa da PR12: `is:open|closed|merged|draft`, `review:required|approved|changes-requested`, `author:` e `assignee:` (utente, `@me`, `@agents`; per una PR l'assegnatario e' un revisore richiesto), `no:assignee`, piu' testo libero; `is:pr` e' implicito. Non servono `repo:` e `org:` (il repo e' questo; per cercare altrove `searchPullRequests`). I filtri espliciti si sommano a quelli di `q`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -29010,7 +29188,7 @@ type ClientWithResponsesInterface interface {
 
 	// SetPullRequestFileViewedWithBodyWithResponse Marca o smarca un file come Viewed
 	//
-	// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. La casella vale per quella versione del file: se un nuovo commit lo cambia torna non vista (il file torna fra i `viewedPaths` solo se si marca di nuovo). `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -29019,7 +29197,7 @@ type ClientWithResponsesInterface interface {
 
 	// SetPullRequestFileViewedWithResponse Marca o smarca un file come Viewed
 	//
-	// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. La casella vale per quella versione del file: se un nuovo commit lo cambia torna non vista (il file torna fra i `viewedPaths` solo se si marca di nuovo). `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -29236,6 +29414,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /search/issues (the `SearchIssues` operationId).
 	SearchIssuesWithResponse(ctx context.Context, params *SearchIssuesParams, reqEditors ...RequestEditorFn) (*SearchIssuesResponse, error)
+
+	// SearchPullRequestsWithResponse Cerca Pull Request su tutta l'installazione
+	//
+	// La ricerca I10 estesa alle PR (PR12) su tutti i repo che l'utente puo' leggere, e solo su quelli: `is:open|closed|merged|draft|pr`, `review:required|approved|changes-requested`, `author:` e `assignee:` con `@me` e `@agents` (per una PR l'assegnatario e' un revisore richiesto), `repo:`, `org:`, `no:assignee` e testo libero su titolo e testo. `is:pr` e' implicito. Le PR non hanno etichette, milestone ne' motivo di chiusura: `label:`, `milestone:` e `reason:` non trovano nulla (e la loro negazione trova tutto). Senza uno stato in `q` valgono le PR aperte. Un `q` che non si puo' interpretare risponde 422. Stessa sintassi di `listPullRequests`, che e' la ricerca nel singolo repo.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /search/pulls (the `SearchPullRequests` operationId).
+	SearchPullRequestsWithResponse(ctx context.Context, params *SearchPullRequestsParams, reqEditors ...RequestEditorFn) (*SearchPullRequestsResponse, error)
 
 	// ExportOwnDataWithResponse Esporta i dati personali dell'utente corrente
 	//
@@ -45110,6 +45297,82 @@ func (r SearchIssuesResponse) ContentType() string {
 	return ""
 }
 
+type SearchPullRequestsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequestSearchResultList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchPullRequestsResponse) GetJSON200() *PullRequestSearchResultList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SearchPullRequestsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SearchPullRequestsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SearchPullRequestsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SearchPullRequestsResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r SearchPullRequestsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchPullRequestsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchPullRequestsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchPullRequestsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchPullRequestsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ExportOwnDataResponse200Headers the declared response headers of an HTTP 200 response for ExportOwnData
 type ExportOwnDataResponse200Headers struct {
 	ContentDisposition *string
@@ -49905,7 +50168,7 @@ func (c *ClientWithResponses) SyncRepoPullMirrorWithResponse(ctx context.Context
 
 // ListPullRequestsWithResponse Elenca e cerca le Pull Request del repo
 //
-// Chi puo' leggere il repo legge le sue PR. Il numero `#n` e' quello condiviso con le issues (I1). `q` usa la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:`, `no:`, piu' testo libero; `is:pr` e' implicito. I filtri espliciti si sommano a quelli di `q`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+// Chi puo' leggere il repo legge le sue PR. Il numero `#n` e' quello condiviso con le issues (I1). `q` usa la sintassi di I10 estesa da PR12: `is:open|closed|merged|draft`, `review:required|approved|changes-requested`, `author:` e `assignee:` (utente, `@me`, `@agents`; per una PR l'assegnatario e' un revisore richiesto), `no:assignee`, piu' testo libero; `is:pr` e' implicito. Non servono `repo:` e `org:` (il repo e' questo; per cercare altrove `searchPullRequests`). I filtri espliciti si sommano a quelli di `q`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -50385,7 +50648,7 @@ func (c *ClientWithResponses) UnresolvePullRequestThreadWithResponse(ctx context
 
 // SetPullRequestFileViewedWithBodyWithResponse Marca o smarca un file come Viewed
 //
-// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. La casella vale per quella versione del file: se un nuovo commit lo cambia torna non vista (il file torna fra i `viewedPaths` solo se si marca di nuovo). `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -50400,7 +50663,7 @@ func (c *ClientWithResponses) SetPullRequestFileViewedWithBodyWithResponse(ctx c
 
 // SetPullRequestFileViewedWithResponse Marca o smarca un file come Viewed
 //
-// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. La casella vale per quella versione del file: se un nuovo commit lo cambia torna non vista (il file torna fra i `viewedPaths` solo se si marca di nuovo). `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -50772,6 +51035,21 @@ func (c *ClientWithResponses) SearchIssuesWithResponse(ctx context.Context, para
 		return nil, err
 	}
 	return ParseSearchIssuesResponse(rsp)
+}
+
+// SearchPullRequestsWithResponse Cerca Pull Request su tutta l'installazione
+//
+// La ricerca I10 estesa alle PR (PR12) su tutti i repo che l'utente puo' leggere, e solo su quelli: `is:open|closed|merged|draft|pr`, `review:required|approved|changes-requested`, `author:` e `assignee:` con `@me` e `@agents` (per una PR l'assegnatario e' un revisore richiesto), `repo:`, `org:`, `no:assignee` e testo libero su titolo e testo. `is:pr` e' implicito. Le PR non hanno etichette, milestone ne' motivo di chiusura: `label:`, `milestone:` e `reason:` non trovano nulla (e la loro negazione trova tutto). Senza uno stato in `q` valgono le PR aperte. Un `q` che non si puo' interpretare risponde 422. Stessa sintassi di `listPullRequests`, che e' la ricerca nel singolo repo.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /search/pulls (the `SearchPullRequests` operationId).
+func (c *ClientWithResponses) SearchPullRequestsWithResponse(ctx context.Context, params *SearchPullRequestsParams, reqEditors ...RequestEditorFn) (*SearchPullRequestsResponse, error) {
+	rsp, err := c.SearchPullRequests(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchPullRequestsResponse(rsp)
 }
 
 // ExportOwnDataWithResponse Esporta i dati personali dell'utente corrente
@@ -64003,6 +64281,67 @@ func ParseSearchIssuesResponse(rsp *http.Response) (*SearchIssuesResponse, error
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest IssueSearchResultList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchPullRequestsResponse parses an HTTP response from a SearchPullRequestsWithResponse call
+func ParseSearchPullRequestsResponse(rsp *http.Response) (*SearchPullRequestsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchPullRequestsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequestSearchResultList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

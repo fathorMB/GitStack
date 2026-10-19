@@ -11,6 +11,7 @@ import { CommitsPage } from './CommitsPage';
 import { IssueDetailPage } from './IssueDetailPage';
 import { NewPullPage } from './NewPullPage';
 import { PullDetailPage } from './PullDetailPage';
+import { PullFilesPage } from './PullFilesPage';
 import { PullsPage } from './PullsPage';
 import { NewIssuePage } from './NewIssuePage';
 import { IssuesPage } from './IssuesPage';
@@ -26,7 +27,7 @@ import { isRepoAdmin, loadMe } from './repoAdmin';
 // Pagina /<owner>/<repo> (R1): con repo vuoto mostra il quick setup
 // (mockup 06); altrimenti un segnaposto in attesa del browser di M-04.
 // key sul repo: passando da /a/x a /b/y senza smontare la pagina i dati si ricaricano.
-export type RepoMode = 'tree' | 'commits' | 'commit' | 'tags' | 'search' | 'issues' | 'issue' | 'newissue' | 'labels' | 'milestones' | 'pulls' | 'pull' | 'newpull' | FileMode;
+export type RepoMode = 'tree' | 'commits' | 'commit' | 'tags' | 'search' | 'issues' | 'issue' | 'newissue' | 'labels' | 'milestones' | 'pulls' | 'pull' | 'pullfiles' | 'newpull' | FileMode;
 
 export function RepoPage({ mode = 'tree' }: { mode?: RepoMode }) {
   const { owner = '', repo = '', '*': splat = '' } = useParams();
@@ -90,6 +91,10 @@ function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: stri
       ) : mode === 'pull' ? (
         <div className="section-gap">
           <PullDetailPage repo={data} />
+        </div>
+      ) : mode === 'pullfiles' ? (
+        <div className="section-gap">
+          <PullFilesPage repo={data} />
         </div>
       ) : mode === 'newissue' ? (
         <div className="section-gap">

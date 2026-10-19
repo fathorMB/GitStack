@@ -12,6 +12,7 @@ import { ResourcesPage } from './pages/ResourcesPage';
 import { NewRepoPage } from "./pages/repos/NewRepoPage";
 import { DeletedReposPage } from './pages/repos/DeletedReposPage';
 import { RepoSettingsPage } from './pages/repos/RepoSettingsPage';
+import { BranchSettingsPage } from './pages/repos/BranchSettingsPage';
 import { RepoPage } from "./pages/repos/RepoPage";
 import { ReposPage } from "./pages/repos/ReposPage";
 import { OrgPage } from './pages/orgs/OrgPage';
@@ -305,6 +306,16 @@ export function AppRoutes() {
         }
       />
       <Route
+        path="/:owner/:repo/pulls/:number/files"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Repository">
+              <RepoPage mode="pullfiles" />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/:owner/:repo/tags"
         element={
           <RequireAuth>
@@ -340,6 +351,16 @@ export function AppRoutes() {
           <RequireAuth>
             <AppShell crumb="Repository settings">
               <RepoSettingsPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/:owner/:repo/settings/branches"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Repository settings">
+              <BranchSettingsPage />
             </AppShell>
           </RequireAuth>
         }

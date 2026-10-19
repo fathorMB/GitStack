@@ -1,4 +1,4 @@
-import { Bot, Check, GitBranch, MessageSquare, X } from 'lucide-react';
+import { Bot, Check, FileText, GitBranch, MessageSquare, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -118,6 +118,10 @@ export function PullDetailPage({ repo }: { repo: Repository }) {
           <MessageSquare size={16} aria-hidden="true" />
           Conversation <span className="counter">{pr.commentCount}</span>
         </span>
+        <Link className="tab" to={`${base}/pulls/${pr.number}/files`}>
+          <FileText size={16} aria-hidden="true" />
+          Files changed <span className="counter">{pr.changedFiles}</span>
+        </Link>
       </nav>
       {actionError ? <ErrorAlert message={actionError} /> : null}
 

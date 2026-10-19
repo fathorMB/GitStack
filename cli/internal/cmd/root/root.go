@@ -23,6 +23,7 @@ import (
 	mcpcmd "github.com/fathorMB/GitStack/cli/internal/cmd/mcp"
 	"github.com/fathorMB/GitStack/cli/internal/cmd/milestone"
 	"github.com/fathorMB/GitStack/cli/internal/cmd/notification"
+	"github.com/fathorMB/GitStack/cli/internal/cmd/pr"
 	"github.com/fathorMB/GitStack/cli/internal/cmd/repo"
 	"github.com/fathorMB/GitStack/cli/internal/cmd/search"
 	"github.com/fathorMB/GitStack/cli/internal/cmd/skills"
@@ -69,6 +70,7 @@ func NewCmd(f *cmdutil.Factory) *cobra.Command {
 		issue.NewCmd(f),
 		label.NewCmd(f),
 		milestone.NewCmd(f),
+		pr.NewCmd(f),
 		mcpcmd.NewCmd(f),
 		search.NewCmd(f),
 		browse.NewCmd(f),

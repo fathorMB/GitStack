@@ -25,13 +25,14 @@ export type RepoHeaderMode =
   | 'pulls'
   | 'pull'
   | 'newpull'
+  | 'pullfiles'
   | 'settings'
   | 'webhooks';
 
 // Regola dell'attiva per elenco esplicito: un mode nuovo non accende nessuna scheda.
 const CODE_MODES: readonly RepoHeaderMode[] = ['tree', 'commits', 'commit', 'tags', 'search', 'blob', 'blame'];
 const ISSUES_MODES: readonly RepoHeaderMode[] = ['issues', 'issue', 'newissue', 'labels', 'milestones'];
-const PULLS_MODES: readonly RepoHeaderMode[] = ['pulls', 'pull', 'newpull'];
+const PULLS_MODES: readonly RepoHeaderMode[] = ['pulls', 'pull', 'pullfiles', 'newpull'];
 const SETTINGS_MODES: readonly RepoHeaderMode[] = ['settings', 'webhooks'];
 
 // Intestazione del repo condivisa (titolo, badge, Watch, descrizione, schede):

@@ -2553,15 +2553,30 @@ export type PullRequestList = {
     total: number;
 };
 
+export type PullRequestSearchResult = {
+    /**
+     * `owner/nome` del repo.
+     */
+    repo: string;
+    pullRequest: PullRequestSummary;
+};
+
+export type PullRequestSearchResultList = {
+    items: Array<PullRequestSearchResult>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
 export type PullRequestEvent = {
     id: string;
-    type: 'opened' | 'renamed' | 'edited' | 'retargeted' | 'ready_for_review' | 'converted_to_draft' | 'closed' | 'reopened' | 'merged';
+    type: 'opened' | 'renamed' | 'edited' | 'retargeted' | 'ready_for_review' | 'converted_to_draft' | 'closed' | 'reopened' | 'merged' | 'branch_deleted';
     /**
      * Assente per gli eventi di sistema.
      */
     actor?: IssueUser | null;
     /**
-     * Dettagli per tipo: `opened` ha `draft`, `sourceBranch` e `targetBranch`; `renamed` ha `from` e `to`; `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`.
+     * Dettagli per tipo: `opened` ha `draft`, `sourceBranch` e `targetBranch`; `renamed` ha `from` e `to`; `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`; `branch_deleted` ha `branch`.
      *
      */
     data?: {
@@ -2623,10 +2638,10 @@ export type MergePullRequestInput = {
 
 export type MergeBlocker = {
     /**
-     * Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9).
+     * Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9), `nothing_to_merge` (il branch di origine e' gia' contenuto nella destinazione) e `unrelated_histories` (nessuna storia in comune).
      *
      */
-    code: 'draft' | 'not_open' | 'conflicts' | 'approvals_required' | 'changes_requested' | 'status_required' | 'status_failed';
+    code: 'draft' | 'not_open' | 'conflicts' | 'approvals_required' | 'changes_requested' | 'status_required' | 'status_failed' | 'nothing_to_merge' | 'unrelated_histories';
     message: string;
     /**
      * I contesti coinvolti, per `status_required` e `status_failed`.
@@ -2650,6 +2665,11 @@ export type PullRequestMergeability = {
      */
     conflictFiles: Array<string>;
     conflictFilesTruncated?: boolean;
+    /**
+     * Con `state` uguale a `conflicts`, i comandi per risolvere i conflitti in locale (PR7), uno per riga: `gs pr checkout <numero>`, `git merge origin/<destinazione>`, poi commit e push. Vuoto negli altri stati.
+     *
+     */
+    conflictInstructions?: Array<string>;
     /**
      * Commit della destinazione non ancora nel branch di origine. Non impedisce il merge (PR7).
      */
@@ -3708,7 +3728,7 @@ export type PullCommentIdParam = string;
 export type PullThreadIdParam = string;
 
 /**
- * Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:"nome"`, `no:label`, piu' testo libero (titolo e testo).
+ * Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:` e `assignee:` con utente, `@me` o `@agents`, `no:assignee`, piu' testo libero (titolo e testo).
  *
  */
 export type PullQueryParam = string;
@@ -7697,6 +7717,61 @@ export type SearchIssuesResponses = {
 
 export type SearchIssuesResponse = SearchIssuesResponses[keyof SearchIssuesResponses];
 
+export type SearchPullRequestsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:` e `assignee:` con utente, `@me` o `@agents`, `no:assignee`, piu' testo libero (titolo e testo).
+         *
+         */
+        q?: string;
+        /**
+         * Ordine decrescente per data di apertura, ultimo aggiornamento o numero di commenti.
+         */
+        sort?: 'created' | 'updated' | 'comments';
+        page?: number;
+        perPage?: number;
+    };
+    url: '/search/pulls';
+};
+
+export type SearchPullRequestsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type SearchPullRequestsError = SearchPullRequestsErrors[keyof SearchPullRequestsErrors];
+
+export type SearchPullRequestsResponses = {
+    /**
+     * Pagina di risultati.
+     */
+    200: PullRequestSearchResultList;
+};
+
+export type SearchPullRequestsResponse = SearchPullRequestsResponses[keyof SearchPullRequestsResponses];
+
 export type ListIssuesData = {
     body?: never;
     path: {
@@ -9680,7 +9755,7 @@ export type ListPullRequestsData = {
     };
     query?: {
         /**
-         * Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:"nome"`, `no:label`, piu' testo libero (titolo e testo).
+         * Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:` e `assignee:` con utente, `@me` o `@agents`, `no:assignee`, piu' testo libero (titolo e testo).
          *
          */
         q?: string;

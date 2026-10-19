@@ -3041,6 +3041,47 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /search/pulls:
+    get:
+      operationId: searchPullRequests
+      tags: [pulls]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: pr_search
+        destructive: false
+      summary: Cerca Pull Request su tutta l'installazione
+      description: >
+        La ricerca I10 estesa alle PR (PR12) su tutti i repo che l'utente puo' leggere, e solo su quelli:
+        `is:open|closed|merged|draft|pr`, `review:required|approved|changes-requested`, `author:` e `assignee:`
+        con `@me` e `@agents` (per una PR l'assegnatario e' un revisore richiesto), `repo:`, `org:`, `no:assignee`
+        e testo libero su titolo e testo. `is:pr` e' implicito. Le PR non hanno etichette, milestone ne' motivo
+        di chiusura: `label:`, `milestone:` e `reason:` non trovano nulla (e la loro negazione trova tutto).
+        Senza uno stato in `q` valgono le PR aperte. Un `q` che non si puo' interpretare risponde 422.
+        Stessa sintassi di `listPullRequests`, che e' la ricerca nel singolo repo.
+      parameters:
+        - $ref: "#/components/parameters/PullQueryParam"
+        - $ref: "#/components/parameters/PullSortParam"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di risultati.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullRequestSearchResultList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /repos/{owner}/{repo}/issues:
     parameters:
       - $ref: "#/components/parameters/RepoOwnerParam"
@@ -4342,9 +4383,10 @@ paths:
       summary: Elenca e cerca le Pull Request del repo
       description: >
         Chi puo' leggere il repo legge le sue PR. Il numero `#n` e' quello condiviso con le issues (I1).
-        `q` usa la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`,
-        `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:`, `no:`, piu' testo
-        libero; `is:pr` e' implicito. I filtri espliciti si sommano a quelli di `q`. Paginazione come
+        `q` usa la sintassi di I10 estesa da PR12: `is:open|closed|merged|draft`,
+        `review:required|approved|changes-requested`, `author:` e `assignee:` (utente, `@me`, `@agents`; per una PR
+        l'assegnatario e' un revisore richiesto), `no:assignee`, piu' testo libero; `is:pr` e' implicito.
+        Non servono `repo:` e `org:` (il repo e' questo; per cercare altrove `searchPullRequests`). I filtri espliciti si sommano a quelli di `q`. Paginazione come
         `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
       parameters:
         - $ref: "#/components/parameters/PullQueryParam"
@@ -4795,7 +4837,8 @@ paths:
       description: >
         La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si
         legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto
-        perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta
+        perche' scrive uno stato dell'utente. La casella vale per quella versione del file: se un nuovo commit lo cambia
+        torna non vista (il file torna fra i `viewedPaths` solo se si marca di nuovo). `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta
         comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
       requestBody:
         required: true
@@ -9047,8 +9090,8 @@ components:
         maxLength: 512
       description: >
         Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`,
-        `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:"nome"`,
-        `no:label`, piu' testo libero (titolo e testo).
+        `review:required|approved|changes-requested`, `author:` e `assignee:` con utente, `@me` o `@agents`,
+        `no:assignee`, piu' testo libero (titolo e testo).
     PullStateFilter:
       name: state
       in: query
@@ -13675,6 +13718,31 @@ components:
           type: integer
         total:
           type: integer
+    PullRequestSearchResult:
+      type: object
+      additionalProperties: false
+      required: [repo, pullRequest]
+      properties:
+        repo:
+          type: string
+          description: "`owner/nome` del repo."
+        pullRequest:
+          $ref: "#/components/schemas/PullRequestSummary"
+    PullRequestSearchResultList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PullRequestSearchResult"
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
     PullRequestEvent:
       type: object
       additionalProperties: false
@@ -13685,7 +13753,7 @@ components:
           format: uuid
         type:
           type: string
-          enum: [opened, renamed, edited, retargeted, ready_for_review, converted_to_draft, closed, reopened, merged]
+          enum: [opened, renamed, edited, retargeted, ready_for_review, converted_to_draft, closed, reopened, merged, branch_deleted]
         actor:
           allOf:
             - $ref: "#/components/schemas/IssueUser"
@@ -13697,7 +13765,7 @@ components:
           additionalProperties: true
           description: >
             Dettagli per tipo: `opened` ha `draft`, `sourceBranch` e `targetBranch`; `renamed` ha `from` e `to`;
-            `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`.
+            `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`; `branch_deleted` ha `branch`.
         createdAt:
           type: string
           format: date-time
@@ -13801,10 +13869,13 @@ components:
             - changes_requested
             - status_required
             - status_failed
+            - nothing_to_merge
+            - unrelated_histories
           description: >
             Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e
             `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e
-            `status_failed` (contesto obbligatorio `failure` o `error`, PR9).
+            `status_failed` (contesto obbligatorio `failure` o `error`, PR9), `nothing_to_merge` (il branch di origine e' gia'
+            contenuto nella destinazione) e `unrelated_histories` (nessuna storia in comune).
         message:
           type: string
         contexts:
@@ -13835,6 +13906,13 @@ components:
             type: string
         conflictFilesTruncated:
           type: boolean
+        conflictInstructions:
+          type: array
+          description: >
+            Con `state` uguale a `conflicts`, i comandi per risolvere i conflitti in locale (PR7), uno per riga:
+            `gs pr checkout <numero>`, `git merge origin/<destinazione>`, poi commit e push. Vuoto negli altri stati.
+          items:
+            type: string
         behindBy:
           type: integer
           minimum: 0

@@ -201,6 +201,19 @@ Test: `internal/migrate/issues_integration_test.go` (60 transazioni in parallelo
 - Modelli (I11): `listIssueTemplates` leggerà `.gitstack/ISSUE_TEMPLATE/` dal branch principale tramite il servizio git (API interne `gitGetTree` e `gitGetFile` già esistenti).
 
 
+## Ricerca delle Pull Request (v1.1, GIT-266, PR12a)
+
+`GET /repos/{owner}/{repo}/pulls` e `GET /search/pulls` usano la stessa traduzione (`internal/httpserver/pulls_search.go`) della sintassi di `pkg/issuequery`, riusando il `searchBuilder` delle issues.
+
+- **Qualificatori nuovi.** `is:pr|draft|merged` e `review:required|approved|changes-requested`. `is:pr` è implicito; `is:draft` vale solo per le PR aperte. Senza uno stato in `q` (né `state` esplicito) valgono le PR aperte; `-is:draft` non toglie il default.
+- **Assegnatario = revisore richiesto.** Una PR non ha assegnatari: `assignee:` e `no:assignee` guardano `pull_request_review_requests`. `author:@agents` e `assignee:@agents` classificano (identity `lookup-ids`) gli autori e i revisori delle PR nell'ambito, al massimo 5000 utenti. Etichette, milestone e motivo di chiusura non esistono: `label:`, `milestone:`, `reason:` non trovano nulla e la loro negazione trova tutto.
+- **review:** si calcola come `reviewDecision` dell'elenco (`pullReviewState`: ultima review di ogni persona, agenti esclusi, regole del branch), quindi si applica dopo la query SQL: con `review:` si leggono al massimo 10000 candidate, si filtrano e solo dopo si pagina (il `total` è quello filtrato). I positivi valgono tutti, ogni `-review:` esclude.
+- **Visibilità.** Come per le issues: la ricerca globale parte dai repo di readable-resources di identity e non esamina gli altri; `/repos/{owner}/{repo}/pulls` di un repo non leggibile è 404. Le issues non sono mai PR: `GET /search/issues` e `listIssues` con `is:pr`, `is:draft`, `is:merged` o `review:` non trovano nulla (e `-is:pr` trova tutte le issues).
+
+## Casella Viewed (v1.1, GIT-266, PR12b)
+
+`PUT /repos/{owner}/{repo}/pulls/{number}/viewed` scrive una riga di `pull_request_viewed_files` (PR, utente, file) con `viewed_sha` = head della PR; `viewed: false` la cancella. Lo stato è personale (chi chiama) e serve poter leggere il repo. `listPullRequestFiles` mette in `viewedPaths` i file marcati che non sono cambiati: se `viewed_sha` è l'head attuale il file è visto; altrimenti core chiede al servizio git il confronto `viewed_sha..head` e il file resta visto solo se non compare fra i file cambiati (anche come `oldPath` di una rinomina). In ogni dubbio (`viewed_sha` non antenato dell'head, confronto non disponibile o troncato) il file torna non visto. Nessuna migrazione: lo schema di 0018 basta.
+
 ## Ricerca delle issues (M-05/F, GIT-106)
 
 `GET /repos/{owner}/{repo}/issues` e `GET /search/issues` usano la stessa traduzione (`internal/httpserver/issues_search.go`) della sintassi di `pkg/issuequery` (I10) in SQL.

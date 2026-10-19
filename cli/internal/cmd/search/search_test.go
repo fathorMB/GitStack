@@ -78,6 +78,18 @@ func TestSearchIssues(t *testing.T) {
 	}
 }
 
+// is:pr (PR10): gs passa la query al server così com'è; il filtro lo applica il server (GIT-266).
+func TestSearchIssuesPassaIsPr(t *testing.T) {
+	routes := map[string]string{"/search/issues": `{"items":[` + issueJSON(7, "Correggi") + `],"page":1,"perPage":30,"total":1}`}
+	r := run(t, routes, "search", "issues", "is:pr", "is:open", "review:required")
+	if r.code != 0 || len(r.queries) != 1 {
+		t.Fatalf("%+v", r)
+	}
+	if q := r.queries[0]; !strings.Contains(q, "q=is%3Apr+is%3Aopen+review%3Arequired") {
+		t.Errorf("query: %s", q)
+	}
+}
+
 func TestSearchIssuesMostraSeTroncato(t *testing.T) {
 	routes := map[string]string{"/search/issues": `{"items":[` + issueJSON(1, "Uno") + `],"page":1,"perPage":1,"total":40}`}
 	r := run(t, routes, "search", "issues", "x", "-L", "1")
@@ -127,5 +139,46 @@ func TestSearchCodeErrori(t *testing.T) {
 	}
 	if r := run(t, nil, "search", "code", "abc"); r.code != 6 {
 		t.Errorf("404: %+v", r)
+	}
+}
+
+func pullJSON(n int, title, state, decision string, draft bool) string {
+	return fmt.Sprintf(`{"pullRequest":{"number":%d,"title":%q,"state":%q,"draft":%t,"reviewDecision":%q,"author":{"id":"00000000-0000-0000-0000-000000000001","username":"alice","kind":"human"},"sourceBranch":"feat","targetBranch":"main","requestedReviewers":[],"commentCount":0,"createdAt":"2026-10-01T10:00:00Z","updatedAt":"2026-10-02T10:00:00Z"},"repo":"acme/web"}`, n, title, state, draft, decision)
+}
+
+func TestSearchPrs(t *testing.T) {
+	routes := map[string]string{"/search/pulls": `{"items":[` + pullJSON(3, "Nuova", "open", "required", false) + `,` + pullJSON(5, "Bozza", "open", "none", true) + `],"page":1,"perPage":30,"total":2}`}
+	r := run(t, routes, "search", "prs", "review:required", "author:@agents", "--sort", "updated")
+	if r.code != 0 || !strings.Contains(r.out, "acme/web") || !strings.Contains(r.out, "#3") || !strings.Contains(r.out, "required") || !strings.Contains(r.out, "draft") {
+		t.Fatalf("%+v", r)
+	}
+	q := r.queries[0]
+	if !strings.Contains(q, "/search/pulls") || !strings.Contains(q, "q=review%3Arequired+author%3A%40agents") || !strings.Contains(q, "sort=updated") {
+		t.Errorf("query: %s", q)
+	}
+	j := run(t, routes, "search", "prs", "is:draft", "--json", "repo,number,url,reviewDecision")
+	if j.code != 0 || !strings.Contains(j.out, "/acme/web/pulls/3") || !strings.Contains(j.out, `"reviewDecision":"required"`) {
+		t.Errorf("json: %+v", j)
+	}
+	// senza query vale il default del server (le PR aperte)
+	if n := run(t, routes, "search", "prs"); n.code != 0 || strings.Contains(n.queries[0], "q=") {
+		t.Errorf("senza query: %+v", n)
+	}
+}
+
+func TestSearchPrsMostraSeTroncatoEUsoErrato(t *testing.T) {
+	routes := map[string]string{"/search/pulls": `{"items":[` + pullJSON(1, "Uno", "open", "none", false) + `],"page":1,"perPage":1,"total":40}`}
+	if r := run(t, routes, "search", "prs", "x", "-L", "1"); r.code != 0 || !strings.Contains(r.errOut, "Mostrate 1 Pull Request su 40") {
+		t.Errorf("%+v", r)
+	}
+	for _, args := range [][]string{{"search", "prs", "x", "--sort", "relevance"}, {"search", "prs", "x", "-L", "0"}} {
+		if r := run(t, nil, args...); r.code != 2 || len(r.queries) != 0 {
+			t.Errorf("%v: %+v", args, r)
+		}
+	}
+	// una query non interpretabile è un errore del server (422)
+	bad := map[string]string{}
+	if r := run(t, bad, "search", "prs", "review:boh"); r.code == 0 {
+		t.Errorf("query rifiutata dal server ma exit 0: %+v", r)
 	}
 }
