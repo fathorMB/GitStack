@@ -133,3 +133,7 @@ func (s *apiServer) SetPullRequestFileViewed(w http.ResponseWriter, r *http.Requ
 func (s *apiServer) ListPullRequestEvents(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam, _ openapi.ListPullRequestEventsParams) {
 	s.proxy.ServeHTTP(w, r)
 }
+
+func (s *apiServer) SearchPullRequests(w http.ResponseWriter, r *http.Request, _ openapi.SearchPullRequestsParams) {
+	s.proxy.ServeHTTP(w, r)
+}

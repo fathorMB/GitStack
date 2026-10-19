@@ -2,13 +2,10 @@ package httpserver
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -36,70 +33,18 @@ func pagination(w http.ResponseWriter, page, perPage *int) (int, int, bool) {
 	return p, pp, true
 }
 
-// pullQuery è il filtro di ricerca già interpretato.
-type pullQuery struct {
-	states   []string
-	draft    *bool
-	authorID *uuid.UUID
-	noMatch  bool
-	text     []string
-}
-
-// parsePullQuery interpreta `q` (I10 estesa da PR12): is:open|closed|merged,
-// is:draft, author:utente|@me e testo libero. Gli altri filtri (review:,
-// label:, no:, @agents) non ci sono ancora: 422 invece di ignorarli.
-func (s *apiServer) parsePullQuery(r *http.Request, ia issueAccess, q string) (pullQuery, string, error) {
-	var pq pullQuery
-	for _, tok := range strings.Fields(q) {
-		key, val, found := strings.Cut(tok, ":")
-		key = strings.ToLower(key)
-		if !found || val == "" || (key != "is" && key != "author" && key != "review" && key != "label" && key != "no") {
-			pq.text = append(pq.text, tok)
-			continue
-		}
-		switch key {
-		case "is":
-			switch strings.ToLower(val) {
-			case "open", "closed", "merged":
-				pq.states = append(pq.states, strings.ToLower(val))
-			case "draft":
-				t := true
-				pq.draft = &t
-			case "pr":
-			default:
-				return pq, fmt.Sprintf("q: is:%s non è un filtro valido.", val), nil
-			}
-		case "author":
-			if strings.EqualFold(val, "@agents") {
-				return pq, "q: author:@agents non è ancora supportato.", nil
-			}
-			if val == "@me" {
-				pq.authorID = &ia.userID
-				continue
-			}
-			o, err := s.repoIdentity.ResolveOwner(r.Context(), strings.ToLower(val))
-			if errors.Is(err, identityclient.ErrNotFound) || (err == nil && o.Type != "user") {
-				pq.noMatch = true
-				continue
-			}
-			if err != nil {
-				return pq, "", err
-			}
-			pq.authorID = &o.ID
-		default:
-			return pq, fmt.Sprintf("q: il filtro %s: non è ancora supportato.", key), nil
-		}
-	}
-	return pq, "", nil
-}
-
 func likeEscape(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
 
 // ListPullRequests implementa GET /repos/{owner}/{repo}/pulls.
 func (s *apiServer) ListPullRequests(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, params openapi.ListPullRequestsParams) {
-	page, perPage, ok := pagination(w, params.Page, params.PerPage)
+	var sort *string
+	if params.Sort != nil {
+		v := string(*params.Sort)
+		sort = &v
+	}
+	p, ok := parsePullSearch(w, params.Q, sort, params.Page, params.PerPage)
 	if !ok {
 		return
 	}
@@ -107,113 +52,36 @@ func (s *apiServer) ListPullRequests(w http.ResponseWriter, r *http.Request, own
 	if !ok {
 		return
 	}
-	ctx := r.Context()
-	var pq pullQuery
-	if params.Q != nil {
-		var msg string
-		var err error
-		if pq, msg, err = s.parsePullQuery(r, ia, *params.Q); err != nil {
-			writeIssueFailure(w, "risoluzione dell'autore non riuscita", fmt.Errorf("%w: %v", errUsersUnavailable, err))
-			return
-		} else if msg != "" {
-			writeFieldError(w, "q", msg)
-			return
-		}
-	}
-	conds := []string{"p.repo_id = $1"}
-	args := []any{ia.repo.ID}
-	add := func(cond string, v any) {
-		args = append(args, v)
-		conds = append(conds, strings.Replace(cond, "?", fmt.Sprintf("$%d", len(args)), 1))
-	}
-	// Lo stato esplicito si somma a quello di q; senza nessuno dei due vale open.
 	if params.State != nil {
 		switch *params.State {
-		case openapi.ListPullRequestsParamsStateOpen, openapi.ListPullRequestsParamsStateClosed, openapi.ListPullRequestsParamsStateMerged:
-			add("p.state = ?", string(*params.State))
-		case openapi.ListPullRequestsParamsStateAll:
+		case openapi.ListPullRequestsParamsStateOpen, openapi.ListPullRequestsParamsStateClosed, openapi.ListPullRequestsParamsStateMerged, openapi.ListPullRequestsParamsStateAll:
+			p.state = string(*params.State)
 		default:
 			writeFieldError(w, "state", "state: open, closed, merged o all.")
 			return
 		}
-	} else if len(pq.states) == 0 && pq.draft == nil {
-		add("p.state = ?", "open")
 	}
-	if len(pq.states) > 0 {
-		add("p.state = ANY(?)", pq.states)
-	}
-	if pq.draft != nil {
-		conds = append(conds, "p.draft AND p.state = 'open'")
-	}
-	if pq.noMatch {
-		conds = append(conds, "false")
-	}
-	if pq.authorID != nil {
-		add("p.author_id = ?", *pq.authorID)
-	}
-	if params.Head != nil {
-		add("p.source_branch = ?", *params.Head)
-	}
-	if params.Base != nil {
-		add("p.target_branch = ?", *params.Base)
-	}
-	for _, t := range pq.text {
-		add(`(p.title ILIKE ? ESCAPE '\' OR p.body ILIKE ? ESCAPE '\')`, "%"+likeEscape(t)+"%")
-		// il secondo segnaposto riusa lo stesso argomento
-		last := len(args)
-		conds[len(conds)-1] = strings.Replace(conds[len(conds)-1], "?", fmt.Sprintf("$%d", last), 1)
-	}
-	order := "p.created_at DESC, p.number DESC"
-	if params.Sort != nil {
-		switch *params.Sort {
-		case openapi.ListPullRequestsParamsSortCreated:
-		case openapi.ListPullRequestsParamsSortUpdated:
-			order = "p.updated_at DESC, p.number DESC"
-		case openapi.ListPullRequestsParamsSortComments:
-			order = `(SELECT count(*) FROM core.pull_request_comments c JOIN core.pull_request_threads t ON t.id = c.thread_id
-				WHERE t.pull_request_id = p.id) DESC, p.number DESC`
-		default:
-			writeFieldError(w, "sort", "sort: created, updated o comments.")
-			return
-		}
-	}
-	where := strings.Join(conds, " AND ")
-	var total int
-	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM core.pull_requests p WHERE `+where, args...).Scan(&total); err != nil {
-		writeIssueFailure(w, "conteggio delle Pull Request non riuscito", err)
-		return
-	}
-	args = append(args, perPage, (page-1)*perPage)
-	rows, err := s.pool.Query(ctx, fmt.Sprintf(`SELECT `+prCols+` FROM core.pull_requests p WHERE %s ORDER BY %s LIMIT $%d OFFSET $%d`,
-		where, order, len(args)-1, len(args)), args...)
+	p.head, p.base = params.Head, params.Base
+	p.caller, p.repoID = ia.userID, &ia.repo.ID
+	rows, _, total, err := s.runPullSearch(r.Context(), p)
 	if err != nil {
-		writeIssueFailure(w, "lettura delle Pull Request non riuscita", err)
+		writeSearchFailure(w, "ricerca delle Pull Request non riuscita", err)
 		return
 	}
-	var prs []prRow
-	for rows.Next() {
-		p, err := scanPR(rows)
-		if err != nil {
-			rows.Close()
-			writeIssueFailure(w, "lettura delle Pull Request non riuscita", err)
-			return
-		}
-		prs = append(prs, p)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		writeIssueFailure(w, "lettura delle Pull Request non riuscita", err)
-		return
-	}
-	items, err := s.pullSummaries(r, ia, prs)
+	res, err := s.pullSearchResponse(r, rows)
 	if err != nil {
 		writeIssueFailure(w, "composizione delle Pull Request non riuscita", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, openapi.PullRequestList{Items: items, Page: page, PerPage: perPage, Total: total})
+	items := make([]openapi.PullRequestSummary, len(res))
+	for i, x := range res {
+		items[i] = x.PullRequest
+	}
+	writeJSON(w, http.StatusOK, openapi.PullRequestList{Items: items, Page: p.page, PerPage: p.perPage, Total: total})
 }
 
-func (s *apiServer) pullSummaries(r *http.Request, ia issueAccess, prs []prRow) ([]openapi.PullRequestSummary, error) {
+// pullSummaries compone le righe dell'elenco; repoOf dà il repo di ogni PR (id PR -> id repo).
+func (s *apiServer) pullSummaries(r *http.Request, repoOf map[uuid.UUID]uuid.UUID, prs []prRow) ([]openapi.PullRequestSummary, error) {
 	ctx := r.Context()
 	ids := make([]uuid.UUID, len(prs))
 	for i, p := range prs {
@@ -246,7 +114,7 @@ func (s *apiServer) pullSummaries(r *http.Request, ia issueAccess, prs []prRow) 
 			WHERE t.pull_request_id = $1`, p.ID).Scan(&sum.CommentCount); err != nil {
 			return nil, err
 		}
-		sum.ReviewDecision, _, _, err = pullReviewState(ctx, s.pool, ia.repo.ID, p, sha40(p.HeadSha), len(sum.RequestedReviewers))
+		sum.ReviewDecision, _, _, err = pullReviewState(ctx, s.pool, repoOf[p.ID], p, sha40(p.HeadSha), len(sum.RequestedReviewers))
 		if err != nil {
 			return nil, err
 		}
@@ -341,25 +209,10 @@ func (s *apiServer) ListPullRequestFiles(w http.ResponseWriter, r *http.Request,
 			return
 		}
 	}
-	viewed := []string{}
-	// PR12: i file Viewed sono personali e valgono finché la punta non cambia.
-	rows, err := s.pool.Query(r.Context(), `SELECT path FROM core.pull_request_viewed_files
-		WHERE pull_request_id = $1 AND user_id = $2 AND viewed_sha = $3 ORDER BY path`, p.ID, ia.userID, c.HeadSha)
+	// PR12: i file Viewed sono personali e restano finché il file non cambia.
+	g, _ := s.pullGit(w, ia)
+	viewed, err := s.viewedPaths(r.Context(), g, p, ia.userID, c)
 	if err != nil {
-		writeIssueFailure(w, "lettura dei file Viewed non riuscita", err)
-		return
-	}
-	for rows.Next() {
-		var path string
-		if err := rows.Scan(&path); err != nil {
-			rows.Close()
-			writeIssueFailure(w, "lettura dei file Viewed non riuscita", err)
-			return
-		}
-		viewed = append(viewed, path)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
 		writeIssueFailure(w, "lettura dei file Viewed non riuscita", err)
 		return
 	}

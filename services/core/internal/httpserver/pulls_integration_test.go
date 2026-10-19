@@ -119,6 +119,10 @@ func (g *prGit) ReadJSON(_ context.Context, _ trust.Identity, repo uuid.UUID, pa
 		if !ok1 || !ok2 {
 			return nil, &gitclient.APIError{Status: 404, Code: "ref_not_found", Message: "ref non trovato"}
 		}
+		mergeBase := mainSha
+		if bs := q.Get("base"); len(bs) == 40 && bs != mainSha {
+			mergeBase = bs // un commit precedente è antenato della punta
+		}
 		ahead := 2
 		if b == h {
 			ahead = 0
@@ -131,7 +135,7 @@ func (g *prGit) ReadJSON(_ context.Context, _ trust.Identity, repo uuid.UUID, pa
 			"commits":[%s],"commitsTruncated":false,
 			"files":%s,
 			"filesChanged":2,"additions":5,"deletions":1,"truncated":false,"listOnly":false}`,
-			q.Get("base"), q.Get("head"), b, h, mainSha, ahead, strings.Join(commits, ","), g.filesFor(q.Get("base")))), nil
+			q.Get("base"), q.Get("head"), b, h, mergeBase, ahead, strings.Join(commits, ","), g.filesFor(q.Get("base")))), nil
 	}
 	return nil, &gitclient.APIError{Status: 404, Code: "not_found", Message: "non trovato"}
 }
@@ -652,7 +656,7 @@ func TestPulls_ElencoDettaglioCommitEFile(t *testing.T) {
 	})
 
 	t.Run("richieste_non_valide", func(t *testing.T) {
-		e.want(e.do(http.MethodGet, "/repos/alice/app/pulls?q=review:approved", "carol", ""), http.StatusUnprocessableEntity, "validation_failed")
+		e.want(e.do(http.MethodGet, "/repos/alice/app/pulls?q=review:nope", "carol", ""), http.StatusUnprocessableEntity, "validation_failed")
 		e.want(e.do(http.MethodGet, "/repos/alice/app/pulls?q=is:nope", "carol", ""), http.StatusUnprocessableEntity, "validation_failed")
 		e.want(e.do(http.MethodGet, "/repos/alice/app/pulls?page=0", "carol", ""), http.StatusBadRequest, "invalid_page")
 		e.want(e.do(http.MethodGet, "/repos/alice/app/pulls?perPage=101", "carol", ""), http.StatusBadRequest, "invalid_per_page")

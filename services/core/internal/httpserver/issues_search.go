@@ -173,9 +173,19 @@ func (b *searchBuilder) translate(q issuequery.Query) error {
 		switch c.Value {
 		case issuequery.IsIssue:
 			cs = append(cs, cond{c.Negated, "TRUE"})
+		case issuequery.IsPR, issuequery.IsDraft, issuequery.IsMerged:
+			// Una issue non è una PR, una bozza né unita (PR12): per le PR c'è GET /search/pulls.
+			cs = append(cs, cond{c.Negated, "FALSE"})
 		default:
 			cs = append(cs, cond{c.Negated, "i.state = " + b.text(string(c.Value))})
 		}
+	}
+	b.addGroup(cs, false)
+
+	// review: riguarda solo le PR: nessuna issue ha una review.
+	cs = nil
+	for _, c := range q.Reviews {
+		cs = append(cs, cond{c.Negated, "FALSE"})
 	}
 	b.addGroup(cs, false)
 
@@ -663,7 +673,7 @@ func (s *apiServer) ListIssues(w http.ResponseWriter, r *http.Request, owner ope
 	// Filtri espliciti: si sommano a q.
 	hasState := false
 	for _, c := range parsed.Is {
-		if c.Value != issuequery.IsIssue {
+		if c.Value == issuequery.IsOpen || c.Value == issuequery.IsClosed {
 			hasState = true
 		}
 	}
