@@ -43,13 +43,17 @@ type statusRow struct {
 	TargetURL   string
 	CreatorID   uuid.UUID
 	UpdatedAt   time.Time
+	// ViaToken*: il token con cui è stato scritto (nil per le sessioni web).
+	ViaTokenID   *uuid.UUID
+	ViaTokenName *string
+	ByAgent      bool
 }
 
-const statusColumns = `id, sha, context, state, description, target_url, creator_id, updated_at`
+const statusColumns = `id, sha, context, state, description, target_url, creator_id, updated_at, via_token_id, via_token_name, by_agent`
 
 func scanStatus(row interface{ Scan(...any) error }) (statusRow, error) {
 	var x statusRow
-	err := row.Scan(&x.ID, &x.Sha, &x.Context, &x.State, &x.Description, &x.TargetURL, &x.CreatorID, &x.UpdatedAt)
+	err := row.Scan(&x.ID, &x.Sha, &x.Context, &x.State, &x.Description, &x.TargetURL, &x.CreatorID, &x.UpdatedAt, &x.ViaTokenID, &x.ViaTokenName, &x.ByAgent)
 	return x, err
 }
 
@@ -67,6 +71,7 @@ func (s *apiServer) statusesAPI(ctx context.Context, rows []statusRow) ([]openap
 		cs := openapi.CommitStatus{
 			Id: openapi_types.UUID(r.ID), Sha: r.Sha, State: openapi.CommitStatusState(r.State), Context: r.Context,
 			Creator: dir[r.CreatorID], CreatedAt: r.UpdatedAt,
+			ViaToken: viaToken(r.ViaTokenID, r.ViaTokenName),
 		}
 		if r.Description != "" {
 			d := r.Description
@@ -440,6 +445,12 @@ func (s *apiServer) CreateCommitStatus(w http.ResponseWriter, r *http.Request, o
 	if !ok {
 		return
 	}
+	agent, err := s.callerIsAgent(ctx, ia.userID)
+	if err != nil {
+		writeIssueFailure(w, "verifica del tipo di account non riuscita", err)
+		return
+	}
+	viaID, viaName := tokenOrigin(ia.caller)
 	branchesAt := s.pullBranchesAt(ctx, ia, sha)
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -457,11 +468,13 @@ func (s *apiServer) CreateCommitStatus(w http.ResponseWriter, r *http.Request, o
 		writeIssueFailure(w, "lettura dello stato precedente non riuscita", err)
 		return
 	}
-	row := tx.QueryRow(ctx, `INSERT INTO core.commit_statuses (id, repo_id, sha, context, state, description, target_url, creator_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	row := tx.QueryRow(ctx, `INSERT INTO core.commit_statuses (id, repo_id, sha, context, state, description, target_url, creator_id,
+			via_token_id, via_token_name, by_agent)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		ON CONFLICT (repo_id, sha, context) DO UPDATE SET state = EXCLUDED.state, description = EXCLUDED.description,
-			target_url = EXCLUDED.target_url, creator_id = EXCLUDED.creator_id, updated_at = now()
-		RETURNING `+statusColumns, uuid.New(), ia.repo.ID, sha, sctx, string(in.State), description, target, ia.userID)
+			target_url = EXCLUDED.target_url, creator_id = EXCLUDED.creator_id,
+			via_token_id = EXCLUDED.via_token_id, via_token_name = EXCLUDED.via_token_name, by_agent = EXCLUDED.by_agent, updated_at = now()
+		RETURNING `+statusColumns, uuid.New(), ia.repo.ID, sha, sctx, string(in.State), description, target, ia.userID, viaID, viaName, agent)
 	x, err := scanStatus(row)
 	if err != nil {
 		writeIssueFailure(w, "scrittura dello stato non riuscita", fmt.Errorf("commit_statuses: %w", err))
