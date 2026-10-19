@@ -31,7 +31,7 @@ type notificationOut struct {
 }
 
 // Reasons sono i motivi ammessi da --reason (NotificationReason).
-var Reasons = []string{"assigned", "mentioned", "participating", "subscribed", "commit_linked", "state_change", "webhook"}
+var Reasons = []string{"assigned", "mentioned", "participating", "subscribed", "commit_linked", "state_change", "webhook", "review_requested"}
 
 // NewCmd restituisce il comando padre `gs notification`.
 func NewCmd(f *cmdutil.Factory) *cobra.Command {
