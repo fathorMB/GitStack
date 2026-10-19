@@ -42,7 +42,7 @@
 #                                             un'installazione idempotente
 #                                             non lo cambia, k3s non è stato
 #                                             riavviato/reinstallato.
-#   mirror-dest-start <porta> <utente> <token>  (GIT-181) Repo bare servito via HTTPS
+#   mirror-dest-start <porta> <utente> <token> [ip-alias] (GIT-181) Repo bare servito via HTTPS
 #                                             da mirror-dest.py col certificato
 #                                             della VM, in ascolto sulla porta.
 #   mirror-dest-stop | mirror-dest-ref <ref> | mirror-dest-refs
@@ -321,11 +321,16 @@ mirror_dest_stop() {
     fi
     rm -f "${MIRROR_DIR}/pid"
   fi
+  # Toglie l'alias di indirizzo messo da mirror_dest_start (GIT-309).
+  if [ -f "${MIRROR_DIR}/alias-ip" ]; then
+    sudo -n ip addr del "$(cat "${MIRROR_DIR}/alias-ip")/32" dev lo 2>/dev/null || true
+    rm -f "${MIRROR_DIR}/alias-ip"
+  fi
   echo "OK: destinazione ferma"
 }
 
 mirror_dest_start() {
-  local port="${1:?porta}" user="${2:?utente}" token="${3:?token}"
+  local port="${1:?porta}" user="${2:?utente}" token="${3:?token}" alias_ip="${4:-}"
   command -v python3 >/dev/null 2>&1 || fail "python3 non trovato sulla VM"
   command -v git >/dev/null 2>&1 || fail "git non trovato sulla VM"
   [ -f /tmp/gitstack-e2e/mirror-dest.py ] || fail "manca /tmp/gitstack-e2e/mirror-dest.py"
@@ -333,12 +338,33 @@ mirror_dest_start() {
   rm -rf "${MIRROR_DIR}"
   mkdir -p "${MIRROR_DIR}/repos"
   git init -q --bare -b main "${MIRROR_DIR}/repos/mirror.git"
-  # Il certificato del server di GitStack (SAN con l'IP della VM, firmato dalla
-  # CA interna); la chiave e' di root: la si copia per l'utente di test.
-  sudo -n install -m 0644 -o "$(id -u)" -g "$(id -g)" "${TLS_DIR}/server.crt" "${MIRROR_DIR}/server.crt" \
-    || fail "copia di server.crt non riuscita"
-  sudo -n install -m 0600 -o "$(id -u)" -g "$(id -g)" "${TLS_DIR}/server.key" "${MIRROR_DIR}/server.key" \
-    || fail "copia di server.key non riuscita"
+  if [ -n "${alias_ip}" ]; then
+    # GIT-309: la policy di uscita (F7) blocca gli indirizzi del nodo, quindi la
+    # destinazione ascolta su un secondo indirizzo privato (alias /32 su lo, che
+    # i pod raggiungono passando dall'host) non elencato fra quelli del nodo.
+    # Certificato autofirmato con SAN = alias, usato come unica radice di fiducia
+    # dei mirror (dest.crt): non serve la chiave della CA della VM.
+    command -v openssl >/dev/null 2>&1 || fail "openssl non trovato sulla VM"
+    if ! ip -4 -o addr show dev lo | grep -q " ${alias_ip}/32 "; then
+      sudo -n ip addr add "${alias_ip}/32" dev lo || fail "alias ${alias_ip} su lo non aggiunto"
+    fi
+    echo "${alias_ip}" >"${MIRROR_DIR}/alias-ip"
+    openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj "/CN=gitstack-e2e-mirror" \
+      -keyout "${MIRROR_DIR}/server.key" -out "${MIRROR_DIR}/server.crt" \
+      -addext "subjectAltName=IP:${alias_ip}" -addext "basicConstraints=critical,CA:TRUE" \
+      -addext "keyUsage=critical,digitalSignature,keyCertSign" -addext "extendedKeyUsage=serverAuth" >/dev/null 2>&1 \
+      || fail "certificato della destinazione non generato"
+    cp "${MIRROR_DIR}/server.crt" "${MIRROR_DIR}/dest.crt"
+  else
+    # Il certificato del server di GitStack (SAN con l'IP della VM, firmato dalla
+    # CA interna); la chiave e' di root: la si copia per l'utente di test.
+    sudo -n install -m 0644 -o "$(id -u)" -g "$(id -g)" "${TLS_DIR}/server.crt" "${MIRROR_DIR}/server.crt" \
+      || fail "copia di server.crt non riuscita"
+    sudo -n install -m 0600 -o "$(id -u)" -g "$(id -g)" "${TLS_DIR}/server.key" "${MIRROR_DIR}/server.key" \
+      || fail "copia di server.key non riuscita"
+    sudo -n install -m 0644 -o "$(id -u)" -g "$(id -g)" "${TLS_DIR}/ca.crt" "${MIRROR_DIR}/dest.crt" \
+      || fail "copia di ca.crt non riuscita"
+  fi
   setsid nohup python3 /tmp/gitstack-e2e/mirror-dest.py "${MIRROR_DIR}/repos" "${port}" \
     "${MIRROR_DIR}/server.crt" "${MIRROR_DIR}/server.key" "${user}" "${token}" \
     >"${MIRROR_DIR}/server.log" 2>&1 </dev/null &
@@ -390,7 +416,7 @@ mirror_dest_commit() {
 # della destinazione nell'egress di core. Aspetta i rollout.
 mirror_enable() {
   local release="${1:-gitstack}" ns="${2:-default}" ip="${3:?indirizzo}"
-  k3s_kubectl -n "${ns}" create configmap "${MIRROR_CA_MAP}" --from-file=ca.crt="${TLS_DIR}/ca.crt" \
+  k3s_kubectl -n "${ns}" create configmap "${MIRROR_CA_MAP}" --from-file=ca.crt="${MIRROR_DIR}/dest.crt" \
     --dry-run=client -o yaml | k3s_kubectl -n "${ns}" apply -f - || fail "ConfigMap della CA non creato"
   k3s_kubectl -n "${ns}" patch deployment "${release}-git" --type=strategic -p \
     '{"spec":{"template":{"spec":{"volumes":[{"name":"mirror-ca","configMap":{"name":"'"${MIRROR_CA_MAP}"'"}}],"containers":[{"name":"git","env":[{"name":"GITSTACK_GIT_MIRROR_CA_FILE","value":"/etc/gitstack/mirror-ca/ca.crt"}],"volumeMounts":[{"name":"mirror-ca","mountPath":"/etc/gitstack/mirror-ca","readOnly":true}]}]}}}}' \
