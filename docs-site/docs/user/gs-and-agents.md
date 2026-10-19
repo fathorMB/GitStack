@@ -40,12 +40,14 @@ precedence over everything. Inside a clone, `gs` finds the repository from the
 |---|---|
 | `gs repo` | create, list, view, clone, edit, archive, delete, restore |
 | `gs issue` | create, list, view, edit, comment, close, reopen, lock |
+| `gs pr` | create, list, view, checkout, diff, review, comment, ready, merge, close, status |
 | `gs label`, `gs milestone` | manage labels and milestones |
 | `gs notification` | list, view, mark as read |
 | `gs search` | search issues across the instance, or code in a repo |
 | `gs browse`, `gs blame` | open in the browser, who changed each line |
 | `gs api` | call any API operation directly |
 | `gs skills` | install the skills for coding agents |
+| `gs mcp` | MCP server for AI assistants, see [MCP](./mcp.md) |
 
 Most commands accept `--json` for scripts and agents.
 
@@ -57,7 +59,8 @@ Agent Skills format and are served by the instance (`/downloads/gs-skills.zip`):
 | Skill | When |
 |---|---|
 | `gitstack-setup` | install `gs`, sign in, choose the instance |
-| `gitstack-issue-to-commit` | work on an issue up to the commit with `fixes #n` |
+| `gitstack-issue-to-commit` | work on an issue up to a pull request with `fixes #n` |
+| `gitstack-pr-review` | review a pull request: read the diff, check it can merge, comment on lines |
 | `gitstack-issue-triage` | search, classify, assign and close issues |
 | `gitstack-repo-admin` | create, edit, archive, delete and recover repositories |
 | `gitstack-notifications` | notifications, then work, then reply |

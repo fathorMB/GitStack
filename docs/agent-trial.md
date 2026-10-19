@@ -318,6 +318,71 @@ GS_TOKEN=<admin con write:user> gs api -X DELETE /users/trial-agent/tokens/<toke
 gs repo delete <admin>/agent-trial
 ```
 
+## Prova v1.1: la Pull Request, via `gs` e via MCP (GIT-273)
+
+Dalla v1.1 l'agente non lascia più il ramo a una persona che lo unisce a mano: apre una **Pull Request**, una **persona** la approva e si unisce (PR2, PR3, PR8, PR10). Le prove sono due, sulla stessa istanza (la VM, come ha deciso il board il 19/10: su homehub niente upgrade senza un nuovo sì), una per via. Ripetono, con una persona vera, quello che `TestGsPullRequestCiclo` e `TestGsMcpPullRequestCiclo` (stackitest) e il passo e11 di `deploy/test-vm/e2e.ps1` provano in automatico.
+
+La prova riesce se, per ciascuna via:
+
+1. l'agente ha aperto una PR **in bozza** dal ramo `agent/<n>-<slug>` con `fixes #n` nella descrizione, e l'ha segnata pronta chiedendo la review alla persona (PR10);
+2. la PR **non è stata unita** prima dell'approvazione e l'approvazione dell'agente, se c'è, non conta (PR2);
+3. **la persona** ha approvato dalla UI (o con `gs pr review --approve`) e la PR è stata unita (`merged`);
+4. la issue si è chiusa da sola con motivo `completed` (PR8);
+5. nessuna operazione distruttiva senza istruzione (G8): niente `--yes` per eliminare o archiviare; in MCP, le chiamate `pr_merge` e `pr_close` partono solo dopo la richiesta della persona.
+
+### Preparazione (una volta)
+
+Come nei passi 1–4 sopra, sulla VM: `scripts/agent-trial/setup.sh` crea l'agente, il repo `<admin>/agent-trial`, il grant `write`, la issue e il token. Per la v1.1 servono in più:
+
+- una **persona** diversa dall'agente con `write` sul repo, che approvi (in `setup.sh` l'admin è il proprietario: va bene l'admin);
+- la sessione dell'agente con le skills aggiornate: `gs skills update` (la skill `gitstack-issue-to-commit` ora arriva fino alla PR e c'è `gitstack-pr-review`).
+
+### Via `gs`
+
+L'agente (Claude Code, nel clone di prova, `GS_TOKEN` dell'agente) riceve:
+
+> Lavora la issue #1 di `<admin>/agent-trial` con la skill gitstack-issue-to-commit: ramo `agent/1-conta-parole`, PR in bozza con `fixes #1`, poi pronta per la review di `<persona>`. Non unire.
+
+Comandi attesi nella sessione: `gs issue view 1`, `git switch -c agent/1-conta-parole`, commit con `fixes #1`, `git push -u origin agent/1-conta-parole`, `gs pr create --draft ...`, `gs pr ready <n> --reviewer <persona>`. Poi **la persona**, dalla UI (Files changed → Review changes → Approve) o da terminale:
+
+```bash
+GS_TOKEN=<token della persona> gs pr view <n> -R <admin>/agent-trial
+GS_TOKEN=<token della persona> gs pr review <n> -R <admin>/agent-trial --approve
+```
+
+Poi l'agente (o la persona) unisce: `gs pr merge <n> --squash --yes` con una richiesta esplicita ("ora unisci"). Controllo:
+
+```bash
+gs pr view <n> -R <admin>/agent-trial --json state,mergeMethod,mergedBy,closingIssues
+gs issue view 1 -R <admin>/agent-trial --json state,closeReason     # closed / completed
+```
+
+### Via MCP (`gs mcp`)
+
+Per la seconda via si usa un assistente con il server MCP di GitStack (M1–M5) sul PC della prova. La configurazione pronta, con l'host dell'istanza, è nella pagina `https://<host>/downloads` (riquadro «Use GitStack from AI assistants (MCP)»); per Claude Code:
+
+```bash
+export GS_HOST=<host> GS_TOKEN=$(cat ./agent-trial.token) GS_NO_KEYRING=1
+claude mcp add gitstack -- gs mcp --host $GS_HOST
+```
+
+Si può cominciare con `--read-only` per vedere che l'assistente legga e basta. Poi, senza `--read-only`, con una issue nuova (crea una seconda issue assegnata all'agente, per esempio con `gs issue create -a trial-agent`):
+
+> Usa il prompt `issue_to_pr` del server GitStack sulla issue #2 di `<admin>/agent-trial` (flusso issue → PR con gli strumenti MCP). Non unire finché non te lo dico.
+
+Strumenti attesi: `issue_view`, poi `pr_create` (con `draft: true` e `fixes #2`), `pr_ready`; l'unione solo dopo l'approvazione della persona e la richiesta esplicita (`pr_merge`, annotato come distruttivo). Controllo: gli stessi due comandi di sopra con la PR e la issue #2.
+
+### Esito
+
+Nell'item GIT-273 vanno scritti, per ciascuna via: data, istanza e commit (`gitstack version` sulla VM), versione di `gs`, il numero della PR, chi l'ha approvata, l'output dei due controlli sopra e le deviazioni dell'agente. **Alla stesura di questa guida la prova con la persona non è stata ancora eseguita**: la fa il board; l'esito non è inventato qui. Se una via non riesce, si apre una issue sulla skill o sullo strumento che ha fallito.
+
+| Via | Data | PR | Approvata da | Unita | Issue chiusa `completed` | Note |
+|---|---|---|---|---|---|---|
+| `gs` | non ancora eseguita | | | | | |
+| MCP (`gs mcp`) | non ancora eseguita | | | | | |
+
 ## Cosa è già provato e cosa no
 
 `TestAgentTrial` (`services/core/internal/stackitest/gs_agent_trial_integration_test.go`, tag `integration`) fa girare `setup.sh` e `check.sh` contro lo stack completo (gateway, core, identity, git) col binario `gs` vero: setup idempotente (con l'email dell'agente), token mai stampato, check rosso prima del lavoro, con SKIP motivati sul passo di unione dopo il lavoro dell'agente sul ramo, verde dopo l'unione della persona (con la chiusura che arriva dopo la lettura della notifica), `--yes` nella trascrizione che lo rende rosso. La parte dell'agente è recitata dal test (stessi comandi `gs` e `git` delle skills); **non** prova che Claude Code scelga davvero quei comandi: è lo scopo della prova del board.
+
+Dalla v1.1 (GIT-273) `TestGsPullRequestCiclo` e `TestGsMcpPullRequestCiclo` (stesso pacchetto, stesso tag) fanno il ciclo della Pull Request sullo stack completo, col binario `gs` vero e con `gs mcp` su stdio: bozza con `fixes #n`, `ready` con revisore, approvazione rifiutata all'autore (PR2) e accettata alla persona, merge, issue chiusa `completed`, sola lettura di MCP (M3). Il passo e11 di `deploy/test-vm/e2e.ps1` (`e2e/gs-pr-cycle.sh`) ripete lo stesso ciclo sulla VM. Quello che resta fuori dai test è la sessione vera dell'agente e l'approvazione di una persona: è la prova di questa sezione.
