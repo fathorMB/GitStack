@@ -60,7 +60,7 @@ func TestHelpElencaGruppi(t *testing.T) {
 	if r.code != 0 {
 		t.Fatalf("%+v", r)
 	}
-	for _, g := range []string{"auth", "repo", "issue", "label", "milestone", "search", "browse", "blame", "notification", "mcp", "api", "skills", "version"} {
+	for _, g := range []string{"auth", "repo", "issue", "pr", "label", "milestone", "search", "browse", "blame", "notification", "mcp", "api", "skills", "version"} {
 		if !strings.Contains(r.out, "\n  "+g+" ") {
 			t.Errorf("gruppo %q assente da --help:\n%s", g, r.out)
 		}
