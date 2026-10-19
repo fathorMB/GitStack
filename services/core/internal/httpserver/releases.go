@@ -299,7 +299,7 @@ func (s *apiServer) UploadReleaseAsset(w http.ResponseWriter, r *http.Request, o
 	if !ok {
 		return
 	}
-	if s.attachments.Disk == nil {
+	if s.attachments.ReleaseAssets == nil {
 		writeError(w, 503, "attachments_unavailable", "Volume degli allegati non configurato.")
 		return
 	}
@@ -317,14 +317,14 @@ func (s *apiServer) UploadReleaseAsset(w http.ResponseWriter, r *http.Request, o
 		return
 	}
 	aid := uuid.New()
-	size, sum, err := s.attachments.Disk.SaveRaw(ia.repo.ID, aid, http.MaxBytesReader(w, r.Body, maxReleaseAssetBytes), maxReleaseAssetBytes)
+	size, sum, err := s.attachments.ReleaseAssets.SaveRaw(ia.repo.ID, aid, http.MaxBytesReader(w, r.Body, maxReleaseAssetBytes), maxReleaseAssetBytes)
 	if err != nil {
 		writeError(w, 422, "invalid_asset", "Impossibile salvare l'allegato.")
 		return
 	}
 	_, err = s.pool.Exec(r.Context(), `INSERT INTO core.release_assets(id,release_id,name,sha256,size_bytes,created_at) VALUES($1,$2,$3,$4,$5,$6)`, aid, uuid.UUID(id), attachmentFilename(p.Name), sum, size, s.now())
 	if err != nil {
-		_ = s.attachments.Disk.Remove(ia.repo.ID, aid)
+		_ = s.attachments.ReleaseAssets.Remove(ia.repo.ID, aid)
 		writeError(w, 409, "conflict", "Esiste già un allegato con questo nome.")
 		return
 	}
@@ -342,7 +342,7 @@ func (s *apiServer) DownloadReleaseAsset(w http.ResponseWriter, r *http.Request,
 		writeError(w, 404, "not_found", "Allegato non trovato.")
 		return
 	}
-	f, err := s.attachments.Disk.Open(ia.repo.ID, uuid.UUID(aid))
+	f, err := s.attachments.ReleaseAssets.Open(ia.repo.ID, uuid.UUID(aid))
 	if err != nil {
 		writeError(w, 404, "not_found", "Allegato non trovato.")
 		return

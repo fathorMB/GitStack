@@ -1,0 +1,11 @@
+{{- if and .Values.core.enabled .Values.core.releaseAssets.enabled -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "gitstack.fullname" . }}-release-assets-data
+spec:
+  accessModes: [{{ .Values.core.releaseAssets.persistence.accessMode }}]
+  resources:
+    requests:
+      storage: {{ .Values.core.releaseAssets.persistence.size | quote }}
+{{- end }}
