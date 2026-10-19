@@ -38,6 +38,8 @@ function ReleasesLoaded({ repo, reload }: { repo: Repository; reload: () => void
   const canWrite = useCanWrite(repo);
   const { data, error } = useLoad(() => fetchReleases(owner, name));
   const [editing, setEditing] = useState<Release | 'new' | null>(null);
+  // Durante un salvataggio non si cambia release: il form in corso non va sostituito.
+  const [locked, setLocked] = useState(false);
   if (error) return <ErrorAlert message={error} />;
   if (!data) return <p className="muted">Loading releases…</p>;
   // Le bozze le vede solo chi ha write (il server le filtra, ma non ci si affida).
@@ -59,7 +61,17 @@ function ReleasesLoaded({ repo, reload }: { repo: Repository; reload: () => void
           </Button>
         ) : null}
       </div>
-      {editing !== null ? <ReleaseForm owner={owner} repo={name} release={editing === 'new' ? null : editing} onDone={done} onCancel={() => setEditing(null)} /> : null}
+      {editing !== null ? (
+        <ReleaseForm
+          key={editing === 'new' ? 'new' : editing.id}
+          owner={owner}
+          repo={name}
+          release={editing === 'new' ? null : editing}
+          onDone={done}
+          onCancel={() => setEditing(null)}
+          onBusy={setLocked}
+        />
+      ) : null}
       {items.length === 0 && editing === null ? (
         <EmptyState
           icon={<TagIcon size={32} aria-hidden="true" />}
@@ -70,7 +82,7 @@ function ReleasesLoaded({ repo, reload }: { repo: Repository; reload: () => void
       {items.length > 0 ? (
         <div className="card card-b" role="list" aria-label="Releases">
           {items.map((r) => (
-            <ReleaseItem key={r.id} owner={owner} repo={name} release={r} canWrite={canWrite} onEdit={() => setEditing(r)} />
+            <ReleaseItem key={r.id} owner={owner} repo={name} release={r} canWrite={canWrite} locked={locked} onEdit={() => setEditing(r)} />
           ))}
         </div>
       ) : null}
@@ -78,7 +90,7 @@ function ReleasesLoaded({ repo, reload }: { repo: Repository; reload: () => void
   );
 }
 
-function ReleaseItem({ owner, repo, release: r, canWrite, onEdit }: { owner: string; repo: string; release: Release; canWrite: boolean; onEdit: () => void }) {
+function ReleaseItem({ owner, repo, release: r, canWrite, locked, onEdit }: { owner: string; repo: string; release: Release; canWrite: boolean; locked: boolean; onEdit: () => void }) {
   const when = r.publishedAt ?? r.createdAt;
   return (
     <article className="rel" role="listitem" aria-label={`Release ${r.name}`}>
@@ -96,7 +108,7 @@ function ReleaseItem({ owner, repo, release: r, canWrite, onEdit }: { owner: str
           {r.draft ? <span className="badge">Draft · visible to writers only</span> : null}
           <span className="sp" />
           {canWrite ? (
-            <Button size="sm" onClick={onEdit} aria-label={`Edit ${r.name}`}>
+            <Button size="sm" onClick={onEdit} disabled={locked} aria-label={`Edit ${r.name}`}>
               Edit
             </Button>
           ) : null}
@@ -137,7 +149,12 @@ function ReleaseItem({ owner, repo, release: r, canWrite, onEdit }: { owner: str
 }
 
 /** Creazione (release null) o modifica; i file si caricano dopo il salvataggio, uno per uno. */
-function ReleaseForm({ owner, repo, release, onDone, onCancel }: { owner: string; repo: string; release: Release | null; onDone: () => void; onCancel: () => void }) {
+const fileKey = (f: File) => `${f.name}:${f.size}:${f.lastModified}`;
+
+function ReleaseForm({ owner, repo, release, onDone, onCancel, onBusy }: { owner: string; repo: string; release: Release | null; onDone: () => void; onCancel: () => void; onBusy: (busy: boolean) => void }) {
+  // La release salvata e i file gia' caricati sopravvivono a un upload fallito: il retry non ricrea nulla.
+  const [saved, setSaved] = useState<Release | null>(null);
+  const [uploaded, setUploaded] = useState<string[]>([]);
   const [tagName, setTagName] = useState(release?.tagName ?? '');
   const [title, setTitle] = useState(release?.name ?? '');
   const [body, setBody] = useState(release?.body ?? '');
@@ -151,34 +168,48 @@ function ReleaseForm({ owner, repo, release, onDone, onCancel }: { owner: string
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
+    onBusy(true);
     setError('');
-    let saved: Release;
-    try {
-      saved = release
-        ? await updateRelease(owner, repo, release.id, { name: title.trim(), body, draft, prerelease })
-        : await createRelease(owner, repo, { tagName: tagName.trim(), name: title.trim() || tagName.trim(), body, draft, prerelease, generateNotes: generate });
-    } catch (err) {
-      setError(describeError(err));
-      setBusy(false);
-      return;
-    }
-    for (const f of files) {
+    let target = saved;
+    if (!target) {
       try {
-        await uploadReleaseAsset(owner, repo, saved.id, f);
+        target = release
+          ? await updateRelease(owner, repo, release.id, { name: title.trim(), body, draft, prerelease })
+          : await createRelease(owner, repo, { tagName: tagName.trim(), name: title.trim() || tagName.trim(), body, draft, prerelease, generateNotes: generate });
+      } catch (err) {
+        setError(describeError(err));
+        setBusy(false);
+        onBusy(false);
+        return;
+      }
+      setSaved(target);
+    }
+    const done = new Set(uploaded);
+    for (const f of files) {
+      if (done.has(fileKey(f))) continue;
+      try {
+        await uploadReleaseAsset(owner, repo, target.id, f);
       } catch (err) {
         setError(`The release was saved, but ${f.name} was not uploaded: ${describeError(err)}`);
         setBusy(false);
+        onBusy(false);
         return;
       }
+      done.add(fileKey(f));
+      setUploaded([...done]);
     }
     setBusy(false);
+    onBusy(false);
     onDone();
   }
+
+  const retrying = saved !== null;
 
   return (
     <form className="card card-b stack" aria-label={release ? 'Edit release' : 'New release'} onSubmit={(e) => void submit(e)}>
       <h3>{release ? `Edit ${release.tagName}` : 'Draft a new release'}</h3>
       {error ? <ErrorAlert message={error} /> : null}
+      <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0 }} disabled={busy || retrying}>
       <FormField label="Tag" hint={release ? 'The tag of a release cannot change.' : 'An existing tag of this repository.'}>
         <TextInput className="input mono" value={tagName} onChange={(e) => setTagName(e.target.value)} readOnly={release !== null} required placeholder="v1.0.0" />
       </FormField>
@@ -194,23 +225,25 @@ function ReleaseForm({ owner, repo, release, onDone, onCancel }: { owner: string
       ) : null}
       <Checkbox label="This is a pre-release" checked={prerelease} onCheckedChange={setPrerelease} />
       <Checkbox label="Save as draft" hint="Drafts are visible to writers only." checked={draft} onCheckedChange={setDraft} />
+      </fieldset>
       <FormField label="Attach files" hint="Up to 2 GB each; the SHA-256 is computed by the server.">
-        <input className="input" type="file" multiple onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
+        <input className="input" type="file" multiple disabled={busy} onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
       </FormField>
       {files.length > 0 ? (
         <ul className="small muted" aria-label="Files to upload">
           {files.map((f) => (
-            <li key={f.name}>
+            <li key={fileKey(f)}>
               {f.name} · {formatBytes(f.size)}
+              {uploaded.includes(fileKey(f)) ? ' · uploaded' : ''}
             </li>
           ))}
         </ul>
       ) : null}
       <div className="row">
         <Button type="submit" variant="primary" disabled={busy || !tagName.trim()}>
-          {release ? 'Save release' : draft ? 'Save draft' : 'Publish release'}
+          {retrying ? 'Retry upload' : release ? 'Save release' : draft ? 'Save draft' : 'Publish release'}
         </Button>
-        <Button onClick={onCancel} disabled={busy}>
+        <Button onClick={retrying ? onDone : onCancel} disabled={busy}>
           Cancel
         </Button>
       </div>

@@ -128,6 +128,68 @@ describe('pagina Releases (mockup B7)', () => {
     await waitFor(() => expect(uploadReleaseAsset).toHaveBeenCalledWith('acme', 'api', 'c', file));
   });
 
+  it('passando da Edit di A a Edit di B senza Cancel il form riparte da B: campi, file e payload', async () => {
+    setup(true);
+    vi.mocked(updateRelease).mockResolvedValue(rel({ id: 'b' }));
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Edit GitStack 1.0.0-rc.3' }));
+    await user.type(screen.getByLabelText('Release title'), ' changed');
+    await user.upload(screen.getByLabelText('Attach files'), new File(['x'], 'a.txt'));
+    expect(screen.getByLabelText('Tag')).toHaveValue('v1.0.0-rc.3');
+    expect(screen.getByText(/a\.txt/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Edit GitStack 0.9.0' }));
+    expect(screen.getByLabelText('Tag')).toHaveValue('v0.9.0');
+    expect(screen.getByLabelText('Release title')).toHaveValue('GitStack 0.9.0');
+    expect(screen.getByLabelText('Notes (Markdown)')).toHaveValue('');
+    expect(screen.getByRole('checkbox', { name: 'This is a pre-release' })).not.toBeChecked();
+    expect(screen.queryByLabelText('Files to upload')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save release' }));
+    await waitFor(() => expect(updateRelease).toHaveBeenCalledTimes(1));
+    expect(updateRelease).toHaveBeenCalledWith('acme', 'api', 'b', { name: 'GitStack 0.9.0', body: '', draft: false, prerelease: false });
+    expect(uploadReleaseAsset).not.toHaveBeenCalled();
+  });
+
+  it('da nuova release a Edit di una esistente azzera i campi digitati', async () => {
+    setup(true);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Draft a new release/ }));
+    await user.type(screen.getByLabelText('Tag'), 'v7');
+    await user.upload(screen.getByLabelText('Attach files'), new File(['x'], 'n.txt'));
+    await user.click(screen.getByRole('button', { name: 'Edit GitStack 0.9.0' }));
+    expect(screen.getByLabelText('Tag')).toHaveValue('v0.9.0');
+    expect(screen.getByLabelText('Tag')).toHaveAttribute('readonly');
+    expect(screen.queryByLabelText('Files to upload')).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: 'Generate release notes' })).not.toBeInTheDocument();
+  });
+
+  it('upload fallito: il retry non ricrea la release né ricarica il file già riuscito', async () => {
+    setup(true);
+    vi.mocked(createRelease).mockResolvedValue(rel({ id: 'n', tagName: 'v3' }));
+    vi.mocked(uploadReleaseAsset)
+      .mockResolvedValueOnce({ id: 'f1', name: 'one.txt', sizeBytes: 1, sha256: 'ab' })
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce({ id: 'f2', name: 'two.txt', sizeBytes: 1, sha256: 'cd' });
+    const one = new File(['1'], 'one.txt');
+    const two = new File(['2'], 'two.txt');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Draft a new release/ }));
+    await user.type(screen.getByLabelText('Tag'), 'v3');
+    await user.upload(screen.getByLabelText('Attach files'), [one, two]);
+    await user.click(screen.getByRole('button', { name: 'Publish release' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/two\.txt was not uploaded/);
+    expect(createRelease).toHaveBeenCalledTimes(1);
+    expect(uploadReleaseAsset).toHaveBeenCalledTimes(2);
+    await user.click(screen.getByRole('button', { name: 'Retry upload' }));
+    await waitFor(() => expect(uploadReleaseAsset).toHaveBeenCalledTimes(3));
+    expect(createRelease).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(uploadReleaseAsset).mock.calls.map((c) => [c[2], c[3]])).toEqual([
+      ['n', one],
+      ['n', two],
+      ['n', two],
+    ]);
+    await waitFor(() => expect(fetchReleases).toHaveBeenCalledTimes(2));
+  });
+
   it('mostra l’errore del server in linea', async () => {
     setup(true);
     vi.mocked(createRelease).mockRejectedValue(new Error('boom'));
