@@ -95,7 +95,16 @@ func start(t *testing.T, name, bin, addr string, env ...string) {
 	t.Helper()
 	var logs bytes.Buffer
 	cmd := exec.Command(bin)
-	cmd.Env = append(os.Environ(), env...)
+	cmd.Env = os.Environ()
+	if name == "gateway" {
+		// Timeout ampi gateway→core e gateway→identity: con -race e i
+		// pacchetti in parallelo lo stack è carico e il default di produzione
+		// (5 s) scade (503 core_unavailable, run CI 39300966677, GIT-308).
+		// È un limite del banco di prova: il default di produzione non cambia.
+		// Un valore passato esplicitamente dal test vince (l'ultimo ha la precedenza).
+		cmd.Env = append(cmd.Env, "GITSTACK_CORE_TIMEOUT=60s", "GITSTACK_IDENTITY_TIMEOUT=60s")
+	}
+	cmd.Env = append(cmd.Env, env...)
 	cmd.Stdout, cmd.Stderr = &logs, &logs
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
