@@ -229,10 +229,9 @@ function New-E2eDataset {
         $attFile = Join-Path $WorkDir 'allegato.txt'
         Set-Content -LiteralPath $attFile -Value "allegato di prova $suffix" -Encoding ascii
         $d.AttachmentSha256 = (Get-FileHash -LiteralPath $attFile -Algorithm SHA256).Hash
-        $up = Invoke-ExternalCommand -FilePath 'curl.exe' -ArgumentList @('-sS', '--ssl-no-revoke', '--cacert', $CaPath, '-H', "Authorization: Bearer $($d.Token)", '-F', "file=@$attFile;type=text/plain", '-w', '\n%{http_code}', "$BaseUrl/api/v1/repos/$($d.User)/$($d.Repo)/issue-attachments") -TimeoutSeconds 60
-        $upLines = @($up.StdOut -split "`n" | Where-Object { $_ -ne '' })
-        if ($up.ExitCode -ne 0 -or $upLines.Count -lt 2 -or $upLines[-1].Trim() -ne '201') { throw "upload allegato: exit $($up.ExitCode), risposta '$($up.StdOut)' $($up.StdErr)" }
-        $d.AttachmentId = ($upLines[0] | ConvertFrom-Json).id
+        $up = Invoke-HttpUploadFile -Uri "$BaseUrl/api/v1/repos/$($d.User)/$($d.Repo)/issue-attachments" -FilePath $attFile -Headers $bearer
+        if ($up.StatusCode -ne 201) { throw "upload allegato: status $($up.StatusCode), risposta '$($up.Body)' $($up.Error)" }
+        $d.AttachmentId = ($up.Body | ConvertFrom-Json).id
         if (-not $d.AttachmentId) { throw "upload allegato: risposta senza 'id'" }
         $is = Invoke-HttpRaw -Uri "$BaseUrl/api/v1/repos/$($d.User)/$($d.Repo)/issues" -Method 'POST' -Headers $bearer -Body (@{ title = $d.IssueTitle; body = 'corpo della issue di prova'; attachmentIds = @($d.AttachmentId) } | ConvertTo-Json)
         if ($is.StatusCode -ne 201) { throw "creazione issue: status $($is.StatusCode) $($is.Body)" }
@@ -292,9 +291,9 @@ function Test-E2eDataset {
         $problems.Add("issue #$($Data.IssueNumber): status $($is.StatusCode), titolo atteso '$($Data.IssueTitle)'")
     }
     $dl = Join-Path $WorkDir 'allegato-scaricato.txt'
-    $att = Invoke-ExternalCommand -FilePath 'curl.exe' -ArgumentList @('-sS', '--ssl-no-revoke', '--cacert', $CaPath, '-H', "Authorization: Bearer $($Data.Token)", '-o', $dl, '-w', '%{http_code}', "$repoApi/issue-attachments/$($Data.AttachmentId)") -TimeoutSeconds 60
-    if ($att.ExitCode -ne 0 -or $att.StdOut.Trim() -ne '200') {
-        $problems.Add("download allegato: exit $($att.ExitCode), status '$($att.StdOut.Trim())' $($att.StdErr)")
+    $att = Invoke-HttpDownloadFile -Uri "$repoApi/issue-attachments/$($Data.AttachmentId)" -OutFile $dl -Headers $bearer
+    if ($att.StatusCode -ne 200) {
+        $problems.Add("download allegato: status $($att.StatusCode) $($att.Error)")
     } elseif ((Get-FileHash -LiteralPath $dl -Algorithm SHA256).Hash -ne $Data.AttachmentSha256) {
         $problems.Add('l''allegato scaricato ha un SHA-256 diverso da quello caricato')
     }

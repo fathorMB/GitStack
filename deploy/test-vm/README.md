@@ -391,6 +391,7 @@ Parametri principali (tutti con un default sensato):
 | `-OutDir` | `%LOCALAPPDATA%\GitStack\e2e-runs\<timestamp>` | Log, diagnostica della VM e `known_hosts` isolato; a fine esecuzione anche `<OutDir>.zip`. |
 | `-GitSshPort` | `2222` | Passo (e5): porta SSH del servizio git sulla VM. |
 | `-MirrorOriginPort` | `8443` | Passo e10 (GIT-201): porta HTTPS sulla VM dell'origine di prova del mirror in pull (lo stesso server di e9, che a quel punto e' fermo). |
+| `-MirrorAliasIp` | `192.168.250.10` | Passi e9/e10 (GIT-309): alias /32 su `lo` della VM, tolto a fine passo, su cui ascolta la destinazione/origine dei mirror. La policy di uscita (F7) blocca gli indirizzi del nodo, quindi non si usa l'IP della VM; il certificato e' autofirmato con SAN = alias. |
 | `-PreviousRef` | primo genitore di `-Ref` (API GitHub) | Passo j (GIT-148): commit da installare prima dell'upgrade. Deve avere gia `gitstack upgrade` (GIT-147) e immagini e binario pubblicati dalla CI. |
 | `-SkipBackupRestore` / `-SkipUpgrade` | (assenti) | Saltano i passi h-i e j. Solo per il debug: una prova valida li esegue tutti. |
 | `-SkipReset` | (assente) | Salta il passo (a): riusa la VM nello stato attuale. Solo per il debug di questo script, mai per una prova valida. |
