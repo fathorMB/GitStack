@@ -40,6 +40,39 @@ spec:
     limits.cpu: {{ printf "%d" (mul (.Values.ci.capacity | int) 2) | quote }}
     limits.memory: {{ printf "%dGi" (mul (.Values.ci.capacity | int) 4) | quote }}
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ci-dispatcher
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ci-dispatcher
+  namespace: {{ .Values.ci.namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ci-dispatcher
+  namespace: {{ .Values.ci.namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: ci-dispatcher
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ci-dispatcher
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
