@@ -960,6 +960,11 @@ export type Repository = {
      * Force-push ed eliminazione del branch principale rifiutati (R9).
      */
     protectDefaultBranch: boolean;
+    /**
+     * «Richiedi una Pull Request» e' accesa sul branch principale (PR4): nessun push diretto, `admin` compresi. La modifica e' in `updateBranchSettings`. Assente se spenta.
+     *
+     */
+    requirePullRequest?: boolean;
     archived: boolean;
     archivedAt?: string | null;
     /**
@@ -3344,6 +3349,11 @@ export type RepositoryWritable = {
      * Force-push ed eliminazione del branch principale rifiutati (R9).
      */
     protectDefaultBranch: boolean;
+    /**
+     * «Richiedi una Pull Request» e' accesa sul branch principale (PR4): nessun push diretto, `admin` compresi. La modifica e' in `updateBranchSettings`. Assente se spenta.
+     *
+     */
+    requirePullRequest?: boolean;
     archived: boolean;
     archivedAt?: string | null;
     /**

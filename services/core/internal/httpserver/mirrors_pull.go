@@ -680,6 +680,39 @@ func (s *apiServer) fillRepoMirrors(ctx context.Context, repos []openapi.Reposit
 			repos[i].Mirror = found[uuid.UUID(*repos[i].Id)]
 		}
 	}
+	s.fillRepoRequirePR(ctx, repos, ids)
+}
+
+// fillRepoRequirePR imposta `requirePullRequest` (PR4) sui repo che hanno
+// «Richiedi una Pull Request» accesa: lo legge il servizio git per rifiutare i
+// push diretti sul branch principale. Un errore lascia il campo spento e si
+// logga come per il mirror.
+func (s *apiServer) fillRepoRequirePR(ctx context.Context, repos []openapi.Repository, ids []uuid.UUID) {
+	rows, err := s.pool.Query(ctx, `SELECT repo_id FROM core.branch_settings WHERE repo_id = ANY($1) AND require_pull_request`, ids)
+	if err != nil {
+		slog.Warn("lettura di «Richiedi una Pull Request» dei repo non riuscita", "err", err)
+		return
+	}
+	defer rows.Close()
+	on := make(map[uuid.UUID]bool, len(ids))
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			slog.Warn("lettura di «Richiedi una Pull Request» dei repo non riuscita", "err", err)
+			return
+		}
+		on[id] = true
+	}
+	if rows.Err() != nil {
+		slog.Warn("lettura di «Richiedi una Pull Request» dei repo non riuscita", "err", rows.Err())
+		return
+	}
+	for i := range repos {
+		if repos[i].Id != nil && on[uuid.UUID(*repos[i].Id)] {
+			t := true
+			repos[i].RequirePullRequest = &t
+		}
+	}
 }
 
 // repoWithMirror è toAPIRepo più il campo `mirror`.

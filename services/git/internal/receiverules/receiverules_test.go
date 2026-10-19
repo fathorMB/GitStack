@@ -61,7 +61,7 @@ func TestRepoEnv_Mirror(t *testing.T) {
 		}
 	}
 	// Repo normale: origine vuota (l'hook non rifiuta).
-	if env := strings.Join(r.RepoEnv(access.RepoRef{}), " "); !strings.HasSuffix(env, "GITSTACK_RULE_MIRROR_ORIGIN=") {
+	if env := strings.Join(r.RepoEnv(access.RepoRef{}), " "); !strings.Contains(env, "GITSTACK_RULE_MIRROR_ORIGIN= ") {
 		t.Errorf("repo normale: %s", env)
 	}
 	if (*Rules)(nil).RepoEnv(access.RepoRef{MirrorOrigin: "x"}) != nil {
@@ -81,6 +81,29 @@ func TestProtectedBranch(t *testing.T) {
 	for _, c := range cases {
 		if got := ProtectedBranch(c.ref); got != c.want {
 			t.Errorf("ProtectedBranch(%+v) = %q, atteso %q", c.ref, got, c.want)
+		}
+	}
+}
+
+func TestRequirePRBranchEEnv(t *testing.T) {
+	cases := []struct {
+		ref  access.RepoRef
+		want string
+	}{
+		{access.RepoRef{DefaultBranch: "trunk", RequirePullRequest: true}, "trunk"},
+		{access.RepoRef{RequirePullRequest: true}, "main"},
+		{access.RepoRef{DefaultBranch: "trunk"}, ""},
+	}
+	r, err := Install(filepath.Join(t.TempDir(), "hooks"), DefaultLimits())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range cases {
+		if got := RequirePRBranch(c.ref); got != c.want {
+			t.Errorf("RequirePRBranch(%+v) = %q, atteso %q", c.ref, got, c.want)
+		}
+		if env := strings.Join(r.RepoEnv(c.ref), " "); !strings.HasSuffix(env, "GITSTACK_RULE_REQUIRE_PR="+c.want) {
+			t.Errorf("RepoEnv(%+v) = %s", c.ref, env)
 		}
 	}
 }

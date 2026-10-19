@@ -69,6 +69,8 @@ type fakeCore struct {
 	unprotected map[string]bool
 	// mirrors: origine del mirror in pull attivo per repo (MP2).
 	mirrors map[string]string
+	// requirePR: repo con «Richiedi una Pull Request» accesa (PR4).
+	requirePR map[string]bool
 	// mu protegge archived e unprotected: il server li legge da un'altra goroutine.
 	mu sync.RWMutex
 }
@@ -90,7 +92,14 @@ func (c *fakeCore) ResolveRepo(ctx context.Context, caller trust.Identity, owner
 	}
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return access.RepoRef{ID: rid, Archived: c.archived[rid], DefaultBranch: "main", ProtectDefaultBranch: !c.unprotected[rid], MirrorOrigin: c.mirrors[rid]}, nil
+	return access.RepoRef{ID: rid, Archived: c.archived[rid], DefaultBranch: "main", ProtectDefaultBranch: !c.unprotected[rid], MirrorOrigin: c.mirrors[rid], RequirePullRequest: c.requirePR[rid]}, nil
+}
+
+// setRequirePR accende o spegne «Richiedi una Pull Request» (PR4).
+func (c *fakeCore) setRequirePR(repo string, on bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.requirePR[repo] = on
 }
 
 // setMirror attiva (origin non vuota) o interrompe (vuota) il mirror in pull.
@@ -171,7 +180,7 @@ func setupHandler(t *testing.T, limits receiverules.Limits, events *pushevent.No
 	}
 	core := &fakeCore{id: ident, by: map[string]string{
 		"alice/priv": repoPriv, "alice/shared": repoInt, "alice/gone": repoGone, "alice/arch": repoArch,
-	}, archived: map[string]bool{repoArch: true}, unprotected: map[string]bool{}, mirrors: map[string]string{}}
+	}, archived: map[string]bool{repoArch: true}, unprotected: map[string]bool{}, mirrors: map[string]string{}, requirePR: map[string]bool{}}
 	rules, err := receiverules.Install(filepath.Join(t.TempDir(), "hooks"), limits)
 	if err != nil {
 		t.Fatal(err)

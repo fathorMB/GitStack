@@ -118,6 +118,9 @@ func (s *apiServer) pullSummaries(r *http.Request, repoOf map[uuid.UUID]uuid.UUI
 		if err != nil {
 			return nil, err
 		}
+		if sum.StatusState, err = pullStatusState(ctx, s.pool, repoOf[p.ID], sha40(p.HeadSha)); err != nil {
+			return nil, err
+		}
 		items = append(items, sum)
 	}
 	return items, nil

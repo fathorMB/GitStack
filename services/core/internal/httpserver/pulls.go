@@ -15,18 +15,6 @@ func pullsNotImplemented(w http.ResponseWriter) {
 	writeError(w, http.StatusNotImplemented, "not_implemented", "operazione prevista dalla v1.1, non ancora implementata")
 }
 
-func (s *apiServer) GetCombinedCommitStatus(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.CommitShaParam) {
-	pullsNotImplemented(w)
-}
-
-func (s *apiServer) ListCommitStatuses(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.CommitShaParam, _ openapi.ListCommitStatusesParams) {
-	pullsNotImplemented(w)
-}
-
-func (s *apiServer) CreateCommitStatus(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.CommitShaParam) {
-	pullsNotImplemented(w)
-}
-
 func (s *apiServer) DeletePullRequestComment(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam, _ openapi.PullCommentIdParam) {
 	pullsNotImplemented(w)
 }

@@ -15,6 +15,7 @@ import (
 func (h *handler) mountReads(api *http.ServeMux) {
 	api.HandleFunc("GET /internal/git/repos/{repoId}/commits", h.commits)
 	api.HandleFunc("GET /internal/git/repos/{repoId}/commits/{sha}", h.commit)
+	api.HandleFunc("GET /internal/git/repos/{repoId}/commits/{sha}/resolve", h.resolveCommit)
 	api.HandleFunc("GET /internal/git/repos/{repoId}/commits/{sha}/diff", h.download(gitread.FormatDiff))
 	api.HandleFunc("GET /internal/git/repos/{repoId}/commits/{sha}/patch", h.download(gitread.FormatPatch))
 	api.HandleFunc("GET /internal/git/repos/{repoId}/blame", h.blame)
@@ -92,6 +93,16 @@ func (h *handler) commit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
+}
+
+// resolveCommit risponde {"sha": <sha completo>} per uno sha o un prefisso.
+func (h *handler) resolveCommit(w http.ResponseWriter, r *http.Request) {
+	full, err := h.Reads.ResolveCommit(r.Context(), r.PathValue("repoId"), r.PathValue("sha"))
+	if err != nil {
+		h.readErr(w, "risoluzione dello sha", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"sha": full})
 }
 
 func (h *handler) blame(w http.ResponseWriter, r *http.Request) {

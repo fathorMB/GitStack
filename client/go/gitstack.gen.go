@@ -4618,8 +4618,11 @@ type Repository struct {
 	Owner RepoOwner `json:"owner"`
 
 	// ProtectDefaultBranch Force-push ed eliminazione del branch principale rifiutati (R9).
-	ProtectDefaultBranch bool       `json:"protectDefaultBranch"`
-	UpdatedAt            *time.Time `json:"updatedAt,omitempty"`
+	ProtectDefaultBranch bool `json:"protectDefaultBranch"`
+
+	// RequirePullRequest «Richiedi una Pull Request» e' accesa sul branch principale (PR4): nessun push diretto, `admin` compresi. La modifica e' in `updateBranchSettings`. Assente se spenta.
+	RequirePullRequest *bool      `json:"requirePullRequest,omitempty"`
+	UpdatedAt          *time.Time `json:"updatedAt,omitempty"`
 
 	// Visibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
 	Visibility RepoVisibility `json:"visibility"`
@@ -7589,14 +7592,14 @@ type ClientInterface interface {
 
 	// ListCommitStatuses Storico degli stati di un commit
 	//
-	// Tutti gli stati inviati per il commit (PR9), dal piu' recente, anche piu' d'uno per contesto. Lo stato che conta per un contesto e' l'ultimo; la sintesi e' in `getCombinedCommitStatus`. `sha` completo o prefisso univoco di almeno 7 caratteri (400 se non e' esadecimale, 404 se non esiste). Un repo che l'utente non puo' leggere risponde 404.
+	// Gli stati dei contesti del commit (PR9), dal piu' recente: uno per contesto, l'ultimo inviato (un nuovo stato dello stesso contesto sostituisce il precedente, non resta uno storico). La sintesi e' in `getCombinedCommitStatus`. `sha` completo o prefisso univoco di almeno 7 caratteri (400 se non e' esadecimale, 404 se non esiste). Un repo che l'utente non puo' leggere risponde 404.
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/statuses (the `ListCommitStatuses` operationId).
 	ListCommitStatuses(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *ListCommitStatusesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateCommitStatusWithBody Invia lo stato di un commit da un sistema esterno
 	//
-	// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente (aggiorna stato, descrizione e link). Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -7605,7 +7608,7 @@ type ClientInterface interface {
 
 	// CreateCommitStatus Invia lo stato di un commit da un sistema esterno
 	//
-	// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente (aggiorna stato, descrizione e link). Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -11151,7 +11154,7 @@ func (c *Client) GetCombinedCommitStatus(ctx context.Context, owner RepoOwnerPar
 
 // ListCommitStatuses Storico degli stati di un commit
 //
-// Tutti gli stati inviati per il commit (PR9), dal piu' recente, anche piu' d'uno per contesto. Lo stato che conta per un contesto e' l'ultimo; la sintesi e' in `getCombinedCommitStatus`. `sha` completo o prefisso univoco di almeno 7 caratteri (400 se non e' esadecimale, 404 se non esiste). Un repo che l'utente non puo' leggere risponde 404.
+// Gli stati dei contesti del commit (PR9), dal piu' recente: uno per contesto, l'ultimo inviato (un nuovo stato dello stesso contesto sostituisce il precedente, non resta uno storico). La sintesi e' in `getCombinedCommitStatus`. `sha` completo o prefisso univoco di almeno 7 caratteri (400 se non e' esadecimale, 404 se non esiste). Un repo che l'utente non puo' leggere risponde 404.
 //
 // Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/statuses (the `ListCommitStatuses` operationId).
 func (c *Client) ListCommitStatuses(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *ListCommitStatusesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -11168,7 +11171,7 @@ func (c *Client) ListCommitStatuses(ctx context.Context, owner RepoOwnerParam, r
 
 // CreateCommitStatusWithBody Invia lo stato di un commit da un sistema esterno
 //
-// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente (aggiorna stato, descrizione e link). Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 //
 // Takes any type of body and a specified content type.
 //
@@ -11187,7 +11190,7 @@ func (c *Client) CreateCommitStatusWithBody(ctx context.Context, owner RepoOwner
 
 // CreateCommitStatus Invia lo stato di un commit da un sistema esterno
 //
-// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente (aggiorna stato, descrizione e link). Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 //
 // Takes a body of the `application/json` content type.
 //
@@ -28126,7 +28129,7 @@ type ClientWithResponsesInterface interface {
 
 	// ListCommitStatusesWithResponse Storico degli stati di un commit
 	//
-	// Tutti gli stati inviati per il commit (PR9), dal piu' recente, anche piu' d'uno per contesto. Lo stato che conta per un contesto e' l'ultimo; la sintesi e' in `getCombinedCommitStatus`. `sha` completo o prefisso univoco di almeno 7 caratteri (400 se non e' esadecimale, 404 se non esiste). Un repo che l'utente non puo' leggere risponde 404.
+	// Gli stati dei contesti del commit (PR9), dal piu' recente: uno per contesto, l'ultimo inviato (un nuovo stato dello stesso contesto sostituisce il precedente, non resta uno storico). La sintesi e' in `getCombinedCommitStatus`. `sha` completo o prefisso univoco di almeno 7 caratteri (400 se non e' esadecimale, 404 se non esiste). Un repo che l'utente non puo' leggere risponde 404.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -28135,7 +28138,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateCommitStatusWithBodyWithResponse Invia lo stato di un commit da un sistema esterno
 	//
-	// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente (aggiorna stato, descrizione e link). Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -28144,7 +28147,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateCommitStatusWithResponse Invia lo stato di un commit da un sistema esterno
 	//
-	// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente (aggiorna stato, descrizione e link). Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -48878,7 +48881,7 @@ func (c *ClientWithResponses) GetCombinedCommitStatusWithResponse(ctx context.Co
 
 // ListCommitStatusesWithResponse Storico degli stati di un commit
 //
-// Tutti gli stati inviati per il commit (PR9), dal piu' recente, anche piu' d'uno per contesto. Lo stato che conta per un contesto e' l'ultimo; la sintesi e' in `getCombinedCommitStatus`. `sha` completo o prefisso univoco di almeno 7 caratteri (400 se non e' esadecimale, 404 se non esiste). Un repo che l'utente non puo' leggere risponde 404.
+// Gli stati dei contesti del commit (PR9), dal piu' recente: uno per contesto, l'ultimo inviato (un nuovo stato dello stesso contesto sostituisce il precedente, non resta uno storico). La sintesi e' in `getCombinedCommitStatus`. `sha` completo o prefisso univoco di almeno 7 caratteri (400 se non e' esadecimale, 404 se non esiste). Un repo che l'utente non puo' leggere risponde 404.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -48893,7 +48896,7 @@ func (c *ClientWithResponses) ListCommitStatusesWithResponse(ctx context.Context
 
 // CreateCommitStatusWithBodyWithResponse Invia lo stato di un commit da un sistema esterno
 //
-// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente (aggiorna stato, descrizione e link). Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -48908,7 +48911,7 @@ func (c *ClientWithResponses) CreateCommitStatusWithBodyWithResponse(ctx context
 
 // CreateCommitStatusWithResponse Invia lo stato di un commit da un sistema esterno
 //
-// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente (aggiorna stato, descrizione e link). Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

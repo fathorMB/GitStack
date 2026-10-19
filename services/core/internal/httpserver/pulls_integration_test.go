@@ -91,6 +91,9 @@ func (g *prGit) ReadJSON(_ context.Context, _ trust.Identity, repo uuid.UUID, pa
 	g.bmu.Lock()
 	defer g.bmu.Unlock()
 	br := g.of(repo)
+	if strings.HasPrefix(path, "commits/") && strings.HasSuffix(path, "/resolve") {
+		return g.resolveSha(br, strings.TrimSuffix(strings.TrimPrefix(path, "commits/"), "/resolve"))
+	}
 	switch path {
 	case "branches":
 		var items []string
@@ -707,4 +710,30 @@ func TestPulls_ElencoDettaglioCommitEFile(t *testing.T) {
 		}
 		e.want(e.do(http.MethodGet, "/repos/alice/app/pulls/999", "carol", ""), http.StatusNotFound, "not_found")
 	})
+}
+
+// resolveSha finge la risoluzione di uno sha (GIT-264): un prefisso di almeno 7
+// cifre si espande sulla punta di un branch, un hash intero esiste salvo quello
+// di sole «f».
+func (g *prGit) resolveSha(br map[string]string, arg string) (json.RawMessage, error) {
+	for _, c := range arg {
+		if !strings.ContainsRune("0123456789abcdef", c) {
+			return nil, &gitclient.APIError{Status: 400, Code: "invalid_request", Message: "sha non è esadecimale"}
+		}
+	}
+	full := ""
+	switch {
+	case len(arg) == 40 && arg != strings.Repeat("f", 40):
+		full = arg
+	case len(arg) >= 7 && len(arg) < 40:
+		for _, s := range br {
+			if strings.HasPrefix(s, arg) {
+				full = s
+			}
+		}
+	}
+	if full == "" {
+		return nil, &gitclient.APIError{Status: 404, Code: "ref_not_found", Message: "commit non trovato"}
+	}
+	return json.RawMessage(fmt.Sprintf(`{"sha":%q}`, full)), nil
 }

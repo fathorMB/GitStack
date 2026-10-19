@@ -673,6 +673,94 @@ func TestGitClientReale(t *testing.T) {
 		}
 	})
 
+	// GIT-264, PR4: «Richiedi una Pull Request». Con l'impostazione accesa il push
+	// diretto su main è rifiutato anche ad alice (admin), via HTTPS e SSH; i
+	// branch restano liberi; il merge di una PR con le approvazioni riesce
+	// (core chiede a git di unire con update-ref, non passa dall'hook); spenta
+	// l'impostazione il push diretto torna accettato.
+	t.Run("PR4_richiedi_pull_request", func(t *testing.T) {
+		repoID := e.createRepo("alice", "regole-pr4", "private")
+		bobInfo := e.gw("GET", "/users/bob", nil, nil, e.cookies["bob"])
+		want(t, bobInfo, 200, "")
+		bobID, _ := bobInfo.json()["id"].(string)
+		want(t, e.gw("POST", "/resources/"+repoID+"/grants", map[string]any{"subjectType": "user", "subjectId": bobID, "role": "write"}, e.bearer("alice"), nil), 201, "")
+		u := e.httpsURL("alice", e.tokens["alice"], "/alice/regole-pr4.git")
+		w := e.initWork(u, map[string]string{"a.txt": "a\n"})
+		e.mustGit(w, "", "push", "-q", "origin", "main")
+		head := e.remoteHead(u, "")
+
+		// spenta (default): il push diretto passa
+		e.commitFile(w, "b.txt", "b\n", "diretto a impostazione spenta")
+		e.mustGit(w, "", "push", "-q", "origin", "main")
+		head = e.remoteHead(u, "")
+
+		want(t, e.gw("PATCH", "/repos/alice/regole-pr4/branch-settings", map[string]any{"requirePullRequest": true, "requiredApprovals": 1}, e.bearer("alice"), nil), 200, "")
+		e.commitFile(w, "c.txt", "c\n", "diretto a impostazione accesa")
+		for name, key := range map[string]string{"HTTPS": "", "SSH": e.keys["alice"]} {
+			remote := "origin"
+			if name == "SSH" {
+				remote = e.sshURL("/alice/regole-pr4.git")
+			}
+			out, err := e.git(w, key, "push", remote, "main")
+			if err == nil || !strings.Contains(out, "gitstack: push rifiutato") || !strings.Contains(out, "pull_request_required") {
+				t.Fatalf("PR4 %s: push diretto: err=%v\n%s", name, err, out)
+			}
+			if got := e.remoteHead(u, ""); got != head {
+				t.Errorf("PR4 %s: main cambiato (%s -> %s)", name, head, got)
+			}
+		}
+
+		// un branch di lavoro è libero; apro la PR
+		e.mustGit(w, "", "push", "-q", "origin", "main:refs/heads/feat")
+		pr := e.gw("POST", "/repos/alice/regole-pr4/pulls", map[string]any{"title": "c", "sourceBranch": "feat"}, e.bearer("alice"), nil)
+		want(t, pr, 201, "")
+		num := int(pr.json()["number"].(float64))
+		prPath := fmt.Sprintf("/repos/alice/regole-pr4/pulls/%d", num)
+
+		// senza approvazioni il merge è bloccato; con quella di bob passa
+		want(t, e.gw("POST", prPath+"/merge", map[string]any{"method": "squash"}, e.bearer("alice"), nil), 409, "approvals_required")
+		want(t, e.gw("POST", prPath+"/reviews", map[string]any{"event": "approve"}, e.bearer("bob"), nil), 201, "")
+		sha := strings.Fields(e.mustGit(w, "", "rev-parse", "HEAD"))[0]
+		// stato obbligatorio: mancante blocca, success sblocca
+		want(t, e.gw("PATCH", "/repos/alice/regole-pr4/branch-settings", map[string]any{"requiredStatusContexts": []string{"ci/build"}}, e.bearer("alice"), nil), 200, "")
+		want(t, e.gw("POST", prPath+"/merge", map[string]any{"method": "squash"}, e.bearer("alice"), nil), 409, "status_required")
+		want(t, e.gw("POST", "/repos/alice/regole-pr4/commits/"+sha+"/statuses", map[string]any{"state": "failure", "context": "ci/build"}, e.bearer("bob"), nil), 201, "")
+		want(t, e.gw("POST", prPath+"/merge", map[string]any{"method": "squash"}, e.bearer("alice"), nil), 409, "status_failed")
+		want(t, e.gw("POST", "/repos/alice/regole-pr4/commits/"+sha[:10]+"/statuses", map[string]any{"state": "success", "context": "ci/build"}, e.bearer("bob"), nil), 201, "")
+		combined := e.gw("GET", "/repos/alice/regole-pr4/commits/"+sha+"/status", nil, e.bearer("carol"), nil)
+		want(t, combined, 404, "")
+		combined = e.gw("GET", "/repos/alice/regole-pr4/commits/"+sha+"/status", nil, e.bearer("alice"), nil)
+		want(t, combined, 200, "")
+		if combined.json()["state"] != "success" {
+			t.Fatalf("stato combinato = %v", combined.json())
+		}
+		want(t, e.gw("POST", prPath+"/merge", map[string]any{"method": "squash"}, e.bearer("alice"), nil), 200, "")
+		if got := e.remoteHead(u, ""); got == head {
+			t.Error("PR4: il merge non ha spostato main")
+		}
+		// Il merge emette git.push come un push normale: è l'evento che fa
+		// partire il mirror in push (V8) e i collegamenti delle issue.
+		merged := e.remoteHead(u, "")
+		found := false
+		for _, p := range e.pushEvents("alice/regole-pr4", 3) {
+			for _, r := range p.Refs {
+				if r.Ref == "refs/heads/main" && r.After == merged && r.Before == head && p.Pusher.Username == "alice" {
+					found = true
+				}
+			}
+		}
+		if !found {
+			t.Errorf("PR4: nessun git.push del merge (main %s -> %s)", head, merged)
+		}
+
+		// spenta l'impostazione il push diretto torna accettato
+		want(t, e.gw("PATCH", "/repos/alice/regole-pr4/branch-settings", map[string]any{"requirePullRequest": false}, e.bearer("alice"), nil), 200, "")
+		e.mustGit(w, "", "fetch", "-q", "origin")
+		e.mustGit(w, "", "reset", "-q", "--hard", "origin/main")
+		e.commitFile(w, "d.txt", "d\n", "diretto dopo aver spento")
+		e.mustGit(w, "", "push", "-q", "origin", "main")
+	})
+
 	t.Run("R10_repo_archiviato", func(t *testing.T) {
 		e.createRepo("alice", "regole-r10", "private")
 		u := e.httpsURL("alice", e.tokens["alice"], "/alice/regole-r10.git")
