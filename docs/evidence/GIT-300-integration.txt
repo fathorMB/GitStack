@@ -1,0 +1,350 @@
+GIT-300 - evidenza dei test d'integrazione (tag integration), services/core
+SHA del codice provato: 6c1a9d1f928e56cbf4fc7aa0de83cdc49a894838 (worktree pulito; questo file è l'unico commit successivo)
+Host: Windows, Docker Desktop, DOCKER_HOST=npipe, TESTCONTAINERS_RYUK_DISABLED=true
+
+### go vet -tags integration ./...  (cwd services/core)
+exit=0
+
+### go test -v -tags integration -count=1 ./internal/httpserver -run 'TestPull|TestReview'  - ESECUZIONE 1
+--- PASS: TestPullReviewDecisions_QueryCountIndipendenteDalNumero (0.00s)
+--- PASS: TestPullMirror_RefDivergenti_ConTestoDErrore_NonEUnErrore (3.20s)
+--- PASS: TestPullMirror_API_AttivazioneEPermessi (3.03s)
+--- PASS: TestPullMirror_API_ValidazioneEEgress (3.22s)
+--- PASS: TestPullMirror_Pianificazione_IntervalloESyncNow (3.26s)
+--- PASS: TestPullMirror_Ritentativi_AttesaCrescente (2.98s)
+--- PASS: TestPullMirror_BloccoEgress_NonSiRitenta (3.10s)
+--- PASS: TestPullMirror_UnSoloAggiornamentoPerVolta (4.73s)
+--- PASS: TestPullMirror_Registro_50E30Giorni (4.40s)
+--- PASS: TestPullMirror_RefDivergenti_Notifica (3.25s)
+--- PASS: TestPullMirror_NessunAggiornamentoDa24Ore_NotificaUnaVolta (3.53s)
+--- PASS: TestPullMirror_PausaRipresaInterruzione (3.37s)
+--- PASS: TestPullMirror_Import_CopiaUnaVoltaSola (3.33s)
+--- PASS: TestPullMirror_Import_PermessiEValidazione (3.24s)
+--- PASS: TestPullMirror_DivietoMirrorInPushVersoLOrigine (3.18s)
+--- PASS: TestPullMirror_CampoMirrorNelRepo (3.13s)
+--- PASS: TestPullMirror_IssuesEdEtichetteRestanoNormali (3.49s)
+--- PASS: TestPullGeneralComments_CreaELeggi (3.54s)
+--- PASS: TestPullGeneralComments_Permessi (3.40s)
+--- PASS: TestPullGeneralComments_Eliminazione (3.49s)
+    --- PASS: TestPullGeneralComments_Eliminazione/autore_e_admin_si_gli_altri_no (0.04s)
+    --- PASS: TestPullGeneralComments_Eliminazione/segnaposto_se_la_conversazione_ha_risposte (0.06s)
+    --- PASS: TestPullGeneralComments_Eliminazione/senza_risposte_sparisce_la_conversazione (0.03s)
+    --- PASS: TestPullGeneralComments_Eliminazione/repo_archiviato_e_pr_inesistente (0.01s)
+--- PASS: TestPulls_CreazionePR1ePermessi (3.43s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/read_non_apre_e_riceve_il_suggerimento_della_issue (0.00s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/write_apre_e_la_risposta_e_completa (0.02s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/admin_apre_una_bozza_senza_revisori (0.01s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/validazione_422 (0.01s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/revisore_senza_read_422 (0.01s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/una_sola_PR_aperta_per_coppia_di_branch (0.01s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/repo_non_leggibile_404_su_ogni_operazione (0.01s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/repo_archiviato_409 (0.02s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/mirror_in_pull_sola_lettura (0.01s)
+--- PASS: TestPulls_TokenConScope_ViaToken (3.59s)
+--- PASS: TestPulls_NumeroCondivisoConLeIssuesI1 (3.62s)
+    --- PASS: TestPulls_NumeroCondivisoConLeIssuesI1/sequenza_mista (0.06s)
+    --- PASS: TestPulls_NumeroCondivisoConLeIssuesI1/creazioni_concorrenti_numeri_unici_e_contigui (0.28s)
+    --- PASS: TestPulls_NumeroCondivisoConLeIssuesI1/stessa_coppia_in_concorrenza_una_sola_PR (0.04s)
+--- PASS: TestPulls_BozzaChiusuraERiapertura_PR6 (3.45s)
+    --- PASS: TestPulls_BozzaChiusuraERiapertura_PR6/bozza_e_ready_for_review (0.02s)
+    --- PASS: TestPulls_BozzaChiusuraERiapertura_PR6/modifica_titolo_testo_e_destinazione (0.02s)
+    --- PASS: TestPulls_BozzaChiusuraERiapertura_PR6/chiudere_non_elimina_il_branch_e_riaprire_lo_richiede (0.04s)
+    --- PASS: TestPulls_BozzaChiusuraERiapertura_PR6/riaprire_con_una_PR_aperta_sulla_stessa_coppia_409 (0.02s)
+    --- PASS: TestPulls_BozzaChiusuraERiapertura_PR6/autore_con_solo_read_gestisce_la_propria (0.03s)
+    --- PASS: TestPulls_BozzaChiusuraERiapertura_PR6/una_PR_unita_e_definitiva (0.02s)
+    --- PASS: TestPulls_BozzaChiusuraERiapertura_PR6/cronologia (0.00s)
+--- PASS: TestPulls_ElencoDettaglioCommitEFile (3.23s)
+    --- PASS: TestPulls_ElencoDettaglioCommitEFile/filtri (0.09s)
+    --- PASS: TestPulls_ElencoDettaglioCommitEFile/richieste_non_valide (0.00s)
+    --- PASS: TestPulls_ElencoDettaglioCommitEFile/commit_e_file (0.01s)
+    --- PASS: TestPulls_ElencoDettaglioCommitEFile/dettaglio_con_commenti_e_review_decision (0.00s)
+--- PASS: TestPullsMerge_MergeCommitESquash (3.38s)
+    --- PASS: TestPullsMerge_MergeCommitESquash/senza_write_403_e_metodo_sconosciuto_422 (0.00s)
+    --- PASS: TestPullsMerge_MergeCommitESquash/mergeability_di_una_PR_pulita (0.00s)
+    --- PASS: TestPullsMerge_MergeCommitESquash/squash_con_titolo_proposto (0.02s)
+    --- PASS: TestPullsMerge_MergeCommitESquash/merge_commit_con_titolo_e_messaggio_scelti (0.01s)
+    --- PASS: TestPullsMerge_MergeCommitESquash/agente_con_token_e_write_unisce (0.02s)
+--- PASS: TestPullsMerge_ImpostazioniEMetodoDisattivato (3.35s)
+    --- PASS: TestPullsMerge_ImpostazioniEMetodoDisattivato/solo_admin_modifica (0.00s)
+    --- PASS: TestPullsMerge_ImpostazioniEMetodoDisattivato/almeno_un_metodo_e_default_ammesso (0.01s)
+    --- PASS: TestPullsMerge_ImpostazioniEMetodoDisattivato/merge_commit_disattivato_e_rifiutato (0.01s)
+    --- PASS: TestPullsMerge_ImpostazioniEMetodoDisattivato/il_default_segue_l_unico_metodo_rimasto (0.02s)
+    --- PASS: TestPullsMerge_ImpostazioniEMetodoDisattivato/repo_archiviato_409 (0.00s)
+--- PASS: TestPullsMerge_BozzaRifiutata (3.35s)
+--- PASS: TestPullsMerge_ConflittiPR7 (3.62s)
+    --- PASS: TestPullsMerge_ConflittiPR7/troppi_file_in_conflitto_si_troncano (0.01s)
+--- PASS: TestPullsMerge_PRIndietroSiUnisce (3.36s)
+--- PASS: TestPullsMerge_HeadCambiatoEStatoNonAperta (3.15s)
+--- PASS: TestPullsMerge_ConcorrentiSullaStessaBase (6.70s)
+    --- PASS: TestPullsMerge_ConcorrentiSullaStessaBase/due_PR_stessa_destinazione_una_sola_riesce (3.37s)
+    --- PASS: TestPullsMerge_ConcorrentiSullaStessaBase/stessa_PR_due_volte_una_sola_riesce (3.32s)
+--- PASS: TestPullsMerge_PoolPiccoloNonVaInDeadlock (3.18s)
+--- PASS: TestPullsMerge_EliminazioneDelBranch (3.40s)
+    --- PASS: TestPullsMerge_EliminazioneDelBranch/manuale_dopo_il_merge (0.05s)
+    --- PASS: TestPullsMerge_EliminazioneDelBranch/branch_usato_da_un_altra_PR_aperta (0.04s)
+    --- PASS: TestPullsMerge_EliminazioneDelBranch/branch_cambiato_dopo_il_merge_non_si_elimina (0.02s)
+    --- PASS: TestPullsMerge_EliminazioneDelBranch/automatica_su_richiesta_del_merge (0.02s)
+    --- PASS: TestPullsMerge_EliminazioneDelBranch/automatica_con_l_impostazione_del_repo (0.04s)
+--- PASS: TestReview_PR2_PersonaAgentePropriaPRePermessi (3.41s)
+    --- PASS: TestReview_PR2_PersonaAgentePropriaPRePermessi/chi_legge_commenta_ma_non_approva (0.01s)
+    --- PASS: TestReview_PR2_PersonaAgentePropriaPRePermessi/la_propria_PR_non_si_approva_ne_si_blocca (0.01s)
+    --- PASS: TestReview_PR2_PersonaAgentePropriaPRePermessi/input_non_validi (0.01s)
+    --- PASS: TestReview_PR2_PersonaAgentePropriaPRePermessi/agente_approva_ma_non_conta (0.02s)
+    --- PASS: TestReview_PR2_PersonaAgentePropriaPRePermessi/la_persona_con_write_approva_e_conta (0.01s)
+    --- PASS: TestReview_PR2_PersonaAgentePropriaPRePermessi/richiesta_di_modifiche_e_nuova_approvazione (0.02s)
+    --- PASS: TestReview_PR2_PersonaAgentePropriaPRePermessi/nuovi_commit_annullano_l_approvazione (0.00s)
+--- PASS: TestReview_PR2_BozzaChiusaERepoArchiviato (3.24s)
+--- PASS: TestReview_StatoContaSoloLePersone (3.21s)
+--- PASS: TestReview_PR5_CommentiSulleRigheEConversazioni (3.32s)
+    --- PASS: TestReview_PR5_CommentiSulleRigheEConversazioni/righe_fuori_dal_diff_o_gruppo_non_valido (0.01s)
+    --- PASS: TestReview_PR5_CommentiSulleRigheEConversazioni/review_con_commento_su_riga_e_su_gruppo (0.02s)
+    --- PASS: TestReview_PR5_CommentiSulleRigheEConversazioni/risposta_e_commento_singolo (0.03s)
+    --- PASS: TestReview_PR5_CommentiSulleRigheEConversazioni/modifica_del_commento_solo_all_autore (0.01s)
+    --- PASS: TestReview_PR5_CommentiSulleRigheEConversazioni/risolta_e_riaperta_da_autore_o_write (0.04s)
+--- PASS: TestReview_PR5_OutdatedDopoNuoviCommit (3.40s)
+--- PASS: TestReview_PR12c_RichiestaDiReview (2.94s)
+    --- PASS: TestReview_PR12c_RichiestaDiReview/chi_puo_chiedere (0.02s)
+    --- PASS: TestReview_PR12c_RichiestaDiReview/a_chi (0.02s)
+    --- PASS: TestReview_PR12c_RichiestaDiReview/nuova_richiesta_dopo_la_review (0.02s)
+    --- PASS: TestReview_PR12c_RichiestaDiReview/togliere_la_richiesta (0.02s)
+    --- PASS: TestReview_PR12c_RichiestaDiReview/bozza_chiusa_e_archiviato (0.02s)
+--- PASS: TestPullSearch_PR12a_Filtri (4.06s)
+--- PASS: TestPullSearch_PR12a_VisibilitaEIssues (3.59s)
+    --- PASS: TestPullSearch_PR12a_VisibilitaEIssues/solo_i_repo_visibili (0.13s)
+    --- PASS: TestPullSearch_PR12a_VisibilitaEIssues/le_issues_non_sono_PR (0.06s)
+    --- PASS: TestPullSearch_PR12a_VisibilitaEIssues/richieste_non_valide_e_paginazione (0.01s)
+--- PASS: TestPullList_StatusState_UnaQueryPerPagina_GIT305 (3.52s)
+--- PASS: TestPullViewed_PR12b_Personale (3.17s)
+--- PASS: TestPullViewed_PR12b_InputEPermessi (3.36s)
+--- PASS: TestPullViewed_PR12b_SiAzzeraSeIlFileCambia (3.09s)
+--- PASS: TestPullMirror_Import_NomeNelCestino (3.19s)
+PASS
+ok  	github.com/fathorMB/GitStack/services/core/internal/httpserver	161.992s
+exit=0
+
+### stesso comando - ESECUZIONE 2
+--- PASS: TestPullReviewDecisions_QueryCountIndipendenteDalNumero (0.00s)
+--- PASS: TestPullMirror_RefDivergenti_ConTestoDErrore_NonEUnErrore (3.43s)
+--- PASS: TestPullMirror_API_AttivazioneEPermessi (3.75s)
+--- PASS: TestPullMirror_API_ValidazioneEEgress (3.45s)
+--- PASS: TestPullMirror_Pianificazione_IntervalloESyncNow (3.05s)
+--- PASS: TestPullMirror_Ritentativi_AttesaCrescente (3.42s)
+--- PASS: TestPullMirror_BloccoEgress_NonSiRitenta (3.29s)
+--- PASS: TestPullMirror_UnSoloAggiornamentoPerVolta (3.20s)
+--- PASS: TestPullMirror_Registro_50E30Giorni (3.55s)
+--- PASS: TestPullMirror_RefDivergenti_Notifica (2.86s)
+--- PASS: TestPullMirror_NessunAggiornamentoDa24Ore_NotificaUnaVolta (3.10s)
+--- PASS: TestPullMirror_PausaRipresaInterruzione (3.36s)
+--- PASS: TestPullMirror_Import_CopiaUnaVoltaSola (3.16s)
+--- PASS: TestPullMirror_Import_PermessiEValidazione (3.35s)
+--- PASS: TestPullMirror_DivietoMirrorInPushVersoLOrigine (3.25s)
+--- PASS: TestPullMirror_CampoMirrorNelRepo (3.68s)
+--- PASS: TestPullMirror_IssuesEdEtichetteRestanoNormali (3.43s)
+--- PASS: TestPullGeneralComments_CreaELeggi (3.21s)
+--- PASS: TestPullGeneralComments_Permessi (3.35s)
+--- PASS: TestPullGeneralComments_Eliminazione (3.50s)
+    --- PASS: TestPullGeneralComments_Eliminazione/autore_e_admin_si_gli_altri_no (0.04s)
+    --- PASS: TestPullGeneralComments_Eliminazione/segnaposto_se_la_conversazione_ha_risposte (0.06s)
+    --- PASS: TestPullGeneralComments_Eliminazione/senza_risposte_sparisce_la_conversazione (0.03s)
+    --- PASS: TestPullGeneralComments_Eliminazione/repo_archiviato_e_pr_inesistente (0.01s)
+--- PASS: TestPulls_CreazionePR1ePermessi (3.30s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/read_non_apre_e_riceve_il_suggerimento_della_issue (0.00s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/write_apre_e_la_risposta_e_completa (0.02s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/admin_apre_una_bozza_senza_revisori (0.01s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/validazione_422 (0.01s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/revisore_senza_read_422 (0.01s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/una_sola_PR_aperta_per_coppia_di_branch (0.01s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/repo_non_leggibile_404_su_ogni_operazione (0.01s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/repo_archiviato_409 (0.02s)
+    --- PASS: TestPulls_CreazionePR1ePermessi/mirror_in_pull_sola_lettura (0.01s)
+--- PASS: TestPulls_TokenConScope_ViaToken (3.75s)
+--- PASS: TestPulls_NumeroCondivisoConLeIssuesI1 (3.62s)
+    --- PASS: TestPulls_NumeroCondivisoConLeIssuesI1/sequenza_mista (0.05s)
+    --- PASS: TestPulls_NumeroCondivisoConLeIssuesI1/creazioni_concorrenti_numeri_unici_e_contigui (0.24s)
+    --- PASS: TestPulls_NumeroCondivisoConLeIssuesI1/stessa_coppia_in_concorrenza_una_sola_PR (0.03s)
+--- PASS: TestPulls_BozzaChiusuraERiapertura_PR6 (3.65s)
+    --- PASS: TestPulls_BozzaChiusuraERiapertura_PR6/bozza_e_ready_for_review (0.02s)
+    --- PASS: TestPulls_BozzaChiusuraERiapertura_PR6/modifica_titolo_testo_e_destinazione (0.03s)
+    --- PASS: TestPulls_BozzaChiusuraERiapertura_PR6/chiudere_non_elimina_il_branch_e_riaprire_lo_richiede (0.04s)
+    --- PASS: TestPulls_BozzaChiusuraERiapertura_PR6/riaprire_con_una_PR_aperta_sulla_stessa_coppia_409 (0.02s)
+    --- PASS: TestPulls_BozzaChiusuraERiapertura_PR6/autore_con_solo_read_gestisce_la_propria (0.03s)
+    --- PASS: TestPulls_BozzaChiusuraERiapertura_PR6/una_PR_unita_e_definitiva (0.02s)
+    --- PASS: TestPulls_BozzaChiusuraERiapertura_PR6/cronologia (0.00s)
+--- PASS: TestPulls_ElencoDettaglioCommitEFile (3.48s)
+    --- PASS: TestPulls_ElencoDettaglioCommitEFile/filtri (0.10s)
+    --- PASS: TestPulls_ElencoDettaglioCommitEFile/richieste_non_valide (0.00s)
+    --- PASS: TestPulls_ElencoDettaglioCommitEFile/commit_e_file (0.01s)
+    --- PASS: TestPulls_ElencoDettaglioCommitEFile/dettaglio_con_commenti_e_review_decision (0.00s)
+--- PASS: TestPullsMerge_MergeCommitESquash (3.10s)
+    --- PASS: TestPullsMerge_MergeCommitESquash/senza_write_403_e_metodo_sconosciuto_422 (0.00s)
+    --- PASS: TestPullsMerge_MergeCommitESquash/mergeability_di_una_PR_pulita (0.00s)
+    --- PASS: TestPullsMerge_MergeCommitESquash/squash_con_titolo_proposto (0.02s)
+    --- PASS: TestPullsMerge_MergeCommitESquash/merge_commit_con_titolo_e_messaggio_scelti (0.01s)
+    --- PASS: TestPullsMerge_MergeCommitESquash/agente_con_token_e_write_unisce (0.01s)
+--- PASS: TestPullsMerge_ImpostazioniEMetodoDisattivato (3.21s)
+    --- PASS: TestPullsMerge_ImpostazioniEMetodoDisattivato/solo_admin_modifica (0.00s)
+    --- PASS: TestPullsMerge_ImpostazioniEMetodoDisattivato/almeno_un_metodo_e_default_ammesso (0.01s)
+    --- PASS: TestPullsMerge_ImpostazioniEMetodoDisattivato/merge_commit_disattivato_e_rifiutato (0.01s)
+    --- PASS: TestPullsMerge_ImpostazioniEMetodoDisattivato/il_default_segue_l_unico_metodo_rimasto (0.02s)
+    --- PASS: TestPullsMerge_ImpostazioniEMetodoDisattivato/repo_archiviato_409 (0.00s)
+--- PASS: TestPullsMerge_BozzaRifiutata (3.24s)
+--- PASS: TestPullsMerge_ConflittiPR7 (3.17s)
+    --- PASS: TestPullsMerge_ConflittiPR7/troppi_file_in_conflitto_si_troncano (0.01s)
+--- PASS: TestPullsMerge_PRIndietroSiUnisce (3.01s)
+--- PASS: TestPullsMerge_HeadCambiatoEStatoNonAperta (3.09s)
+--- PASS: TestPullsMerge_ConcorrentiSullaStessaBase (6.58s)
+    --- PASS: TestPullsMerge_ConcorrentiSullaStessaBase/due_PR_stessa_destinazione_una_sola_riesce (3.02s)
+    --- PASS: TestPullsMerge_ConcorrentiSullaStessaBase/stessa_PR_due_volte_una_sola_riesce (3.56s)
+--- PASS: TestPullsMerge_PoolPiccoloNonVaInDeadlock (3.53s)
+--- PASS: TestPullsMerge_EliminazioneDelBranch (3.25s)
+    --- PASS: TestPullsMerge_EliminazioneDelBranch/manuale_dopo_il_merge (0.04s)
+    --- PASS: TestPullsMerge_EliminazioneDelBranch/branch_usato_da_un_altra_PR_aperta (0.02s)
+    --- PASS: TestPullsMerge_EliminazioneDelBranch/branch_cambiato_dopo_il_merge_non_si_elimina (0.02s)
+    --- PASS: TestPullsMerge_EliminazioneDelBranch/automatica_su_richiesta_del_merge (0.02s)
+    --- PASS: TestPullsMerge_EliminazioneDelBranch/automatica_con_l_impostazione_del_repo (0.04s)
+--- PASS: TestReview_PR2_PersonaAgentePropriaPRePermessi (3.41s)
+    --- PASS: TestReview_PR2_PersonaAgentePropriaPRePermessi/chi_legge_commenta_ma_non_approva (0.02s)
+    --- PASS: TestReview_PR2_PersonaAgentePropriaPRePermessi/la_propria_PR_non_si_approva_ne_si_blocca (0.01s)
+    --- PASS: TestReview_PR2_PersonaAgentePropriaPRePermessi/input_non_validi (0.01s)
+    --- PASS: TestReview_PR2_PersonaAgentePropriaPRePermessi/agente_approva_ma_non_conta (0.02s)
+    --- PASS: TestReview_PR2_PersonaAgentePropriaPRePermessi/la_persona_con_write_approva_e_conta (0.01s)
+    --- PASS: TestReview_PR2_PersonaAgentePropriaPRePermessi/richiesta_di_modifiche_e_nuova_approvazione (0.02s)
+    --- PASS: TestReview_PR2_PersonaAgentePropriaPRePermessi/nuovi_commit_annullano_l_approvazione (0.01s)
+--- PASS: TestReview_PR2_BozzaChiusaERepoArchiviato (3.55s)
+--- PASS: TestReview_StatoContaSoloLePersone (3.62s)
+--- PASS: TestReview_PR5_CommentiSulleRigheEConversazioni (3.27s)
+    --- PASS: TestReview_PR5_CommentiSulleRigheEConversazioni/righe_fuori_dal_diff_o_gruppo_non_valido (0.01s)
+    --- PASS: TestReview_PR5_CommentiSulleRigheEConversazioni/review_con_commento_su_riga_e_su_gruppo (0.02s)
+    --- PASS: TestReview_PR5_CommentiSulleRigheEConversazioni/risposta_e_commento_singolo (0.03s)
+    --- PASS: TestReview_PR5_CommentiSulleRigheEConversazioni/modifica_del_commento_solo_all_autore (0.01s)
+    --- PASS: TestReview_PR5_CommentiSulleRigheEConversazioni/risolta_e_riaperta_da_autore_o_write (0.05s)
+--- PASS: TestReview_PR5_OutdatedDopoNuoviCommit (3.19s)
+--- PASS: TestReview_PR12c_RichiestaDiReview (3.41s)
+    --- PASS: TestReview_PR12c_RichiestaDiReview/chi_puo_chiedere (0.02s)
+    --- PASS: TestReview_PR12c_RichiestaDiReview/a_chi (0.02s)
+    --- PASS: TestReview_PR12c_RichiestaDiReview/nuova_richiesta_dopo_la_review (0.02s)
+    --- PASS: TestReview_PR12c_RichiestaDiReview/togliere_la_richiesta (0.02s)
+    --- PASS: TestReview_PR12c_RichiestaDiReview/bozza_chiusa_e_archiviato (0.02s)
+--- PASS: TestPullSearch_PR12a_Filtri (3.67s)
+--- PASS: TestPullSearch_PR12a_VisibilitaEIssues (3.41s)
+    --- PASS: TestPullSearch_PR12a_VisibilitaEIssues/solo_i_repo_visibili (0.11s)
+    --- PASS: TestPullSearch_PR12a_VisibilitaEIssues/le_issues_non_sono_PR (0.04s)
+    --- PASS: TestPullSearch_PR12a_VisibilitaEIssues/richieste_non_valide_e_paginazione (0.01s)
+--- PASS: TestPullList_StatusState_UnaQueryPerPagina_GIT305 (3.19s)
+--- PASS: TestPullViewed_PR12b_Personale (2.93s)
+--- PASS: TestPullViewed_PR12b_InputEPermessi (3.43s)
+--- PASS: TestPullViewed_PR12b_SiAzzeraSeIlFileCambia (3.52s)
+--- PASS: TestPullMirror_Import_NomeNelCestino (3.33s)
+PASS
+ok  	github.com/fathorMB/GitStack/services/core/internal/httpserver	160.284s
+exit=0
+
+### go test -v -tags integration -count=1 ./internal/migrate ./internal/outbox
+--- PASS: TestBootstrapRole_LeastPrivilege (3.79s)
+--- PASS: TestMigration0020_MetodoProposto (3.95s)
+--- PASS: TestMigration0017_NotificheSulleCredenziali (3.82s)
+--- PASS: TestMigration0004_SaleEScende (4.10s)
+--- PASS: TestIssuesEPR_NumeriInParalleloDalloStessoContatore (3.34s)
+--- PASS: TestIssuesEPR_CollisioneEMaiRiuso (3.35s)
+--- PASS: TestIssues_Vincoli (3.59s)
+--- PASS: TestIssues_AssegnatariEtichetteMilestoneRicerca (3.18s)
+--- PASS: TestUp_Idempotent (3.55s)
+--- PASS: TestDown_RollbackDocumentato (3.86s)
+--- PASS: TestMigration0006_SaleEScende (4.31s)
+--- PASS: TestMigration0010_SaleEScende (3.88s)
+--- PASS: TestMigration0011_SaleEScende (4.03s)
+--- PASS: TestMigration0016_NotificheDelMirrorInPull (3.72s)
+--- PASS: TestMigration0019_EventiEUnicitaDelleAperte (3.80s)
+--- PASS: TestMigration0021_CommentiGenerali (3.82s)
+--- PASS: TestMigration0018_DatiV10_SuGiuSu (3.89s)
+--- PASS: TestMigration0018_Vincoli (3.36s)
+--- PASS: TestMigration0014_SaleEScende (3.50s)
+--- PASS: TestMigration0015_SaleEScende (3.95s)
+--- PASS: TestRepositories_Vincoli (3.87s)
+--- PASS: TestPullRequests_Vincoli (3.75s)
+--- PASS: TestMigration0002_SaleEScende (4.05s)
+--- PASS: TestMigration0003_OwnerNameSaleEScende (4.25s)
+--- PASS: TestMigration0008_SaleEScende (3.42s)
+--- PASS: TestMigration0012_SaleEScende (3.38s)
+--- PASS: TestMigration0013_NomiConMaiuscole (3.76s)
+PASS
+ok  	github.com/fathorMB/GitStack/services/core/internal/migrate	103.201s
+--- PASS: TestFillUserTypes (0.00s)
+--- PASS: TestDelayRaddoppiaFinoAlMassimo (0.00s)
+--- PASS: TestEnqueue_RollbackNonLasciaNiente (3.49s)
+--- PASS: TestRelay_RitentaConLoStessoId (4.56s)
+--- PASS: TestMigration0009_SaleEScende (3.91s)
+PASS
+ok  	github.com/fathorMB/GitStack/services/core/internal/outbox	13.921s
+exit=0
+
+### Test richiesti (esecuzione 1 / 2 / migrate)
+--- PASS: TestPullGeneralComments_CreaELeggi (3.54s)
+--- PASS: TestPullGeneralComments_Permessi (3.40s)
+--- PASS: TestPullGeneralComments_Eliminazione (3.49s)
+--- PASS: TestPullGeneralComments_CreaELeggi (3.21s)
+--- PASS: TestPullGeneralComments_Permessi (3.35s)
+--- PASS: TestPullGeneralComments_Eliminazione (3.50s)
+--- PASS: TestMigration0021_CommentiGenerali (3.82s)
+
+### Estratti di api/openapi.yaml (tutti dal ramo, invariati rispetto a main)
+-- DELETE deletePullRequestComment (righe)
+5216:      operationId: deletePullRequestComment
+      operationId: deletePullRequestComment
+      tags: [pulls]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: pr_comment_delete
+        destructive: true
+      summary: Elimina un commento
+      description: >
+        Possono l'autore del commento e chi ha `admin` sul repo. Se il commento apre una conversazione con
+        risposte, resta il segnaposto `deleted` e le risposte restano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      responses:
+        "204":
+          description: Commento eliminato.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+-- schema PullRequestComment (campi deleted/threadId)
+3-      additionalProperties: false
+4:      required: [id, author, body, edited, deleted, outdated, createdAt, updatedAt]
+5-      properties:
+6-        id:
+7-          type: string
+8-          format: uuid
+--
+20-          description: Review con cui e' stato inviato, se c'e'.
+21:        threadId:
+22-          type: string
+23-          format: uuid
+24-          nullable: true
+25-          description: Conversazione sulle righe; `null` per un commento generale.
+26:        path:
+27-          type: string
+28-          nullable: true
+29-          description: File commentato; `null` per un commento generale.
+30-        side:
+--
+49-          type: boolean
+50:        deleted:
+51-          type: boolean
+52-          description: Segnaposto di un commento eliminato che ha ancora risposte.
+53-        createdAt:
+54-          type: string
+-- PullRequestEvent.type
+    PullRequestEvent:
+      type: object
+      additionalProperties: false
+      required: [id, type, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+-- diff di api/ rispetto a main:
+(vuoto = nessuna modifica)
+-- PullRequestEvent.type enum (nessun tipo 'commented')
+          enum: [opened, renamed, edited, retargeted, ready_for_review, converted_to_draft, closed, reopened, merged, branch_deleted]
