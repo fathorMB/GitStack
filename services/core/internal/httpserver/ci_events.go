@@ -387,9 +387,9 @@ func jobAPI(j ci.JobRow) openapi.WorkflowJob {
 		StartedAt: j.StartedAt, CompletedAt: j.CompletedAt,
 		Permissions: openapi.JobTokenPermissions{
 			CappedByActor: &capped,
-			Contents: openapi.JobTokenPermissionsContents(j.Permissions["contents"]),
-			Packages: openapi.JobTokenPermissionsPackages(j.Permissions["packages"]),
-			Actions:  openapi.JobTokenPermissionsActions(j.Permissions["actions"]),
+			Contents:      openapi.JobTokenPermissionsContents(j.Permissions["contents"]),
+			Packages:      openapi.JobTokenPermissionsPackages(j.Permissions["packages"]),
+			Actions:       openapi.JobTokenPermissionsActions(j.Permissions["actions"]),
 		},
 	}
 }

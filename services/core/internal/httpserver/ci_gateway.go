@@ -18,7 +18,7 @@ type CIGatewayConfig struct {
 	Capacity      int
 	// Keys decifra i segreti della CI (stesso keyring dei webhook).
 	Keys ci.Sealer
-	Log           *slog.Logger
+	Log  *slog.Logger
 }
 
 // NewCIGateway costruisce l'handler del ci-gateway sulle letture di git: i workflow
