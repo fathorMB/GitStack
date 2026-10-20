@@ -11,9 +11,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// 0025 (GIT-314): richiesta di annullamento sui job. La colonna è NULL di
+// 0026 (GIT-314): richiesta di annullamento sui job. La colonna è NULL di
 // default, accetta un istante, e il down la toglie senza toccare i job.
-func TestMigration0025_RichiestaDiAnnullamento(t *testing.T) {
+func TestMigration0026_RichiestaDiAnnullamento(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 	repo := newIssueRepo(t, pool, "cancel")
@@ -32,7 +32,7 @@ func TestMigration0025_RichiestaDiAnnullamento(t *testing.T) {
 	mustExec(t, pool, `UPDATE core.ci_jobs SET cancel_requested_at = now() WHERE id = $1`, job)
 
 	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("down 0025: %v", err)
+		t.Fatalf("down 0026: %v", err)
 	}
 	var n int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.columns
@@ -44,7 +44,7 @@ func TestMigration0025_RichiestaDiAnnullamento(t *testing.T) {
 		t.Fatalf("il job dopo il down: %s (%v)", status, err)
 	}
 	if err := migrate.Up(ctx, pool, dsn); err != nil {
-		t.Fatalf("up 0025 dopo down: %v", err)
+		t.Fatalf("up 0026 dopo down: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT cancel_requested_at::text FROM core.ci_jobs WHERE id = $1`, job).Scan(&requested); err != nil || requested != nil {
 		t.Fatalf("dopo il nuovo up la richiesta deve ripartire vuota: %v %v", requested, err)

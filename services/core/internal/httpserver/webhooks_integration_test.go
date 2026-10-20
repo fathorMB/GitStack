@@ -165,8 +165,9 @@ func newHookEnv(t *testing.T) *hookEnv {
 		t.Fatal(err)
 	}
 	e := &issuesEnv{t: t, pool: pool, id: base}
+	git := &releaseGit{fakeGit: newFakeGit()}
 	e.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
-		httpserver.WithRepoIdentity(hid), httpserver.WithReadableLister(hid), httpserver.WithGit(newFakeGit()),
+		httpserver.WithRepoIdentity(hid), httpserver.WithReadableLister(hid), httpserver.WithGit(git),
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "https://git.example.com"}),
 		httpserver.WithWebhooks(httpserver.WebhookConfig{Keys: keys, CheckURL: check}))
 	recv := newReceiver(t)

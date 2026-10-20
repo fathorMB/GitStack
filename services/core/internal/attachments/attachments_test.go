@@ -2,7 +2,10 @@ package attachments
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +13,29 @@ import (
 
 	"github.com/google/uuid"
 )
+
+func TestDiskSaveRawCalcolaDigestESalvaBinario(t *testing.T) {
+	d := &Disk{Dir: t.TempDir()}
+	repo, id := uuid.New(), uuid.New()
+	b := []byte{0, 1, 2, 255, 0, 3}
+	n, got, err := d.SaveRaw(repo, id, bytes.NewReader(b), 16)
+	if err != nil || n != int64(len(b)) {
+		t.Fatalf("SaveRaw: n=%d err=%v", n, err)
+	}
+	want := sha256.Sum256(b)
+	if got != hex.EncodeToString(want[:]) {
+		t.Fatalf("digest=%s want=%x", got, want)
+	}
+	f, err := d.Open(repo, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = f.Close() }()
+	gotBytes, err := io.ReadAll(f)
+	if err != nil || !bytes.Equal(gotBytes, b) {
+		t.Fatalf("file=%x err=%v", gotBytes, err)
+	}
+}
 
 func TestDetect(t *testing.T) {
 	ok := map[string][]byte{
