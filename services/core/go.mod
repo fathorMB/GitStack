@@ -3,6 +3,8 @@ module github.com/fathorMB/GitStack/services/core
 go 1.26.9
 
 require (
+	code.gitea.io/actions-proto-go v0.4.1
+	connectrpc.com/connect v1.19.2
 	github.com/fathorMB/GitStack/pkg/egress v0.0.0-20261005212733-bd568d173cca
 	github.com/fathorMB/GitStack/pkg/events v0.0.0-20261005233751-afbf7986d1ad
 	github.com/fathorMB/GitStack/pkg/issuequery v0.0.0-20261005143150-21881eff6caa
@@ -97,12 +99,12 @@ require (
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/sys v0.48.0
 	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
 	golang.org/x/tools v0.50.0 // indirect
 	google.golang.org/grpc v1.84.0 // indirect
-	google.golang.org/protobuf v1.36.12 // indirect
+	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
 )
 

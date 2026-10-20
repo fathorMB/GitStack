@@ -29,6 +29,8 @@ gs run view <id> --log-failed
 
 Leggi i log dei job falliti, correggi la causa, crea un nuovo commit e controlla la nuova esecuzione con `gs run watch`. Per rieseguire lo stesso run usa `gs run rerun <id>`; per fermarlo usa `gs run cancel <id>`.
 
+`gs run cancel` chiede conferma (G8), perché annullare un'esecuzione fa perdere il lavoro in corso. Senza terminale e senza `--yes` esce con 2 e non annulla nulla. Usa `--yes` solo se una persona te lo chiede esplicitamente per quella esecuzione in questa conversazione; altrimenti fermati e chiedi.
+
 ## Output per agenti
 
 I comandi supportano `--json` e `--jq`. Gli errori API mantengono i codici G3: 4 per autenticazione, 5 per permessi e 6 per risorsa non trovata; uso errato restituisce 2. `gs run watch --exit-status` restituisce 1 quando la conclusione non è `success`.

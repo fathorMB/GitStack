@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fathorMB/GitStack/services/core/internal/ci"
 	"github.com/fathorMB/GitStack/services/core/internal/events"
 	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
@@ -80,6 +81,7 @@ func newAPIServerWithOptions(pool *pgxpool.Pool, publisher events.Publisher, opt
 		mirrors:      o.mirrors,
 		emailEnabled: o.emailEnabled,
 		systemInfo:   o.systemInfo,
+		ciLogs:       o.ciLogs,
 		now:          now,
 	}, o
 }
@@ -130,6 +132,7 @@ type routerOptions struct {
 	mirrors      MirrorConfig
 	emailEnabled bool
 	systemInfo   SystemInfoConfig
+	ciLogs       *ci.LogStore
 }
 
 // WithCreatorGranter imposta il client di identity con cui core assegna il

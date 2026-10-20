@@ -120,6 +120,10 @@ spec:
             - name: GITSTACK_IDENTITY_URL
               value: {{ include "gitstack.identity.url" . | quote }}
             {{- end }}
+            {{- if .Values.core.releaseAssets.enabled }}
+            - name: GITSTACK_CORE_RELEASE_ASSETS_DIR
+              value: {{ .Values.core.releaseAssets.mountPath | quote }}
+            {{- end }}
             {{- if .Values.git.enabled }}
             - name: GITSTACK_GIT_URL
               value: {{ include "gitstack.git.url" . | quote }}
@@ -253,6 +257,10 @@ spec:
             - name: attachments
               mountPath: {{ .Values.core.attachments.mountPath | quote }}
             {{- end }}
+            {{- if .Values.core.releaseAssets.enabled }}
+            - name: release-assets
+              mountPath: {{ .Values.core.releaseAssets.mountPath | quote }}
+            {{- end }}
             {{- if $pgCA }}
             - name: postgres-ca
               mountPath: {{ include "gitstack.postgres.caMountPath" . }}
@@ -276,6 +284,11 @@ spec:
         - name: attachments
           persistentVolumeClaim:
             claimName: {{ include "gitstack.fullname" . }}-attachments-data
+        {{- end }}
+        {{- if .Values.core.releaseAssets.enabled }}
+        - name: release-assets
+          persistentVolumeClaim:
+            claimName: {{ include "gitstack.fullname" . }}-release-assets-data
         {{- end }}
         {{- if $pgCA }}
         - name: postgres-ca
