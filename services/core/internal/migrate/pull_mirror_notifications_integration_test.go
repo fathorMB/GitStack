@@ -63,7 +63,7 @@ func TestMigration0016_NotificheDelMirrorInPull(t *testing.T) {
 	if _, err := pool.Exec(ctx, notif, uuid.New(), user, "mirror", repo, nil, pull2); err != nil {
 		t.Fatal(err)
 	}
-	if err := migrate.Down(ctx, pool, dsn, 9); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 10); err != nil {
 		t.Fatalf("down 0016: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.notifications WHERE reason = 'mirror'`).Scan(&n); err != nil || n != 1 {
