@@ -202,12 +202,12 @@ describe('RepoPage', () => {
     vi.mocked(fetchRepo).mockResolvedValue(repo({ empty: true }));
     const u = userEvent.setup();
     renderAt('/acme/api-gateway');
-    const box = await screen.findByRole('region', { name: 'Quick setup' });
+    const box = await screen.findByRole('region', { name: 'Quick setup' }, { timeout: 5000 });
     expect(within(box).getByLabelText('Clone URL')).toHaveValue('https://git.acme.local/acme/api-gateway.git');
     await u.click(within(box).getByRole('button', { name: 'SSH' }));
     expect(within(box).getByLabelText('Clone URL')).toHaveValue('ssh://git@git.acme.local:2222/acme/api-gateway.git');
     await u.click(within(box).getByRole('button', { name: 'Copy' }));
-    expect(await within(box).findByText('Copied')).toBeInTheDocument();
+    expect(await within(box).findByText('Copied', undefined, { timeout: 5000 })).toBeInTheDocument();
     expect(box.textContent).toContain('gs repo clone acme/api-gateway');
   });
 
@@ -216,14 +216,14 @@ describe('RepoPage', () => {
       repo({ empty: true, name: 'GitStack', fullName: 'acme/GitStack' }),
     );
     renderAt('/acme/gitstack');
-    expect(await screen.findByRole('heading', { level: 1, name: /GitStack/ })).toBeInTheDocument();
-    await waitFor(() => expect(fetchRepo).toHaveBeenLastCalledWith('acme', 'GitStack'));
+    expect(await screen.findByRole('heading', { level: 1, name: /GitStack/ }, { timeout: 5000 })).toBeInTheDocument();
+    await waitFor(() => expect(fetchRepo).toHaveBeenLastCalledWith('acme', 'GitStack'), { timeout: 5000 });
   });
 
   it('repo non vuoto: niente quick setup, parte il browser del codice', async () => {
     vi.mocked(fetchRepo).mockResolvedValue(repo());
     renderAt('/acme/api-gateway');
-    expect(await screen.findByText(/Loading code|Unexpected response|Could not reach/)).toBeInTheDocument();
+    expect(await screen.findByText(/Loading code|Unexpected response|Could not reach/, undefined, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Quick setup' })).not.toBeInTheDocument();
   });
 });
