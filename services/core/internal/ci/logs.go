@@ -169,11 +169,7 @@ func (l *LogStore) ReadFrom(jobID uuid.UUID, offset, to int64, w io.Writer) (int
 
 // JobRef trova un job di un repo dal suo id (404 se è di un altro repo).
 func JobRef(ctx context.Context, pool *pgxpool.Pool, repoID, jobID uuid.UUID) (JobRow, error) {
-	j, err := scanJob(pool.QueryRow(ctx, `
-		SELECT j.id, j.run_id, j.seq, j.job_key, j.name, j.needs, j.runner_type, j.runner_name, j.permissions, j.status,
-		       j.conclusion, j.queued_at, j.started_at, j.completed_at, j.task_id
-		FROM core.ci_jobs j JOIN core.ci_runs r ON r.id = j.run_id
-		WHERE j.id = $1 AND r.repo_id = $2`, jobID, repoID))
+	j, err := GetJob(ctx, pool, repoID, jobID)
 	if err != nil {
 		return JobRow{}, fmt.Errorf("job %s: %w", jobID, err)
 	}
