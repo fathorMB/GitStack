@@ -78,6 +78,8 @@ type JobRow struct {
 	QueuedAt    *time.Time
 	StartedAt   *time.Time
 	CompletedAt *time.Time
+	// TaskID è il numero del task nel protocollo runner.v1 (mai riusato).
+	TaskID int64
 	// CancelRequestedAt: annullamento richiesto mentre il job era in corso; il
 	// job resta in_progress finché il runner non lo chiude (CompleteJob, cancelled).
 	CancelRequestedAt *time.Time
@@ -87,7 +89,7 @@ const runColumns = `id, repo_id, workflow_path, workflow_name, event, ref, sha, 
 	status, conclusion, schedule_slot, created_at, started_at, completed_at`
 
 const jobColumns = `id, run_id, seq, job_key, name, needs, runner_type, runner_name, permissions, status, conclusion,
-	queued_at, started_at, completed_at, cancel_requested_at`
+	queued_at, started_at, completed_at, task_id, cancel_requested_at`
 
 func scanRun(row pgx.Row) (RunRow, error) {
 	var r RunRow
@@ -105,7 +107,7 @@ func scanJob(row pgx.Row) (JobRow, error) {
 	var j JobRow
 	var perm []byte
 	err := row.Scan(&j.ID, &j.RunID, &j.Seq, &j.Key, &j.Name, &j.Needs, &j.RunnerType, &j.RunnerName, &perm, &j.Status,
-		&j.Conclusion, &j.QueuedAt, &j.StartedAt, &j.CompletedAt, &j.CancelRequestedAt)
+		&j.Conclusion, &j.QueuedAt, &j.StartedAt, &j.CompletedAt, &j.TaskID, &j.CancelRequestedAt)
 	if err != nil {
 		return j, err
 	}
@@ -292,24 +294,36 @@ func effectivePermissions(req map[string]string) map[string]string {
 // candidati vince l'owner con meno job in corso, poi il job in coda da più
 // tempo: un owner con molti job non fa aspettare gli altri. false se non c'è nulla.
 func ClaimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity int, runner string) (JobRow, RunRow, bool, error) {
+	job, run, _, ok, err := claimNext(ctx, pool, now, capacity, runner, 0)
+	return job, run, ok, err
+}
+
+// ClaimNextWithToken è ClaimNext che, nella stessa transazione, emette il token
+// del job (ADR 0001 §3): valido per tokenTTL, solo per quel job. Ritorna il
+// token in chiaro, che non si può rileggere.
+func ClaimNextWithToken(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity int, runner string, tokenTTL time.Duration) (JobRow, RunRow, string, bool, error) {
+	return claimNext(ctx, pool, now, capacity, runner, tokenTTL)
+}
+
+func claimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity int, runner string, tokenTTL time.Duration) (JobRow, RunRow, string, bool, error) {
 	if capacity < 1 {
 		capacity = DefaultCapacity
 	}
 	tx, err := pool.Begin(ctx)
 	if err != nil {
-		return JobRow{}, RunRow{}, false, err
+		return JobRow{}, RunRow{}, "", false, err
 	}
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
 	// Il conteggio dei posti deve essere coerente fra repliche: un lock di coda.
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('core.ci_queue', 0))`); err != nil {
-		return JobRow{}, RunRow{}, false, err
+		return JobRow{}, RunRow{}, "", false, err
 	}
 	var running int
 	if err := tx.QueryRow(ctx, `SELECT count(*) FROM core.ci_jobs WHERE status = 'in_progress'`).Scan(&running); err != nil {
-		return JobRow{}, RunRow{}, false, err
+		return JobRow{}, RunRow{}, "", false, err
 	}
 	if running >= capacity {
-		return JobRow{}, RunRow{}, false, nil
+		return JobRow{}, RunRow{}, "", false, nil
 	}
 	var jobID, runID uuid.UUID
 	err = tx.QueryRow(ctx, `
@@ -326,31 +340,37 @@ func ClaimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity 
 		LIMIT 1
 		FOR UPDATE OF j SKIP LOCKED`, OwnerLimit(capacity)).Scan(&jobID, &runID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return JobRow{}, RunRow{}, false, nil
+		return JobRow{}, RunRow{}, "", false, nil
 	}
 	if err != nil {
-		return JobRow{}, RunRow{}, false, err
+		return JobRow{}, RunRow{}, "", false, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE core.ci_jobs SET status = 'in_progress', started_at = $2, runner_name = NULLIF($3, '')
 		WHERE id = $1`, jobID, now, runner); err != nil {
-		return JobRow{}, RunRow{}, false, err
+		return JobRow{}, RunRow{}, "", false, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE core.ci_runs SET status = 'in_progress', started_at = COALESCE(started_at, $2)
 		WHERE id = $1 AND status = 'queued'`, runID, now); err != nil {
-		return JobRow{}, RunRow{}, false, err
+		return JobRow{}, RunRow{}, "", false, err
+	}
+	var token string
+	if tokenTTL > 0 {
+		if token, err = issueJobToken(ctx, tx, now, jobID, tokenTTL); err != nil {
+			return JobRow{}, RunRow{}, "", false, err
+		}
 	}
 	job, err := scanJob(tx.QueryRow(ctx, `SELECT `+jobColumns+` FROM core.ci_jobs WHERE id = $1`, jobID))
 	if err != nil {
-		return JobRow{}, RunRow{}, false, err
+		return JobRow{}, RunRow{}, "", false, err
 	}
 	run, err := scanRun(tx.QueryRow(ctx, `SELECT `+runColumns+` FROM core.ci_runs WHERE id = $1`, runID))
 	if err != nil {
-		return JobRow{}, RunRow{}, false, err
+		return JobRow{}, RunRow{}, "", false, err
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return JobRow{}, RunRow{}, false, err
+		return JobRow{}, RunRow{}, "", false, err
 	}
-	return job, run, true, nil
+	return job, run, token, true, nil
 }
 
 // CompleteJob chiude un job in corso. Con successo promuove i job che
@@ -372,6 +392,10 @@ func CompleteJob(ctx context.Context, pool *pgxpool.Pool, now time.Time, jobID u
 	}
 	if _, err := tx.Exec(ctx, `UPDATE core.ci_jobs SET status = $2, conclusion = $3, completed_at = $4 WHERE id = $1`,
 		jobID, status, conclusion, now); err != nil {
+		return err
+	}
+	// Il token del job vale finché il job gira (ADR 0001 §3).
+	if err := revokeJobToken(ctx, tx, now, jobID); err != nil {
 		return err
 	}
 	// Serializza la promozione dei job della stessa esecuzione. Un run già

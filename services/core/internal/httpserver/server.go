@@ -3,6 +3,7 @@ package httpserver
 import (
 	"time"
 
+	"github.com/fathorMB/GitStack/services/core/internal/ci"
 	"github.com/fathorMB/GitStack/services/core/internal/events"
 	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
@@ -45,6 +46,8 @@ type apiServer struct {
 	emailEnabled bool
 	// systemInfo: file delle informazioni dell host (GIT-213).
 	systemInfo SystemInfoConfig
+	// ciLogs: i log dei job su disco (GIT-316); nil = 503.
+	ciLogs *ci.LogStore
 	// now è l'orologio: serve alla scadenza dei 7 giorni di un repo eliminato.
 	now func() time.Time
 }

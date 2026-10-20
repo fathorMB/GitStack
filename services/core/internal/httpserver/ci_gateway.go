@@ -1,0 +1,30 @@
+package httpserver
+
+import (
+	"log/slog"
+	"net/http"
+
+	"github.com/fathorMB/GitStack/services/core/internal/ci"
+	"github.com/fathorMB/GitStack/services/core/internal/cigateway"
+	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+// CIGatewayConfig è la parte di configurazione del ci-gateway (GIT-316) che arriva da main.
+type CIGatewayConfig struct {
+	RunnerSecrets []string
+	ArchiveURL    string
+	Logs          *ci.LogStore
+	Capacity      int
+	Log           *slog.Logger
+}
+
+// NewCIGateway costruisce l'handler del ci-gateway sulle letture di git: i workflow
+// al commit del job e l'archivio del repo. Va servito su una porta dedicata, mai
+// su quella dell'API.
+func NewCIGateway(pool *pgxpool.Pool, rd gitclient.Reader, c CIGatewayConfig) http.Handler {
+	return cigateway.New(cigateway.Config{
+		Pool: pool, Source: gitCISource{rd: rd}, Reader: rd, Logs: c.Logs,
+		RunnerSecrets: c.RunnerSecrets, Capacity: c.Capacity, ArchiveURL: c.ArchiveURL, Log: c.Log,
+	})
+}

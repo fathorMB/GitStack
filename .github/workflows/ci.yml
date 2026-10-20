@@ -383,6 +383,58 @@ jobs:
     with:
       release: true
 
+  # Immagine del runner dei job CI (GIT-316, ADR 0001): act a versione e SHA256
+  # fissati, niente Docker, uid 10001, ci-runner che parla runner.v1. Si
+  # costruisce a ogni push e PR (il Dockerfile non e' toccato solo dai servizi) e
+  # si prova con l'act vero estratto dall'immagine contro un ci-gateway finto:
+  # un workflow a due passi, con esito e passi riportati. Non si pubblica: la
+  # pubblicazione e la firma arrivano con il pod del job (GIT-277).
+  ci-runner-image:
+    name: Immagine runner CI — build e prova con act
+    needs: [go]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: |
+            **/go.sum
+
+      - name: act con versione e SHA256 fissati
+        run: |
+          set -euo pipefail
+          grep -Eq '^ARG ACT_VERSION=v[0-9]+\.[0-9]+\.[0-9]+$' deploy/ci-runner/Dockerfile
+          grep -Eq '^ARG ACT_SHA256=[0-9a-f]{64}$' deploy/ci-runner/Dockerfile
+          grep -q 'sha256sum -c' deploy/ci-runner/Dockerfile
+
+      - name: Costruisce l'immagine
+        run: docker build -f deploy/ci-runner/Dockerfile -t gitstack-ci-runner:test .
+
+      - name: Utente non root, act presente, nessun Docker
+        run: |
+          set -euo pipefail
+          img=gitstack-ci-runner:test
+          test "$(docker run --rm --entrypoint id "$img" -u)" = 10001
+          version="$(sed -n 's/^ARG ACT_VERSION=//p' deploy/ci-runner/Dockerfile)"
+          docker run --rm --entrypoint act "$img" --version | grep -F "${version#v}"
+          if docker run --rm --entrypoint sh "$img" -c 'command -v docker'; then
+            echo "ERRORE: l'immagine del runner contiene docker" >&2
+            exit 1
+          fi
+
+      - name: Workflow a due passi con act (dall'immagine) e gateway finto
+        run: |
+          set -euo pipefail
+          cid="$(docker create gitstack-ci-runner:test)"
+          docker cp "${cid}:/usr/local/bin/act" "${RUNNER_TEMP}/act"
+          docker rm "${cid}" >/dev/null
+          cd services/core
+          GITSTACK_TEST_ACT="${RUNNER_TEMP}/act" go test -count=1 -v -run 'TestRun_' ./internal/cirunner
+
   # Costruisce e pubblica le immagini dei servizi su un registry parametrico
   # (ghcr.io di default). Richiede che build/lint/test (go, ts) siano verdi
   # (needs), altrimenti un push rosso pubblicherebbe comunque un'immagine.

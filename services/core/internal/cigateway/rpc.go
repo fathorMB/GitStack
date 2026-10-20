@@ -1,0 +1,201 @@
+package cigateway
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	runnerv1 "code.gitea.io/actions-proto-go/runner/v1"
+	"code.gitea.io/actions-proto-go/runner/v1/runnerv1connect"
+	"connectrpc.com/connect"
+	"github.com/fathorMB/GitStack/services/core/internal/ci"
+	"google.golang.org/protobuf/types/known/structpb"
+)
+
+// rpc implementa runnerv1connect.RunnerServiceHandler; Register e Declare restano
+// quelli di UnimplementedRunnerServiceHandler (l'interceptor li ferma prima).
+type rpc struct {
+	runnerv1connect.UnimplementedRunnerServiceHandler
+	g *gateway
+}
+
+func resultName(r runnerv1.Result) string {
+	switch r {
+	case runnerv1.Result_RESULT_SUCCESS:
+		return ci.ConclusionSuccess
+	case runnerv1.Result_RESULT_FAILURE:
+		return ci.ConclusionFailure
+	case runnerv1.Result_RESULT_CANCELLED:
+		return ci.ConclusionCancelled
+	case runnerv1.Result_RESULT_SKIPPED:
+		return ci.ConclusionSkipped
+	}
+	return ""
+}
+
+func unavailable(err error) error { return connect.NewError(connect.CodeUnavailable, err) }
+
+// FetchTask è un long-poll: prende il job in coda più adatto (ClaimNextWithToken) o,
+// scaduto PollTimeout, risponde senza task. Un job preso è consegnato a un solo runner.
+func (r *rpc) FetchTask(ctx context.Context, req *connect.Request[runnerv1.FetchTaskRequest]) (*connect.Response[runnerv1.FetchTaskResponse], error) {
+	g := r.g
+	runner := strings.TrimSpace(req.Header().Get(HeaderRunnerName))
+	if len(runner) > 100 {
+		runner = runner[:100]
+	}
+	if runner == "" {
+		runner = "ci-pod"
+	}
+	deadline := time.NewTimer(g.PollTimeout)
+	defer deadline.Stop()
+	tick := time.NewTicker(g.PollEvery)
+	defer tick.Stop()
+	for {
+		job, run, token, ok, err := ci.ClaimNextWithToken(ctx, g.Pool, g.Now(), g.Capacity, runner, ci.JobTokenTTL)
+		if err != nil {
+			if ctx.Err() != nil {
+				return connect.NewResponse(&runnerv1.FetchTaskResponse{}), nil
+			}
+			g.Log.Error("ci-gateway: presa del job non riuscita", "err", err)
+			return nil, unavailable(errors.New("coda non disponibile"))
+		}
+		if ok {
+			task, err := g.buildTask(ctx, job, run, token)
+			if err == nil {
+				return connect.NewResponse(&runnerv1.FetchTaskResponse{Task: task}), nil
+			}
+			// Il job è già preso e non si può consegnare: si chiude come fallito e si prosegue.
+			g.Log.Warn("ci-gateway: task non costruibile, il job fallisce", "job", job.ID, "err", err)
+			if cerr := ci.CompleteJob(context.WithoutCancel(ctx), g.Pool, g.Now(), job.ID, ci.ConclusionFailure); cerr != nil {
+				g.Log.Error("ci-gateway: chiusura del job non riuscita", "job", job.ID, "err", cerr)
+			}
+			continue
+		}
+		select {
+		case <-ctx.Done():
+			return connect.NewResponse(&runnerv1.FetchTaskResponse{}), nil
+		case <-deadline.C:
+			return connect.NewResponse(&runnerv1.FetchTaskResponse{}), nil
+		case <-tick.C:
+		}
+	}
+}
+
+// buildTask compone il task: il file workflow al commit dell'esecuzione, il token del
+// job come GITHUB_TOKEN e un contesto `github` minimo. Il job da eseguire è `github.job`.
+func (g *gateway) buildTask(ctx context.Context, job ci.JobRow, run ci.RunRow, token string) (*runnerv1.Task, error) {
+	if g.Source == nil {
+		return nil, errors.New("git non disponibile")
+	}
+	files, err := g.Source.Workflows(ctx, run.RepoID, run.SHA)
+	if err != nil {
+		return nil, fmt.Errorf("lettura dei workflow: %w", err)
+	}
+	var payload []byte
+	for _, f := range files {
+		if f.Path == run.WorkflowPath {
+			payload = f.Content
+		}
+	}
+	if payload == nil {
+		return nil, fmt.Errorf("workflow %s non presente a %s", run.WorkflowPath, run.SHA)
+	}
+	var owner, name string
+	if err := g.Pool.QueryRow(ctx, `SELECT owner_name, name FROM core.repositories WHERE resource_id = $1`, run.RepoID).Scan(&owner, &name); err != nil {
+		return nil, fmt.Errorf("repo: %w", err)
+	}
+	fields := map[string]any{
+		"repository":      owner + "/" + name,
+		"sha":             run.SHA,
+		"ref":             run.Ref,
+		"event_name":      run.Event,
+		"run_id":          run.ID.String(),
+		"job":             job.Key,
+		"workflow":        run.WorkflowName,
+		"token":           token,
+		"gitstack_job_id": job.ID.String(),
+	}
+	if g.ArchiveURL != "" {
+		fields["gitstack_archive_url"] = strings.TrimRight(g.ArchiveURL, "/") + ArchivePath
+	}
+	if run.PullNumber != nil {
+		fields["pull_number"] = float64(*run.PullNumber)
+	}
+	cx, err := structpb.NewStruct(fields)
+	if err != nil {
+		return nil, err
+	}
+	return &runnerv1.Task{
+		Id:              job.TaskID,
+		WorkflowPayload: payload,
+		Context:         cx,
+		Secrets:         map[string]string{"GITHUB_TOKEN": token},
+	}, nil
+}
+
+// UpdateTask riporta lo stato dei passi; un esito finale chiude il job (CompleteJob)
+// e il run avanza come per CompleteJob.
+func (r *rpc) UpdateTask(ctx context.Context, req *connect.Request[runnerv1.UpdateTaskRequest]) (*connect.Response[runnerv1.UpdateTaskResponse], error) {
+	g := r.g
+	a, _ := authFrom(ctx)
+	st := req.Msg.GetState()
+	if st == nil || st.GetId() != a.TaskID {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("il token non è di questo task"))
+	}
+	steps := make([]ci.StepReport, 0, len(st.GetSteps()))
+	for _, s := range st.GetSteps() {
+		sr := ci.StepReport{Number: int(s.GetId()) + 1, Conclusion: resultName(s.GetResult())}
+		if s.GetStartedAt().IsValid() {
+			t := s.GetStartedAt().AsTime()
+			sr.StartedAt = &t
+		}
+		if s.GetStoppedAt().IsValid() {
+			t := s.GetStoppedAt().AsTime()
+			sr.StoppedAt = &t
+		}
+		steps = append(steps, sr)
+	}
+	if err := ci.ReportSteps(ctx, g.Pool, a.JobID, steps); err != nil {
+		g.Log.Error("ci-gateway: passi non registrati", "job", a.JobID, "err", err)
+		return nil, unavailable(errors.New("servizio non disponibile"))
+	}
+	if concl := resultName(st.GetResult()); concl != "" {
+		if err := ci.CompleteJob(ctx, g.Pool, g.Now(), a.JobID, concl); err != nil {
+			g.Log.Error("ci-gateway: chiusura del job non riuscita", "job", a.JobID, "err", err)
+			return nil, unavailable(errors.New("servizio non disponibile"))
+		}
+	}
+	return connect.NewResponse(&runnerv1.UpdateTaskResponse{State: &runnerv1.TaskState{Id: a.TaskID, Result: st.GetResult()}}), nil
+}
+
+// UpdateLog scrive le righe del job (idempotente per indice) e ritorna l'indice successivo atteso.
+func (r *rpc) UpdateLog(ctx context.Context, req *connect.Request[runnerv1.UpdateLogRequest]) (*connect.Response[runnerv1.UpdateLogResponse], error) {
+	g := r.g
+	a, _ := authFrom(ctx)
+	if req.Msg.GetTaskId() != a.TaskID {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("il token non è di questo task"))
+	}
+	if g.Logs == nil {
+		return nil, unavailable(errors.New("log non configurati"))
+	}
+	rows := req.Msg.GetRows()
+	if len(rows) > maxLogRowsPerCall {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("troppe righe in una chiamata"))
+	}
+	lines := make([]ci.LogLine, 0, len(rows))
+	for _, row := range rows {
+		l := ci.LogLine{Content: row.GetContent()}
+		if row.GetTime().IsValid() {
+			l.Time = row.GetTime().AsTime()
+		}
+		lines = append(lines, l)
+	}
+	ack, err := g.Logs.Append(ctx, g.Pool, g.Now(), a.JobID, req.Msg.GetIndex(), lines)
+	if err != nil {
+		g.Log.Error("ci-gateway: log non scritti", "job", a.JobID, "err", err)
+		return nil, unavailable(errors.New("servizio non disponibile"))
+	}
+	return connect.NewResponse(&runnerv1.UpdateLogResponse{AckIndex: ack}), nil
+}
