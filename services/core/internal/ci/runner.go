@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -27,6 +28,17 @@ type PodCreator interface {
 // in_progress dopo una scadenza, un eviction o un errore di scheduling.
 type PodWatcher interface {
 	Wait(context.Context, string, string) (string, error)
+}
+
+// PodDeleter rimuove il pod concluso; non e' richiesto ai finti minimi usati
+// dai test del dispatcher.
+type PodDeleter interface {
+	Delete(context.Context, string, string) error
+}
+
+// PodInspector serve alla riconciliazione dopo un riavvio di core.
+type PodInspector interface {
+	Exists(context.Context, string, string) (bool, error)
 }
 
 // Pod è la forma minima, indipendente dal client Kubernetes, del pod effimero.
@@ -108,4 +120,71 @@ func DispatchOnce(ctx context.Context, pool *pgxpool.Pool, api interface {
 		conclusion = ConclusionFailure
 	}
 	return true, CompleteJob(ctx, pool, time.Now().UTC(), job.ID, conclusion)
+}
+
+// DispatchPods riempie i posti liberi senza aspettare la fine dei pod gia' creati.
+// ClaimNext serializza il conteggio globale, quindi piu' repliche di core non
+// superano Capacity. Ogni osservatore chiude e poi elimina il proprio pod.
+func DispatchPods(ctx context.Context, pool *pgxpool.Pool, api interface {
+	PodCreator
+	PodWatcher
+}, cfg RunnerConfig, now time.Time) (int, error) {
+	started := 0
+	for {
+		job, run, ok, err := ClaimNext(ctx, pool, now, cfg.normal().Capacity, "internal-pod")
+		if err != nil || !ok {
+			return started, err
+		}
+		pod, err := PodForJob(cfg, job, run)
+		if err != nil || job.RunnerType != "internal_pod" || api.Create(ctx, pod) != nil {
+			if cerr := CompleteJob(ctx, pool, now, job.ID, ConclusionFailure); cerr != nil {
+				return started, cerr
+			}
+			continue
+		}
+		started++
+		go observePod(ctx, pool, api, pod, job.ID)
+	}
+}
+
+func observePod(ctx context.Context, pool *pgxpool.Pool, api PodWatcher, pod Pod, jobID uuid.UUID) {
+	conclusion, err := api.Wait(ctx, pod.Namespace, pod.Name)
+	if err != nil || (conclusion != ConclusionSuccess && conclusion != ConclusionFailure && conclusion != ConclusionTimedOut) {
+		conclusion = ConclusionFailure
+	}
+	_ = CompleteJob(context.WithoutCancel(ctx), pool, time.Now().UTC(), jobID, conclusion)
+	if deleter, ok := api.(PodDeleter); ok {
+		_ = deleter.Delete(context.WithoutCancel(ctx), pod.Namespace, pod.Name)
+	}
+}
+
+// Reconcile chiude i job in corso il cui pod non esiste piu' (per esempio
+// dopo un riavvio o una cancellazione). Il gancio ticketExpired verra' usato
+// dalla presa monouso: per ora e' nil e non cambia lo stato dei job validi.
+func Reconcile(ctx context.Context, pool *pgxpool.Pool, pods PodInspector, namespace string, ticketExpired func(JobRow) bool, now time.Time) error {
+	rows, err := pool.Query(ctx, `SELECT `+jobColumns+` FROM core.ci_jobs WHERE status = 'in_progress' AND runner_type = 'internal_pod'`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		job, err := scanJob(rows)
+		if err != nil {
+			return err
+		}
+		missing := ticketExpired != nil && ticketExpired(job)
+		if !missing {
+			exists, err := pods.Exists(ctx, namespace, "ci-"+strings.ReplaceAll(job.ID.String(), "-", ""))
+			if err != nil {
+				return err
+			}
+			missing = !exists
+		}
+		if missing {
+			if err := CompleteJob(ctx, pool, now, job.ID, ConclusionFailure); err != nil {
+				return err
+			}
+		}
+	}
+	return rows.Err()
 }
