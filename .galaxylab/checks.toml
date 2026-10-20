@@ -39,8 +39,8 @@ name = "go-build"
 # go.work or their selected dependencies". Servono quindi i pattern espliciti
 # di ogni modulo elencato in go.work (verificati con `go work edit -json`).
 # Quando si aggiunge un modulo a go.work, aggiungere qui il suo pattern
-# "<path>/..." (e anche nel check go-test qui sotto: i due elenchi vanno
-# tenuti allineati); un modulo nuovo richiede anche il suo go-lint-<modulo>
+# "<path>/..." (e nel check go-test o go-test-git qui sotto, secondo il
+# modulo); un modulo nuovo richiede anche il suo go-lint-<modulo>
 # (una tabella per modulo, vedi in fondo). Un controllo successivo, in un item separato, sostituira'
 # questo elenco con uno script (es. scripts/go-each.sh) quando sapremo come
 # il motore lancia la shell.
@@ -49,10 +49,24 @@ timeout_s = 600
 
 [[check]]
 name = "go-test"
-# Stessi pattern di go-build: aggiornare entrambi quando si aggiunge un modulo
-# a go.work (e aggiungere il go-lint-<modulo> del modulo). Non richiede Postgres.
-run = "go test ./admin/... ./api/... ./cli/... ./client/go/... ./pkg/egress/... ./pkg/events/... ./pkg/issuequery/... ./pkg/names/... ./pkg/scopes/... ./services/core/... ./services/gateway/... ./services/git/... ./services/identity/..."
+# Tutti i moduli di go-build tranne services/git, che ha un budget dedicato
+# nel check successivo. -timeout e' per pacchetto: deve restare minore del
+# timeout del check, cosi' un blocco stampa lo stack e il test in corso.
+# I paths includono le radici di ogni modulo qui testato, piu' i file non-Go
+# letti dai test: deploy/ (admin), docs/ (pkg/events), skills/ (cli) e README.
+run = "go test -timeout 750s ./admin/... ./api/... ./cli/... ./client/go/... ./pkg/egress/... ./pkg/events/... ./pkg/issuequery/... ./pkg/names/... ./pkg/scopes/... ./services/core/... ./services/gateway/... ./services/identity/..."
 timeout_s = 900
+paths = ["admin/**", "api/**", "cli/**", "client/go/**", "pkg/**", "services/core/**", "services/gateway/**", "services/identity/**", "deploy/**", "docs/**", "skills/**", "README.md", "go.work", "go.work.sum"]
+
+[[check]]
+name = "go-test-git"
+# go list -deps -test ./services/git/... mostra moduli interni solo in
+# services/git e pkg/{events,scopes}; i due pkg sono coperti da pkg/**.
+# Il budget per pacchetto lascia margine ai test che invocano git molte volte
+# sotto carico, ma resta inferiore al timeout complessivo del check.
+run = "go test -timeout 1500s ./services/git/..."
+timeout_s = 1800
+paths = ["services/git/**", "pkg/**", "go.work", "go.work.sum"]
 
 [[check]]
 name = "web-install"
