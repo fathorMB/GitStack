@@ -135,6 +135,19 @@ func (t *RepoTx) Lock(ctx context.Context, id uuid.UUID) (Repo, error) {
 	return repo, err
 }
 
+// RepoInTx legge il repo (anche archiviato) dentro una transazione che non è
+// una RepoTx: chi cambia altro in quella transazione, come il Reporter della CI
+// (GIT-281), lo legge così. ErrNotFound se non c'è o è eliminato.
+func RepoInTx(ctx context.Context, q interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, id uuid.UUID) (Repo, error) {
+	repo, err := scanRepo(q.QueryRow(ctx, `SELECT `+repoCols+` FROM core.repositories r WHERE r.resource_id = $1 AND r.deleted_at IS NULL`, id))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Repo{}, ErrNotFound
+	}
+	return repo, err
+}
+
 // Update applica una modifica parziale al repo già bloccato con Lock. Un repo
 // archiviato rifiuta tutto (ErrArchived) tranne la riattivazione da sola
 // (`archived: false` e nient'altro, R10).

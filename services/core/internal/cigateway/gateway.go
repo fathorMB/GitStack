@@ -72,6 +72,9 @@ type Config struct {
 	RunnerSecrets []string
 	// Capacity è il numero di job in corso in tutto (CI7); 0 = ci.DefaultCapacity.
 	Capacity int
+	// Reporter riceve i cambi di stato di job ed esecuzioni (GIT-281), nella stessa
+	// transazione del cambio. Nil = nessuno.
+	Reporter ci.Reporter
 	// ArchiveURL è l'indirizzo base con cui il pod raggiunge questo gateway, scritto nel
 	// contesto del task; vuoto = il runner usa quello a cui ha chiamato FetchTask.
 	ArchiveURL  string

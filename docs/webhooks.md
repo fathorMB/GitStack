@@ -35,7 +35,7 @@ rinvia dal log (`redeliver`).
 |---|---|
 | `Content-Type` | `application/json` |
 | `User-Agent` | `GitStack-Webhook/1` |
-| `X-GitStack-Event` | l'evento: `push`, `issues`, `issue_comment`, `repository`, `pull_request`, `pull_request_review` o `commit_status` |
+| `X-GitStack-Event` | l'evento: `push`, `issues`, `issue_comment`, `repository`, `pull_request`, `pull_request_review`, `commit_status`, `workflow_run` o `workflow_job` |
 | `X-GitStack-Delivery` | uuid della consegna: è l'`id` nel log (`…/deliveries`); una *Redeliver* ne ha uno nuovo |
 | `X-GitStack-Payload-Version` | `1` |
 | `X-GitStack-Signature` | `sha256=<hex>`, solo se il webhook ha un segreto |
@@ -287,6 +287,22 @@ al momento dell'evento: li compone core nella transazione della modifica, quindi
 una consegna ritardata o una Redeliver mostrano la PR com'era allora. `synchronize`
 e `dismissed` arrivano dal push (consumer `core-pull-sync`): `dismissed` ha la
 review con `stale: true` e `countsAsApproval: false`.
+
+## `workflow_run`, `workflow_job` (v2-a, CI6, GIT-281)
+
+Contratto: schemi `WebhookWorkflowRunPayload` e `WebhookWorkflowJobPayload` in
+`api/openapi.yaml`. Stessi corpo comune, intestazioni, firma e tentativi. Le
+azioni sono `queued`, `in_progress`, `completed` e `cancelled`; `queued` vale
+anche per un job in attesa di quelli da cui dipende. `workflowRun` (il
+`WorkflowRun` con i suoi job) e, per `workflow_job`, `workflowJob` sono lo stato
+al momento dell'evento. Ogni cambio di stato di esecuzione o di job produce una
+consegna per i webhook che selezionano l'evento; un job saltato o annullato
+passa per `completed` o `cancelled` come gli altri.
+
+Ogni job scrive anche lo stato del commit con contesto `<workflow> / <job>`
+(PR9): `pending` mentre è in coda o in corso; `success`; `failure` se fallisce o
+scade; `error` se è annullato o saltato perché una dipendenza non è riuscita. Un
+contesto obbligatorio della PR (PR4) rosso o mancante blocca il merge.
 
 ## Da dove nascono
 

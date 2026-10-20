@@ -36,6 +36,8 @@ type Engine struct {
 	// Now è l'orologio; nil = time.Now. I test lo sostituiscono.
 	Now func() time.Time
 	Log *slog.Logger
+	// Reporter riceve i cambi di stato delle esecuzioni create (GIT-281); nil = nessuno.
+	Reporter Reporter
 }
 
 func (e *Engine) now() time.Time {
@@ -397,6 +399,9 @@ func (e *Engine) enqueue(ctx context.Context, n NewRun) (Created, error) {
 	if err != nil {
 		return Created{}, err
 	}
+	if err := e.reportCreated(ctx, tx, c); err != nil {
+		return Created{}, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return Created{}, err
 	}
@@ -404,6 +409,17 @@ func (e *Engine) enqueue(ctx context.Context, n NewRun) (Created, error) {
 		e.log().Info("ci: esecuzioni in coda annullate da un evento più recente", "repo", n.Repo.ID, "workflow", n.Workflow.Path, "n", len(c.Cancelled))
 	}
 	return c, nil
+}
+
+// reportCreated riporta, nella transazione di createRun, l'esecuzione nuova e
+// quelle superate (con i loro job annullati). Un duplicato non ha nulla da dire.
+func (e *Engine) reportCreated(ctx context.Context, tx pgx.Tx, c Created) error {
+	if c.Duplicate {
+		return nil
+	}
+	runs := append([]uuid.UUID{c.RunID}, c.Cancelled...)
+	jobs := append(append([]uuid.UUID{}, c.JobIDs...), c.CancelledJobIDs...)
+	return report(ctx, tx, e.Reporter, runs, jobs)
 }
 
 // ListWorkflows legge i workflow del repo al commit sha.
@@ -614,6 +630,9 @@ func (e *Engine) Tick(ctx context.Context) ([]uuid.UUID, error) {
 		c, err := createRun(ctx, tx, now, NewRun{Repo: st, Workflow: wf, Event: EventSchedule, Ref: d.ref, SHA: d.s,
 			GroupKey: "schedule:" + d.id.String() + ":" + slot.Format(time.RFC3339), ScheduleSlot: &slot})
 		if err != nil {
+			return nil, err
+		}
+		if err := e.reportCreated(ctx, tx, c); err != nil {
 			return nil, err
 		}
 		if !c.Duplicate {

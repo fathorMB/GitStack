@@ -134,7 +134,7 @@ func (s *apiServer) ciEngine() *ci.Engine {
 	if !ok {
 		return nil
 	}
-	return &ci.Engine{Pool: s.pool, Source: gitCISource{rd: rd}, Now: s.now}
+	return &ci.Engine{Pool: s.pool, Source: gitCISource{rd: rd}, Now: s.now, Reporter: ciReporter{s: s}}
 }
 
 // NewCIPushHandler è il gitpush.Handler delle esecuzioni dei workflow (durable
@@ -440,7 +440,7 @@ func (s *apiServer) CancelWorkflowRun(w http.ResponseWriter, r *http.Request, ow
 		writeError(w, http.StatusForbidden, "forbidden", "Annullare un'esecuzione richiede write sul repository.")
 		return
 	}
-	run, err := ci.CancelRun(r.Context(), s.pool, s.now(), ia.repo.ID, uuid.UUID(id))
+	run, err := ci.CancelRunReported(r.Context(), s.pool, s.now(), ia.repo.ID, uuid.UUID(id), ciReporter{s: s})
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		writeError(w, http.StatusNotFound, "not_found", "Esecuzione non trovata.")
