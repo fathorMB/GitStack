@@ -246,7 +246,14 @@ func (e *gitEnv) sshURL(path string) string { return "ssh://git@" + e.sshAddr + 
 
 // git esegue il client git reale, con HOME isolata, senza prompt né credential
 // helper; `key` (se non vuota) è la chiave SSH da usare.
-func (e *gitEnv) git(dir, key string, args ...string) (string, error) {
+type gitOutput struct {
+	stdout string
+	stderr string
+}
+
+func (o gitOutput) combined() string { return o.stdout + o.stderr }
+
+func (e *gitEnv) gitOutput(dir, key string, args ...string) (gitOutput, error) {
 	e.t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
@@ -264,10 +271,18 @@ func (e *gitEnv) git(dir, key string, args ...string) (string, error) {
 		"GIT_AUTHOR_NAME=Test", "GIT_AUTHOR_EMAIL=test@example.com",
 		"GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@example.com",
 	)
-	var out bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &out, &out
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	err := cmd.Run()
-	return out.String(), err
+	return gitOutput{stdout: stdout.String(), stderr: stderr.String()}, err
+}
+
+// git conserva l'output combinato per le verifiche dei rifiuti e leakCheck.
+// Chi interpreta SHA, ref o altro output strutturato deve usare mustGit.
+func (e *gitEnv) git(dir, key string, args ...string) (string, error) {
+	e.t.Helper()
+	out, err := e.gitOutput(dir, key, args...)
+	return out.combined(), err
 }
 
 // cleanEnv toglie dall'ambiente le variabili GIT_CONFIG_* ereditate (hook e
@@ -285,11 +300,11 @@ func cleanEnv() []string {
 
 func (e *gitEnv) mustGit(dir, key string, args ...string) string {
 	e.t.Helper()
-	out, err := e.git(dir, key, args...)
+	out, err := e.gitOutput(dir, key, args...)
 	if err != nil {
-		e.t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
+		e.t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out.combined())
 	}
-	return out
+	return out.stdout
 }
 
 // newWork crea un clone di lavoro (cartella nuova) dell'URL dato.
@@ -331,12 +346,31 @@ func (e *gitEnv) initWork(url string, files map[string]string) string {
 // remoteHead è lo sha di refs/heads/main sul server, letto con ls-remote.
 func (e *gitEnv) remoteHead(url, key string) string {
 	e.t.Helper()
-	out := e.mustGit(e.home, key, "ls-remote", url, "refs/heads/main")
-	f := strings.Fields(out)
+	out, err := e.gitOutput(e.home, key, "ls-remote", url, "refs/heads/main")
+	if err != nil {
+		e.t.Fatalf("git ls-remote %s: %v\n%s", url, err, out.combined())
+	}
+	if out.stderr != "" {
+		e.t.Logf("git ls-remote stderr: %s", strings.TrimSpace(out.stderr))
+	}
+	f := strings.Fields(out.stdout)
 	if len(f) == 0 {
 		return ""
 	}
-	return f[0]
+	sha := f[0]
+	if (len(sha) != 40 && len(sha) != 64) || !isHexSHA(sha) {
+		e.t.Fatalf("git ls-remote ha restituito uno SHA non valido %q\nstdout:\n%s\nstderr:\n%s", sha, out.stdout, out.stderr)
+	}
+	return sha
+}
+
+func isHexSHA(s string) bool {
+	for _, c := range s {
+		if !('0' <= c && c <= '9' || 'a' <= c && c <= 'f' || 'A' <= c && c <= 'F') {
+			return false
+		}
+	}
+	return true
 }
 
 // leakCheck: né l'output di git né un corpo HTTP devono contenere dati del

@@ -113,7 +113,8 @@ type Config struct {
 	// AttachmentsDir è il volume degli allegati di issue e commenti
 	// (GITSTACK_CORE_ATTACHMENTS_DIR, I9). Vuoto: upload e download di allegati
 	// rispondono 503. Il volume è coperto dal backup (D19).
-	AttachmentsDir string
+	AttachmentsDir   string
+	ReleaseAssetsDir string
 	// CIGatewayAddr è l'indirizzo della porta dedicata del ci-gateway
 	// (GITSTACK_CORE_CI_GATEWAY_ADDR, es. ":8081", ADR 0001 §3). Vuoto: il
 	// gateway non parte e nessun job può essere preso da un runner.
@@ -192,6 +193,7 @@ const (
 	envCIGatewayURL     = "GITSTACK_CORE_CI_GATEWAY_URL"
 	envCIRunnerSecret   = "GITSTACK_CORE_CI_RUNNER_SECRET"
 	envCILogsDir        = "GITSTACK_CORE_CI_LOGS_DIR"
+	envReleaseAssetsDir = "GITSTACK_CORE_RELEASE_ASSETS_DIR"
 	envSystemInfoFile   = "GITSTACK_SYSTEM_INFO_FILE"
 	envAttachmentMax    = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
 	envAttachRepoQuota  = "GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES"
@@ -344,6 +346,9 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	}
 	if v, ok := lookup(envCILogsDir); ok {
 		cfg.CILogsDir = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envReleaseAssetsDir); ok {
+		cfg.ReleaseAssetsDir = strings.TrimSpace(v)
 	}
 	if v, ok := lookup(envSystemInfoFile); ok {
 		cfg.SystemInfoFile = strings.TrimSpace(v)

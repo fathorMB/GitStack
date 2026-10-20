@@ -23,11 +23,12 @@ const (
 	EventPullRequest       = "pull_request"
 	EventPullRequestReview = "pull_request_review"
 	EventCommitStatus      = "commit_status"
+	EventRelease           = "release"
 )
 
 // Events sono gli eventi selezionabili.
 var Events = []string{EventPush, EventIssues, EventIssueComment, EventRepository,
-	EventPullRequest, EventPullRequestReview, EventCommitStatus}
+	EventPullRequest, EventPullRequestReview, EventCommitStatus, EventRelease}
 
 // issueActions: evento di dominio → action di `issues`. issue.hidden e
 // issue.unhidden non hanno webhook (docs/events.md).

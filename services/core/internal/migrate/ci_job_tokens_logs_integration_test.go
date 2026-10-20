@@ -11,10 +11,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// TestMigrate0025_TokenELogDelJob: task_id numerico per il protocollo runner.v1 (anche
+// TestMigrate0027_TokenELogDelJob: task_id numerico per il protocollo runner.v1 (anche
 // per i job già esistenti), token del job con solo l'hash, contatore dei log; il down
 // toglie tutto e il nuovo up rifunziona.
-func TestMigrate0025_TokenELogDelJob(t *testing.T) {
+func TestMigrate0027_TokenELogDelJob(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 	exec := func(q string, args ...any) {
@@ -53,7 +53,7 @@ func TestMigrate0025_TokenELogDelJob(t *testing.T) {
 	}
 
 	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("down 0025: %v", err)
+		t.Fatalf("down 0027: %v", err)
 	}
 	var n int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.columns WHERE table_schema = 'core' AND table_name = 'ci_jobs' AND column_name = 'task_id'`).Scan(&n); err != nil || n != 0 {

@@ -171,6 +171,13 @@ core:
       size: 5Gi
       storageClassName: ""
       accessMode: ReadWriteOnce
+  # REL1: gli asset release sono persistenti ma fuori dal backup predefinito.
+  releaseAssets:
+    enabled: true
+    mountPath: /var/lib/gitstack/release-assets
+    persistence:
+      size: 20Gi
+      accessMode: ReadWriteOnce
   resources:
     requests:
       cpu: 25m
