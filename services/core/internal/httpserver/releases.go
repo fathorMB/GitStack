@@ -214,7 +214,7 @@ func (s *apiServer) ListReleases(w http.ResponseWriter, r *http.Request, o opena
 	if !ok {
 		return
 	}
-	rows, err := s.pool.Query(r.Context(), `SELECT id,tag_name,name,body,draft,prerelease,created_at,published_at FROM core.releases WHERE repo_id=$1 ORDER BY created_at DESC`, ia.repo.ID)
+	rows, err := s.pool.Query(r.Context(), `SELECT id,tag_name,name,body,draft,prerelease,created_at,published_at FROM core.releases WHERE repo_id=$1 AND ($2 OR NOT draft) ORDER BY created_at DESC`, ia.repo.ID, ia.write)
 	if err != nil {
 		writeError(w, 500, "internal_error", "Lettura delle release non riuscita.")
 		return
@@ -292,7 +292,7 @@ func (s *apiServer) GetRelease(w http.ResponseWriter, r *http.Request, o openapi
 	if !ok {
 		return
 	}
-	x, err := scanRelease(s.pool.QueryRow(r.Context(), `SELECT id,tag_name,name,body,draft,prerelease,created_at,published_at FROM core.releases WHERE id=$1 AND repo_id=$2`, uuid.UUID(id), ia.repo.ID))
+	x, err := scanRelease(s.pool.QueryRow(r.Context(), `SELECT id,tag_name,name,body,draft,prerelease,created_at,published_at FROM core.releases WHERE id=$1 AND repo_id=$2 AND ($3 OR NOT draft)`, uuid.UUID(id), ia.repo.ID, ia.write))
 	if err != nil {
 		writeError(w, 404, "not_found", "Release non trovata.")
 		return
@@ -313,6 +313,11 @@ func (s *apiServer) UpdateRelease(w http.ResponseWriter, r *http.Request, o open
 	if !decodeRelease(w, r, &in) {
 		return
 	}
+	var wasPublished bool
+	if err := s.pool.QueryRow(r.Context(), `SELECT published_at IS NOT NULL FROM core.releases WHERE id=$1 AND repo_id=$2`, uuid.UUID(id), ia.repo.ID).Scan(&wasPublished); err != nil {
+		writeError(w, 404, "not_found", "Release non trovata.")
+		return
+	}
 	x, err := scanRelease(s.pool.QueryRow(r.Context(), `UPDATE core.releases SET name=COALESCE($3,name),body=COALESCE($4,body),draft=COALESCE($5,draft),prerelease=COALESCE($6,prerelease),published_at=CASE WHEN COALESCE($5,draft) THEN NULL WHEN published_at IS NULL THEN $7 ELSE published_at END WHERE id=$1 AND repo_id=$2 RETURNING id,tag_name,name,body,draft,prerelease,created_at,published_at`, uuid.UUID(id), ia.repo.ID, in.Name, in.Body, in.Draft, in.Prerelease, s.now()))
 	if err != nil {
 		writeError(w, 404, "not_found", "Release non trovata.")
@@ -320,7 +325,7 @@ func (s *apiServer) UpdateRelease(w http.ResponseWriter, r *http.Request, o open
 	}
 	out, _ := s.apiRelease(r.Context(), x)
 	action := "edited"
-	if !out.Draft && out.PublishedAt != nil {
+	if !wasPublished && !out.Draft && out.PublishedAt != nil {
 		action = "published"
 	}
 	s.emitReleaseWebhook(r.Context(), ia, out, action)
@@ -391,9 +396,13 @@ func (s *apiServer) DownloadReleaseAsset(w http.ResponseWriter, r *http.Request,
 	if !ok {
 		return
 	}
+	if s.attachments.ReleaseAssets == nil {
+		writeError(w, 503, "attachments_unavailable", "Volume degli allegati non configurato.")
+		return
+	}
 	var name, ctype string
 	var size int64
-	err := s.pool.QueryRow(r.Context(), `SELECT a.name,a.size_bytes FROM core.release_assets a JOIN core.releases x ON x.id=a.release_id WHERE a.id=$1 AND a.release_id=$2 AND x.repo_id=$3`, uuid.UUID(aid), uuid.UUID(id), ia.repo.ID).Scan(&name, &size)
+	err := s.pool.QueryRow(r.Context(), `SELECT a.name,a.size_bytes FROM core.release_assets a JOIN core.releases x ON x.id=a.release_id WHERE a.id=$1 AND a.release_id=$2 AND x.repo_id=$3 AND ($4 OR NOT x.draft)`, uuid.UUID(aid), uuid.UUID(id), ia.repo.ID, ia.write).Scan(&name, &size)
 	if err != nil {
 		writeError(w, 404, "not_found", "Allegato non trovato.")
 		return

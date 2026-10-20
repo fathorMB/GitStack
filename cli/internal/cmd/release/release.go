@@ -4,6 +4,8 @@ package release
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -121,8 +123,15 @@ func newView(f *cmdutil.Factory) *cobra.Command {
 		if jo.Enabled() {
 			return jo.Write(f.IO.Out, v, f.IO.OutTTY)
 		}
-		_, e = fmt.Fprintf(f.IO.Out, "%s (%s)\\n%s\\n", v.Name, v.TagName, v.Body)
-		return e
+		if _, e = fmt.Fprintf(f.IO.Out, "%s (%s)\n%s\n", v.Name, v.TagName, v.Body); e != nil {
+			return e
+		}
+		for _, a := range v.Assets {
+			if _, e = fmt.Fprintf(f.IO.Out, "%s\t%s\t%d\tsha256:%s\n", a.Id.String(), a.Name, a.SizeBytes, a.Sha256); e != nil {
+				return e
+			}
+		}
+		return nil
 	}}
 	output.AddJSONFlags(c, &jo, fields)
 	return c
@@ -192,7 +201,12 @@ func newUpload(f *cmdutil.Factory) *cobra.Command {
 			return e
 		}
 		defer func() { _ = resp.Body.Close() }()
-		return nil
+		var v gitstack.ReleaseAsset
+		if e = decode(resp.Body, &v); e != nil {
+			return e
+		}
+		_, e = fmt.Fprintf(f.IO.Out, "%s\tsha256:%s\n", v.Id.String(), v.Sha256)
+		return e
 	}}
 	return c
 }
@@ -218,6 +232,26 @@ func newDownload(f *cmdutil.Factory) *cobra.Command {
 		if e != nil {
 			return e
 		}
+		// Lo SHA-256 dichiarato si legge dalla release prima di scaricare.
+		rr, e := cl.Do(c.Context(), http.MethodGet, releasePath(o, n)+"/"+id.String(), nil, nil)
+		if e != nil {
+			return e
+		}
+		var rv gitstack.Release
+		e = decode(rr.Body, &rv)
+		_ = rr.Body.Close()
+		if e != nil {
+			return e
+		}
+		want := ""
+		for _, a := range rv.Assets {
+			if a.Id == asset {
+				want = a.Sha256
+			}
+		}
+		if want == "" {
+			return fmt.Errorf("allegato %s non trovato nella release %s", asset, id)
+		}
 		resp, e := cl.Do(c.Context(), http.MethodGet, releasePath(o, n)+"/"+id.String()+"/assets/"+asset.String()+"/download", nil, nil)
 		if e != nil {
 			return e
@@ -227,12 +261,22 @@ func newDownload(f *cmdutil.Factory) *cobra.Command {
 		if e != nil {
 			return e
 		}
-		_, e = io.Copy(dst, resp.Body)
+		h := sha256.New()
+		_, e = io.Copy(io.MultiWriter(dst, h), resp.Body)
 		cerr := dst.Close()
+		if e == nil {
+			e = cerr
+		}
+		if e == nil {
+			if got := hex.EncodeToString(h.Sum(nil)); !strings.EqualFold(got, want) {
+				e = fmt.Errorf("SHA-256 non coincide: atteso %s, ricevuto %s", want, got)
+			}
+		}
 		if e != nil {
+			_ = os.Remove(out)
 			return e
 		}
-		return cerr
+		return nil
 	}}
 	c.Flags().StringVarP(&out, "output", "o", "", "File di destinazione")
 	return c

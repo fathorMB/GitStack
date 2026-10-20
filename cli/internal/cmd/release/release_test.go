@@ -21,7 +21,7 @@ func (noGit) RemoteURL(context.Context, string) (string, error) { return "", gsr
 
 const rid = "0b5c1f1e-8f0d-4c1e-9a2a-6f3f0d1b7a11"
 const aid = "1b5c1f1e-8f0d-4c1e-9a2a-6f3f0d1b7a11"
-const rel = `{"id":"` + rid + `","tagName":"v1.0.0","name":"Uno","body":"note","draft":false,"prerelease":false,"latest":true,"createdAt":"2026-10-01T00:00:00Z","assets":[]}`
+const rel = `{"id":"` + rid + `","tagName":"v1.0.0","name":"Uno","body":"note","draft":false,"prerelease":false,"latest":true,"createdAt":"2026-10-01T00:00:00Z","assets":[{"id":"` + aid + `","name":"in.bin","sha256":"d59386e0ae435e292fbe0ebcdb954b75ed5fb3922091277cb19f798fc5d50718","sizeBytes":5}]}`
 
 func run(t *testing.T, h http.HandlerFunc, args ...string) (int, string, string) {
 	t.Helper()
@@ -52,6 +52,9 @@ func TestReleaseComandi(t *testing.T) {
 		switch {
 		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "download"):
 			_, _ = io.WriteString(w, "asset")
+		case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "assets"):
+			w.WriteHeader(http.StatusCreated)
+			_, _ = io.WriteString(w, `{"id":"` + aid + `","name":"in.bin","sha256":"d59386e0ae435e292fbe0ebcdb954b75ed5fb3922091277cb19f798fc5d50718","sizeBytes":5}`)
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "releases"):
 			_, _ = io.WriteString(w, `{"items":[`+rel+`]}`)
 		default:
@@ -68,7 +71,7 @@ func TestReleaseComandi(t *testing.T) {
 	if err := os.WriteFile(f, []byte("asset"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if c, _, e := run(t, h, "release", "upload", rid, f, "alice/app"); c != 0 || method != "POST" || !strings.Contains(path, "name=in.bin") {
+	if c, o, e := run(t, h, "release", "upload", rid, f, "alice/app"); c != 0 || method != "POST" || !strings.Contains(path, "name=in.bin") || !strings.Contains(o, aid) || !strings.Contains(o, "sha256:d59386e0ae435e292fbe0ebcdb954b75ed5fb3922091277cb19f798fc5d50718") {
 		t.Fatalf("upload: %d %s %s %q", c, method, path, e)
 	}
 	out := t.TempDir() + "/out.bin"
@@ -80,3 +83,38 @@ func TestReleaseComandi(t *testing.T) {
 		t.Fatalf("download=%q", b)
 	}
 }
+
+func TestReleaseView(t *testing.T) {
+	h := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, rel)
+	}
+	c, o, e := run(t, h, "release", "view", rid, "alice/app")
+	if c != 0 {
+		t.Fatalf("view: %d %q", c, e)
+	}
+	lines := strings.Split(strings.TrimRight(o, "\n"), "\n")
+	if len(lines) != 3 || lines[0] != "Uno (v1.0.0)" || lines[1] != "note" || !strings.Contains(lines[2], "in.bin") || !strings.Contains(lines[2], "5") || !strings.Contains(lines[2], "sha256:"+assetSHA) {
+		t.Fatalf("output view inatteso: %q", o)
+	}
+}
+
+func TestReleaseDownloadSHAErrato(t *testing.T) {
+	h := func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "download") {
+			_, _ = io.WriteString(w, "altro")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, rel)
+	}
+	out := t.TempDir() + "/out.bin"
+	if c, _, e := run(t, h, "release", "download", rid, aid, "alice/app", "--output", out); c == 0 || !strings.Contains(e, "SHA-256") {
+		t.Fatalf("download con digest errato deve fallire: %d %q", c, e)
+	}
+	if _, err := os.Stat(out); err == nil {
+		t.Fatal("il file non deve restare dopo un digest errato")
+	}
+}
+
+const assetSHA = "d59386e0ae435e292fbe0ebcdb954b75ed5fb3922091277cb19f798fc5d50718"

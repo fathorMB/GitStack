@@ -28,7 +28,7 @@ type releaseGit struct{ *fakeGit }
 func (g *releaseGit) ReadJSON(_ context.Context, _ trust.Identity, _ uuid.UUID, path string, _ url.Values) (json.RawMessage, error) {
 	switch path {
 	case "tags":
-		return json.RawMessage(`{"items":[{"name":"v0.1.0","taggedAt":"2026-10-01T00:00:00Z"},{"name":"v1.0.0","taggedAt":"2026-10-20T00:00:00Z"}],"total":2}`), nil
+		return json.RawMessage(`{"items":[{"name":"v0.1.0","taggedAt":"2026-10-01T00:00:00Z"},{"name":"v1.0.0","taggedAt":"2099-01-01T00:00:00Z"},{"name":"v1.1.0","taggedAt":"2099-02-01T00:00:00Z"}],"total":3}`), nil
 	case "compare":
 		return json.RawMessage(`{"commits":[{"sha":"0123456789abcdef","subject":"Corregge il rilascio"}]}`), nil
 	default:
@@ -111,7 +111,22 @@ func TestReleases_API_NoteGenerateEAsset(t *testing.T) {
 		t.Fatalf("digest = %s", asset.Sha256)
 	}
 
-	download := e.release(http.MethodGet, "/repos/alice/app/releases/"+rel.Id.String()+"/assets/"+asset.Id.String()+"/download", "bob", "")
+	dlPath := "/repos/alice/app/releases/" + rel.Id.String() + "/assets/" + asset.Id.String() + "/download"
+	// Una bozza non e' visibile a chi ha solo read.
+	e.want(e.release(http.MethodGet, dlPath, "bob", ""), http.StatusNotFound)
+	e.want(e.release(http.MethodGet, "/repos/alice/app/releases/"+rel.Id.String(), "bob", ""), http.StatusNotFound)
+	bobList := e.release(http.MethodGet, "/repos/alice/app/releases", "bob", "")
+	e.want(bobList, http.StatusOK)
+	var bl openapi.ReleaseList
+	if err := json.Unmarshal(bobList.Body.Bytes(), &bl); err != nil || len(bl.Items) != 1 {
+		t.Fatalf("bob non deve vedere la bozza: %v (%s)", err, bobList.Body.String())
+	}
+	aliceList := e.release(http.MethodGet, "/repos/alice/app/releases", "alice", "")
+	if err := json.Unmarshal(aliceList.Body.Bytes(), &bl); err != nil || len(bl.Items) != 2 {
+		t.Fatalf("alice deve vedere la bozza: %v (%s)", err, aliceList.Body.String())
+	}
+	e.want(e.release(http.MethodGet, "/repos/alice/app/releases/"+rel.Id.String(), "alice", ""), http.StatusOK)
+	download := e.release(http.MethodGet, dlPath, "alice", "")
 	e.want(download, http.StatusOK)
 	if !bytes.Equal(download.Body.Bytes(), assetBytes) || download.Header().Get("Content-Length") != "23" {
 		t.Fatalf("download inatteso: body=%q headers=%v", download.Body.Bytes(), download.Header())
@@ -134,6 +149,31 @@ func TestReleases_API_NoteGenerateEAsset(t *testing.T) {
 		t.Fatalf("lista release: %v (%s)", err, list.Body.String())
 	}
 
+	latestOf := func(tag string) bool {
+		t.Helper()
+		l := e.release(http.MethodGet, "/repos/alice/app/releases", "bob", "")
+		var ll openapi.ReleaseList
+		if err := json.Unmarshal(l.Body.Bytes(), &ll); err != nil {
+			t.Fatal(err)
+		}
+		for _, x := range ll.Items {
+			if x.TagName == tag {
+				return x.Latest
+			}
+		}
+		t.Fatalf("release %s assente", tag)
+		return false
+	}
+	if !latestOf("v0.1.0") || latestOf("v1.0.0") {
+		t.Fatalf("Latest atteso su v0.1.0 e non sulla pre-release: %s", list.Body.String())
+	}
+	e.want(e.release(http.MethodGet, dlPath, "bob", ""), http.StatusOK)
+	time.Sleep(20 * time.Millisecond)
+	e.want(e.release(http.MethodPost, "/repos/alice/app/releases", "alice", `{"tagName":"v1.1.0","name":"Terza"}`), http.StatusCreated)
+	if latestOf("v0.1.0") || !latestOf("v1.1.0") || latestOf("v1.0.0") {
+		t.Fatal("Latest deve passare alla terza release stabile")
+	}
+
 	missing := e.release(http.MethodPost, "/repos/alice/app/releases", "alice", `{"tagName":"v9.9.9","name":"No"}`)
 	e.want(missing, http.StatusUnprocessableEntity)
 }
@@ -151,4 +191,37 @@ func TestReleases_WebhookFirmato(t *testing.T) {
 		t.Fatalf("webhook release: %+v", reqs)
 	}
 	verifySignature(t, "release-secret", reqs[0])
+}
+
+func TestReleases_WebhookAzioni(t *testing.T) {
+	e := newHookEnv(t)
+	e.repo("app", true)
+	e.repoHook("app", `{"url":"http://hooks.example.test/in","events":["release"],"secret":"release-secret"}`)
+
+	created := e.do(http.MethodPost, "/repos/alice/app/releases", "alice", `{"tagName":"v1.0.0","name":"Versione 1","draft":true}`)
+	e.want(created, http.StatusCreated, "")
+	var rel openapi.Release
+	if err := json.Unmarshal(created.Body.Bytes(), &rel); err != nil {
+		t.Fatal(err)
+	}
+	path := "/repos/alice/app/releases/" + rel.Id.String()
+	e.want(e.do(http.MethodPatch, path, "alice", `{"draft":false}`), http.StatusOK, "")
+	e.want(e.do(http.MethodPatch, path, "alice", `{"name":"Rinominata"}`), http.StatusOK, "")
+
+	rows, err := e.pool.Query(context.Background(), `SELECT action FROM core.webhook_deliveries WHERE event='release' ORDER BY created_at, id`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	counts := map[string]int{}
+	for rows.Next() {
+		var a string
+		if err := rows.Scan(&a); err != nil {
+			t.Fatal(err)
+		}
+		counts[a]++
+	}
+	if counts["created"] != 1 || counts["published"] != 1 || counts["edited"] != 1 {
+		t.Fatalf("azioni webhook inattese: %v", counts)
+	}
 }
