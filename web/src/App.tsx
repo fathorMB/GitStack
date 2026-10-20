@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { InsecureHttpBanner, ToastProvider } from './components';
 import { AppShell } from './layout/AppShell';
 import { AgentsPage } from './pages/admin/AgentsPage';
+import { CiRunnersPage } from './pages/admin/CiRunnersPage';
 import { SystemPage } from './pages/admin/SystemPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { ComponentsPage } from './pages/ComponentsPage';
@@ -12,6 +13,7 @@ import { ResourcesPage } from './pages/ResourcesPage';
 import { NewRepoPage } from "./pages/repos/NewRepoPage";
 import { DeletedReposPage } from './pages/repos/DeletedReposPage';
 import { RepoSettingsPage } from './pages/repos/RepoSettingsPage';
+import { RepoSettingsSecretsPage } from './pages/repos/RepoSettingsSecretsPage';
 import { BranchSettingsPage } from './pages/repos/BranchSettingsPage';
 import { RepoPage } from "./pages/repos/RepoPage";
 import { ReposPage } from "./pages/repos/ReposPage";
@@ -90,6 +92,16 @@ export function AppRoutes() {
           <RequireAuth>
             <AppShell crumb="Agents">
               <AgentsPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/ci"
+        element={
+          <RequireAuth>
+            <AppShell crumb="CI & runners">
+              <CiRunnersPage />
             </AppShell>
           </RequireAuth>
         }
@@ -381,6 +393,16 @@ export function AppRoutes() {
           <RequireAuth>
             <AppShell crumb="Repository settings">
               <RepoSettingsPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/:owner/:repo/settings/secrets"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Repository settings">
+              <RepoSettingsSecretsPage />
             </AppShell>
           </RequireAuth>
         }
