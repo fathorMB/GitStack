@@ -165,7 +165,7 @@ describe('RepoMirrorsSection', () => {
     await user.click(screen.getByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
     expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
-    await user.type(within(form).getByLabelText('Remote URL'), 'https://home.lan/acme/api.git');
+    await user.click(within(form).getByLabelText('Remote URL')); await user.paste('https://home.lan/acme/api.git');
     await user.type(within(form).getByLabelText('Username'), 'bot');
     await user.type(within(form).getByLabelText('Token'), 's3cret');
     await user.click(within(form).getByRole('button', { name: 'Add mirror' }));
@@ -232,7 +232,7 @@ describe('RepoMirrorsSection', () => {
     await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
-    await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin.git');
     await user.type(within(form).getByLabelText('Username'), 'bot');
     await waitFor(() => expect(within(form).getByText(/This is the source of the pull mirror/)).toBeInTheDocument(), { timeout: 3000 });
     expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
@@ -246,7 +246,7 @@ describe('RepoMirrorsSection', () => {
     await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
-    await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin.git');
     await user.type(within(form).getByLabelText('Username'), 'bot');
     await waitFor(() => expect(within(form).getByText(/This is the source of the pull mirror/)).toBeInTheDocument(), { timeout: 3000 });
     expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
@@ -260,7 +260,7 @@ describe('RepoMirrorsSection', () => {
     await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
-    await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin.git');
     await user.type(within(form).getByLabelText('Username'), 'bot');
     await user.type(within(form).getByLabelText('Token'), 't');
     // Il pulsante resta spento per il blocco MP6 (pending è attivo).
@@ -277,7 +277,7 @@ describe('RepoMirrorsSection', () => {
     await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
-    await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin.git');
     await user.type(within(form).getByLabelText('Username'), 'bot');
     // Token richiesto per nuovo mirror → pulsante spento.
     expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
@@ -297,7 +297,7 @@ describe('RepoMirrorsSection', () => {
     await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
-    await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin.git');
     await user.type(within(form).getByLabelText('Username'), 'bot');
     // Token richiesto per nuovo mirror → pulsante spento.
     expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
@@ -322,7 +322,7 @@ describe('RepoMirrorsSection', () => {
     await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
-    await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin.git');
     await user.type(within(form).getByLabelText('Username'), 'bot');
     // Il messaggio tappa 2 sostituisce l'avviso di conflitto.
     await waitFor(() => expect(within(form).getByText(/The pull mirror was stopped/)).toBeInTheDocument(), { timeout: 3000 });
@@ -341,7 +341,7 @@ describe('RepoMirrorsSection', () => {
     await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
-    await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin.git');
     await user.type(within(form).getByLabelText('Username'), 'bot');
     const tokenInput = within(form).getByLabelText('Token');
     await user.type(tokenInput, 's3cret');
@@ -365,7 +365,7 @@ describe('RepoMirrorsSection', () => {
     const form = screen.getByRole('form', { name: 'Add mirror' });
     // Scriviamo l'URL dell'origine del pull mirror.
     const urlInput = within(form).getByLabelText('Remote URL');
-    await user.type(urlInput, 'https://github.com/acme/origin');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin');
     // Il submit resta disabilitato per il blocco pull mirror.
     expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
     // Avviso presente.
@@ -381,7 +381,7 @@ describe('RepoMirrorsSection', () => {
     await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
-    await user.type(urlInput, 'https://github.com/acme/origin');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin');
     await user.type(within(form).getByLabelText('Username'), 'bot');
     const tokenInput = within(form).getByLabelText('Token');
     await user.type(tokenInput, 's3cret');
@@ -402,7 +402,7 @@ describe('RepoMirrorsSection', () => {
     await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
-    await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin.git');
     await user.type(within(form).getByLabelText('Username'), 'bot');
     const tokenInput = within(form).getByLabelText('Token');
     await user.type(tokenInput, 's3cret');
@@ -418,7 +418,7 @@ describe('RepoMirrorsSection', () => {
     await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
-    await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin.git');
     await user.type(within(form).getByLabelText('Username'), 'bot');
     const tokenInput = within(form).getByLabelText('Token');
     await user.type(tokenInput, 's3cret');
@@ -434,7 +434,7 @@ describe('RepoMirrorsSection', () => {
     await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
-    await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin.git');
     await user.type(within(form).getByLabelText('Username'), 'bot');
     const tokenInput = within(form).getByLabelText('Token');
     await user.type(tokenInput, 's3cret');
@@ -452,7 +452,7 @@ describe('RepoMirrorsSection', () => {
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
     const usernameInput = within(form).getByLabelText('Username');
-    await user.type(urlInput, 'https://github.com/acme/dest.git');
+    await user.click(urlInput); await user.paste('https://github.com/acme/dest.git');
     await user.type(usernameInput, 'bot');
     // Token vuoto: pulsante spento.
     expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
@@ -491,7 +491,7 @@ describe('RepoMirrorsSection', () => {
     await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
-    await user.type(urlInput, 'https://example.com/other.git');
+    await user.click(urlInput); await user.paste('https://example.com/other.git');
     await user.type(within(form).getByLabelText('Username'), 'bot');
     const tokenInput = within(form).getByLabelText('Token');
     await user.type(tokenInput, 's3cret');
@@ -513,7 +513,7 @@ describe('RepoMirrorsSection', () => {
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
     // L'utente scrive senza .git.
-    await user.type(urlInput, 'https://github.com/acme/origin');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin');
     await user.type(within(form).getByLabelText('Username'), 'bot');
     const tokenInput = within(form).getByLabelText('Token');
     await user.type(tokenInput, 's3cret');
@@ -533,7 +533,7 @@ describe('RepoMirrorsSection', () => {
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
     // L'utente scrive con slash finale ma senza .git.
-    await user.type(urlInput, 'https://github.com/acme/origin/');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin/');
     await user.type(within(form).getByLabelText('Username'), 'bot');
     const tokenInput = within(form).getByLabelText('Token');
     await user.type(tokenInput, 's3cret');

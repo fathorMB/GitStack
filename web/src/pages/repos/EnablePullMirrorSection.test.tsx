@@ -94,9 +94,9 @@ describe('EnablePullMirrorSection', () => {
     const urlInput = screen.getByLabelText('Source URL');
     const usernameInput = screen.getByLabelText('Username (optional)');
     const tokenInput = screen.getByLabelText('Access token (optional)');
-    await user.type(urlInput, 'https://github.com/acme/origin.git');
-    await user.type(usernameInput, 'mirror-bot');
-    await user.type(tokenInput, 's3cret');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin.git');
+    await user.click(usernameInput); await user.paste('mirror-bot');
+    await user.click(tokenInput); await user.paste('s3cret');
     expect(screen.getByRole('button', { name: 'Enable pull mirror' })).not.toBeDisabled();
   });
 
@@ -107,9 +107,9 @@ describe('EnablePullMirrorSection', () => {
     const urlInput = screen.getByLabelText('Source URL');
     const usernameInput = screen.getByLabelText('Username (optional)');
     const tokenInput = screen.getByLabelText('Access token (optional)');
-    await user.type(urlInput, 'https://github.com/acme/origin.git');
-    await user.type(usernameInput, 'mirror-bot');
-    await user.type(tokenInput, 's3cret');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin.git');
+    await user.click(usernameInput); await user.paste('mirror-bot');
+    await user.click(tokenInput); await user.paste('s3cret');
     await user.click(screen.getByRole('button', { name: 'Enable pull mirror' }));
     expect(enablePullMirror).toHaveBeenCalledWith('acme', 'api', {
       url: 'https://github.com/acme/origin.git',
@@ -124,11 +124,11 @@ describe('EnablePullMirrorSection', () => {
     const user = userEvent.setup();
     renderSection();
     const urlInput = screen.getByLabelText('Source URL');
-    await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin.git');
     const usernameInput = screen.getByLabelText('Username (optional)');
-    await user.type(usernameInput, 'mirror-bot');
+    await user.click(usernameInput); await user.paste('mirror-bot');
     const tokenInput = screen.getByLabelText('Access token (optional)');
-    await user.type(tokenInput, 's3cret');
+    await user.click(tokenInput); await user.paste('s3cret');
     await user.click(screen.getByRole('button', { name: 'Enable pull mirror' }));
     expect(enablePullMirror).toHaveBeenCalledWith('acme', 'api', {
       url: 'https://github.com/acme/origin.git',
@@ -150,9 +150,9 @@ describe('EnablePullMirrorSection', () => {
     const urlInput = screen.getByLabelText('Source URL');
     const usernameInput = screen.getByLabelText('Username (optional)');
     const tokenInput = screen.getByLabelText('Access token (optional)');
-    await user.type(urlInput, 'http://x');
-    await user.type(usernameInput, 'mirror-bot');
-    await user.type(tokenInput, 's3cret');
+    await user.click(urlInput); await user.paste('http://x');
+    await user.click(usernameInput); await user.paste('mirror-bot');
+    await user.click(tokenInput); await user.paste('s3cret');
     await user.click(screen.getByRole('button', { name: 'Enable pull mirror' }));
     expect(await screen.findByText('url must be https')).toBeInTheDocument();
   });
@@ -164,9 +164,9 @@ describe('EnablePullMirrorSection', () => {
     const urlInput = screen.getByLabelText('Source URL');
     const usernameInput = screen.getByLabelText('Username (optional)');
     const tokenInput = screen.getByLabelText('Access token (optional)');
-    await user.type(urlInput, 'https://github.com/acme/origin.git');
-    await user.type(usernameInput, 'mirror-bot');
-    await user.type(tokenInput, 's3cret');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin.git');
+    await user.click(usernameInput); await user.paste('mirror-bot');
+    await user.click(tokenInput); await user.paste('s3cret');
     await user.click(screen.getByRole('button', { name: 'Enable pull mirror' }));
     // describeError per un Error non-API torna il messaggio di connessione.
     expect(await screen.findByText(/Could not reach/)).toBeInTheDocument();
@@ -180,9 +180,9 @@ describe('EnablePullMirrorSection', () => {
     const urlInput = screen.getByLabelText('Source URL');
     const usernameInput = screen.getByLabelText('Username (optional)');
     const tokenInput = screen.getByLabelText('Access token (optional)');
-    await user.type(urlInput, 'https://github.com/acme/origin.git');
-    await user.type(usernameInput, 'mirror-bot');
-    await user.type(tokenInput, 's3cret');
+    await user.click(urlInput); await user.paste('https://github.com/acme/origin.git');
+    await user.click(usernameInput); await user.paste('mirror-bot');
+    await user.click(tokenInput); await user.paste('s3cret');
     await user.click(screen.getByRole('button', { name: 'Enable pull mirror' }));
     await waitFor(() => expect(onSuccessMock).toHaveBeenCalledWith(expect.objectContaining({ origin: 'https://github.com/acme/origin.git' })));
   });

@@ -87,7 +87,7 @@ describe('NewRepoPage', () => {
     await user.click(screen.getByRole('button', { name: 'Import from URL' }));
 
     // Fill form
-    await user.type(screen.getByLabelText('Source URL'), 'https://github.com/acme/example.git');
+    await user.click(screen.getByLabelText('Source URL')); await user.paste('https://github.com/acme/example.git');
     await user.type(screen.getByPlaceholderText('repo-name'), 'example');
 
     // Submit
@@ -109,7 +109,7 @@ describe('NewRepoPage', () => {
 
     // Switch to "Copy once"
     await user.click(screen.getByRole('radio', { name: /Copy once/ }));
-    await user.type(screen.getByLabelText('Source URL'), 'https://github.com/acme/example.git');
+    await user.click(screen.getByLabelText('Source URL')); await user.paste('https://github.com/acme/example.git');
     await user.type(screen.getByPlaceholderText('repo-name'), 'example');
 
     await user.click(screen.getByRole('button', { name: 'Import repository' }));
@@ -192,7 +192,7 @@ describe('NewRepoPage', () => {
     renderPage();
 
     await user.click(screen.getByRole('button', { name: 'Import from URL' }));
-    await user.type(screen.getByLabelText('Source URL'), 'https://github.com/acme/example.git');
+    await user.click(screen.getByLabelText('Source URL')); await user.paste('https://github.com/acme/example.git');
     await user.type(screen.getByPlaceholderText('repo-name'), 'example');
     await user.click(screen.getByRole('button', { name: 'Import repository' }));
 
@@ -291,7 +291,7 @@ describe('NewRepoPage: nome nel cestino (R2)', () => {
     mockImportRepo.mockRejectedValue(trashed('acme'));
     renderPage();
     await user.click(screen.getByRole('button', { name: 'Import from URL' }));
-    await user.type(screen.getByLabelText('Source URL'), 'https://github.com/acme/example.git');
+    await user.click(screen.getByLabelText('Source URL')); await user.paste('https://github.com/acme/example.git');
     await user.type(screen.getByPlaceholderText('repo-name'), 'example');
     await user.click(screen.getByRole('button', { name: 'Import repository' }));
     const alert = await screen.findByRole('alert');
