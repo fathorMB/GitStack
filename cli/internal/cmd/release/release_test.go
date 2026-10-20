@@ -54,7 +54,7 @@ func TestReleaseComandi(t *testing.T) {
 			_, _ = io.WriteString(w, "asset")
 		case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "assets"):
 			w.WriteHeader(http.StatusCreated)
-			_, _ = io.WriteString(w, `{"id":"` + aid + `","name":"in.bin","sha256":"d59386e0ae435e292fbe0ebcdb954b75ed5fb3922091277cb19f798fc5d50718","sizeBytes":5}`)
+			_, _ = io.WriteString(w, `{"id":"`+aid+`","name":"in.bin","sha256":"d59386e0ae435e292fbe0ebcdb954b75ed5fb3922091277cb19f798fc5d50718","sizeBytes":5}`)
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "releases"):
 			_, _ = io.WriteString(w, `{"items":[`+rel+`]}`)
 		default:
