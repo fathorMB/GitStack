@@ -80,7 +80,9 @@ func (e *env) advance(d time.Duration) {
 	e.clock.Add(int64(d))
 }
 
-func newEnv(t *testing.T) *env {
+func newEnv(t *testing.T) *env { return newEnvKeys(t, nil) }
+
+func newEnvKeys(t *testing.T, keys ci.Sealer) *env {
 	t.Helper()
 	pool, _ := dbtest.NewPool(t)
 	e := &env{t: t, pool: pool, src: &fakeSource{files: map[string][]ci.File{}}, rd: &fakeReader{}, clock: &atomic.Int64{}}
@@ -89,7 +91,7 @@ func newEnv(t *testing.T) *env {
 	e.logs = &ci.LogStore{Dir: t.TempDir()}
 	h := cigateway.New(cigateway.Config{
 		Pool: pool, Source: e.src, Reader: e.rd, Logs: e.logs, RunnerSecrets: []string{"vecchio", runnerSecret},
-		ArchiveURL: "http://ci-gateway.test", Now: e.now, PollTimeout: 400 * time.Millisecond, PollEvery: 25 * time.Millisecond,
+		ArchiveURL: "http://ci-gateway.test", Keys: keys, Now: e.now, PollTimeout: 400 * time.Millisecond, PollEvery: 25 * time.Millisecond,
 	})
 	e.srv = httptest.NewServer(h)
 	t.Cleanup(e.srv.Close)

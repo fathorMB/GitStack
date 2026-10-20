@@ -134,7 +134,7 @@ func (s *apiServer) ciEngine() *ci.Engine {
 	if !ok {
 		return nil
 	}
-	return &ci.Engine{Pool: s.pool, Source: gitCISource{rd: rd}, Now: s.now}
+	return &ci.Engine{Pool: s.pool, Source: gitCISource{rd: rd}, Now: s.now, ActorLevel: s.ciActorLevel}
 }
 
 // NewCIPushHandler è il gitpush.Handler delle esecuzioni dei workflow (durable
@@ -380,11 +380,13 @@ func jobAPI(j ci.JobRow) openapi.WorkflowJob {
 	if st == ci.StatusWaiting {
 		st = ci.StatusQueued // il contratto conosce solo queued, in_progress, completed, cancelled
 	}
+	capped := j.Permissions[ci.PermCappedByActor] == "true"
 	return openapi.WorkflowJob{
 		Id: openapi_types.UUID(j.ID), Name: j.Name, Status: st, Conclusion: j.Conclusion,
 		RunnerType: openapi.WorkflowJobRunnerType(j.RunnerType), RunnerName: j.RunnerName,
 		StartedAt: j.StartedAt, CompletedAt: j.CompletedAt,
 		Permissions: openapi.JobTokenPermissions{
+			CappedByActor: &capped,
 			Contents: openapi.JobTokenPermissionsContents(j.Permissions["contents"]),
 			Packages: openapi.JobTokenPermissionsPackages(j.Permissions["packages"]),
 			Actions:  openapi.JobTokenPermissionsActions(j.Permissions["actions"]),
@@ -516,4 +518,20 @@ func (s *apiServer) GetWorkflowJob(w http.ResponseWriter, r *http.Request, owner
 		return
 	}
 	writeJSON(w, http.StatusOK, jobAPI(job))
+}
+
+// ciActorLevel dice se chi avvia un'esecuzione legge e scrive sul repo (tetto del token del job, CI4).
+func (s *apiServer) ciActorLevel(ctx context.Context, actor, repoID uuid.UUID) (bool, bool, error) {
+	if s.repoIdentity == nil {
+		return false, false, errors.New("identity non configurata")
+	}
+	write, err := s.repoIdentity.HasRole(ctx, actor, repoID, "write")
+	if err != nil {
+		return false, false, err
+	}
+	if write {
+		return true, true, nil
+	}
+	read, err := s.repoIdentity.HasRole(ctx, actor, repoID, "read")
+	return read, false, err
 }
