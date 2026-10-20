@@ -197,7 +197,9 @@ func runAct(ctx context.Context, cfg Config, rep *reporter, event, jobKey, token
 	args = append(args, "--pull=false", "--no-cache-server", "-s", "GITHUB_TOKEN")
 	cmd := exec.CommandContext(ctx, cfg.ActBin, args...)
 	cmd.Dir = filepath.Join(cfg.WorkDir, "workspace")
-	cmd.Env = append(append(os.Environ(), cfg.ActEnv...), "GITHUB_TOKEN="+token, "NO_COLOR=1",
+	// I passi del workflow ereditano l'ambiente di act: il segreto dei runner (e ogni
+	// GITSTACK_CI_*) non deve arrivarci, o un workflow potrebbe prendere i job altrui.
+	cmd.Env = append(append(withoutCIEnv(os.Environ()), cfg.ActEnv...), "GITHUB_TOKEN="+token, "NO_COLOR=1",
 		// uid 10001 non ha una home e il filesystem radice è di sola lettura: act scrive la cache qui.
 		"HOME="+cfg.WorkDir, "XDG_CACHE_HOME="+filepath.Join(cfg.WorkDir, ".cache"))
 	out, err := cmd.StdoutPipe()
@@ -394,4 +396,16 @@ func downloadArchive(ctx context.Context, hc *http.Client, url, token, dest stri
 		return fmt.Errorf("il gateway ha risposto %d", res.StatusCode)
 	}
 	return extractTarGz(res.Body, dest)
+}
+
+// withoutCIEnv toglie dall'ambiente ogni variabile GITSTACK_CI_*: act non ne ha bisogno.
+func withoutCIEnv(env []string) []string {
+	out := make([]string, 0, len(env))
+	for _, kv := range env {
+		if strings.HasPrefix(kv, "GITSTACK_CI_") {
+			continue
+		}
+		out = append(out, kv)
+	}
+	return out
 }

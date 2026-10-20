@@ -55,6 +55,10 @@ func fakeAct(args []string) int {
 		fmt.Println("Error:", err)
 		return 1
 	}
+	if os.Getenv("GITSTACK_CI_RUNNER_SECRET") != "" {
+		fmt.Println("Error: segreto del runner visibile")
+		return 1
+	}
 	if os.Getenv("GITHUB_TOKEN") != jobToken {
 		fmt.Println("Error: GITHUB_TOKEN assente")
 		return 1
@@ -196,6 +200,8 @@ func cfgFor(t *testing.T, url string) cirunner.Config {
 		t.Fatal(err)
 	}
 	t.Setenv("CIRUNNER_FAKE_ACT", "1")
+	// Come nel pod: il segreto è nell'ambiente di ci-runner e act non deve vederlo.
+	t.Setenv("GITSTACK_CI_RUNNER_SECRET", secret)
 	return cirunner.Config{GatewayURL: url, Secret: secret, Name: "pod-test", ActBin: exe, WorkDir: t.TempDir(),
 		FetchTimeout: 3 * time.Second, FlushEvery: 20 * time.Millisecond}
 }

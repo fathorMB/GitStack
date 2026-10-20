@@ -31,6 +31,11 @@ func main() { os.Exit(run()) }
 
 func run() int {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil)).With("service", "ci-runner")
+	// Prima di leggere il segreto: un passo del workflow (stesso uid) non deve poter leggere /proc/<pid>/environ.
+	if err := hardenProcess(); err != nil {
+		log.Error("protezione del processo non riuscita", "err", err)
+		return 1
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
