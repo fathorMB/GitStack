@@ -53,7 +53,7 @@ func (r *rpc) FetchTask(ctx context.Context, req *connect.Request[runnerv1.Fetch
 	tick := time.NewTicker(g.PollEvery)
 	defer tick.Stop()
 	for {
-		job, run, token, ok, err := ci.ClaimNextWithToken(ctx, g.Pool, g.Now(), g.Capacity, runner, ci.JobTokenTTL)
+		job, run, token, ok, err := ci.ClaimNextReported(ctx, g.Pool, g.Now(), g.Capacity, runner, ci.JobTokenTTL, g.Reporter)
 		if err != nil {
 			if ctx.Err() != nil {
 				return connect.NewResponse(&runnerv1.FetchTaskResponse{}), nil
@@ -68,7 +68,7 @@ func (r *rpc) FetchTask(ctx context.Context, req *connect.Request[runnerv1.Fetch
 			}
 			// Il job è già preso e non si può consegnare: si chiude come fallito e si prosegue.
 			g.Log.Warn("ci-gateway: task non costruibile, il job fallisce", "job", job.ID, "err", err)
-			if cerr := ci.CompleteJob(context.WithoutCancel(ctx), g.Pool, g.Now(), job.ID, ci.ConclusionFailure); cerr != nil {
+			if cerr := ci.CompleteJobReported(context.WithoutCancel(ctx), g.Pool, g.Now(), job.ID, ci.ConclusionFailure, g.Reporter); cerr != nil {
 				g.Log.Error("ci-gateway: chiusura del job non riuscita", "job", job.ID, "err", cerr)
 			}
 			continue
@@ -177,7 +177,7 @@ func (r *rpc) UpdateTask(ctx context.Context, req *connect.Request[runnerv1.Upda
 		return nil, unavailable(errors.New("servizio non disponibile"))
 	}
 	if concl := resultName(st.GetResult()); concl != "" {
-		if err := ci.CompleteJob(ctx, g.Pool, g.Now(), a.JobID, concl); err != nil {
+		if err := ci.CompleteJobReported(ctx, g.Pool, g.Now(), a.JobID, concl, g.Reporter); err != nil {
 			g.Log.Error("ci-gateway: chiusura del job non riuscita", "job", a.JobID, "err", err)
 			return nil, unavailable(errors.New("servizio non disponibile"))
 		}

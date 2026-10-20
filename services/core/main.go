@@ -414,6 +414,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 				Addr: cfg.CIGatewayAddr,
 				Handler: httpserver.NewCIGateway(pool, rd, httpserver.CIGatewayConfig{
 					RunnerSecrets: cfg.CIRunnerSecrets, ArchiveURL: cfg.CIGatewayURL, Logs: ciLogs, Log: logger, Keys: keys,
+					Options: routerOpts,
 				}),
 				ReadHeaderTimeout: 5 * time.Second,
 			}

@@ -407,6 +407,8 @@ La rinomina e il trasferimento non esistono nella v1 (R3): niente eventi.
 | `pull_request_review.dismissed` | `pull_request_review` / `dismissed` | nessuna |
 | `pull_request_comment.created` | nessuno | `mentioned`, `participating`, `subscribed` |
 | `commit_status.created` | `commit_status` / `created` | nessuna |
+| `workflow_run.queued`, `in_progress`, `completed`, `cancelled` | `workflow_run` / azione omonima | `completed` con esito `failure`, o `success` dopo una precedente `failure` dello stesso workflow e ref: `state_change` a chi ha avviato l'esecuzione (mai allo schedule, che non ha attore) |
+| `workflow_job.queued`, `in_progress`, `completed`, `cancelled` | `workflow_job` / azione omonima | nessuna |
 
 Chi riceve una notifica lo decide il consumer: iscritti alla issue
 (`core.issue_subscriptions`), watch del repo (`core.repo_watches`), menzioni e

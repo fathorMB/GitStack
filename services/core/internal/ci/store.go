@@ -142,6 +142,10 @@ type Created struct {
 	Cancelled []uuid.UUID
 	// Duplicate: la scadenza di schedule c'era già, nulla è stato creato.
 	Duplicate bool
+	// JobIDs sono i job dell'esecuzione nuova; CancelledJobIDs quelli annullati
+	// con le esecuzioni superate (GIT-281: serve al Reporter).
+	JobIDs          []uuid.UUID
+	CancelledJobIDs []uuid.UUID
 }
 
 // LoadRepoState legge lo stato del repo che conta per CI3.
@@ -213,8 +217,21 @@ func createRun(ctx context.Context, tx pgx.Tx, now time.Time, n NewRun) (Created
 			return Created{}, err
 		}
 		if len(out.Cancelled) > 0 {
-			if _, err := tx.Exec(ctx, `UPDATE core.ci_jobs SET status = 'cancelled', conclusion = 'cancelled', completed_at = $2
-				WHERE run_id = ANY($1) AND status IN ('waiting', 'queued')`, out.Cancelled, now); err != nil {
+			jrows, err := tx.Query(ctx, `UPDATE core.ci_jobs SET status = 'cancelled', conclusion = 'cancelled', completed_at = $2
+				WHERE run_id = ANY($1) AND status IN ('waiting', 'queued') RETURNING id`, out.Cancelled, now)
+			if err != nil {
+				return Created{}, err
+			}
+			for jrows.Next() {
+				var id uuid.UUID
+				if err := jrows.Scan(&id); err != nil {
+					jrows.Close()
+					return Created{}, err
+				}
+				out.CancelledJobIDs = append(out.CancelledJobIDs, id)
+			}
+			jrows.Close()
+			if err := jrows.Err(); err != nil {
 				return Created{}, err
 			}
 		}
@@ -252,12 +269,14 @@ func createRun(ctx context.Context, tx pgx.Tx, now time.Time, n NewRun) (Created
 			stored[PermCappedByActor] = "true"
 		}
 		perm, _ := json.Marshal(stored)
+		jobID := uuid.New()
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO core.ci_jobs (id, run_id, seq, job_key, name, needs, runner_type, permissions, status, queued_at)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-			uuid.New(), out.RunID, i, j.Key, j.Name, nonNilStrings(j.Needs), runnerTypeOf(j.RunsOn), perm, status, queuedAt); err != nil {
+			jobID, out.RunID, i, j.Key, j.Name, nonNilStrings(j.Needs), runnerTypeOf(j.RunsOn), perm, status, queuedAt); err != nil {
 			return Created{}, err
 		}
+		out.JobIDs = append(out.JobIDs, jobID)
 	}
 	return out, nil
 }
@@ -293,7 +312,7 @@ func runnerTypeOf(runsOn []string) string {
 // candidati vince l'owner con meno job in corso, poi il job in coda da più
 // tempo: un owner con molti job non fa aspettare gli altri. false se non c'è nulla.
 func ClaimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity int, runner string) (JobRow, RunRow, bool, error) {
-	job, run, _, ok, err := claimNext(ctx, pool, now, capacity, runner, 0)
+	job, run, _, ok, err := claimNext(ctx, pool, now, capacity, runner, 0, nil)
 	return job, run, ok, err
 }
 
@@ -301,10 +320,16 @@ func ClaimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity 
 // del job (ADR 0001 §3): valido per tokenTTL, solo per quel job. Ritorna il
 // token in chiaro, che non si può rileggere.
 func ClaimNextWithToken(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity int, runner string, tokenTTL time.Duration) (JobRow, RunRow, string, bool, error) {
-	return claimNext(ctx, pool, now, capacity, runner, tokenTTL)
+	return claimNext(ctx, pool, now, capacity, runner, tokenTTL, nil)
 }
 
-func claimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity int, runner string, tokenTTL time.Duration) (JobRow, RunRow, string, bool, error) {
+// ClaimNextReported è ClaimNextWithToken con un Reporter (GIT-281): il job preso
+// passa in_progress e l'esecuzione, se era in coda, anche, nella stessa transazione.
+func ClaimNextReported(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity int, runner string, tokenTTL time.Duration, rep Reporter) (JobRow, RunRow, string, bool, error) {
+	return claimNext(ctx, pool, now, capacity, runner, tokenTTL, rep)
+}
+
+func claimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity int, runner string, tokenTTL time.Duration, rep Reporter) (JobRow, RunRow, string, bool, error) {
 	if capacity < 1 {
 		capacity = DefaultCapacity
 	}
@@ -348,8 +373,11 @@ func claimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity 
 		WHERE id = $1`, jobID, now, runner); err != nil {
 		return JobRow{}, RunRow{}, "", false, err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE core.ci_runs SET status = 'in_progress', started_at = COALESCE(started_at, $2)
-		WHERE id = $1 AND status = 'queued'`, runID, now); err != nil {
+	// Con questa UPDATE l'esecuzione passa in_progress solo se era in coda: il
+	// report la include in quel caso (started_at = now, appena scritto).
+	runTag, err := tx.Exec(ctx, `UPDATE core.ci_runs SET status = 'in_progress', started_at = COALESCE(started_at, $2)
+		WHERE id = $1 AND status = 'queued'`, runID, now)
+	if err != nil {
 		return JobRow{}, RunRow{}, "", false, err
 	}
 	var token string
@@ -366,6 +394,13 @@ func claimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity 
 	if err != nil {
 		return JobRow{}, RunRow{}, "", false, err
 	}
+	var runIDs []uuid.UUID
+	if runTag.RowsAffected() > 0 {
+		runIDs = append(runIDs, runID)
+	}
+	if err := report(ctx, tx, rep, runIDs, []uuid.UUID{jobID}); err != nil {
+		return JobRow{}, RunRow{}, "", false, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return JobRow{}, RunRow{}, "", false, err
 	}
@@ -376,6 +411,13 @@ func claimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity 
 // aspettavano; con un fallimento i dipendenti sono saltati; a job finiti
 // chiude anche l'esecuzione.
 func CompleteJob(ctx context.Context, pool *pgxpool.Pool, now time.Time, jobID uuid.UUID, conclusion string) error {
+	return CompleteJobReported(ctx, pool, now, jobID, conclusion, nil)
+}
+
+// CompleteJobReported è CompleteJob con un Reporter (GIT-281): i job cambiati
+// (il chiuso, i promossi in coda, i saltati) e l'esecuzione, se si è chiusa, sono
+// riportati nella stessa transazione.
+func CompleteJobReported(ctx context.Context, pool *pgxpool.Pool, now time.Time, jobID uuid.UUID, conclusion string, rep Reporter) error {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -393,6 +435,8 @@ func CompleteJob(ctx context.Context, pool *pgxpool.Pool, now time.Time, jobID u
 		jobID, status, conclusion, now); err != nil {
 		return err
 	}
+	touched := []uuid.UUID{jobID}
+	var touchedRuns []uuid.UUID
 	// Il token del job vale finché il job gira (ADR 0001 §3).
 	if err := revokeJobToken(ctx, tx, now, jobID); err != nil {
 		return err
@@ -463,7 +507,10 @@ func CompleteJob(ctx context.Context, pool *pgxpool.Pool, now time.Time, jobID u
 					return err
 				}
 				s.status, changed = StatusQueued, true
+			default:
+				continue
 			}
+			touched = append(touched, s.id)
 		}
 	}
 	done, anyFail, anyCancel := true, false, false
@@ -493,6 +540,10 @@ func CompleteJob(ctx context.Context, pool *pgxpool.Pool, now time.Time, jobID u
 			runID, runStatus, runConcl, now); err != nil {
 			return err
 		}
+		touchedRuns = append(touchedRuns, runID)
+	}
+	if err := report(ctx, tx, rep, touchedRuns, touched); err != nil {
+		return err
 	}
 	return tx.Commit(ctx)
 }
@@ -506,6 +557,12 @@ var ErrRunConcluded = errors.New("esecuzione già conclusa")
 // in_progress finché il runner non li chiude con CompleteJob(…, cancelled).
 // pgx.ErrNoRows se l'esecuzione non è del repo; ErrRunConcluded se è già conclusa.
 func CancelRun(ctx context.Context, pool *pgxpool.Pool, now time.Time, repoID, runID uuid.UUID) (RunRow, error) {
+	return CancelRunReported(ctx, pool, now, repoID, runID, nil)
+}
+
+// CancelRunReported è CancelRun con un Reporter (GIT-281): l'esecuzione e i job
+// annullati subito sono riportati nella stessa transazione.
+func CancelRunReported(ctx context.Context, pool *pgxpool.Pool, now time.Time, repoID, runID uuid.UUID, rep Reporter) (RunRow, error) {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return RunRow{}, err
@@ -522,12 +579,29 @@ func CancelRun(ctx context.Context, pool *pgxpool.Pool, now time.Time, repoID, r
 		runID, now); err != nil {
 		return RunRow{}, err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE core.ci_jobs SET status = 'cancelled', conclusion = 'cancelled', completed_at = $2
-		WHERE run_id = $1 AND status IN ('waiting', 'queued')`, runID, now); err != nil {
+	jrows, err := tx.Query(ctx, `UPDATE core.ci_jobs SET status = 'cancelled', conclusion = 'cancelled', completed_at = $2
+		WHERE run_id = $1 AND status IN ('waiting', 'queued') RETURNING id`, runID, now)
+	if err != nil {
+		return RunRow{}, err
+	}
+	var cancelled []uuid.UUID
+	for jrows.Next() {
+		var id uuid.UUID
+		if err := jrows.Scan(&id); err != nil {
+			jrows.Close()
+			return RunRow{}, err
+		}
+		cancelled = append(cancelled, id)
+	}
+	jrows.Close()
+	if err := jrows.Err(); err != nil {
 		return RunRow{}, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE core.ci_jobs SET cancel_requested_at = $2
 		WHERE run_id = $1 AND status = 'in_progress' AND cancel_requested_at IS NULL`, runID, now); err != nil {
+		return RunRow{}, err
+	}
+	if err := report(ctx, tx, rep, []uuid.UUID{runID}, cancelled); err != nil {
 		return RunRow{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {

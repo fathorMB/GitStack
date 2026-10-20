@@ -262,6 +262,9 @@ func (e *Engine) handle(ctx context.Context, tx pgx.Tx, ev outboxEvent) error {
 	if isPullEvent(ev.name) {
 		return e.handlePull(ctx, tx, ev)
 	}
+	if ev.name == domainevents.WorkflowRunCompleted {
+		return e.handleRun(ctx, tx, ev)
+	}
 	switch ev.name {
 	case domainevents.IssueCreated, domainevents.IssueEdited, domainevents.IssueClosed,
 		domainevents.IssueReopened, domainevents.IssueAssigned:

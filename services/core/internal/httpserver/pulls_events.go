@@ -398,6 +398,14 @@ func (s *apiServer) emitCommitStatus(ctx context.Context, tx pgx.Tx, ia issueAcc
 	if err != nil {
 		return err
 	}
+	return s.emitCommitStatusRaw(ctx, tx, ia, x, raw, prev, branches)
+}
+
+// emitCommitStatusRaw è emitCommitStatus con l'istantanea già composta (raw è il
+// CommitStatus del contratto): il Reporter della CI la compone senza leggere
+// l'identità, così un'interruzione di identity non blocca la chiusura di un job.
+func (s *apiServer) emitCommitStatusRaw(ctx context.Context, tx pgx.Tx, ia issueAccess, x statusRow, raw json.RawMessage,
+	prev string, branches []string) error {
 	byCtx, err := commitStatusStates(ctx, tx, ia.repo.ID, x.Sha)
 	if err != nil {
 		return err
