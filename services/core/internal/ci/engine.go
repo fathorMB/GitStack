@@ -36,6 +36,28 @@ type Engine struct {
 	// Now è l'orologio; nil = time.Now. I test lo sostituiscono.
 	Now func() time.Time
 	Log *slog.Logger
+	// ActorLevel dice se chi ha avviato l'esecuzione legge e scrive sul repo: il token del
+	// job non eccede mai quel livello (CI4). nil: l'attore vale read, mai di più.
+	ActorLevel func(ctx context.Context, actor, repoID uuid.UUID) (canRead, canWrite bool, err error)
+}
+
+// actorCap è il tetto di permessi dell'attore dell'esecuzione ("" se non c'è).
+func (e *Engine) actorCap(ctx context.Context, actor *uuid.UUID, repoID string) (string, error) {
+	if actor == nil {
+		return "", nil
+	}
+	if e.ActorLevel == nil {
+		return LevelRead, nil
+	}
+	rid, err := uuid.Parse(repoID)
+	if err != nil {
+		return LevelNone, nil
+	}
+	r, w, err := e.ActorLevel(ctx, *actor, rid)
+	if err != nil {
+		return "", err
+	}
+	return ActorCap(r, w), nil
 }
 
 func (e *Engine) now() time.Time {
@@ -393,6 +415,9 @@ func (e *Engine) enqueue(ctx context.Context, n NewRun) (Created, error) {
 		return Created{}, err
 	}
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	if n.ActorCap, err = e.actorCap(ctx, n.ActorID, n.Repo.ID); err != nil {
+		return Created{}, fmt.Errorf("permessi dell'attore: %w", err)
+	}
 	c, err := createRun(ctx, tx, e.now(), n)
 	if err != nil {
 		return Created{}, err

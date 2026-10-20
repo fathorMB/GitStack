@@ -2,8 +2,19 @@ import { Key, Lock, Plus, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { NavLink, useParams } from 'react-router-dom';
-import { Button, EmptyState, ErrorAlert, FormField, PasswordInput, TextInput, useToast } from '../../components';
-import { fetchOrgSecrets, fetchRepoSecrets, fetchRepoVariables, putRepoSecret, putRepoVariable } from '../../lib/ciApi';
+import { Button, ConfirmDialog, EmptyState, ErrorAlert, FormField, PasswordInput, TextInput, useToast } from '../../components';
+import {
+  deleteRepoSecret,
+  deleteRepoVariable,
+  fetchOrgSecrets,
+  fetchRepoSecrets,
+  fetchRepoTokenPermissions,
+  fetchRepoVariables,
+  putRepoSecret,
+  putRepoTokenPermissions,
+  putRepoVariable,
+} from '../../lib/ciApi';
+import type { ActionsJobTokenDefaults } from '../../lib/ciApi';
 import { timeAgo } from '../../lib/format';
 import { describeError } from '../../lib/http';
 import { fetchRepo } from '../../lib/reposApi';
@@ -20,8 +31,8 @@ import { isRepoAdmin, loadMe } from './repoAdmin';
 const KEY_PATTERN = /^[A-Z_][A-Z0-9_]*$/;
 
 // Settings · Secrets & variables del repo (mockup B3, CI4): solo admin, piu' i
-// segreti ereditati dall'organizzazione. La sezione permessi del token del job e'
-// in sola lettura: il contratto non ha nessuna operazione per cambiarla.
+// segreti ereditati dall'organizzazione. La sezione permessi del token del job
+// legge e cambia il tetto di default del repo (GET/PUT .../actions/permissions).
 export function RepoSettingsSecretsPage() {
   const { owner = '', repo = '' } = useParams();
   return <SecretsView key={`${owner}/${repo}`} owner={owner} repo={repo} />;
@@ -72,13 +83,32 @@ function SecretsSections({ repo }: { repo: Repository }) {
   const owner = repo.owner.name;
   const name = repo.name;
   const { data, loading, error, reload } = useLoad(async () => {
-    const [secrets, variables, orgSecrets] = await Promise.all([
+    const [secrets, variables, orgSecrets, tokenPermissions] = await Promise.all([
       fetchRepoSecrets(owner, name),
       fetchRepoVariables(owner, name),
       fetchOrgSecrets(owner),
+      fetchRepoTokenPermissions(owner, name),
     ]);
-    return { secrets, variables, orgSecrets };
+    return { secrets, variables, orgSecrets, tokenPermissions };
   });
+  const { toast } = useToast();
+  const [toDelete, setToDelete] = useState<{ kind: 'secret' | 'variable'; name: string } | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleDelete() {
+    if (!toDelete) return;
+    const target = toDelete;
+    setToDelete(null);
+    setDeleteError(null);
+    try {
+      if (target.kind === 'secret') await deleteRepoSecret(owner, name, target.name);
+      else await deleteRepoVariable(owner, name, target.name);
+      toast(`${target.name} deleted.`, 'success');
+      void reload();
+    } catch (err) {
+      setDeleteError(describeError(err));
+    }
+  }
 
   const [writing, setWriting] = useState(false);
   const [writingVars, setWritingVars] = useState(false);
@@ -89,6 +119,7 @@ function SecretsSections({ repo }: { repo: Repository }) {
 
   return (
     <>
+      {deleteError ? <ErrorAlert message={deleteError} /> : null}
       <section>
         <div className="sec-h">
           <h2>Repository secrets</h2>
@@ -113,9 +144,7 @@ function SecretsSections({ repo }: { repo: Repository }) {
                 <Button size="sm" onClick={() => { setDraftName(s.name); setWriting(true); }}>
                   Update
                 </Button>
-                {/* DELETE dei segreti non nel contratto OpenAPI: il valore si puo'
-                    solo sostituire, per questo il pulsante resta spento. */}
-                <Button size="sm" variant="ghost" disabled title="The API has no delete for secrets: values can only be replaced">
+                <Button size="sm" variant="ghost" aria-label={`Delete secret ${s.name}`} onClick={() => setToDelete({ kind: 'secret', name: s.name })}>
                   Delete
                 </Button>
               </div>
@@ -167,35 +196,110 @@ function SecretsSections({ repo }: { repo: Repository }) {
               <div key={v.name} className="list-row">
                 <span className="mono w-200">{v.name}</span>
                 <span className="mono muted grow">{v.value}</span>
+                <Button size="sm" variant="ghost" aria-label={`Delete variable ${v.name}`} onClick={() => setToDelete({ kind: 'variable', name: v.name })}>
+                  Delete
+                </Button>
               </div>
             ))}
           </div>
         )}
       </section>
 
-      <section>
-        <div className="sec-h">
-          <h2>Job token default permissions</h2>
-        </div>
-        <div className="card card-b stack" style={{ gap: 10, fontSize: 13 }}>
-          <div className="row">
-            <b>Read code, write statuses and packages</b>
-            <span className="muted">(default)</span>
-          </div>
-          <p className="hint">
-            A workflow can only ask for less with <span className="mono">permissions:</span>. Changing the default needs an
-            API operation that the contract does not have yet, so this section is read-only.
-          </p>
-          <div className="alert alert-info">
-            <ShieldCheck size={16} aria-hidden="true" />
-            <div>
-              Whatever a workflow asks with <span className="mono">permissions:</span>, the job token never gets more than
-              the person or agent who started the run. Pushes made with the job token don't start other workflows.
-            </div>
-          </div>
-        </div>
-      </section>
+      <TokenPermissions owner={owner} repo={name} initial={data.tokenPermissions} />
+
+      <ConfirmDialog
+        open={toDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setToDelete(null);
+        }}
+        title={toDelete?.kind === 'secret' ? 'Delete secret?' : 'Delete variable?'}
+        description={`${toDelete?.name ?? ''} will be removed permanently. Workflows that use it will stop seeing it.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => void handleDelete()}
+      />
     </>
+  );
+}
+
+const LEVELS = ['none', 'read', 'write'] as const;
+const SCOPES: { key: keyof ActionsJobTokenDefaults; label: string }[] = [
+  { key: 'contents', label: 'Code' },
+  { key: 'packages', label: 'Packages' },
+  { key: 'actions', label: 'Actions' },
+];
+
+// Permessi di default (= tetto) del token del job del repo. Il server li applica come
+// massimo: `permissions:` del workflow li riduce e il token non supera mai chi ha
+// avviato l'esecuzione.
+function TokenPermissions({ owner, repo, initial }: { owner: string; repo: string; initial: ActionsJobTokenDefaults }) {
+  const [saved, setSaved] = useState<ActionsJobTokenDefaults>(initial);
+  const [draft, setDraft] = useState<ActionsJobTokenDefaults>(initial);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const dirty = SCOPES.some((sc) => draft[sc.key] !== saved[sc.key]);
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await putRepoTokenPermissions(owner, repo, draft);
+      setSaved(next);
+      setDraft(next);
+      toast('Job token permissions saved.', 'success');
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section>
+      <div className="sec-h">
+        <h2>Job token default permissions</h2>
+      </div>
+      <div className="card card-b stack" style={{ gap: 10, fontSize: 13 }}>
+        <p className="hint">
+          The most the job token can have in this repository. A workflow can only ask for less with{' '}
+          <span className="mono">permissions:</span>. Applies to jobs created after the change.
+        </p>
+        {SCOPES.map((sc) => (
+          <div key={sc.key} className="row">
+            <label className="w-200" htmlFor={`perm-${sc.key}`}>
+              {sc.label}
+            </label>
+            <select
+              id={`perm-${sc.key}`}
+              className="select"
+              value={draft[sc.key]}
+              disabled={busy}
+              onChange={(e) => setDraft({ ...draft, [sc.key]: e.target.value as ActionsJobTokenDefaults[typeof sc.key] })}
+            >
+              {LEVELS.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+        {error ? <ErrorAlert message={error} /> : null}
+        <div className="row">
+          <Button variant="primary" size="sm" disabled={busy || !dirty} onClick={() => void save()}>
+            Save permissions
+          </Button>
+        </div>
+        <div className="alert alert-info">
+          <ShieldCheck size={16} aria-hidden="true" />
+          <div>
+            Whatever a workflow asks with <span className="mono">permissions:</span>, the job token never gets more than
+            the person or agent who started the run. Pushes made with the job token don't start other workflows.
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 

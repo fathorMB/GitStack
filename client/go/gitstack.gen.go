@@ -45,6 +45,69 @@ func (e AccessSourceKind) Valid() bool {
 	}
 }
 
+// Defines values for ActionsJobTokenDefaultsActions.
+const (
+	ActionsJobTokenDefaultsActionsNone  ActionsJobTokenDefaultsActions = "none"
+	ActionsJobTokenDefaultsActionsRead  ActionsJobTokenDefaultsActions = "read"
+	ActionsJobTokenDefaultsActionsWrite ActionsJobTokenDefaultsActions = "write"
+)
+
+// Valid indicates whether the value is a known member of the ActionsJobTokenDefaultsActions enum.
+func (e ActionsJobTokenDefaultsActions) Valid() bool {
+	switch e {
+	case ActionsJobTokenDefaultsActionsNone:
+		return true
+	case ActionsJobTokenDefaultsActionsRead:
+		return true
+	case ActionsJobTokenDefaultsActionsWrite:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ActionsJobTokenDefaultsContents.
+const (
+	ActionsJobTokenDefaultsContentsNone  ActionsJobTokenDefaultsContents = "none"
+	ActionsJobTokenDefaultsContentsRead  ActionsJobTokenDefaultsContents = "read"
+	ActionsJobTokenDefaultsContentsWrite ActionsJobTokenDefaultsContents = "write"
+)
+
+// Valid indicates whether the value is a known member of the ActionsJobTokenDefaultsContents enum.
+func (e ActionsJobTokenDefaultsContents) Valid() bool {
+	switch e {
+	case ActionsJobTokenDefaultsContentsNone:
+		return true
+	case ActionsJobTokenDefaultsContentsRead:
+		return true
+	case ActionsJobTokenDefaultsContentsWrite:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ActionsJobTokenDefaultsPackages.
+const (
+	ActionsJobTokenDefaultsPackagesNone  ActionsJobTokenDefaultsPackages = "none"
+	ActionsJobTokenDefaultsPackagesRead  ActionsJobTokenDefaultsPackages = "read"
+	ActionsJobTokenDefaultsPackagesWrite ActionsJobTokenDefaultsPackages = "write"
+)
+
+// Valid indicates whether the value is a known member of the ActionsJobTokenDefaultsPackages enum.
+func (e ActionsJobTokenDefaultsPackages) Valid() bool {
+	switch e {
+	case ActionsJobTokenDefaultsPackagesNone:
+		return true
+	case ActionsJobTokenDefaultsPackagesRead:
+		return true
+	case ActionsJobTokenDefaultsPackagesWrite:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for AdminSystemAccessTlsMode.
 const (
 	AdminSystemAccessTlsModeCustom      AdminSystemAccessTlsMode = "custom"
@@ -2662,6 +2725,22 @@ type ActionsCacheList struct {
 	QuotaBytes int64 `json:"quotaBytes"`
 	UsedBytes  int64 `json:"usedBytes"`
 }
+
+// ActionsJobTokenDefaults Permessi di default (tetto) del token del job di un repository (CI4). Mai oltre chi avvia l'esecuzione.
+type ActionsJobTokenDefaults struct {
+	Actions  ActionsJobTokenDefaultsActions  `json:"actions"`
+	Contents ActionsJobTokenDefaultsContents `json:"contents"`
+	Packages ActionsJobTokenDefaultsPackages `json:"packages"`
+}
+
+// ActionsJobTokenDefaultsActions defines model for ActionsJobTokenDefaults.Actions.
+type ActionsJobTokenDefaultsActions string
+
+// ActionsJobTokenDefaultsContents defines model for ActionsJobTokenDefaults.Contents.
+type ActionsJobTokenDefaultsContents string
+
+// ActionsJobTokenDefaultsPackages defines model for ActionsJobTokenDefaults.Packages.
+type ActionsJobTokenDefaultsPackages string
 
 // ActionsSecret defines model for ActionsSecret.
 type ActionsSecret struct {
@@ -6219,6 +6298,9 @@ type WorkflowRunList struct {
 	Items []WorkflowRun `json:"items"`
 }
 
+// ActionsNameParam defines model for ActionsNameParam.
+type ActionsNameParam = string
+
 // ArchiveFormatParam defines model for ArchiveFormatParam.
 type ArchiveFormatParam string
 
@@ -7157,6 +7239,9 @@ type ImportRepositoryJSONRequestBody = ImportRepositoryInput
 // UpdateRepositoryJSONRequestBody defines body for UpdateRepository for application/json ContentType.
 type UpdateRepositoryJSONRequestBody = UpdateRepositoryInput
 
+// PutRepositoryActionsPermissionsJSONRequestBody defines body for PutRepositoryActionsPermissions for application/json ContentType.
+type PutRepositoryActionsPermissionsJSONRequestBody = ActionsJobTokenDefaults
+
 // PutRepositoryActionsSecretJSONRequestBody defines body for PutRepositoryActionsSecret for application/json ContentType.
 type PutRepositoryActionsSecretJSONRequestBody = ActionsSecretInput
 
@@ -8040,6 +8125,13 @@ type ClientInterface interface {
 	// Corresponds with PUT /orgs/{org}/actions/secrets (the `PutOrganizationActionsSecret` operationId).
 	PutOrganizationActionsSecret(ctx context.Context, org OrgParam, body PutOrganizationActionsSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteOrganizationActionsSecret Elimina un segreto CI dell'organizzazione
+	//
+	// Solo gli owner dell'organizzazione (403 altrimenti). Un nome che non c'e' e' 404.
+	//
+	// Corresponds with DELETE /orgs/{org}/actions/secrets/{name} (the `DeleteOrganizationActionsSecret` operationId).
+	DeleteOrganizationActionsSecret(ctx context.Context, org OrgParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListOrganizationActionsVariables Elenca le variabili CI dell'organizzazione
 	//
 	// Corresponds with GET /orgs/{org}/actions/variables (the `ListOrganizationActionsVariables` operationId).
@@ -8058,6 +8150,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /orgs/{org}/actions/variables (the `PutOrganizationActionsVariable` operationId).
 	PutOrganizationActionsVariable(ctx context.Context, org OrgParam, body PutOrganizationActionsVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteOrganizationActionsVariable Elimina una variabile CI dell'organizzazione
+	//
+	// Solo gli owner dell'organizzazione (403 altrimenti). Un nome che non c'e' e' 404.
+	//
+	// Corresponds with DELETE /orgs/{org}/actions/variables/{name} (the `DeleteOrganizationActionsVariable` operationId).
+	DeleteOrganizationActionsVariable(ctx context.Context, org OrgParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListOrgWebhooks Elenca i webhook di un'organizzazione
 	//
@@ -8383,6 +8482,31 @@ type ClientInterface interface {
 	// Corresponds with GET /repos/{owner}/{repo}/actions/jobs/{jobId}/logs (the `GetWorkflowJobLog` operationId).
 	GetWorkflowJobLog(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam, params *GetWorkflowJobLogParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetRepositoryActionsPermissions Legge i permessi di default del token del job del repository
+	//
+	// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge). Senza impostazioni salvate ogni livello e' `read`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/permissions (the `GetRepositoryActionsPermissions` operationId).
+	GetRepositoryActionsPermissions(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutRepositoryActionsPermissionsWithBody Cambia i permessi di default del token del job del repository
+	//
+	// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. I livelli sono il tetto del token del job: `permissions:` del workflow non li supera mai e il token non supera mai chi ha avviato l'esecuzione (vedi `JobTokenPermissions`). Vale per i job creati dopo la modifica.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/actions/permissions (the `PutRepositoryActionsPermissions` operationId).
+	PutRepositoryActionsPermissionsWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutRepositoryActionsPermissions Cambia i permessi di default del token del job del repository
+	//
+	// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. I livelli sono il tetto del token del job: `permissions:` del workflow non li supera mai e il token non supera mai chi ha avviato l'esecuzione (vedi `JobTokenPermissions`). Vale per i job creati dopo la modifica.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/actions/permissions (the `PutRepositoryActionsPermissions` operationId).
+	PutRepositoryActionsPermissions(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsPermissionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListWorkflowRuns Elenca le esecuzioni dei workflow
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/actions/runs (the `ListWorkflowRuns` operationId).
@@ -8429,6 +8553,13 @@ type ClientInterface interface {
 	// Corresponds with PUT /repos/{owner}/{repo}/actions/secrets (the `PutRepositoryActionsSecret` operationId).
 	PutRepositoryActionsSecret(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteRepositoryActionsSecret Elimina un segreto CI del repository
+	//
+	// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. Un nome che non c'e' e' 404.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/actions/secrets/{name} (the `DeleteRepositoryActionsSecret` operationId).
+	DeleteRepositoryActionsSecret(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListRepositoryActionsVariables Elenca le variabili CI del repository
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/actions/variables (the `ListRepositoryActionsVariables` operationId).
@@ -8447,6 +8578,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /repos/{owner}/{repo}/actions/variables (the `PutRepositoryActionsVariable` operationId).
 	PutRepositoryActionsVariable(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteRepositoryActionsVariable Elimina una variabile CI del repository
+	//
+	// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. Un nome che non c'e' e' 404.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/actions/variables/{name} (the `DeleteRepositoryActionsVariable` operationId).
+	DeleteRepositoryActionsVariable(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRepositoryArchive Archivio ZIP o tar.gz di un ref (streaming)
 	//
@@ -11485,6 +11623,23 @@ func (c *Client) PutOrganizationActionsSecret(ctx context.Context, org OrgParam,
 	return c.Client.Do(req)
 }
 
+// DeleteOrganizationActionsSecret Elimina un segreto CI dell'organizzazione
+//
+// Solo gli owner dell'organizzazione (403 altrimenti). Un nome che non c'e' e' 404.
+//
+// Corresponds with DELETE /orgs/{org}/actions/secrets/{name} (the `DeleteOrganizationActionsSecret` operationId).
+func (c *Client) DeleteOrganizationActionsSecret(ctx context.Context, org OrgParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteOrganizationActionsSecretRequest(c.Server, org, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListOrganizationActionsVariables Elenca le variabili CI dell'organizzazione
 //
 // Corresponds with GET /orgs/{org}/actions/variables (the `ListOrganizationActionsVariables` operationId).
@@ -11524,6 +11679,23 @@ func (c *Client) PutOrganizationActionsVariableWithBody(ctx context.Context, org
 // Corresponds with PUT /orgs/{org}/actions/variables (the `PutOrganizationActionsVariable` operationId).
 func (c *Client) PutOrganizationActionsVariable(ctx context.Context, org OrgParam, body PutOrganizationActionsVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutOrganizationActionsVariableRequest(c.Server, org, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteOrganizationActionsVariable Elimina una variabile CI dell'organizzazione
+//
+// Solo gli owner dell'organizzazione (403 altrimenti). Un nome che non c'e' e' 404.
+//
+// Corresponds with DELETE /orgs/{org}/actions/variables/{name} (the `DeleteOrganizationActionsVariable` operationId).
+func (c *Client) DeleteOrganizationActionsVariable(ctx context.Context, org OrgParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteOrganizationActionsVariableRequest(c.Server, org, name)
 	if err != nil {
 		return nil, err
 	}
@@ -12298,6 +12470,61 @@ func (c *Client) GetWorkflowJobLog(ctx context.Context, owner RepoOwnerParam, re
 	return c.Client.Do(req)
 }
 
+// GetRepositoryActionsPermissions Legge i permessi di default del token del job del repository
+//
+// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge). Senza impostazioni salvate ogni livello e' `read`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/permissions (the `GetRepositoryActionsPermissions` operationId).
+func (c *Client) GetRepositoryActionsPermissions(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryActionsPermissionsRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutRepositoryActionsPermissionsWithBody Cambia i permessi di default del token del job del repository
+//
+// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. I livelli sono il tetto del token del job: `permissions:` del workflow non li supera mai e il token non supera mai chi ha avviato l'esecuzione (vedi `JobTokenPermissions`). Vale per i job creati dopo la modifica.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/actions/permissions (the `PutRepositoryActionsPermissions` operationId).
+func (c *Client) PutRepositoryActionsPermissionsWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutRepositoryActionsPermissionsRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutRepositoryActionsPermissions Cambia i permessi di default del token del job del repository
+//
+// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. I livelli sono il tetto del token del job: `permissions:` del workflow non li supera mai e il token non supera mai chi ha avviato l'esecuzione (vedi `JobTokenPermissions`). Vale per i job creati dopo la modifica.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/actions/permissions (the `PutRepositoryActionsPermissions` operationId).
+func (c *Client) PutRepositoryActionsPermissions(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsPermissionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutRepositoryActionsPermissionsRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListWorkflowRuns Elenca le esecuzioni dei workflow
 //
 // Corresponds with GET /repos/{owner}/{repo}/actions/runs (the `ListWorkflowRuns` operationId).
@@ -12424,6 +12651,23 @@ func (c *Client) PutRepositoryActionsSecret(ctx context.Context, owner RepoOwner
 	return c.Client.Do(req)
 }
 
+// DeleteRepositoryActionsSecret Elimina un segreto CI del repository
+//
+// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. Un nome che non c'e' e' 404.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/actions/secrets/{name} (the `DeleteRepositoryActionsSecret` operationId).
+func (c *Client) DeleteRepositoryActionsSecret(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteRepositoryActionsSecretRequest(c.Server, owner, repo, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListRepositoryActionsVariables Elenca le variabili CI del repository
 //
 // Corresponds with GET /repos/{owner}/{repo}/actions/variables (the `ListRepositoryActionsVariables` operationId).
@@ -12463,6 +12707,23 @@ func (c *Client) PutRepositoryActionsVariableWithBody(ctx context.Context, owner
 // Corresponds with PUT /repos/{owner}/{repo}/actions/variables (the `PutRepositoryActionsVariable` operationId).
 func (c *Client) PutRepositoryActionsVariable(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutRepositoryActionsVariableRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteRepositoryActionsVariable Elimina una variabile CI del repository
+//
+// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. Un nome che non c'e' e' 404.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/actions/variables/{name} (the `DeleteRepositoryActionsVariable` operationId).
+func (c *Client) DeleteRepositoryActionsVariable(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteRepositoryActionsVariableRequest(c.Server, owner, repo, name)
 	if err != nil {
 		return nil, err
 	}
@@ -19050,6 +19311,47 @@ func NewPutOrganizationActionsSecretRequestWithBody(server string, org OrgParam,
 	return req, nil
 }
 
+// NewDeleteOrganizationActionsSecretRequest constructs an http.Request for the DeleteOrganizationActionsSecret method
+func NewDeleteOrganizationActionsSecretRequest(server string, org OrgParam, name ActionsNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "org", org, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/orgs/%s/actions/secrets/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListOrganizationActionsVariablesRequest constructs an http.Request for the ListOrganizationActionsVariables method
 func NewListOrganizationActionsVariablesRequest(server string, org OrgParam) (*http.Request, error) {
 	var err error
@@ -19127,6 +19429,47 @@ func NewPutOrganizationActionsVariableRequestWithBody(server string, org OrgPara
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteOrganizationActionsVariableRequest constructs an http.Request for the DeleteOrganizationActionsVariable method
+func NewDeleteOrganizationActionsVariableRequest(server string, org OrgParam, name ActionsNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "org", org, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/orgs/%s/actions/variables/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -21038,6 +21381,101 @@ func NewGetWorkflowJobLogRequest(server string, owner RepoOwnerParam, repo RepoN
 	return req, nil
 }
 
+// NewGetRepositoryActionsPermissionsRequest constructs an http.Request for the GetRepositoryActionsPermissions method
+func NewGetRepositoryActionsPermissionsRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/permissions", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutRepositoryActionsPermissionsRequest calls the generic PutRepositoryActionsPermissions builder with application/json body
+func NewPutRepositoryActionsPermissionsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsPermissionsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutRepositoryActionsPermissionsRequestWithBody(server, owner, repo, "application/json", bodyReader)
+}
+
+// NewPutRepositoryActionsPermissionsRequestWithBody constructs an http.Request for the PutRepositoryActionsPermissions method, with any body, and a specified content type
+func NewPutRepositoryActionsPermissionsRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/permissions", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListWorkflowRunsRequest constructs an http.Request for the ListWorkflowRuns method
 func NewListWorkflowRunsRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
 	var err error
@@ -21366,6 +21804,54 @@ func NewPutRepositoryActionsSecretRequestWithBody(server string, owner RepoOwner
 	return req, nil
 }
 
+// NewDeleteRepositoryActionsSecretRequest constructs an http.Request for the DeleteRepositoryActionsSecret method
+func NewDeleteRepositoryActionsSecretRequest(server string, owner RepoOwnerParam, repo RepoNameParam, name ActionsNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/secrets/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListRepositoryActionsVariablesRequest constructs an http.Request for the ListRepositoryActionsVariables method
 func NewListRepositoryActionsVariablesRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
 	var err error
@@ -21457,6 +21943,54 @@ func NewPutRepositoryActionsVariableRequestWithBody(server string, owner RepoOwn
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteRepositoryActionsVariableRequest constructs an http.Request for the DeleteRepositoryActionsVariable method
+func NewDeleteRepositoryActionsVariableRequest(server string, owner RepoOwnerParam, repo RepoNameParam, name ActionsNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/variables/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -31362,6 +31896,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /orgs/{org}/actions/secrets (the `PutOrganizationActionsSecret` operationId).
 	PutOrganizationActionsSecretWithResponse(ctx context.Context, org OrgParam, body PutOrganizationActionsSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*PutOrganizationActionsSecretResponse, error)
 
+	// DeleteOrganizationActionsSecretWithResponse Elimina un segreto CI dell'organizzazione
+	//
+	// Solo gli owner dell'organizzazione (403 altrimenti). Un nome che non c'e' e' 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /orgs/{org}/actions/secrets/{name} (the `DeleteOrganizationActionsSecret` operationId).
+	DeleteOrganizationActionsSecretWithResponse(ctx context.Context, org OrgParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*DeleteOrganizationActionsSecretResponse, error)
+
 	// ListOrganizationActionsVariablesWithResponse Elenca le variabili CI dell'organizzazione
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -31382,6 +31925,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /orgs/{org}/actions/variables (the `PutOrganizationActionsVariable` operationId).
 	PutOrganizationActionsVariableWithResponse(ctx context.Context, org OrgParam, body PutOrganizationActionsVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*PutOrganizationActionsVariableResponse, error)
+
+	// DeleteOrganizationActionsVariableWithResponse Elimina una variabile CI dell'organizzazione
+	//
+	// Solo gli owner dell'organizzazione (403 altrimenti). Un nome che non c'e' e' 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /orgs/{org}/actions/variables/{name} (the `DeleteOrganizationActionsVariable` operationId).
+	DeleteOrganizationActionsVariableWithResponse(ctx context.Context, org OrgParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*DeleteOrganizationActionsVariableResponse, error)
 
 	// ListOrgWebhooksWithResponse Elenca i webhook di un'organizzazione
 	//
@@ -31759,6 +32311,33 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /repos/{owner}/{repo}/actions/jobs/{jobId}/logs (the `GetWorkflowJobLog` operationId).
 	GetWorkflowJobLogWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam, params *GetWorkflowJobLogParams, reqEditors ...RequestEditorFn) (*GetWorkflowJobLogResponse, error)
 
+	// GetRepositoryActionsPermissionsWithResponse Legge i permessi di default del token del job del repository
+	//
+	// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge). Senza impostazioni salvate ogni livello e' `read`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/permissions (the `GetRepositoryActionsPermissions` operationId).
+	GetRepositoryActionsPermissionsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*GetRepositoryActionsPermissionsResponse, error)
+
+	// PutRepositoryActionsPermissionsWithBodyWithResponse Cambia i permessi di default del token del job del repository
+	//
+	// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. I livelli sono il tetto del token del job: `permissions:` del workflow non li supera mai e il token non supera mai chi ha avviato l'esecuzione (vedi `JobTokenPermissions`). Vale per i job creati dopo la modifica.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/actions/permissions (the `PutRepositoryActionsPermissions` operationId).
+	PutRepositoryActionsPermissionsWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRepositoryActionsPermissionsResponse, error)
+
+	// PutRepositoryActionsPermissionsWithResponse Cambia i permessi di default del token del job del repository
+	//
+	// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. I livelli sono il tetto del token del job: `permissions:` del workflow non li supera mai e il token non supera mai chi ha avviato l'esecuzione (vedi `JobTokenPermissions`). Vale per i job creati dopo la modifica.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/actions/permissions (the `PutRepositoryActionsPermissions` operationId).
+	PutRepositoryActionsPermissionsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsPermissionsJSONRequestBody, reqEditors ...RequestEditorFn) (*PutRepositoryActionsPermissionsResponse, error)
+
 	// ListWorkflowRunsWithResponse Elenca le esecuzioni dei workflow
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -31817,6 +32396,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /repos/{owner}/{repo}/actions/secrets (the `PutRepositoryActionsSecret` operationId).
 	PutRepositoryActionsSecretWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*PutRepositoryActionsSecretResponse, error)
 
+	// DeleteRepositoryActionsSecretWithResponse Elimina un segreto CI del repository
+	//
+	// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. Un nome che non c'e' e' 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/actions/secrets/{name} (the `DeleteRepositoryActionsSecret` operationId).
+	DeleteRepositoryActionsSecretWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*DeleteRepositoryActionsSecretResponse, error)
+
 	// ListRepositoryActionsVariablesWithResponse Elenca le variabili CI del repository
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -31837,6 +32425,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /repos/{owner}/{repo}/actions/variables (the `PutRepositoryActionsVariable` operationId).
 	PutRepositoryActionsVariableWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*PutRepositoryActionsVariableResponse, error)
+
+	// DeleteRepositoryActionsVariableWithResponse Elimina una variabile CI del repository
+	//
+	// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. Un nome che non c'e' e' 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/actions/variables/{name} (the `DeleteRepositoryActionsVariable` operationId).
+	DeleteRepositoryActionsVariableWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*DeleteRepositoryActionsVariableResponse, error)
 
 	// GetRepositoryArchiveWithResponse Archivio ZIP o tar.gz di un ref (streaming)
 	//
@@ -37835,6 +38432,68 @@ func (r PutOrganizationActionsSecretResponse) ContentType() string {
 	return ""
 }
 
+type DeleteOrganizationActionsSecretResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteOrganizationActionsSecretResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteOrganizationActionsSecretResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteOrganizationActionsSecretResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteOrganizationActionsSecretResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteOrganizationActionsSecretResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteOrganizationActionsSecretResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteOrganizationActionsSecretResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteOrganizationActionsSecretResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListOrganizationActionsVariablesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -37953,6 +38612,68 @@ func (r PutOrganizationActionsVariableResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PutOrganizationActionsVariableResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteOrganizationActionsVariableResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteOrganizationActionsVariableResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteOrganizationActionsVariableResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteOrganizationActionsVariableResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteOrganizationActionsVariableResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteOrganizationActionsVariableResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteOrganizationActionsVariableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteOrganizationActionsVariableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteOrganizationActionsVariableResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -40574,6 +41295,144 @@ func (r GetWorkflowJobLogResponse) ContentType() string {
 	return ""
 }
 
+type GetRepositoryActionsPermissionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActionsJobTokenDefaults
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepositoryActionsPermissionsResponse) GetJSON200() *ActionsJobTokenDefaults {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryActionsPermissionsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryActionsPermissionsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryActionsPermissionsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryActionsPermissionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryActionsPermissionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryActionsPermissionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryActionsPermissionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PutRepositoryActionsPermissionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActionsJobTokenDefaults
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PutRepositoryActionsPermissionsResponse) GetJSON200() *ActionsJobTokenDefaults {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r PutRepositoryActionsPermissionsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r PutRepositoryActionsPermissionsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r PutRepositoryActionsPermissionsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r PutRepositoryActionsPermissionsResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r PutRepositoryActionsPermissionsResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r PutRepositoryActionsPermissionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PutRepositoryActionsPermissionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutRepositoryActionsPermissionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PutRepositoryActionsPermissionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListWorkflowRunsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -41022,6 +41881,68 @@ func (r PutRepositoryActionsSecretResponse) ContentType() string {
 	return ""
 }
 
+type DeleteRepositoryActionsSecretResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteRepositoryActionsSecretResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteRepositoryActionsSecretResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteRepositoryActionsSecretResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteRepositoryActionsSecretResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteRepositoryActionsSecretResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteRepositoryActionsSecretResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteRepositoryActionsSecretResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteRepositoryActionsSecretResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListRepositoryActionsVariablesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -41140,6 +42061,68 @@ func (r PutRepositoryActionsVariableResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PutRepositoryActionsVariableResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteRepositoryActionsVariableResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteRepositoryActionsVariableResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteRepositoryActionsVariableResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteRepositoryActionsVariableResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteRepositoryActionsVariableResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteRepositoryActionsVariableResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteRepositoryActionsVariableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteRepositoryActionsVariableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteRepositoryActionsVariableResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -54560,6 +55543,21 @@ func (c *ClientWithResponses) PutOrganizationActionsSecretWithResponse(ctx conte
 	return ParsePutOrganizationActionsSecretResponse(rsp)
 }
 
+// DeleteOrganizationActionsSecretWithResponse Elimina un segreto CI dell'organizzazione
+//
+// Solo gli owner dell'organizzazione (403 altrimenti). Un nome che non c'e' e' 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /orgs/{org}/actions/secrets/{name} (the `DeleteOrganizationActionsSecret` operationId).
+func (c *ClientWithResponses) DeleteOrganizationActionsSecretWithResponse(ctx context.Context, org OrgParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*DeleteOrganizationActionsSecretResponse, error) {
+	rsp, err := c.DeleteOrganizationActionsSecret(ctx, org, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteOrganizationActionsSecretResponse(rsp)
+}
+
 // ListOrganizationActionsVariablesWithResponse Elenca le variabili CI dell'organizzazione
 //
 // Returns a wrapper object for the known response body format(s).
@@ -54597,6 +55595,21 @@ func (c *ClientWithResponses) PutOrganizationActionsVariableWithResponse(ctx con
 		return nil, err
 	}
 	return ParsePutOrganizationActionsVariableResponse(rsp)
+}
+
+// DeleteOrganizationActionsVariableWithResponse Elimina una variabile CI dell'organizzazione
+//
+// Solo gli owner dell'organizzazione (403 altrimenti). Un nome che non c'e' e' 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /orgs/{org}/actions/variables/{name} (the `DeleteOrganizationActionsVariable` operationId).
+func (c *ClientWithResponses) DeleteOrganizationActionsVariableWithResponse(ctx context.Context, org OrgParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*DeleteOrganizationActionsVariableResponse, error) {
+	rsp, err := c.DeleteOrganizationActionsVariable(ctx, org, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteOrganizationActionsVariableResponse(rsp)
 }
 
 // ListOrgWebhooksWithResponse Elenca i webhook di un'organizzazione
@@ -55239,6 +56252,51 @@ func (c *ClientWithResponses) GetWorkflowJobLogWithResponse(ctx context.Context,
 	return ParseGetWorkflowJobLogResponse(rsp)
 }
 
+// GetRepositoryActionsPermissionsWithResponse Legge i permessi di default del token del job del repository
+//
+// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge). Senza impostazioni salvate ogni livello e' `read`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/permissions (the `GetRepositoryActionsPermissions` operationId).
+func (c *ClientWithResponses) GetRepositoryActionsPermissionsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*GetRepositoryActionsPermissionsResponse, error) {
+	rsp, err := c.GetRepositoryActionsPermissions(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryActionsPermissionsResponse(rsp)
+}
+
+// PutRepositoryActionsPermissionsWithBodyWithResponse Cambia i permessi di default del token del job del repository
+//
+// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. I livelli sono il tetto del token del job: `permissions:` del workflow non li supera mai e il token non supera mai chi ha avviato l'esecuzione (vedi `JobTokenPermissions`). Vale per i job creati dopo la modifica.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/actions/permissions (the `PutRepositoryActionsPermissions` operationId).
+func (c *ClientWithResponses) PutRepositoryActionsPermissionsWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRepositoryActionsPermissionsResponse, error) {
+	rsp, err := c.PutRepositoryActionsPermissionsWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutRepositoryActionsPermissionsResponse(rsp)
+}
+
+// PutRepositoryActionsPermissionsWithResponse Cambia i permessi di default del token del job del repository
+//
+// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. I livelli sono il tetto del token del job: `permissions:` del workflow non li supera mai e il token non supera mai chi ha avviato l'esecuzione (vedi `JobTokenPermissions`). Vale per i job creati dopo la modifica.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/actions/permissions (the `PutRepositoryActionsPermissions` operationId).
+func (c *ClientWithResponses) PutRepositoryActionsPermissionsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsPermissionsJSONRequestBody, reqEditors ...RequestEditorFn) (*PutRepositoryActionsPermissionsResponse, error) {
+	rsp, err := c.PutRepositoryActionsPermissions(ctx, owner, repo, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutRepositoryActionsPermissionsResponse(rsp)
+}
+
 // ListWorkflowRunsWithResponse Elenca le esecuzioni dei workflow
 //
 // Returns a wrapper object for the known response body format(s).
@@ -55345,6 +56403,21 @@ func (c *ClientWithResponses) PutRepositoryActionsSecretWithResponse(ctx context
 	return ParsePutRepositoryActionsSecretResponse(rsp)
 }
 
+// DeleteRepositoryActionsSecretWithResponse Elimina un segreto CI del repository
+//
+// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. Un nome che non c'e' e' 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/actions/secrets/{name} (the `DeleteRepositoryActionsSecret` operationId).
+func (c *ClientWithResponses) DeleteRepositoryActionsSecretWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*DeleteRepositoryActionsSecretResponse, error) {
+	rsp, err := c.DeleteRepositoryActionsSecret(ctx, owner, repo, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteRepositoryActionsSecretResponse(rsp)
+}
+
 // ListRepositoryActionsVariablesWithResponse Elenca le variabili CI del repository
 //
 // Returns a wrapper object for the known response body format(s).
@@ -55382,6 +56455,21 @@ func (c *ClientWithResponses) PutRepositoryActionsVariableWithResponse(ctx conte
 		return nil, err
 	}
 	return ParsePutRepositoryActionsVariableResponse(rsp)
+}
+
+// DeleteRepositoryActionsVariableWithResponse Elimina una variabile CI del repository
+//
+// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. Un nome che non c'e' e' 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/actions/variables/{name} (the `DeleteRepositoryActionsVariable` operationId).
+func (c *ClientWithResponses) DeleteRepositoryActionsVariableWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*DeleteRepositoryActionsVariableResponse, error) {
+	rsp, err := c.DeleteRepositoryActionsVariable(ctx, owner, repo, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteRepositoryActionsVariableResponse(rsp)
 }
 
 // GetRepositoryArchiveWithResponse Archivio ZIP o tar.gz di un ref (streaming)
@@ -61743,6 +62831,56 @@ func ParsePutOrganizationActionsSecretResponse(rsp *http.Response) (*PutOrganiza
 	return response, nil
 }
 
+// ParseDeleteOrganizationActionsSecretResponse parses an HTTP response from a DeleteOrganizationActionsSecretWithResponse call
+func ParseDeleteOrganizationActionsSecretResponse(rsp *http.Response) (*DeleteOrganizationActionsSecretResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteOrganizationActionsSecretResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListOrganizationActionsVariablesResponse parses an HTTP response from a ListOrganizationActionsVariablesWithResponse call
 func ParseListOrganizationActionsVariablesResponse(rsp *http.Response) (*ListOrganizationActionsVariablesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -61831,6 +62969,56 @@ func ParsePutOrganizationActionsVariableResponse(rsp *http.Response) (*PutOrgani
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteOrganizationActionsVariableResponse parses an HTTP response from a DeleteOrganizationActionsVariableWithResponse call
+func ParseDeleteOrganizationActionsVariableResponse(rsp *http.Response) (*DeleteOrganizationActionsVariableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteOrganizationActionsVariableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 
@@ -63961,6 +65149,114 @@ func ParseGetWorkflowJobLogResponse(rsp *http.Response) (*GetWorkflowJobLogRespo
 	return response, nil
 }
 
+// ParseGetRepositoryActionsPermissionsResponse parses an HTTP response from a GetRepositoryActionsPermissionsWithResponse call
+func ParseGetRepositoryActionsPermissionsResponse(rsp *http.Response) (*GetRepositoryActionsPermissionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryActionsPermissionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActionsJobTokenDefaults
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutRepositoryActionsPermissionsResponse parses an HTTP response from a PutRepositoryActionsPermissionsWithResponse call
+func ParsePutRepositoryActionsPermissionsResponse(rsp *http.Response) (*PutRepositoryActionsPermissionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutRepositoryActionsPermissionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActionsJobTokenDefaults
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListWorkflowRunsResponse parses an HTTP response from a ListWorkflowRunsWithResponse call
 func ParseListWorkflowRunsResponse(rsp *http.Response) (*ListWorkflowRunsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -64304,6 +65600,56 @@ func ParsePutRepositoryActionsSecretResponse(rsp *http.Response) (*PutRepository
 	return response, nil
 }
 
+// ParseDeleteRepositoryActionsSecretResponse parses an HTTP response from a DeleteRepositoryActionsSecretWithResponse call
+func ParseDeleteRepositoryActionsSecretResponse(rsp *http.Response) (*DeleteRepositoryActionsSecretResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteRepositoryActionsSecretResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListRepositoryActionsVariablesResponse parses an HTTP response from a ListRepositoryActionsVariablesWithResponse call
 func ParseListRepositoryActionsVariablesResponse(rsp *http.Response) (*ListRepositoryActionsVariablesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -64392,6 +65738,56 @@ func ParsePutRepositoryActionsVariableResponse(rsp *http.Response) (*PutReposito
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteRepositoryActionsVariableResponse parses an HTTP response from a DeleteRepositoryActionsVariableWithResponse call
+func ParseDeleteRepositoryActionsVariableResponse(rsp *http.Response) (*DeleteRepositoryActionsVariableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteRepositoryActionsVariableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 

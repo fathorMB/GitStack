@@ -115,3 +115,22 @@ func (s *apiServer) GetActionsCache(w http.ResponseWriter, r *http.Request, o op
 func (s *apiServer) DeleteActionsCache(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.CacheIdParam) {
 	s.ciProxy(w, r)
 }
+
+func (s *apiServer) DeleteOrganizationActionsSecret(w http.ResponseWriter, r *http.Request, org openapi.OrgParam, name openapi.ActionsNameParam) {
+	s.ciProxy(w, r)
+}
+func (s *apiServer) DeleteOrganizationActionsVariable(w http.ResponseWriter, r *http.Request, org openapi.OrgParam, name openapi.ActionsNameParam) {
+	s.ciProxy(w, r)
+}
+func (s *apiServer) DeleteRepositoryActionsSecret(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, name openapi.ActionsNameParam) {
+	s.ciProxy(w, r)
+}
+func (s *apiServer) DeleteRepositoryActionsVariable(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, name openapi.ActionsNameParam) {
+	s.ciProxy(w, r)
+}
+func (s *apiServer) GetRepositoryActionsPermissions(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
+	s.ciProxy(w, r)
+}
+func (s *apiServer) PutRepositoryActionsPermissions(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
+	s.ciProxy(w, r)
+}

@@ -677,6 +677,9 @@ type VerifyCredentialResult struct {
 	Principal *Principal `json:"principal,omitempty"`
 }
 
+// ActionsNameParam defines model for ActionsNameParam.
+type ActionsNameParam = string
+
 // ArtifactIdParam defines model for ArtifactIdParam.
 type ArtifactIdParam = openapi_types.UUID
 

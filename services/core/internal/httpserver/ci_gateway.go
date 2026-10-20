@@ -16,7 +16,9 @@ type CIGatewayConfig struct {
 	ArchiveURL    string
 	Logs          *ci.LogStore
 	Capacity      int
-	Log           *slog.Logger
+	// Keys decifra i segreti della CI (stesso keyring dei webhook).
+	Keys ci.Sealer
+	Log  *slog.Logger
 }
 
 // NewCIGateway costruisce l'handler del ci-gateway sulle letture di git: i workflow
@@ -25,6 +27,6 @@ type CIGatewayConfig struct {
 func NewCIGateway(pool *pgxpool.Pool, rd gitclient.Reader, c CIGatewayConfig) http.Handler {
 	return cigateway.New(cigateway.Config{
 		Pool: pool, Source: gitCISource{rd: rd}, Reader: rd, Logs: c.Logs,
-		RunnerSecrets: c.RunnerSecrets, Capacity: c.Capacity, ArchiveURL: c.ArchiveURL, Log: c.Log,
+		RunnerSecrets: c.RunnerSecrets, Capacity: c.Capacity, Keys: c.Keys, ArchiveURL: c.ArchiveURL, Log: c.Log,
 	})
 }
