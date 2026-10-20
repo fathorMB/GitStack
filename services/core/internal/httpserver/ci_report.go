@@ -45,6 +45,11 @@ func NewCIReporter(pool *pgxpool.Pool, opts ...Option) ci.Reporter {
 // Changed implementa ci.Reporter.
 func (r ciReporter) Changed(ctx context.Context, tx pgx.Tx, c ci.Change) error {
 	repo, err := store.RepoInTx(ctx, tx, c.Run.RepoID)
+	if errors.Is(err, store.ErrNotFound) {
+		// Repo eliminato mentre l'esecuzione girava: niente da riportare, e il job
+		// deve poter chiudersi comunque.
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("repo dell'esecuzione: %w", err)
 	}
