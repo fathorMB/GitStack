@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../../components';
 import type { Repository } from '../../lib/reposApi';
+import { ApiError } from '../../lib/http';
 import { RepoSettingsSecretsPage } from './RepoSettingsSecretsPage';
 
 vi.mock('./RepoHeader', () => ({ RepoHeader: () => null }));
@@ -13,12 +14,25 @@ vi.mock('../../lib/ciApi', () => ({
   fetchOrgSecrets: vi.fn(),
   putRepoSecret: vi.fn(),
   putRepoVariable: vi.fn(),
+  deleteRepoSecret: vi.fn(),
+  deleteRepoVariable: vi.fn(),
+  fetchRepoTokenPermissions: vi.fn(),
+  putRepoTokenPermissions: vi.fn(),
 }));
 vi.mock('../../lib/reposApi', async (orig) => ({ ...(await orig<typeof import('../../lib/reposApi')>()), fetchRepo: vi.fn() }));
 vi.mock('../../lib/authApi', () => ({ fetchSession: vi.fn() }));
 vi.mock('../../lib/orgsApi', () => ({ fetchOrgMembers: vi.fn() }));
 
-import { fetchOrgSecrets, fetchRepoSecrets, fetchRepoVariables, putRepoSecret } from '../../lib/ciApi';
+import {
+  deleteRepoSecret,
+  deleteRepoVariable,
+  fetchOrgSecrets,
+  fetchRepoSecrets,
+  fetchRepoTokenPermissions,
+  fetchRepoVariables,
+  putRepoSecret,
+  putRepoTokenPermissions,
+} from '../../lib/ciApi';
 import { fetchSession } from '../../lib/authApi';
 import { fetchRepo } from '../../lib/reposApi';
 import { fetchOrgMembers } from '../../lib/orgsApi';
@@ -69,6 +83,7 @@ describe('Settings · Secrets & variables (mockup B3)', { timeout: 30000 }, () =
     vi.mocked(fetchRepoSecrets).mockResolvedValue({ items: [{ name: 'GITHUB_MIRROR_TOKEN', updatedAt: '2026-10-16T00:00:00Z' }] });
     vi.mocked(fetchRepoVariables).mockResolvedValue({ items: [{ name: 'GO_VERSION', value: '1.23', updatedAt: '2026-10-16T00:00:00Z' }] });
     vi.mocked(fetchOrgSecrets).mockResolvedValue({ items: [{ name: 'S3_ARTIFACTS_KEY', updatedAt: '2026-10-01T00:00:00Z' }] });
+    vi.mocked(fetchRepoTokenPermissions).mockResolvedValue({ contents: 'read', packages: 'read', actions: 'read' });
   });
 
   it('mostra i segreti del repo con nome e data, mai il valore', async () => {
@@ -115,10 +130,65 @@ describe('Settings · Secrets & variables (mockup B3)', { timeout: 30000 }, () =
     expect(fetchRepoSecrets).not.toHaveBeenCalled();
   });
 
-  it('permessi del token del job in sola lettura, con la regola CI4', async () => {
+  it('il Delete di un segreto chiede conferma e poi chiama la DELETE', async () => {
+    vi.mocked(deleteRepoSecret).mockResolvedValue(undefined);
+    renderPage();
+    const list = await section('Repository secrets');
+    await userEvent.click(within(list).getByRole('button', { name: 'Delete secret GITHUB_MIRROR_TOKEN' }));
+    // Prima della conferma non parte nessuna chiamata.
+    expect(deleteRepoSecret).not.toHaveBeenCalled();
+    vi.mocked(fetchRepoSecrets).mockResolvedValue({ items: [] });
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(deleteRepoSecret).toHaveBeenCalledWith('acme', 'GitStack', 'GITHUB_MIRROR_TOKEN'));
+    expect(await within(list).findByText('No secrets yet')).toBeInTheDocument();
+  });
+
+  it('annullare la conferma non elimina nulla; il Delete di una variabile usa la sua DELETE', async () => {
+    vi.mocked(deleteRepoVariable).mockResolvedValue(undefined);
+    renderPage();
+    const vars = await section('Variables');
+    await userEvent.click(within(vars).getByRole('button', { name: 'Delete variable GO_VERSION' }));
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+    expect(deleteRepoVariable).not.toHaveBeenCalled();
+    await userEvent.click(within(vars).getByRole('button', { name: 'Delete variable GO_VERSION' }));
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(deleteRepoVariable).toHaveBeenCalledWith('acme', 'GitStack', 'GO_VERSION'));
+    expect(deleteRepoSecret).not.toHaveBeenCalled();
+  });
+
+  it('un errore della DELETE si vede', async () => {
+    vi.mocked(deleteRepoSecret).mockRejectedValue(new ApiError({ error: { code: 'forbidden', message: 'Serve il permesso admin sul repo.' } }, 403));
+    renderPage();
+    const list = await section('Repository secrets');
+    await userEvent.click(within(list).getByRole('button', { name: 'Delete secret GITHUB_MIRROR_TOKEN' }));
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }));
+    expect(await screen.findByText(/permesso admin/)).toBeInTheDocument();
+  });
+
+  it('permessi del token del job: si leggono, si cambiano e si salvano con la PUT', async () => {
+    vi.mocked(putRepoTokenPermissions).mockResolvedValue({ contents: 'write', packages: 'none', actions: 'read' });
     renderPage();
     const card = await section('Job token default permissions');
+    expect((within(card).getByLabelText('Code') as HTMLSelectElement).value).toBe('read');
+    const save = within(card).getByRole('button', { name: 'Save permissions' });
+    expect(save).toBeDisabled();
+    await userEvent.selectOptions(within(card).getByLabelText('Code'), 'write');
+    await userEvent.selectOptions(within(card).getByLabelText('Packages'), 'none');
+    await userEvent.click(save);
+    await waitFor(() =>
+      expect(putRepoTokenPermissions).toHaveBeenCalledWith('acme', 'GitStack', { contents: 'write', packages: 'none', actions: 'read' }),
+    );
+    await waitFor(() => expect(within(card).getByRole('button', { name: 'Save permissions' })).toBeDisabled());
     expect(within(card).getByText(/never gets more than the person or agent who started the run/)).toBeInTheDocument();
-    expect(within(card).queryByRole('radiogroup')).toBeNull();
+  });
+
+  it('un errore del salvataggio dei permessi si vede e il tetto non cambia', async () => {
+    vi.mocked(putRepoTokenPermissions).mockRejectedValue(new ApiError({ error: { code: 'archived', message: 'Il repo è archiviato: non accetta modifiche.' } }, 409));
+    renderPage();
+    const card = await section('Job token default permissions');
+    await userEvent.selectOptions(within(card).getByLabelText('Actions'), 'write');
+    await userEvent.click(within(card).getByRole('button', { name: 'Save permissions' }));
+    expect(await within(card).findByText(/archiviato/)).toBeInTheDocument();
   });
 });

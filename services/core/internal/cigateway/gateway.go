@@ -67,6 +67,8 @@ type Config struct {
 	// Reader serve l'archivio del repo (servizio git).
 	Reader gitclient.Reader
 	Logs   *ci.LogStore
+	// Keys decifra i segreti della CI del repo (CI4). nil: un job di un repo con segreti non parte.
+	Keys ci.Sealer
 	// RunnerSecrets sono i segreti dei runner interni accettati da FetchTask (più d'uno: rotazione).
 	// Senza, FetchTask risponde sempre unauthenticated.
 	RunnerSecrets []string
@@ -86,6 +88,7 @@ type Config struct {
 
 type gateway struct {
 	Config
+	maskers maskCache
 }
 
 // New costruisce l'handler HTTP del gateway.

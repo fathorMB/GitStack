@@ -130,6 +130,9 @@ type NewRun struct {
 	// Supersede: un'esecuzione ancora in coda dello stesso workflow e gruppo
 	// (branch o PR) viene annullata dalla nuova.
 	Supersede bool
+	// ActorCap è il tetto di permessi di chi ha avviato l'esecuzione (none, read, write);
+	// vuoto = nessun attore (schedule): vale solo il tetto del repo.
+	ActorCap string
 }
 
 // Created è l'esito di una creazione.
@@ -248,6 +251,10 @@ func createRun(ctx context.Context, tx pgx.Tx, now time.Time, n NewRun) (Created
 	if tag.RowsAffected() == 0 {
 		return Created{Duplicate: true}, nil
 	}
+	repoDefaults, err := LoadRepoTokenDefaults(ctx, tx, repoID)
+	if err != nil {
+		return Created{}, err
+	}
 	for i, j := range n.Workflow.Jobs {
 		status := StatusQueued
 		var queuedAt *time.Time
@@ -256,7 +263,12 @@ func createRun(ctx context.Context, tx pgx.Tx, now time.Time, n NewRun) (Created
 		} else {
 			queuedAt = &now
 		}
-		perm, _ := json.Marshal(effectivePermissions(j.Permissions))
+		caps := CapPermissions(j.Permissions, repoDefaults, n.ActorCap)
+		stored := caps.Permissions
+		if caps.CappedByActor {
+			stored[PermCappedByActor] = "true"
+		}
+		perm, _ := json.Marshal(stored)
 		jobID := uuid.New()
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO core.ci_jobs (id, run_id, seq, job_key, name, needs, runner_type, permissions, status, queued_at)
@@ -293,19 +305,6 @@ func runnerTypeOf(runsOn []string) string {
 		}
 	}
 	return "internal_pod"
-}
-
-// effectivePermissions applica il default read ai permessi richiesti dal
-// workflow. Il tetto dell'attore e del repo lo applica l'item del token del job.
-func effectivePermissions(req map[string]string) map[string]string {
-	out := map[string]string{"contents": "read", "packages": "read", "actions": "read"}
-	for k := range out {
-		switch v := req[k]; v {
-		case "none", "read", "write":
-			out[k] = v
-		}
-	}
-	return out
 }
 
 // ClaimNext prende il job in coda più vecchio che rispetta i limiti: al massimo
