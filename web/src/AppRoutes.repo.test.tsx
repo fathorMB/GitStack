@@ -62,3 +62,22 @@ describe('rotta delle notifiche', () => {
     expect(await screen.findByTestId('notifications-page')).toBeInTheDocument();
   });
 });
+
+vi.mock('./pages/repos/RepoSettingsSecretsPage', () => ({
+  RepoSettingsSecretsPage: () => <div data-testid="secrets-page" />,
+}));
+vi.mock('./pages/admin/CiRunnersPage', () => ({
+  CiRunnersPage: () => <div data-testid="ci-page" />,
+}));
+
+describe('rotte di GIT-283 (B3 e B4)', () => {
+  it('/acme/api/settings/secrets apre Secrets & variables', async () => {
+    at('/acme/api/settings/secrets');
+    expect(await screen.findByTestId('secrets-page')).toBeInTheDocument();
+  });
+
+  it('/admin/ci apre Admin · CI & runners', async () => {
+    at('/admin/ci');
+    expect(await screen.findByTestId('ci-page')).toBeInTheDocument();
+  });
+});

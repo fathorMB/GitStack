@@ -183,6 +183,7 @@ func newCancel(f *cmdutil.Factory) *cobra.Command {
 
 func runMutation(f *cmdutil.Factory, action, short string, cancel bool) *cobra.Command {
 	var jo output.JSONOptions
+	var yes bool
 	c := &cobra.Command{Use: action + " <id>", Short: short, Args: cobra.ExactArgs(1), RunE: func(c *cobra.Command, args []string) error {
 		id, err := runID(args[0])
 		if err != nil {
@@ -195,6 +196,11 @@ func runMutation(f *cmdutil.Factory, action, short string, cancel bool) *cobra.C
 		var status int
 		var body []byte
 		if cancel {
+			// G8: annullare un'esecuzione fa perdere il lavoro in corso; la conferma va prima di ogni chiamata HTTP.
+			prompt := fmt.Sprintf("Stai per annullare l'esecuzione %s di %s/%s: il lavoro in corso va perso.", id, e.Owner, e.Repo)
+			if err := cmdutil.ConfirmOrYes(f.IO, yes, prompt, ""); err != nil {
+				return err
+			}
 			r, er := e.Gen.CancelWorkflowRunWithResponse(c.Context(), e.Owner, e.Repo, id)
 			if er != nil {
 				return er
@@ -221,6 +227,9 @@ func runMutation(f *cmdutil.Factory, action, short string, cancel bool) *cobra.C
 		}
 		return writeRun(f, &jo, r.JSON202)
 	}}
+	if cancel {
+		c.Flags().BoolVarP(&yes, "yes", "y", false, "Conferma senza chiedere (obbligatorio senza terminale)")
+	}
 	output.AddJSONFlags(c, &jo, runFields)
 	return c
 }

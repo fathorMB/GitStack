@@ -36,19 +36,7 @@ func (s *apiServer) PutOrganizationActionsVariable(w http.ResponseWriter, r *htt
 func (s *apiServer) DownloadWorkflowArtifact(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ArtifactIdParam) {
 	notImplemented(w)
 }
-func (s *apiServer) GetWorkflowJob(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.JobIdParam) {
-	notImplemented(w)
-}
-func (s *apiServer) GetWorkflowJobLog(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.JobIdParam, p openapi.GetWorkflowJobLogParams) {
-	notImplemented(w)
-}
 func (s *apiServer) ListWorkflowArtifacts(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.RunIdParam) {
-	notImplemented(w)
-}
-func (s *apiServer) CancelWorkflowRun(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.RunIdParam) {
-	notImplemented(w)
-}
-func (s *apiServer) RerunWorkflowRun(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.RunIdParam) {
 	notImplemented(w)
 }
 func (s *apiServer) ListRepositoryActionsSecrets(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
@@ -70,27 +58,6 @@ func (s *apiServer) GetRepositoryPackageSettings(w http.ResponseWriter, r *http.
 	notImplemented(w)
 }
 func (s *apiServer) UpdateRepositoryPackageSettings(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
-	notImplemented(w)
-}
-func (s *apiServer) ListReleases(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
-	notImplemented(w)
-}
-func (s *apiServer) CreateRelease(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
-	notImplemented(w)
-}
-func (s *apiServer) DeleteRelease(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam) {
-	notImplemented(w)
-}
-func (s *apiServer) GetRelease(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam) {
-	notImplemented(w)
-}
-func (s *apiServer) UpdateRelease(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam) {
-	notImplemented(w)
-}
-func (s *apiServer) UploadReleaseAsset(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam, params openapi.UploadReleaseAssetParams) {
-	notImplemented(w)
-}
-func (s *apiServer) DownloadReleaseAsset(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam, asset openapi.AssetIdParam) {
 	notImplemented(w)
 }
 func (s *apiServer) ListActionsCaches(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, params openapi.ListActionsCachesParams) {

@@ -488,3 +488,15 @@ ul.list{margin:0;padding:0;list-style:none}
 .jobs a:hover{background:var(--surface-2);text-decoration:none}
 .two{display:grid;grid-template-columns:240px 1fr;gap:24px;align-items:start}
 @media (max-width:1100px){.two{grid-template-columns:1fr}}
+
+/* Segreti e variabili (mockup B3) e Admin · CI & runners (mockup B4): card di
+   solo valore, griglia di quattro stat, definizione termine/valore. */
+.stat{padding:14px 16px}
+.stat b{display:block;font-size:var(--fs-xl);font-weight:600}
+.stat span{font-size:var(--fs-sm);color:var(--text-muted)}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kv{display:grid;grid-template-columns:200px 1fr;gap:10px 16px;font-size:13px;align-items:center}
+.kv dt{color:var(--text-muted)}
+.kv dd{margin:0}
+@media (max-width:1100px){.grid4{grid-template-columns:1fr 1fr}}
+@media (max-width:860px){.kv{grid-template-columns:1fr}}

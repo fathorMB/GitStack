@@ -370,22 +370,26 @@ func runAPI(r ci.RunRow) openapi.WorkflowRun {
 		StartedAt: r.StartedAt, CompletedAt: r.CompletedAt, Jobs: make([]openapi.WorkflowJob, 0, len(r.Jobs)),
 	}
 	for _, j := range r.Jobs {
-		st := j.Status
-		if st == ci.StatusWaiting {
-			st = ci.StatusQueued // il contratto conosce solo queued, in_progress, completed, cancelled
-		}
-		out.Jobs = append(out.Jobs, openapi.WorkflowJob{
-			Id: openapi_types.UUID(j.ID), Name: j.Name, Status: st, Conclusion: j.Conclusion,
-			RunnerType: openapi.WorkflowJobRunnerType(j.RunnerType), RunnerName: j.RunnerName,
-			StartedAt: j.StartedAt, CompletedAt: j.CompletedAt,
-			Permissions: openapi.JobTokenPermissions{
-				Contents: openapi.JobTokenPermissionsContents(j.Permissions["contents"]),
-				Packages: openapi.JobTokenPermissionsPackages(j.Permissions["packages"]),
-				Actions:  openapi.JobTokenPermissionsActions(j.Permissions["actions"]),
-			},
-		})
+		out.Jobs = append(out.Jobs, jobAPI(j))
 	}
 	return out
+}
+
+func jobAPI(j ci.JobRow) openapi.WorkflowJob {
+	st := j.Status
+	if st == ci.StatusWaiting {
+		st = ci.StatusQueued // il contratto conosce solo queued, in_progress, completed, cancelled
+	}
+	return openapi.WorkflowJob{
+		Id: openapi_types.UUID(j.ID), Name: j.Name, Status: st, Conclusion: j.Conclusion,
+		RunnerType: openapi.WorkflowJobRunnerType(j.RunnerType), RunnerName: j.RunnerName,
+		StartedAt: j.StartedAt, CompletedAt: j.CompletedAt,
+		Permissions: openapi.JobTokenPermissions{
+			Contents: openapi.JobTokenPermissionsContents(j.Permissions["contents"]),
+			Packages: openapi.JobTokenPermissionsPackages(j.Permissions["packages"]),
+			Actions:  openapi.JobTokenPermissionsActions(j.Permissions["actions"]),
+		},
+	}
 }
 
 // ListWorkflowRuns implementa GET /repos/{owner}/{repo}/actions/runs.
@@ -424,4 +428,92 @@ func (s *apiServer) GetWorkflowRun(w http.ResponseWriter, r *http.Request, owner
 		return
 	}
 	writeJSON(w, http.StatusOK, runAPI(run))
+}
+
+// CancelWorkflowRun implementa POST /repos/{owner}/{repo}/actions/runs/{runId}/cancel (GIT-314).
+func (s *apiServer) CancelWorkflowRun(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, id openapi.RunIdParam) {
+	ia, ok := s.issueAccessFor(w, r, owner, name)
+	if !ok {
+		return
+	}
+	if !ia.write {
+		writeError(w, http.StatusForbidden, "forbidden", "Annullare un'esecuzione richiede write sul repository.")
+		return
+	}
+	run, err := ci.CancelRun(r.Context(), s.pool, s.now(), ia.repo.ID, uuid.UUID(id))
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		writeError(w, http.StatusNotFound, "not_found", "Esecuzione non trovata.")
+		return
+	case errors.Is(err, ci.ErrRunConcluded):
+		writeError(w, http.StatusConflict, "run_concluded", "L'esecuzione è già conclusa: non si annulla.")
+		return
+	case err != nil:
+		slog.Default().Warn("ci: annullamento dell'esecuzione non riuscito", "repo", ia.repo.ID, "err", err)
+		writeError(w, http.StatusServiceUnavailable, "ci_unavailable", "Impossibile annullare l'esecuzione.")
+		return
+	}
+	writeJSON(w, http.StatusAccepted, runAPI(run))
+}
+
+// RerunWorkflowRun implementa POST /repos/{owner}/{repo}/actions/runs/{runId}/rerun (GIT-314):
+// riesegue un'esecuzione conclusa in una esecuzione nuova.
+func (s *apiServer) RerunWorkflowRun(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, id openapi.RunIdParam) {
+	ia, eng, ok := s.ciAccess(w, r, owner, name)
+	if !ok {
+		return
+	}
+	if !ia.write {
+		writeError(w, http.StatusForbidden, "forbidden", "Rieseguire un'esecuzione richiede write sul repository.")
+		return
+	}
+	ctx := r.Context()
+	newID, err := eng.Rerun(ctx, ia.repo.ID, uuid.UUID(id), ia.userID)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		writeError(w, http.StatusNotFound, "not_found", "Esecuzione non trovata.")
+		return
+	case errors.Is(err, ci.ErrRunNotConcluded):
+		writeError(w, http.StatusConflict, "run_not_concluded", "L'esecuzione non è ancora conclusa: non si riesegue.")
+		return
+	case errors.Is(err, ci.ErrRepoDisabled):
+		writeError(w, http.StatusConflict, "ci_disabled", "I workflow non girano su questo repository (archiviato o mirror in pull).")
+		return
+	case errors.Is(err, ci.ErrWorkflowGone):
+		writeError(w, http.StatusConflict, "workflow_gone", "Il workflow non c'è più al commit dell'esecuzione.")
+		return
+	case err != nil:
+		if isGitNotFound(err) {
+			writeError(w, http.StatusConflict, "workflow_gone", "Il commit dell'esecuzione non è più leggibile.")
+			return
+		}
+		gitFailure(w, err)
+		return
+	}
+	run, err := ci.GetRun(ctx, s.pool, ia.repo.ID, newID)
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "ci_unavailable", "Esecuzione accodata ma non leggibile.")
+		return
+	}
+	writeJSON(w, http.StatusAccepted, runAPI(run))
+}
+
+// GetWorkflowJob implementa GET /repos/{owner}/{repo}/actions/jobs/{jobId} (GIT-314).
+// Un job di un altro repo è 404, come un repo non leggibile.
+func (s *apiServer) GetWorkflowJob(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, id openapi.JobIdParam) {
+	ia, ok := s.issueAccessFor(w, r, owner, name)
+	if !ok {
+		return
+	}
+	job, err := ci.GetJob(r.Context(), s.pool, ia.repo.ID, uuid.UUID(id))
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "not_found", "Job non trovato.")
+		return
+	}
+	if err != nil {
+		slog.Default().Warn("ci: lettura del job non riuscita", "err", err)
+		writeError(w, http.StatusServiceUnavailable, "ci_unavailable", "Job non disponibile.")
+		return
+	}
+	writeJSON(w, http.StatusOK, jobAPI(job))
 }

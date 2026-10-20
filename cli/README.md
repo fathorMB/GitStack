@@ -371,7 +371,7 @@ Il repo è quello del remote `origin` o `-R owner/repo`; l'istanza e il token se
 
 ## `gs run` e `gs workflow` (GIT-284, CI6)
 
-`gs run list|view|watch|rerun|cancel` legge e gestisce le esecuzioni del repo. `watch` attende il completamento, `--exit-status` restituisce 1 se la conclusione non è `success`, e `--log-failed` stampa i log dei job falliti (`gs run view <id> --log-failed` o `gs run watch <id> --log-failed`). `gs workflow list` elenca i workflow; `gs workflow run <workflow> --ref <ref> -f nome=valore` fa il dispatch con input ripetibili. Tutti supportano `--json` e `--jq` secondo G3.
+`gs run list|view|watch|rerun|cancel` legge e gestisce le esecuzioni del repo. `watch` attende il completamento, `--exit-status` restituisce 1 se la conclusione non è `success`, e `--log-failed` stampa i log dei job falliti (`gs run view <id> --log-failed` o `gs run watch <id> --log-failed`). `cancel` chiede conferma (G8): con un terminale si riscrive `y` o `yes`; senza terminale e senza `--yes`/`-y` esce con 2 e non chiama l'API, come `gs pr merge` e `gs pr close`. `rerun` non chiede conferma. `gs workflow list` elenca i workflow; `gs workflow run <workflow> --ref <ref> -f nome=valore` fa il dispatch con input ripetibili; `gs workflow` non ha operazioni distruttive e non chiede conferme. Tutti supportano `--json` e `--jq` secondo G3.
 
 La skill `gitstack-ci` documenta il ciclo «aspetta la CI, correggi dai log». Gli strumenti MCP delle operazioni CI esposte si generano da `api/openapi.yaml` con `cd cli && go generate ./internal/mcp/...`.
 

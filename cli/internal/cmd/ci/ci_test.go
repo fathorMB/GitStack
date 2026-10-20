@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/fathorMB/GitStack/cli/internal/cmd/root"
@@ -23,9 +24,17 @@ type result struct {
 
 func execute(t *testing.T, handler http.HandlerFunc, args ...string) result {
 	t.Helper()
+	return executeIO(t, false, "", handler, args...)
+}
+
+// executeIO come execute, ma con stdin: tty decide se stdin è un terminale e input è ciò che l'utente digita.
+func executeIO(t *testing.T, tty bool, input string, handler http.HandlerFunc, args ...string) result {
+	t.Helper()
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
-	io_, _, out, errOut := cmdutil.Test()
+	io_, in, out, errOut := cmdutil.Test()
+	io_.InTTY = tty
+	in.WriteString(input)
 	f := cmdutil.New("test", io_)
 	f.Getenv = func(k string) string {
 		switch k {
@@ -65,7 +74,7 @@ func TestComandiCIJSON(t *testing.T) {
 		{"run list", []string{"run", "list", "--json", "id,status"}, "GET", "/api/v1/repos/alice/repo/actions/runs", "", `{"items":[{"id":"` + runID + `","status":"completed","conclusion":"success","workflowId":"build"}]}`},
 		{"run view", []string{"run", "view", runID, "--json", "id,status"}, "GET", "/api/v1/repos/alice/repo/actions/runs/" + runID, "", `{"id":"` + runID + `","status":"completed","conclusion":"success","workflowId":"build"}`},
 		{"run rerun", []string{"run", "rerun", runID, "--json", "id,status"}, "POST", "/api/v1/repos/alice/repo/actions/runs/" + runID + "/rerun", "", `{"id":"` + runID + `","status":"queued","workflowId":"build"}`},
-		{"run cancel", []string{"run", "cancel", runID, "--json", "id,status"}, "POST", "/api/v1/repos/alice/repo/actions/runs/" + runID + "/cancel", "", `{"id":"` + runID + `","status":"cancelled","workflowId":"build"}`},
+		{"run cancel", []string{"run", "cancel", runID, "--yes", "--json", "id,status"}, "POST", "/api/v1/repos/alice/repo/actions/runs/" + runID + "/cancel", "", `{"id":"` + runID + `","status":"cancelled","workflowId":"build"}`},
 		{"workflow list", []string{"workflow", "list", "--json", "id,name"}, "GET", "/api/v1/repos/alice/repo/workflows", "", `{"items":[{"id":"build","name":"Build","path":".gitstack/workflows/build.yml","state":"active"}]}`},
 		{"workflow dispatch", []string{"workflow", "run", "build.yml", "--ref", "main", "--input", "flavor=fast", "--json", "id,status"}, "POST", "/api/v1/repos/alice/repo/workflows/build.yml/dispatches", `{"inputs":{"flavor":"fast"},"ref":"main"}`, `{"id":"` + runID + `","status":"queued","workflowId":"build"}`},
 	}
@@ -88,6 +97,67 @@ func TestComandiCIJSON(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestRunCancelChiedeConferma: cancel è G8 (conferma o --yes, nessuna chiamata senza);
+// rerun non chiede nulla.
+func TestRunCancelChiedeConferma(t *testing.T) {
+	cancelPath := "/api/v1/repos/alice/repo/actions/runs/" + runID + "/cancel"
+	reply := func(calls *atomic.Int32, code int) http.HandlerFunc {
+		return api(func(w http.ResponseWriter, req *http.Request) {
+			calls.Add(1)
+			if req.Method != "POST" || req.URL.Path != cancelPath {
+				t.Errorf("richiesta %s %s", req.Method, req.URL.Path)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(code)
+			_, _ = io.WriteString(w, `{"id":"`+runID+`","status":"cancelled","workflowId":"build"}`)
+		})
+	}
+
+	// senza TTY e senza --yes: uso errato, stdin non letto, nessuna chiamata
+	var calls atomic.Int32
+	r := executeIO(t, false, "y\n", reply(&calls, 202), "run", "cancel", runID, "--json", "id")
+	if r.code != 2 || calls.Load() != 0 {
+		t.Fatalf("senza TTY e senza --yes: %+v, chiamate %d", r, calls.Load())
+	}
+
+	// con --yes la chiamata parte
+	calls.Store(0)
+	r = executeIO(t, false, "", reply(&calls, 202), "run", "cancel", runID, "--yes", "--json", "id")
+	if r.code != 0 || calls.Load() != 1 {
+		t.Fatalf("con --yes: %+v, chiamate %d", r, calls.Load())
+	}
+
+	// con TTY e risposta diversa da y/yes: exit 1, prompt su stderr, nessuna chiamata
+	calls.Store(0)
+	r = executeIO(t, true, "no\n", reply(&calls, 202), "run", "cancel", runID, "--json", "id")
+	if r.code != 1 || calls.Load() != 0 || !strings.Contains(r.err, "annullare") {
+		t.Fatalf("TTY, no: %+v, chiamate %d", r, calls.Load())
+	}
+
+	// con TTY e y: la chiamata parte
+	calls.Store(0)
+	r = executeIO(t, true, "y\n", reply(&calls, 202), "run", "cancel", runID, "--json", "id")
+	if r.code != 0 || calls.Load() != 1 {
+		t.Fatalf("TTY, y: %+v, chiamate %d", r, calls.Load())
+	}
+
+	// rerun resta senza conferma: parte anche senza TTY e senza --yes
+	var rerunCalls atomic.Int32
+	rr := executeIO(t, false, "", api(func(w http.ResponseWriter, req *http.Request) {
+		rerunCalls.Add(1)
+		if req.Method != "POST" || req.URL.Path != "/api/v1/repos/alice/repo/actions/runs/"+runID+"/rerun" {
+			t.Errorf("richiesta %s %s", req.Method, req.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(202)
+		_, _ = io.WriteString(w, `{"id":"`+runID+`","status":"queued","workflowId":"build"}`)
+	}), "run", "rerun", runID, "--json", "id")
+	if rr.code != 0 || rerunCalls.Load() != 1 {
+		t.Fatalf("rerun: %+v, chiamate %d", rr, rerunCalls.Load())
+	}
+	_ = cancelPath
 }
 
 func TestWatchLogsExitAndErrorCodes(t *testing.T) {

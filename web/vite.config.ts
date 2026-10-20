@@ -29,5 +29,8 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    // I test asincroni di jsdom superano i 5 s quando la macchina è carica (GIT-318).
+    testTimeout: 15000,
+    hookTimeout: 15000,
   },
 });
