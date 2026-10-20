@@ -53,10 +53,11 @@ name = "go-test"
 # nel check successivo. -timeout e' per pacchetto: deve restare minore del
 # timeout del check, cosi' un blocco stampa lo stack e il test in corso.
 # I paths includono le radici di ogni modulo qui testato, piu' i file non-Go
-# letti dai test: deploy/ (admin), docs/ (pkg/events), skills/ (cli) e README.
+# letti dai test: deploy/ (admin), docs/ (pkg/events), skills/ (cli) e
+# scripts/release-readiness.go (admin/releasegate).
 run = "go test -timeout 750s ./admin/... ./api/... ./cli/... ./client/go/... ./pkg/egress/... ./pkg/events/... ./pkg/issuequery/... ./pkg/names/... ./pkg/scopes/... ./services/core/... ./services/gateway/... ./services/identity/..."
 timeout_s = 900
-paths = ["admin/**", "api/**", "cli/**", "client/go/**", "pkg/**", "services/core/**", "services/gateway/**", "services/identity/**", "deploy/**", "docs/**", "skills/**", "README.md", "go.work", "go.work.sum"]
+paths = ["admin/**", "api/**", "cli/**", "client/go/**", "pkg/**", "services/core/**", "services/gateway/**", "services/identity/**", "deploy/**", "docs/**", "skills/**", "scripts/release-readiness.go", "go.work", "go.work.sum"]
 
 [[check]]
 name = "go-test-git"
