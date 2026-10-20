@@ -25,6 +25,8 @@ import (
 // AttachmentsConfig è il volume degli allegati e il limite di dimensione.
 type AttachmentsConfig struct {
 	Disk *attachments.Disk
+	// ReleaseAssets è il volume escluso dal backup ordinario (REL1).
+	ReleaseAssets *attachments.Disk
 	// MaxBytes: limite per file; <= 0 = attachments.DefaultMaxBytes.
 	MaxBytes int64
 	// MaxRepoBytes: byte di allegati per repo; MaxUserBytes: byte di allegati

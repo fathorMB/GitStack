@@ -5,6 +5,8 @@ package attachments
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -74,6 +76,48 @@ func Detect(head []byte) (string, error) {
 		return TypeText, nil
 	}
 	return "", ErrUnsupported
+}
+
+// SaveRaw salva un asset binario senza la whitelist degli allegati di issue.
+// È usato dalle release (REL1), che ammettono archivi e binari fino a 2 GB;
+// ritorna il digest SHA-256 calcolato mentre scrive, senza caricare il file in
+// memoria. Il chiamante conserva il digest nei metadati del database.
+func (d *Disk) SaveRaw(repoID, id uuid.UUID, r io.Reader, max int64) (int64, string, error) {
+	dir := filepath.Join(d.Dir, repoID.String())
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return 0, "", fmt.Errorf("cartella degli allegati: %w", err)
+	}
+	tmp, err := os.CreateTemp(dir, ".release-*")
+	if err != nil {
+		return 0, "", err
+	}
+	tmpName := tmp.Name()
+	ok := false
+	defer func() {
+		if !ok {
+			_ = tmp.Close()
+			_ = os.Remove(tmpName)
+		}
+	}()
+	h := sha256.New()
+	n, err := io.Copy(io.MultiWriter(tmp, h), io.LimitReader(r, max+1))
+	if err != nil {
+		return 0, "", err
+	}
+	if n > max {
+		return 0, "", ErrTooLarge
+	}
+	if err := tmp.Sync(); err != nil {
+		return 0, "", err
+	}
+	if err := tmp.Close(); err != nil {
+		return 0, "", err
+	}
+	if err := os.Rename(tmpName, d.path(repoID, id)); err != nil {
+		return 0, "", err
+	}
+	ok = true
+	return n, hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // Disk è il volume degli allegati: <dir>/<repo_id>/<id>, senza il nome

@@ -95,13 +95,14 @@ func (f *fakeCluster) ApplySecret(_ context.Context, s Secret) error {
 }
 
 type env struct {
-	f       *fakeCluster
-	o       *Options
-	dest    string
-	git     string
-	att     string
-	confDir string
-	log     *bytes.Buffer
+	f             *fakeCluster
+	o             *Options
+	dest          string
+	git           string
+	att           string
+	releaseAssets string
+	confDir       string
+	log           *bytes.Buffer
 }
 
 func newEnv(t *testing.T) *env {
@@ -109,8 +110,9 @@ func newEnv(t *testing.T) *env {
 	root := t.TempDir()
 	git := filepath.Join(root, "git-data")
 	att := filepath.Join(root, "att")
+	releaseAssets := filepath.Join(root, "release-assets")
 	conf := filepath.Join(root, "etc")
-	for _, d := range []string{git, att, conf} {
+	for _, d := range []string{git, att, releaseAssets, conf} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -126,20 +128,21 @@ func newEnv(t *testing.T) *env {
 	write(filepath.Join(git, "alice", "repo.git", "HEAD"), "ref: refs/heads/main\n")
 	write(filepath.Join(git, "alice", "repo.git", "objects", "ab", "cdef"), "OGGETTO")
 	write(filepath.Join(att, "r1", "a1"), "ALLEGATO")
+	write(filepath.Join(releaseAssets, "r1", "release.bin"), "ASSET-RELEASE-ESCLUSO")
 	write(filepath.Join(conf, "config.yaml"), "version: 1\n")
 	write(filepath.Join(conf, "ca", "ca.key"), "CHIAVE-CA")
 	f := &fakeCluster{
 		replicas: map[string]int{"gs-gateway": 2, "gs-git": 1, "gs-core": 1, "gs-identity": 1, "gs-web": 1},
-		paths:    map[string]string{"gs-git-data": git, "gs-attachments-data": att},
+		paths:    map[string]string{"gs-git-data": git, "gs-attachments-data": att, "gs-release-assets-data": releaseAssets},
 		secrets: []Secret{
 			{Name: "gs-postgres", Raw: []byte(`{"name":"pg"}`)},
 			{Name: "gs-git-ssh-host-key", Raw: []byte(`{"name":"ssh"}`)},
 		},
-		dump: "CREATE SCHEMA identity;\n",
+		dump: "CREATE SCHEMA identity;\nINSERT INTO core.releases (tag_name, body) VALUES ('v1', 'note release');\n",
 	}
 	cfg := &config.Config{Release: "gs", Namespace: "ns", ImageTag: "sha-abc123", Backup: config.Backup{Retention: 2}}
 	log := &bytes.Buffer{}
-	e := &env{f: f, dest: filepath.Join(root, "backups"), git: git, att: att, confDir: conf, log: log}
+	e := &env{f: f, dest: filepath.Join(root, "backups"), git: git, att: att, releaseAssets: releaseAssets, confDir: conf, log: log}
 	e.o = &Options{Cfg: cfg, Cluster: f, BinaryVersion: "v-test", ConfigDir: conf, ConfigFile: filepath.Join(conf, "config.yaml"),
 		DestDir: e.dest, Log: log, Now: func() time.Time { return time.Date(2026, 10, 6, 1, 2, 3, 0, time.UTC) }}
 	return e
@@ -183,6 +186,9 @@ func TestBackupRoundTrip(t *testing.T) {
 			t.Errorf("manca %s nel manifest", n)
 		}
 	}
+	if names["release-assets.tar"] {
+		t.Error("gli asset release non devono entrare nel backup predefinito")
+	}
 	if _, err := os.Stat(res.Path + ".sha256"); err != nil {
 		t.Errorf("sidecar: %v", err)
 	}
@@ -193,6 +199,9 @@ func TestBackupRoundTrip(t *testing.T) {
 	// Restore su un'installazione "pulita": volumi diversi e vuoti.
 	r := newEnv(t)
 	r.o.DestDir = filepath.Join(t.TempDir(), "b")
+	if err := os.RemoveAll(r.releaseAssets); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(r.git, "vecchio"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -219,6 +228,12 @@ func TestBackupRoundTrip(t *testing.T) {
 	}
 	if !strings.Contains(r.f.psqlIn, "DROP SCHEMA IF EXISTS core") || !strings.Contains(r.f.psqlIn, "CREATE SCHEMA identity;") {
 		t.Errorf("stdin di psql: %q", r.f.psqlIn)
+	}
+	if !strings.Contains(r.f.psqlIn, "note release") {
+		t.Error("le note release non sono state ripristinate dal dump")
+	}
+	if _, err := os.Stat(filepath.Join(r.releaseAssets, "r1", "release.bin")); err == nil {
+		t.Error("gli asset release non devono essere ripristinati dal backup predefinito")
 	}
 	if len(r.f.applied) != 1 || r.f.applied[0] != "gs-git-ssh-host-key" {
 		t.Errorf("Secret applicati: %v (postgres non va ripristinato)", r.f.applied)

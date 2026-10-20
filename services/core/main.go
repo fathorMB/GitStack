@@ -214,13 +214,18 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		routerOpts = append(routerOpts, httpserver.WithSystemInfo(httpserver.SystemInfoConfig{File: cfg.SystemInfoFile}))
 	}
 	var disk *attachments.Disk
+	attachCfg := httpserver.AttachmentsConfig{}
 	if cfg.AttachmentsDir != "" {
 		disk = &attachments.Disk{Dir: cfg.AttachmentsDir}
-		routerOpts = append(routerOpts, httpserver.WithAttachments(httpserver.AttachmentsConfig{Disk: disk, MaxBytes: cfg.AttachmentMaxBytes,
-			MaxRepoBytes: quotaArg(cfg.AttachmentRepoQuotaBytes), MaxUserBytes: quotaArg(cfg.AttachmentUserQuotaBytes)}))
+		attachCfg = httpserver.AttachmentsConfig{Disk: disk, MaxBytes: cfg.AttachmentMaxBytes,
+			MaxRepoBytes: quotaArg(cfg.AttachmentRepoQuotaBytes), MaxUserBytes: quotaArg(cfg.AttachmentUserQuotaBytes)}
 	} else {
 		logger.Warn("GITSTACK_CORE_ATTACHMENTS_DIR non impostata: gli allegati rispondono 503")
 	}
+	if cfg.ReleaseAssetsDir != "" {
+		attachCfg.ReleaseAssets = &attachments.Disk{Dir: cfg.ReleaseAssetsDir}
+	}
+	routerOpts = append(routerOpts, httpserver.WithAttachments(attachCfg))
 	// Outbox degli eventi di dominio (M-06/B, GIT-130): le modifiche scrivono
 	// l'evento nella propria transazione, il relay lo pubblica su NATS con
 	// ack e ritenta con attesa crescente. Parte dopo le migrazioni e riprende
