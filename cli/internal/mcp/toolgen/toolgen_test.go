@@ -47,6 +47,39 @@ func TestEveryOperationHasMCPExtension(t *testing.T) {
 	}
 }
 
+func TestCISpecificToolsGenerated(t *testing.T) {
+	spec, err := os.ReadFile(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tools, err := Parse(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]struct {
+		operation, method, path string
+		destructive             bool
+	}{
+		"workflow_list":       {"listWorkflows", "GET", "/repos/{owner}/{repo}/workflows", false},
+		"workflow_dispatch":   {"dispatchWorkflow", "POST", "/repos/{owner}/{repo}/workflows/{workflow}/dispatches", false},
+		"workflow_run_list":   {"listWorkflowRuns", "GET", "/repos/{owner}/{repo}/actions/runs", false},
+		"workflow_run_view":   {"getWorkflowRun", "GET", "/repos/{owner}/{repo}/actions/runs/{runId}", false},
+		"workflow_run_cancel": {"cancelWorkflowRun", "POST", "/repos/{owner}/{repo}/actions/runs/{runId}/cancel", true},
+		"workflow_run_rerun":  {"rerunWorkflowRun", "POST", "/repos/{owner}/{repo}/actions/runs/{runId}/rerun", false},
+	}
+	for _, tool := range tools {
+		if w, ok := want[tool.Name]; ok {
+			if tool.Operation != w.operation || tool.Method != w.method || tool.Path != w.path || tool.Destructive != w.destructive {
+				t.Errorf("%s: %+v", tool.Name, tool)
+			}
+			delete(want, tool.Name)
+		}
+	}
+	if len(want) != 0 {
+		t.Errorf("strumenti CI mancanti: %v", want)
+	}
+}
+
 func TestParseRejectsMissingExtension(t *testing.T) {
 	spec := `paths:
   /a:

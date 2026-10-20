@@ -28,6 +28,8 @@ const (
 	DurableMirrors = "core-mirrors-git"
 	// DurablePullSync: nuovi commit e conflitti delle Pull Request (GIT-265).
 	DurablePullSync = "core-pull-sync"
+	// DurableCI: esecuzioni dei workflow a ogni push (v2-a, GIT-276).
+	DurableCI = "core-ci-git"
 )
 
 // Handler gestisce un git.push. Un errore fa ritentare il messaggio (Nak con

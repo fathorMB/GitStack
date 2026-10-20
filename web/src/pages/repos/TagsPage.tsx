@@ -7,6 +7,7 @@ import type { Tag } from '../../lib/codeApi';
 import { timeAgo } from '../../lib/format';
 import type { Repository } from '../../lib/reposApi';
 import { useLoad } from '../../lib/useLoad';
+import { ReleasesTagsSwitch } from './ReleasesPage';
 
 /** Pagina Tags (mockup 23, B7): data, commit, messaggio dei tag annotati, ZIP e tar.gz (B3). */
 export function TagsPage({ repo }: { repo: Repository }) {
@@ -24,7 +25,7 @@ export function TagsPage({ repo }: { repo: Repository }) {
   return (
     <div className="stack" style={{ maxWidth: 980 }}>
       <div className="page-h row">
-        <h2>Tags</h2>
+        <ReleasesTagsSwitch owner={owner} repo={name} active="tags" />
         <span className="counter">{data.total}</span>
         <span className="sp" />
         <div className="input-icon" style={{ width: 240 }}>

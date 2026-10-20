@@ -316,6 +316,36 @@ export function AppRoutes() {
         }
       />
       <Route
+        path="/:owner/:repo/actions"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Repository">
+              <RepoPage mode="actions" />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/:owner/:repo/actions/runs/:runId"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Repository">
+              <RepoPage mode="run" />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/:owner/:repo/releases"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Repository">
+              <RepoPage mode="releases" />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/:owner/:repo/tags"
         element={
           <RequireAuth>

@@ -18,6 +18,9 @@ import { IssuesPage } from './IssuesPage';
 import { LabelsPage } from './LabelsPage';
 import { MilestonesPage } from './MilestonesPage';
 import { SearchPage } from './SearchPage';
+import { ReleasesPage } from './ReleasesPage';
+import { ActionsPage } from './ActionsPage';
+import { RunDetailPage } from './RunDetailPage';
 import { TagsPage } from './TagsPage';
 import { FileView } from './FileView';
 import type { FileMode } from './FileView';
@@ -27,7 +30,7 @@ import { isRepoAdmin, loadMe } from './repoAdmin';
 // Pagina /<owner>/<repo> (R1): con repo vuoto mostra il quick setup
 // (mockup 06); altrimenti un segnaposto in attesa del browser di M-04.
 // key sul repo: passando da /a/x a /b/y senza smontare la pagina i dati si ricaricano.
-export type RepoMode = 'tree' | 'commits' | 'commit' | 'tags' | 'search' | 'issues' | 'issue' | 'newissue' | 'labels' | 'milestones' | 'pulls' | 'pull' | 'pullfiles' | 'newpull' | FileMode;
+export type RepoMode = 'tree' | 'commits' | 'commit' | 'tags' | 'releases' | 'search' | 'issues' | 'issue' | 'newissue' | 'labels' | 'milestones' | 'pulls' | 'pull' | 'pullfiles' | 'newpull' | 'actions' | 'run' | FileMode;
 
 export function RepoPage({ mode = 'tree' }: { mode?: RepoMode }) {
   const { owner = '', repo = '', '*': splat = '' } = useParams();
@@ -84,6 +87,14 @@ function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: stri
         <div className="section-gap">
           <PullsPage repo={data} />
         </div>
+      ) : mode === 'actions' ? (
+        <div className="section-gap">
+          <ActionsPage repo={data} />
+        </div>
+      ) : mode === 'run' ? (
+        <div className="section-gap">
+          <RunDetailPage repo={data} />
+        </div>
       ) : mode === 'newpull' ? (
         <div className="section-gap">
           <NewPullPage repo={data} />
@@ -118,6 +129,8 @@ function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: stri
             <CommitsPage repo={data} splat={splat} />
           ) : mode === 'tags' ? (
             <TagsPage repo={data} />
+          ) : mode === 'releases' ? (
+            <ReleasesPage repo={data} />
           ) : mode === 'search' ? (
             <SearchPage repo={data} />
           ) : mode === 'commit' ? (

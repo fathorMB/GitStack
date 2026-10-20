@@ -81,3 +81,62 @@ function Invoke-HttpRaw {
         return [pscustomobject]@{ StatusCode = 0; Body = ''; Error = $_.Exception.Message; Cookie = $null; Headers = @{} }
     }
 }
+
+# Upload multipart (campo 'file') e download di un file con .NET HttpClient,
+# al posto di curl.exe (GIT-309): curl.exe di Windows usa schannel, che con un
+# certificato il cui SAN contiene l'IP esce con codice 60 (CertGetNameString),
+# mentre .NET usa la stessa fiducia nella CA di Invoke-HttpRaw
+# (ServicePointManager, vedi tls.ps1). Ritornano StatusCode/Body/Error come
+# Invoke-HttpRaw; StatusCode 0 se la connessione fallisce.
+function Invoke-HttpUploadFile {
+    param(
+        [Parameter(Mandatory)][string]$Uri,
+        [Parameter(Mandatory)][string]$FilePath,
+        [hashtable]$Headers,
+        [string]$FieldName = 'file',
+        [string]$ContentType = 'text/plain',
+        [int]$TimeoutSec = 60
+    )
+    Add-Type -AssemblyName System.Net.Http
+    $client = New-Object System.Net.Http.HttpClient
+    $form = New-Object System.Net.Http.MultipartFormDataContent
+    try {
+        $client.Timeout = [TimeSpan]::FromSeconds($TimeoutSec)
+        if ($Headers) { foreach ($k in $Headers.Keys) { [void]$client.DefaultRequestHeaders.TryAddWithoutValidation([string]$k, [string]$Headers[$k]) } }
+        $bytes = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $FilePath).Path)
+        $part = New-Object System.Net.Http.ByteArrayContent -ArgumentList (, $bytes)
+        $part.Headers.ContentType = New-Object System.Net.Http.Headers.MediaTypeHeaderValue($ContentType)
+        $form.Add($part, $FieldName, [System.IO.Path]::GetFileName($FilePath))
+        $resp = $client.PostAsync($Uri, $form).GetAwaiter().GetResult()
+        $text = $resp.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+        return [pscustomobject]@{ StatusCode = [int]$resp.StatusCode; Body = $text; Error = $null }
+    } catch {
+        return [pscustomobject]@{ StatusCode = 0; Body = ''; Error = $_.Exception.ToString() }
+    } finally {
+        $form.Dispose()
+        $client.Dispose()
+    }
+}
+
+function Invoke-HttpDownloadFile {
+    param(
+        [Parameter(Mandatory)][string]$Uri,
+        [Parameter(Mandatory)][string]$OutFile,
+        [hashtable]$Headers,
+        [int]$TimeoutSec = 60
+    )
+    Add-Type -AssemblyName System.Net.Http
+    $client = New-Object System.Net.Http.HttpClient
+    try {
+        $client.Timeout = [TimeSpan]::FromSeconds($TimeoutSec)
+        if ($Headers) { foreach ($k in $Headers.Keys) { [void]$client.DefaultRequestHeaders.TryAddWithoutValidation([string]$k, [string]$Headers[$k]) } }
+        $resp = $client.GetAsync($Uri).GetAwaiter().GetResult()
+        $data = $resp.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
+        [System.IO.File]::WriteAllBytes($OutFile, $data)
+        return [pscustomobject]@{ StatusCode = [int]$resp.StatusCode; Body = ''; Error = $null }
+    } catch {
+        return [pscustomobject]@{ StatusCode = 0; Body = ''; Error = $_.Exception.ToString() }
+    } finally {
+        $client.Dispose()
+    }
+}

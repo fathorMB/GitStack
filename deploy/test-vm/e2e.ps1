@@ -80,6 +80,13 @@
          controlla che main abbia di nuovo lo stesso SHA. A fine passo
          interrompe il mirror, elimina il repo e toglie il cablaggio. Niente
          Internet.
+      e11. Pull Request (GIT-273, v1.1): sulla VM un agente (utente kind=agent con
+         grant write) porta una issue fino a una PR con gs: bozza con
+         "fixes #n", Ready for review con la persona come revisore, review
+         dell'autore rifiutata (PR2), approvazione della persona, merge squash
+         e issue chiusa come completed. Poi lo stesso ciclo con gs mcp (stdio):
+         issue, PR, merge con gli strumenti MCP, --read-only che rifiuta le
+         scritture (e2e/gs-pr-cycle.sh; log in gs-pr-cycle.log).
       f. idempotenza: una seconda esecuzione dell'installer, senza reset,
          deve uscire con successo, non reinstallare k3s e non generare una
          nuova password di Postgres.
@@ -135,6 +142,12 @@
     Passo e10 (GIT-201): porta HTTPS sulla VM dell'origine di prova del mirror
     in pull (stesso server di e9, che a quel punto e' gia fermo). Default 8443.
 
+.PARAMETER MirrorAliasIp
+    Passi e9/e10 (GIT-309): indirizzo privato aggiunto come alias /32 su lo della
+    VM per la durata del passo e usato come destinazione/origine dei mirror. La
+    policy di uscita (F7) blocca gli indirizzi del nodo (quello della VM), non
+    questo, aggiunto dopo l'installazione. Default 192.168.250.10.
+
 .PARAMETER JetStreamPollAttempts
     Passo (e): numero di letture del conteggio JetStream dopo la create,
     finche' supera la baseline (core pubblica l'evento in una goroutine
@@ -169,7 +182,8 @@ param(
     [int]$JetStreamPollAttempts = 6,
     [int]$JetStreamPollIntervalSeconds = 5,
     [int]$GitSshPort = 2222,
-    [int]$MirrorOriginPort = 8443
+    [int]$MirrorOriginPort = 8443,
+    [string]$MirrorAliasIp = '192.168.250.10'
 )
 
 . (Join-Path $PSScriptRoot 'lib\common.ps1')
@@ -1058,12 +1072,12 @@ function Main {
             $cpDest = Copy-ToVm -LocalPath (Join-Path $PSScriptRoot 'e2e\mirror-dest.py') -RemotePath '/tmp/gitstack-e2e/mirror-dest.py' -TimeoutSeconds $SshCommandTimeoutSeconds
             if ($cpDest.ExitCode -ne 0) { throw "copia di mirror-dest.py: exit $($cpDest.ExitCode) $($cpDest.StdErr)" }
             $e9Started = $true
-            $startDest = Invoke-RemoteHelper -RemoteArgs @('mirror-dest-start', "$e9Port", $destUser, $destToken) -TimeoutSeconds 90
+            $startDest = Invoke-RemoteHelper -RemoteArgs @('mirror-dest-start', "$e9Port", $destUser, $destToken, $MirrorAliasIp) -TimeoutSeconds 90
             if ($startDest.ExitCode -ne 0) { throw "mirror-dest-start: exit $($startDest.ExitCode) $($startDest.StdOut) $($startDest.StdErr)" }
 
             $e9Stage = 'fiducia nella CA e egress.allow'
             $e9Wired = $true
-            $wire = Invoke-RemoteHelper -RemoteArgs @('mirror-enable', 'gitstack', 'default', $script:VmIp) -TimeoutSeconds 600
+            $wire = Invoke-RemoteHelper -RemoteArgs @('mirror-enable', 'gitstack', 'default', $MirrorAliasIp) -TimeoutSeconds 600
             if ($wire.ExitCode -ne 0) { throw "mirror-enable: exit $($wire.ExitCode) $($wire.StdOut) $($wire.StdErr)" }
             $apiBack = $false
             for ($i = 1; $i -le 24; $i++) {
@@ -1075,7 +1089,7 @@ function Main {
 
             $e9Stage = 'creazione del mirror'
             $mirrorsUrl = "$baseUrl/api/v1/repos/$gitUser/$gitRepo/mirrors"
-            $destUrl = "https://$($script:VmIp):$e9Port/mirror.git"
+            $destUrl = "https://${MirrorAliasIp}:$e9Port/mirror.git"
             $mkMirror = Invoke-HttpRaw -Uri $mirrorsUrl -Method 'POST' -Headers $e9Bearer -Body (@{ url = $destUrl; username = $destUser; token = $destToken } | ConvertTo-Json)
             if ($mkMirror.StatusCode -ne 201) { throw "POST /mirrors: status $($mkMirror.StatusCode), corpo '$($mkMirror.Body)' $($mkMirror.Error)" }
             if ($mkMirror.Body.Contains($destToken)) { throw "il token della destinazione compare nella risposta del POST /mirrors" }
@@ -1133,7 +1147,7 @@ function Main {
             $e9Details += "[$e9Stage] $($_.Exception.Message)"
             if ($e9Started) {
                 $dbgRefs = Invoke-RemoteHelper -RemoteArgs @('mirror-dest-refs') -TimeoutSeconds 30
-                $e9Details += "ref sulla destinazione: $($dbgRefs.StdOut.Trim() -replace '\s+', ' ')"
+                $e9Details += "ref sulla destinazione: $(("$($dbgRefs.StdOut)").Trim() -replace '\s+', ' ')"
             }
             if ($e9MirrorUrl) {
                 $dbgMirror = Invoke-HttpRaw -Uri $e9MirrorUrl -Headers $e9Bearer
@@ -1190,7 +1204,7 @@ function Main {
             $cpOrigin = Copy-ToVm -LocalPath (Join-Path $PSScriptRoot 'e2e\mirror-dest.py') -RemotePath '/tmp/gitstack-e2e/mirror-dest.py' -TimeoutSeconds $SshCommandTimeoutSeconds
             if ($cpOrigin.ExitCode -ne 0) { throw "copia di mirror-dest.py: exit $($cpOrigin.ExitCode) $($cpOrigin.StdErr)" }
             $e10Started = $true
-            $startOrigin = Invoke-RemoteHelper -RemoteArgs @('mirror-dest-start', "$e10Port", $originUser, $originToken) -TimeoutSeconds 90
+            $startOrigin = Invoke-RemoteHelper -RemoteArgs @('mirror-dest-start', "$e10Port", $originUser, $originToken, $MirrorAliasIp) -TimeoutSeconds 90
             if ($startOrigin.ExitCode -ne 0) { throw "mirror-dest-start: exit $($startOrigin.ExitCode) $($startOrigin.StdOut) $($startOrigin.StdErr)" }
             $c1 = Invoke-RemoteHelper -RemoteArgs @('mirror-dest-commit', 'origine-primo-commit') -TimeoutSeconds 30
             $originSha1 = $c1.StdOut.Trim()
@@ -1198,7 +1212,7 @@ function Main {
 
             $e10Stage = 'fiducia nella CA e egress.allow'
             $e10Wired = $true
-            $wire10 = Invoke-RemoteHelper -RemoteArgs @('mirror-enable', 'gitstack', 'default', $script:VmIp) -TimeoutSeconds 600
+            $wire10 = Invoke-RemoteHelper -RemoteArgs @('mirror-enable', 'gitstack', 'default', $MirrorAliasIp) -TimeoutSeconds 600
             if ($wire10.ExitCode -ne 0) { throw "mirror-enable: exit $($wire10.ExitCode) $($wire10.StdOut) $($wire10.StdErr)" }
             $coreBack = $false
             for ($i = 1; $i -le 24; $i++) {
@@ -1209,7 +1223,7 @@ function Main {
             if (-not $coreBack) { throw "core non risponde 200 dopo il riavvio (ultimo status $($probe10.StatusCode))" }
 
             $e10Stage = 'import come mirror'
-            $originUrl = "https://$($script:VmIp):$e10Port/mirror.git"
+            $originUrl = "https://${MirrorAliasIp}:$e10Port/mirror.git"
             $imp = Invoke-HttpRaw -Uri "$baseUrl/api/v1/repos/import" -Method 'POST' -Headers $e10Bearer -Body (@{
                     owner = $gitUser; name = $e10Name; visibility = 'private'; url = $originUrl; mode = 'mirror'
                     username = $originUser; token = $originToken; intervalSeconds = 3600 } | ConvertTo-Json)
@@ -1293,6 +1307,58 @@ function Main {
             foreach ($n in $savedEnv10.Keys) { [Environment]::SetEnvironmentVariable($n, $savedEnv10[$n]) }
         }
         Add-StepResult -Name 'e10. mirror in pull (GIT-201): origine HTTPS sulla VM con la CA della VM, push sul mirror rifiutato (sola lettura), Sincronizza ora e main con lo stesso SHA dell origine' -Ok $e10Ok -Detail ($e10Details -join '; ')
+
+        # --- e11. Pull Request con gs e con gs mcp (GIT-273, v1.1) ---
+        # Un agente apre issue e PR, la persona (utente di prova di e5) approva,
+        # l'agente unisce: prima con gs, poi con gs mcp (e2e/gs-pr-cycle.sh).
+        Write-Log "==> Passo e11: Pull Request sulla VM (gs pr e gs mcp: bozza, review della persona, merge, issue chiusa) ..."
+        $e11Ok = $true
+        $e11Details = @()
+        $e11Stage = 'preparazione'
+        try {
+            if (-not $e5Ok -or -not $gitToken -or -not $gitUser) { throw 'e5 non riuscito: manca l''utente di prova con il token' }
+            if (-not $script:CaFingerprint) { throw 'manca l''impronta della CA (passo d3 fallito)' }
+            if (-not $ck) { throw "manca la sessione dell'admin (passo e3 fallito)" }
+
+            $e11Stage = 'utente agente e token'
+            $e11Agent = "e2eprag$suffix"
+            $mkAgent11 = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users" -Method 'POST' -Cookie $ck -Body (@{ username = $e11Agent; kind = 'agent'; email = "$e11Agent@agents.example.com" } | ConvertTo-Json)
+            if ($mkAgent11.StatusCode -ne 201) { throw "creazione utente agente: status $($mkAgent11.StatusCode), corpo '$($mkAgent11.Body)' $($mkAgent11.Error)" }
+            $e11AgentId = ($mkAgent11.Body | ConvertFrom-Json).id
+            if (-not $e11AgentId) { throw "utente agente: risposta senza 'id'" }
+            $e11Expires = (Get-Date).ToUniversalTime().AddHours(2).ToString('yyyy-MM-ddTHH:mm:ssZ')
+            $mkTok11 = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users/$e11Agent/tokens" -Method 'POST' -Cookie $ck -Body (@{ name = 'e2e-pr-agent'; scopes = @('read:resource', 'write:resource'); expiresAt = $e11Expires } | ConvertTo-Json)
+            if ($mkTok11.StatusCode -ne 201) { throw "token dell'agente: status $($mkTok11.StatusCode) $($mkTok11.Body)" }
+            $e11AgentToken = ($mkTok11.Body | ConvertFrom-Json).token
+            if (-not $e11AgentToken) { throw "token dell'agente: risposta senza 'token'" }
+
+            $e11Stage = 'copia di gs-pr-cycle.sh sulla VM'
+            $mk11 = Invoke-VmSsh -Command 'mkdir -p /tmp/gitstack-e2e' -TimeoutSeconds $SshCommandTimeoutSeconds
+            if ($mk11.ExitCode -ne 0) { throw "mkdir sulla VM: exit $($mk11.ExitCode) $($mk11.StdErr)" }
+            $cp11 = Copy-ToVm -LocalPath (Join-Path $PSScriptRoot 'e2e\gs-pr-cycle.sh') -RemotePath '/tmp/gitstack-e2e/gs-pr-cycle.sh' -TimeoutSeconds $SshCommandTimeoutSeconds
+            if ($cp11.ExitCode -ne 0) { throw "scp di gs-pr-cycle.sh: exit $($cp11.ExitCode) $($cp11.StdErr)" }
+
+            $e11Stage = 'ciclo PR sulla VM'
+            # I segreti viaggiano nell'ambiente del comando remoto, mai negli argomenti stampati nel log.
+            $e11Env = @(
+                "GS_VM_IP='$($script:VmIp)'", "GS_CA_SHA256='$($script:CaFingerprint)'",
+                "GS_USER_TOKEN='$gitToken'", "GS_AGENT_TOKEN='$e11AgentToken'",
+                "GS_USER_NAME='$gitUser'", "GS_AGENT_NAME='$e11Agent'", "GS_AGENT_ID='$e11AgentId'", "GS_REPO_NAME='gs-pr-$suffix'"
+            ) -join ' '
+            $run11 = Invoke-VmSsh -Command "$e11Env bash /tmp/gitstack-e2e/gs-pr-cycle.sh" -TimeoutSeconds 900
+            Set-Content -LiteralPath (Join-Path $OutDir 'gs-pr-cycle.log') -Value ($run11.StdOut + "`n" + $run11.StdErr) -Encoding utf8
+            if ($run11.ExitCode -ne 0 -or $run11.StdOut -notmatch 'GS-PR-CYCLE-DONE') {
+                $failLine11 = ($run11.StdOut -split "`n" | Where-Object { $_ -match '^STEP FAIL' } | Select-Object -First 1)
+                throw "gs-pr-cycle.sh: exit $($run11.ExitCode) $failLine11 $($run11.StdErr)"
+            }
+            foreach ($stepName in 'install', 'repo_create', 'grant', 'issue_create', 'branch_push', 'pr_create', 'pr_bozza', 'pr_ready', 'review_propria', 'pr_review', 'pr_comment', 'pr_merge', 'issue_chiusa', 'mcp_strumenti', 'mcp_pr_create', 'mcp_review', 'mcp_pr_merge', 'mcp_issue_chiusa', 'mcp_read_only') {
+                if ($run11.StdOut -notmatch "STEP ok $stepName\b") { throw "manca il passo '$stepName' nell'output di gs-pr-cycle.sh" }
+            }
+        } catch {
+            $e11Ok = $false
+            $e11Details += "[$e11Stage] $($_.Exception.Message)"
+        }
+        Add-StepResult -Name 'e11. Pull Request (GIT-273): agente con gs e con gs mcp apre issue e PR, la persona approva, merge e issue chiusa come completed' -Ok $e11Ok -Detail ($e11Details -join '; ')
 
         # --- f. idempotenza -----------------------------------------------
         Write-Log "==> Passo f: idempotenza (seconda esecuzione dell'installer, senza reset) ..."

@@ -39,6 +39,9 @@ import (
 // repoPurgeInterval: ogni quanto il job cancella i repo eliminati scaduti.
 const repoPurgeInterval = time.Hour
 
+// ciScheduleInterval: ogni quanto si cercano gli orari dei workflow scaduti (lo scatto minimo e' 15 minuti).
+const ciScheduleInterval = time.Minute
+
 // attachmentCleanupInterval: ogni quanto si cercano gli allegati orfani scaduti.
 const attachmentCleanupInterval = 15 * time.Minute
 
@@ -334,6 +337,10 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		// annullate) e conflitti da avvisare; servono identity e git.
 		if gitAPI != nil && repoLookup != nil {
 			go runPushConsumer(ctx, js, gitpush.DurablePullSync, httpserver.NewPullPushHandler(pool, publisher, routerOpts...), logger)
+			// CI (v2-a, GIT-276): i push avviano i workflow; gli orari scaduti
+			// partono da una scansione periodica. Servono le letture di git.
+			go runPushConsumer(ctx, js, gitpush.DurableCI, httpserver.NewCIPushHandler(pool, publisher, routerOpts...), logger)
+			go httpserver.RunCISchedules(ctx, pool, publisher, ciScheduleInterval, logger, routerOpts...)
 		}
 		// Commit collegati e chiusura con fixes #n (M-06/C, GIT-131): servono i
 		// permessi di identity; senza, nessun collegamento.

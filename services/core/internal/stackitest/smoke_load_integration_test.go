@@ -378,11 +378,11 @@ func smokeRun(g *gsEnv, st *smokeStats, w *smokeWorker, deadline time.Time, http
 		return true
 	}
 	git := func(dir string, args ...string) (string, error) {
-		out, err := g.git(dir, w.key, args...)
+		out, err := g.gitOutput(dir, w.key, args...)
 		if err != nil {
-			return out, fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, out)
+			return out.combined(), fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, out.combined())
 		}
-		return out, nil
+		return out.stdout, nil
 	}
 	// Persone: HTTPS e SSH alternati a ogni giro; agenti: solo HTTPS.
 	remote := func(i int) (string, string) {

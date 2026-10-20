@@ -2,7 +2,7 @@
 
 `gs`, la CLI Go di GitStack per persone e agenti (stile `gh`), su client generato dall'OpenAPI del gateway. Dettagli: [[M-07]] in `.lmbrain-lite/milestones/M-07.md`.
 
-Stato: fondamenta di M-07 (GIT-162): albero dei comandi, client sul gateway, configurazione multi-istanza, livello di output e codici di uscita. Comandi veri: `gs version`, `gs issue` (GIT-166), `gs repo` (GIT-165), `gs label` e `gs milestone` (GIT-167), `gs notification` e `gs api` (GIT-169), `gs search`, `gs browse` e `gs blame` (GIT-168), `gs skills` (GIT-170); gli altri gruppi (`auth`, `repo`, ...) sono padri vuoti che gli item successivi riempiono.
+Stato: CLI Go con i gruppi `gs run` e `gs workflow` per seguire la CI (GIT-284), oltre ai comandi `version`, `issue`, `repo`, `label`, `milestone`, `notification`, `api`, `search`, `browse`, `blame` e `skills`.
 
 ## Licenza
 
@@ -30,7 +30,7 @@ Decise dal CTO (GIT-162), tutte con licenza compatibile con Apache-2.0 (D17). Gl
 cmd/gs/main.go            var version = "dev" (-ldflags "-X main.version=<tag>"), chiama root.Run
 internal/cmd/root         comando radice, flag globali, registra TUTTI i gruppi, Run (exit code, errori)
 internal/cmd/<gruppo>     un pacchetto per gruppo, con NewCmd(f *cmdutil.Factory) *cobra.Command:
-                          auth repo issue pr label milestone search browse blame notification api skills version
+                          auth repo issue pr run workflow label milestone search browse blame notification api skills version
 internal/cmdutil          Factory, IOStreams, errori e codici di uscita, ConfirmOrYes (G8)
 internal/config           configurazione multi-istanza, TokenSource, permessi solo-utente
 internal/gsrepo           istanza e owner/repo dal remote origin
@@ -368,6 +368,12 @@ Il repo è quello del remote `origin` o `-R owner/repo`; l'istanza e il token se
 ### Test
 
 `cli/internal/cmd/{search,blame,browse}/*_test.go`: gateway finto; `browse` prova `ParseArg` e `URL` (unitari) e che `--no-browser` stampi l'indirizzo. `services/core/internal/stackitest/gs_code_integration_test.go` (`TestGsCode`, tag `integration`): `gs` vero sullo stack completo con la storia di `TestBrowserCodice` (agente botty, file oltre 1 MB, binari): ricerca issue su tutta l'installazione con visibilità (carol non vede il privato), ricerca nel codice con il limite di 100, blame con badge agent, errori B4, storico con `--author` e `--ref`, URL di `browse`.
+
+## `gs run` e `gs workflow` (GIT-284, CI6)
+
+`gs run list|view|watch|rerun|cancel` legge e gestisce le esecuzioni del repo. `watch` attende il completamento, `--exit-status` restituisce 1 se la conclusione non è `success`, e `--log-failed` stampa i log dei job falliti (`gs run view <id> --log-failed` o `gs run watch <id> --log-failed`). `gs workflow list` elenca i workflow; `gs workflow run <workflow> --ref <ref> -f nome=valore` fa il dispatch con input ripetibili. Tutti supportano `--json` e `--jq` secondo G3.
+
+La skill `gitstack-ci` documenta il ciclo «aspetta la CI, correggi dai log». Gli strumenti MCP delle operazioni CI esposte si generano da `api/openapi.yaml` con `cd cli && go generate ./internal/mcp/...`.
 
 ## `gs skills` (GIT-170, M-07/I)
 

@@ -11,6 +11,7 @@ const sidebars = {
         'user/tokens-and-ssh',
         'user/webhooks',
         'user/gs-and-agents',
+        'user/mcp',
       ],
     },
     {
