@@ -78,13 +78,16 @@ type JobRow struct {
 	QueuedAt    *time.Time
 	StartedAt   *time.Time
 	CompletedAt *time.Time
+	// CancelRequestedAt: annullamento richiesto mentre il job era in corso; il
+	// job resta in_progress finché il runner non lo chiude (CompleteJob, cancelled).
+	CancelRequestedAt *time.Time
 }
 
 const runColumns = `id, repo_id, workflow_path, workflow_name, event, ref, sha, pull_number, group_key, actor_id, inputs,
 	status, conclusion, schedule_slot, created_at, started_at, completed_at`
 
 const jobColumns = `id, run_id, seq, job_key, name, needs, runner_type, runner_name, permissions, status, conclusion,
-	queued_at, started_at, completed_at`
+	queued_at, started_at, completed_at, cancel_requested_at`
 
 func scanRun(row pgx.Row) (RunRow, error) {
 	var r RunRow
@@ -102,7 +105,7 @@ func scanJob(row pgx.Row) (JobRow, error) {
 	var j JobRow
 	var perm []byte
 	err := row.Scan(&j.ID, &j.RunID, &j.Seq, &j.Key, &j.Name, &j.Needs, &j.RunnerType, &j.RunnerName, &perm, &j.Status,
-		&j.Conclusion, &j.QueuedAt, &j.StartedAt, &j.CompletedAt)
+		&j.Conclusion, &j.QueuedAt, &j.StartedAt, &j.CompletedAt, &j.CancelRequestedAt)
 	if err != nil {
 		return j, err
 	}
@@ -371,10 +374,13 @@ func CompleteJob(ctx context.Context, pool *pgxpool.Pool, now time.Time, jobID u
 		jobID, status, conclusion, now); err != nil {
 		return err
 	}
-	// Serializza la promozione dei job della stessa esecuzione.
-	if _, err := tx.Exec(ctx, `SELECT 1 FROM core.ci_runs WHERE id = $1 FOR UPDATE`, runID); err != nil {
+	// Serializza la promozione dei job della stessa esecuzione. Un run già
+	// annullato (CancelRun) resta annullato anche quando l'ultimo job in corso chiude.
+	var curRunStatus string
+	if err := tx.QueryRow(ctx, `SELECT status FROM core.ci_runs WHERE id = $1 FOR UPDATE`, runID).Scan(&curRunStatus); err != nil {
 		return err
 	}
+	runCancelled := curRunStatus == StatusCancelled
 	rows, err := tx.Query(ctx, `SELECT job_key, status, conclusion, needs, id FROM core.ci_jobs WHERE run_id = $1 ORDER BY seq`, runID)
 	if err != nil {
 		return err
@@ -452,7 +458,7 @@ func CompleteJob(ctx context.Context, pool *pgxpool.Pool, now time.Time, jobID u
 			}
 		}
 	}
-	if done {
+	if done && !runCancelled {
 		runStatus, runConcl := StatusCompleted, ConclusionSuccess
 		switch {
 		case anyFail:
@@ -466,6 +472,51 @@ func CompleteJob(ctx context.Context, pool *pgxpool.Pool, now time.Time, jobID u
 		}
 	}
 	return tx.Commit(ctx)
+}
+
+// ErrRunConcluded: l'esecuzione è già completata o annullata.
+var ErrRunConcluded = errors.New("esecuzione già conclusa")
+
+// CancelRun annulla un'esecuzione del repo (GIT-314). Un'esecuzione in coda o in
+// corso va in cancelled: i job in attesa o in coda sono annullati subito; i job
+// in corso ricevono una richiesta di annullamento (cancel_requested_at) e restano
+// in_progress finché il runner non li chiude con CompleteJob(…, cancelled).
+// pgx.ErrNoRows se l'esecuzione non è del repo; ErrRunConcluded se è già conclusa.
+func CancelRun(ctx context.Context, pool *pgxpool.Pool, now time.Time, repoID, runID uuid.UUID) (RunRow, error) {
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return RunRow{}, err
+	}
+	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	var status string
+	if err := tx.QueryRow(ctx, `SELECT status FROM core.ci_runs WHERE id = $1 AND repo_id = $2 FOR UPDATE`, runID, repoID).Scan(&status); err != nil {
+		return RunRow{}, err
+	}
+	if status == StatusCompleted || status == StatusCancelled {
+		return RunRow{}, ErrRunConcluded
+	}
+	if _, err := tx.Exec(ctx, `UPDATE core.ci_runs SET status = 'cancelled', conclusion = 'cancelled', completed_at = $2 WHERE id = $1`,
+		runID, now); err != nil {
+		return RunRow{}, err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE core.ci_jobs SET status = 'cancelled', conclusion = 'cancelled', completed_at = $2
+		WHERE run_id = $1 AND status IN ('waiting', 'queued')`, runID, now); err != nil {
+		return RunRow{}, err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE core.ci_jobs SET cancel_requested_at = $2
+		WHERE run_id = $1 AND status = 'in_progress' AND cancel_requested_at IS NULL`, runID, now); err != nil {
+		return RunRow{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return RunRow{}, err
+	}
+	return GetRun(ctx, pool, repoID, runID)
+}
+
+// GetJob legge un job del repo; pgx.ErrNoRows se il job non appartiene al repo.
+func GetJob(ctx context.Context, pool *pgxpool.Pool, repoID, jobID uuid.UUID) (JobRow, error) {
+	return scanJob(pool.QueryRow(ctx, `SELECT `+jobColumns+` FROM core.ci_jobs
+		WHERE id = $1 AND run_id IN (SELECT id FROM core.ci_runs WHERE repo_id = $2)`, jobID, repoID))
 }
 
 // GetRun legge un'esecuzione di un repo con i suoi job.

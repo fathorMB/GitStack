@@ -298,6 +298,68 @@ func (e *Engine) Dispatch(ctx context.Context, d Dispatch) (uuid.UUID, error) {
 	return c.RunID, nil
 }
 
+// Errori della riesecuzione.
+var (
+	ErrRunNotConcluded = errors.New("l'esecuzione non è ancora conclusa")
+	ErrWorkflowGone    = errors.New("il workflow non c'è più al commit dell'esecuzione")
+)
+
+// Rerun riesegue un'esecuzione conclusa (GIT-314): stesso workflow, ref, sha,
+// evento e input. Il file del workflow viene riletto a quello sha, come fa Tick
+// per gli orari. Il run nuovo tiene il group_key ma non annulla le esecuzioni in
+// coda del gruppo: riesegue uno sha vecchio e non deve scavalcare quelle recenti.
+// pgx.ErrNoRows se l'esecuzione non è del repo.
+func (e *Engine) Rerun(ctx context.Context, repoID, runID, actor uuid.UUID) (uuid.UUID, error) {
+	old, err := GetRun(ctx, e.Pool, repoID, runID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if old.Status != StatusCompleted && old.Status != StatusCancelled {
+		return uuid.Nil, ErrRunNotConcluded
+	}
+	st, err := LoadRepoState(ctx, e.Pool, repoID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if r := st.Blocked(); r != "" {
+		return uuid.Nil, fmt.Errorf("%w: %s", ErrRepoDisabled, r)
+	}
+	files, err := e.Source.Workflows(ctx, repoID, old.SHA)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	var wf *Workflow
+	for _, w := range parseAll(files, e.log()) {
+		if w.Path == old.WorkflowPath {
+			wf = w
+			break
+		}
+	}
+	if wf == nil {
+		return uuid.Nil, ErrWorkflowGone
+	}
+	actorID := actor
+	n := NewRun{Repo: st, Workflow: wf, Event: old.Event, Ref: old.Ref, SHA: old.SHA, PullNumber: old.PullNumber,
+		GroupKey: old.GroupKey, ActorID: &actorID, Inputs: old.Inputs}
+	switch old.Event {
+	case EventDispatch:
+		n.GroupKey = "dispatch:" + uuid.NewString()
+	case EventSchedule:
+		// Lo schedule ha uno slot unico per workflow: la riesecuzione ne prende uno nuovo.
+		slot := e.now()
+		n.ScheduleSlot = &slot
+		n.GroupKey = "rerun:" + uuid.NewString()
+	}
+	c, err := e.enqueue(ctx, n)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if c.Duplicate {
+		return uuid.Nil, errors.New("riesecuzione non creata: slot già usato")
+	}
+	return c.RunID, nil
+}
+
 func resolveInputs(decl []DispatchInput, given map[string]string) (map[string]string, error) {
 	known := map[string]DispatchInput{}
 	for _, d := range decl {
