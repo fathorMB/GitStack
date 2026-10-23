@@ -116,6 +116,17 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.core.containerPort }}
+    {{- if .Values.ci.enabled }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.ci.namespace | quote }}
+          podSelector:
+            matchLabels: {gitstack.io/ci-job: "true"}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.ci.gateway.port }}
+    {{- end }}
     - to:
         - podSelector:
             matchLabels:

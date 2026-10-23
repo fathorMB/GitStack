@@ -8,7 +8,9 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
+	"time"
 )
 
 func main() {
@@ -22,8 +24,24 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
-		fmt.Fprintln(os.Stderr, "ci gate: barriera violata: service links Kubernetes presenti")
+	// Il kubelet inietta sempre queste variabili: non sono service links. Il
+	// cancello aspetta invece che la policy renda irraggiungibile l'API.
+	host, port := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")
+	if host != "" && port != "" && !waitBlocked(net.JoinHostPort(host, port), 20*time.Second) {
+		fmt.Fprintln(os.Stderr, "ci gate: API Kubernetes ancora raggiungibile")
 		os.Exit(1)
 	}
+}
+
+func waitBlocked(address string, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("tcp", address, time.Second)
+		if err != nil {
+			return true
+		}
+		_ = conn.Close()
+		time.Sleep(200 * time.Millisecond)
+	}
+	return false
 }
