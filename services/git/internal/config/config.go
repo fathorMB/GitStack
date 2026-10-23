@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Nomi delle variabili d'ambiente.
@@ -85,6 +86,11 @@ const (
 	EnvRegistryS3PathStyle = "GITSTACK_GIT_REGISTRY_S3_PATH_STYLE"
 	// EnvRegistryS3Prefix: cartella dentro il bucket (default gitstack-registry).
 	EnvRegistryS3Prefix = "GITSTACK_GIT_REGISTRY_S3_PREFIX"
+	// EnvRegistryQuota: quota del registry per ogni owner (RG2), come dimensione (es. 10GB); 0 o
+	// vuoto = nessuna quota. Il push oltre quota è rifiutato, oltre l'80% arriva un avviso.
+	EnvRegistryQuota = "GITSTACK_GIT_REGISTRY_QUOTA"
+	// EnvRegistryCleanupEvery: ogni quanto gira la pulizia del registry (RG2), durata Go (default 1h; 0 la spegne).
+	EnvRegistryCleanupEvery = "GITSTACK_GIT_REGISTRY_CLEANUP_INTERVAL"
 )
 
 // DefaultSSHAddr è la porta SSH di default (R7).
@@ -129,6 +135,10 @@ type Config struct {
 	CIGatewayURL string
 	// RegistryS3 non nil = il registry archivia su S3.
 	RegistryS3 *RegistryS3
+	// RegistryQuotaBytes: vedi EnvRegistryQuota; 0 = nessuna quota.
+	RegistryQuotaBytes int64
+	// RegistryCleanupEvery: vedi EnvRegistryCleanupEvery.
+	RegistryCleanupEvery time.Duration
 }
 
 // RegistryS3 è l'archiviazione S3 del registry.
@@ -229,6 +239,15 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	} else if cfg.DataDir != "" {
 		cfg.RegistryDir = filepath.Join(cfg.DataDir, "registry")
 	}
+	cfg.RegistryCleanupEvery = time.Hour
+	if v, ok := lookup(EnvRegistryCleanupEvery); ok && strings.TrimSpace(v) != "" {
+		d, err := time.ParseDuration(strings.TrimSpace(v))
+		if err != nil || d < 0 {
+			errs = append(errs, fmt.Sprintf("%s non è una durata valida: %q (per esempio 1h, 0 per spegnerla)", EnvRegistryCleanupEvery, v))
+		} else {
+			cfg.RegistryCleanupEvery = d
+		}
+	}
 	if v, ok := lookup(EnvCIGatewayURL); ok {
 		cfg.CIGatewayURL = strings.TrimSpace(v)
 	}
@@ -258,7 +277,7 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	for _, s := range []struct {
 		env string
 		dst *int64
-	}{{EnvMaxBlobSize, &cfg.MaxBlobBytes}, {EnvRepoSizeWarn, &cfg.RepoWarnBytes}, {EnvMirrorMaxFetch, &cfg.MirrorMaxFetchBytes}} {
+	}{{EnvMaxBlobSize, &cfg.MaxBlobBytes}, {EnvRepoSizeWarn, &cfg.RepoWarnBytes}, {EnvMirrorMaxFetch, &cfg.MirrorMaxFetchBytes}, {EnvRegistryQuota, &cfg.RegistryQuotaBytes}} {
 		if v, ok := lookup(s.env); ok && strings.TrimSpace(v) != "" {
 			n, err := ParseSize(v)
 			if err != nil {

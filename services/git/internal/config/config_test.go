@@ -3,6 +3,7 @@ package config
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func env(m map[string]string) func(string) (string, bool) {
@@ -86,5 +87,32 @@ func TestLoad_SegretiPerChiamante(t *testing.T) {
 	}
 	if cfg.ServiceSecret != "kgit" || cfg.CoreSecret != "" {
 		t.Fatalf("senza segreto di core: %q %q", cfg.ServiceSecret, cfg.CoreSecret)
+	}
+}
+
+func TestLoad_RegistryQuotaEPulizia(t *testing.T) {
+	base := map[string]string{EnvDataDir: "/data", EnvServiceSecret: "s3"}
+	get := func(extra map[string]string) (Config, error) {
+		return load(func(k string) (string, bool) {
+			if v, ok := extra[k]; ok {
+				return v, true
+			}
+			v, ok := base[k]
+			return v, ok
+		})
+	}
+	cfg, err := get(nil)
+	if err != nil || cfg.RegistryQuotaBytes != 0 || cfg.RegistryCleanupEvery != time.Hour {
+		t.Fatalf("default: %+v %v", cfg, err)
+	}
+	cfg, err = get(map[string]string{EnvRegistryQuota: "10GB", EnvRegistryCleanupEvery: "30m"})
+	if err != nil || cfg.RegistryQuotaBytes != 10<<30 || cfg.RegistryCleanupEvery != 30*time.Minute {
+		t.Fatalf("valori: %+v %v", cfg, err)
+	}
+	if _, err := get(map[string]string{EnvRegistryQuota: "tanto"}); err == nil {
+		t.Error("quota non valida accettata")
+	}
+	if _, err := get(map[string]string{EnvRegistryCleanupEvery: "-1h"}); err == nil {
+		t.Error("intervallo negativo accettato")
 	}
 }

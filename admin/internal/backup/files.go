@@ -16,7 +16,11 @@ import (
 // tarDir scrive in w un tar con il contenuto di root (percorsi relativi).
 // Conserva modo, proprietario e data; salta ciò che non è file, cartella o
 // link simbolico (socket, device).
-func tarDir(w io.Writer, root string) error {
+func tarDir(w io.Writer, root string) error { return tarDirSkip(w, root, nil) }
+
+// tarDirSkip è tarDir che salta le voci (e, per le cartelle, tutto il loro contenuto) per cui
+// skip ritorna true; rel usa / come separatore.
+func tarDirSkip(w io.Writer, root string, skip func(rel string, isDir bool) bool) error {
 	tw := tar.NewWriter(w)
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -27,6 +31,12 @@ func tarDir(w io.Writer, root string) error {
 			return err
 		}
 		if rel == "." {
+			return nil
+		}
+		if skip != nil && skip(filepath.ToSlash(rel), d.IsDir()) {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		info, err := d.Info()

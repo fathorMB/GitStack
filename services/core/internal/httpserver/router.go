@@ -44,6 +44,8 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 	mux.HandleFunc("GET /repos/{owner}/{repo}/raw/{refAndPath...}", func(w http.ResponseWriter, r *http.Request) {
 		server.GetRepositoryRawByPath(w, r, r.PathValue("owner"), r.PathValue("repo"), r.PathValue("refAndPath"))
 	})
+	// Impostazioni del registry per il servizio git (GIT-325): solo con la sua chiave.
+	mux.HandleFunc("GET "+RegistrySettingsPathPrefix+"{repoId}", server.registrySettings)
 	// Un segreto per chiamante (F9): il gateway può fare tutto, il servizio git
 	// solo risolvere owner/repo. Il Keyring del solo gateway è il caso senza git.
 	ring := trust.NewKeyring(map[string]string{trust.CallerGateway: serviceSecret, trust.CallerGit: o.gitSecret})
@@ -113,6 +115,9 @@ func callerAllowed(caller string, r *http.Request) bool {
 	}
 	if r.Method != http.MethodGet {
 		return false
+	}
+	if strings.HasPrefix(r.URL.Path, RegistrySettingsPathPrefix) {
+		return len(strings.Split(strings.Trim(r.URL.Path, "/"), "/")) == 4
 	}
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	return len(parts) == 3 && parts[0] == "repos" && parts[1] != "" && parts[2] != ""

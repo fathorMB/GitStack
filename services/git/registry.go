@@ -28,7 +28,8 @@ func newRegistry(cfg config.Config, logger *slog.Logger) (*registry.Handler, err
 	} else {
 		logger.Warn("token del job non accettati dal registry: manca il ci-gateway", "env", config.EnvCIGatewayURL)
 	}
-	rc := registry.Config{Dir: cfg.RegistryDir, Secret: firstSecret(cfg.ServiceSecret), Logger: logger, KeepUploadPurging: true}
+	rc := registry.Config{Dir: cfg.RegistryDir, Secret: firstSecret(cfg.ServiceSecret), Logger: logger, KeepUploadPurging: true,
+		QuotaBytes: cfg.RegistryQuotaBytes, CleanupInterval: cfg.RegistryCleanupEvery}
 	if s := cfg.RegistryS3; s != nil {
 		rc.S3 = &registry.S3{
 			Bucket: s.Bucket, Region: s.Region, Endpoint: s.Endpoint, AccessKey: s.AccessKey, SecretKey: s.SecretKey,

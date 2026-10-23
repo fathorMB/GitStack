@@ -193,7 +193,18 @@ export type PackageSettingsInput = {
      */
     protectedTagPatterns: Array<string>;
     deleteUntaggedAfterDays: number;
+    /**
+     * Include le immagini del repo nei backup (RG2: escluse di default).
+     */
     includeInBackup: boolean;
+    /**
+     * Facoltativo: tiene solo gli ultimi N tag per immagine (i tag protetti restano sempre). Assente = nessun limite.
+     */
+    keepLastTags?: number;
+    /**
+     * Facoltativo: elimina i tag sha-* più vecchi di X giorni (i tag protetti restano sempre). Assente = mai.
+     */
+    deleteShaTagsAfterDays?: number;
 };
 
 export type ReleaseList = {

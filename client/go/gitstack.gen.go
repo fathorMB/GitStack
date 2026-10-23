@@ -4533,8 +4533,15 @@ type PackageSettings = PackageSettingsInput
 
 // PackageSettingsInput defines model for PackageSettingsInput.
 type PackageSettingsInput struct {
+	// DeleteShaTagsAfterDays Facoltativo: elimina i tag sha-* più vecchi di X giorni (i tag protetti restano sempre). Assente = mai.
+	DeleteShaTagsAfterDays  *int `json:"deleteShaTagsAfterDays,omitempty"`
 	DeleteUntaggedAfterDays int  `json:"deleteUntaggedAfterDays"`
-	IncludeInBackup         bool `json:"includeInBackup"`
+
+	// IncludeInBackup Include le immagini del repo nei backup (RG2: escluse di default).
+	IncludeInBackup bool `json:"includeInBackup"`
+
+	// KeepLastTags Facoltativo: tiene solo gli ultimi N tag per immagine (i tag protetti restano sempre). Assente = nessun limite.
+	KeepLastTags *int `json:"keepLastTags,omitempty"`
 
 	// ProtectedTagPatterns Tag che non possono essere sovrascritti o eliminati.
 	ProtectedTagPatterns []string `json:"protectedTagPatterns"`
