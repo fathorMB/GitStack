@@ -147,8 +147,8 @@ func TestBackupImmaginiEscluseDiDefaultIncluseConIncludeInBackup(t *testing.T) {
 	}
 	v2 := filepath.Join(r.git, "registry", "docker", "registry", "v2")
 	for p, c := range map[string]string{
-		filepath.Join(v2, "blobs", "sha256", regOnlyIn[:2], regOnlyIn, "data"): "BLOB-bbbb",
-		filepath.Join(v2, "blobs", "sha256", regShared[:2], regShared, "data"): "BLOB-aaaa",
+		filepath.Join(v2, "blobs", "sha256", regOnlyIn[:2], regOnlyIn, "data"):                      "BLOB-bbbb",
+		filepath.Join(v2, "blobs", "sha256", regShared[:2], regShared, "data"):                      "BLOB-aaaa",
 		filepath.Join(v2, "repositories", regRepoIn, "_manifests", "tags", "v1", "current", "link"): "sha256:" + regOnlyIn,
 	} {
 		if b, err := os.ReadFile(p); err != nil || string(b) != c {

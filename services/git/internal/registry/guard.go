@@ -292,4 +292,3 @@ func (h *Handler) usageOf(ctx context.Context, repoIDs []string) (int64, error) 
 	}
 	return total, nil
 }
-
