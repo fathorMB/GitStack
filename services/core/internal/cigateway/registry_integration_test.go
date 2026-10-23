@@ -31,6 +31,24 @@ func (e *env) registryAccess(token, owner, repo string) (int, cigateway.Registry
 	return res.StatusCode, out
 }
 
+// TestRegistryAccess_NomeConMaiuscole: R11, il repo `Uno` si chiede come `uno` (docker accetta solo
+// minuscole) e la risposta ha il nome com'è in core.
+func TestRegistryAccess_NomeConMaiuscole(t *testing.T) {
+	e := newEnv(t)
+	repo, _ := e.queue("Uno", "a")
+	ta, err := e.fetch(runnerSecret)
+	if err != nil || ta == nil {
+		t.Fatal(ta, err)
+	}
+	tok := taskToken(t, ta)
+	for _, name := range []string{"uno", "Uno", "UNO"} {
+		st, got := e.registryAccess(tok, "alice", name)
+		if st != 200 || got.RepoID != repo.String() || got.Name != "Uno" || got.Owner != "alice" {
+			t.Errorf("%s: %d %+v, atteso 200 e Name come in core (Uno)", name, st, got)
+		}
+	}
+}
+
 // TestRegistryAccess_SoloIlRepoDelJob: il token del job dice cosa può fare sul registry del
 // suo repo (livello packages, archiviazione) e per ogni altro repo, o senza token, non dà nulla.
 func TestRegistryAccess_SoloIlRepoDelJob(t *testing.T) {
@@ -52,6 +70,9 @@ func TestRegistryAccess_SoloIlRepoDelJob(t *testing.T) {
 	}
 	if st, _ := e.registryAccess(tok, "ALICE", "uno"); st != 200 {
 		t.Errorf("owner con altre maiuscole: %d", st)
+	}
+	if st, got := e.registryAccess(tok, "alice", "UNO"); st != 200 || got.Name != "uno" {
+		t.Errorf("nome con altre maiuscole: %d %+v", st, got)
 	}
 	if st, _ := e.registryAccess(tok, "alice", "due"); st != 404 {
 		t.Errorf("altro repo: %d", st)

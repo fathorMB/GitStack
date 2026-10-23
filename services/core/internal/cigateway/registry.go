@@ -50,7 +50,7 @@ func (g *gateway) registryAccess(w http.ResponseWriter, r *http.Request) {
 		FROM core.ci_jobs j
 		JOIN core.ci_runs r ON r.id = j.run_id
 		JOIN core.repositories rp ON rp.resource_id = r.repo_id
-		WHERE j.id = $1 AND rp.deleted_at IS NULL AND lower(rp.owner_name) = $2 AND rp.name = $3`,
+		WHERE j.id = $1 AND rp.deleted_at IS NULL AND lower(rp.owner_name) = $2 AND lower(rp.name) = $3`,
 		a.JobID, owner, name).Scan(&out.RepoID, &out.Owner, &out.Name, &out.Archived, &perms)
 	if errors.Is(err, pgx.ErrNoRows) {
 		http.NotFound(w, r)
