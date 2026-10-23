@@ -17,7 +17,7 @@ import (
 )
 
 // Limiti dei log di un job in v2-a. La conservazione a 90 giorni e la pulizia
-// sono di GIT-280: qui si scrive soltanto.
+// sono in logs_purge.go (PurgeOldLogs): qui si scrive soltanto.
 const (
 	DefaultMaxLogBytes = 64 << 20
 	maxLogLineBytes    = 16 << 10
