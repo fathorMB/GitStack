@@ -34,10 +34,21 @@ func TestCorePod_RestrictedELimiti(t *testing.T) {
 			t.Fatalf("request %s = %s, want %s", resource, got.String(), limit.String())
 		}
 	}
-	if len(c.Env) != 4 || c.Env[0].Name != "A" || c.Env[3].Name != "GITSTACK_CI_GATEWAY_URL" || c.Env[3].Value != "http://core:8081" {
-		t.Fatal("env non deterministico")
+	if len(c.Env) != 4 || c.Env[0].Name != "A" || c.Env[1].Name != "B" {
+		t.Fatalf("env non deterministico: %+v", c.Env)
 	}
-	if len(pod.Spec.InitContainers[0].Env) != len(c.Env) || pod.Spec.InitContainers[0].Env[3].Name != "GITSTACK_CI_GATEWAY_URL" {
+	lookup := func(env []corev1.EnvVar, name string) string {
+		for _, v := range env {
+			if v.Name == name {
+				return v.Value
+			}
+		}
+		return ""
+	}
+	if lookup(c.Env, "GITSTACK_CI_GATEWAY_URL") != "http://core:8081" || lookup(c.Env, "GITSTACK_CI_GATE_INTERNAL_ADDR") != "core:8080" {
+		t.Fatalf("endpoint del gate assente: %+v", c.Env)
+	}
+	if len(pod.Spec.InitContainers[0].Env) != len(c.Env) || lookup(pod.Spec.InitContainers[0].Env, "GITSTACK_CI_GATE_INTERNAL_ADDR") != "core:8080" {
 		t.Fatal("gate senza gli endpoint da verificare")
 	}
 }
