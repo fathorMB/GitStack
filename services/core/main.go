@@ -214,6 +214,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	var ciLogs *ci.LogStore
 	if cfg.CILogsDir != "" {
 		ciLogs = &ci.LogStore{Dir: cfg.CILogsDir}
+		go ciLogs.RunPurge(ctx, pool, ci.DefaultLogPurgeInterval, logger)
 		routerOpts = append(routerOpts, httpserver.WithCILogs(ciLogs))
 	} else {
 		logger.Warn("GITSTACK_CORE_CI_LOGS_DIR non impostata: i log dei job rispondono 503")
