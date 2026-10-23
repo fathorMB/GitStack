@@ -235,6 +235,7 @@ OUT="$(render --set ingress.enabled=true)" || { bad "helm template con ingress f
 d="$(doc IngressRoute gitstack-registry)"
 if [ -n "${d}" ]; then ok; else bad "IngressRoute gitstack-registry non renderizzata"; fi
 expect_has "registry: /v2 al gateway" "${d}" "name: gitstack-gateway"
+# shellcheck disable=SC2016 # i backtick sono la sintassi letterale della regola Traefik
 expect_has "registry: prefisso /v2/" "${d}" 'PathPrefix(`/v2/`)'
 expect_has "gateway: GITSTACK_REGISTRY_URL" "$(doc Deployment gitstack-gateway)" "GITSTACK_REGISTRY_URL"
 expect_has "gateway: verso il servizio git" "$(doc NetworkPolicy gitstack-gateway)" "app.kubernetes.io/name: git"
