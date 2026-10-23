@@ -88,7 +88,7 @@ func PodForJob(c RunnerConfig, job JobRow, run RunRow) (Pod, error) {
 		RunAsUser: 10001, AllowPrivilegeEscalation: false, ReadOnlyRootFilesystem: true,
 		DropAllCapabilities: true, CPU: MaxCPU, Memory: MaxMemory, EphemeralStorage: MaxEphemeral,
 		InitGate: true,
-		Command:  []string{"/usr/local/bin/gitstack-ci-job", "--job", job.ID.String(), "--run", run.ID.String()},
+		Command:  []string{"/usr/local/bin/ci-runner"},
 		Env:      map[string]string{"GITSTACK_CI_ACTION_MIRROR": c.ActionMirror, "GITSTACK_CI_RUNNER": "act-host"}}, nil
 }
 
