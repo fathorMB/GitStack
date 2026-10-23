@@ -1555,7 +1555,7 @@ jobs:
                 env:
                   - {name: GITSTACK_CI_GATEWAY_URL, value: http://gitstack-core:8081}
                   - {name: GITSTACK_CI_GATE_INTERNAL_ADDR, value: gitstack-core:8080}
-                command: [sh, -c, 'set -e; gateway="${GITSTACK_CI_GATEWAY_URL#http://}"; host="${gateway%:*}"; port="${gateway##*:}"; echo "barriera: nessun docker.sock"; test ! -e /var/run/docker.sock; echo "barriera: API Kubernetes bloccata"; ! nc -z -w3 kubernetes.default.svc 443; echo "barriera: NATS bloccato"; ! nc -z -w3 gitstack-nats.default.svc 4222; echo "accesso: DNS del ci-gateway $host"; nslookup "$host"; echo "accesso: ci-gateway $host:$port"; nc -z -w3 "$host" "$port"']
+                command: [sh, -c, 'set -e; gateway="${GITSTACK_CI_GATEWAY_URL#http://}"; host="${gateway%:*}"; port="${gateway##*:}"; echo "barriera: nessun docker.sock"; test ! -e /var/run/docker.sock; blocked() { if nc -z -w3 "$2" "$3"; then echo "KO: $1 raggiungibile"; exit 1; fi; echo "ok: $1 bloccato"; }; blocked "API Kubernetes" kubernetes.default.svc 443; blocked NATS gitstack-nats.default.svc 4222; blocked Postgres gitstack-postgres.default.svc 5432; echo "accesso: DNS del ci-gateway $host"; nslookup "$host"; echo "accesso: ci-gateway $host:$port"; nc -z -w3 "$host" "$port"']
                 securityContext:
                   allowPrivilegeEscalation: false
                   readOnlyRootFilesystem: true
