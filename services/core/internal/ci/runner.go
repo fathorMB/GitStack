@@ -58,8 +58,8 @@ type Pod struct {
 
 // RunnerConfig contiene solo i dati che l'amministratore può scegliere.
 type RunnerConfig struct {
-	Namespace, Image, ActionMirror string
-	Capacity                       int
+	Namespace, Image, GatewayURL, ActionMirror string
+	Capacity                                   int
 }
 
 func (c RunnerConfig) normal() RunnerConfig {
@@ -89,7 +89,8 @@ func PodForJob(c RunnerConfig, job JobRow, run RunRow) (Pod, error) {
 		DropAllCapabilities: true, CPU: MaxCPU, Memory: MaxMemory, EphemeralStorage: MaxEphemeral,
 		InitGate: true,
 		Command:  []string{"/usr/local/bin/ci-runner"},
-		Env:      map[string]string{"GITSTACK_CI_ACTION_MIRROR": c.ActionMirror, "GITSTACK_CI_RUNNER": "act-host"}}, nil
+		Env: map[string]string{"GITSTACK_CI_GATEWAY_URL": c.GatewayURL,
+			"GITSTACK_CI_ACTION_MIRROR": c.ActionMirror, "GITSTACK_CI_RUNNER": "act-host"}}, nil
 }
 
 // PodForJobTicket aggiunge solo al processo supervisore il biglietto monouso
@@ -198,6 +199,13 @@ func Reconcile(ctx context.Context, pool *pgxpool.Pool, pods PodInspector, names
 			if err := CompleteJobReported(ctx, pool, now, job.ID, ConclusionFailure, rep); err != nil {
 				return err
 			}
+			continue
+		}
+		// Dopo il riavvio nessuna goroutine sta piu' osservando un pod vivo:
+		// riprendiamo l'attesa prima di prendere altri job dalla coda.
+		if watcher, ok := pods.(PodWatcher); ok {
+			pod := Pod{Name: "ci-" + strings.ReplaceAll(job.ID.String(), "-", ""), Namespace: namespace}
+			go observePod(ctx, pool, watcher, pod, job.ID, rep)
 		}
 	}
 	return rows.Err()

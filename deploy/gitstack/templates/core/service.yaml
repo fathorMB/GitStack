@@ -12,4 +12,9 @@ spec:
     - name: http
       port: {{ .Values.core.service.port }}
       targetPort: http
+    {{- if .Values.ci.enabled }}
+    - name: ci-gateway
+      port: {{ .Values.ci.gateway.port }}
+      targetPort: ci-gateway
+    {{- end }}
 {{- end }}

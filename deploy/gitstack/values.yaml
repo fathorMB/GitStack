@@ -558,6 +558,9 @@ ci:
   namespace: gitstack-ci-jobs
   # 1 per il profilo minimo, 3 per quello consigliato; mai oltre 3.
   capacity: 3
+  gateway:
+    # Porta interna del solo endpoint raggiungibile dai pod CI.
+    port: 8081
   runner:
     image: ""
     # URL opzionale del mirror amministrato; vuoto usa GitHub.

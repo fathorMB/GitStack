@@ -39,6 +39,20 @@ spec:
     requests.memory: {{ printf "%dGi" (mul (.Values.ci.capacity | int) 4) | quote }}
     limits.cpu: {{ printf "%d" (mul (.Values.ci.capacity | int) 2) | quote }}
     limits.memory: {{ printf "%dGi" (mul (.Values.ci.capacity | int) 4) | quote }}
+    requests.ephemeral-storage: {{ printf "%dGi" (mul (.Values.ci.capacity | int) 20) | quote }}
+    limits.ephemeral-storage: {{ printf "%dGi" (mul (.Values.ci.capacity | int) 20) | quote }}
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: ci-job-limits
+  namespace: {{ .Values.ci.namespace }}
+spec:
+  limits:
+    - type: Container
+      max: {cpu: "2", memory: 4Gi, ephemeral-storage: 20Gi}
+      default: {cpu: "2", memory: 4Gi, ephemeral-storage: 20Gi}
+      defaultRequest: {cpu: "2", memory: 4Gi, ephemeral-storage: 20Gi}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -84,6 +98,18 @@ spec:
   policyTypes: [Ingress, Egress]
   ingress: []
   egress:
+    # Il gateway e' l'unico endpoint interno: core verifica il biglietto del job.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace | quote }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: core
+              app.kubernetes.io/instance: {{ .Release.Name | quote }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.ci.gateway.port }}
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0

@@ -1496,12 +1496,14 @@ jobs:
 
       - name: Importa le immagini nel cluster (nessun push su un registry per questo job)
         run: |
+          docker build -f deploy/ci-runner/Dockerfile -t gitstack-ci-runner:test .
           k3d image import \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-gateway:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-identity:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-core:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-git:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-web:${IMAGE_TAG}" \
+            gitstack-ci-runner:test \
             -c gitstack-ci
 
       # GIT-152: web attivo (default del chart), con l'immagine costruita sopra:
@@ -1513,7 +1515,7 @@ jobs:
           helm install gitstack deploy/gitstack \
             --set global.image.tag="${IMAGE_TAG}" \
             --set ci.enabled=true \
-            --set ci.runner.image=docker.io/busybox:1.36 \
+            --set ci.runner.image=gitstack-ci-runner:test \
             --wait --timeout 3m
 
       - name: CI — pod restricted, rete isolata e limiti
@@ -1525,11 +1527,13 @@ jobs:
               --overrides='{"spec":{"containers":[{"name":"ci-privileged","image":"docker.io/busybox:1.36","securityContext":{"privileged":true}}]}}' 2>/tmp/ci-privileged.err; then
             echo "FALLITO: il namespace CI ha accettato un pod privilegiato" >&2; exit 1
           fi
-          # Una richiesta oltre il tetto di un job viene respinta dalla quota.
+          grep -qi privileged /tmp/ci-privileged.err
+          # Il pod e' restricted: il rifiuto deve quindi venire dal LimitRange.
           if kubectl -n "$ns" run ci-over-limit --image=docker.io/busybox:1.36 --restart=Never \
-              --overrides='{"spec":{"containers":[{"name":"ci-over-limit","image":"docker.io/busybox:1.36","resources":{"requests":{"cpu":"3","memory":"5Gi"},"limits":{"cpu":"3","memory":"5Gi"}}}]}}' 2>/tmp/ci-over-limit.err; then
+              --overrides='{"spec":{"securityContext":{"runAsNonRoot":true,"runAsUser":10001,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"ci-over-limit","image":"docker.io/busybox:1.36","command":["sh","-c","true"],"securityContext":{"allowPrivilegeEscalation":false,"readOnlyRootFilesystem":true,"capabilities":{"drop":["ALL"]}},"resources":{"requests":{"cpu":"3","memory":"5Gi","ephemeral-storage":"21Gi"},"limits":{"cpu":"3","memory":"5Gi","ephemeral-storage":"21Gi"}}}]}}' 2>/tmp/ci-over-limit.err; then
             echo "FALLITO: la quota CI ha accettato risorse oltre il tetto" >&2; exit 1
           fi
+          grep -Eqi 'limit|maximum|exceed' /tmp/ci-over-limit.err
           kubectl -n "$ns" apply -f - <<'EOF'
           apiVersion: v1
           kind: Pod

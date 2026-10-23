@@ -382,17 +382,21 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 			logger.Error("dispatcher CI non avviato", "err", err)
 			return 1
 		}
-		runnerCfg := ci.RunnerConfig{Namespace: cfg.CINamespace, Image: cfg.CIImage, ActionMirror: cfg.CIActionMirror, Capacity: cfg.CICapacity}
-		if runnerCfg.Image == "" {
-			logger.Error("dispatcher CI non avviato", "err", "GITSTACK_CORE_CI_IMAGE obbligatoria")
+		runnerCfg := ci.RunnerConfig{Namespace: cfg.CINamespace, Image: cfg.CIImage, GatewayURL: cfg.CIGatewayURL, ActionMirror: cfg.CIActionMirror, Capacity: cfg.CICapacity}
+		if runnerCfg.Image == "" || runnerCfg.GatewayURL == "" {
+			logger.Error("dispatcher CI non avviato", "err", "GITSTACK_CORE_CI_IMAGE e GITSTACK_CORE_CI_GATEWAY_URL obbligatorie")
 			return 1
 		}
 		reporter := httpserver.NewCIReporter(pool, routerOpts...)
+		// Reconcile gira una sola volta: per i pod vivi riattacca un observer;
+		// rieseguirlo a ogni tick ne creerebbe piu' di uno sullo stesso pod.
+		if err := ci.Reconcile(ctx, pool, kube, runnerCfg.Namespace, nil, time.Now().UTC(), reporter); err != nil {
+			logger.Error("riconciliazione CI non riuscita", "err", err)
+		}
 		go func() {
 			tick := time.NewTicker(time.Second)
 			defer tick.Stop()
 			for {
-				_ = ci.Reconcile(ctx, pool, kube, runnerCfg.Namespace, nil, time.Now().UTC(), reporter)
 				_, _ = ci.DispatchPods(ctx, pool, kube, runnerCfg, time.Now().UTC(), reporter)
 				select {
 				case <-ctx.Done():

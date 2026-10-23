@@ -7,7 +7,7 @@ import (
 )
 
 func TestPodForJob_BarriereELimiti(t *testing.T) {
-	p, err := PodForJob(RunnerConfig{Image: "registry/runner:fixed", Capacity: 99, ActionMirror: "https://mirror.example/actions"}, JobRow{ID: uuid.New()}, RunRow{ID: uuid.New()})
+	p, err := PodForJob(RunnerConfig{Image: "registry/runner:fixed", GatewayURL: "http://core:8081", Capacity: 99, ActionMirror: "https://mirror.example/actions"}, JobRow{ID: uuid.New()}, RunRow{ID: uuid.New()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,5 +22,8 @@ func TestPodForJob_BarriereELimiti(t *testing.T) {
 	}
 	if p.Env["GITSTACK_CI_ACTION_MIRROR"] != "https://mirror.example/actions" {
 		t.Fatal("mirror non passato")
+	}
+	if p.Env["GITSTACK_CI_GATEWAY_URL"] != "http://core:8081" {
+		t.Fatal("gateway non passato")
 	}
 }

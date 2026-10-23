@@ -24,7 +24,8 @@ RUN sh /src/scripts/docker-local-replace.sh /src \
 
 COPY services/core/ .
 RUN sh /src/scripts/docker-local-replace.sh /src \
-    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/ci-runner ./cmd/ci-runner
+	&& CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/ci-runner ./cmd/ci-runner \
+	&& CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/gitstack-ci-gate ./cmd/ci-gate
 
 # --- Stage 2: runtime ----------------------------------------------------
 # Stessa base della prova di fattibilita' (docs/adr/poc-ci-executor/Dockerfile):
@@ -46,6 +47,7 @@ RUN apt-get update \
     && install -d -o 10001 -g 10001 /work
 
 COPY --from=build /out/ci-runner /usr/local/bin/ci-runner
+COPY --from=build /out/gitstack-ci-gate /usr/local/bin/gitstack-ci-gate
 
 ENV GITSTACK_CI_ACT=/usr/local/bin/act \
     GITSTACK_CI_WORKDIR=/work \

@@ -157,18 +157,26 @@ func corePod(p Pod) (*corev1.Pod, error) {
 		SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 	}
 	container := corev1.Container{Name: "job", Image: p.Image, Command: p.Command, Env: podEnv(p.Env),
-		Resources: corev1.ResourceRequirements{Requests: resources, Limits: resources}, SecurityContext: security}
+		Resources: corev1.ResourceRequirements{Requests: resources, Limits: resources}, SecurityContext: security,
+		VolumeMounts: []corev1.VolumeMount{{Name: "work", MountPath: "/work"}, {Name: "tmp", MountPath: "/tmp"}}}
 	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: p.Name, Labels: map[string]string{"gitstack.io/ci-job": "true"}},
 		Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, AutomountServiceAccountToken: &noToken,
-			PriorityClassName: p.PriorityClass, ActiveDeadlineSeconds: &p.ActiveDeadlineSeconds,
+			EnableServiceLinks: ptr(false),
+			PriorityClassName:  p.PriorityClass, ActiveDeadlineSeconds: &p.ActiveDeadlineSeconds,
 			SecurityContext: &corev1.PodSecurityContext{RunAsNonRoot: &runAsNonRoot, RunAsUser: &mode,
-				SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}}, Containers: []corev1.Container{container}}}
+				SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}}, Containers: []corev1.Container{container},
+			Volumes: []corev1.Volume{{Name: "work", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: quantityPtr(resources[corev1.ResourceEphemeralStorage])}}}, {Name: "tmp", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: quantityPtr(resources[corev1.ResourceEphemeralStorage])}}}}}}
 	if p.InitGate {
 		pod.Spec.InitContainers = []corev1.Container{{Name: "gate", Image: p.Image,
-			Command: []string{"/usr/local/bin/gitstack-ci-gate"}, Resources: corev1.ResourceRequirements{Requests: resources, Limits: resources}, SecurityContext: security}}
+			Command: []string{"/usr/local/bin/gitstack-ci-gate"}, Resources: corev1.ResourceRequirements{Requests: resources, Limits: resources}, SecurityContext: security,
+			VolumeMounts: []corev1.VolumeMount{{Name: "tmp", MountPath: "/tmp"}}}}
 	}
 	return pod, nil
 }
+
+func ptr[T any](v T) *T { return &v }
+
+func quantityPtr(q resource.Quantity) *resource.Quantity { return &q }
 
 func resourceList(p Pod) (corev1.ResourceList, error) {
 	parse := func(value, name string) (resource.Quantity, error) {
