@@ -158,7 +158,11 @@ export type CiRunner = {
     status: 'online' | 'offline' | 'busy';
 };
 
+/**
+ * Restituito solo dalla risposta 201 di POST /admin/ci/runners/registration-token; nessuna GET lo espone. Il token in chiaro si vede una volta sola.
+ */
 export type CiRunnerRegistrationToken = {
+    token: string;
     expiresAt: string;
 };
 
@@ -166,6 +170,22 @@ export type CiQueue = {
     queuedJobs: number;
     runningJobs: number;
     maxConcurrentJobs: number;
+    /**
+     * Attesa media in coda dei job, in secondi.
+     */
+    avgQueueWaitSeconds?: number;
+    /**
+     * Spazio occupato dai log dei job, in byte.
+     */
+    logBytes?: number;
+    /**
+     * Spazio occupato dagli artefatti, in byte. Vale 0 finché non arriva GIT-280.
+     */
+    artifactBytes?: number;
+    /**
+     * Spazio occupato dalle cache, in byte. Vale 0 finché non arriva GIT-280.
+     */
+    cacheBytes?: number;
     resourceLimits: {
         cpuCores: number;
         memoryBytes: number;
@@ -3371,11 +3391,6 @@ export type WebhookReleasePayload = {
 export type ActionsSecretInputWritable = {
     name: string;
     value: string;
-};
-
-export type CiRunnerRegistrationTokenWritable = {
-    token: string;
-    expiresAt: string;
 };
 
 /**

@@ -1,7 +1,7 @@
 import { Cpu, Plus, Server } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { Button, ConfirmDialog, EmptyState, ErrorAlert, useToast } from '../../components';
+import { Button, ConfirmDialog, CopyButton, EmptyState, ErrorAlert, useToast } from '../../components';
 import { fetchSession } from '../../lib/authApi';
 import { createCiRegistrationToken, deleteCiRunner, fetchCiQueue, fetchCiRunners } from '../../lib/ciApi';
 import type { CiQueue, CiRunner, CiRunnerRegistrationToken } from '../../lib/ciApi';
@@ -19,9 +19,9 @@ function hours(seconds: number): string {
 // Admin · CI & runners (mockup B4, regole CI2, CI5, CI7): coda e limiti dal
 // contratto (GET /admin/ci/queue), runner esterni con il token di registrazione.
 // Solo l'amministratore dell'installazione: il controllo vero sta nel backend
-// (403), qui si evita una console che non puo' funzionare. I numeri di spazio
-// occupato non ci sono nel contratto, quindi la scheda Storage riporta le regole
-// di conservazione e niente valori inventati.
+// (403), qui si evita una console che non puo' funzionare. La scheda Storage
+// riporta le regole di conservazione e, quando il server li manda, attesa media
+// e spazio occupato (artefatti e cache valgono 0 finche' non arriva GIT-280).
 export function CiRunnersPage() {
   const { data: session, loading, error } = useLoad(fetchSession);
   if (session === null) {
@@ -83,7 +83,12 @@ function CiConsole() {
   const runners = data.runners.items;
   const queue: CiQueue = data.queue;
   const limits = queue.resourceLimits;
-  const online = runners.filter((r) => r.status !== 'offline').length;
+  const usage =
+    queue.avgQueueWaitSeconds !== undefined ||
+    queue.logBytes !== undefined ||
+    queue.artifactBytes !== undefined ||
+    queue.cacheBytes !== undefined;
+  const online =runners.filter((r) => r.status !== 'offline').length;
 
   async function register() {
     setBusy(true);
@@ -132,9 +137,13 @@ function CiConsole() {
         <div className="card card-b stack" style={{ gap: 8, marginBottom: 20 }}>
           <b>Registration token</b>
           <p className="hint">
-            Valid until {formatDate(token.expiresAt)}. The value is returned once when the token is created: like secrets,
-            the UI never reads it back.
+            Valid until {formatDate(token.expiresAt)}. Copy it now: it is shown only once and disappears when you reload
+            the page.
           </p>
+          <div className="row" style={{ gap: 8 }}>
+            <code className="mono grow">{token.token}</code>
+            <CopyButton value={token.token} label="Copy token" />
+          </div>
         </div>
       ) : null}
 
@@ -212,9 +221,24 @@ function CiConsole() {
                 <span className="muted">not in backups by default · images used by apps always included (v3)</span>
               </Kv>
             </dl>
-            <p className="hint" style={{ marginTop: 12 }}>
-              Space used is not exposed by the API yet, so no figures are shown here.
-            </p>
+            {usage ? (
+              <dl className="kv" style={{ marginTop: 12 }}>
+                {queue.avgQueueWaitSeconds !== undefined ? (
+                  <Kv term="Average queue wait">{queue.avgQueueWaitSeconds} s</Kv>
+                ) : null}
+                {queue.logBytes !== undefined ? <Kv term="Space used by logs">{formatBytes(queue.logBytes)}</Kv> : null}
+                {queue.artifactBytes !== undefined ? (
+                  <Kv term="Space used by artifacts">{formatBytes(queue.artifactBytes)}</Kv>
+                ) : null}
+                {queue.cacheBytes !== undefined ? (
+                  <Kv term="Space used by caches">{formatBytes(queue.cacheBytes)}</Kv>
+                ) : null}
+              </dl>
+            ) : (
+              <p className="hint" style={{ marginTop: 12 }}>
+                Space used is not reported by the server, so no figures are shown here.
+              </p>
+            )}
           </div>
         </div>
       </div>

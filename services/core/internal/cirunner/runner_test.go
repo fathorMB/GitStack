@@ -39,6 +39,17 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestRewriteActionMirror(t *testing.T) {
+	workflow := []byte("steps:\n  - uses: actions/checkout@v5\n  - uses: ./local\n")
+	if got := string(cirunner.RewriteActionMirror(workflow, "")); got != string(workflow) {
+		t.Fatalf("senza mirror: %q", got)
+	}
+	got := string(cirunner.RewriteActionMirror(workflow, "https://mirror.example"))
+	if !strings.Contains(got, "uses: https://mirror.example/actions/checkout@v5") || !strings.Contains(got, "uses: ./local") {
+		t.Fatalf("mirror non applicato al workflow: %q", got)
+	}
+}
+
 var runRe = regexp.MustCompile(`(?m)^\s*- run: (.*)$`)
 
 // fakeAct legge il workflow indicato da -W e stampa l'output nello stile di act: un passo

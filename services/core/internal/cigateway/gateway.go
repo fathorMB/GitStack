@@ -21,8 +21,6 @@ package cigateway
 
 import (
 	"context"
-	"crypto/sha256"
-	"crypto/subtle"
 	"errors"
 	"io"
 	"log/slog"
@@ -69,8 +67,7 @@ type Config struct {
 	Logs   *ci.LogStore
 	// Keys decifra i segreti della CI del repo (CI4). nil: un job di un repo con segreti non parte.
 	Keys ci.Sealer
-	// RunnerSecrets sono i segreti dei runner interni accettati da FetchTask (più d'uno: rotazione).
-	// Senza, FetchTask risponde sempre unauthenticated.
+	// RunnerSecrets e' deprecato: FetchTask accetta esclusivamente JobTicket.
 	RunnerSecrets []string
 	// Capacity è il numero di job in corso in tutto (CI7); 0 = ci.DefaultCapacity.
 	Capacity int
@@ -138,22 +135,6 @@ func bearer(h http.Header) string {
 	return ""
 }
 
-func (g *gateway) runnerSecretOK(token string) bool {
-	if token == "" {
-		return false
-	}
-	got := sha256.Sum256([]byte(token))
-	ok := 0
-	for _, s := range g.RunnerSecrets {
-		if s == "" {
-			continue
-		}
-		want := sha256.Sum256([]byte(s))
-		ok |= subtle.ConstantTimeCompare(got[:], want[:])
-	}
-	return ok == 1
-}
-
 // auth è l'interceptor che applica le due credenziali per procedura.
 func (g *gateway) auth() connect.UnaryInterceptorFunc {
 	return func(next connect.UnaryFunc) connect.UnaryFunc {
@@ -161,8 +142,8 @@ func (g *gateway) auth() connect.UnaryInterceptorFunc {
 			token := bearer(req.Header())
 			switch req.Spec().Procedure {
 			case runnerv1connect.RunnerServiceFetchTaskProcedure:
-				if !g.runnerSecretOK(token) {
-					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("credenziale del runner non valida"))
+				if !strings.HasPrefix(token, ci.JobTicketPrefix) || len(token) > 128 {
+					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("biglietto del job non valido"))
 				}
 			case runnerv1connect.RunnerServiceUpdateTaskProcedure, runnerv1connect.RunnerServiceUpdateLogProcedure:
 				a, err := ci.ResolveJobToken(ctx, g.Pool, g.Now(), token)

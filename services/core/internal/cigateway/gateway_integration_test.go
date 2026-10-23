@@ -148,6 +148,15 @@ func authed[T any](msg *T, token string) *connect.Request[T] {
 }
 
 func (e *env) fetch(token string) (*runnerv1.Task, error) {
+	// Il dispatcher, non il gateway, prende il job e passa al pod il ticket.
+	// I test che usavano il vecchio segreto simulano qui quel passaggio.
+	if token == runnerSecret {
+		_, _, ticket, ok, err := ci.ClaimNextWithTicketReported(context.Background(), e.pool, e.now(), 3, "internal-pod", nil)
+		if err != nil || !ok {
+			return nil, err
+		}
+		token = ticket
+	}
 	res, err := e.client.FetchTask(context.Background(), authed(&runnerv1.FetchTaskRequest{}, token))
 	if err != nil {
 		return nil, err
@@ -247,9 +256,9 @@ func TestFetchTask_Credenziale(t *testing.T) {
 			t.Errorf("token %q: %v", tok, err)
 		}
 	}
-	// Il segreto vecchio (rotazione) vale ancora.
-	if task, err := e.fetch("vecchio"); err != nil || task == nil {
-		t.Fatalf("segreto in rotazione: %v %v", task, err)
+	// Il vecchio segreto statico non puo' prendere alcun job.
+	if _, err := e.fetch("vecchio"); code(err) != connect.CodeUnauthenticated {
+		t.Fatalf("segreto statico: %v", err)
 	}
 	// Register e Declare sono di GIT-278.
 	_, err := e.client.Register(context.Background(), authed(&runnerv1.RegisterRequest{Name: "x"}, runnerSecret))

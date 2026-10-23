@@ -10184,7 +10184,8 @@ components:
       type: object
       additionalProperties: false
       required: [token, expiresAt]
-      properties: {token: {type: string, writeOnly: true}, expiresAt: {type: string, format: date-time}}
+      description: Restituito solo dalla risposta 201 di POST /admin/ci/runners/registration-token; nessuna GET lo espone. Il token in chiaro si vede una volta sola.
+      properties: {token: {type: string}, expiresAt: {type: string, format: date-time}}
     CiQueue:
       type: object
       additionalProperties: false
@@ -10193,6 +10194,10 @@ components:
         queuedJobs: {type: integer}
         runningJobs: {type: integer}
         maxConcurrentJobs: {type: integer, minimum: 1, maximum: 3}
+        avgQueueWaitSeconds: {type: integer, minimum: 0, description: "Attesa media in coda dei job, in secondi."}
+        logBytes: {type: integer, format: int64, minimum: 0, description: "Spazio occupato dai log dei job, in byte."}
+        artifactBytes: {type: integer, format: int64, minimum: 0, description: "Spazio occupato dagli artefatti, in byte. Vale 0 finché non arriva GIT-280."}
+        cacheBytes: {type: integer, format: int64, minimum: 0, description: "Spazio occupato dalle cache, in byte. Vale 0 finché non arriva GIT-280."}
         resourceLimits: {type: object, additionalProperties: false, required: [cpuCores, memoryBytes, ephemeralStorageBytes, maxDurationSeconds], properties: {cpuCores: {type: integer, example: 2}, memoryBytes: {type: integer, format: int64, example: 4294967296}, ephemeralStorageBytes: {type: integer, format: int64, example: 21474836480}, maxDurationSeconds: {type: integer, example: 3600}}}
     PackageList:
       type: object

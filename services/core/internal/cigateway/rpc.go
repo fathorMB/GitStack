@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	runnerv1 "code.gitea.io/actions-proto-go/runner/v1"
 	"code.gitea.io/actions-proto-go/runner/v1/runnerv1connect"
@@ -41,46 +40,23 @@ func unavailable(err error) error { return connect.NewError(connect.CodeUnavaila
 // scaduto PollTimeout, risponde senza task. Un job preso è consegnato a un solo runner.
 func (r *rpc) FetchTask(ctx context.Context, req *connect.Request[runnerv1.FetchTaskRequest]) (*connect.Response[runnerv1.FetchTaskResponse], error) {
 	g := r.g
-	runner := strings.TrimSpace(req.Header().Get(HeaderRunnerName))
-	if len(runner) > 100 {
-		runner = runner[:100]
+	job, run, token, err := ci.ConsumeJobTicket(ctx, g.Pool, g.Now(), bearer(req.Header()), ci.JobTokenTTL)
+	if errors.Is(err, ci.ErrJobTicket) {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("biglietto del job non valido"))
 	}
-	if runner == "" {
-		runner = "ci-pod"
+	if err != nil {
+		g.Log.Error("ci-gateway: consumo biglietto non riuscito", "err", err)
+		return nil, unavailable(errors.New("coda non disponibile"))
 	}
-	deadline := time.NewTimer(g.PollTimeout)
-	defer deadline.Stop()
-	tick := time.NewTicker(g.PollEvery)
-	defer tick.Stop()
-	for {
-		job, run, token, ok, err := ci.ClaimNextReported(ctx, g.Pool, g.Now(), g.Capacity, runner, ci.JobTokenTTL, g.Reporter)
-		if err != nil {
-			if ctx.Err() != nil {
-				return connect.NewResponse(&runnerv1.FetchTaskResponse{}), nil
-			}
-			g.Log.Error("ci-gateway: presa del job non riuscita", "err", err)
-			return nil, unavailable(errors.New("coda non disponibile"))
+	task, err := g.buildTask(ctx, job, run, token)
+	if err != nil {
+		g.Log.Warn("ci-gateway: task non costruibile, il job fallisce", "job", job.ID, "err", err)
+		if cerr := ci.CompleteJobReported(context.WithoutCancel(ctx), g.Pool, g.Now(), job.ID, ci.ConclusionFailure, g.Reporter); cerr != nil {
+			g.Log.Error("ci-gateway: chiusura del job non riuscita", "job", job.ID, "err", cerr)
 		}
-		if ok {
-			task, err := g.buildTask(ctx, job, run, token)
-			if err == nil {
-				return connect.NewResponse(&runnerv1.FetchTaskResponse{Task: task}), nil
-			}
-			// Il job è già preso e non si può consegnare: si chiude come fallito e si prosegue.
-			g.Log.Warn("ci-gateway: task non costruibile, il job fallisce", "job", job.ID, "err", err)
-			if cerr := ci.CompleteJobReported(context.WithoutCancel(ctx), g.Pool, g.Now(), job.ID, ci.ConclusionFailure, g.Reporter); cerr != nil {
-				g.Log.Error("ci-gateway: chiusura del job non riuscita", "job", job.ID, "err", cerr)
-			}
-			continue
-		}
-		select {
-		case <-ctx.Done():
-			return connect.NewResponse(&runnerv1.FetchTaskResponse{}), nil
-		case <-deadline.C:
-			return connect.NewResponse(&runnerv1.FetchTaskResponse{}), nil
-		case <-tick.C:
-		}
+		return nil, unavailable(errors.New("task non disponibile"))
 	}
+	return connect.NewResponse(&runnerv1.FetchTaskResponse{Task: task}), nil
 }
 
 // buildTask compone il task: il file workflow al commit dell'esecuzione, il token del

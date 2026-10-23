@@ -214,6 +214,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	var ciLogs *ci.LogStore
 	if cfg.CILogsDir != "" {
 		ciLogs = &ci.LogStore{Dir: cfg.CILogsDir}
+		go ciLogs.RunPurge(ctx, pool, ci.DefaultLogPurgeInterval, logger)
 		routerOpts = append(routerOpts, httpserver.WithCILogs(ciLogs))
 	} else {
 		logger.Warn("GITSTACK_CORE_CI_LOGS_DIR non impostata: i log dei job rispondono 503")
@@ -374,6 +375,39 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 
 	router := httpserver.NewRouter(pool, publisher, cfg.GatewaySecret, append(routerOpts, httpserver.WithGitSecret(cfg.GitSecret))...)
 
+	// Dispatcher v2-a: core conserva coda e stati, ma e' l'unico processo con
+	// RBAC per creare e osservare i pod del namespace ristretto dei job.
+	if cfg.CIEnabled {
+		kube, err := ci.NewKubernetesClient()
+		if err != nil {
+			logger.Error("dispatcher CI non avviato", "err", err)
+			return 1
+		}
+		runnerCfg := ci.RunnerConfig{Namespace: cfg.CINamespace, Image: cfg.CIImage, GatewayURL: cfg.CIGatewayURL, GateInternalAddr: cfg.CIGateInternalAddr, ActionMirror: cfg.CIActionMirror, Capacity: cfg.CICapacity}
+		if runnerCfg.Image == "" || runnerCfg.GatewayURL == "" {
+			logger.Error("dispatcher CI non avviato", "err", "GITSTACK_CORE_CI_IMAGE e GITSTACK_CORE_CI_GATEWAY_URL obbligatorie")
+			return 1
+		}
+		reporter := httpserver.NewCIReporter(pool, routerOpts...)
+		// Reconcile gira una sola volta: per i pod vivi riattacca un observer;
+		// rieseguirlo a ogni tick ne creerebbe piu' di uno sullo stesso pod.
+		if err := ci.Reconcile(ctx, pool, kube, runnerCfg.Namespace, nil, time.Now().UTC(), reporter); err != nil {
+			logger.Error("riconciliazione CI non riuscita", "err", err)
+		}
+		go func() {
+			tick := time.NewTicker(time.Second)
+			defer tick.Stop()
+			for {
+				_, _ = ci.DispatchPods(ctx, pool, kube, runnerCfg, time.Now().UTC(), reporter)
+				select {
+				case <-ctx.Done():
+					return
+				case <-tick.C:
+				}
+			}
+		}()
+	}
+
 	srv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           router,
@@ -405,15 +439,13 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	if cfg.CIGatewayAddr != "" {
 		rd, rok := gitAPI.(gitclient.Reader)
 		switch {
-		case len(cfg.CIRunnerSecrets) == 0:
-			logger.Warn("GITSTACK_CORE_CI_RUNNER_SECRET non impostata: il ci-gateway non parte")
 		case ciLogs == nil || !rok:
 			logger.Warn("log dei job o git non configurati: il ci-gateway non parte")
 		default:
 			ciSrv = &http.Server{
 				Addr: cfg.CIGatewayAddr,
 				Handler: httpserver.NewCIGateway(pool, rd, httpserver.CIGatewayConfig{
-					RunnerSecrets: cfg.CIRunnerSecrets, ArchiveURL: cfg.CIGatewayURL, Logs: ciLogs, Log: logger, Keys: keys,
+					ArchiveURL: cfg.CIGatewayURL, Logs: ciLogs, Log: logger, Keys: keys,
 					Options: routerOpts,
 				}),
 				ReadHeaderTimeout: 5 * time.Second,
