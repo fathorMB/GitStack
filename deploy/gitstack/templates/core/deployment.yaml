@@ -90,6 +90,18 @@ spec:
             {{- include "gitstack.nats.authEnv" . | nindent 12 }}
             - name: GITSTACK_CORE_ADDR
               value: {{ printf ":%d" (.Values.core.containerPort | int) | quote }}
+            {{- if .Values.ci.enabled }}
+            - name: GITSTACK_CORE_CI_ENABLED
+              value: "true"
+            - name: GITSTACK_CORE_CI_NAMESPACE
+              value: {{ .Values.ci.namespace | quote }}
+            - name: GITSTACK_CORE_CI_IMAGE
+              value: {{ .Values.ci.runner.image | quote }}
+            - name: GITSTACK_CORE_CI_ACTION_MIRROR
+              value: {{ .Values.ci.runner.actionMirror | quote }}
+            - name: GITSTACK_CORE_CI_CAPACITY
+              value: {{ .Values.ci.capacity | quote }}
+            {{- end }}
             # POSTGRES_PASSWORD deve precedere GITSTACK_CORE_DB_URL: la
             # sintassi "$(VAR)" nei valori di env di un container k8s si
             # espande solo con variabili già definite prima nella lista.
