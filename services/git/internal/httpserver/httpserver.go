@@ -59,6 +59,10 @@ type Deps struct {
 	Logger *slog.Logger
 	// Git, se non nil, serve lo smart HTTP su /<owner>/<repo>.git/...
 	Git http.Handler
+	// Registry, se non nil, serve il registry OCI su /v2/ (GIT-286).
+	Registry http.Handler
+	// RegistryPurge toglie le immagini di un repo cancellato definitivamente (nil = niente).
+	RegistryPurge func(ctx context.Context, repoID string) error
 	// Now è iniettabile per i test (nil = time.Now).
 	Now func() time.Time
 }
@@ -106,13 +110,18 @@ func NewRouter(d Deps) http.Handler {
 		h.mountMerge(api)
 	}
 	mux.Handle("/internal/", trust.Require(d.Secret, nil, d.Now)(api))
-	if d.Git == nil {
+	if d.Git == nil && d.Registry == nil {
 		return mux
 	}
 	// Le rotte smart HTTP hanno owner e repo variabili: si riconoscono prima
 	// del mux, così un owner chiamato "internal" non collide con /internal/.
+	// Lo stesso vale per il registry OCI, che occupa tutto /v2/ (GIT-286).
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if smarthttp.Match(r.URL.Path) {
+		if d.Registry != nil && (r.URL.Path == "/v2" || strings.HasPrefix(r.URL.Path, "/v2/")) {
+			d.Registry.ServeHTTP(w, r)
+			return
+		}
+		if d.Git != nil && smarthttp.Match(r.URL.Path) {
 			d.Git.ServeHTTP(w, r)
 			return
 		}
@@ -229,7 +238,19 @@ func (h *handler) restore(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) purge(w http.ResponseWriter, r *http.Request) {
-	h.simple(w, r, "cancellazione definitiva", h.Store.Purge)
+	h.simple(w, r, "cancellazione definitiva", func(id string) error {
+		if err := h.Store.Purge(id); err != nil {
+			return err
+		}
+		// Il repo è già cancellato e non si può più ripristinare: un errore sulle immagini
+		// non deve far fallire la cancellazione (core non la ritenterebbe), resta nel log.
+		if h.RegistryPurge != nil {
+			if err := h.RegistryPurge(r.Context(), id); err != nil {
+				h.Logger.Error("immagini del registry non cancellate", "repoId", id, "err", err)
+			}
+		}
+		return nil
+	})
 }
 
 func (h *handler) simple(w http.ResponseWriter, r *http.Request, what string, op func(string) error) {

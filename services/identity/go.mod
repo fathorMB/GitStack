@@ -15,6 +15,7 @@ require (
 require (
 	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
+	github.com/go-openapi/testify/v2 v2.8.0 // indirect
 	github.com/onsi/gomega v1.38.2 // indirect
 )
 
@@ -23,7 +24,7 @@ require (
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/docker/docker v28.5.1+incompatible // indirect
-	github.com/docker/go-connections v0.6.0 // indirect
+	github.com/docker/go-connections v0.7.0 // indirect
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/fathorMB/GitStack/pkg/names v0.0.0-20261006192302-f307180f2163
 	github.com/fathorMB/GitStack/pkg/scopes v0.0.0-20261011221051-f5da11db6030

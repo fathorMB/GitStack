@@ -1,0 +1,43 @@
+{{- if and .Values.ingress.enabled .Values.git.enabled .Values.git.registry.enabled .Values.gateway.enabled -}}
+{{- $fullname := include "gitstack.fullname" . -}}
+{{- $hsts := and .Values.ingress.tls.enabled .Values.ingress.tls.hstsSeconds -}}
+# Registry OCI (GIT-286, RG1): /v2/ è l'API dei client OCI (docker, podman, crane) e vive alla
+# radice dell'host, non sotto /api. Va al gateway senza togliere prefissi: il gateway lo
+# inoltra al servizio git (rate limit, request id e log come il resto) senza timeout né
+# limite al corpo, perché un livello di immagine ha centinaia di MB. L'autenticazione
+# (token Basic) e i permessi del repo li applica il registry. Priorità alta: batte "/" (web).
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ $fullname }}-registry
+  labels:
+    {{- include "gitstack.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.ingress.tls.enabled }}
+  entryPoints:
+    - websecure
+  {{- end }}
+  routes:
+    - kind: Rule
+      priority: 10000
+      match: >-
+        {{ if .Values.ingress.host }}Host(`{{ .Values.ingress.host }}`) && {{ end }}(Path(`/v2`) || PathPrefix(`/v2/`))
+      {{- if $hsts }}
+      middlewares:
+        - name: {{ $fullname }}-hsts
+      {{- end }}
+      services:
+        - name: {{ $fullname }}-gateway
+          port: {{ .Values.gateway.service.port }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    options:
+      name: {{ $fullname }}-tls
+    {{- if .Values.ingress.tls.secretName }}
+    secretName: {{ .Values.ingress.tls.secretName }}
+    {{- end }}
+    {{- with .Values.ingress.tls.certResolver }}
+    certResolver: {{ . | quote }}
+    {{- end }}
+  {{- end }}
+{{- end }}

@@ -82,6 +82,9 @@ var KnownScopes = []string{
 	"admin:org",
 	"read:resource",
 	"write:resource",
+	"read:registry",
+	"write:registry",
+	"admin:registry",
 }
 
 // Generate produce un nuovo token personale.

@@ -61,6 +61,30 @@ const (
 	// sistema per i soli push dei mirror: per spingere anche su GitHub il file
 	// deve contenerle tutte. Vuoto = CA di sistema.
 	EnvMirrorCAFile = "GITSTACK_GIT_MIRROR_CA_FILE"
+
+	// Registry OCI (GIT-286, RG1). È servito da questo servizio sotto /v2/.
+
+	// EnvRegistry: off lo disattiva (/v2/ risponde 404); vuoto o on lo attiva
+	// (default), ma parte solo con identity, core e segreto di servizio.
+	EnvRegistry = "GITSTACK_GIT_REGISTRY"
+	// EnvRegistryDir: cartella dei dati del registry su disco (default <dati>/registry).
+	// Ignorata con un bucket S3.
+	EnvRegistryDir = "GITSTACK_GIT_REGISTRY_DIR"
+	// EnvCIGatewayURL: URL interno del ci-gateway di core, con cui il token del job
+	// (gsj_) si trasforma nei permessi sul registry del suo repo. Vuoto = i token del
+	// job non entrano (503); i token personali funzionano comunque.
+	EnvCIGatewayURL = "GITSTACK_GIT_CI_GATEWAY_URL"
+	// Archiviazione S3 del registry (al posto del disco): bucket obbligatorio, il resto
+	// facoltativo. Chiavi e segreto arrivano da un Secret, mai dai valori del chart.
+	EnvRegistryS3Bucket    = "GITSTACK_GIT_REGISTRY_S3_BUCKET"
+	EnvRegistryS3Region    = "GITSTACK_GIT_REGISTRY_S3_REGION"
+	EnvRegistryS3Endpoint  = "GITSTACK_GIT_REGISTRY_S3_ENDPOINT"
+	EnvRegistryS3AccessKey = "GITSTACK_GIT_REGISTRY_S3_ACCESS_KEY"
+	EnvRegistryS3SecretKey = "GITSTACK_GIT_REGISTRY_S3_SECRET_KEY"
+	// EnvRegistryS3PathStyle: on per gli indirizzi http://endpoint/bucket/chiave (MinIO).
+	EnvRegistryS3PathStyle = "GITSTACK_GIT_REGISTRY_S3_PATH_STYLE"
+	// EnvRegistryS3Prefix: cartella dentro il bucket (default gitstack-registry).
+	EnvRegistryS3Prefix = "GITSTACK_GIT_REGISTRY_S3_PREFIX"
 )
 
 // DefaultSSHAddr è la porta SSH di default (R7).
@@ -97,6 +121,20 @@ type Config struct {
 	NatsURL string
 	// MirrorCAFile: vedi EnvMirrorCAFile; vuoto = CA di sistema.
 	MirrorCAFile string
+	// RegistryOff: il registry OCI è disattivato (EnvRegistry=off).
+	RegistryOff bool
+	// RegistryDir: cartella dei dati del registry su disco (valorizzata se c'è DataDir).
+	RegistryDir string
+	// CIGatewayURL: vedi EnvCIGatewayURL.
+	CIGatewayURL string
+	// RegistryS3 non nil = il registry archivia su S3.
+	RegistryS3 *RegistryS3
+}
+
+// RegistryS3 è l'archiviazione S3 del registry.
+type RegistryS3 struct {
+	Bucket, Region, Endpoint, AccessKey, SecretKey, Prefix string
+	PathStyle                                              bool
 }
 
 // Load legge la configurazione dall'ambiente di processo.
@@ -175,6 +213,46 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	}
 	if v, ok := lookup(EnvMirrorCAFile); ok {
 		cfg.MirrorCAFile = strings.TrimSpace(v)
+	}
+
+	if v, ok := lookup(EnvRegistry); ok {
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "", "on":
+		case "off":
+			cfg.RegistryOff = true
+		default:
+			errs = append(errs, fmt.Sprintf("%s deve essere on oppure off: %q", EnvRegistry, v))
+		}
+	}
+	if v, ok := lookup(EnvRegistryDir); ok && strings.TrimSpace(v) != "" {
+		cfg.RegistryDir = strings.TrimSpace(v)
+	} else if cfg.DataDir != "" {
+		cfg.RegistryDir = filepath.Join(cfg.DataDir, "registry")
+	}
+	if v, ok := lookup(EnvCIGatewayURL); ok {
+		cfg.CIGatewayURL = strings.TrimSpace(v)
+	}
+	s3get := func(env string) string {
+		v, _ := lookup(env)
+		return strings.TrimSpace(v)
+	}
+	s3 := RegistryS3{Bucket: s3get(EnvRegistryS3Bucket), Region: s3get(EnvRegistryS3Region), Endpoint: s3get(EnvRegistryS3Endpoint),
+		AccessKey: s3get(EnvRegistryS3AccessKey), SecretKey: s3get(EnvRegistryS3SecretKey), Prefix: s3get(EnvRegistryS3Prefix)}
+	switch strings.ToLower(s3get(EnvRegistryS3PathStyle)) {
+	case "", "off":
+	case "on":
+		s3.PathStyle = true
+	default:
+		errs = append(errs, fmt.Sprintf("%s deve essere on oppure off: %q", EnvRegistryS3PathStyle, s3get(EnvRegistryS3PathStyle)))
+	}
+	switch {
+	case s3.Bucket != "":
+		if (s3.AccessKey == "") != (s3.SecretKey == "") {
+			errs = append(errs, fmt.Sprintf("%s e %s vanno impostate insieme", EnvRegistryS3AccessKey, EnvRegistryS3SecretKey))
+		}
+		cfg.RegistryS3 = &s3
+	case s3.Region != "" || s3.Endpoint != "" || s3.AccessKey != "" || s3.SecretKey != "" || s3.Prefix != "":
+		errs = append(errs, fmt.Sprintf("%s è obbligatoria se si configura S3 per il registry", EnvRegistryS3Bucket))
 	}
 
 	for _, s := range []struct {

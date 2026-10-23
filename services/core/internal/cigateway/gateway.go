@@ -107,9 +107,10 @@ func New(cfg Config) http.Handler {
 	path, h := runnerv1connect.NewRunnerServiceHandler(&rpc{g: g}, connect.WithInterceptors(g.auth()))
 	mux.Handle(path, h)
 	mux.HandleFunc("GET "+ArchivePath, g.archive)
+	mux.HandleFunc("GET "+RegistryAccessPath, g.registryAccess)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Un percorso fuori dal protocollo è 404, non 405 né un redirect del mux.
-		if strings.HasPrefix(r.URL.Path, path) || r.URL.Path == ArchivePath {
+		if strings.HasPrefix(r.URL.Path, path) || r.URL.Path == ArchivePath || r.URL.Path == RegistryAccessPath {
 			mux.ServeHTTP(w, r)
 			return
 		}

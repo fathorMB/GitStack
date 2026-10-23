@@ -12,6 +12,7 @@ require (
 require (
 	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
+	github.com/go-openapi/testify/v2 v2.8.0 // indirect
 	github.com/onsi/gomega v1.38.2 // indirect
 )
 

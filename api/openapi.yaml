@@ -10716,7 +10716,10 @@ components:
         Catalogo degli scope dei token personali (unico, condiviso da tutti i
         servizi). Le sessioni web non hanno scope: valgono i permessi
         dell'utente. `write:*` include `read:*` dello stesso ambito;
-        `admin:org` include `write:org`.
+        `admin:org` include `write:org`. Gli scope `*:registry` (RG1) valgono solo
+        per il registry OCI: `read:registry` scarica le immagini, `write:registry`
+        le pubblica (e include `read:registry`), `admin:registry` le elimina (e
+        include gli altri due). Non sono implicati da `*:resource` e non lo implicano.
       enum:
         - read:user
         - write:user
@@ -10725,6 +10728,9 @@ components:
         - admin:org
         - read:resource
         - write:resource
+        - read:registry
+        - write:registry
+        - admin:registry
 
     ResourceRole:
       type: string

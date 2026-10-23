@@ -70,6 +70,43 @@ spec:
               value: {{ include "gitstack.identity.url" . | quote }}
             - name: GITSTACK_CORE_URL
               value: {{ include "gitstack.core.url" . | quote }}
+            # Registry OCI (GIT-286): sotto /v2/, dati su disco (<dati>/registry) o su S3.
+            {{- if not .Values.git.registry.enabled }}
+            - name: GITSTACK_GIT_REGISTRY
+              value: "off"
+            {{- end }}
+            {{- with .Values.git.registry.ciGateway.url }}
+            - name: GITSTACK_GIT_CI_GATEWAY_URL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- if .Values.git.registry.s3.enabled }}
+            {{- if not .Values.git.registry.s3.bucket }}
+            {{- fail "git.registry.s3.enabled=true richiede git.registry.s3.bucket." -}}
+            {{- end }}
+            - name: GITSTACK_GIT_REGISTRY_S3_BUCKET
+              value: {{ .Values.git.registry.s3.bucket | quote }}
+            - name: GITSTACK_GIT_REGISTRY_S3_REGION
+              value: {{ .Values.git.registry.s3.region | quote }}
+            - name: GITSTACK_GIT_REGISTRY_S3_ENDPOINT
+              value: {{ .Values.git.registry.s3.endpoint | quote }}
+            - name: GITSTACK_GIT_REGISTRY_S3_PATH_STYLE
+              value: {{ ternary "on" "off" .Values.git.registry.s3.pathStyle | quote }}
+            - name: GITSTACK_GIT_REGISTRY_S3_PREFIX
+              value: {{ .Values.git.registry.s3.prefix | quote }}
+            {{- with .Values.git.registry.s3.existingSecret }}
+            # Chiavi accessKey e secretKey di un Secret creato dall'operatore: mai nei values.
+            - name: GITSTACK_GIT_REGISTRY_S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ . | quote }}
+                  key: accessKey
+            - name: GITSTACK_GIT_REGISTRY_S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ . | quote }}
+                  key: secretKey
+            {{- end }}
+            {{- end }}
             # git.push su NATS (GIT-73): se NATS non risponde i push restano accettati.
             - name: GITSTACK_GIT_NATS_URL
               value: {{ include "gitstack.nats.url" . | quote }}

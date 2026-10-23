@@ -580,10 +580,10 @@ export type Error = {
 export type Name = string;
 
 /**
- * Catalogo degli scope dei token personali (unico, condiviso da tutti i servizi). Le sessioni web non hanno scope: valgono i permessi dell'utente. `write:*` include `read:*` dello stesso ambito; `admin:org` include `write:org`.
+ * Catalogo degli scope dei token personali (unico, condiviso da tutti i servizi). Le sessioni web non hanno scope: valgono i permessi dell'utente. `write:*` include `read:*` dello stesso ambito; `admin:org` include `write:org`. Gli scope `*:registry` (RG1) valgono solo per il registry OCI: `read:registry` scarica le immagini, `write:registry` le pubblica (e include `read:registry`), `admin:registry` le elimina (e include gli altri due). Non sono implicati da `*:resource` e non lo implicano.
  *
  */
-export type TokenScope = 'read:user' | 'write:user' | 'read:org' | 'write:org' | 'admin:org' | 'read:resource' | 'write:resource';
+export type TokenScope = 'read:user' | 'write:user' | 'read:org' | 'write:org' | 'admin:org' | 'read:resource' | 'write:resource' | 'read:registry' | 'write:registry' | 'admin:registry';
 
 /**
  * Ruolo su una risorsa, in ordine crescente di potere.
