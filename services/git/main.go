@@ -109,9 +109,25 @@ func run(out io.Writer) int {
 		gitHandler = unconfigured{}
 	}
 
+	// Registry OCI (GIT-286): stessa autorizzazione di git (identity per i token, core
+	// per i repo) più il ci-gateway di core per il token del job.
+	var (
+		regHandler http.Handler
+		regPurge   func(context.Context, string) error
+	)
+	if rh, err := newRegistry(cfg, logger); err != nil {
+		logger.Error("registry non avviabile", "err", err)
+		return 1
+	} else if rh != nil {
+		defer func() { _ = rh.Close() }()
+		regHandler, regPurge = rh, rh.Purge
+	}
+
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpserver.NewRouter(httpserver.Deps{
+			Registry:      regHandler,
+			RegistryPurge: regPurge,
 			Store:   store,
 			Reads:   gitread.New(runner, store.Dir),
 			Merge:   &gitmerge.Service{Run: runner, Dir: store.Dir, Events: events},

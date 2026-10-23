@@ -101,6 +101,15 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 	// segmenti; il codice generato li vede come uno solo.
 	mountTail(mux, toCore, apiMiddlewares)
 
+	// Registry OCI (GIT-286, RG1): /v2/ va al servizio git. Passa per request id, log,
+	// recover e rate limiting come il resto; l'autenticazione (token Basic) e i permessi
+	// del repo li applica il registry, come per lo smart HTTP di git.
+	if cfg.RegistryURL != nil {
+		reg := base(limiter.Middleware(proxy.ToRegistry(cfg.RegistryURL, logger, proxy.WithTrustedProxies(cfg.TrustedProxies), proxy.WithClock(o.now))))
+		mux.Handle("/v2/", reg)
+		mux.Handle("/v2", reg)
+	}
+
 	return openapi.HandlerWithOptions(server, openapi.StdHTTPServerOptions{
 		BaseURL:     proxy.PrefixV1,
 		BaseRouter:  mux,

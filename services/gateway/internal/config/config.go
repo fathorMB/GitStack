@@ -35,6 +35,11 @@ type Config struct {
 	// così un gateway senza identity resta avviabile.
 	IdentityURL *url.URL
 
+	// RegistryURL è la base URL del servizio che ospita il registry OCI (il
+	// servizio git, es. "http://git:8080"), verso cui il gateway instrada /v2/
+	// (GIT-286). Opzionale: se assente /v2/ non è montato (404).
+	RegistryURL *url.URL
+
 	// IdentityTimeout è il timeout per le richieste instradate verso identity.
 	IdentityTimeout time.Duration
 
@@ -105,6 +110,7 @@ const (
 	envMaxAttachment = "GITSTACK_GATEWAY_ATTACHMENTS_MAX_BYTES"
 
 	envIdentityURL     = "GITSTACK_IDENTITY_URL"
+	envRegistryURL     = "GITSTACK_REGISTRY_URL"
 	envIdentityTimeout = "GITSTACK_IDENTITY_TIMEOUT"
 
 	// envIdentityServiceSecret è il segreto condiviso storico (F9): vale solo
@@ -272,6 +278,15 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 			errs = append(errs, fmt.Sprintf("%s non è una URL assoluta valida: %q", envIdentityURL, v))
 		} else {
 			cfg.IdentityURL = u
+		}
+	}
+
+	if v, ok := lookup(envRegistryURL); ok && strings.TrimSpace(v) != "" {
+		u, err := url.Parse(strings.TrimSpace(v))
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			errs = append(errs, fmt.Sprintf("%s non è una URL http(s) assoluta valida: %q", envRegistryURL, v))
+		} else {
+			cfg.RegistryURL = u
 		}
 	}
 

@@ -271,3 +271,19 @@ func TestLoad_SegretoDelGateway(t *testing.T) {
 		t.Errorf("IdentityServiceSecret = %q", cfg.IdentityServiceSecret)
 	}
 }
+
+func TestLoad_RegistryURL(t *testing.T) {
+	cfg, err := load(lookupFrom(map[string]string{envCoreURL: "http://core:8080"}))
+	if err != nil || cfg.RegistryURL != nil {
+		t.Fatalf("default: %v %v", err, cfg.RegistryURL)
+	}
+	cfg, err = load(lookupFrom(map[string]string{envCoreURL: "http://core:8080", envRegistryURL: " http://git:8080 "}))
+	if err != nil || cfg.RegistryURL == nil || cfg.RegistryURL.Host != "git:8080" {
+		t.Fatalf("valida: %v %v", err, cfg.RegistryURL)
+	}
+	for _, bad := range []string{"git:8080", "ftp://git", "/solo/percorso", "http://"} {
+		if _, err := load(lookupFrom(map[string]string{envCoreURL: "http://core:8080", envRegistryURL: bad})); err == nil {
+			t.Errorf("%q doveva essere rifiutato", bad)
+		}
+	}
+}
