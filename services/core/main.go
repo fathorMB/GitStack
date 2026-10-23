@@ -405,15 +405,13 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	if cfg.CIGatewayAddr != "" {
 		rd, rok := gitAPI.(gitclient.Reader)
 		switch {
-		case len(cfg.CIRunnerSecrets) == 0:
-			logger.Warn("GITSTACK_CORE_CI_RUNNER_SECRET non impostata: il ci-gateway non parte")
 		case ciLogs == nil || !rok:
 			logger.Warn("log dei job o git non configurati: il ci-gateway non parte")
 		default:
 			ciSrv = &http.Server{
 				Addr: cfg.CIGatewayAddr,
 				Handler: httpserver.NewCIGateway(pool, rd, httpserver.CIGatewayConfig{
-					RunnerSecrets: cfg.CIRunnerSecrets, ArchiveURL: cfg.CIGatewayURL, Logs: ciLogs, Log: logger, Keys: keys,
+					ArchiveURL: cfg.CIGatewayURL, Logs: ciLogs, Log: logger, Keys: keys,
 					Options: routerOpts,
 				}),
 				ReadHeaderTimeout: 5 * time.Second,

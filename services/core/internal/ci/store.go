@@ -312,7 +312,7 @@ func runnerTypeOf(runsOn []string) string {
 // candidati vince l'owner con meno job in corso, poi il job in coda da più
 // tempo: un owner con molti job non fa aspettare gli altri. false se non c'è nulla.
 func ClaimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity int, runner string) (JobRow, RunRow, bool, error) {
-	job, run, _, ok, err := claimNext(ctx, pool, now, capacity, runner, 0, nil)
+	job, run, _, _, ok, err := claimNext(ctx, pool, now, capacity, runner, 0, 0, nil)
 	return job, run, ok, err
 }
 
@@ -320,34 +320,43 @@ func ClaimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity 
 // del job (ADR 0001 §3): valido per tokenTTL, solo per quel job. Ritorna il
 // token in chiaro, che non si può rileggere.
 func ClaimNextWithToken(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity int, runner string, tokenTTL time.Duration) (JobRow, RunRow, string, bool, error) {
-	return claimNext(ctx, pool, now, capacity, runner, tokenTTL, nil)
+	job, run, token, _, ok, err := claimNext(ctx, pool, now, capacity, runner, tokenTTL, 0, nil)
+	return job, run, token, ok, err
 }
 
 // ClaimNextReported è ClaimNextWithToken con un Reporter (GIT-281): il job preso
 // passa in_progress e l'esecuzione, se era in coda, anche, nella stessa transazione.
 func ClaimNextReported(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity int, runner string, tokenTTL time.Duration, rep Reporter) (JobRow, RunRow, string, bool, error) {
-	return claimNext(ctx, pool, now, capacity, runner, tokenTTL, rep)
+	job, run, token, _, ok, err := claimNext(ctx, pool, now, capacity, runner, tokenTTL, 0, rep)
+	return job, run, token, ok, err
 }
 
-func claimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity int, runner string, tokenTTL time.Duration, rep Reporter) (JobRow, RunRow, string, bool, error) {
+// ClaimNextWithTicketReported prende un job per il dispatcher interno e crea
+// nello stesso commit il biglietto monouso che verra' iniettato nel suo pod.
+func ClaimNextWithTicketReported(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity int, runner string, rep Reporter) (JobRow, RunRow, string, bool, error) {
+	job, run, _, ticket, ok, err := claimNext(ctx, pool, now, capacity, runner, 0, JobTicketTTL, rep)
+	return job, run, ticket, ok, err
+}
+
+func claimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity int, runner string, tokenTTL, ticketTTL time.Duration, rep Reporter) (JobRow, RunRow, string, string, bool, error) {
 	if capacity < 1 {
 		capacity = DefaultCapacity
 	}
 	tx, err := pool.Begin(ctx)
 	if err != nil {
-		return JobRow{}, RunRow{}, "", false, err
+		return JobRow{}, RunRow{}, "", "", false, err
 	}
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
 	// Il conteggio dei posti deve essere coerente fra repliche: un lock di coda.
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('core.ci_queue', 0))`); err != nil {
-		return JobRow{}, RunRow{}, "", false, err
+		return JobRow{}, RunRow{}, "", "", false, err
 	}
 	var running int
 	if err := tx.QueryRow(ctx, `SELECT count(*) FROM core.ci_jobs WHERE status = 'in_progress'`).Scan(&running); err != nil {
-		return JobRow{}, RunRow{}, "", false, err
+		return JobRow{}, RunRow{}, "", "", false, err
 	}
 	if running >= capacity {
-		return JobRow{}, RunRow{}, "", false, nil
+		return JobRow{}, RunRow{}, "", "", false, nil
 	}
 	var jobID, runID uuid.UUID
 	err = tx.QueryRow(ctx, `
@@ -359,52 +368,58 @@ func claimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity 
 		FROM core.ci_jobs j
 		JOIN core.ci_runs r ON r.id = j.run_id
 		LEFT JOIN busy b ON b.owner_type = r.owner_type AND b.owner_id = r.owner_id
-		WHERE j.status = 'queued' AND r.status IN ('queued', 'in_progress') AND COALESCE(b.n, 0) < $1
+		WHERE j.status = 'queued' AND j.runner_type = 'internal_pod' AND r.status IN ('queued', 'in_progress') AND COALESCE(b.n, 0) < $1
 		ORDER BY COALESCE(b.n, 0), j.queued_at, j.seq
 		LIMIT 1
 		FOR UPDATE OF j SKIP LOCKED`, OwnerLimit(capacity)).Scan(&jobID, &runID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return JobRow{}, RunRow{}, "", false, nil
+		return JobRow{}, RunRow{}, "", "", false, nil
 	}
 	if err != nil {
-		return JobRow{}, RunRow{}, "", false, err
+		return JobRow{}, RunRow{}, "", "", false, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE core.ci_jobs SET status = 'in_progress', started_at = $2, runner_name = NULLIF($3, '')
 		WHERE id = $1`, jobID, now, runner); err != nil {
-		return JobRow{}, RunRow{}, "", false, err
+		return JobRow{}, RunRow{}, "", "", false, err
 	}
 	// Con questa UPDATE l'esecuzione passa in_progress solo se era in coda: il
 	// report la include in quel caso (started_at = now, appena scritto).
 	runTag, err := tx.Exec(ctx, `UPDATE core.ci_runs SET status = 'in_progress', started_at = COALESCE(started_at, $2)
 		WHERE id = $1 AND status = 'queued'`, runID, now)
 	if err != nil {
-		return JobRow{}, RunRow{}, "", false, err
+		return JobRow{}, RunRow{}, "", "", false, err
 	}
 	var token string
 	if tokenTTL > 0 {
 		if token, err = issueJobToken(ctx, tx, now, jobID, tokenTTL); err != nil {
-			return JobRow{}, RunRow{}, "", false, err
+			return JobRow{}, RunRow{}, "", "", false, err
+		}
+	}
+	var ticket string
+	if ticketTTL > 0 {
+		if ticket, err = issueJobTicket(ctx, tx, now, jobID, ticketTTL); err != nil {
+			return JobRow{}, RunRow{}, "", "", false, err
 		}
 	}
 	job, err := scanJob(tx.QueryRow(ctx, `SELECT `+jobColumns+` FROM core.ci_jobs WHERE id = $1`, jobID))
 	if err != nil {
-		return JobRow{}, RunRow{}, "", false, err
+		return JobRow{}, RunRow{}, "", "", false, err
 	}
 	run, err := scanRun(tx.QueryRow(ctx, `SELECT `+runColumns+` FROM core.ci_runs WHERE id = $1`, runID))
 	if err != nil {
-		return JobRow{}, RunRow{}, "", false, err
+		return JobRow{}, RunRow{}, "", "", false, err
 	}
 	var runIDs []uuid.UUID
 	if runTag.RowsAffected() > 0 {
 		runIDs = append(runIDs, runID)
 	}
 	if err := report(ctx, tx, rep, runIDs, []uuid.UUID{jobID}); err != nil {
-		return JobRow{}, RunRow{}, "", false, err
+		return JobRow{}, RunRow{}, "", "", false, err
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return JobRow{}, RunRow{}, "", false, err
+		return JobRow{}, RunRow{}, "", "", false, err
 	}
-	return job, run, token, true, nil
+	return job, run, token, ticket, true, nil
 }
 
 // CompleteJob chiude un job in corso. Con successo promuove i job che
