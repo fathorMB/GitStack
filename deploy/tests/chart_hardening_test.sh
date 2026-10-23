@@ -230,6 +230,36 @@ expect_has "nodo singolo: Postgres con una sola replica" \
 expect_has "nodo singolo: NATS con una sola replica" \
   "$(doc StatefulSet gitstack-nats)" "replicas: 1"
 
+echo "== GIT-286: registry OCI (/v2/)"
+OUT="$(render --set ingress.enabled=true)" || { bad "helm template con ingress fallito"; exit 1; }
+d="$(doc IngressRoute gitstack-registry)"
+if [ -n "${d}" ]; then ok; else bad "IngressRoute gitstack-registry non renderizzata"; fi
+expect_has "registry: /v2 al gateway" "${d}" "name: gitstack-gateway"
+expect_has "registry: prefisso /v2/" "${d}" 'PathPrefix(`/v2/`)'
+expect_has "gateway: GITSTACK_REGISTRY_URL" "$(doc Deployment gitstack-gateway)" "GITSTACK_REGISTRY_URL"
+expect_has "gateway: verso il servizio git" "$(doc NetworkPolicy gitstack-gateway)" "app.kubernetes.io/name: git"
+expect_has "git: ingresso dal gateway" "$(doc NetworkPolicy gitstack-git)" "app.kubernetes.io/name: gateway"
+d="$(doc Deployment gitstack-git)"
+expect_lacks "git: registry acceso di default" "${d}" "name: GITSTACK_GIT_REGISTRY"
+expect_lacks "git: niente S3 di default" "${d}" "GITSTACK_GIT_REGISTRY_S3_BUCKET"
+expect_lacks "git: niente ci-gateway di default" "${d}" "GITSTACK_GIT_CI_GATEWAY_URL"
+
+OUT="$(render --set ingress.enabled=true --set git.registry.enabled=false)"
+expect_eq "registry spento: nessuna IngressRoute" "$(count 'name: gitstack-registry$')" "0"
+expect_lacks "registry spento: gateway senza GITSTACK_REGISTRY_URL" "$(doc Deployment gitstack-gateway)" "GITSTACK_REGISTRY_URL"
+expect_has "registry spento: git lo spegne" "$(doc Deployment gitstack-git)" "name: GITSTACK_GIT_REGISTRY"
+
+OUT="$(render --set git.registry.s3.enabled=true --set git.registry.s3.bucket=img --set git.registry.s3.endpoint=http://minio:9000 \
+  --set git.registry.s3.pathStyle=true --set git.registry.s3.existingSecret=s3keys \
+  --set git.registry.ciGateway.url=http://gitstack-core:9090 --set git.registry.ciGateway.port=9090)"
+d="$(doc Deployment gitstack-git)"
+expect_has "S3: bucket" "${d}" 'value: "img"'
+expect_has "S3: path style" "${d}" "GITSTACK_GIT_REGISTRY_S3_PATH_STYLE"
+expect_has "S3: chiavi dal Secret" "${d}" 'name: "s3keys"'
+expect_has "ci-gateway: URL" "${d}" "GITSTACK_GIT_CI_GATEWAY_URL"
+expect_has "ci-gateway: porta aperta verso core" "$(doc NetworkPolicy gitstack-git)" "port: 9090"
+if helm_rc --set git.registry.s3.enabled=true; then bad "S3 senza bucket: helm template doveva fermarsi"; else ok; fi
+
 echo
 echo "Passati: ${PASS}  Falliti: ${FAILN}"
 [ "${FAILN}" -eq 0 ]

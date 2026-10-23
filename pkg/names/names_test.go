@@ -58,6 +58,7 @@ func TestIsReservedOwnerName(t *testing.T) {
 		{"alice", false},
 		{"", false},
 		{"logins", false},
+		{"v2", true},
 	}
 	for _, tt := range tests {
 		if got := IsReservedOwnerName(tt.in); got != tt.want {
@@ -74,7 +75,7 @@ func TestReservedOwnerNamesList(t *testing.T) {
 	required := []string{
 		"login", "logout", "settings", "api", "admin", "new", "explore",
 		"orgs", "users", "user", "repos", "healthz", "readyz", "assets",
-		"static", "change-password", "notifications", "_components", "v1",
+		"static", "change-password", "notifications", "_components", "v1", "v2",
 	}
 	for _, n := range required {
 		if !IsReservedOwnerName(n) {

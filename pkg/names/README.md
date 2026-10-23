@@ -22,7 +22,7 @@ Ogni regola ha il suo errore esportato, da confrontare con `errors.Is`:
 
 `_components`, `admin`, `api`, `assets`, `change-password`, `explore`,
 `healthz`, `login`, `logout`, `new`, `notifications`, `orgs`, `readyz`,
-`repos`, `settings`, `static`, `user`, `users`, `v1`.
+`repos`, `settings`, `static`, `user`, `users`, `v1`, `v2` (registry OCI).
 
 Il controllo di unicità cross-tabella tra `identity.users.username` e
 `identity.organizations.name` resta a carico dei servizi.
