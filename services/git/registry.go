@@ -41,9 +41,9 @@ func newRegistry(cfg config.Config, logger *slog.Logger) (*registry.Handler, err
 	return registry.New(rc, up)
 }
 
-// firstSecret è il primo di un elenco «nuova,vecchia» (rotazione): il segreto degli
-// upload di distribution non deve cambiare con la rotazione di quello di servizio,
-// ma serve uno stabile fra le repliche, e la prima voce lo è fra una rotazione e l'altra.
+// firstSecret è il primo di un elenco «nuova,vecchia» (rotazione, F9). Distribution firma con
+// questo segreto lo stato degli upload in corso: con la rotazione un upload iniziato prima
+// va ripetuto, i blob già caricati restano.
 func firstSecret(s string) string {
 	first, _, _ := strings.Cut(s, ",")
 	return strings.TrimSpace(first)
