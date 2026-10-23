@@ -125,6 +125,15 @@ export type ActionsVariableInput = {
     value: string;
 };
 
+/**
+ * Permessi di default (tetto) del token del job di un repository (CI4). Mai oltre chi avvia l'esecuzione.
+ */
+export type ActionsJobTokenDefaults = {
+    contents: 'none' | 'read' | 'write';
+    packages: 'none' | 'read' | 'write';
+    actions: 'none' | 'read' | 'write';
+};
+
 export type ActionsSecretList = {
     items: Array<ActionsSecret>;
 };
@@ -4054,6 +4063,8 @@ export type JobIdParam = string;
 export type ArtifactIdParam = string;
 
 export type CacheIdParam = string;
+
+export type ActionsNameParam = string;
 
 export type RunnerIdParam = string;
 
@@ -15394,6 +15405,285 @@ export type PutOrganizationActionsSecretResponses = {
 };
 
 export type PutOrganizationActionsSecretResponse = PutOrganizationActionsSecretResponses[keyof PutOrganizationActionsSecretResponses];
+
+export type DeleteRepositoryActionsSecretData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        name: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/secrets/{name}';
+};
+
+export type DeleteRepositoryActionsSecretErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type DeleteRepositoryActionsSecretError = DeleteRepositoryActionsSecretErrors[keyof DeleteRepositoryActionsSecretErrors];
+
+export type DeleteRepositoryActionsSecretResponses = {
+    /**
+     * Eliminato.
+     */
+    204: void;
+};
+
+export type DeleteRepositoryActionsSecretResponse = DeleteRepositoryActionsSecretResponses[keyof DeleteRepositoryActionsSecretResponses];
+
+export type DeleteRepositoryActionsVariableData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        name: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/variables/{name}';
+};
+
+export type DeleteRepositoryActionsVariableErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type DeleteRepositoryActionsVariableError = DeleteRepositoryActionsVariableErrors[keyof DeleteRepositoryActionsVariableErrors];
+
+export type DeleteRepositoryActionsVariableResponses = {
+    /**
+     * Eliminato.
+     */
+    204: void;
+};
+
+export type DeleteRepositoryActionsVariableResponse = DeleteRepositoryActionsVariableResponses[keyof DeleteRepositoryActionsVariableResponses];
+
+export type DeleteOrganizationActionsSecretData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        name: string;
+    };
+    query?: never;
+    url: '/orgs/{org}/actions/secrets/{name}';
+};
+
+export type DeleteOrganizationActionsSecretErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type DeleteOrganizationActionsSecretError = DeleteOrganizationActionsSecretErrors[keyof DeleteOrganizationActionsSecretErrors];
+
+export type DeleteOrganizationActionsSecretResponses = {
+    /**
+     * Eliminato.
+     */
+    204: void;
+};
+
+export type DeleteOrganizationActionsSecretResponse = DeleteOrganizationActionsSecretResponses[keyof DeleteOrganizationActionsSecretResponses];
+
+export type DeleteOrganizationActionsVariableData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        name: string;
+    };
+    query?: never;
+    url: '/orgs/{org}/actions/variables/{name}';
+};
+
+export type DeleteOrganizationActionsVariableErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type DeleteOrganizationActionsVariableError = DeleteOrganizationActionsVariableErrors[keyof DeleteOrganizationActionsVariableErrors];
+
+export type DeleteOrganizationActionsVariableResponses = {
+    /**
+     * Eliminato.
+     */
+    204: void;
+};
+
+export type DeleteOrganizationActionsVariableResponse = DeleteOrganizationActionsVariableResponses[keyof DeleteOrganizationActionsVariableResponses];
+
+export type GetRepositoryActionsPermissionsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/permissions';
+};
+
+export type GetRepositoryActionsPermissionsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetRepositoryActionsPermissionsError = GetRepositoryActionsPermissionsErrors[keyof GetRepositoryActionsPermissionsErrors];
+
+export type GetRepositoryActionsPermissionsResponses = {
+    /**
+     * Permessi di default.
+     */
+    200: ActionsJobTokenDefaults;
+};
+
+export type GetRepositoryActionsPermissionsResponse = GetRepositoryActionsPermissionsResponses[keyof GetRepositoryActionsPermissionsResponses];
+
+export type PutRepositoryActionsPermissionsData = {
+    body: ActionsJobTokenDefaults;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/permissions';
+};
+
+export type PutRepositoryActionsPermissionsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type PutRepositoryActionsPermissionsError = PutRepositoryActionsPermissionsErrors[keyof PutRepositoryActionsPermissionsErrors];
+
+export type PutRepositoryActionsPermissionsResponses = {
+    /**
+     * Permessi salvati.
+     */
+    200: ActionsJobTokenDefaults;
+};
+
+export type PutRepositoryActionsPermissionsResponse = PutRepositoryActionsPermissionsResponses[keyof PutRepositoryActionsPermissionsResponses];
 
 export type ListCiRunnersData = {
     body?: never;

@@ -21,34 +21,10 @@ func (s *apiServer) CreateCiRunnerRegistrationToken(w http.ResponseWriter, r *ht
 func (s *apiServer) DeleteCiRunner(w http.ResponseWriter, r *http.Request, id openapi.RunnerIdParam) {
 	notImplemented(w)
 }
-func (s *apiServer) ListOrganizationActionsSecrets(w http.ResponseWriter, r *http.Request, org openapi.OrgParam) {
-	notImplemented(w)
-}
-func (s *apiServer) PutOrganizationActionsSecret(w http.ResponseWriter, r *http.Request, org openapi.OrgParam) {
-	notImplemented(w)
-}
-func (s *apiServer) ListOrganizationActionsVariables(w http.ResponseWriter, r *http.Request, org openapi.OrgParam) {
-	notImplemented(w)
-}
-func (s *apiServer) PutOrganizationActionsVariable(w http.ResponseWriter, r *http.Request, org openapi.OrgParam) {
-	notImplemented(w)
-}
 func (s *apiServer) DownloadWorkflowArtifact(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ArtifactIdParam) {
 	notImplemented(w)
 }
 func (s *apiServer) ListWorkflowArtifacts(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.RunIdParam) {
-	notImplemented(w)
-}
-func (s *apiServer) ListRepositoryActionsSecrets(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
-	notImplemented(w)
-}
-func (s *apiServer) PutRepositoryActionsSecret(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
-	notImplemented(w)
-}
-func (s *apiServer) ListRepositoryActionsVariables(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
-	notImplemented(w)
-}
-func (s *apiServer) PutRepositoryActionsVariable(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
 	notImplemented(w)
 }
 func (s *apiServer) ListRepositoryPackages(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {

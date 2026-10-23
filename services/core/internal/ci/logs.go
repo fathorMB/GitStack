@@ -62,6 +62,11 @@ func cleanLogContent(s string) string {
 // si saltano, e se index è oltre la prima riga mancante non scrive nulla e
 // risponde con quella, così il runner rimanda dal punto giusto.
 func (l *LogStore) Append(ctx context.Context, pool *pgxpool.Pool, now time.Time, jobID uuid.UUID, index int64, rows []LogLine) (int64, error) {
+	return l.AppendMasked(ctx, pool, now, jobID, index, rows, nil)
+}
+
+// AppendMasked è Append che toglie prima di scrivere i segreti del job (CI4): masker nil non maschera.
+func (l *LogStore) AppendMasked(ctx context.Context, pool *pgxpool.Pool, now time.Time, jobID uuid.UUID, index int64, rows []LogLine, mask *Masker) (int64, error) {
 	if l.Dir == "" {
 		return 0, errors.New("directory dei log non configurata")
 	}
@@ -96,7 +101,7 @@ func (l *LogStore) Append(ctx context.Context, pool *pgxpool.Pool, now time.Time
 		if r.Time.IsZero() {
 			ts = now.UTC()
 		}
-		line := ts.Format("2006-01-02T15:04:05.000Z") + " " + cleanLogContent(r.Content) + "\n"
+		line := ts.Format("2006-01-02T15:04:05.000Z") + " " + cleanLogContent(mask.Mask(r.Content)) + "\n"
 		if truncated || size+int64(buf.Len())+int64(len(line)) > l.max() {
 			if !truncated {
 				truncated = true

@@ -462,22 +462,10 @@ func (s *apiServer) CreateCommitStatus(w http.ResponseWriter, r *http.Request, o
 		writeRepoLockFailure(w, err)
 		return
 	}
-	var prevState string
-	if err := tx.QueryRow(ctx, `SELECT state FROM core.commit_statuses WHERE repo_id = $1 AND sha = $2 AND context = $3`,
-		ia.repo.ID, sha, sctx).Scan(&prevState); err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		writeIssueFailure(w, "lettura dello stato precedente non riuscita", err)
-		return
-	}
-	row := tx.QueryRow(ctx, `INSERT INTO core.commit_statuses (id, repo_id, sha, context, state, description, target_url, creator_id,
-			via_token_id, via_token_name, by_agent)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-		ON CONFLICT (repo_id, sha, context) DO UPDATE SET state = EXCLUDED.state, description = EXCLUDED.description,
-			target_url = EXCLUDED.target_url, creator_id = EXCLUDED.creator_id,
-			via_token_id = EXCLUDED.via_token_id, via_token_name = EXCLUDED.via_token_name, by_agent = EXCLUDED.by_agent, updated_at = now()
-		RETURNING `+statusColumns, uuid.New(), ia.repo.ID, sha, sctx, string(in.State), description, target, ia.userID, viaID, viaName, agent)
-	x, err := scanStatus(row)
+	x, prevState, err := writeCommitStatus(ctx, tx, ia.repo.ID, ia.userID, sha, sctx, string(in.State), description, target,
+		viaID, viaName, agent)
 	if err != nil {
-		writeIssueFailure(w, "scrittura dello stato non riuscita", fmt.Errorf("commit_statuses: %w", err))
+		writeIssueFailure(w, "scrittura dello stato non riuscita", err)
 		return
 	}
 	if err := s.emitCommitStatus(ctx, tx, ia, x, prevState, branchesAt); err != nil {
@@ -494,6 +482,32 @@ func (s *apiServer) CreateCommitStatus(w http.ResponseWriter, r *http.Request, o
 		return
 	}
 	writeJSON(w, http.StatusCreated, items[0])
+}
+
+// writeCommitStatus scrive lo stato nella transazione tx: per (repo, sha,
+// contesto) c'è una sola riga, che il nuovo stato sostituisce (PR9). Ritorna la
+// riga scritta e lo stato che il contesto aveva prima ("" se non c'era). Non
+// controlla i permessi: lo fa il chiamante (CreateCommitStatus, o il Reporter
+// della CI, che agisce per conto di chi ha avviato l'esecuzione).
+func writeCommitStatus(ctx context.Context, tx pgx.Tx, repoID, creator uuid.UUID, sha, sctx, state, description, target string,
+	viaID *uuid.UUID, viaName *string, agent bool) (statusRow, string, error) {
+	var prevState string
+	if err := tx.QueryRow(ctx, `SELECT state FROM core.commit_statuses WHERE repo_id = $1 AND sha = $2 AND context = $3`,
+		repoID, sha, sctx).Scan(&prevState); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return statusRow{}, "", fmt.Errorf("lettura dello stato precedente: %w", err)
+	}
+	row := tx.QueryRow(ctx, `INSERT INTO core.commit_statuses (id, repo_id, sha, context, state, description, target_url, creator_id,
+			via_token_id, via_token_name, by_agent)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		ON CONFLICT (repo_id, sha, context) DO UPDATE SET state = EXCLUDED.state, description = EXCLUDED.description,
+			target_url = EXCLUDED.target_url, creator_id = EXCLUDED.creator_id,
+			via_token_id = EXCLUDED.via_token_id, via_token_name = EXCLUDED.via_token_name, by_agent = EXCLUDED.by_agent, updated_at = now()
+		RETURNING `+statusColumns, uuid.New(), repoID, sha, sctx, state, description, target, creator, viaID, viaName, agent)
+	x, err := scanStatus(row)
+	if err != nil {
+		return statusRow{}, "", fmt.Errorf("commit_statuses: %w", err)
+	}
+	return x, prevState, nil
 }
 
 // statusGateBlockers sono i blocchi al merge dovuti ai contesti obbligatori

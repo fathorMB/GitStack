@@ -25,11 +25,16 @@ const (
 	DomainPullRequestReview  = "pull_request_review"
 	DomainPullRequestComment = "pull_request_comment"
 	DomainCommitStatus       = "commit_status"
+
+	// v2-a (GIT-281, CI6): esecuzioni e job dei workflow.
+	DomainWorkflowRun = "workflow_run"
+	DomainWorkflowJob = "workflow_job"
 )
 
 // Domains elenca i domini di core, da assicurare con events.EnsureStream.
 var Domains = []string{DomainIssue, DomainIssueComment, DomainRepository,
-	DomainPullRequest, DomainPullRequestReview, DomainPullRequestComment, DomainCommitStatus}
+	DomainPullRequest, DomainPullRequestReview, DomainPullRequestComment, DomainCommitStatus,
+	DomainWorkflowRun, DomainWorkflowJob}
 
 // Nomi degli eventi (anche subject NATS).
 const (
@@ -260,6 +265,40 @@ type PullPayload struct {
 	Contexts []string `json:"contexts,omitempty"`
 	// Files: i file in conflitto di pull_request.conflicts (al massimo 10).
 	Files []string `json:"files,omitempty"`
+}
+
+// Eventi delle esecuzioni e dei job (GIT-281). Le azioni dei webhook sono
+// queued, in_progress, completed e cancelled, come nel contratto.
+const (
+	WorkflowRunQueued     = "workflow_run.queued"
+	WorkflowRunInProgress = "workflow_run.in_progress"
+	WorkflowRunCompleted  = "workflow_run.completed"
+	WorkflowRunCancelled  = "workflow_run.cancelled"
+
+	WorkflowJobQueued     = "workflow_job.queued"
+	WorkflowJobInProgress = "workflow_job.in_progress"
+	WorkflowJobCompleted  = "workflow_job.completed"
+	WorkflowJobCancelled  = "workflow_job.cancelled"
+)
+
+// WorkflowRunPayload è lo schema v1 di workflow_run.*. Run è il WorkflowRun del
+// contratto com'è al momento dell'evento (i webhook lo consegnano così com'è);
+// Previous è la conclusione dell'esecuzione precedente dello stesso workflow e
+// ref, vuota se non c'è: serve a notificare il ritorno al verde (workflow_run.completed).
+type WorkflowRunPayload struct {
+	Repo     Repo            `json:"repo"`
+	Actor    *User           `json:"actor"`
+	Run      json.RawMessage `json:"run"`
+	Previous string          `json:"previousConclusion,omitempty"`
+}
+
+// WorkflowJobPayload è lo schema v1 di workflow_job.*: Run è l'esecuzione e Job
+// il WorkflowJob del contratto, entrambi al momento dell'evento.
+type WorkflowJobPayload struct {
+	Repo  Repo            `json:"repo"`
+	Actor *User           `json:"actor"`
+	Run   json.RawMessage `json:"run"`
+	Job   json.RawMessage `json:"job"`
 }
 
 // CommitStatusPayload è lo schema v1 di commit_status.created. Status è il

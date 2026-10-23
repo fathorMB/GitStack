@@ -53,7 +53,7 @@ func (r *rpc) FetchTask(ctx context.Context, req *connect.Request[runnerv1.Fetch
 	tick := time.NewTicker(g.PollEvery)
 	defer tick.Stop()
 	for {
-		job, run, token, ok, err := ci.ClaimNextWithToken(ctx, g.Pool, g.Now(), g.Capacity, runner, ci.JobTokenTTL)
+		job, run, token, ok, err := ci.ClaimNextReported(ctx, g.Pool, g.Now(), g.Capacity, runner, ci.JobTokenTTL, g.Reporter)
 		if err != nil {
 			if ctx.Err() != nil {
 				return connect.NewResponse(&runnerv1.FetchTaskResponse{}), nil
@@ -68,7 +68,7 @@ func (r *rpc) FetchTask(ctx context.Context, req *connect.Request[runnerv1.Fetch
 			}
 			// Il job è già preso e non si può consegnare: si chiude come fallito e si prosegue.
 			g.Log.Warn("ci-gateway: task non costruibile, il job fallisce", "job", job.ID, "err", err)
-			if cerr := ci.CompleteJob(context.WithoutCancel(ctx), g.Pool, g.Now(), job.ID, ci.ConclusionFailure); cerr != nil {
+			if cerr := ci.CompleteJobReported(context.WithoutCancel(ctx), g.Pool, g.Now(), job.ID, ci.ConclusionFailure, g.Reporter); cerr != nil {
 				g.Log.Error("ci-gateway: chiusura del job non riuscita", "job", job.ID, "err", cerr)
 			}
 			continue
@@ -127,11 +127,26 @@ func (g *gateway) buildTask(ctx context.Context, job ci.JobRow, run ci.RunRow, t
 	if err != nil {
 		return nil, err
 	}
+	secrets := map[string]string{}
+	vars := map[string]string{}
+	if g.Keys != nil {
+		env, err := ci.LoadJobEnv(ctx, g.Pool, g.Keys, run.RepoID)
+		if err != nil {
+			return nil, fmt.Errorf("segreti: %w", err)
+		}
+		secrets, vars = env.Secrets, env.Vars
+	} else if has, err := ci.HasSecrets(ctx, g.Pool, run.RepoID); err != nil || has {
+		return nil, errors.New("segreti presenti ma chiave non configurata")
+	}
+	// Il token del job vince su un segreto omonimo.
+	secrets["GITHUB_TOKEN"] = token
+	g.maskers.put(job.ID, ci.NewMasker(maskValues(secrets)...))
 	return &runnerv1.Task{
 		Id:              job.TaskID,
 		WorkflowPayload: payload,
 		Context:         cx,
-		Secrets:         map[string]string{"GITHUB_TOKEN": token},
+		Secrets:         secrets,
+		Vars:            vars,
 	}, nil
 }
 
@@ -162,10 +177,11 @@ func (r *rpc) UpdateTask(ctx context.Context, req *connect.Request[runnerv1.Upda
 		return nil, unavailable(errors.New("servizio non disponibile"))
 	}
 	if concl := resultName(st.GetResult()); concl != "" {
-		if err := ci.CompleteJob(ctx, g.Pool, g.Now(), a.JobID, concl); err != nil {
+		if err := ci.CompleteJobReported(ctx, g.Pool, g.Now(), a.JobID, concl, g.Reporter); err != nil {
 			g.Log.Error("ci-gateway: chiusura del job non riuscita", "job", a.JobID, "err", err)
 			return nil, unavailable(errors.New("servizio non disponibile"))
 		}
+		g.maskers.drop(a.JobID)
 	}
 	return connect.NewResponse(&runnerv1.UpdateTaskResponse{State: &runnerv1.TaskState{Id: a.TaskID, Result: st.GetResult()}}), nil
 }
@@ -192,7 +208,12 @@ func (r *rpc) UpdateLog(ctx context.Context, req *connect.Request[runnerv1.Updat
 		}
 		lines = append(lines, l)
 	}
-	ack, err := g.Logs.Append(ctx, g.Pool, g.Now(), a.JobID, req.Msg.GetIndex(), lines)
+	mask, err := g.maskerFor(ctx, a, bearer(req.Header()))
+	if err != nil {
+		g.Log.Error("ci-gateway: segreti del job non caricati", "job", a.JobID, "err", err)
+		return nil, unavailable(errors.New("servizio non disponibile"))
+	}
+	ack, err := g.Logs.AppendMasked(ctx, g.Pool, g.Now(), a.JobID, req.Msg.GetIndex(), lines, mask)
 	if err != nil {
 		g.Log.Error("ci-gateway: log non scritti", "job", a.JobID, "err", err)
 		return nil, unavailable(errors.New("servizio non disponibile"))

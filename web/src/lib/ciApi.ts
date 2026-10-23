@@ -6,15 +6,20 @@
 import {
   createCiRunnerRegistrationToken as sdkCreateCiRunnerRegistrationToken,
   deleteCiRunner as sdkDeleteCiRunner,
+  deleteRepositoryActionsSecret as sdkDeleteRepositoryActionsSecret,
+  deleteRepositoryActionsVariable as sdkDeleteRepositoryActionsVariable,
+  getRepositoryActionsPermissions as sdkGetRepositoryActionsPermissions,
   getCiQueue as sdkGetCiQueue,
   listCiRunners as sdkListCiRunners,
   listOrganizationActionsSecrets as sdkListOrganizationActionsSecrets,
   listRepositoryActionsSecrets as sdkListRepositoryActionsSecrets,
   listRepositoryActionsVariables as sdkListRepositoryActionsVariables,
+  putRepositoryActionsPermissions as sdkPutRepositoryActionsPermissions,
   putRepositoryActionsSecret as sdkPutRepositoryActionsSecret,
   putRepositoryActionsVariable as sdkPutRepositoryActionsVariable,
 } from '@gitstack/api-client';
 import type {
+  ActionsJobTokenDefaults,
   ActionsSecret,
   ActionsSecretInputWritable,
   ActionsSecretList,
@@ -29,6 +34,7 @@ import type {
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
 export type {
+  ActionsJobTokenDefaults,
   ActionsSecret,
   ActionsSecretList,
   ActionsVariable,
@@ -86,6 +92,28 @@ export async function putRepoVariable(
       body: input,
     }),
   );
+}
+
+export async function deleteRepoSecret(owner: string, repo: string, name: string): Promise<void> {
+  unwrapEmpty(await sdkDeleteRepositoryActionsSecret({ baseUrl: API_BASE_URL, path: { owner, repo, name } }));
+}
+
+export async function deleteRepoVariable(owner: string, repo: string, name: string): Promise<void> {
+  unwrapEmpty(await sdkDeleteRepositoryActionsVariable({ baseUrl: API_BASE_URL, path: { owner, repo, name } }));
+}
+
+/* ===== Permessi di default (tetto) del token del job del repo (solo admin) ===== */
+
+export async function fetchRepoTokenPermissions(owner: string, repo: string): Promise<ActionsJobTokenDefaults> {
+  return unwrap(await sdkGetRepositoryActionsPermissions({ baseUrl: API_BASE_URL, path: { owner, repo } }));
+}
+
+export async function putRepoTokenPermissions(
+  owner: string,
+  repo: string,
+  input: ActionsJobTokenDefaults,
+): Promise<ActionsJobTokenDefaults> {
+  return unwrap(await sdkPutRepositoryActionsPermissions({ baseUrl: API_BASE_URL, path: { owner, repo }, body: input }));
 }
 
 /* ===== Segreti ereditati dall'organizzazione ===== */

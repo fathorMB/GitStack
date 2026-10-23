@@ -24,11 +24,14 @@ const (
 	EventPullRequestReview = "pull_request_review"
 	EventCommitStatus      = "commit_status"
 	EventRelease           = "release"
+	// v2-a (GIT-281, CI6): esecuzioni e job dei workflow.
+	EventWorkflowRun = "workflow_run"
+	EventWorkflowJob = "workflow_job"
 )
 
 // Events sono gli eventi selezionabili.
 var Events = []string{EventPush, EventIssues, EventIssueComment, EventRepository,
-	EventPullRequest, EventPullRequestReview, EventCommitStatus, EventRelease}
+	EventPullRequest, EventPullRequestReview, EventCommitStatus, EventRelease, EventWorkflowRun, EventWorkflowJob}
 
 // issueActions: evento di dominio → action di `issues`. issue.hidden e
 // issue.unhidden non hanno webhook (docs/events.md).
@@ -83,6 +86,9 @@ func (e *Engine) handle(ctx context.Context, tx pgx.Tx, ev outboxEvent) error {
 		})
 	}
 	if handled, err := e.handlePullEvent(ctx, tx, ev); handled || err != nil {
+		return err
+	}
+	if handled, err := e.handleCIEvent(ctx, tx, ev); handled || err != nil {
 		return err
 	}
 	return nil // issue.hidden, issue.unhidden e gli eventi che non sono webhook

@@ -7825,6 +7825,116 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+  /repos/{owner}/{repo}/actions/secrets/{name}:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/ActionsNameParam"}]
+    delete:
+      operationId: deleteRepositoryActionsSecret
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repository_secret_delete
+        destructive: true
+      summary: Elimina un segreto CI del repository
+      description: "Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. Un nome che non c'e' e' 404."
+      responses:
+        "204": {description: Eliminato.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /repos/{owner}/{repo}/actions/variables/{name}:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/ActionsNameParam"}]
+    delete:
+      operationId: deleteRepositoryActionsVariable
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repository_variable_delete
+        destructive: true
+      summary: Elimina una variabile CI del repository
+      description: "Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato. Un nome che non c'e' e' 404."
+      responses:
+        "204": {description: Eliminato.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /orgs/{org}/actions/secrets/{name}:
+    parameters: [{$ref: "#/components/parameters/OrgParam"}, {$ref: "#/components/parameters/ActionsNameParam"}]
+    delete:
+      operationId: deleteOrganizationActionsSecret
+      tags: [ci]
+      x-required-scopes: ["admin:org"]
+      x-mcp:
+        expose: false
+        name: organization_secret_delete
+        destructive: true
+      summary: Elimina un segreto CI dell'organizzazione
+      description: "Solo gli owner dell'organizzazione (403 altrimenti). Un nome che non c'e' e' 404."
+      responses:
+        "204": {description: Eliminato.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /orgs/{org}/actions/variables/{name}:
+    parameters: [{$ref: "#/components/parameters/OrgParam"}, {$ref: "#/components/parameters/ActionsNameParam"}]
+    delete:
+      operationId: deleteOrganizationActionsVariable
+      tags: [ci]
+      x-required-scopes: ["admin:org"]
+      x-mcp:
+        expose: false
+        name: organization_variable_delete
+        destructive: true
+      summary: Elimina una variabile CI dell'organizzazione
+      description: "Solo gli owner dell'organizzazione (403 altrimenti). Un nome che non c'e' e' 404."
+      responses:
+        "204": {description: Eliminato.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /repos/{owner}/{repo}/actions/permissions:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}]
+    get:
+      operationId: getRepositoryActionsPermissions
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repository_actions_permissions_get
+        destructive: false
+      summary: Legge i permessi di default del token del job del repository
+      description: Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge). Senza impostazioni salvate ogni livello e' `read`.
+      responses:
+        "200": {description: Permessi di default., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsJobTokenDefaults"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    put:
+      operationId: putRepositoryActionsPermissions
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repository_actions_permissions_put
+        destructive: false
+      summary: Cambia i permessi di default del token del job del repository
+      description: >
+        Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato.
+        I livelli sono il tetto del token del job: `permissions:` del workflow non li supera mai e il token
+        non supera mai chi ha avviato l'esecuzione (vedi `JobTokenPermissions`). Vale per i job creati dopo la modifica.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ActionsJobTokenDefaults"}}}}
+      responses:
+        "200": {description: Permessi salvati., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsJobTokenDefaults"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
   /admin/ci/runners:
     get:
       operationId: listCiRunners
@@ -9894,6 +10004,11 @@ components:
       in: path
       required: true
       schema: {type: string, format: uuid}
+    ActionsNameParam:
+      name: name
+      in: path
+      required: true
+      schema: {type: string, pattern: '^[A-Z_][A-Z0-9_]*$', maxLength: 100}
     RunnerIdParam:
       name: runnerId
       in: path
@@ -10031,6 +10146,15 @@ components:
       additionalProperties: false
       required: [name, value]
       properties: {name: {type: string, pattern: '^[A-Z_][A-Z0-9_]*$'}, value: {type: string}}
+    ActionsJobTokenDefaults:
+      type: object
+      additionalProperties: false
+      description: Permessi di default (tetto) del token del job di un repository (CI4). Mai oltre chi avvia l'esecuzione.
+      required: [contents, packages, actions]
+      properties:
+        contents: {type: string, enum: [none, read, write]}
+        packages: {type: string, enum: [none, read, write]}
+        actions: {type: string, enum: [none, read, write]}
     ActionsSecretList:
       type: object
       additionalProperties: false
