@@ -22,7 +22,7 @@ func TestCorePod_RestrictedELimiti(t *testing.T) {
 	}
 	c := pod.Spec.Containers[0]
 	if len(pod.Spec.Volumes) != 2 || c.VolumeMounts[0].MountPath != "/work" || c.VolumeMounts[1].MountPath != "/tmp" ||
-		pod.Spec.Volumes[0].VolumeSource.EmptyDir.SizeLimit.CmpInt64(20<<30) != 0 {
+		pod.Spec.Volumes[0].EmptyDir.SizeLimit.CmpInt64(20<<30) != 0 {
 		t.Fatal("volumi scrivibili del job mancanti o senza il tetto")
 	}
 	if c.SecurityContext == nil || c.SecurityContext.AllowPrivilegeEscalation == nil || *c.SecurityContext.AllowPrivilegeEscalation ||
