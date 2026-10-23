@@ -302,11 +302,16 @@ func (rt route) upstreamName(repoID string) string {
 	return repoID + "/" + rt.image
 }
 
-func actionFor(method string) string {
+// actionFor dà l'azione richiesta da un metodo su una rotta. Annullare un upload in corso
+// (DELETE su blobs/uploads/…) è parte della pubblicazione, non un'eliminazione.
+func actionFor(method, tail string) string {
 	switch method {
 	case http.MethodGet, http.MethodHead:
 		return actionPull
 	case http.MethodDelete:
+		if strings.HasPrefix(tail, "blobs/uploads") {
+			return actionPush
+		}
 		return actionDelete
 	default:
 		return actionPush
@@ -393,12 +398,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		serveErr(w, errcode.ErrorCodeUnsupported.WithMessage("operazione non supportata"))
 		return
 	}
-	action := actionFor(r.Method)
+	action := actionFor(r.Method, rt.tail)
 	g, ok := h.authorize(w, r, cl, rt.owner, rt.repo, action)
 	if !ok {
 		return
 	}
 	g.user = cl.name
+	if action == actionPush && r.Method == http.MethodDelete {
+		// Distribution chiede l'azione delete anche per annullare un upload: qui basta write.
+		g.actions[actionDelete] = true
+	}
 
 	// Il montaggio di un blob da un altro repo vale solo se il chiamante lo può leggere:
 	// altrimenti si scarta il parametro e il push avviene con un upload normale.

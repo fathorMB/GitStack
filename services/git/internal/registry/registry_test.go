@@ -499,6 +499,10 @@ func TestLocationEdIdNonTrapelano(t *testing.T) {
 	if st := e.status("DELETE", loc, "gst_read"); st != 403 {
 		t.Errorf("DELETE dell'upload con read = %d", st)
 	}
+	// Annullare l'upload è parte della pubblicazione: basta write, non serve admin.
+	if st := e.status("DELETE", loc, "gst_write"); st != 204 {
+		t.Errorf("DELETE dell'upload con write = %d, atteso 204", st)
+	}
 	if st := e.status("GET", loc, ""); st != 401 {
 		t.Errorf("upload senza credenziali = %d", st)
 	}
