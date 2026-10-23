@@ -133,7 +133,7 @@ export async function fetchCiRunners(): Promise<CiRunnerList> {
   return unwrap(await sdkListCiRunners({ baseUrl: API_BASE_URL }));
 }
 
-/** Token monouso di registrazione: la risposta del contratto ha solo la scadenza. */
+/** Token di registrazione: il valore è nella sola risposta 201, nessuna GET lo rilegge. */
 export async function createCiRegistrationToken(): Promise<CiRunnerRegistrationToken> {
   return unwrap(await sdkCreateCiRunnerRegistrationToken({ baseUrl: API_BASE_URL }));
 }
