@@ -135,7 +135,7 @@ type graceDriver struct {
 
 func (g *graceDriver) Delete(ctx context.Context, p string) error {
 	if strings.HasPrefix(p, storageRoot+"/blobs/") {
-		if fi, err := g.StorageDriver.Stat(ctx, p+"/data"); err == nil && g.now.Sub(fi.ModTime()) < g.grace {
+		if fi, err := g.Stat(ctx, p+"/data"); err == nil && g.now.Sub(fi.ModTime()) < g.grace {
 			return nil
 		}
 	}
