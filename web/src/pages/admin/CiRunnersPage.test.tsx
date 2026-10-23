@@ -79,28 +79,50 @@ describe('Admin · CI & runners (mockup B4)', { timeout: 30000 }, () => {
     await waitFor(() => expect(deleteCiRunner).toHaveBeenCalledWith('r1'));
   });
 
-  it('il token di registrazione: si legge solo la scadenza, mai il valore', async () => {
+  it('il token di registrazione si mostra una volta, con copia, e sparisce al rimontaggio', async () => {
     vi.mocked(createCiRegistrationToken).mockResolvedValue({
       expiresAt: '2026-11-01T00:00:00Z',
       token: 'reg-token-value',
-    } as never);
-    renderPage();
+    });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const first = renderPage();
     await userEvent.click(await screen.findByRole('button', { name: 'Register external runner' }));
     await waitFor(() => expect(createCiRegistrationToken).toHaveBeenCalled());
 
     const box = await card('Registration token');
     expect(within(box).getByText(/Valid until/)).toBeInTheDocument();
-    expect(within(box).getByText(/never reads it back/)).toBeInTheDocument();
-    // Il contratto ha `token` come writeOnly: la UI non puo' rileggerlo.
-    expect(within(box).queryByText('reg-token-value')).toBeNull();
+    expect(within(box).getByText('reg-token-value')).toBeInTheDocument();
+    await userEvent.click(within(box).getByRole('button', { name: 'Copy token' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('reg-token-value'));
+
+    first.unmount();
+    renderPage();
+    await screen.findByText('External runners');
+    expect(screen.queryByText('reg-token-value')).toBeNull();
   });
 
-  it('spazio di log, artefatti e cache con le regole CI5, senza numeri inventati', async () => {
+  it('spazio di log, artefatti e cache dal contratto, con le regole CI5', async () => {
+    vi.mocked(fetchCiQueue).mockResolvedValue({
+      ...queue,
+      avgQueueWaitSeconds: 42,
+      logBytes: 1073741824,
+      artifactBytes: 0,
+      cacheBytes: 0,
+    });
     renderPage();
     const box = await card('Storage');
     expect(within(box).getByText(/kept 90 days · in backups/)).toBeInTheDocument();
     expect(within(box).getByText(/images used by apps always included/)).toBeInTheDocument();
-    expect(within(box).getByText(/Space used is not exposed by the API yet/)).toBeInTheDocument();
+    expect(within(box).getByText('42 s')).toBeInTheDocument();
+    expect(within(box).getByText('1.0 GB')).toBeInTheDocument();
+    expect(within(box).queryByText(/not reported by the server/)).toBeNull();
+  });
+
+  it('senza i campi di spazio la card Storage non inventa numeri', async () => {
+    renderPage();
+    const box = await card('Storage');
+    expect(within(box).getByText(/not reported by the server/)).toBeInTheDocument();
   });
 
   it('non amministratore: la console non carica niente', async () => {
