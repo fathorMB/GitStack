@@ -279,6 +279,20 @@ func TestTagProtetti_NonSiSovrascrivonoNeSiEliminano(t *testing.T) {
 	if !e.manifestExists("alice/app", digestOf(t, first)) {
 		t.Fatal("l'immagine con il tag protetto è sparita")
 	}
+	// DELETE per tag (distribution lo accetta e fa Untag): su un tag protetto è 403 e il tag resta.
+	if st := e.status("DELETE", "/v2/alice/app/manifests/v1", "gst_admin"); st != 403 {
+		t.Fatalf("DELETE per tag protetto: %d, voluto 403", st)
+	}
+	if d, err := e.pull("alice/app:v1", "gst_read"); err != nil || d != digestOf(t, first) {
+		t.Fatalf("v1 dopo la DELETE per tag: %v %v", d, err)
+	}
+	// Su un tag non protetto la DELETE per tag passa (202 di distribution) e il tag sparisce.
+	if st := e.status("DELETE", "/v2/alice/app/manifests/dev", "gst_admin"); st != 202 {
+		t.Fatalf("DELETE per tag non protetto: %d, voluto 202", st)
+	}
+	if got := e.tags("alice/app"); slices.Contains(got, "dev") || !slices.Contains(got, "v1") {
+		t.Fatalf("tag dopo la DELETE di dev: %v", got)
+	}
 	e.sb.set(idApp, func(s *Settings) { s.ProtectedTagPatterns = nil })
 	if err := remote.Delete(e.ref("alice/app@"+digestOf(t, first).String()), basic("gst_admin")); err != nil {
 		t.Fatalf("delete senza protezione: %v", err)

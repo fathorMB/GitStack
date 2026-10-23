@@ -163,6 +163,11 @@ func (h *Handler) guard(w http.ResponseWriter, r *http.Request, rt route, action
 				}
 			}
 		case http.MethodDelete:
+			// DELETE per tag: distribution v3 fa Untag del tag.
+			if !strings.Contains(ref, ":") && st.protected(ref) {
+				serveErr(w, denied("il tag "+ref+" è protetto: non si elimina"))
+				return false
+			}
 			tags, err := h.tagsOf(ctx, name)
 			if err != nil {
 				h.log.Error("lettura dei tag non riuscita", "err", err)
