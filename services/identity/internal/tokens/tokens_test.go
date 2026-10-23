@@ -412,7 +412,7 @@ func TestParseScopes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ParseScopes() errore: %v", err)
 		}
-		want := []string{"admin:org", "read:org", "read:resource", "read:user", "write:org", "write:resource", "write:user"}
+		want := []string{"admin:org", "admin:registry", "read:org", "read:registry", "read:resource", "read:user", "write:org", "write:registry", "write:resource", "write:user"}
 		if !equalStringSlices(got, want) {
 			t.Errorf("ParseScopes() = %v, want %v", got, want)
 		}

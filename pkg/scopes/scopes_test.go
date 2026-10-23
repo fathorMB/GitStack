@@ -17,6 +17,11 @@ func TestGrants(t *testing.T) {
 		{"write non implica admin", []string{"write:org"}, "admin:org", false},
 		{"ambito diverso", []string{"write:user"}, "read:resource", false},
 		{"vuoto", nil, "read:resource", false},
+		{"registry: write implica read", []string{"write:registry"}, "read:registry", true},
+		{"registry: admin implica write e read", []string{"admin:registry"}, "write:registry", true},
+		{"registry: write non implica admin", []string{"write:registry"}, "admin:registry", false},
+		{"registry non implica resource", []string{"admin:registry"}, "read:resource", false},
+		{"resource non implica registry", []string{"write:resource"}, "read:registry", false},
 		{"malformato", []string{"resource"}, "read:resource", false},
 	}
 	for _, tt := range tests {

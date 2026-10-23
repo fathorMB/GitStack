@@ -369,10 +369,13 @@ func (e TeamRole) Valid() bool {
 // Defines values for TokenScope.
 const (
 	AdminOrg      TokenScope = "admin:org"
+	AdminRegistry TokenScope = "admin:registry"
 	ReadOrg       TokenScope = "read:org"
+	ReadRegistry  TokenScope = "read:registry"
 	ReadResource  TokenScope = "read:resource"
 	ReadUser      TokenScope = "read:user"
 	WriteOrg      TokenScope = "write:org"
+	WriteRegistry TokenScope = "write:registry"
 	WriteResource TokenScope = "write:resource"
 	WriteUser     TokenScope = "write:user"
 )
@@ -382,13 +385,19 @@ func (e TokenScope) Valid() bool {
 	switch e {
 	case AdminOrg:
 		return true
+	case AdminRegistry:
+		return true
 	case ReadOrg:
+		return true
+	case ReadRegistry:
 		return true
 	case ReadResource:
 		return true
 	case ReadUser:
 		return true
 	case WriteOrg:
+		return true
+	case WriteRegistry:
 		return true
 	case WriteResource:
 		return true
@@ -1067,7 +1076,7 @@ type TokenList struct {
 	Total   int     `json:"total"`
 }
 
-// TokenScope Catalogo degli scope dei token personali (unico, condiviso da tutti i servizi). Le sessioni web non hanno scope: valgono i permessi dell'utente. `write:*` include `read:*` dello stesso ambito; `admin:org` include `write:org`.
+// TokenScope Catalogo degli scope dei token personali (unico, condiviso da tutti i servizi). Le sessioni web non hanno scope: valgono i permessi dell'utente. `write:*` include `read:*` dello stesso ambito; `admin:org` include `write:org`. Gli scope `*:registry` (RG1) valgono solo per il registry OCI: `read:registry` scarica le immagini, `write:registry` le pubblica (e include `read:registry`), `admin:registry` le elimina (e include gli altri due). Non sono implicati da `*:resource` e non lo implicano.
 type TokenScope string
 
 // TotpCodeInput defines model for TotpCodeInput.
