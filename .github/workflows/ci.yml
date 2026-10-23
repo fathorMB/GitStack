@@ -1534,7 +1534,8 @@ jobs:
             echo "FALLITO: la quota CI ha accettato risorse oltre il tetto" >&2; exit 1
           fi
           grep -Eqi 'limit|maximum|exceed' /tmp/ci-over-limit.err
-          kubectl -n "$ns" apply -f - <<'EOF'
+          CI_GATEWAY_IP="$(kubectl get svc gitstack-core -o jsonpath='{.spec.clusterIP}')"
+          kubectl -n "$ns" apply -f - <<EOF
           apiVersion: v1
           kind: Pod
           metadata:
@@ -1544,6 +1545,7 @@ jobs:
             restartPolicy: Never
             activeDeadlineSeconds: 30
             automountServiceAccountToken: false
+            enableServiceLinks: false
             securityContext:
               runAsNonRoot: true
               runAsUser: 10001
@@ -1551,7 +1553,15 @@ jobs:
             containers:
               - name: probe
                 image: docker.io/busybox:1.36
-                command: [sh, -c, 'nc -z -w3 gitstack-nats.default.svc.cluster.local 4222 && exit 1; test ! -e /var/run/docker.sock']
+                command: [sh, -c, 'test ! -e /var/run/docker.sock; ! nc -z -w3 kubernetes.default.svc 443; ! nslookup kubernetes.default.svc; ! nc -z -w3 gitstack-nats.default.svc 4222; nc -z -w3 ${CI_GATEWAY_IP} 8081']
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  readOnlyRootFilesystem: true
+                  capabilities: {drop: [ALL]}
+            initContainers:
+              - name: gate
+                image: gitstack-ci-runner:test
+                command: [/usr/local/bin/gitstack-ci-gate]
                 securityContext:
                   allowPrivilegeEscalation: false
                   readOnlyRootFilesystem: true
