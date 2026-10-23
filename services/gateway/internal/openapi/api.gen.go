@@ -2717,8 +2717,19 @@ type BranchSettings struct {
 
 // CiQueue defines model for CiQueue.
 type CiQueue struct {
-	MaxConcurrentJobs int `json:"maxConcurrentJobs"`
-	QueuedJobs        int `json:"queuedJobs"`
+	// ArtifactBytes Spazio occupato dagli artefatti, in byte. Vale 0 finché non arriva GIT-280.
+	ArtifactBytes *int64 `json:"artifactBytes,omitempty"`
+
+	// AvgQueueWaitSeconds Attesa media in coda dei job, in secondi.
+	AvgQueueWaitSeconds *int `json:"avgQueueWaitSeconds,omitempty"`
+
+	// CacheBytes Spazio occupato dalle cache, in byte. Vale 0 finché non arriva GIT-280.
+	CacheBytes *int64 `json:"cacheBytes,omitempty"`
+
+	// LogBytes Spazio occupato dai log dei job, in byte.
+	LogBytes          *int64 `json:"logBytes,omitempty"`
+	MaxConcurrentJobs int    `json:"maxConcurrentJobs"`
+	QueuedJobs        int    `json:"queuedJobs"`
 	ResourceLimits    struct {
 		// CpuCores Example: 2
 		CpuCores int `json:"cpuCores"`
@@ -2751,10 +2762,10 @@ type CiRunnerList struct {
 	Items []CiRunner `json:"items"`
 }
 
-// CiRunnerRegistrationToken defines model for CiRunnerRegistrationToken.
+// CiRunnerRegistrationToken Restituito solo dalla risposta 201 di POST /admin/ci/runners/registration-token; nessuna GET lo espone. Il token in chiaro si vede una volta sola.
 type CiRunnerRegistrationToken struct {
 	ExpiresAt time.Time `json:"expiresAt"`
-	Token     *string   `json:"token,omitempty"`
+	Token     string    `json:"token"`
 }
 
 // CloseIssueInput defines model for CloseIssueInput.
