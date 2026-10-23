@@ -123,6 +123,16 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.identity.containerPort }}
+    {{- if and .Values.git.enabled .Values.git.registry.enabled }}
+    # Registry OCI (GIT-286): /v2/ passa dal gateway al servizio git.
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "git") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.git.containerPort }}
+    {{- end }}
 {{- end }}
 {{- if .Values.core.enabled }}
 ---
@@ -275,6 +285,11 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "core") | nindent 14 }}
+        {{- if .Values.git.registry.enabled }}
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "gateway") | nindent 14 }}
+        {{- end }}
       ports:
         - protocol: TCP
           port: {{ .Values.git.containerPort }}
@@ -299,6 +314,16 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.identity.containerPort }}
+    {{- if and .Values.git.registry.enabled .Values.git.registry.ciGateway.url .Values.git.registry.ciGateway.port }}
+    # Token del job (GIT-286): il registry lo convalida nel ci-gateway di core.
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "core") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.git.registry.ciGateway.port }}
+    {{- end }}
     - to:
         - podSelector:
             matchLabels:

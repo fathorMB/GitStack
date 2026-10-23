@@ -356,6 +356,29 @@ git:
       # Secret esistente con la chiave `ssh_host_ed25519_key`; vuoto = generata
       # una sola volta dal chart (<release>-git-ssh-host-key, resource-policy keep).
       existingSecret: ""
+  # Registry OCI (GIT-286, RG1): lo serve questo servizio sotto /v2/, raggiungibile
+  # dal gateway (stesso host della UI e dell'API). Login con un token personale o di agente
+  # con scope read/write/admin:registry, o con il token del job. I dati stanno sul PVC
+  # git-data (<dati>/registry) oppure su S3. Le immagini seguono il repo (archiviazione,
+  # eliminazione e ripristino entro 7 giorni).
+  registry:
+    enabled: true
+    # Token del job (gsj_): URL e porta del ci-gateway di core, con cui il registry lo
+    # convalida. Vuoto = solo i token personali; il ci-gateway non è ancora nel chart.
+    ciGateway:
+      url: ""
+      port: 0
+    # Archiviazione S3 al posto del disco. Chiavi in un Secret con le chiavi accessKey e
+    # secretKey (esistente, creato dall'operatore).
+    s3:
+      enabled: false
+      bucket: ""
+      region: ""
+      # Vuoto = AWS. Per MinIO o simili: http(s)://host:porta e pathStyle true.
+      endpoint: ""
+      pathStyle: false
+      prefix: gitstack-registry
+      existingSecret: ""
   # Mirror in push (V8): CA privata per le destinazioni.
   mirror:
     # Nome di un ConfigMap (stesso namespace) con la chiave ca.crt: file PEM di

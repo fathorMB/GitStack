@@ -26,8 +26,10 @@ type Client struct {
 	identity string
 	core     string
 	secret   string
-	http     *http.Client
-	now      func() time.Time
+	// ciGateway è l'URL interno del ci-gateway di core (token del job, registry).
+	ciGateway string
+	http      *http.Client
+	now       func() time.Time
 }
 
 // New crea il client. Le due basi sono URL interni dei Service.
@@ -214,4 +216,55 @@ func (c *Client) LookupKey(ctx context.Context, fingerprint string) (access.KeyO
 		return access.KeyOwner{}, fmt.Errorf("%w: risposta di ssh-keys non valida", access.ErrUnavailable)
 	}
 	return access.KeyOwner{UserID: out.User.ID, Username: out.User.Username, Kind: out.User.Kind, Active: out.User.IsActive != nil && *out.User.IsActive}, nil
+}
+
+// WithCIGateway abilita JobAccess: base è l'URL interno del ci-gateway di core.
+func (c *Client) WithCIGateway(base string) *Client {
+	c.ciGateway = strings.TrimRight(base, "/")
+	return c
+}
+
+var _ access.Jobs = (*Client)(nil)
+
+// JobAccess implementa access.Jobs: GET /ci/v1/registry-access del ci-gateway, con il
+// token del job come Bearer. Il ci-gateway risponde solo per il repo del job.
+func (c *Client) JobAccess(ctx context.Context, token, owner, repo string) (access.JobAccess, error) {
+	if c.ciGateway == "" {
+		return access.JobAccess{}, fmt.Errorf("%w: ci-gateway non configurato", access.ErrUnavailable)
+	}
+	if token == "" || len(token) > 128 {
+		return access.JobAccess{}, access.ErrInvalidJobToken
+	}
+	q := url.Values{"owner": {owner}, "repo": {repo}}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.ciGateway+"/ci/v1/registry-access?"+q.Encode(), nil)
+	if err != nil {
+		return access.JobAccess{}, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return access.JobAccess{}, fmt.Errorf("%w: %s", access.ErrUnavailable, sanitize(err))
+	}
+	defer func() { _ = resp.Body.Close() }()
+	data, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	switch resp.StatusCode {
+	case http.StatusOK:
+	case http.StatusUnauthorized:
+		return access.JobAccess{}, access.ErrInvalidJobToken
+	case http.StatusNotFound:
+		return access.JobAccess{}, access.ErrNotFound
+	default:
+		return access.JobAccess{}, fmt.Errorf("%w: registry-access ha risposto %d", access.ErrUnavailable, resp.StatusCode)
+	}
+	var out struct {
+		RepoID   string `json:"repoId"`
+		Owner    string `json:"owner"`
+		Name     string `json:"name"`
+		Archived bool   `json:"archived"`
+		Packages string `json:"packages"`
+	}
+	if err := json.Unmarshal(data, &out); err != nil || out.RepoID == "" {
+		return access.JobAccess{}, fmt.Errorf("%w: risposta di registry-access non valida", access.ErrUnavailable)
+	}
+	return access.JobAccess{RepoID: out.RepoID, Owner: out.Owner, Name: out.Name, Archived: out.Archived, Packages: out.Packages}, nil
 }

@@ -70,6 +70,7 @@ var reservedOwnerNames = []string{
 	"user",
 	"users",
 	"v1",
+	"v2",
 }
 
 // IsReservedOwnerName reports whether name is reserved for users and

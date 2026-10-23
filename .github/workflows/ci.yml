@@ -119,6 +119,14 @@ jobs:
           GITSTACK_REQUIRE_UI_SMOKE: "1"
         run: go test -tags=integration ./... -race
 
+      # Registry OCI (GIT-286, RG1): docker login, push e pull con il client docker vero
+      # contro il registry in processo (127.0.0.1 è un registry non sicuro per docker, senza
+      # configurazione), su disco e su S3 finto. ubuntu-24.04 ha già docker; il tag "docker"
+      # tiene il test fuori da `go test ./...`.
+      - name: go test -tags=docker (services/git, registry OCI con docker vero)
+        working-directory: services/git
+        run: go test -tags=docker -run TestDocker -count=1 -v ./internal/registry/
+
       # Tabella regole→test (GIT-115): ogni test citato in docs/rules-coverage.md
       # deve esistere ancora nel codice.
       - name: Copertura regole di prodotto (docs/rules-coverage.md)

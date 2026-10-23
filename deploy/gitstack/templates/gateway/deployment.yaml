@@ -38,6 +38,11 @@ spec:
               value: {{ printf ":%d" (.Values.gateway.containerPort | int) | quote }}
             - name: GITSTACK_CORE_URL
               value: {{ include "gitstack.core.url" . | quote }}
+            {{- if and .Values.git.enabled .Values.git.registry.enabled }}
+            # Registry OCI (GIT-286): /v2/ è instradato al servizio git.
+            - name: GITSTACK_REGISTRY_URL
+              value: {{ include "gitstack.git.url" . | quote }}
+            {{- end }}
             {{- if .Values.identity.enabled }}
             - name: GITSTACK_IDENTITY_URL
               value: {{ include "gitstack.identity.url" . | quote }}

@@ -20,8 +20,16 @@ Servizio git di GitStack: tiene i repo bare su un volume e li gestisce con il bi
 | `GITSTACK_GIT_REPO_SIZE_WARN` | `5GB` | Oltre questa dimensione del repo il push è accettato con un avviso (R6, avviso di quota per repo). Stesso formato; `0` = nessun avviso. |
 | `GITSTACK_GIT_MIRROR_MAX_FETCH_SIZE` | `5GB` | Tetto di crescita del repo in un singolo fetch di un pull mirror (F18): oltre, il fetch è interrotto, gli oggetti scaricati sono eliminati e l'aggiornamento fallisce. Stesso formato; `0` = nessun tetto. |
 | `GITSTACK_GIT_RECEIVE_FSCK` | `on` | `off` spegne `receive.fsckObjects` sul receive-pack (F18). Con il controllo attivo git rifiuta il push di un oggetto malformato; zero-padded filemode e fuso orario non valido (`badTimezone`), tipici delle storie importate, restano avvisi (`receive.fsck.zeroPaddedFilemode=warn`, `receive.fsck.badTimezone=warn`). Se un import ha altre anomalie (per esempio `missingEmail`), `off` fa passare il push: riattivalo dopo l'import. |
+| `GITSTACK_GIT_REGISTRY` | `on` | `off` spegne il registry OCI (`/v2/` risponde 404). Parte solo con identity, core e segreto di servizio. |
+| `GITSTACK_GIT_REGISTRY_DIR` | `<DATA_DIR>/registry` | Dati del registry su disco. Ignorata con un bucket S3. |
+| `GITSTACK_GIT_CI_GATEWAY_URL` | — | URL interno del ci-gateway di core, con cui il token del job (`gsj_`) si trasforma nei permessi sul registry del suo repo. Senza, i token del job non entrano (503); quelli personali sì. |
+| `GITSTACK_GIT_REGISTRY_S3_BUCKET`, `_REGION`, `_ENDPOINT`, `_ACCESS_KEY`, `_SECRET_KEY`, `_PATH_STYLE`, `_PREFIX` | — | Archiviazione S3 del registry al posto del disco: il bucket la attiva; `_ENDPOINT` per MinIO o simili (con `_PATH_STYLE=on`); chiave e segreto vanno impostati insieme; `_PREFIX` default `gitstack-registry`. |
 
 Probe: `GET /healthz` (liveness, sempre `ok`) e `GET /readyz` (503 se `DATA_DIR` non esiste o non è scrivibile).
+
+## Registry OCI (v2-b, GIT-286, RG1)
+
+Il servizio ospita anche il registry OCI su `/v2/`: distribution (Apache-2.0) come libreria, `internal/registry` ci mette autenticazione Basic con token (personale con scope `*:registry`, o del job), permessi e visibilità del repo, repo archiviato in sola lettura e le immagini sotto l'id del repo. Guida e regole in [`docs/registry.md`](../../docs/registry.md). Il driver di distribution su disco non gira su Windows: i test del pacchetto usano lì la memoria; il disco e `-tags docker` (client `docker` vero) si provano su Linux.
 
 ## Server SSH (M-03/I, R7)
 

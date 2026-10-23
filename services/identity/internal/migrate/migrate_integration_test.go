@@ -87,7 +87,7 @@ func TestUpDownUp(t *testing.T) {
 		}
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 5); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 6); err != nil {
 		t.Fatalf("Down: %v", err)
 	}
 	got = tables(t, pool)
@@ -185,9 +185,9 @@ func TestOwnerNamesBackfillAndCollision(t *testing.T) {
 	if err := migrate.Up(ctx, pool, dsn); err != nil {
 		t.Fatalf("Up: %v", err)
 	}
-	// Tre passi: 0005 (eventi), 0004 (TOTP) e 0003 (nomi degli owner).
-	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
-		t.Fatalf("Down 3: %v", err)
+	// Quattro passi: 0006 (scope del registry), 0005 (eventi), 0004 (TOTP) e 0003 (nomi degli owner).
+	if err := migrate.Down(ctx, pool, dsn, 4); err != nil {
+		t.Fatalf("Down 4: %v", err)
 	}
 	exec(`INSERT INTO identity.users (id, username) VALUES (gen_random_uuid(), 'alice')`)
 	exec(`INSERT INTO identity.organizations (id, name) VALUES (gen_random_uuid(), 'acme')`)
@@ -200,8 +200,8 @@ func TestOwnerNamesBackfillAndCollision(t *testing.T) {
 	}
 
 	// Collisione: stesso nome in users e organizations prima della 0003.
-	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
-		t.Fatalf("Down 3 (bis): %v", err)
+	if err := migrate.Down(ctx, pool, dsn, 4); err != nil {
+		t.Fatalf("Down 4 (bis): %v", err)
 	}
 	exec(`INSERT INTO identity.users (id, username) VALUES (gen_random_uuid(), 'acme')`)
 	err := migrate.Up(ctx, pool, dsn)
@@ -213,5 +213,62 @@ func TestOwnerNamesBackfillAndCollision(t *testing.T) {
 	}
 	if tables(t, pool)["owner_names"] {
 		t.Error("owner_names creata nonostante la migrazione fallita")
+	}
+}
+
+// TestRegistryScopes: la 0006 accetta gli scope del registry; il suo rollback li toglie
+// dai token che ne hanno altri e cancella quelli che resterebbero senza scope.
+func TestRegistryScopes(t *testing.T) {
+	pool, dsn := newPool(t)
+	ctx := context.Background()
+	if err := migrate.Up(ctx, pool, dsn); err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+	exec := func(q string) error {
+		_, err := pool.Exec(ctx, q)
+		return err
+	}
+	const u = "00000000-0000-0000-0000-0000000000f1"
+	if err := exec(`INSERT INTO identity.users (id, username) VALUES ('` + u + `', 'carol')`); err != nil {
+		t.Fatal(err)
+	}
+	tok := func(name, hash, scopes string) error {
+		return exec(`INSERT INTO identity.api_tokens (id, user_id, name, token_hash, token_hint, scopes)
+			VALUES (gen_random_uuid(), '` + u + `', '` + name + `', decode(repeat('` + hash + `', 32), 'hex'), 'wxyz', ARRAY[` + scopes + `])`)
+	}
+	if err := tok("solo", "01", `'read:registry','write:registry','admin:registry'`); err != nil {
+		t.Fatalf("scope del registry rifiutati: %v", err)
+	}
+	if err := tok("misto", "02", `'read:resource','admin:registry'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := tok("altro", "03", `'read:registry','delete:registry'`); err == nil {
+		t.Error("uno scope del registry inventato doveva violare il vincolo")
+	}
+
+	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
+		t.Fatalf("Down 1: %v", err)
+	}
+	var names []string
+	rows, err := pool.Query(ctx, `SELECT name || ':' || array_to_string(scopes, ',') FROM identity.api_tokens ORDER BY name`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var s string
+		if err := rows.Scan(&s); err != nil {
+			t.Fatal(err)
+		}
+		names = append(names, s)
+	}
+	rows.Close()
+	if len(names) != 1 || names[0] != "misto:read:resource" {
+		t.Errorf("dopo il rollback: %v, attesi i soli scope non del registry", names)
+	}
+	if err := tok("rifiutato", "04", `'read:registry'`); err == nil {
+		t.Error("dopo il rollback lo scope del registry doveva essere rifiutato")
+	}
+	if err := migrate.Up(ctx, pool, dsn); err != nil {
+		t.Fatalf("Up dopo Down: %v", err)
 	}
 }

@@ -19,6 +19,8 @@ var Implications = map[string][]string{
 	"write:org":      {"read:org"},
 	"admin:org":      {"write:org", "read:org"},
 	"write:resource": {"read:resource"},
+	"write:registry": {"read:registry"},
+	"admin:registry": {"write:registry", "read:registry"},
 }
 
 // Grants dice se l'insieme di scope del token (have) soddisfa lo scope

@@ -31,6 +31,9 @@ export const TOKEN_SCOPES: { value: TokenScope; description: string }[] = [
   { value: 'admin:org', description: 'Manage members, teams and permissions' },
   { value: 'read:resource', description: 'Read resources' },
   { value: 'write:resource', description: 'Create, change and delete resources' },
+  { value: 'read:registry', description: 'Pull container images' },
+  { value: 'write:registry', description: 'Push container images' },
+  { value: 'admin:registry', description: 'Delete container images' },
 ];
 
 export async function fetchTokens(): Promise<Token[]> {
