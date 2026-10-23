@@ -42,6 +42,9 @@ spec:
         checksum/smtp: {{ toJson .Values.smtp | sha256sum }}
       {{- end }}
     spec:
+      {{- if .Values.ci.enabled }}
+      serviceAccountName: ci-dispatcher
+      {{- end }}
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -82,11 +85,35 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.core.containerPort }}
+            {{- if .Values.ci.enabled }}
+            - name: ci-gateway
+              containerPort: {{ .Values.ci.gateway.port }}
+            {{- end }}
           env:
             {{- include "gitstack.proxy.env" . | nindent 12 }}
             {{- include "gitstack.nats.authEnv" . | nindent 12 }}
             - name: GITSTACK_CORE_ADDR
               value: {{ printf ":%d" (.Values.core.containerPort | int) | quote }}
+            {{- if .Values.ci.enabled }}
+            - name: GITSTACK_CORE_CI_ENABLED
+              value: "true"
+            - name: GITSTACK_CORE_CI_NAMESPACE
+              value: {{ .Values.ci.namespace | quote }}
+            - name: GITSTACK_CORE_CI_IMAGE
+              value: {{ .Values.ci.runner.image | quote }}
+            - name: GITSTACK_CORE_CI_ACTION_MIRROR
+              value: {{ .Values.ci.runner.actionMirror | quote }}
+            - name: GITSTACK_CORE_CI_CAPACITY
+              value: {{ .Values.ci.capacity | quote }}
+            - name: GITSTACK_CORE_CI_GATEWAY_ADDR
+              value: {{ printf ":%d" (.Values.ci.gateway.port | int) | quote }}
+            - name: GITSTACK_CORE_CI_GATEWAY_URL
+              value: {{ printf "http://%s-core:%d" (include "gitstack.fullname" .) (.Values.ci.gateway.port | int) | quote }}
+            - name: GITSTACK_CORE_CI_GATE_INTERNAL_ADDR
+              value: {{ printf "%s-core:%d" (include "gitstack.fullname" .) (.Values.core.containerPort | int) | quote }}
+            - name: GITSTACK_CORE_CI_LOGS_DIR
+              value: /tmp/ci-logs
+            {{- end }}
             # POSTGRES_PASSWORD deve precedere GITSTACK_CORE_DB_URL: la
             # sintassi "$(VAR)" nei valori di env di un container k8s si
             # espande solo con variabili già definite prima nella lista.

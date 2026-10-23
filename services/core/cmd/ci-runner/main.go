@@ -8,6 +8,7 @@
 //	GITSTACK_CI_RUNNER_NAME     nome mostrato come runner del job (default: hostname)
 //	GITSTACK_CI_WORKDIR         cartella di lavoro (default /work)
 //	GITSTACK_CI_ACT             binario di act (default act)
+//	GITSTACK_CI_ACTION_MIRROR   prefisso opzionale del mirror delle action
 //	GITSTACK_CI_FETCH_TIMEOUT   attesa di un job, es. 2m (default 2m)
 //
 // Uscita: 0 se il job è stato eseguito e l'esito riportato (qualunque esito), 3 se non
@@ -40,12 +41,13 @@ func run() int {
 	defer stop()
 
 	cfg := cirunner.Config{
-		GatewayURL: os.Getenv("GITSTACK_CI_GATEWAY_URL"),
-		Secret:     os.Getenv("GITSTACK_CI_RUNNER_SECRET"),
-		Name:       os.Getenv("GITSTACK_CI_RUNNER_NAME"),
-		WorkDir:    os.Getenv("GITSTACK_CI_WORKDIR"),
-		ActBin:     os.Getenv("GITSTACK_CI_ACT"),
-		Log:        log,
+		GatewayURL:   os.Getenv("GITSTACK_CI_GATEWAY_URL"),
+		Secret:       os.Getenv("GITSTACK_CI_RUNNER_SECRET"),
+		Name:         os.Getenv("GITSTACK_CI_RUNNER_NAME"),
+		WorkDir:      os.Getenv("GITSTACK_CI_WORKDIR"),
+		ActBin:       os.Getenv("GITSTACK_CI_ACT"),
+		ActionMirror: os.Getenv("GITSTACK_CI_ACTION_MIRROR"),
+		Log:          log,
 	}
 	if cfg.WorkDir == "" {
 		cfg.WorkDir = "/work"

@@ -48,6 +48,8 @@ type Config struct {
 	// ActBin è il binario di act (default "act"); ActArgs sono argomenti aggiuntivi prima di quelli fissi.
 	ActBin  string
 	ActArgs []string
+	// ActionMirror sostituisce github.com nelle action publiche, se configurato.
+	ActionMirror string
 	// WorkDir contiene workspace/ (il codice) e workflow/ (il file del workflow).
 	WorkDir string
 	// FetchTimeout: quanto aspettare un job (default 2 minuti).
@@ -133,7 +135,7 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 		if err := os.MkdirAll(filepath.Dir(wf), 0o750); err != nil {
 			return err
 		}
-		return os.WriteFile(wf, task.GetWorkflowPayload(), 0o640)
+		return os.WriteFile(wf, RewriteActionMirror(task.GetWorkflowPayload(), cfg.ActionMirror), 0o640)
 	}
 	if err := prepare(); err != nil {
 		rep.line("errore: " + err.Error())
@@ -242,6 +244,17 @@ func runAct(ctx context.Context, cfg Config, rep *reporter, event, jobKey, token
 		return runnerv1.Result_RESULT_FAILURE
 	}
 	return runnerv1.Result_RESULT_SUCCESS
+}
+
+// rewriteActionMirror lascia invariati i riferimenti locali e sostituisce solo le
+// action pubbliche di GitHub. act riceve cosi' un uses completo scaricabile dal
+// mirror amministrato, senza esporre il DNS interno al workflow.
+func RewriteActionMirror(workflow []byte, mirror string) []byte {
+	mirror = strings.TrimRight(strings.TrimSpace(mirror), "/")
+	if mirror == "" {
+		return workflow
+	}
+	return []byte(strings.ReplaceAll(string(workflow), "uses: actions/", "uses: "+mirror+"/actions/"))
 }
 
 // reporter accumula righe di log e stato dei passi e li invia al gateway.

@@ -122,9 +122,18 @@ type Config struct {
 	// CIGatewayURL è l'indirizzo con cui il pod del job raggiunge il gateway
 	// (GITSTACK_CORE_CI_GATEWAY_URL), scritto nel contesto del task.
 	CIGatewayURL string
+	// CIGateInternalAddr Ã¨ un endpoint interno che il gate deve vedere bloccato
+	// prima di avviare il job (GITSTACK_CORE_CI_GATE_INTERNAL_ADDR).
+	CIGateInternalAddr string
 	// CIRunnerSecrets sono i segreti dei runner interni accettati da FetchTask
 	// (GITSTACK_CORE_CI_RUNNER_SECRET, "nuova,vecchia" come i segreti di servizio).
 	CIRunnerSecrets []string
+	// CIEnabled abilita il dispatcher Kubernetes dei job interni.
+	CIEnabled      bool
+	CINamespace    string
+	CIImage        string
+	CIActionMirror string
+	CICapacity     int
 	// CILogsDir è la cartella dei log dei job, nel volume di core e fuori dai
 	// backup (GITSTACK_CORE_CI_LOGS_DIR, CI5). Vuoto: i log dei job rispondono 503.
 	CILogsDir string
@@ -188,17 +197,23 @@ const (
 	envNodeIP               = "GITSTACK_NODE_IP"
 	envSMTPFrom             = "GITSTACK_CORE_SMTP_FROM"
 
-	envAttachmentsDir   = "GITSTACK_CORE_ATTACHMENTS_DIR"
-	envCIGatewayAddr    = "GITSTACK_CORE_CI_GATEWAY_ADDR"
-	envCIGatewayURL     = "GITSTACK_CORE_CI_GATEWAY_URL"
-	envCIRunnerSecret   = "GITSTACK_CORE_CI_RUNNER_SECRET"
-	envCILogsDir        = "GITSTACK_CORE_CI_LOGS_DIR"
-	envReleaseAssetsDir = "GITSTACK_CORE_RELEASE_ASSETS_DIR"
-	envSystemInfoFile   = "GITSTACK_SYSTEM_INFO_FILE"
-	envAttachmentMax    = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
-	envAttachRepoQuota  = "GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES"
-	envAttachUserQuota  = "GITSTACK_CORE_ATTACHMENTS_USER_QUOTA_BYTES"
-	envAttachmentOrphan = "GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL"
+	envAttachmentsDir     = "GITSTACK_CORE_ATTACHMENTS_DIR"
+	envCIGatewayAddr      = "GITSTACK_CORE_CI_GATEWAY_ADDR"
+	envCIGatewayURL       = "GITSTACK_CORE_CI_GATEWAY_URL"
+	envCIGateInternalAddr = "GITSTACK_CORE_CI_GATE_INTERNAL_ADDR"
+	envCIRunnerSecret     = "GITSTACK_CORE_CI_RUNNER_SECRET"
+	envCIEnabled          = "GITSTACK_CORE_CI_ENABLED"
+	envCINamespace        = "GITSTACK_CORE_CI_NAMESPACE"
+	envCIImage            = "GITSTACK_CORE_CI_IMAGE"
+	envCIActionMirror     = "GITSTACK_CORE_CI_ACTION_MIRROR"
+	envCICapacity         = "GITSTACK_CORE_CI_CAPACITY"
+	envCILogsDir          = "GITSTACK_CORE_CI_LOGS_DIR"
+	envReleaseAssetsDir   = "GITSTACK_CORE_RELEASE_ASSETS_DIR"
+	envSystemInfoFile     = "GITSTACK_SYSTEM_INFO_FILE"
+	envAttachmentMax      = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
+	envAttachRepoQuota    = "GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES"
+	envAttachUserQuota    = "GITSTACK_CORE_ATTACHMENTS_USER_QUOTA_BYTES"
+	envAttachmentOrphan   = "GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL"
 
 	defaultAttachmentMaxBytes  = int64(10 << 20)
 	defaultAttachmentOrphanTTL = 24 * time.Hour
@@ -337,11 +352,33 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	if v, ok := lookup(envCIGatewayURL); ok {
 		cfg.CIGatewayURL = strings.TrimSpace(v)
 	}
+	if v, ok := lookup(envCIGateInternalAddr); ok {
+		cfg.CIGateInternalAddr = strings.TrimSpace(v)
+	}
 	if v, ok := lookup(envCIRunnerSecret); ok {
 		for _, s := range strings.Split(v, ",") {
 			if s = strings.TrimSpace(s); s != "" {
 				cfg.CIRunnerSecrets = append(cfg.CIRunnerSecrets, s)
 			}
+		}
+	}
+	if v, ok := lookup(envCIEnabled); ok {
+		cfg.CIEnabled, _ = strconv.ParseBool(strings.TrimSpace(v))
+	}
+	if v, ok := lookup(envCINamespace); ok {
+		cfg.CINamespace = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCIImage); ok {
+		cfg.CIImage = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCIActionMirror); ok {
+		cfg.CIActionMirror = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCICapacity); ok && strings.TrimSpace(v) != "" {
+		if n, err := strconv.Atoi(strings.TrimSpace(v)); err != nil || n < 1 || n > 3 {
+			errs = append(errs, fmt.Sprintf("%s deve essere fra 1 e 3: %q", envCICapacity, v))
+		} else {
+			cfg.CICapacity = n
 		}
 	}
 	if v, ok := lookup(envCILogsDir); ok {
