@@ -134,7 +134,7 @@ type Config struct {
 // RegistryS3 è l'archiviazione S3 del registry.
 type RegistryS3 struct {
 	Bucket, Region, Endpoint, AccessKey, SecretKey, Prefix string
-	PathStyle                                             bool
+	PathStyle                                              bool
 }
 
 // Load legge la configurazione dall'ambiente di processo.

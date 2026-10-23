@@ -35,7 +35,6 @@ import (
 
 	"github.com/distribution/distribution/v3/configuration"
 	"github.com/distribution/distribution/v3/registry/api/errcode"
-	v2 "github.com/distribution/distribution/v3/registry/api/v2"
 	"github.com/distribution/distribution/v3/registry/auth"
 	"github.com/distribution/distribution/v3/registry/handlers"
 	storagedriver "github.com/distribution/distribution/v3/registry/storage/driver"
@@ -526,7 +525,7 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request, c who, owner
 	ref, err := h.backend.ResolveRepo(ctx, caller, owner, repo)
 	if err != nil {
 		if errors.Is(err, access.ErrNotFound) {
-			serveErr(w, v2.ErrorCodeNameUnknown.WithMessage("repository non trovato"))
+			serveErr(w, errcode.ErrorCodeNameUnknown.WithMessage("repository non trovato"))
 			return nil, false
 		}
 		h.log.Error("risoluzione del repo non riuscita", "err", err)
@@ -580,7 +579,7 @@ func (h *Handler) authorizeJob(w http.ResponseWriter, r *http.Request, c who, ow
 		h.challenge(w)
 		return nil, false
 	case errors.Is(err, access.ErrNotFound):
-		serveErr(w, v2.ErrorCodeNameUnknown.WithMessage("repository non trovato"))
+		serveErr(w, errcode.ErrorCodeNameUnknown.WithMessage("repository non trovato"))
 		return nil, false
 	default:
 		h.log.Error("verifica del token del job non riuscita", "err", err)
