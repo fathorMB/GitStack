@@ -382,7 +382,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 			logger.Error("dispatcher CI non avviato", "err", err)
 			return 1
 		}
-		runnerCfg := ci.RunnerConfig{Namespace: cfg.CINamespace, Image: cfg.CIImage, GatewayURL: cfg.CIGatewayURL, ActionMirror: cfg.CIActionMirror, Capacity: cfg.CICapacity}
+		runnerCfg := ci.RunnerConfig{Namespace: cfg.CINamespace, Image: cfg.CIImage, GatewayURL: cfg.CIGatewayURL, GateInternalAddr: cfg.CIGateInternalAddr, ActionMirror: cfg.CIActionMirror, Capacity: cfg.CICapacity}
 		if runnerCfg.Image == "" || runnerCfg.GatewayURL == "" {
 			logger.Error("dispatcher CI non avviato", "err", "GITSTACK_CORE_CI_IMAGE e GITSTACK_CORE_CI_GATEWAY_URL obbligatorie")
 			return 1

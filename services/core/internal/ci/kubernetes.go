@@ -169,6 +169,7 @@ func corePod(p Pod) (*corev1.Pod, error) {
 	if p.InitGate {
 		pod.Spec.InitContainers = []corev1.Container{{Name: "gate", Image: p.Image,
 			Command: []string{"/usr/local/bin/gitstack-ci-gate"}, Resources: corev1.ResourceRequirements{Requests: resources, Limits: resources}, SecurityContext: security,
+			Env: podEnv(p.Env),
 			VolumeMounts: []corev1.VolumeMount{{Name: "tmp", MountPath: "/tmp"}}}}
 	}
 	return pod, nil

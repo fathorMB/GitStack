@@ -9,7 +9,7 @@ import (
 func TestCorePod_RestrictedELimiti(t *testing.T) {
 	pod, err := corePod(Pod{Name: "ci-test", Image: "runner:test", PriorityClass: "gitstack-ci-job", ActiveDeadlineSeconds: 60,
 		RunAsUser: 10001, ReadOnlyRootFilesystem: true, CPU: "2", Memory: "4Gi", EphemeralStorage: "20Gi", InitGate: true,
-		Env: map[string]string{"B": "2", "A": "1", "GITSTACK_CI_GATEWAY_URL": "http://core:8081"}})
+		Env: map[string]string{"B": "2", "A": "1", "GITSTACK_CI_GATEWAY_URL": "http://core:8081", "GITSTACK_CI_GATE_INTERNAL_ADDR": "core:8080"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,8 +34,11 @@ func TestCorePod_RestrictedELimiti(t *testing.T) {
 			t.Fatalf("request %s = %s, want %s", resource, got.String(), limit.String())
 		}
 	}
-	if len(c.Env) != 3 || c.Env[0].Name != "A" || c.Env[2].Name != "GITSTACK_CI_GATEWAY_URL" || c.Env[2].Value != "http://core:8081" {
+	if len(c.Env) != 4 || c.Env[0].Name != "A" || c.Env[3].Name != "GITSTACK_CI_GATEWAY_URL" || c.Env[3].Value != "http://core:8081" {
 		t.Fatal("env non deterministico")
+	}
+	if len(pod.Spec.InitContainers[0].Env) != len(c.Env) || pod.Spec.InitContainers[0].Env[3].Name != "GITSTACK_CI_GATEWAY_URL" {
+		t.Fatal("gate senza gli endpoint da verificare")
 	}
 }
 

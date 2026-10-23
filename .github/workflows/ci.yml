@@ -1534,8 +1534,7 @@ jobs:
             echo "FALLITO: la quota CI ha accettato risorse oltre il tetto" >&2; exit 1
           fi
           grep -Eqi 'limit|maximum|exceed' /tmp/ci-over-limit.err
-          CI_GATEWAY_IP="$(kubectl get svc gitstack-core -o jsonpath='{.spec.clusterIP}')"
-          kubectl -n "$ns" apply -f - <<EOF
+          kubectl -n "$ns" apply -f - <<'EOF'
           apiVersion: v1
           kind: Pod
           metadata:
@@ -1553,7 +1552,10 @@ jobs:
             containers:
               - name: probe
                 image: docker.io/busybox:1.36
-                command: [sh, -c, 'test ! -e /var/run/docker.sock; ! nc -z -w3 kubernetes.default.svc 443; ! nslookup kubernetes.default.svc; ! nc -z -w3 gitstack-nats.default.svc 4222; nc -z -w3 ${CI_GATEWAY_IP} 8081']
+                env:
+                  - {name: GITSTACK_CI_GATEWAY_URL, value: http://gitstack-core:8081}
+                  - {name: GITSTACK_CI_GATE_INTERNAL_ADDR, value: gitstack-core:8080}
+                command: [sh, -c, 'set -e; gateway="${GITSTACK_CI_GATEWAY_URL#http://}"; host="${gateway%:*}"; port="${gateway##*:}"; echo "barriera: nessun docker.sock"; test ! -e /var/run/docker.sock; echo "barriera: API Kubernetes bloccata"; ! nc -z -w3 kubernetes.default.svc 443; echo "barriera: NATS bloccato"; ! nc -z -w3 gitstack-nats.default.svc 4222; echo "accesso: DNS del ci-gateway $host"; nslookup "$host"; echo "accesso: ci-gateway $host:$port"; nc -z -w3 "$host" "$port"']
                 securityContext:
                   allowPrivilegeEscalation: false
                   readOnlyRootFilesystem: true
@@ -1562,6 +1564,8 @@ jobs:
               - name: gate
                 image: gitstack-ci-runner:test
                 command: [/usr/local/bin/gitstack-ci-gate]
+                env:
+                  - {name: GITSTACK_CI_GATE_INTERNAL_ADDR, value: gitstack-core:8080}
                 securityContext:
                   allowPrivilegeEscalation: false
                   readOnlyRootFilesystem: true

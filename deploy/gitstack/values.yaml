@@ -543,6 +543,11 @@ networkPolicy:
   ingressNamespace: kube-system
   # Namespace del DNS del cluster.
   dnsNamespace: kube-system
+  # Service CIDR dell'API Kubernetes. Il dispatcher di core puo' usare solo
+  # queste porte per creare e osservare i pod CI; adattalo al Service CIDR.
+  kubernetesAPI:
+    cidrs:
+      - 10.43.0.1/32
   # core, identity e git escono verso internet (webhook, SMTP, OIDC, mirror):
   # la destinazione la giudica pkg/egress. Qui l'uscita è aperta a tutto
   # tranne i CIDR di pod e servizi del cluster (egress.clusterCIDRs), dove

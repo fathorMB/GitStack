@@ -116,17 +116,6 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.core.containerPort }}
-    {{- if .Values.ci.enabled }}
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: {{ .Values.ci.namespace | quote }}
-          podSelector:
-            matchLabels: {gitstack.io/ci-job: "true"}
-      ports:
-        - protocol: TCP
-          port: {{ .Values.ci.gateway.port }}
-    {{- end }}
     - to:
         - podSelector:
             matchLabels:
@@ -163,7 +152,30 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.core.containerPort }}
+    {{- if .Values.ci.enabled }}
+    # Il namespace CI raggiunge esclusivamente il ci-gateway di core.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.ci.namespace | quote }}
+          podSelector:
+            matchLabels: {gitstack.io/ci-job: "true"}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.ci.gateway.port }}
+    {{- end }}
   egress:
+    # Il dispatcher usa l'API in-cluster per creare e osservare i pod CI.
+    {{- range .Values.networkPolicy.kubernetesAPI.cidrs }}
+    - to:
+        - ipBlock:
+            cidr: {{ . | quote }}
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+    {{- end }}
     {{- if $pgExternal }}
     - ports:
         - protocol: TCP

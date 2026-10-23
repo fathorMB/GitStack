@@ -25,22 +25,43 @@ func main() {
 		}
 	}
 	// Il kubelet inietta sempre queste variabili: non sono service links. Il
-	// cancello aspetta invece che la policy renda irraggiungibile l'API.
+	// cancello aspetta invece che la policy renda irraggiungibili l'API e un
+	// endpoint interno di core, prima che il container del job possa partire.
+	var endpoints []string
 	host, port := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")
-	if host != "" && port != "" && !waitBlocked(net.JoinHostPort(host, port), 20*time.Second) {
-		fmt.Fprintln(os.Stderr, "ci gate: API Kubernetes ancora raggiungibile")
+	if host != "" && port != "" {
+		endpoints = append(endpoints, net.JoinHostPort(host, port))
+	}
+	if internal := os.Getenv("GITSTACK_CI_GATE_INTERNAL_ADDR"); internal != "" {
+		endpoints = append(endpoints, internal)
+	}
+	if !waitBlockedAll(endpoints, 20*time.Second) {
+		fmt.Fprintln(os.Stderr, "ci gate: API Kubernetes o rete interna ancora raggiungibile")
 		os.Exit(1)
 	}
 }
 
 func waitBlocked(address string, timeout time.Duration) bool {
+	return waitBlockedAll([]string{address}, timeout)
+}
+
+func waitBlockedAll(addresses []string, timeout time.Duration) bool {
+	if len(addresses) == 0 {
+		return true
+	}
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", address, time.Second)
-		if err != nil {
+		blocked := true
+		for _, address := range addresses {
+			conn, err := net.DialTimeout("tcp", address, time.Second)
+			if err == nil {
+				blocked = false
+				_ = conn.Close()
+			}
+		}
+		if blocked {
 			return true
 		}
-		_ = conn.Close()
 		time.Sleep(200 * time.Millisecond)
 	}
 	return false

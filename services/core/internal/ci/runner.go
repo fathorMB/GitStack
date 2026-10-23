@@ -58,8 +58,8 @@ type Pod struct {
 
 // RunnerConfig contiene solo i dati che l'amministratore può scegliere.
 type RunnerConfig struct {
-	Namespace, Image, GatewayURL, ActionMirror string
-	Capacity                                   int
+	Namespace, Image, GatewayURL, GateInternalAddr, ActionMirror string
+	Capacity                                                     int
 }
 
 func (c RunnerConfig) normal() RunnerConfig {
@@ -90,7 +90,8 @@ func PodForJob(c RunnerConfig, job JobRow, run RunRow) (Pod, error) {
 		InitGate: true,
 		Command:  []string{"/usr/local/bin/ci-runner"},
 		Env: map[string]string{"GITSTACK_CI_GATEWAY_URL": c.GatewayURL,
-			"GITSTACK_CI_ACTION_MIRROR": c.ActionMirror, "GITSTACK_CI_RUNNER": "act-host"}}, nil
+			"GITSTACK_CI_GATE_INTERNAL_ADDR": c.GateInternalAddr,
+			"GITSTACK_CI_ACTION_MIRROR":      c.ActionMirror, "GITSTACK_CI_RUNNER": "act-host"}}, nil
 }
 
 // PodForJobTicket aggiunge solo al processo supervisore il biglietto monouso

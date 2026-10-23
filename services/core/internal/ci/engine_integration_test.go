@@ -13,8 +13,71 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/ci"
 	"github.com/fathorMB/GitStack/services/core/internal/dbtest"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type fakePods struct {
+	mu         sync.Mutex
+	created    []ci.Pod
+	exists     bool
+	conclusion string
+}
+
+func (f *fakePods) Create(_ context.Context, p ci.Pod) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.created = append(f.created, p)
+	return nil
+}
+
+func (f *fakePods) Wait(_ context.Context, _, _ string) (string, error) {
+	return f.conclusion, nil
+}
+
+func (f *fakePods) Exists(_ context.Context, _, _ string) (bool, error) { return f.exists, nil }
+
+type captureReporter struct {
+	mu      sync.Mutex
+	changes []ci.Change
+}
+
+func (r *captureReporter) Changed(_ context.Context, _ pgx.Tx, change ci.Change) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.changes = append(r.changes, change)
+	return nil
+}
+
+func waitJobConclusion(t *testing.T, e *env, id uuid.UUID, want string) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		var got *string
+		err := e.pool.QueryRow(context.Background(), `SELECT conclusion FROM core.ci_jobs WHERE id = $1`, id).Scan(&got)
+		if err == nil && got != nil && *got == want {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("job %s non chiuso con %q", id, want)
+}
+
+func queuedInternalJob(t *testing.T, e *env) uuid.UUID {
+	t.Helper()
+	ctx := context.Background()
+	repo := e.repo(uuid.New(), "runner")
+	e.src.files[sha("a")] = []ci.File{wfFile(".github/workflows/ci.yml", "  push:")}
+	ids, err := e.eng.OnPush(ctx, pushOf(repo, uuid.New(), "refs/heads/main", sha("9"), sha("a"), "x"))
+	if err != nil || len(ids) != 1 {
+		t.Fatalf("accodamento: %v %v", ids, err)
+	}
+	var jobID uuid.UUID
+	if err := e.pool.QueryRow(ctx, `SELECT id FROM core.ci_jobs WHERE run_id = $1`, ids[0]).Scan(&jobID); err != nil {
+		t.Fatal(err)
+	}
+	return jobID
+}
 
 // fakeSource è git: i workflow dipendono dallo sha, i file cambiati dalla coppia base..head.
 type fakeSource struct {
@@ -815,4 +878,50 @@ func TestDispatch(t *testing.T) {
 	if _, err := e.eng.Dispatch(ctx, d); err != nil {
 		t.Errorf("l'avvio manuale ignora [skip ci]: %v", err)
 	}
+}
+
+func TestDispatchPods_RiportaTimedOut(t *testing.T) {
+	e := newEnv(t)
+	jobID := queuedInternalJob(t, e)
+	pods := &fakePods{conclusion: ci.ConclusionTimedOut}
+	reporter := &captureReporter{}
+	started, err := ci.DispatchPods(context.Background(), e.pool, pods,
+		ci.RunnerConfig{Image: "runner:test", GatewayURL: "http://core:8081", Capacity: 1}, *e.clock, reporter)
+	if err != nil || started != 1 {
+		t.Fatalf("dispatch: started=%d err=%v", started, err)
+	}
+	waitJobConclusion(t, e, jobID, ci.ConclusionTimedOut)
+	reporter.mu.Lock()
+	defer reporter.mu.Unlock()
+	if len(reporter.changes) < 2 {
+		t.Fatalf("report attesi per presa e chiusura, trovati %d", len(reporter.changes))
+	}
+}
+
+func TestReconcile_RiprendePodVivoEOmetteAssente(t *testing.T) {
+	t.Run("pod assente chiude failure", func(t *testing.T) {
+		e := newEnv(t)
+		jobID := queuedInternalJob(t, e)
+		if _, _, ok, err := ci.ClaimNext(context.Background(), e.pool, *e.clock, 1, "internal-pod"); err != nil || !ok {
+			t.Fatalf("claim: %v %v", ok, err)
+		}
+		reporter := &captureReporter{}
+		if err := ci.Reconcile(context.Background(), e.pool, &fakePods{exists: false}, "gitstack-ci-jobs", nil, *e.clock, reporter); err != nil {
+			t.Fatal(err)
+		}
+		waitJobConclusion(t, e, jobID, ci.ConclusionFailure)
+	})
+
+	t.Run("pod vivo riattacca watcher", func(t *testing.T) {
+		e := newEnv(t)
+		jobID := queuedInternalJob(t, e)
+		if _, _, ok, err := ci.ClaimNext(context.Background(), e.pool, *e.clock, 1, "internal-pod"); err != nil || !ok {
+			t.Fatalf("claim: %v %v", ok, err)
+		}
+		pods := &fakePods{exists: true, conclusion: ci.ConclusionSuccess}
+		if err := ci.Reconcile(context.Background(), e.pool, pods, "gitstack-ci-jobs", nil, *e.clock, &captureReporter{}); err != nil {
+			t.Fatal(err)
+		}
+		waitJobConclusion(t, e, jobID, ci.ConclusionSuccess)
+	})
 }

@@ -98,6 +98,19 @@ spec:
   policyTypes: [Ingress, Egress]
   ingress: []
   egress:
+    # Il runner risolve il ci-gateway senza aprire gli altri Service interni.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.dnsNamespace | quote }}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
     # Il gateway e' l'unico endpoint interno: core verifica il biglietto del job.
     - to:
         - namespaceSelector:
