@@ -13,7 +13,7 @@ func notImplemented(w http.ResponseWriter) {
 	http.Error(w, "not implemented", http.StatusNotImplemented)
 }
 
-func (s *apiServer) GetCiQueue(w http.ResponseWriter, r *http.Request)    { notImplemented(w) }
+func (s *apiServer) GetCiQueue(w http.ResponseWriter, r *http.Request) { notImplemented(w) }
 func (s *apiServer) DownloadWorkflowArtifact(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ArtifactIdParam) {
 	notImplemented(w)
 }
