@@ -298,6 +298,13 @@ expect_has "core: URL pubblico" "${d}" 'value: "https://ci.example.test"'
 expect_has "core: porta ci-external esposta" "$(doc Service gitstack-core)" "targetPort: ci-external"
 expect_has "core: ingresso 8082 solo dal controller" "$(doc NetworkPolicy gitstack-core)" "port: 8082"
 expect_lacks "pod dei job: la porta esterna resta chiusa" "$(doc NetworkPolicy ci-job-egress)" "8082"
+OUT="$(render --set ci.enabled=true)" || { bad "helm template con ci.enabled fallito"; exit 1; }
+expect_lacks "pod dei job: nessuna regola proxy di default" "$(doc NetworkPolicy ci-job-egress)" "10.0.0.5/32"
+OUT="$(render --set ci.enabled=true --set 'ci.runner.proxyEgress[0].to[0].ipBlock.cidr=10.0.0.5/32' --set 'ci.runner.proxyEgress[0].ports[0].protocol=TCP' --set 'ci.runner.proxyEgress[0].ports[0].port=3128')" || { bad "helm template con proxyEgress fallito"; exit 1; }
+d="$(doc NetworkPolicy ci-job-egress)"
+expect_has "pod dei job: uscita verso il proxy" "${d}" "cidr: 10.0.0.5/32"
+expect_has "pod dei job: porta del proxy" "${d}" "port: 3128"
+expect_has "pod dei job: resta la regola generale" "${d}" "cidr: 0.0.0.0/0"
 if helm_rc --set ci.enabled=true --set ci.externalGateway.enabled=true --set ingress.tls.enabled=true --set ingress.tls.secretName=t; then bad "externalGateway senza host: helm template doveva fermarsi"; else ok; fi
 if helm_rc --set ci.enabled=true --set ci.externalGateway.enabled=true --set ci.externalGateway.host=ci.example.test; then bad "externalGateway senza TLS: helm template doveva fermarsi"; else ok; fi
 

@@ -143,6 +143,10 @@ spec:
     # Mirror delle action su rete privata, scelto dall'amministratore.
     {{- toYaml . | nindent 4 }}
     {{- end }}
+    {{- with .Values.ci.runner.proxyEgress }}
+    # Proxy aziendale su rete privata, scelto dall'amministratore.
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0

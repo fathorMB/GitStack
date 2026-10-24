@@ -3157,6 +3157,40 @@ ci_mirror_host_port() {
   printf '%s %s' "${host}" "${port}"
 }
 
+# Host e porta di un URL di proxy (senza credenziali). Senza porta: 80, 443 o 1080.
+ci_proxy_host_port() {
+  local scheme rest hostport host port
+  scheme="${1%%://*}"
+  rest="${1#*://}"
+  hostport="${rest%%/*}"
+  hostport="${hostport##*@}"
+  host="${hostport%%:*}"
+  case "${scheme}" in https) port=443 ;; socks5) port=1080 ;; *) port=80 ;; esac
+  case "${hostport}" in *:*) port="${hostport##*:}" ;; esac
+  printf '%s %s' "${host}" "${port}"
+}
+
+# Regola di uscita dei job verso il proxy aziendale (HTTP e HTTPS), se l'host e' un
+# IPv4: la policy di base chiude le reti private. Con un nome non si puo' sapere
+# l'indirizzo, quindi si avvisa.
+ci_proxy_egress() {
+  local url ph pp i=0 seen=" "
+  for url in "${GITSTACK_HTTP_PROXY}" "$(net_https_proxy)"; do
+    [ -n "${url}" ] || continue
+    read -r ph pp <<<"$(ci_proxy_host_port "${url}")"
+    case "${seen}" in *" ${ph}:${pp} "*) continue ;; esac
+    seen="${seen}${ph}:${pp} "
+    if is_ipv4 "${ph}"; then
+      CI_HELM_SETS+=("ci.runner.proxyEgress[${i}].to[0].ipBlock.cidr=${ph}/32"
+        "ci.runner.proxyEgress[${i}].ports[0].protocol=TCP"
+        "ci.runner.proxyEgress[${i}].ports[0].port=${pp}")
+      i=$((i + 1))
+    else
+      log "CI: il proxy ${ph} è un nome: se sta su una rete privata aggiungi la regola di uscita con --values (ci.runner.proxyEgress)."
+    fi
+  done
+}
+
 resolve_ci() {
   CI_ENABLED=0
   CI_CAPACITY=0
@@ -3209,6 +3243,7 @@ resolve_ci() {
       log "CI: il mirror ${mh} è un nome: se sta su una rete privata aggiungi la regola di uscita con --values (ci.runner.actionMirrorEgress)."
     fi
   fi
+  ci_proxy_egress
   [ "${GITSTACK_CI_BUILD}" != "1" ] || CI_HELM_SETS+=("ci.build.enabled=true")
   if [ -n "${GITSTACK_CI_STORAGE_SIZE}" ]; then
     printf '%s' "${GITSTACK_CI_STORAGE_SIZE}" | grep -Eq '^[0-9]+(Gi|Mi|Ti)$' \
