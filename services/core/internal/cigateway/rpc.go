@@ -13,8 +13,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// rpc implementa runnerv1connect.RunnerServiceHandler; Register e Declare restano
-// quelli di UnimplementedRunnerServiceHandler (l'interceptor li ferma prima).
+// rpc implementa runnerv1connect.RunnerServiceHandler (Register e Declare: external.go).
 type rpc struct {
 	runnerv1connect.UnimplementedRunnerServiceHandler
 	g *gateway
@@ -40,6 +39,9 @@ func unavailable(err error) error { return connect.NewError(connect.CodeUnavaila
 // scaduto PollTimeout, risponde senza task. Un job preso è consegnato a un solo runner.
 func (r *rpc) FetchTask(ctx context.Context, req *connect.Request[runnerv1.FetchTaskRequest]) (*connect.Response[runnerv1.FetchTaskResponse], error) {
 	g := r.g
+	if strings.HasPrefix(bearer(req.Header()), ci.RunnerTokenPrefix) {
+		return r.fetchExternal(ctx, bearer(req.Header()))
+	}
 	job, run, token, err := ci.ConsumeJobTicket(ctx, g.Pool, g.Now(), bearer(req.Header()), ci.JobTokenTTL)
 	if errors.Is(err, ci.ErrJobTicket) {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("biglietto del job non valido"))

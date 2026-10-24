@@ -260,9 +260,9 @@ func TestFetchTask_Credenziale(t *testing.T) {
 	if _, err := e.fetch("vecchio"); code(err) != connect.CodeUnauthenticated {
 		t.Fatalf("segreto statico: %v", err)
 	}
-	// Register e Declare sono di GIT-278.
+	// Register senza un token di registrazione valido è rifiutato (GIT-278).
 	_, err := e.client.Register(context.Background(), authed(&runnerv1.RegisterRequest{Name: "x"}, runnerSecret))
-	if code(err) != connect.CodeUnimplemented {
+	if code(err) != connect.CodeUnauthenticated {
 		t.Errorf("register: %v", err)
 	}
 }

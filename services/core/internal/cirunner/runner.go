@@ -43,6 +43,8 @@ type Config struct {
 	GatewayURL string
 	// Secret è la credenziale dei runner interni (solo per FetchTask).
 	Secret string
+	// Labels sono le etichette di un runner esterno: act le esegue in modalità host (-P etichetta=-self-hosted).
+	Labels []string
 	// Name compare come runner_name del job.
 	Name string
 	// ActBin è il binario di act (default "act"); ActArgs sono argomenti aggiuntivi prima di quelli fissi.
@@ -193,7 +195,7 @@ func runAct(ctx context.Context, cfg Config, rep *reporter, event, jobKey, token
 	}
 	args := append([]string{}, cfg.ActArgs...)
 	args = append(args, event, "-W", filepath.Join(cfg.WorkDir, "workflow", "job.yml"), "-j", jobKey)
-	for _, p := range actPlatforms {
+	for _, p := range append(append([]string{}, actPlatforms...), cfg.Labels...) {
 		args = append(args, "-P", p+"=-self-hosted")
 	}
 	args = append(args, "--pull=false", "--no-cache-server", "-s", "GITHUB_TOKEN")

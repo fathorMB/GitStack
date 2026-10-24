@@ -695,7 +695,7 @@ jobs:
       - name: Pubblica gli asset nella release sha-<commit>
         working-directory: dist-gs
         run: |
-          assets=(gs_* SHA256SUMS gs-skills.zip)
+          assets=(gs_* gitstack-runner_* SHA256SUMS gs-skills.zip)
           if gh release view "${IMAGE_TAG}" >/dev/null 2>&1; then
             gh release upload "${IMAGE_TAG}" "${assets[@]}" --clobber
           else
@@ -1193,7 +1193,7 @@ jobs:
             -o ../dist/gitstack-linux-amd64 ./cmd/gitstack)
           (cd dist && sha256sum gitstack-linux-amd64 > gitstack-linux-amd64.sha256)
           ./scripts/build-gs-dist.sh dist-gs "${VERSION}"
-          cp dist-gs/gs_* dist-gs/gs-skills.zip dist/
+          cp dist-gs/gs_* dist-gs/gitstack-runner_* dist-gs/gs-skills.zip dist/
 
       # Chart: version e appVersion = X.Y.Z, quindi il tag immagine di default
       # (appVersion) è X.Y.Z, pubblicato dal job registry.
@@ -1235,9 +1235,9 @@ jobs:
           set -euo pipefail
           source scripts/ci/retry.sh
           cd dist
-          sha256sum gitstack-linux-amd64 gs_* gs-skills.zip "gitstack-${{ steps.ver.outputs.plain }}.tgz" sbom/*.spdx.json > SHA256SUMS
+          sha256sum gitstack-linux-amd64 gs_* gitstack-runner_* gs-skills.zip "gitstack-${{ steps.ver.outputs.plain }}.tgz" sbom/*.spdx.json > SHA256SUMS
           cat SHA256SUMS
-          for f in gitstack-linux-amd64 gitstack-linux-amd64.sha256 gs_* gs-skills.zip \
+          for f in gitstack-linux-amd64 gitstack-linux-amd64.sha256 gs_* gitstack-runner_* gs-skills.zip \
                    "gitstack-${{ steps.ver.outputs.plain }}.tgz" SHA256SUMS; do
             case "${f}" in *.sigstore.json) continue ;; esac
             retry 4 cosign sign-blob --yes --bundle "${f}.sigstore.json" "${f}"
@@ -1281,7 +1281,7 @@ jobs:
       - name: Pubblica la GitHub Release
         run: |
           set -euo pipefail
-          files=(dist/gitstack-linux-amd64 dist/gitstack-linux-amd64.sha256 dist/gs_* dist/gs-skills.zip \
+          files=(dist/gitstack-linux-amd64 dist/gitstack-linux-amd64.sha256 dist/gs_* dist/gitstack-runner_* dist/gs-skills.zip \
                  "dist/gitstack-${{ steps.ver.outputs.plain }}.tgz" dist/SHA256SUMS dist/*.sigstore.json \
                  dist/sbom/*.spdx.json dist/CHANGELOG.md "dist/CHANGELOG-${VERSION}.md")
           # dist/gs_* include già i bundle gs_*.sigstore.json, che torna anche in
