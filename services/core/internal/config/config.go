@@ -122,6 +122,12 @@ type Config struct {
 	// CIGatewayURL è l'indirizzo con cui il pod del job raggiunge il gateway
 	// (GITSTACK_CORE_CI_GATEWAY_URL), scritto nel contesto del task.
 	CIGatewayURL string
+	// CIExternalAddr e CIExternalURL (GITSTACK_CORE_CI_EXTERNAL_ADDR / _URL, GIT-329): seconda
+	// porta del ci-gateway per i runner esterni, esposta fuori dal cluster; accetta solo il token
+	// di un runner registrato, mai il biglietto di un pod. URL: l'indirizzo pubblico, scritto nel
+	// contesto dei task presi da un runner esterno. Vuoto: nessuna porta esterna.
+	CIExternalAddr string
+	CIExternalURL  string
 	// CIGateInternalAddr Ã¨ un endpoint interno che il gate deve vedere bloccato
 	// prima di avviare il job (GITSTACK_CORE_CI_GATE_INTERNAL_ADDR).
 	CIGateInternalAddr string
@@ -205,6 +211,8 @@ const (
 	envAttachmentsDir     = "GITSTACK_CORE_ATTACHMENTS_DIR"
 	envCIGatewayAddr      = "GITSTACK_CORE_CI_GATEWAY_ADDR"
 	envCIGatewayURL       = "GITSTACK_CORE_CI_GATEWAY_URL"
+	envCIExternalAddr     = "GITSTACK_CORE_CI_EXTERNAL_ADDR"
+	envCIExternalURL      = "GITSTACK_CORE_CI_EXTERNAL_URL"
 	envCIGateInternalAddr = "GITSTACK_CORE_CI_GATE_INTERNAL_ADDR"
 	envCIRunnerSecret     = "GITSTACK_CORE_CI_RUNNER_SECRET"
 	envCIEnabled          = "GITSTACK_CORE_CI_ENABLED"
@@ -363,6 +371,12 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	}
 	if v, ok := lookup(envCIGatewayURL); ok {
 		cfg.CIGatewayURL = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCIExternalAddr); ok {
+		cfg.CIExternalAddr = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCIExternalURL); ok {
+		cfg.CIExternalURL = strings.TrimSpace(v)
 	}
 	if v, ok := lookup(envCIGateInternalAddr); ok {
 		cfg.CIGateInternalAddr = strings.TrimSpace(v)

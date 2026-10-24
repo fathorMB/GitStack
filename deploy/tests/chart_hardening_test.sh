@@ -276,6 +276,31 @@ d="$(doc Deployment gitstack-core)"
 expect_has "ci: GATEWAY_URL con namespace" "${d}" 'value: "http://gitstack-core.prova-ns.svc:'
 expect_has "ci: GATE_INTERNAL_ADDR con namespace" "${d}" 'value: "gitstack-core.prova-ns.svc:'
 
+echo "== GIT-329: ci-gateway esposto ai runner esterni (spento per default)"
+OUT="$(render --set ci.enabled=true --set ingress.tls.enabled=true --set ingress.tls.secretName=gitstack-tls)" || { bad "helm template con ci.enabled fallito"; exit 1; }
+expect_eq "default: nessuna IngressRoute del ci-gateway" "$(count 'name: gitstack-ci-gateway$')" "0"
+expect_lacks "default: core senza GITSTACK_CORE_CI_EXTERNAL_ADDR" "$(doc Deployment gitstack-core)" "GITSTACK_CORE_CI_EXTERNAL_ADDR"
+expect_lacks "default: core senza porta ci-external" "$(doc Service gitstack-core)" "ci-external"
+OUT="$(render --set ci.externalGateway.enabled=true --set ingress.tls.enabled=true --set ingress.tls.secretName=gitstack-tls)" || bad "helm template con externalGateway senza ci.enabled fallito"
+expect_eq "externalGateway senza ci.enabled: niente IngressRoute" "$(count 'name: gitstack-ci-gateway$')" "0"
+OUT="$(render --set ci.enabled=true --set ci.externalGateway.enabled=true --set ci.externalGateway.host=ci.example.test   --set ingress.tls.enabled=true --set ingress.tls.secretName=gitstack-tls)" || { bad "helm template con externalGateway fallito"; exit 1; }
+d="$(doc IngressRoute gitstack-ci-gateway)"
+if [ -n "${d}" ]; then ok; else bad "IngressRoute gitstack-ci-gateway non renderizzata"; fi
+# shellcheck disable=SC2016 # i backtick sono la sintassi letterale della regola Traefik
+expect_has "ci-gateway esterno: host dedicato" "${d}" 'Host(`ci.example.test`)'
+expect_has "ci-gateway esterno: solo websecure" "${d}" "- websecure"
+expect_has "ci-gateway esterno: TLS con il Secret dell'istanza" "${d}" "secretName: gitstack-tls"
+expect_has "ci-gateway esterno: va a core, porta esterna" "${d}" "name: gitstack-core"
+expect_has "ci-gateway esterno: porta 8082" "${d}" "port: 8082"
+d="$(doc Deployment gitstack-core)"
+expect_has "core: porta esterna" "${d}" "GITSTACK_CORE_CI_EXTERNAL_ADDR"
+expect_has "core: URL pubblico" "${d}" 'value: "https://ci.example.test"'
+expect_has "core: porta ci-external esposta" "$(doc Service gitstack-core)" "targetPort: ci-external"
+expect_has "core: ingresso 8082 solo dal controller" "$(doc NetworkPolicy gitstack-core)" "port: 8082"
+expect_lacks "pod dei job: la porta esterna resta chiusa" "$(doc NetworkPolicy ci-job-egress)" "8082"
+if helm_rc --set ci.enabled=true --set ci.externalGateway.enabled=true --set ingress.tls.enabled=true --set ingress.tls.secretName=t; then bad "externalGateway senza host: helm template doveva fermarsi"; else ok; fi
+if helm_rc --set ci.enabled=true --set ci.externalGateway.enabled=true --set ci.externalGateway.host=ci.example.test; then bad "externalGateway senza TLS: helm template doveva fermarsi"; else ok; fi
+
 echo
 echo "Passati: ${PASS}  Falliti: ${FAILN}"
 [ "${FAILN}" -eq 0 ]

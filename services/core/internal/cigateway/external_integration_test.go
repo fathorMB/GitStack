@@ -174,9 +174,10 @@ func TestExternal_LogEStatiCometeIlRunnerIntegrato(t *testing.T) {
 		t.Errorf("segreti nel task: %v", keysOf(task.GetSecrets()))
 	}
 	tok := taskToken(t, task)
-	// Il token del runner non fa UpdateLog/UpdateTask; quello del job non fa FetchTask.
-	if err := e.update(rt, task.GetId(), runnerv1.Result_RESULT_SUCCESS); code(err) != connect.CodeUnauthenticated {
-		t.Errorf("update col token del runner: %v", err)
+	// Il token del runner vale per UpdateLog/UpdateTask solo per il suo job (GIT-329, il runner
+	// di Gitea non conosce il token del job); quello del job non fa FetchTask.
+	if err := e.update(rt, task.GetId()+1, runnerv1.Result_RESULT_SUCCESS); code(err) != connect.CodePermissionDenied {
+		t.Errorf("update col token del runner su un altro task: %v", err)
 	}
 	if _, err := e.fetch(tok); code(err) != connect.CodeUnauthenticated {
 		t.Errorf("fetch col token del job: %v", err)
