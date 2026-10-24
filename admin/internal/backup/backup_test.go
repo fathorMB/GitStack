@@ -242,7 +242,7 @@ func TestBackupRoundTrip(t *testing.T) {
 	for p, c := range map[string]string{
 		filepath.Join(r.git, "alice", "repo.git", "objects", "ab", "cdef"): "OGGETTO",
 		filepath.Join(r.att, "r1", "a1"):                                   "ALLEGATO",
-		filepath.Join(r.ci, "logs", "job-1.log"):                            "RIGA-DI-LOG\n",
+		filepath.Join(r.ci, "logs", "job-1.log"):                           "RIGA-DI-LOG\n",
 		filepath.Join(r.confDir, "ca", "ca.key"):                           "CHIAVE-CA",
 		filepath.Join(r.confDir, "config.yaml"):                            "NUOVO",
 	} {

@@ -18,7 +18,7 @@ type CIGatewayConfig struct {
 	// Blobs e SpoolDir: artefatti e cache dei job (CI5).
 	Blobs    ci.Blobs
 	SpoolDir string
-	Capacity      int
+	Capacity int
 	// Keys decifra i segreti della CI (stesso keyring dei webhook).
 	Keys ci.Sealer
 	Log  *slog.Logger

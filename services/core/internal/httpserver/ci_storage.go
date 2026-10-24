@@ -116,8 +116,8 @@ func (s *apiServer) GetCiQueue(w http.ResponseWriter, r *http.Request) {
 	out.AvgQueueWaitSeconds, out.LogBytes, out.ArtifactBytes, out.CacheBytes = &wait, &logB, &artB, &cacheB
 	// I limiti di risorse di un job sono quelli di ci.MaxCPU, ci.MaxMemory e ci.MaxEphemeral (ADR 0001 §3: 2 CPU, 4 GiB, 20 GiB).
 	out.ResourceLimits.CpuCores = 2
-	out.ResourceLimits.MemoryBytes = 4<<30
-	out.ResourceLimits.EphemeralStorageBytes = 20<<30
+	out.ResourceLimits.MemoryBytes = 4 << 30
+	out.ResourceLimits.EphemeralStorageBytes = 20 << 30
 	out.ResourceLimits.MaxDurationSeconds = int(ci.JobMaxDuration.Seconds())
 	writeJSON(w, http.StatusOK, out)
 }
@@ -186,7 +186,8 @@ func (s *apiServer) DownloadWorkflowArtifact(w http.ResponseWriter, r *http.Requ
 func safeFileName(s string) string {
 	b := []rune(s)
 	for i, c := range b {
-		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '.' || c == '_' || c == '-') {
+		ok := c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '.' || c == '_' || c == '-'
+		if !ok {
 			b[i] = '_'
 		}
 	}

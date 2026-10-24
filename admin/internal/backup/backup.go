@@ -43,8 +43,8 @@ const (
 	SecretsName     = "secrets.json"
 	// CILogsName: i log dei job della CI (CI5), dalla cartella logs/ del volume ci-data.
 	// Artefatti e cache non entrano nel backup.
-	CILogsName = "ci-logs.tar"
-	ConfigPrefix    = "config/"
+	CILogsName   = "ci-logs.tar"
+	ConfigPrefix = "config/"
 	// ArchivePrefix inizia il nome di ogni archivio prodotto.
 	ArchivePrefix = "gitstack-backup-"
 )

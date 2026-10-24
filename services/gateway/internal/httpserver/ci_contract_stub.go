@@ -11,10 +11,10 @@ import (
 // comunque per applicare la sicurezza generata dal contratto.
 func (s *apiServer) ciProxy(w http.ResponseWriter, r *http.Request) { s.proxy.ServeHTTP(w, r) }
 
-func (s *apiServer) GetCiQueue(w http.ResponseWriter, r *http.Request)    { s.ciProxy(w, r) }
+func (s *apiServer) GetCiQueue(w http.ResponseWriter, r *http.Request)              { s.ciProxy(w, r) }
 func (s *apiServer) GetCiStorageSettings(w http.ResponseWriter, r *http.Request)    { s.ciProxy(w, r) }
 func (s *apiServer) UpdateCiStorageSettings(w http.ResponseWriter, r *http.Request) { s.ciProxy(w, r) }
-func (s *apiServer) ListCiRunners(w http.ResponseWriter, r *http.Request) { s.ciProxy(w, r) }
+func (s *apiServer) ListCiRunners(w http.ResponseWriter, r *http.Request)           { s.ciProxy(w, r) }
 func (s *apiServer) CreateCiRunnerRegistrationToken(w http.ResponseWriter, r *http.Request) {
 	s.ciProxy(w, r)
 }
