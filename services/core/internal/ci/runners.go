@@ -294,3 +294,33 @@ func ClaimExternal(ctx context.Context, pool *pgxpool.Pool, now time.Time, runne
 	}
 	return job, run, token, true, nil
 }
+
+// ResolveRunnerJob è l'autenticazione di UpdateTask e UpdateLog per il runner di Gitea
+// (act_runner, GIT-329): quel client riusa il token del runner (gsr_) su ogni chiamata,
+// non conosce il token del job. Vale solo per il job che il runner sta eseguendo (un
+// runner esterno ne ha uno per volta): ErrJobToken se il token non è di un runner o il
+// runner non ha un job in corso.
+func ResolveRunnerJob(ctx context.Context, pool *pgxpool.Pool, now time.Time, token string) (JobAuth, error) {
+	if !strings.HasPrefix(token, RunnerTokenPrefix) || len(token) > 128 {
+		return JobAuth{}, ErrJobToken
+	}
+	var a JobAuth
+	err := pool.QueryRow(ctx, `
+		SELECT j.id, j.task_id, j.run_id, r.repo_id, r.sha, j.job_key
+		FROM core.ci_runners rn
+		JOIN core.ci_jobs j ON j.runner_id = rn.id AND j.status = 'in_progress'
+		JOIN core.ci_runs r ON r.id = j.run_id
+		WHERE rn.token_hash = $1
+		ORDER BY j.started_at DESC NULLS LAST
+		LIMIT 1`, hashJobToken(token)).Scan(&a.JobID, &a.TaskID, &a.RunID, &a.RepoID, &a.SHA, &a.JobKey)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return JobAuth{}, ErrJobToken
+	}
+	if err != nil {
+		return JobAuth{}, err
+	}
+	if _, err := pool.Exec(ctx, `UPDATE core.ci_runners SET last_seen_at = $2 WHERE token_hash = $1`, hashJobToken(token), now); err != nil {
+		return JobAuth{}, err
+	}
+	return a, nil
+}

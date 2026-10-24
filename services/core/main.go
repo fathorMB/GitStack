@@ -477,7 +477,22 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		}
 	}
 
-	serveErr := make(chan error, 2)
+	// Porta esterna del ci-gateway (GIT-329): stesso gateway, ma FetchTask vale solo con il
+	// token di un runner registrato. Parte solo se c'e' anche la porta interna.
+	var ciExtSrv *http.Server
+	if cfg.CIExternalAddr != "" && ciSrv != nil {
+		rd, _ := gitAPI.(gitclient.Reader)
+		ciExtSrv = &http.Server{
+			Addr: cfg.CIExternalAddr,
+			Handler: httpserver.NewCIGateway(pool, rd, httpserver.CIGatewayConfig{
+				ArchiveURL: cfg.CIExternalURL, Logs: ciLogs, Blobs: ciBlobs, SpoolDir: cfg.CIArtifactsDir, Log: logger, Keys: keys,
+				Options: routerOpts, ExternalOnly: true,
+			}),
+			ReadHeaderTimeout: 5 * time.Second,
+		}
+	}
+
+	serveErr := make(chan error, 3)
 	go func() {
 		logger.Info("core in ascolto", "addr", cfg.Addr)
 		serveErr <- srv.ListenAndServe()
@@ -486,6 +501,13 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		go func() {
 			logger.Info("ci-gateway in ascolto", "addr", ciSrv.Addr)
 			serveErr <- ciSrv.ListenAndServe()
+		}()
+	}
+
+	if ciExtSrv != nil {
+		go func() {
+			logger.Info("ci-gateway esterno in ascolto", "addr", ciExtSrv.Addr)
+			serveErr <- ciExtSrv.ListenAndServe()
 		}()
 	}
 
@@ -501,6 +523,9 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		defer cancel()
 		if ciSrv != nil {
 			_ = ciSrv.Shutdown(shutdownCtx)
+		}
+		if ciExtSrv != nil {
+			_ = ciExtSrv.Shutdown(shutdownCtx)
 		}
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			logger.Error("arresto non riuscito", "err", err)

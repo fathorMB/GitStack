@@ -150,6 +150,32 @@ L'immagine **web** contiene, costruiti in build da `scripts/build-gs-dist.sh`, i
 
 `/downloads` senza slash resta alla SPA. Installazione: `curl -fsSL https://<host>/install-gs.sh | sh` (Linux, macOS) o `irm https://<host>/install-gs.ps1 | iex` (Windows). Gli script verificano lo SHA-256 contro `SHA256SUMS` dell'istanza (protegge da download corrotti, non da un'istanza ostile) e falliscono se non coincide. Con la CA interna (N5), se il certificato non è ancora fidato, scaricano `/downloads/ca.crt` in HTTP (o con `GS_INSECURE=1`, `curl -k`, solo per questo file), ne **confrontano l'impronta SHA-256** con `GS_CA_SHA256` / `-CaSha256` (quella stampata dall'installer, `sudo gitstack-tls fingerprint`; da terminale chiedono conferma) e solo dopo la usano: su Linux/macOS la tengono in `~/.config/gitstack` e la danno a git per quell'host (nel sistema con `GS_TRUST_SYSTEM=1`, sudo), su Windows la importano in `Cert:\CurrentUser\Root`. Compromesso: il primo scaricamento dello script avviene prima di fidarsi della CA, quindi con `curl -k` o con la CA già installata dall'utente; il controllo dell'impronta è quello che chiude il buco. Copia nelle release: il job CI `gs-binaries` pubblica gli stessi byte nella release `sha-<commit>`.
 
+## ci-gateway per i runner esterni: `ci.externalGateway` (GIT-329)
+
+Il ci-gateway di core (porta `ci.gateway.port`, 8081) è raggiungibile solo dai pod dei job interni e **non** esce dal cluster. Per far lavorare un runner esterno (macchina tua, VM, Windows, macOS: [`docs/ci-runner-esterno.md`](../../docs/ci-runner-esterno.md)) serve un'opzione, **spenta per default**:
+
+```yaml
+ci:
+  enabled: true
+  externalGateway:
+    enabled: true
+    host: ci.gitstack.lan      # obbligatorio
+    # port: 8082               # porta di core per i runner esterni
+    # tlsSecretName: ""        # vuoto = ingress.tls.secretName
+ingress:
+  tls: {enabled: true, secretName: gitstack-tls}
+```
+
+Con `ci.externalGateway.enabled=true` (e solo con `ci.enabled=true`) il chart:
+
+- fa aprire a core una **seconda porta** (`GITSTACK_CORE_CI_EXTERNAL_ADDR`, `ci.externalGateway.port`, 8082) con lo stesso protocollo `runner.v1`, ma che in `FetchTask` accetta **solo il token di un runner registrato** (`gsr_…`). Il biglietto di un pod interno (`gsq_…`) vi riceve `Unauthenticated` e non si consuma. L'indirizzo pubblico (`GITSTACK_CORE_CI_EXTERNAL_URL`, `https://<host>`) è quello scritto nei task dei runner esterni;
+- aggiunge la porta al Service di core e un ingresso nella NetworkPolicy di core **dal solo controller di ingresso** (`networkPolicy.ingressNamespace`). La NetworkPolicy dei pod dei job (`ci-job-egress`) apre solo `ci.gateway.port`: la porta esterna resta chiusa ai job;
+- crea l'`IngressRoute` Traefik `<release>-ci-gateway` (`templates/ingress-ci-gateway.yaml`): `Host(<host>)`, solo `websecure`, TLS con il Secret dell'istanza (`ingress.tls.secretName`, la CA dell'istanza, o `ci.externalGateway.tlsSecretName`) o il `certResolver`, HSTS come le altre rotte. Il certificato deve coprire `<host>`: se il tuo copre solo l'host principale, emettine uno con l'host del ci-gateway nei SAN (vedi `docs/tls.md`).
+
+Richiede `ingress.enabled`, `ingress.tls.enabled` e `ci.externalGateway.host`: senza, `helm template` si ferma con un messaggio (il token del runner non viaggia in chiaro). Con l'opzione spenta il chart non crea niente di tutto questo. Sul runner: `gitstack-runner register --url https://<host> --token gsrt_…`; il runner di Gitea usa `--instance https://<host>`. Il test del chart è in `deploy/tests/chart_hardening_test.sh` («GIT-329»).
+
+**Routing delle etichette.** Un job con `runs-on:` che contiene un'etichetta diversa da `ubuntu-*` va ai runner esterni, non al pod interno (`runnerTypeOf`, GIT-278): `self-hosted`, `windows-…`, `macos-…`, `gpu`, ma anche `linux`. `runs-on: linux` resta quindi `queued` finché un runner esterno non ha l'etichetta `linux`; non finisce in un pod interno. Con `externalGateway` spento nessun runner esterno può raggiungere il gateway e quei job restano in coda. Dettagli in `docs/ci-runner-esterno.md`.
+
 ## Servizio git (GIT-74)
 
 Deployment `<release>-git` (strategia `Recreate`: il PVC è `ReadWriteOnce`; `fsGroup: 10001` per l'utente dell'immagine) con il PVC `<release>-git-data` su `/data` e un Service HTTP interno `<release>-git:8080`. Il servizio espone l'API interna chiamata da core e lo smart HTTP di git (GIT-70, sotto): l'SSH (GIT-71) è attivo di default (`git.ssh.enabled`, sotto). Il servizio ha un segreto suo (`GITSTACK_SERVICE_SECRET_GIT`) e verifica quello di core (`GITSTACK_SERVICE_SECRET_CORE`), entrambi da `secretKeyRef` nel Secret `<release>-service-secrets`. Dopo ogni push accettato (HTTPS o SSH) il servizio pubblica `git.push` sul NATS interno (`GITSTACK_GIT_NATS_URL`, GIT-73, schema in `docs/events.md`); con NATS giù i push restano accettati.

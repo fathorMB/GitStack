@@ -17,4 +17,9 @@ spec:
       port: {{ .Values.ci.gateway.port }}
       targetPort: ci-gateway
     {{- end }}
+    {{- if and .Values.ci.enabled .Values.ci.externalGateway.enabled }}
+    - name: ci-external
+      port: {{ .Values.ci.externalGateway.port }}
+      targetPort: ci-external
+    {{- end }}
 {{- end }}

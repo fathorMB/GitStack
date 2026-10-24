@@ -595,6 +595,23 @@ ci:
   gateway:
     # Porta interna del solo endpoint raggiungibile dai pod CI.
     port: 8081
+  # ci-gateway per i runner esterni (GIT-329, ADR 0001 §4). SPENTO per default: senza,
+  # un runner esterno raggiunge il gateway solo se l'amministratore lo espone a mano.
+  # Acceso, core apre una seconda porta (stesso protocollo runner.v1) che accetta SOLO il
+  # token di un runner registrato (gsr_): il biglietto di un pod interno vi riceve
+  # Unauthenticated. La porta non e' raggiungibile dai pod dei job (la loro NetworkPolicy
+  # apre solo ci.gateway.port). Una IngressRoute di Traefik la pubblica su un host
+  # dedicato, con TLS dalla CA dell'istanza: richiede ingress.enabled e ingress.tls.enabled
+  # e un certificato (ingress.tls.secretName) valido anche per questo host.
+  externalGateway:
+    enabled: false
+    # Host dedicato (obbligatorio se acceso), es. ci.gitstack.lan. Il runner si registra
+    # con `gitstack-runner register --url https://<host>`.
+    host: ""
+    # Porta di core per i runner esterni (non quella interna ci.gateway.port).
+    port: 8082
+    # Secret TLS dedicato; vuoto = ingress.tls.secretName (o il certResolver).
+    tlsSecretName: ""
   runner:
     # Immagine completa del runner (act + ci-runner). Vuota = quella pubblicata con le altre,
     # <global.image.registry>/<repository>:<global.image.tag> (stesso tag dei servizi, firmata).
@@ -617,8 +634,9 @@ ci:
   build:
     enabled: false
     namespace: gitstack-ci-build
-    # Immagine rootless di BuildKit (Apache-2.0).
-    image: docker.io/moby/buildkit:v0.23.2-rootless
+    # Immagine rootless di BuildKit (Apache-2.0), fissata per digest (indice multi-arch
+    # di docker.io/moby/buildkit:v0.23.2-rootless, letto dal registry il 2026-10-24).
+    image: docker.io/moby/buildkit:v0.23.2-rootless@sha256:cab936745de5d673465948f1e93ff4d6e372bbe33f218afd3314eba45a6f85a9
   # Log, artefatti e cache dei job (CI5). Il volume ci-data ha due cartelle: logs/
   # (entra nel backup) e data/ (artefatti e cache, fuori dal backup). Con
   # s3.bucket artefatti e cache vanno su S3 (N7) e data/ serve solo da appoggio;

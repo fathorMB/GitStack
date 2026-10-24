@@ -15,7 +15,10 @@
 //   - il biglietto del job dei pod interni (gsq_) o il token di un runner esterno (gsr_)
 //     (x-runner-token o Authorization: Bearer) valgono solo per FetchTask (e Declare, il secondo);
 //   - il token del job vale solo per UpdateTask, UpdateLog e l'archivio, e solo per il job a cui
-//     appartiene: un task id diverso è permission_denied, un token scaduto, revocato o sconosciuto
+//     appartiene (UpdateTask e UpdateLog accettano anche il token gsr_ del runner che sta eseguendo
+//     quel job: il runner di Gitea non usa altro, GIT-329; il gateway esposto, ExternalOnly, rifiuta
+//     in FetchTask i biglietti dei pod). Il percorso può avere il prefisso /api/actions e c'è il
+//     PingService, come in Gitea: un task id diverso è permission_denied, un token scaduto, revocato o sconosciuto
 //     è unauthenticated.
 //
 // Nient'altro è raggiungibile: ogni altro percorso risponde 404.
@@ -31,6 +34,8 @@ import (
 	"strings"
 	"time"
 
+	pingv1 "code.gitea.io/actions-proto-go/ping/v1"
+	"code.gitea.io/actions-proto-go/ping/v1/pingv1connect"
 	"code.gitea.io/actions-proto-go/runner/v1/runnerv1connect"
 	"connectrpc.com/connect"
 	"github.com/fathorMB/GitStack/services/core/internal/ci"
@@ -46,6 +51,9 @@ const (
 	HeaderRunnerName  = "x-runner-name"
 	// ArchivePath è l'unico percorso HTTP non-RPC.
 	ArchivePath = "/ci/v1/archive"
+	// ActionsPrefix è il prefisso con cui il runner di Gitea raggiunge il protocollo
+	// runner.v1 (<istanza>/api/actions); il gateway lo accetta davanti ai percorsi del protocollo.
+	ActionsPrefix = "/api/actions"
 )
 
 // Defaults.
@@ -82,11 +90,14 @@ type Config struct {
 	Reporter ci.Reporter
 	// ArchiveURL è l'indirizzo base con cui il pod raggiunge questo gateway, scritto nel
 	// contesto del task; vuoto = il runner usa quello a cui ha chiamato FetchTask.
-	ArchiveURL  string
-	PollTimeout time.Duration
-	PollEvery   time.Duration
-	Now         func() time.Time
-	Log         *slog.Logger
+	ArchiveURL string
+	// ExternalOnly è il gateway esposto fuori dal cluster (GIT-329): FetchTask accetta solo il
+	// token di un runner registrato (gsr_), mai il biglietto di un pod interno (gsq_).
+	ExternalOnly bool
+	PollTimeout  time.Duration
+	PollEvery    time.Duration
+	Now          func() time.Time
+	Log          *slog.Logger
 }
 
 type gateway struct {
@@ -112,18 +123,41 @@ func New(cfg Config) http.Handler {
 	mux := http.NewServeMux()
 	path, h := runnerv1connect.NewRunnerServiceHandler(&rpc{g: g}, connect.WithInterceptors(g.auth()))
 	mux.Handle(path, h)
+	pingPath, ph := pingv1connect.NewPingServiceHandler(pingService{})
+	mux.Handle(pingPath, ph)
 	mux.HandleFunc("GET "+ArchivePath, g.archive)
 	mux.HandleFunc("GET "+RegistryAccessPath, g.registryAccess)
 	mux.HandleFunc(ArtifactsPath, g.storage)
 	mux.HandleFunc(CachePath, g.storage)
+	mux.HandleFunc(TwirpArtifactPath, g.artifactsV4)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Il runner di Gitea (act_runner) chiama <istanza>/api/actions/<servizio>/<metodo>
+		// (GIT-329): il prefisso si toglie, il resto è il protocollo di sempre.
+		if rest, ok := strings.CutPrefix(r.URL.Path, ActionsPrefix); ok && strings.HasPrefix(rest, "/") {
+			r2 := r.Clone(r.Context())
+			r2.URL.Path, r2.URL.RawPath = rest, ""
+			r = r2
+		}
 		// Un percorso fuori dal protocollo è 404, non 405 né un redirect del mux.
-		if strings.HasPrefix(r.URL.Path, path) || r.URL.Path == ArchivePath || r.URL.Path == RegistryAccessPath || g.isStoragePath(r.URL.Path) {
+		if strings.HasPrefix(r.URL.Path, path) || strings.HasPrefix(r.URL.Path, pingPath) || r.URL.Path == ArchivePath || r.URL.Path == RegistryAccessPath || g.isStoragePath(r.URL.Path) {
 			mux.ServeHTTP(w, r)
 			return
 		}
 		http.NotFound(w, r)
 	})
+}
+
+// pingService è il PingService di actions-proto: il runner di Gitea (act_runner) lo chiama
+// prima di registrarsi per controllare che l'indirizzo sia un'istanza. Senza credenziali e
+// senza stato: risponde «Hello, <data>!» come Gitea, con data limitata.
+type pingService struct{}
+
+func (pingService) Ping(_ context.Context, req *connect.Request[pingv1.PingRequest]) (*connect.Response[pingv1.PingResponse], error) {
+	d := req.Msg.GetData()
+	if len(d) > 64 {
+		d = d[:64]
+	}
+	return connect.NewResponse(&pingv1.PingResponse{Data: "Hello, " + d + "!"}), nil
 }
 
 type ctxKey struct{}
@@ -150,6 +184,9 @@ func (g *gateway) auth() connect.UnaryInterceptorFunc {
 			token := bearer(req.Header())
 			switch req.Spec().Procedure {
 			case runnerv1connect.RunnerServiceFetchTaskProcedure:
+				if g.ExternalOnly && !strings.HasPrefix(token, ci.RunnerTokenPrefix) {
+					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("credenziale non valida"))
+				}
 				if (!strings.HasPrefix(token, ci.JobTicketPrefix) && !strings.HasPrefix(token, ci.RunnerTokenPrefix)) || len(token) > 128 {
 					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("credenziale non valida"))
 				}
@@ -167,6 +204,10 @@ func (g *gateway) auth() connect.UnaryInterceptorFunc {
 				ctx = context.WithValue(ctx, runnerCtxKey{}, rn)
 			case runnerv1connect.RunnerServiceUpdateTaskProcedure, runnerv1connect.RunnerServiceUpdateLogProcedure:
 				a, err := ci.ResolveJobToken(ctx, g.Pool, g.Now(), token)
+				if strings.HasPrefix(token, ci.RunnerTokenPrefix) {
+					// Il runner di Gitea (act_runner) non conosce il token del job: usa il suo.
+					a, err = ci.ResolveRunnerJob(ctx, g.Pool, g.Now(), token)
+				}
 				if errors.Is(err, ci.ErrJobToken) {
 					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("token del job non valido"))
 				}

@@ -1,0 +1,41 @@
+{{- if and .Values.ci.enabled .Values.ci.externalGateway.enabled -}}
+{{- $fullname := include "gitstack.fullname" . -}}
+{{- $ext := .Values.ci.externalGateway -}}
+{{- if not $ext.host }}{{ fail "ci.externalGateway.host e' obbligatorio con ci.externalGateway.enabled" }}{{- end }}
+{{- if not (and .Values.ingress.enabled .Values.ingress.tls.enabled) }}{{ fail "ci.externalGateway richiede ingress.enabled e ingress.tls.enabled: il token del runner non viaggia in chiaro" }}{{- end }}
+{{- if not .Values.core.enabled }}{{ fail "ci.externalGateway richiede core.enabled" }}{{- end }}
+# ci-gateway per i runner esterni (GIT-329): un host dedicato, solo HTTPS, che va alla
+# seconda porta di core (GITSTACK_CORE_CI_EXTERNAL_ADDR). Quella porta accetta soltanto il
+# token di un runner registrato (gsr_) in FetchTask; il biglietto di un pod interno riceve
+# Unauthenticated. Il percorso resta quello del protocollo runner.v1 (/runner.v1.RunnerService/…),
+# /ci/v1/archive e gli endpoint di artefatti e cache: nessun altro percorso e' servito (404).
+# Il certificato e' quello dell'istanza (ingress.tls.secretName, CA interna): deve coprire l'host.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ $fullname }}-ci-gateway
+  labels:
+    {{- include "gitstack.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`{{ $ext.host }}`)
+      {{- if .Values.ingress.tls.hstsSeconds }}
+      middlewares:
+        - name: {{ $fullname }}-hsts
+      {{- end }}
+      services:
+        - name: {{ $fullname }}-core
+          port: {{ $ext.port }}
+  tls:
+    options:
+      name: {{ $fullname }}-tls
+    {{- with (default .Values.ingress.tls.secretName $ext.tlsSecretName) }}
+    secretName: {{ . }}
+    {{- end }}
+    {{- with .Values.ingress.tls.certResolver }}
+    certResolver: {{ . | quote }}
+    {{- end }}
+{{- end }}

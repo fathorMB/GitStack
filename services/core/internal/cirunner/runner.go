@@ -128,11 +128,12 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 	rep := &reporter{client: client, token: token, taskID: task.GetId(), log: cfg.Log}
 
 	conclusion := runnerv1.Result_RESULT_FAILURE
+	archiveURL, _ := cx["gitstack_archive_url"].(string)
+	if archiveURL == "" {
+		archiveURL = cfg.GatewayURL + archivePath
+	}
+	cfg.ActEnv = append(append([]string{}, cfg.ActEnv...), CacheEnv(archiveURL, token)...)
 	prepare := func() error {
-		archiveURL, _ := cx["gitstack_archive_url"].(string)
-		if archiveURL == "" {
-			archiveURL = cfg.GatewayURL + archivePath
-		}
 		ws := filepath.Join(cfg.WorkDir, "workspace")
 		if err := downloadArchive(ctx, cfg.HTTP, archiveURL, token, ws); err != nil {
 			return fmt.Errorf("download del codice: %w", err)
@@ -443,6 +444,20 @@ func downloadArchive(ctx context.Context, hc *http.Client, url, token, dest stri
 		return fmt.Errorf("il gateway ha risposto %d", res.StatusCode)
 	}
 	return extractTarGz(res.Body, dest)
+}
+
+// CacheEnv sono le variabili che actions/cache e actions/upload-artifact leggono per parlare con
+// il ci-gateway (GIT-330). L'indirizzo è quello dell'archivio del job senza il suo percorso, quindi
+// lo stesso con cui il pod raggiunge il gateway; ACTIONS_RUNTIME_TOKEN è il token del job (scade
+// con lui e vale solo per il suo repo), mai il segreto del runner. ACTIONS_RESULTS_URL fa arrivare
+// upload-artifact v4 al ci-gateway, che lo rifiuta con un messaggio chiaro invece di un errore di rete.
+func CacheEnv(archiveURL, jobToken string) []string {
+	base := strings.TrimRight(strings.TrimSuffix(archiveURL, archivePath), "/")
+	return []string{
+		"ACTIONS_CACHE_URL=" + base + "/ci/v1/cache/",
+		"ACTIONS_RESULTS_URL=" + base + "/",
+		"ACTIONS_RUNTIME_TOKEN=" + jobToken,
+	}
 }
 
 // withoutCIEnv toglie dall'ambiente ogni variabile GITSTACK_CI_*: act non ne ha bisogno.

@@ -25,6 +25,8 @@ type CIGatewayConfig struct {
 	// Options sono le opzioni del router (identità, per i nomi dei creatori degli
 	// stati, GIT-281): come per NewCIPushHandler.
 	Options []Option
+	// ExternalOnly: il gateway esposto fuori dal cluster, solo runner registrati (GIT-329).
+	ExternalOnly bool
 }
 
 // NewCIGateway costruisce l'handler del ci-gateway sulle letture di git: i workflow
@@ -35,6 +37,6 @@ func NewCIGateway(pool *pgxpool.Pool, rd gitclient.Reader, c CIGatewayConfig) ht
 	return cigateway.New(cigateway.Config{
 		Pool: pool, Source: gitCISource{rd: rd}, Reader: rd, Logs: c.Logs, Blobs: c.Blobs, SpoolDir: c.SpoolDir,
 		RunnerSecrets: c.RunnerSecrets, Capacity: c.Capacity, Keys: c.Keys, ArchiveURL: c.ArchiveURL, Log: c.Log,
-		Reporter: NewCIReporter(pool, c.Options...),
+		Reporter: NewCIReporter(pool, c.Options...), ExternalOnly: c.ExternalOnly,
 	})
 }

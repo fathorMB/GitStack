@@ -74,3 +74,24 @@ func TestMirrorActions(t *testing.T) {
 		t.Fatal("un'action assente dal mirror deve far fallire la preparazione")
 	}
 }
+
+// Un ref che inizia con '-' non diventa un'opzione di git: la preparazione fallisce, senza scaricare nulla.
+func TestMirrorActionsRifiutaRefConTrattino(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git non disponibile")
+	}
+	mirror := t.TempDir()
+	dest := filepath.Join(t.TempDir(), "workspace", ".gitstack-actions")
+	env := append(os.Environ(), "GIT_CONFIG_GLOBAL="+os.DevNull)
+	workflow := []byte("      - uses: actions/x@--upload-pack=touch-pwned\n")
+	_, err := cirunner.MirrorActions(context.Background(), workflow, mirror, "git", dest, env)
+	if err == nil {
+		t.Fatal("un ref con '-' iniziale deve far fallire la preparazione")
+	}
+	if !strings.Contains(err.Error(), "non puo' iniziare con '-'") {
+		t.Errorf("errore inatteso: %v", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(dest, "actions__x__--upload-pack_touch-pwned")); statErr == nil {
+		t.Error("la cartella dell'action non doveva essere creata")
+	}
+}
