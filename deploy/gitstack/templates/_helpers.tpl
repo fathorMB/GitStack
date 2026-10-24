@@ -48,6 +48,18 @@ Risoluzione (registry più override per componente, criterio 7 di GIT-8):
 {{- end -}}
 
 {{/*
+Immagine del runner dei job CI: ci.runner.image se impostata, altrimenti quella pubblicata
+con i servizi (stesso registry e stesso tag, quindi stessa firma).
+*/}}
+{{- define "gitstack.ci.runnerImage" -}}
+{{- if .Values.ci.runner.image -}}
+{{- .Values.ci.runner.image -}}
+{{- else -}}
+{{- include "gitstack.image" (dict "root" . "component" (dict "image" (dict "registry" "" "repository" .Values.ci.runner.repository "tag" ""))) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Tag effettivo di un componente (stessa risoluzione di gitstack.image): quello
 che legge `gitstack status` e che il gateway riporta in GET /v1/meta.
 */}}

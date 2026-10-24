@@ -631,6 +631,96 @@ Each export is logged as `security.data.exported`. To remove an account an
 administrator deletes the user (`DELETE /v1/users/{username}`); there is no
 self-service removal.
 
+## Built-in CI: install, upgrade, backup (v2-a)
+
+The built-in CI (workflows in `.gitstack/workflows/`, jobs as throw-away pods
+in the namespace `gitstack-ci-jobs`, rules CI1-CI7) is **off by default** and
+is switched on by the installer or by `gitstack upgrade`. The chart values are
+documented in `deploy/gitstack/values.yaml` (`ci.*`).
+
+### Switching it on at install time
+
+```bash
+sudo ./deploy/install.sh --ci                  # job slots chosen from the machine profile
+sudo ./deploy/install.sh --ci --ci-capacity 2  # explicit slots (1-3)
+```
+
+| Option | Meaning |
+|---|---|
+| `--ci` / `--no-ci` | switch the CI on / off. With neither, a re-run **keeps** the previous choice (the job namespace exists) and its slots; a first install has no CI |
+| `--ci-capacity N` | jobs in parallel, 1 to 3 (`ci.capacity`) |
+| `--ci-build` | also enables rootless BuildKit builds in the separate namespace `gitstack-ci-build` (`ci.build.enabled`) |
+| `--ci-action-mirror URL` | internal mirror of the `uses:` actions instead of github.com (N4, N9) |
+| `--ci-storage-size SIZE` | size of the volume with job logs (default `20Gi`) |
+| `--ci-s3-endpoint`, `--ci-s3-bucket`, `--ci-s3-region`, `--ci-s3-prefix` | S3 for artifacts and caches (N7); keys in `GITSTACK_CI_S3_ACCESS_KEY` and `GITSTACK_CI_S3_SECRET_KEY` |
+
+**Job slots per profile (N1, CI7).** Without `--ci-capacity` the installer
+picks **3** slots on the recommended profile (at least 8 vCPU **and** 16 GB of
+RAM) and **1** slot on the minimum profile (4 vCPU, 8 GB), also when only one of
+the two numbers reaches the recommended value. The slot count is never above 3.
+
+**Job space and priority.** Each slot is one pod with 2 vCPU, 4 GiB of memory
+and 20 GiB of ephemeral disk: the `ci-jobs` ResourceQuota in the job namespace
+is `capacity` times that, and a LimitRange caps every container at the same
+values. Job pods use the PriorityClass `gitstack-ci-job` (value 1000, no
+preemption), below `gitstack-apps` (100000) and `gitstack-services`
+(1000000): under memory pressure the jobs are evicted first, never the
+services. The preflight adds a **warning** (not an error) when the free disk
+is below 20 GB for GitStack plus 20 GB per slot.
+
+**Corporate network (N4, N9).** The proxy (`--http-proxy`, `--https-proxy`,
+`--no-proxy`) and the corporate CA (`--ca-bundle`) given to the installer reach
+the job pods too: `core` passes `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` to
+every job pod, and the chart copies the CA ConfigMap into the job namespace
+(`corporate-ca`), mounted at `/etc/gitstack/corporate-ca` and exported as
+`SSL_CERT_DIR` and `NODE_EXTRA_CA_CERTS`. Actions are downloaded from the
+mirror of `--ci-action-mirror` (when the host is an IPv4 address the installer
+also opens the egress of the job namespace towards `<ip>/32` on the mirror
+port; with a host name use `--values` with `ci.runner.actionMirrorEgress`,
+because the base policy closes 10/8, 172.16/12, 192.168/16 and 169.254/16).
+The executor (`act` plus `ci-runner`) is **inside the runner image**
+`gitstack-ci-runner`, published and cosign-signed by `ci.yml` with the same tag
+as the services, so nothing is downloaded at job time except the `uses:`
+actions: through `--registry-mirror` (or `--image-registry`) the runner image
+comes from the internal registry like all the others.
+
+**S3.** With a bucket, artifacts and caches go to S3 (the volume keeps only a
+scratch area) and **logs stay on disk**, inside the backup. The installer
+creates the Secret `<release>-ci-s3` (keys `accessKey`, `secretKey`) from the
+two environment variables; the keys never appear on a command line.
+
+### Upgrading from v1.x with the CI on
+
+A v1.x installation has no CI. The new chart brings it with two values:
+
+```bash
+sudo gitstack upgrade --to v2.0.0 --set ci.enabled=true --set ci.capacity=1
+```
+
+`gitstack upgrade` works as usual (health check, preventive backup, k3s patch,
+Helm, health check, automatic rollback), and also: it lists the runner image
+among the images to check (it is the value `GITSTACK_CORE_CI_IMAGE` of core,
+not an `image:` line) and verifies its cosign signature; `--set` values are
+kept for the next upgrades (`helm get values`), so later upgrades keep the CI
+without repeating the flags. `gitstack upgrade --dry-run` shows the plan with
+the same flags. Re-running `install.sh` after an upgrade keeps the CI as well
+(the job namespace exists).
+
+If the upgrade fails the rollback (exit code `7`) restores the previous Helm
+revision and the database schemas: a CI that was switched on by the failed
+upgrade is **off again**, because the previous revision had no `ci.*` values.
+Switch it on again after fixing the cause.
+
+### Backup and restore with the CI logs
+
+`gitstack backup` includes the job logs (`ci-logs.tar`, from the `logs/` folder
+of the volume `<release>-ci-data`); artifacts and caches (`data/`, or S3) are
+**not** in the backup and the rows that list them are dropped from the dump.
+`gitstack restore` puts the logs back together with the database: the runs and
+the logs written before the backup are readable afterwards; those written after
+it are gone, like all the other data. An archive with CI logs restored on an
+installation without the CI skips the logs and says so.
+
 ## Backup
 
 GitStack provides a coherent backup command that takes a short read-only
@@ -1426,10 +1516,22 @@ It runs two scenarios on `ubuntu-22.04` and `ubuntu-24.04`:
   backup is gone.
 - **upgrade**: `install.sh` of the **previous commit** (latest green CI run on
   `main`, strict ancestor, with its images and binary published) with a k3s
-  **one patch older** than `deploy/k3s-version` → data → `gitstack upgrade`
-  (preventive backup → k3s patch → GitStack, N10) → k3s checked with
-  `k3s --version`, `kubectl version` and `gitstack status --json`
-  (`k3s_version`) → backup → more data → restore.
+  **one patch older** than `deploy/k3s-version` → data → a **failing**
+  `gitstack upgrade` (`--set ci.enabled=true --set gateway.containerPort=1`: the
+  gateway cannot bind, exit code 7, previous version and data back, CI off
+  again) → `gitstack upgrade --set ci.enabled=true` (preventive backup → k3s
+  patch → GitStack, N10) → k3s checked with `k3s --version`, `kubectl version`
+  and `gitstack status --json` (`k3s_version`) → backup → more data → restore.
+
+Both scenarios run with the **built-in CI on** (`install.sh --ci` in fresh, the
+upgrade above in upgrade; see «Built-in CI: install, upgrade, backup»): after
+the install (or the upgrade) a repository gets a workflow in
+`.gitstack/workflows/`, a push, and the test waits for the run to finish with
+`success` in a throw-away job pod and for the marker in the job log. After the
+restore the run and its log (backed up as `ci-logs.tar`) are still readable and
+a new workflow runs again. The runner image `gitstack-ci-runner` is published
+and signed like the five service images (also by the job `images` of the
+manual run).
 
 Both check health, the admin login with the forced password change, user and
 token creation, repository creation, `git clone` and `git push` over HTTPS.

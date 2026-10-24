@@ -507,15 +507,23 @@ func extractTGZ(r io.Reader, dest string) error {
 
 var imageLineRe = regexp.MustCompile(`(?m)^\s*-?\s*image:\s*["']?([^"'\s]+)["']?\s*$`)
 
+// ciRunnerImageRe: con la CI accesa l'immagine del runner non e' un `image:` del chart
+// (la usa core per creare i pod dei job) ma il valore di GITSTACK_CORE_CI_IMAGE: va
+// verificata e controllata come le altre.
+var ciRunnerImageRe = regexp.MustCompile(`(?m)^\s*-?\s*name:\s*GITSTACK_CORE_CI_IMAGE\s*\n\s*value:\s*["']?([^"'\s]+)["']?\s*$`)
+
 // imagesFromManifests estrae le immagini (uniche, in ordine) dai manifest
-// di `helm template`.
+// di `helm template`, compresa quella del runner della CI se accesa.
 func imagesFromManifests(out string) []string {
 	seen := map[string]bool{}
 	var res []string
-	for _, m := range imageLineRe.FindAllStringSubmatch(out, -1) {
-		if !seen[m[1]] {
-			seen[m[1]] = true
-			res = append(res, m[1])
+	out = strings.ReplaceAll(out, "\r\n", "\n")
+	for _, re := range []*regexp.Regexp{imageLineRe, ciRunnerImageRe} {
+		for _, m := range re.FindAllStringSubmatch(out, -1) {
+			if !seen[m[1]] {
+				seen[m[1]] = true
+				res = append(res, m[1])
+			}
 		}
 	}
 	return res

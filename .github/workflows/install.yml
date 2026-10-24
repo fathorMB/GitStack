@@ -136,6 +136,9 @@ jobs:
             context: .
             dockerfile: web/Dockerfile
             build_args: VERSION=sha-${{ github.sha }}
+          - service: ci-runner
+            context: .
+            dockerfile: deploy/ci-runner/Dockerfile
     steps:
       - name: Checkout
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -330,7 +333,7 @@ jobs:
           extra=()
           if [ "${SIGN_MODE}" = "unsigned" ]; then extra+=(--allow-unsigned-mirrors); fi
           sudo env GITSTACK_REPO="${GITSTACK_REPO}" GITSTACK_ADMIN_REQUIRED=1 \
-            ./deploy/install.sh --skip-preflight --host "${E2E_HOST}" --image-tag "sha-${GITHUB_SHA}" "${extra[@]}"
+            ./deploy/install.sh --skip-preflight --ci --host "${E2E_HOST}" --image-tag "sha-${GITHUB_SHA}" "${extra[@]}"
 
       - name: Installazione del commit precedente (k3s più vecchio)
         if: matrix.scenario == 'upgrade'
@@ -351,6 +354,15 @@ jobs:
 
       - name: Dati di prova (login admin, utente, token, repo, push, issue)
         run: ./deploy/ci/install-e2e.sh seed
+
+      # Installazione con --ci: la CI è accesa dall'installer (1 posto, il
+      # runner ha 4 vCPU: profilo minimo) e un workflow di prova gira in un pod.
+      - name: CI attiva dopo l'installazione e workflow di prova
+        if: matrix.scenario == 'fresh'
+        run: |
+          set -euo pipefail
+          ./deploy/ci/install-e2e.sh ci-config 1
+          ./deploy/ci/install-e2e.sh ci-run
 
       # Il `gitstack` installato è quello del commit precedente. Se ha la
       # verifica V5 verifica le firme degli artefatti del commit in prova
@@ -381,14 +393,38 @@ jobs:
           if [ -n "${UPGRADE_UNSIGNED_FLAG}" ]; then extra+=("${UPGRADE_UNSIGNED_FLAG}"); fi
           sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --dry-run "${extra[@]}"
 
-      # Backup preventivo → k3s (cambio di patch) → GitStack, tutto da `gitstack upgrade`.
-      - name: gitstack upgrade
+      # Rollback con la CI: l'aggiornamento accende la CI ma il gateway non parte
+      # (gateway.containerPort=1: porta privilegiata, uid non root). gitstack upgrade deve
+      # uscire con 7 (fallito e tornato com'era), la versione di prima, la CI di nuovo
+      # spenta (revisione di partenza) e i dati del seed intatti.
+      - name: gitstack upgrade guasto (rollback con la CI accesa)
+        if: matrix.scenario == 'upgrade'
+        run: |
+          set -uo pipefail
+          extra=()
+          if [ -n "${UPGRADE_UNSIGNED_FLAG}" ]; then extra+=("${UPGRADE_UNSIGNED_FLAG}"); fi
+          sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --timeout 6m             --set ci.enabled=true --set ci.capacity=1 --set gateway.containerPort=1 "${extra[@]}"
+          rc=$?
+          if [ "${rc}" -ne 7 ]; then
+            echo "::error::gitstack upgrade guasto: uscita ${rc}, attesa 7 (fallito e tornato com'era)" >&2
+            exit 1
+          fi
+          set -e
+          ./deploy/ci/install-e2e.sh wait-healthy 900
+          sudo gitstack status --json | jq -e --arg v "sha-${PREV_SHA}" '.report.server_version == $v and .report.api_healthy == true'
+          ./deploy/ci/install-e2e.sh ci-off
+          ./deploy/ci/install-e2e.sh verify-seed
+          echo "- rollback con la CI: uscita 7, versione \`sha-${PREV_SHA}\` e dati del seed intatti" >> "$GITHUB_STEP_SUMMARY"
+
+      # Backup preventivo → k3s (cambio di patch) → GitStack, tutto da `gitstack upgrade`,
+      # con la CI accesa (la v1.x non l'aveva: il chart nuovo la porta con ci.enabled).
+      - name: gitstack upgrade (con la CI)
         if: matrix.scenario == 'upgrade'
         run: |
           set -euo pipefail
           extra=()
           if [ -n "${UPGRADE_UNSIGNED_FLAG}" ]; then extra+=("${UPGRADE_UNSIGNED_FLAG}"); fi
-          sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --timeout 20m "${extra[@]}"
+          sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --timeout 20m             --set ci.enabled=true --set ci.capacity=1 "${extra[@]}"
 
       - name: Dopo l'upgrade (salute, k3s dichiarato, dati intatti, push)
         if: matrix.scenario == 'upgrade'
@@ -398,6 +434,13 @@ jobs:
           ./deploy/ci/install-e2e.sh verify-k3s "${K3S_TO}"
           sudo gitstack status --json | jq -e --arg v "sha-${GITHUB_SHA}" '.report.server_version == $v and .report.api_healthy == true'
           ./deploy/ci/install-e2e.sh verify-seed --push
+
+      - name: CI attiva dopo l'upgrade e workflow di prova
+        if: matrix.scenario == 'upgrade'
+        run: |
+          set -euo pipefail
+          ./deploy/ci/install-e2e.sh ci-config 1
+          ./deploy/ci/install-e2e.sh ci-run
 
       - name: gitstack backup (cifrato)
         run: |
@@ -426,6 +469,15 @@ jobs:
           set -euo pipefail
           ./deploy/ci/install-e2e.sh verify-seed --push
           sudo gitstack status --json | jq -e '.report.api_healthy == true'
+
+      # I log della CI sono nel backup (CI5): dopo il restore il run di prova
+      # e il suo log ci sono ancora e la CI esegue un nuovo workflow.
+      - name: Dopo il restore (CI, run e log del job)
+        run: |
+          set -euo pipefail
+          ./deploy/ci/install-e2e.sh ci-config 1
+          ./deploy/ci/install-e2e.sh verify-ci
+          ./deploy/ci/install-e2e.sh ci-run
 
       - name: Diagnostica
         if: failure()

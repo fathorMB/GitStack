@@ -941,3 +941,14 @@ func TestDropLegacyServiceSecretValues(t *testing.T) {
 		})
 	}
 }
+
+func TestImagesFromManifestsRunnerCI(t *testing.T) {
+	out := "env:\n  - name: GITSTACK_CORE_CI_IMAGE\n    value: \"ghcr.io/o/gitstack-ci-runner:sha-abc\"\n  - name: X\n    value: y\nimage: a/b:1\n"
+	got := imagesFromManifests(out)
+	if len(got) != 2 || got[0] != "a/b:1" || got[1] != "ghcr.io/o/gitstack-ci-runner:sha-abc" {
+		t.Fatalf("%v", got)
+	}
+	if !IsGitstackImage(got[1]) {
+		t.Fatal("l'immagine del runner va verificata con cosign come le altre")
+	}
+}

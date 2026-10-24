@@ -253,7 +253,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: shellcheck
-        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/v5_verify_test.sh deploy/tests/release_changelog_test.sh deploy/tests/network_test.sh deploy/tests/k3s_script_test.sh deploy/tests/chart_hardening_test.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh deploy/ci/install-e2e.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh scripts/ci/retry.sh deploy/ci/runner-e2e.sh
+        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/ci_install_test.sh deploy/tests/v5_verify_test.sh deploy/tests/release_changelog_test.sh deploy/tests/network_test.sh deploy/tests/k3s_script_test.sh deploy/tests/chart_hardening_test.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh deploy/ci/install-e2e.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh scripts/ci/retry.sh deploy/ci/runner-e2e.sh
 
       # Preflight di install.sh (GIT-144): profili minimo e consigliato di N1,
       # sistema non supportato, verifica del nome host. Senza root né VM.
@@ -264,6 +264,11 @@ jobs:
       # per k3s, valori Helm e preflight di rete. Senza root né rete.
       - name: test della rete aziendale
         run: ./deploy/tests/network_test.sh
+
+      # GIT-285: CI integrata nell'installer (posti dei job per profilo, mirror
+      # delle action, S3, riesecuzione che conserva la scelta). Senza root né VM.
+      - name: test della CI nell'installer
+        run: ./deploy/tests/ci_install_test.sh
 
       # GIT-239 (F19): lo script di k3s si esegue solo con lo sha256 fissato.
       - name: test del checksum dello script di k3s
@@ -496,6 +501,9 @@ jobs:
             dockerfile: web/Dockerfile
             # GIT-171: versione di gs = tag immagine; solo web costruisce gs.
             build_args: VERSION=sha-${{ github.sha }}
+          - service: ci-runner
+            context: .
+            dockerfile: deploy/ci-runner/Dockerfile
     env:
       # Parametro, non hard-coded nei Dockerfile: così il chart di GIT-8
       # potrà puntare a un mirror (vedi M-08, air-gapped).
@@ -784,7 +792,7 @@ jobs:
           set -euo pipefail
           # I riferimenti Docker vogliono il nome in minuscolo (come docker/metadata-action)
           owner="${REPO_OWNER,,}"
-          for svc in gateway identity git core web; do
+          for svc in gateway identity git core web ci-runner; do
             img="${{ env.REGISTRY }}/${owner}/gitstack-${svc}:sha-${{ github.sha }}"
             # Si risolve il digest del manifest (index multi-arch incluso): firma,
             # attestazione, SBOM e verifica usano solo img@sha256:..., non il tag.
@@ -813,7 +821,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p sbom
-          for svc in gateway identity git core web; do
+          for svc in gateway identity git core web ci-runner; do
             ref_var="IMAGEREF_${svc}"
             ref="${!ref_var}"
             out="sbom/gitstack-${svc}-sbom.spdx.json"
@@ -836,7 +844,7 @@ jobs:
           set -euo pipefail
           source scripts/ci/retry.sh
 
-          for svc in gateway identity git core web; do
+          for svc in gateway identity git core web ci-runner; do
             ref_var="IMAGEREF_${svc}"
             ref="${!ref_var}"
             sbom="sbom/gitstack-${svc}-sbom.spdx.json"
@@ -1165,7 +1173,7 @@ jobs:
           digest_of() {
             docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' | jq -er '.digest'
           }
-          for svc in gateway identity git core web; do
+          for svc in gateway identity git core web ci-runner; do
             base="${REGISTRY}/${owner}/gitstack-${svc}"
             want="$(digest_of "${base}:${SHA_TAG}")"
             for t in "${VERSION}" "${{ steps.ver.outputs.plain }}"; do
@@ -1222,7 +1230,7 @@ jobs:
               exit 1
             fi
           done
-          for svc in gateway identity git core web; do
+          for svc in gateway identity git core web ci-runner; do
             test -s "dist/sbom/gitstack-${svc}-sbom.spdx.json" \
               || { echo "ERRORE: manca l'SBOM dell'immagine ${svc} nella release ${SHA_TAG}" >&2; exit 1; }
           done

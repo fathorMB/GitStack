@@ -100,7 +100,13 @@ spec:
             - name: GITSTACK_CORE_CI_NAMESPACE
               value: {{ .Values.ci.namespace | quote }}
             - name: GITSTACK_CORE_CI_IMAGE
-              value: {{ .Values.ci.runner.image | quote }}
+              value: {{ include "gitstack.ci.runnerImage" . | quote }}
+            {{- if .Values.corporateCA.configMap }}
+            # Proxy (stesse variabili di core) e CA aziendale passano ai pod dei job (N4, N9):
+            # la CA e' copiata da ci-runner.yaml nel namespace dei job con questo nome.
+            - name: GITSTACK_CORE_CI_CA_CONFIGMAP
+              value: "corporate-ca"
+            {{- end }}
             - name: GITSTACK_CORE_CI_ACTION_MIRROR
               value: {{ .Values.ci.runner.actionMirror | quote }}
             - name: GITSTACK_CORE_CI_CAPACITY

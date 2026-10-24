@@ -276,6 +276,23 @@ d="$(doc Deployment gitstack-core)"
 expect_has "ci: GATEWAY_URL con namespace" "${d}" 'value: "http://gitstack-core.prova-ns.svc:'
 expect_has "ci: GATE_INTERNAL_ADDR con namespace" "${d}" 'value: "gitstack-core.prova-ns.svc:'
 
+echo "== GIT-285: immagine del runner, proxy e CA nei job"
+OUT="$(helm template gitstack "${CHART}" --namespace prova-ns --set ci.enabled=true --set global.image.tag=sha-abc --set global.image.registry=reg.corp:5000 | tr -d '')" || { bad "helm template con ci.enabled fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_has "runner: immagine di default dal registry e dal tag dei servizi" "${d}" 'value: "reg.corp:5000/fathormb/gitstack-ci-runner:sha-abc"'
+expect_lacks "runner: senza CA aziendale nessun ConfigMap per i job" "${d}" "GITSTACK_CORE_CI_CA_CONFIGMAP"
+OUT="$(helm template gitstack "${CHART}" --namespace prova-ns --set ci.enabled=true --set ci.runner.image=mirror/runner:1 | tr -d '')" || { bad "helm template con ci.runner.image fallito"; exit 1; }
+expect_has "runner: ci.runner.image vince" "$(doc Deployment gitstack-core)" 'value: "mirror/runner:1"'
+OUT="$(helm template gitstack "${CHART}" --namespace prova-ns --set ci.enabled=true --set proxy.https=http://proxy:3128 --set corporateCA.configMap=gitstack-corporate-ca | tr -d '')" || { bad "helm template con proxy e CA fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_has "job: core conosce il ConfigMap della CA nel namespace dei job" "${d}" "GITSTACK_CORE_CI_CA_CONFIGMAP"
+expect_has "job: core ha il proxy da passare ai pod" "${d}" "name: HTTPS_PROXY"
+OUT="$(helm template gitstack "${CHART}" --namespace prova-ns | tr -d '')" || { bad "helm template di default fallito"; exit 1; }
+expect_eq "CI spenta: nessuna PriorityClass gitstack-ci-job" "$(count 'metadata: {name: gitstack-ci-job}')" "0"
+OUT="$(helm template gitstack "${CHART}" --namespace prova-ns --set ci.enabled=true | tr -d '')" || { bad "helm template con ci.enabled fallito"; exit 1; }
+expect_eq "CI accesa: PriorityClass gitstack-ci-job" "$(count 'metadata: {name: gitstack-ci-job}')" "1"
+expect_has "CI accesa: ResourceQuota dei posti" "$OUT" "name: ci-jobs"
+
 echo
 echo "Passati: ${PASS}  Falliti: ${FAILN}"
 [ "${FAILN}" -eq 0 ]
