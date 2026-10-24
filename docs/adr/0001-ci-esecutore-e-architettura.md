@@ -133,11 +133,21 @@ implementa il protocollo; può servire un adattatore.
 
 ### 5. Log, artefatti e cache (CI5)
 
-Disco, su un volume dedicato di `core`, **fuori dai backup** come chiede CI5; metadati e indici in
-Postgres. Interfaccia di storage con una sola implementazione in v2-a (disco); S3 solo come seconda
-implementazione futura, non una decisione ora. Log 90 giorni, artefatti 30 giorni fino a 2 GB, cache
-10 GB per repo, con job di pulizia. Il ruolo del `ci-gateway` è l'unica scrittura: il job non vede il
-volume.
+Disco, su un volume dedicato di `core` (`ci-data`), con due cartelle: `logs/` **nel backup** e `data/`
+(artefatti e cache) **fuori dal backup**, come chiede CI5; metadati e indici in Postgres. Artefatti e
+cache hanno un'interfaccia di storage con due implementazioni (GIT-280): disco e S3 (N7, richieste
+firmate SigV4); i log restano su disco. Log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per
+repo (le meno usate vanno via a quota piena, quelle non usate da 7 giorni comunque): tutti i valori li
+regola l'amministratore (`GET`/`PUT /admin/ci/storage`, tabella `core.ci_settings`) e un giro orario di
+pulizia li applica. Il ruolo del `ci-gateway` è l'unica scrittura: il job non vede il volume.
+
+**Compatibilità con GitHub (GIT-280).** Le cache parlano il protocollo v1 di `actions/cache`
+(`ACTIONS_CACHE_URL = <ci-gateway>/ci/v1/cache/`: ricerca, prenotazione, pezzi con `Content-Range`,
+conferma). `actions/cache` v4 e `actions/upload-artifact` v4 usano invece un protocollo Twirp con
+upload su Azure Blob: **non è compatibile** e core non lo implementa. Gli artefatti si caricano con
+`PUT /ci/v1/artifacts/{nome}` del ci-gateway (corpo = ZIP), con il token del job. Nel backup i dati
+delle tabelle `ci_artifacts` e `ci_caches` sono esclusi (`pg_dump --exclude-table-data`), così dopo un
+restore non restano righe che puntano a file mancanti.
 
 ### 6. Build di immagini (CI2)
 

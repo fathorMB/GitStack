@@ -134,9 +134,14 @@ type Config struct {
 	CIImage        string
 	CIActionMirror string
 	CICapacity     int
-	// CILogsDir è la cartella dei log dei job, nel volume di core e fuori dai
+	// CILogsDir è la cartella dei log dei job, nel volume di core e nel
 	// backup (GITSTACK_CORE_CI_LOGS_DIR, CI5). Vuoto: i log dei job rispondono 503.
 	CILogsDir string
+	// CIArtifactsDir è la cartella di artefatti e cache dei job su disco (CI5), nel volume di
+	// core e fuori dai backup. Vuota e senza CIS3Bucket: artefatti e cache rispondono 503.
+	CIArtifactsDir string
+	// CIS3 sceglie S3 al posto del disco per artefatti e cache (N7): GITSTACK_CORE_CI_S3_*.
+	CIS3 CIS3Config
 	// SystemInfoFile è system.json, il ConfigMap system-info montato come
 	// volume (GITSTACK_SYSTEM_INFO_FILE, GIT-213): lo legge GET /admin/system.
 	SystemInfoFile string
@@ -208,6 +213,13 @@ const (
 	envCIActionMirror     = "GITSTACK_CORE_CI_ACTION_MIRROR"
 	envCICapacity         = "GITSTACK_CORE_CI_CAPACITY"
 	envCILogsDir          = "GITSTACK_CORE_CI_LOGS_DIR"
+	envCIArtifactsDir     = "GITSTACK_CORE_CI_ARTIFACTS_DIR"
+	envCIS3Endpoint       = "GITSTACK_CORE_CI_S3_ENDPOINT"
+	envCIS3Bucket         = "GITSTACK_CORE_CI_S3_BUCKET"
+	envCIS3Region         = "GITSTACK_CORE_CI_S3_REGION"
+	envCIS3Prefix         = "GITSTACK_CORE_CI_S3_PREFIX"
+	envCIS3AccessKey      = "GITSTACK_CORE_CI_S3_ACCESS_KEY"
+	envCIS3SecretKey      = "GITSTACK_CORE_CI_S3_SECRET_KEY"
 	envReleaseAssetsDir   = "GITSTACK_CORE_RELEASE_ASSETS_DIR"
 	envSystemInfoFile     = "GITSTACK_SYSTEM_INFO_FILE"
 	envAttachmentMax      = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
@@ -384,6 +396,10 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	if v, ok := lookup(envCILogsDir); ok {
 		cfg.CILogsDir = strings.TrimSpace(v)
 	}
+	if v, ok := lookup(envCIArtifactsDir); ok {
+		cfg.CIArtifactsDir = strings.TrimSpace(v)
+	}
+	errs = loadCIS3(lookup, &cfg, errs)
 	if v, ok := lookup(envReleaseAssetsDir); ok {
 		cfg.ReleaseAssetsDir = strings.TrimSpace(v)
 	}
@@ -452,6 +468,32 @@ func splitList(lookup func(string) (string, bool), key string) []string {
 		}
 	}
 	return out
+}
+
+// CIS3Config è lo storage S3 di artefatti e cache. Bucket vuoto = disco.
+type CIS3Config struct {
+	Endpoint, Region, Bucket, Prefix, AccessKey, SecretKey string
+}
+
+// Enabled: S3 è configurato.
+func (c CIS3Config) Enabled() bool { return c.Bucket != "" }
+
+// loadCIS3 legge GITSTACK_CORE_CI_S3_*: con il bucket servono anche endpoint e chiavi.
+func loadCIS3(lookup func(string) (string, bool), cfg *Config, errs []string) []string {
+	get := func(k string) string {
+		v, _ := lookup(k)
+		return strings.TrimSpace(v)
+	}
+	c := CIS3Config{Endpoint: get(envCIS3Endpoint), Region: get(envCIS3Region), Bucket: get(envCIS3Bucket),
+		Prefix: get(envCIS3Prefix), AccessKey: get(envCIS3AccessKey), SecretKey: get(envCIS3SecretKey)}
+	if c.Bucket == "" {
+		return errs
+	}
+	if c.Endpoint == "" || c.AccessKey == "" || c.SecretKey == "" {
+		return append(errs, fmt.Sprintf("%s richiede anche %s, %s e %s", envCIS3Bucket, envCIS3Endpoint, envCIS3AccessKey, envCIS3SecretKey))
+	}
+	cfg.CIS3 = c
+	return errs
 }
 
 // loadSMTP legge GITSTACK_CORE_SMTP_*. Senza HOST l'SMTP è spento e le altre

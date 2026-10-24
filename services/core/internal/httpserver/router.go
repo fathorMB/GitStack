@@ -84,6 +84,8 @@ func newAPIServerWithOptions(pool *pgxpool.Pool, publisher events.Publisher, opt
 		emailEnabled: o.emailEnabled,
 		systemInfo:   o.systemInfo,
 		ciLogs:       o.ciLogs,
+		ciBlobs:      o.ciBlobs,
+		ciCapacity:   o.ciCapacity,
 		now:          now,
 	}, o
 }
@@ -138,6 +140,8 @@ type routerOptions struct {
 	emailEnabled bool
 	systemInfo   SystemInfoConfig
 	ciLogs       *ci.LogStore
+	ciBlobs      ci.Blobs
+	ciCapacity   int
 }
 
 // WithCreatorGranter imposta il client di identity con cui core assegna il

@@ -1,0 +1,20 @@
+{{- if and .Values.core.enabled .Values.ci.enabled -}}
+# Volume di log, artefatti e cache dei job (CI5): <mountPath>/logs entra nel
+# backup (D19), <mountPath>/data (artefatti e cache) no. ReadWriteOnce: core
+# resta a una replica (strategia Recreate nel Deployment).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "gitstack.fullname" . }}-ci-data
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.ci.storage.persistence.accessMode }}
+  {{- if .Values.ci.storage.persistence.storageClassName }}
+  storageClassName: {{ .Values.ci.storage.persistence.storageClassName | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.ci.storage.persistence.size | quote }}
+{{- end }}
