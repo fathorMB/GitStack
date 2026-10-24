@@ -95,9 +95,9 @@ type Config struct {
 	// token di un runner registrato (gsr_), mai il biglietto di un pod interno (gsq_).
 	ExternalOnly bool
 	PollTimeout  time.Duration
-	PollEvery   time.Duration
-	Now         func() time.Time
-	Log         *slog.Logger
+	PollEvery    time.Duration
+	Now          func() time.Time
+	Log          *slog.Logger
 }
 
 type gateway struct {
