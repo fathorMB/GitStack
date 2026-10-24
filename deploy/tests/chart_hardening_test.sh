@@ -27,7 +27,7 @@ count() { printf '%s\n' "${OUT}" | grep -c -E "$1" || true; }
 doc() {
   printf '%s\n' "${OUT}" | awk -v kind="$1" -v name="$2" '
     BEGIN { RS = "\n---\n" }
-    $0 ~ "(^|\n)kind: " kind "\n" && $0 ~ "\n  name: " name "\n" { print; exit }'
+    $0 ~ "(^|\n)kind: " kind "\n" && $0 ~ "\n  name: " name "\n" && !done { print; done = 1 }'
 }
 
 # ---------------------------------------------------------------------------
@@ -210,7 +210,16 @@ if helm_rc --set core.replicaCount=2; then
 else
   ok
   expect_has "nodo singolo: messaggio del guard" "$(render --set core.replicaCount=2 2>&1)" \
-    "core.attachments.enabled=true richiede core.replicaCount=1"
+    "core.attachments.enabled=true o ci.enabled=true richiedono core.replicaCount=1"
+fi
+# Il guard vale anche per i log CI (ci.enabled=true), pure senza allegati.
+if helm_rc --set core.attachments.enabled=false --set ci.enabled=true --set core.replicaCount=2; then
+  bad "nodo singolo: helm template non si ferma con ci.enabled=true e core.replicaCount=2"
+else
+  ok
+  expect_has "nodo singolo: messaggio del guard con ci.enabled" \
+    "$(render --set core.attachments.enabled=false --set ci.enabled=true --set core.replicaCount=2 2>&1)" \
+    "ci.enabled=true richiedono core.replicaCount=1"
 fi
 OUT="$(render --set core.attachments.enabled=false --set core.replicaCount=3)" ||
   bad "nodo singolo: rendering con 3 repliche senza il volume degli allegati fallito"
