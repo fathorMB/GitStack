@@ -142,7 +142,8 @@ L'immagine **web** contiene, costruiti in build da `scripts/build-gs-dist.sh`, i
 | Percorso | Contenuto |
 |---|---|
 | `/downloads/gs_<os>_<arch>` (`.exe` su windows) | binario |
-| `/downloads/SHA256SUMS`, `/downloads/gs-skills.zip` | checksum e skills |
+| `/downloads/gitstack-runner_<os>_<arch>` (`.exe` su windows) | runner esterno della CI (GIT-278, [`docs/ci-runner-esterno.md`](../../docs/ci-runner-esterno.md)) |
+| `/downloads/SHA256SUMS`, `/downloads/gs-skills.zip` | checksum (di gs e del runner) e skills |
 | `/downloads/index.json` | indice (versione, binari con sha256 e dimensione, skills, script, `ca_cert`) letto dalla UI |
 | `/downloads/ca.crt` | certificato pubblico della CA interna (N5), solo se il ConfigMap `ingress.tls.caConfigMap` esiste; `ca_cert` in `index.json` e null altrimenti (lo decide l'entrypoint all'avvio del pod) |
 | `/install-gs.sh`, `/install-gs.ps1` | script di installazione, con l'indirizzo dell'istanza scritto al posto del segnaposto `__GS_BASE_URL__` (da `X-Forwarded-Proto` e `Host`) |

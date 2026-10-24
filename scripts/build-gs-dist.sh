@@ -9,6 +9,8 @@
 # Uso: scripts/build-gs-dist.sh <cartella-di-uscita> <versione>
 #   versione: es. sha-<commit> (stesso tag delle immagini); "dev" in locale.
 #
+# Include il runner esterno della CI (gitstack-runner_*, GIT-278).
+#
 # Variabili: GS_DIST_PLATFORMS ("linux/amd64 linux/arm64 ..." per ridurre
 # l'elenco in prova), GS_SKILLS_DIR (default skills/).
 set -euo pipefail
@@ -38,6 +40,16 @@ for p in ${platforms}; do
     -o "${out}/${file}" ./cmd/gs)
 done
 
+# 1b. Runner esterno della CI (GIT-278): gitstack-runner_<os>_<arch>, stesse piattaforme.
+#     Si costruisce dal modulo services/core (CGO spento, -trimpath).
+for p in ${platforms}; do
+  os=${p%/*}
+  arch=${p#*/}
+  file="gitstack-runner_${os}_${arch}"
+  [ "${os}" = windows ] && file="${file}.exe"
+  (cd "${repo}/services/core" && CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}"     go build -trimpath -ldflags "-s -w -X main.version=${version}"     -o "${out}/${file}" ./cmd/gitstack-runner)
+done
+
 # 2. Skills: archivio della cartella skills/ (basta anche la sola LICENSE).
 if [ ! -d "${skills_dir}" ]; then
   echo "cartella delle skills assente: ${skills_dir}" >&2
@@ -47,7 +59,7 @@ rm -f "${out}/gs-skills.zip"
 (cd "${skills_dir}" && zip -q -r -X "${out}/gs-skills.zip" .)
 
 # 3. SHA256SUMS (formato sha256sum: "<hash>  <file>"), ordinato.
-(cd "${out}" && sha256sum gs_* gs-skills.zip > SHA256SUMS)
+(cd "${out}" && sha256sum gs_* gitstack-runner_* gs-skills.zip > SHA256SUMS)
 
 # 4. index.json (formato fissato con la UI di GIT-172). ca_cert resta null:
 #    lo riscrive l'entrypoint dell'immagine web se l'istanza ha una CA interna.
@@ -66,6 +78,17 @@ size_of() { wc -c < "${out}/$1" | tr -d ' '; }
     first=0
     printf '{"os":"%s","arch":"%s","file":"%s","url":"/downloads/%s","sha256":"%s","size":%s}' \
       "${os}" "${arch}" "${file}" "${file}" "$(sum_of "${file}")" "$(size_of "${file}")"
+  done
+  printf '],"runners":['
+  first=1
+  for p in ${platforms}; do
+    os=${p%/*}
+    arch=${p#*/}
+    file="gitstack-runner_${os}_${arch}"
+    [ "${os}" = windows ] && file="${file}.exe"
+    [ "${first}" = 1 ] || printf ','
+    first=0
+    printf '{"os":"%s","arch":"%s","file":"%s","url":"/downloads/%s","sha256":"%s","size":%s}'       "${os}" "${arch}" "${file}" "${file}" "$(sum_of "${file}")" "$(size_of "${file}")"
   done
   printf '],"checksums":"/downloads/SHA256SUMS",'
   printf '"skills":{"file":"gs-skills.zip","url":"/downloads/gs-skills.zip","sha256":"%s"},' "$(sum_of gs-skills.zip)"

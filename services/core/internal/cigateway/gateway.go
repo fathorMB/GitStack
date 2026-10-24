@@ -8,10 +8,12 @@
 //	UpdateLog   righe di log, scritte su disco (ci.LogStore)
 //
 // più un solo endpoint non-RPC, GET /ci/v1/archive: l'archivio del repo del job al suo sha.
-// Register e Declare (runner esterni) sono di GIT-278 e rispondono "unimplemented".
+// Runner esterni (GIT-278): Register (token di registrazione monouso → token del runner),
+// Declare e FetchTask con il token del runner; vedi external.go.
 //
 // Due credenziali, mai scambiabili:
-//   - il segreto dei runner interni (x-runner-token o Authorization: Bearer) vale solo per FetchTask;
+//   - il biglietto del job dei pod interni (gsq_) o il token di un runner esterno (gsr_)
+//     (x-runner-token o Authorization: Bearer) valgono solo per FetchTask (e Declare, il secondo);
 //   - il token del job vale solo per UpdateTask, UpdateLog e l'archivio, e solo per il job a cui
 //     appartiene: un task id diverso è permission_denied, un token scaduto, revocato o sconosciuto
 //     è unauthenticated.
@@ -148,9 +150,21 @@ func (g *gateway) auth() connect.UnaryInterceptorFunc {
 			token := bearer(req.Header())
 			switch req.Spec().Procedure {
 			case runnerv1connect.RunnerServiceFetchTaskProcedure:
-				if !strings.HasPrefix(token, ci.JobTicketPrefix) || len(token) > 128 {
-					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("biglietto del job non valido"))
+				if (!strings.HasPrefix(token, ci.JobTicketPrefix) && !strings.HasPrefix(token, ci.RunnerTokenPrefix)) || len(token) > 128 {
+					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("credenziale non valida"))
 				}
+			case runnerv1connect.RunnerServiceRegisterProcedure:
+				// Il token di registrazione è nel corpo: lo verifica Register.
+			case runnerv1connect.RunnerServiceDeclareProcedure:
+				rn, err := ci.ResolveRunner(ctx, g.Pool, g.Now(), token)
+				if errors.Is(err, ci.ErrRunnerToken) {
+					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("token del runner non valido"))
+				}
+				if err != nil {
+					g.Log.Error("ci-gateway: verifica del runner non riuscita", "err", err)
+					return nil, connect.NewError(connect.CodeUnavailable, errors.New("servizio non disponibile"))
+				}
+				ctx = context.WithValue(ctx, runnerCtxKey{}, rn)
 			case runnerv1connect.RunnerServiceUpdateTaskProcedure, runnerv1connect.RunnerServiceUpdateLogProcedure:
 				a, err := ci.ResolveJobToken(ctx, g.Pool, g.Now(), token)
 				if errors.Is(err, ci.ErrJobToken) {
@@ -162,7 +176,7 @@ func (g *gateway) auth() connect.UnaryInterceptorFunc {
 				}
 				ctx = context.WithValue(ctx, ctxKey{}, a)
 			default:
-				// Register, Declare e qualsiasi altra procedura: GIT-278.
+				// Ogni altra procedura.
 				return nil, connect.NewError(connect.CodeUnimplemented, errors.New("non disponibile in questa versione"))
 			}
 			return next(ctx, req)

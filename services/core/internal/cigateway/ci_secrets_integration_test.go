@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	runnerv1 "code.gitea.io/actions-proto-go/runner/v1"
+	"connectrpc.com/connect"
 	"github.com/fathorMB/GitStack/services/core/internal/ci"
 	"github.com/fathorMB/GitStack/services/core/internal/webhooks"
 	"github.com/google/uuid"
@@ -117,7 +118,7 @@ func TestSecrets_SenzaChiaveIlJobNonParte(t *testing.T) {
 		t.Fatal(err)
 	}
 	task, err := e.fetch(runnerSecret)
-	if err != nil || task != nil {
+	if task != nil || code(err) != connect.CodeUnavailable {
 		t.Fatalf("task = %v, err = %v: senza chiave non si consegna", task, err)
 	}
 	var concl string

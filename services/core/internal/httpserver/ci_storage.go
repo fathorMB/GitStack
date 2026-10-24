@@ -28,29 +28,6 @@ func ciUnavailable(w http.ResponseWriter, what string, err error) {
 	writeError(w, http.StatusServiceUnavailable, "ci_unavailable", "Servizio CI non disponibile.")
 }
 
-// requireInstanceAdmin: identità (401) → amministratore d'istanza (403). Come GET /admin/system.
-func (s *apiServer) requireInstanceAdmin(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
-	_, callerID, ok := callerIdentity(w, r)
-	if !ok {
-		return uuid.Nil, false
-	}
-	if s.readable == nil {
-		writeError(w, http.StatusServiceUnavailable, "identity_unavailable", "Identity non configurata: impossibile verificare l'amministratore.")
-		return uuid.Nil, false
-	}
-	isAdmin, _, err := s.readable.ReadableResources(r.Context(), callerID)
-	if err != nil {
-		slog.Default().Warn("verifica dell'amministratore non riuscita", "err", err)
-		writeError(w, http.StatusServiceUnavailable, "identity_unavailable", "Identity non disponibile: impossibile verificare l'amministratore.")
-		return uuid.Nil, false
-	}
-	if !isAdmin {
-		writeError(w, http.StatusForbidden, "forbidden", "Solo l'amministratore dell'installazione.")
-		return uuid.Nil, false
-	}
-	return callerID, true
-}
-
 func storageSettingsToAPI(st ci.Settings) openapi.CiStorageSettings {
 	return openapi.CiStorageSettings{
 		LogRetentionDays: st.LogRetentionDays, ArtifactRetentionDays: st.ArtifactRetentionDays,
@@ -60,7 +37,7 @@ func storageSettingsToAPI(st ci.Settings) openapi.CiStorageSettings {
 
 // GetCiStorageSettings implementa GET /admin/ci/storage.
 func (s *apiServer) GetCiStorageSettings(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.requireInstanceAdmin(w, r); !ok {
+	if _, ok := s.requireInstanceAdmin(w, r, "vedere le impostazioni di archiviazione della CI"); !ok {
 		return
 	}
 	st, err := ci.LoadSettings(r.Context(), s.pool)
@@ -73,7 +50,7 @@ func (s *apiServer) GetCiStorageSettings(w http.ResponseWriter, r *http.Request)
 
 // UpdateCiStorageSettings implementa PUT /admin/ci/storage.
 func (s *apiServer) UpdateCiStorageSettings(w http.ResponseWriter, r *http.Request) {
-	userID, ok := s.requireInstanceAdmin(w, r)
+	userID, ok := s.requireInstanceAdmin(w, r, "modificare le impostazioni di archiviazione della CI")
 	if !ok {
 		return
 	}
@@ -99,7 +76,7 @@ func (s *apiServer) UpdateCiStorageSettings(w http.ResponseWriter, r *http.Reque
 
 // GetCiQueue implementa GET /admin/ci/queue: coda, job in corso, concorrenza, attesa media e spazio occupato.
 func (s *apiServer) GetCiQueue(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.requireInstanceAdmin(w, r); !ok {
+	if _, ok := s.requireInstanceAdmin(w, r, "vedere la coda della CI"); !ok {
 		return
 	}
 	stats, err := ci.ReadQueueStats(r.Context(), s.pool, s.now())

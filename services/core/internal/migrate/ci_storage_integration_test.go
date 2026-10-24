@@ -13,9 +13,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// TestMigration0033_ArtefattiCacheEImpostazioni (GIT-280, CI5): default di CI5, vincoli, unicità,
+// TestMigration0034_ArtefattiCacheEImpostazioni (GIT-280, CI5): default di CI5, vincoli, unicità,
 // cascata all'eliminazione dell'esecuzione e del repo; il down toglie le tre tabelle e il nuovo up rifunziona.
-func TestMigration0033_ArtefattiCacheEImpostazioni(t *testing.T) {
+func TestMigration0034_ArtefattiCacheEImpostazioni(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 	exec := func(q string, args ...any) error {
@@ -126,7 +126,7 @@ func TestMigration0033_ArtefattiCacheEImpostazioni(t *testing.T) {
 	}
 
 	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("down 0033: %v", err)
+		t.Fatalf("down 0034: %v", err)
 	}
 	var n int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.tables WHERE table_schema = 'core' AND table_name IN ('ci_settings', 'ci_artifacts', 'ci_caches')`).Scan(&n); err != nil || n != 0 {

@@ -61,6 +61,26 @@ func TestParseWorkflow_NomeEJobInOrdine(t *testing.T) {
 	}
 }
 
+func TestRunnerTypeOf_EtichetteENormalizzazione(t *testing.T) {
+	for runsOn, want := range map[string]string{
+		"ubuntu-latest":    "internal_pod",
+		"Ubuntu-24.04":     "internal_pod",
+		"self-hosted":      "external",
+		"windows-latest":   "external",
+		"macos-14":         "external",
+		"gpu":              "external",
+		"linux:host":       "external",
+		"${{ matrix.os }}": "internal_pod",
+	} {
+		if got := runnerTypeOf([]string{runsOn}); got != want {
+			t.Errorf("%q: %s, atteso %s", runsOn, got, want)
+		}
+	}
+	if got := NormalizeLabels([]string{" Linux:host ", "linux", "", "GPU"}); len(got) != 2 || got[0] != "linux" || got[1] != "gpu" {
+		t.Errorf("NormalizeLabels = %v", got)
+	}
+}
+
 func push(ref string, changed ...string) Event {
 	return Event{Kind: EventPush, Ref: ref, SHA: strings.Repeat("a", 40), Changed: changed}
 }
