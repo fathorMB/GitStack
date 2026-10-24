@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -152,6 +153,7 @@ func newEnv(t *testing.T) *env {
 		secrets: []Secret{
 			{Name: "gs-postgres", Raw: []byte(`{"name":"pg"}`)},
 			{Name: "gs-git-ssh-host-key", Raw: []byte(`{"name":"ssh"}`)},
+			{Name: "gs-registry-signing-key", Raw: []byte(`{"metadata":{"labels":{"app.kubernetes.io/part-of":"gitstack"}},"data":{"cosign.key":"S0VZ"}}`)},
 		},
 		dump: "CREATE SCHEMA identity;\nINSERT INTO core.releases (tag_name, body) VALUES ('v1', 'note release');\n",
 	}
@@ -272,7 +274,7 @@ func TestBackupRoundTrip(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(r.releaseAssets, "r1", "release.bin")); err == nil {
 		t.Error("gli asset release non devono essere ripristinati dal backup predefinito")
 	}
-	if len(r.f.applied) != 1 || r.f.applied[0] != "gs-git-ssh-host-key" {
+	if len(r.f.applied) != 2 || !slices.Contains(r.f.applied, "gs-git-ssh-host-key") || !slices.Contains(r.f.applied, "gs-registry-signing-key") {
 		t.Errorf("Secret applicati: %v (postgres non va ripristinato)", r.f.applied)
 	}
 	for _, d := range []string{"gs-gateway", "gs-git", "gs-core", "gs-identity"} {

@@ -69,6 +69,9 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 		proxy.WithTrustedProxies(cfg.TrustedProxies), signing, proxy.WithDropCredentials(), proxy.WithClock(o.now),
 		proxy.WithBodyLimits(cfg.MaxBodyBytes, cfg.MaxAttachmentBytes))
 	server := &apiServer{proxy: toCore, version: cfg.Version}
+	if cfg.RegistryURL != nil {
+		server.registryKey = proxy.ToRegistrySigningKey(cfg.RegistryURL, logger, proxy.WithTrustedProxies(cfg.TrustedProxies), proxy.WithClock(o.now))
+	}
 
 	// Middlewares è applicato per ogni operazione generata, dal primo
 	// (interno, più vicino al gestore) all'ultimo (esterno): auth e

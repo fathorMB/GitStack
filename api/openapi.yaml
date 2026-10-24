@@ -114,6 +114,8 @@ tags:
       Metadati e politiche del registry OCI (RG1-RG2 [c_71844eeffde33356]). Il
       protocollo di distribuzione delle immagini e' lo standard OCI Distribution
       Specification e non fa parte di questo contratto REST.
+  - name: registry-public
+    description: Endpoint del gateway per i metadati pubblici del registry.
   - name: releases
     description: Release, note e allegati di un repository (REL1 [c_776d5e1e3d1df05c]).
 
@@ -165,6 +167,26 @@ paths:
               example:
                 server_version: "v0.1.0"
                 api_version: "0.1.0"
+
+  /registry/signing-key:
+    get:
+      operationId: getRegistrySigningKey
+      tags: [registry-public]
+      x-mcp:
+        expose: false
+        name: registry_signing_key_get
+        destructive: false
+      summary: Chiave pubblica delle firme del registry
+      description: Chiave PEM dell'istanza per `cosign verify`; richiede un utente autenticato.
+      responses:
+        "200":
+          description: Chiave pubblica ECDSA P-256 in PEM.
+          content:
+            application/x-pem-file:
+              schema:
+                type: string
+        "401":
+          description: Credenziali mancanti o non valide.
 
 
   /admin/system:

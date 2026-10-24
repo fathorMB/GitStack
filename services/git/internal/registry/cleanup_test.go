@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
@@ -175,6 +176,48 @@ func TestCleanup_SenzaTagDopo7GiorniConTagMai(t *testing.T) {
 	}
 	if !e.manifestExists("alice/app", dTagged) {
 		t.Fatal("l'immagine con tag è sparita")
+	}
+}
+
+func TestCleanup_ConservaFirmaESBOMFincheEsisteImmagine(t *testing.T) {
+	e := newCleanEnv(t, func(c *Config) { c.SigningKeyFile = filepath.Join(t.TempDir(), "cosign.key") })
+	img := e.mustPush("alice/app:job", "gsj_rw")
+	d, err := img.Digest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefix := strings.Replace(d.String(), ":", "-", 1)
+	e.clock.advance(8 * day)
+	if rep := e.cleanup(); len(rep.DeletedImages) != 0 || len(rep.DeletedTags) != 0 {
+		t.Fatalf("la pulizia ha rimosso artefatti della immagine ancora taggata: %+v", rep)
+	}
+	if got := e.tags("alice/app"); !slices.Equal(got, []string{"job", prefix + ".sbom", prefix + ".sig"}) {
+		t.Fatalf("firma/SBOM mancanti dopo pulizia: %v", got)
+	}
+}
+
+func TestCleanup_ConservaProvenanceDuranteGraziaEPoiLaElimina(t *testing.T) {
+	e := newCleanEnv(t, func(c *Config) { c.SigningKeyFile = filepath.Join(t.TempDir(), "cosign.key") })
+	job := e.mustPush("alice/app:job", "gsj_rw")
+	d := digestOf(t, job)
+	prefix := strings.Replace(d.String(), ":", "-", 1)
+	time.Sleep(15 * time.Millisecond)
+	e.mustPush("alice/app:new", "gst_write")
+	e.sb.set(idApp, func(s *Settings) { s.KeepLastTags = 1 })
+	e.cleanup() // stacca job ma mantiene manifest e provenance
+	e.clock.advance(3 * day)
+	e.cleanup()
+	if !e.manifestExists("alice/app", d) || !slices.Contains(e.tags("alice/app"), prefix+".sig") || !slices.Contains(e.tags("alice/app"), prefix+".sbom") {
+		t.Fatal("firma/SBOM rimossi durante la grazia dell'immagine senza tag")
+	}
+	e.clock.advance(5 * day)
+	rep := e.cleanup()
+	if !slices.ContainsFunc(rep.DeletedImages, func(v string) bool { return strings.HasSuffix(v, d.String()) }) {
+		t.Fatalf("subject non eliminato dopo la grazia: %+v", rep)
+	}
+	e.cleanup()
+	if got := e.tags("alice/app"); slices.Contains(got, prefix+".sig") || slices.Contains(got, prefix+".sbom") {
+		t.Fatalf("provenance ancora taggata dopo la rimozione subject: %v", got)
 	}
 }
 

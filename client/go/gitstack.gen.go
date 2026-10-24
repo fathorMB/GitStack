@@ -8423,6 +8423,13 @@ type ClientInterface interface {
 	// Corresponds with PUT /orgs/{org}/teams/{team}/members/{username} (the `SetTeamMember` operationId).
 	SetTeamMember(ctx context.Context, org OrgParam, team TeamParam, username UsernameParam, body SetTeamMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetRegistrySigningKey Chiave pubblica delle firme del registry
+	//
+	// Chiave PEM dell'istanza per `cosign verify`; richiede un utente autenticato.
+	//
+	// Corresponds with GET /registry/signing-key (the `GetRegistrySigningKey` operationId).
+	GetRegistrySigningKey(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListRepositories Elenca i repo leggibili dall'utente
 	//
 	// Repo che l'utente corrente puo' leggere (P1, P3, P6), esclusi quelli eliminati; con `owner` solo quelli di quell'utente o organizzazione. Paginazione come `GET /resources`.
@@ -12276,6 +12283,23 @@ func (c *Client) SetTeamMemberWithBody(ctx context.Context, org OrgParam, team T
 // Corresponds with PUT /orgs/{org}/teams/{team}/members/{username} (the `SetTeamMember` operationId).
 func (c *Client) SetTeamMember(ctx context.Context, org OrgParam, team TeamParam, username UsernameParam, body SetTeamMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSetTeamMemberRequest(c.Server, org, team, username, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRegistrySigningKey Chiave pubblica delle firme del registry
+//
+// Chiave PEM dell'istanza per `cosign verify`; richiede un utente autenticato.
+//
+// Corresponds with GET /registry/signing-key (the `GetRegistrySigningKey` operationId).
+func (c *Client) GetRegistrySigningKey(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRegistrySigningKeyRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -20763,6 +20787,33 @@ func NewSetTeamMemberRequestWithBody(server string, org OrgParam, team TeamParam
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetRegistrySigningKeyRequest constructs an http.Request for the GetRegistrySigningKey method
+func NewGetRegistrySigningKeyRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/registry/signing-key")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -32377,6 +32428,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /orgs/{org}/teams/{team}/members/{username} (the `SetTeamMember` operationId).
 	SetTeamMemberWithResponse(ctx context.Context, org OrgParam, team TeamParam, username UsernameParam, body SetTeamMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*SetTeamMemberResponse, error)
 
+	// GetRegistrySigningKeyWithResponse Chiave pubblica delle firme del registry
+	//
+	// Chiave PEM dell'istanza per `cosign verify`; richiede un utente autenticato.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /registry/signing-key (the `GetRegistrySigningKey` operationId).
+	GetRegistrySigningKeyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetRegistrySigningKeyResponse, error)
+
 	// ListRepositoriesWithResponse Elenca i repo leggibili dall'utente
 	//
 	// Repo che l'utente corrente puo' leggere (P1, P3, P6), esclusi quelli eliminati; con `owner` solo quelli di quell'utente o organizzazione. Paginazione come `GET /resources`.
@@ -40526,6 +40586,40 @@ func (r SetTeamMemberResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SetTeamMemberResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRegistrySigningKeyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRegistrySigningKeyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRegistrySigningKeyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRegistrySigningKeyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRegistrySigningKeyResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -56379,6 +56473,21 @@ func (c *ClientWithResponses) SetTeamMemberWithResponse(ctx context.Context, org
 	return ParseSetTeamMemberResponse(rsp)
 }
 
+// GetRegistrySigningKeyWithResponse Chiave pubblica delle firme del registry
+//
+// Chiave PEM dell'istanza per `cosign verify`; richiede un utente autenticato.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /registry/signing-key (the `GetRegistrySigningKey` operationId).
+func (c *ClientWithResponses) GetRegistrySigningKeyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetRegistrySigningKeyResponse, error) {
+	rsp, err := c.GetRegistrySigningKey(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRegistrySigningKeyResponse(rsp)
+}
+
 // ListRepositoriesWithResponse Elenca i repo leggibili dall'utente
 //
 // Repo che l'utente corrente puo' leggere (P1, P3, P6), esclusi quelli eliminati; con `owner` solo quelli di quell'utente o organizzazione. Paginazione come `GET /resources`.
@@ -64729,6 +64838,22 @@ func ParseSetTeamMemberResponse(rsp *http.Response) (*SetTeamMemberResponse, err
 		}
 		response.JSONDefault = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParseGetRegistrySigningKeyResponse parses an HTTP response from a GetRegistrySigningKeyWithResponse call
+func ParseGetRegistrySigningKeyResponse(rsp *http.Response) (*GetRegistrySigningKeyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRegistrySigningKeyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
 	}
 
 	return response, nil

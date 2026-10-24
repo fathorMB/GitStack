@@ -17,3 +17,4 @@ output-options:
     - permissions
     - internal
     - git-internal
+    - registry-public

@@ -28,3 +28,7 @@ Ingress Traefik:
 Verifica rapida:
   kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
   curl http://<ip-o-hostname-del-nodo>/api/healthz
+{{- if and .Values.git.enabled .Values.git.registry.enabled }}
+Chiave pubblica del registry (per cosign verify):
+  kubectl get secret {{ include "gitstack.git.registrySigningKeySecret" . }} --namespace {{ .Release.Namespace }} -o jsonpath='{.data.cosign\.key}' | base64 -d | openssl ec -pubout
+{{- end }}

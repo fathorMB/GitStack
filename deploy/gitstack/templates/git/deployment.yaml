@@ -87,6 +87,10 @@ spec:
             - name: GITSTACK_GIT_CI_GATEWAY_URL
               value: {{ . | quote }}
             {{- end }}
+            {{- if .Values.git.registry.enabled }}
+            - name: GITSTACK_GIT_REGISTRY_SIGNING_KEY_FILE
+              value: /etc/gitstack/registry-signing/cosign.key
+            {{- end }}
             {{- if .Values.git.registry.s3.enabled }}
             {{- if not .Values.git.registry.s3.bucket }}
             {{- fail "git.registry.s3.enabled=true richiede git.registry.s3.bucket." -}}
@@ -149,6 +153,11 @@ spec:
               mountPath: /etc/gitstack/ssh
               readOnly: true
             {{- end }}
+            {{- if .Values.git.registry.enabled }}
+            - name: registry-signing-key
+              mountPath: /etc/gitstack/registry-signing
+              readOnly: true
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /healthz
@@ -180,5 +189,10 @@ spec:
         - name: ssh-host-key
           secret:
             secretName: {{ include "gitstack.git.sshHostKeySecret" . }}
+        {{- end }}
+        {{- if .Values.git.registry.enabled }}
+        - name: registry-signing-key
+          secret:
+            secretName: {{ include "gitstack.git.registrySigningKeySecret" . }}
         {{- end }}
 {{- end }}

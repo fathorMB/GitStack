@@ -193,6 +193,11 @@ Nome del Secret con la chiave host SSH (chiave ssh_host_ed25519_key).
 {{- .Values.git.ssh.hostKey.existingSecret | default (printf "%s-git-ssh-host-key" (include "gitstack.fullname" .)) -}}
 {{- end -}}
 
+{{/* Secret della chiave privata ECDSA del registry OCI (GIT-287). */}}
+{{- define "gitstack.git.registrySigningKeySecret" -}}
+{{- .Values.git.registry.signing.existingSecret | default (printf "%s-registry-signing-key" (include "gitstack.fullname" .)) -}}
+{{- end -}}
+
 {{/*
 SMTP facoltativo (M-06/F, C5): attivo se smtp.host o smtp.existingSecret sono
 valorizzati; altrimenti core manda solo notifiche in-app. Stampa "true" o niente.

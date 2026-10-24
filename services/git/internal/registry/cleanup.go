@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -175,7 +176,12 @@ func (h *Handler) cleanImage(ctx context.Context, ns distribution.Namespace, nam
 		at   time.Time
 	}
 	var open []tagInfo // tag non protetti, con la data dell'ultimo push
+	auxiliary := map[string]digest.Digest{}
 	for t := range tags {
+		if subject, ok := provenanceSubject(t); ok {
+			auxiliary[t] = subject
+			continue
+		}
 		at, ok, err := h.modTime(ctx, tagLinkPath(name, t))
 		if err != nil {
 			return err
@@ -239,6 +245,42 @@ func (h *Handler) cleanImage(ctx context.Context, ns distribution.Namespace, nam
 			}
 		}
 	}
+	// Le firme Cosign e gli SBOM sono artefatti OCI con tag tecnico. Non devono
+	// mantenere in vita l'immagine sorgente, ma restano finché essa Ã¨ raggiungibile
+	// da un tag o da un indice. Quando la sorgente sparisce si stacca anche l'artefatto.
+	for tag, subject := range auxiliary {
+		exists, err := ms.Exists(ctx, subject)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			if err := repo.Tags(ctx).Untag(ctx, tag); err != nil {
+				return err
+			}
+			delete(tags, tag)
+			rep.DeletedTags = append(rep.DeletedTags, name+":"+tag)
+			continue
+		}
+		artifact := digest.Digest(tags[tag])
+		if !keep[artifact] {
+			keep[artifact] = true
+			queue = append(queue, artifact)
+		}
+	}
+	for len(queue) > 0 {
+		dg := queue[0]
+		queue = queue[1:]
+		m, err := ms.Get(ctx, dg)
+		if err != nil {
+			continue
+		}
+		for _, ref := range m.References() {
+			if ok, _ := ms.Exists(ctx, ref.Digest); ok && !keep[ref.Digest] {
+				keep[ref.Digest] = true
+				queue = append(queue, ref.Digest)
+			}
+		}
+	}
 	revs, err := h.listDirs(ctx, repoRoot+name+"/_manifests/revisions/sha256")
 	if err != nil {
 		return err
@@ -262,4 +304,14 @@ func (h *Handler) cleanImage(ctx context.Context, ns distribution.Namespace, nam
 		rep.DeletedImages = append(rep.DeletedImages, name+"@"+dg.String())
 	}
 	return nil
+}
+
+var provenanceTag = regexp.MustCompile(`^sha256-([a-f0-9]{64})\.(sig|sbom)$`)
+
+func provenanceSubject(tag string) (digest.Digest, bool) {
+	m := provenanceTag.FindStringSubmatch(tag)
+	if m == nil {
+		return "", false
+	}
+	return digest.NewDigestFromEncoded(digest.SHA256, m[1]), true
 }

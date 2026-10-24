@@ -369,6 +369,12 @@ git:
     # Ogni quanto gira la pulizia (immagini senza tag dopo 7 giorni, regole del repo); durata
     # Go. Vuoto = 1h, "0" la spegne.
     cleanupInterval: ""
+    # Chiave privata ECDSA P-256 per firmare lato server le immagini pubblicate
+    # dai job CI. Vuoto = Secret creato una sola volta dal chart
+    # (<release>-registry-signing-key, resource-policy keep); un Secret dato
+    # dall'operatore deve contenere la chiave cosign.key.
+    signing:
+      existingSecret: ""
     # Token del job (gsj_): URL e porta del ci-gateway di core, con cui il registry lo
     # convalida. Vuoto = solo i token personali; il ci-gateway non è ancora nel chart.
     ciGateway:
