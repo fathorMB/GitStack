@@ -171,19 +171,19 @@ export type CiQueue = {
     runningJobs: number;
     maxConcurrentJobs: number;
     /**
-     * Attesa media in coda dei job, in secondi.
+     * Attesa media in coda, in secondi, dei job partiti nelle ultime 24 ore (0 se nessuno).
      */
     avgQueueWaitSeconds?: number;
     /**
-     * Spazio occupato dai log dei job, in byte.
+     * Spazio occupato dai log dei job, in byte (somma dei file su disco).
      */
     logBytes?: number;
     /**
-     * Spazio occupato dagli artefatti, in byte. Vale 0 finché non arriva GIT-280.
+     * Spazio occupato dagli artefatti non scaduti, in byte.
      */
     artifactBytes?: number;
     /**
-     * Spazio occupato dalle cache, in byte. Vale 0 finché non arriva GIT-280.
+     * Spazio occupato dalle cache, in byte.
      */
     cacheBytes?: number;
     resourceLimits: {
@@ -192,6 +192,29 @@ export type CiQueue = {
         ephemeralStorageBytes: number;
         maxDurationSeconds: number;
     };
+};
+
+export type CiStorageSettings = {
+    /**
+     * Giorni di conservazione dei log dei job finiti.
+     */
+    logRetentionDays: number;
+    /**
+     * Giorni di conservazione degli artefatti.
+     */
+    artifactRetentionDays: number;
+    /**
+     * Dimensione massima di un artefatto, in byte.
+     */
+    artifactMaxBytes: number;
+    /**
+     * Quota delle cache per repository, in byte.
+     */
+    cacheQuotaBytes: number;
+    /**
+     * Giorni senza uso dopo i quali una cache si elimina.
+     */
+    cacheUnusedDays: number;
 };
 
 export type PackageList = {
@@ -15836,6 +15859,70 @@ export type GetCiQueueResponses = {
 };
 
 export type GetCiQueueResponse = GetCiQueueResponses[keyof GetCiQueueResponses];
+
+export type GetCiStorageSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/ci/storage';
+};
+
+export type GetCiStorageSettingsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+};
+
+export type GetCiStorageSettingsError = GetCiStorageSettingsErrors[keyof GetCiStorageSettingsErrors];
+
+export type GetCiStorageSettingsResponses = {
+    /**
+     * Impostazioni.
+     */
+    200: CiStorageSettings;
+};
+
+export type GetCiStorageSettingsResponse = GetCiStorageSettingsResponses[keyof GetCiStorageSettingsResponses];
+
+export type UpdateCiStorageSettingsData = {
+    body: CiStorageSettings;
+    path?: never;
+    query?: never;
+    url: '/admin/ci/storage';
+};
+
+export type UpdateCiStorageSettingsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+};
+
+export type UpdateCiStorageSettingsError = UpdateCiStorageSettingsErrors[keyof UpdateCiStorageSettingsErrors];
+
+export type UpdateCiStorageSettingsResponses = {
+    /**
+     * Impostazioni aggiornate.
+     */
+    200: CiStorageSettings;
+};
+
+export type UpdateCiStorageSettingsResponse = UpdateCiStorageSettingsResponses[keyof UpdateCiStorageSettingsResponses];
 
 export type ListRepositoryPackagesData = {
     body?: never;

@@ -15,6 +15,9 @@ type CIGatewayConfig struct {
 	RunnerSecrets []string
 	ArchiveURL    string
 	Logs          *ci.LogStore
+	// Blobs e SpoolDir: artefatti e cache dei job (CI5).
+	Blobs    ci.Blobs
+	SpoolDir string
 	Capacity      int
 	// Keys decifra i segreti della CI (stesso keyring dei webhook).
 	Keys ci.Sealer
@@ -30,7 +33,7 @@ type CIGatewayConfig struct {
 // (stati dei commit, webhook, notifiche; GIT-281).
 func NewCIGateway(pool *pgxpool.Pool, rd gitclient.Reader, c CIGatewayConfig) http.Handler {
 	return cigateway.New(cigateway.Config{
-		Pool: pool, Source: gitCISource{rd: rd}, Reader: rd, Logs: c.Logs,
+		Pool: pool, Source: gitCISource{rd: rd}, Reader: rd, Logs: c.Logs, Blobs: c.Blobs, SpoolDir: c.SpoolDir,
 		RunnerSecrets: c.RunnerSecrets, Capacity: c.Capacity, Keys: c.Keys, ArchiveURL: c.ArchiveURL, Log: c.Log,
 		Reporter: NewCIReporter(pool, c.Options...),
 	})

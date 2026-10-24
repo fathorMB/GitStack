@@ -65,6 +65,10 @@ type Config struct {
 	// Reader serve l'archivio del repo (servizio git).
 	Reader gitclient.Reader
 	Logs   *ci.LogStore
+	// Blobs archivia artefatti e cache (CI5); nil: gli endpoint di artefatti e cache rispondono 503.
+	Blobs ci.Blobs
+	// SpoolDir: dove si appoggiano i pezzi di una cache in caricamento; vuoto = cartella temporanea.
+	SpoolDir string
 	// Keys decifra i segreti della CI del repo (CI4). nil: un job di un repo con segreti non parte.
 	Keys ci.Sealer
 	// RunnerSecrets e' deprecato: FetchTask accetta esclusivamente JobTicket.
@@ -108,9 +112,11 @@ func New(cfg Config) http.Handler {
 	mux.Handle(path, h)
 	mux.HandleFunc("GET "+ArchivePath, g.archive)
 	mux.HandleFunc("GET "+RegistryAccessPath, g.registryAccess)
+	mux.HandleFunc(ArtifactsPath, g.storage)
+	mux.HandleFunc(CachePath, g.storage)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Un percorso fuori dal protocollo è 404, non 405 né un redirect del mux.
-		if strings.HasPrefix(r.URL.Path, path) || r.URL.Path == ArchivePath || r.URL.Path == RegistryAccessPath {
+		if strings.HasPrefix(r.URL.Path, path) || r.URL.Path == ArchivePath || r.URL.Path == RegistryAccessPath || g.isStoragePath(r.URL.Path) {
 			mux.ServeHTTP(w, r)
 			return
 		}

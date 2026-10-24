@@ -109,6 +109,19 @@ func Restore(ctx context.Context, o *Options, archive string) (err error) {
 		}
 	}
 
+	ciPath := ""
+	if has[CILogsName] {
+		p, e := o.Cluster.VolumePath(ctx, o.Cfg.Release+"-ci-data")
+		switch {
+		case errors.Is(e, ErrNotFound):
+			o.logf("l'archivio ha i log della CI ma questa installazione non ha il volume %s-ci-data: non ripristinati", o.Cfg.Release)
+		case e != nil:
+			return fmt.Errorf("volume dei log della CI: %w", e)
+		default:
+			ciPath = p
+		}
+	}
+
 	// Repliche di prima, poi stop.
 	saved := map[string]int{}
 	for _, c := range restoreStops {
@@ -165,6 +178,12 @@ func Restore(ctx context.Context, o *Options, archive string) (err error) {
 	o.logf("ripristino dei repo (git-data)")
 	if e := restoreVolume(filepath.Join(stage, GitDataName), gitPath); e != nil {
 		return failed(fmt.Errorf("ripristino di git-data: %w", e))
+	}
+	if ciPath != "" {
+		o.logf("ripristino dei log della CI")
+		if e := restoreVolume(filepath.Join(stage, CILogsName), ciPath); e != nil {
+			return failed(fmt.Errorf("ripristino dei log della CI: %w", e))
+		}
 	}
 	if attPath != "" {
 		o.logf("ripristino degli allegati")

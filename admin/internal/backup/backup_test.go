@@ -1,8 +1,10 @@
 package backup
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -32,6 +34,7 @@ type fakeCluster struct {
 	failSTSRestart bool
 	ctxAtDump      context.Context
 	registryRepos  string // output della query dei repo con includeInBackup
+	dumpArgs       string // comando di pg_dump
 }
 
 func (f *fakeCluster) note(s string) { f.mu.Lock(); f.calls = append(f.calls, s); f.mu.Unlock() }
@@ -75,6 +78,7 @@ func (f *fakeCluster) PGExec(ctx context.Context, stdin io.Reader, stdout io.Wri
 	}
 	if strings.Contains(strings.Join(args, " "), "pg_dump") {
 		f.note("pg_dump")
+		f.dumpArgs = strings.Join(args, " ")
 		f.ctxAtDump = ctx
 		if f.failDump {
 			return errors.New("pg_dump fallito")
@@ -107,6 +111,7 @@ type env struct {
 	git           string
 	att           string
 	releaseAssets string
+	ci            string
 	confDir       string
 	log           *bytes.Buffer
 }
@@ -117,8 +122,9 @@ func newEnv(t *testing.T) *env {
 	git := filepath.Join(root, "git-data")
 	att := filepath.Join(root, "att")
 	releaseAssets := filepath.Join(root, "release-assets")
+	ci := filepath.Join(root, "ci-data")
 	conf := filepath.Join(root, "etc")
-	for _, d := range []string{git, att, releaseAssets, conf} {
+	for _, d := range []string{git, att, releaseAssets, ci, conf} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -135,11 +141,14 @@ func newEnv(t *testing.T) *env {
 	write(filepath.Join(git, "alice", "repo.git", "objects", "ab", "cdef"), "OGGETTO")
 	write(filepath.Join(att, "r1", "a1"), "ALLEGATO")
 	write(filepath.Join(releaseAssets, "r1", "release.bin"), "ASSET-RELEASE-ESCLUSO")
+	write(filepath.Join(ci, "logs", "job-1.log"), "RIGA-DI-LOG\n")
+	write(filepath.Join(ci, "data", "artifacts", "r1", "a1"), "ARTEFATTO-ESCLUSO")
+	write(filepath.Join(ci, "data", "caches", "r1", "c1"), "CACHE-ESCLUSA")
 	write(filepath.Join(conf, "config.yaml"), "version: 1\n")
 	write(filepath.Join(conf, "ca", "ca.key"), "CHIAVE-CA")
 	f := &fakeCluster{
 		replicas: map[string]int{"gs-gateway": 2, "gs-git": 1, "gs-core": 1, "gs-identity": 1, "gs-web": 1},
-		paths:    map[string]string{"gs-git-data": git, "gs-attachments-data": att, "gs-release-assets-data": releaseAssets},
+		paths:    map[string]string{"gs-git-data": git, "gs-attachments-data": att, "gs-release-assets-data": releaseAssets, "gs-ci-data": ci},
 		secrets: []Secret{
 			{Name: "gs-postgres", Raw: []byte(`{"name":"pg"}`)},
 			{Name: "gs-git-ssh-host-key", Raw: []byte(`{"name":"ssh"}`)},
@@ -148,7 +157,7 @@ func newEnv(t *testing.T) *env {
 	}
 	cfg := &config.Config{Release: "gs", Namespace: "ns", ImageTag: "sha-abc123", Backup: config.Backup{Retention: 2}}
 	log := &bytes.Buffer{}
-	e := &env{f: f, dest: filepath.Join(root, "backups"), git: git, att: att, releaseAssets: releaseAssets, confDir: conf, log: log}
+	e := &env{f: f, dest: filepath.Join(root, "backups"), git: git, att: att, releaseAssets: releaseAssets, ci: ci, confDir: conf, log: log}
 	e.o = &Options{Cfg: cfg, Cluster: f, BinaryVersion: "v-test", ConfigDir: conf, ConfigFile: filepath.Join(conf, "config.yaml"),
 		DestDir: e.dest, Log: log, Now: func() time.Time { return time.Date(2026, 10, 6, 1, 2, 3, 0, time.UTC) }}
 	return e
@@ -187,13 +196,18 @@ func TestBackupRoundTrip(t *testing.T) {
 			t.Errorf("checksum mancante per %s", f.Name)
 		}
 	}
-	for _, n := range []string{DatabaseName, GitDataName, AttachmentsName, SecretsName, "config/config.yaml", "config/ca/ca.key"} {
+	for _, n := range []string{DatabaseName, GitDataName, AttachmentsName, CILogsName, SecretsName, "config/config.yaml", "config/ca/ca.key"} {
 		if !names[n] {
 			t.Errorf("manca %s nel manifest", n)
 		}
 	}
 	if names["release-assets.tar"] {
 		t.Error("gli asset release non devono entrare nel backup predefinito")
+	}
+	for _, ex := range []string{"core.ci_artifacts", "core.ci_caches"} {
+		if !strings.Contains(e.f.dumpArgs, "--exclude-table-data="+ex) {
+			t.Errorf("il dump deve escludere i dati di %s: %s", ex, e.f.dumpArgs)
+		}
 	}
 	if _, err := os.Stat(res.Path + ".sha256"); err != nil {
 		t.Errorf("sidecar: %v", err)
@@ -206,6 +220,13 @@ func TestBackupRoundTrip(t *testing.T) {
 	r := newEnv(t)
 	r.o.DestDir = filepath.Join(t.TempDir(), "b")
 	if err := os.RemoveAll(r.releaseAssets); err != nil {
+		t.Fatal(err)
+	}
+	// Sul volume della CI restano un vecchio log e un vecchio artefatto: il restore li toglie.
+	if err := os.WriteFile(filepath.Join(r.ci, "logs", "vecchio.log"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(filepath.Join(r.ci, "logs", "job-1.log")); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(r.git, "vecchio"), []byte("x"), 0o644); err != nil {
@@ -221,12 +242,22 @@ func TestBackupRoundTrip(t *testing.T) {
 	for p, c := range map[string]string{
 		filepath.Join(r.git, "alice", "repo.git", "objects", "ab", "cdef"): "OGGETTO",
 		filepath.Join(r.att, "r1", "a1"):                                   "ALLEGATO",
+		filepath.Join(r.ci, "logs", "job-1.log"):                            "RIGA-DI-LOG\n",
 		filepath.Join(r.confDir, "ca", "ca.key"):                           "CHIAVE-CA",
 		filepath.Join(r.confDir, "config.yaml"):                            "NUOVO",
 	} {
 		b, err := os.ReadFile(p)
 		if err != nil || string(b) != c {
 			t.Errorf("%s = %q, %v; atteso %q", p, b, err, c)
+		}
+	}
+	for _, gone := range []string{
+		filepath.Join(r.ci, "logs", "vecchio.log"),
+		filepath.Join(r.ci, "data", "artifacts", "r1", "a1"),
+		filepath.Join(r.ci, "data", "caches", "r1", "c1"),
+	} {
+		if _, err := os.Stat(gone); err == nil {
+			t.Errorf("%s non doveva esserci dopo il restore (artefatti e cache restano fuori dal backup)", gone)
 		}
 	}
 	if _, err := os.Stat(filepath.Join(r.git, "vecchio")); err == nil {
@@ -464,5 +495,55 @@ func TestBackupFallitoAspettaComunqueLeRepliche(t *testing.T) {
 	got := strings.Join(e.f.calls, "|")
 	if !strings.HasSuffix(got, "scale gs-gateway 2|scale gs-git 1|ready gs-gateway|ready gs-git") {
 		t.Errorf("chiamate: %s", got)
+	}
+}
+
+// TestBackupLogCIEscludeArtefattiECache: nell'archivio entrano i log, mai artefatti e cache (CI5);
+// un log che cresce durante la copia (core lo scrive ancora) non fa fallire il backup.
+func TestBackupLogCIEscludeArtefattiECache(t *testing.T) {
+	e := newEnv(t)
+	res, err := Backup(context.Background(), e.o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr, closeFn, err := openArchive(res.Path, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeFn()
+	stage := t.TempDir()
+	hdr, err := tr.Next()
+	if err != nil || hdr.Name != ManifestName {
+		t.Fatalf("manifest: %v", err)
+	}
+	var m Manifest
+	if err := json.NewDecoder(tr).Decode(&m); err != nil {
+		t.Fatal(err)
+	}
+	if err := extractVerified(tr, &m, stage); err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.Open(filepath.Join(stage, CILogsName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = f.Close() }()
+	got := map[string]string{}
+	trr := tar.NewReader(f)
+	for {
+		h, err := trr.Next()
+		if err != nil {
+			break
+		}
+		b, _ := io.ReadAll(trr)
+		got[h.Name] = string(b)
+	}
+	if got["logs/job-1.log"] != "RIGA-DI-LOG\n" {
+		t.Errorf("log nel tar: %v", got)
+	}
+	for name := range got {
+		if name != "logs/" && !strings.HasPrefix(name, "logs/") {
+			t.Errorf("voce fuori da logs/ nel backup: %s", name)
+		}
 	}
 }

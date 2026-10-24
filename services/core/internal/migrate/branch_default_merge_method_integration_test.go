@@ -47,7 +47,7 @@ func TestMigration0020_MetodoProposto(t *testing.T) {
 	}
 	mustExec(t, pool, `INSERT INTO core.pull_request_events (id, pull_request_id, type) VALUES ($1, $2, 'branch_deleted')`, uuid.New(), pr)
 
-	if err := migrate.Down(ctx, pool, dsn, 12); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 13); err != nil {
 		t.Fatalf("down 0020: %v", err)
 	}
 	var cols, events int

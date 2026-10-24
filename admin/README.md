@@ -222,6 +222,7 @@ Errori su stderr con prefisso `ERRORE:`, come `install.sh`.
 | `database.sql` | `pg_dump` (SQL) dei soli schemi `identity` e `core` del database di GitStack, eseguito nel pod di Postgres |
 | `git-data.tar` | i repo bare del volume `git-data` (modo, proprietario e date conservati) |
 | `attachments.tar` | gli allegati delle issues (M-05), se il volume esiste |
+| `ci-logs.tar` | i log dei job della CI (cartella `logs/` del volume `ci-data`, CI5), se il volume esiste; artefatti e cache non entrano |
 | `secrets.json` | tutti i Secret con label `app.kubernetes.io/part-of=gitstack`: password di identity e admin, segreto di servizio, chiave di cifratura OIDC, chiave host SSH, configurazione OIDC, e la chiave della CA se è un Secret |
 | `config/…` | i file di `/etc/gitstack` (`config.yaml` e, se esiste, la chiave della CA): la cartella si cerca, non si presuppone (la CA arriva con GIT-143) |
 

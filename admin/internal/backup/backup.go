@@ -41,6 +41,9 @@ const (
 	GitDataName     = "git-data.tar"
 	AttachmentsName = "attachments.tar"
 	SecretsName     = "secrets.json"
+	// CILogsName: i log dei job della CI (CI5), dalla cartella logs/ del volume ci-data.
+	// Artefatti e cache non entrano nel backup.
+	CILogsName = "ci-logs.tar"
 	ConfigPrefix    = "config/"
 	// ArchivePrefix inizia il nome di ogni archivio prodotto.
 	ArchivePrefix = "gitstack-backup-"
@@ -162,7 +165,10 @@ type Result struct {
 }
 
 const (
-	dumpCmd = `exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --schema=identity --schema=core --no-comments`
+	// Artefatti e cache della CI (CI5) restano fuori dal backup: i loro file non ci sono, quindi dal
+	// dump si esclude il contenuto delle tabelle (lo schema resta) e dopo il restore non ci sono righe
+	// che puntano a file mancanti.
+	dumpCmd = `exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --schema=identity --schema=core --no-comments --exclude-table-data=core.ci_artifacts --exclude-table-data=core.ci_caches`
 	psqlCmd = `exec psql -q -v ON_ERROR_STOP=1 --single-transaction -U "$POSTGRES_USER" -d "$POSTGRES_DB"`
 )
 
@@ -246,6 +252,14 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 		o.logf("volume degli allegati assente: non incluso")
 	} else if err != nil {
 		return nil, fmt.Errorf("volume degli allegati: %w", err)
+	}
+	ciPath, err := o.Cluster.VolumePath(ctx, o.Cfg.Release+"-ci-data")
+	hasCI := true
+	if errors.Is(err, ErrNotFound) {
+		hasCI = false
+		o.logf("volume dei log della CI assente: non incluso")
+	} else if err != nil {
+		return nil, fmt.Errorf("volume dei log della CI: %w", err)
 	}
 	secrets, err := o.Cluster.Secrets(ctx)
 	if err != nil {
@@ -357,6 +371,14 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 	o.logf("copia dei repo (git-data); immagini del registry incluse per %d repo", len(regRepos))
 	if e := st.write(GitDataName, func(w io.Writer) error { return tarDirSkip(w, gitPath, regSkip) }); e != nil {
 		return nil, fmt.Errorf("copia di git-data: %w", e)
+	}
+	if hasCI {
+		o.logf("copia dei log della CI (artefatti e cache esclusi)")
+		if e := st.write(CILogsName, func(w io.Writer) error {
+			return tarDirSkipOpts(w, ciPath, ciLogsOnly, true)
+		}); e != nil {
+			return nil, fmt.Errorf("copia dei log della CI: %w", e)
+		}
 	}
 	if hasAtt {
 		o.logf("copia degli allegati")

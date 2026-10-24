@@ -214,10 +214,33 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	var ciLogs *ci.LogStore
 	if cfg.CILogsDir != "" {
 		ciLogs = &ci.LogStore{Dir: cfg.CILogsDir}
-		go ciLogs.RunPurge(ctx, pool, ci.DefaultLogPurgeInterval, logger)
 		routerOpts = append(routerOpts, httpserver.WithCILogs(ciLogs))
 	} else {
 		logger.Warn("GITSTACK_CORE_CI_LOGS_DIR non impostata: i log dei job rispondono 503")
+	}
+	// Artefatti e cache (CI5, N7): S3 se configurato, altrimenti disco.
+	var ciBlobs ci.Blobs
+	switch {
+	case cfg.CIS3.Enabled():
+		s3, err := ci.NewS3Blobs(ci.S3Config{Endpoint: cfg.CIS3.Endpoint, Region: cfg.CIS3.Region, Bucket: cfg.CIS3.Bucket,
+			Prefix: cfg.CIS3.Prefix, AccessKey: cfg.CIS3.AccessKey, SecretKey: cfg.CIS3.SecretKey, SpoolDir: cfg.CIArtifactsDir})
+		if err != nil {
+			logger.Error("S3 per artefatti e cache non valido", "err", err)
+			return 1
+		}
+		ciBlobs = s3
+	case cfg.CIArtifactsDir != "":
+		ciBlobs = ci.DiskBlobs{Dir: cfg.CIArtifactsDir}
+	default:
+		logger.Warn("GITSTACK_CORE_CI_ARTIFACTS_DIR e GITSTACK_CORE_CI_S3_* non impostate: artefatti e cache rispondono 503")
+	}
+	if ciBlobs != nil {
+		routerOpts = append(routerOpts, httpserver.WithCIStorage(ciBlobs))
+	}
+	routerOpts = append(routerOpts, httpserver.WithCICapacity(cfg.CICapacity))
+	// Pulizia periodica di log, artefatti e cache con le impostazioni dell'amministratore.
+	if ciLogs != nil || ciBlobs != nil {
+		go ci.RunStoragePurge(ctx, pool, ciLogs, ciBlobs, ci.DefaultStoragePurgeInterval, logger)
 	}
 
 	if cfg.SystemInfoFile != "" {
@@ -445,7 +468,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 			ciSrv = &http.Server{
 				Addr: cfg.CIGatewayAddr,
 				Handler: httpserver.NewCIGateway(pool, rd, httpserver.CIGatewayConfig{
-					ArchiveURL: cfg.CIGatewayURL, Logs: ciLogs, Log: logger, Keys: keys,
+					ArchiveURL: cfg.CIGatewayURL, Logs: ciLogs, Blobs: ciBlobs, SpoolDir: cfg.CIArtifactsDir, Log: logger, Keys: keys,
 					Options: routerOpts,
 				}),
 				ReadHeaderTimeout: 5 * time.Second,

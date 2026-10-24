@@ -3115,16 +3115,16 @@ type CheckPermissionResult struct {
 
 // CiQueue defines model for CiQueue.
 type CiQueue struct {
-	// ArtifactBytes Spazio occupato dagli artefatti, in byte. Vale 0 finché non arriva GIT-280.
+	// ArtifactBytes Spazio occupato dagli artefatti non scaduti, in byte.
 	ArtifactBytes *int64 `json:"artifactBytes,omitempty"`
 
-	// AvgQueueWaitSeconds Attesa media in coda dei job, in secondi.
+	// AvgQueueWaitSeconds Attesa media in coda, in secondi, dei job partiti nelle ultime 24 ore (0 se nessuno).
 	AvgQueueWaitSeconds *int `json:"avgQueueWaitSeconds,omitempty"`
 
-	// CacheBytes Spazio occupato dalle cache, in byte. Vale 0 finché non arriva GIT-280.
+	// CacheBytes Spazio occupato dalle cache, in byte.
 	CacheBytes *int64 `json:"cacheBytes,omitempty"`
 
-	// LogBytes Spazio occupato dai log dei job, in byte.
+	// LogBytes Spazio occupato dai log dei job, in byte (somma dei file su disco).
 	LogBytes          *int64 `json:"logBytes,omitempty"`
 	MaxConcurrentJobs int    `json:"maxConcurrentJobs"`
 	QueuedJobs        int    `json:"queuedJobs"`
@@ -3164,6 +3164,24 @@ type CiRunnerList struct {
 type CiRunnerRegistrationToken struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 	Token     string    `json:"token"`
+}
+
+// CiStorageSettings defines model for CiStorageSettings.
+type CiStorageSettings struct {
+	// ArtifactMaxBytes Dimensione massima di un artefatto, in byte.
+	ArtifactMaxBytes int64 `json:"artifactMaxBytes"`
+
+	// ArtifactRetentionDays Giorni di conservazione degli artefatti.
+	ArtifactRetentionDays int `json:"artifactRetentionDays"`
+
+	// CacheQuotaBytes Quota delle cache per repository, in byte.
+	CacheQuotaBytes int64 `json:"cacheQuotaBytes"`
+
+	// CacheUnusedDays Giorni senza uso dopo i quali una cache si elimina.
+	CacheUnusedDays int `json:"cacheUnusedDays"`
+
+	// LogRetentionDays Giorni di conservazione dei log dei job finiti.
+	LogRetentionDays int `json:"logRetentionDays"`
 }
 
 // CloseIssueInput defines model for CloseIssueInput.
@@ -7182,6 +7200,9 @@ type ListUserTokensParams struct {
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// UpdateCiStorageSettingsJSONRequestBody defines body for UpdateCiStorageSettings for application/json ContentType.
+type UpdateCiStorageSettingsJSONRequestBody = CiStorageSettings
+
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginInput
 
@@ -7538,6 +7559,31 @@ type ClientInterface interface {
 	//
 	// Corresponds with DELETE /admin/ci/runners/{runnerId} (the `DeleteCiRunner` operationId).
 	DeleteCiRunner(ctx context.Context, runnerId RunnerIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetCiStorageSettings Legge conservazione e limiti di log, artefatti e cache CI (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (403 `forbidden` per gli altri, anche con lo scope). I valori sono quelli di CI5: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo e 7 giorni di non uso.
+	//
+	// Corresponds with GET /admin/ci/storage (the `GetCiStorageSettings` operationId).
+	GetCiStorageSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateCiStorageSettingsWithBody Modifica conservazione e limiti di log, artefatti e cache CI (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione. Sostituisce tutti i valori; il giro di pulizia successivo applica subito quelli nuovi. Un artefatto o una cache gia' esistenti non cambiano scadenza retroattivamente se si allunga la conservazione dei soli log.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /admin/ci/storage (the `UpdateCiStorageSettings` operationId).
+	UpdateCiStorageSettingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateCiStorageSettings Modifica conservazione e limiti di log, artefatti e cache CI (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione. Sostituisce tutti i valori; il giro di pulizia successivo applica subito quelli nuovi. Un artefatto o una cache gia' esistenti non cambiano scadenza retroattivamente se si allunga la conservazione dei soli log.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /admin/ci/storage (the `UpdateCiStorageSettings` operationId).
+	UpdateCiStorageSettings(ctx context.Context, body UpdateCiStorageSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetAdminSystem Stato dell'installazione (Admin · System)
 	//
@@ -8480,7 +8526,7 @@ type ClientInterface interface {
 
 	// ListActionsCaches Elenca le cache CI del repository e l'uso della quota
 	//
-	// Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5): a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo, con job di pulizia. Log, artefatti e cache stanno su un volume di core escluso dai backup.
+	// Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5): a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo (inutilizzate da 7 giorni eliminate), con job di pulizia; i valori li regola l'amministratore. Log, artefatti e cache stanno su disco o su S3; nei backup entrano i log, artefatti e cache restano fuori.
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/actions/caches (the `ListActionsCaches` operationId).
 	ListActionsCaches(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListActionsCachesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8504,7 +8550,7 @@ type ClientInterface interface {
 
 	// GetWorkflowJobLog Legge il log, anche mentre il job e' in esecuzione
 	//
-	// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni e non sono nei backup (CI5).
+	// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni (regolabile dall'amministratore con `/admin/ci/storage`) e sono inclusi nei backup (CI5).
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/actions/jobs/{jobId}/logs (the `GetWorkflowJobLog` operationId).
 	GetWorkflowJobLog(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam, params *GetWorkflowJobLogParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8546,7 +8592,7 @@ type ClientInterface interface {
 
 	// ListWorkflowArtifacts Elenca gli artefatti di un'esecuzione
 	//
-	// Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno, fuori dai backup (CI5).
+	// Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno (valori regolabili dall'amministratore), fuori dai backup (CI5). Serve `read` sul repo (404 se non lo si legge); un artefatto scaduto non compare.
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/actions/runs/{runId}/artifacts (the `ListWorkflowArtifacts` operationId).
 	ListWorkflowArtifacts(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -10237,6 +10283,61 @@ func (c *Client) CreateCiRunnerRegistrationToken(ctx context.Context, reqEditors
 // Corresponds with DELETE /admin/ci/runners/{runnerId} (the `DeleteCiRunner` operationId).
 func (c *Client) DeleteCiRunner(ctx context.Context, runnerId RunnerIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteCiRunnerRequest(c.Server, runnerId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetCiStorageSettings Legge conservazione e limiti di log, artefatti e cache CI (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (403 `forbidden` per gli altri, anche con lo scope). I valori sono quelli di CI5: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo e 7 giorni di non uso.
+//
+// Corresponds with GET /admin/ci/storage (the `GetCiStorageSettings` operationId).
+func (c *Client) GetCiStorageSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCiStorageSettingsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateCiStorageSettingsWithBody Modifica conservazione e limiti di log, artefatti e cache CI (solo amministratore)
+//
+// Solo l'amministratore dell'installazione. Sostituisce tutti i valori; il giro di pulizia successivo applica subito quelli nuovi. Un artefatto o una cache gia' esistenti non cambiano scadenza retroattivamente se si allunga la conservazione dei soli log.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /admin/ci/storage (the `UpdateCiStorageSettings` operationId).
+func (c *Client) UpdateCiStorageSettingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateCiStorageSettingsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateCiStorageSettings Modifica conservazione e limiti di log, artefatti e cache CI (solo amministratore)
+//
+// Solo l'amministratore dell'installazione. Sostituisce tutti i valori; il giro di pulizia successivo applica subito quelli nuovi. Un artefatto o una cache gia' esistenti non cambiano scadenza retroattivamente se si allunga la conservazione dei soli log.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /admin/ci/storage (the `UpdateCiStorageSettings` operationId).
+func (c *Client) UpdateCiStorageSettings(ctx context.Context, body UpdateCiStorageSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateCiStorageSettingsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -12418,7 +12519,7 @@ func (c *Client) DeleteActionsCaches(ctx context.Context, owner RepoOwnerParam, 
 
 // ListActionsCaches Elenca le cache CI del repository e l'uso della quota
 //
-// Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5): a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo, con job di pulizia. Log, artefatti e cache stanno su un volume di core escluso dai backup.
+// Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5): a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo (inutilizzate da 7 giorni eliminate), con job di pulizia; i valori li regola l'amministratore. Log, artefatti e cache stanno su disco o su S3; nei backup entrano i log, artefatti e cache restano fuori.
 //
 // Corresponds with GET /repos/{owner}/{repo}/actions/caches (the `ListActionsCaches` operationId).
 func (c *Client) ListActionsCaches(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListActionsCachesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -12482,7 +12583,7 @@ func (c *Client) GetWorkflowJob(ctx context.Context, owner RepoOwnerParam, repo 
 
 // GetWorkflowJobLog Legge il log, anche mentre il job e' in esecuzione
 //
-// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni e non sono nei backup (CI5).
+// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni (regolabile dall'amministratore con `/admin/ci/storage`) e sono inclusi nei backup (CI5).
 //
 // Corresponds with GET /repos/{owner}/{repo}/actions/jobs/{jobId}/logs (the `GetWorkflowJobLog` operationId).
 func (c *Client) GetWorkflowJobLog(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, jobId JobIdParam, params *GetWorkflowJobLogParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -12584,7 +12685,7 @@ func (c *Client) GetWorkflowRun(ctx context.Context, owner RepoOwnerParam, repo 
 
 // ListWorkflowArtifacts Elenca gli artefatti di un'esecuzione
 //
-// Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno, fuori dai backup (CI5).
+// Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno (valori regolabili dall'amministratore), fuori dai backup (CI5). Serve `read` sul repo (404 se non lo si legge); un artefatto scaduto non compare.
 //
 // Corresponds with GET /repos/{owner}/{repo}/actions/runs/{runId}/artifacts (the `ListWorkflowArtifacts` operationId).
 func (c *Client) ListWorkflowArtifacts(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, runId RunIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -16467,6 +16568,73 @@ func NewDeleteCiRunnerRequest(server string, runnerId RunnerIdParam) (*http.Requ
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetCiStorageSettingsRequest constructs an http.Request for the GetCiStorageSettings method
+func NewGetCiStorageSettingsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/ci/storage")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateCiStorageSettingsRequest calls the generic UpdateCiStorageSettings builder with application/json body
+func NewUpdateCiStorageSettingsRequest(server string, body UpdateCiStorageSettingsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateCiStorageSettingsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateCiStorageSettingsRequestWithBody constructs an http.Request for the UpdateCiStorageSettings method, with any body, and a specified content type
+func NewUpdateCiStorageSettingsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/ci/storage")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -31224,6 +31392,33 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with DELETE /admin/ci/runners/{runnerId} (the `DeleteCiRunner` operationId).
 	DeleteCiRunnerWithResponse(ctx context.Context, runnerId RunnerIdParam, reqEditors ...RequestEditorFn) (*DeleteCiRunnerResponse, error)
 
+	// GetCiStorageSettingsWithResponse Legge conservazione e limiti di log, artefatti e cache CI (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (403 `forbidden` per gli altri, anche con lo scope). I valori sono quelli di CI5: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo e 7 giorni di non uso.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/ci/storage (the `GetCiStorageSettings` operationId).
+	GetCiStorageSettingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCiStorageSettingsResponse, error)
+
+	// UpdateCiStorageSettingsWithBodyWithResponse Modifica conservazione e limiti di log, artefatti e cache CI (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione. Sostituisce tutti i valori; il giro di pulizia successivo applica subito quelli nuovi. Un artefatto o una cache gia' esistenti non cambiano scadenza retroattivamente se si allunga la conservazione dei soli log.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/ci/storage (the `UpdateCiStorageSettings` operationId).
+	UpdateCiStorageSettingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCiStorageSettingsResponse, error)
+
+	// UpdateCiStorageSettingsWithResponse Modifica conservazione e limiti di log, artefatti e cache CI (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione. Sostituisce tutti i valori; il giro di pulizia successivo applica subito quelli nuovi. Un artefatto o una cache gia' esistenti non cambiano scadenza retroattivamente se si allunga la conservazione dei soli log.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/ci/storage (the `UpdateCiStorageSettings` operationId).
+	UpdateCiStorageSettingsWithResponse(ctx context.Context, body UpdateCiStorageSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCiStorageSettingsResponse, error)
+
 	// GetAdminSystemWithResponse Stato dell'installazione (Admin · System)
 	//
 	// Database (interno o esterno, N8), backup locale e S3 con l'esito dell'ultimo caricamento (N7), rete aziendale (N9) e versioni di GitStack e k3s con l'aggiornamento disponibile (N10). Solo l'amministratore dell'installazione. Le informazioni dell'host le pubblica `gitstack` in un ConfigMap che core legge da un file montato: niente accesso all'host dai servizi. La versione del server Postgres è quella letta ora da core sulla sua connessione. Mai segreti: né password, né chiavi S3, né credenziali del proxy.
@@ -32299,7 +32494,7 @@ type ClientWithResponsesInterface interface {
 
 	// ListActionsCachesWithResponse Elenca le cache CI del repository e l'uso della quota
 	//
-	// Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5): a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo, con job di pulizia. Log, artefatti e cache stanno su un volume di core escluso dai backup.
+	// Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5): a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo (inutilizzate da 7 giorni eliminate), con job di pulizia; i valori li regola l'amministratore. Log, artefatti e cache stanno su disco o su S3; nei backup entrano i log, artefatti e cache restano fuori.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -32331,7 +32526,7 @@ type ClientWithResponsesInterface interface {
 
 	// GetWorkflowJobLogWithResponse Legge il log, anche mentre il job e' in esecuzione
 	//
-	// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni e non sono nei backup (CI5).
+	// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni (regolabile dall'amministratore con `/admin/ci/storage`) e sono inclusi nei backup (CI5).
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -32381,7 +32576,7 @@ type ClientWithResponsesInterface interface {
 
 	// ListWorkflowArtifactsWithResponse Elenca gli artefatti di un'esecuzione
 	//
-	// Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno, fuori dai backup (CI5).
+	// Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno (valori regolabili dall'amministratore), fuori dai backup (CI5). Serve `read` sul repo (404 se non lo si legge); un artefatto scaduto non compare.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -34456,6 +34651,123 @@ func (r DeleteCiRunnerResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r DeleteCiRunnerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetCiStorageSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CiStorageSettings
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetCiStorageSettingsResponse) GetJSON200() *CiStorageSettings {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetCiStorageSettingsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetCiStorageSettingsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r GetCiStorageSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCiStorageSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCiStorageSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCiStorageSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateCiStorageSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CiStorageSettings
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateCiStorageSettingsResponse) GetJSON200() *CiStorageSettings {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateCiStorageSettingsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateCiStorageSettingsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateCiStorageSettingsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateCiStorageSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateCiStorageSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateCiStorageSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateCiStorageSettingsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -54397,6 +54709,51 @@ func (c *ClientWithResponses) DeleteCiRunnerWithResponse(ctx context.Context, ru
 	return ParseDeleteCiRunnerResponse(rsp)
 }
 
+// GetCiStorageSettingsWithResponse Legge conservazione e limiti di log, artefatti e cache CI (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (403 `forbidden` per gli altri, anche con lo scope). I valori sono quelli di CI5: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo e 7 giorni di non uso.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/ci/storage (the `GetCiStorageSettings` operationId).
+func (c *ClientWithResponses) GetCiStorageSettingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCiStorageSettingsResponse, error) {
+	rsp, err := c.GetCiStorageSettings(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCiStorageSettingsResponse(rsp)
+}
+
+// UpdateCiStorageSettingsWithBodyWithResponse Modifica conservazione e limiti di log, artefatti e cache CI (solo amministratore)
+//
+// Solo l'amministratore dell'installazione. Sostituisce tutti i valori; il giro di pulizia successivo applica subito quelli nuovi. Un artefatto o una cache gia' esistenti non cambiano scadenza retroattivamente se si allunga la conservazione dei soli log.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/ci/storage (the `UpdateCiStorageSettings` operationId).
+func (c *ClientWithResponses) UpdateCiStorageSettingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCiStorageSettingsResponse, error) {
+	rsp, err := c.UpdateCiStorageSettingsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateCiStorageSettingsResponse(rsp)
+}
+
+// UpdateCiStorageSettingsWithResponse Modifica conservazione e limiti di log, artefatti e cache CI (solo amministratore)
+//
+// Solo l'amministratore dell'installazione. Sostituisce tutti i valori; il giro di pulizia successivo applica subito quelli nuovi. Un artefatto o una cache gia' esistenti non cambiano scadenza retroattivamente se si allunga la conservazione dei soli log.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/ci/storage (the `UpdateCiStorageSettings` operationId).
+func (c *ClientWithResponses) UpdateCiStorageSettingsWithResponse(ctx context.Context, body UpdateCiStorageSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCiStorageSettingsResponse, error) {
+	rsp, err := c.UpdateCiStorageSettings(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateCiStorageSettingsResponse(rsp)
+}
+
 // GetAdminSystemWithResponse Stato dell'installazione (Admin · System)
 //
 // Database (interno o esterno, N8), backup locale e S3 con l'esito dell'ultimo caricamento (N7), rete aziendale (N9) e versioni di GitStack e k3s con l'aggiornamento disponibile (N10). Solo l'amministratore dell'installazione. Le informazioni dell'host le pubblica `gitstack` in un ConfigMap che core legge da un file montato: niente accesso all'host dai servizi. La versione del server Postgres è quella letta ora da core sulla sua connessione. Mai segreti: né password, né chiavi S3, né credenziali del proxy.
@@ -56210,7 +56567,7 @@ func (c *ClientWithResponses) DeleteActionsCachesWithResponse(ctx context.Contex
 
 // ListActionsCachesWithResponse Elenca le cache CI del repository e l'uso della quota
 //
-// Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5): a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo, con job di pulizia. Log, artefatti e cache stanno su un volume di core escluso dai backup.
+// Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5): a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo (inutilizzate da 7 giorni eliminate), con job di pulizia; i valori li regola l'amministratore. Log, artefatti e cache stanno su disco o su S3; nei backup entrano i log, artefatti e cache restano fuori.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -56266,7 +56623,7 @@ func (c *ClientWithResponses) GetWorkflowJobWithResponse(ctx context.Context, ow
 
 // GetWorkflowJobLogWithResponse Legge il log, anche mentre il job e' in esecuzione
 //
-// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni e non sono nei backup (CI5).
+// Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni (regolabile dall'amministratore con `/admin/ci/storage`) e sono inclusi nei backup (CI5).
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -56352,7 +56709,7 @@ func (c *ClientWithResponses) GetWorkflowRunWithResponse(ctx context.Context, ow
 
 // ListWorkflowArtifactsWithResponse Elenca gli artefatti di un'esecuzione
 //
-// Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno, fuori dai backup (CI5).
+// Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno (valori regolabili dall'amministratore), fuori dai backup (CI5). Serve `read` sul repo (404 se non lo si legge); un artefatto scaduto non compare.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -59653,6 +60010,93 @@ func ParseDeleteCiRunnerResponse(rsp *http.Response) (*DeleteCiRunnerResponse, e
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetCiStorageSettingsResponse parses an HTTP response from a GetCiStorageSettingsWithResponse call
+func ParseGetCiStorageSettingsResponse(rsp *http.Response) (*GetCiStorageSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCiStorageSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CiStorageSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateCiStorageSettingsResponse parses an HTTP response from a UpdateCiStorageSettingsWithResponse call
+func ParseUpdateCiStorageSettingsResponse(rsp *http.Response) (*UpdateCiStorageSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateCiStorageSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CiStorageSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
 	}
 
