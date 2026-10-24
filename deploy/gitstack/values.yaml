@@ -614,8 +614,9 @@ ci:
   build:
     enabled: false
     namespace: gitstack-ci-build
-    # Immagine rootless di BuildKit (Apache-2.0).
-    image: docker.io/moby/buildkit:v0.23.2-rootless
+    # Immagine rootless di BuildKit (Apache-2.0), fissata per digest (indice multi-arch
+    # di docker.io/moby/buildkit:v0.23.2-rootless, letto dal registry il 2026-10-24).
+    image: docker.io/moby/buildkit:v0.23.2-rootless@sha256:cab936745de5d673465948f1e93ff4d6e372bbe33f218afd3314eba45a6f85a9
   # Log, artefatti e cache dei job (CI5). Il volume ci-data ha due cartelle: logs/
   # (entra nel backup) e data/ (artefatti e cache, fuori dal backup). Con
   # s3.bucket artefatti e cache vanno su S3 (N7) e data/ serve solo da appoggio;

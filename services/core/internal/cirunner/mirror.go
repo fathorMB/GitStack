@@ -77,6 +77,10 @@ func MirrorActions(ctx context.Context, workflow []byte, base, gitBin, dest stri
 }
 
 func fetchAction(ctx context.Context, gitBin, url, ref, dir string, env []string) error {
+	// Un ref che inizia con '-' diventerebbe un'opzione di git nel pod del job: si rifiuta prima di eseguire git.
+	if strings.HasPrefix(ref, "-") {
+		return fmt.Errorf("ref %q non valido: non puo' iniziare con '-'", ref)
+	}
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return err
 	}
@@ -98,7 +102,8 @@ func fetchAction(ctx context.Context, gitBin, url, ref, dir string, env []string
 	if err := run("init", "-q"); err != nil {
 		return err
 	}
-	if err := run("fetch", "-q", "--depth", "1", url, ref); err != nil {
+	// `--` separa le opzioni da url e ref: anche con il controllo sopra, nessun argomento diventa un'opzione.
+	if err := run("fetch", "-q", "--depth", "1", "--", url, ref); err != nil {
 		return err
 	}
 	return run("-c", "advice.detachedHead=false", "checkout", "-q", "FETCH_HEAD")

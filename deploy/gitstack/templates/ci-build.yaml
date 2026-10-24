@@ -25,7 +25,9 @@ spec:
       - apiGroups: [""]
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE"]
-        resources: ["pods"]
+        # pods/ephemeralcontainers e' un subresource: senza questa voce un'ephemeral container
+        # privilegiata aggiunta a un pod di build non passerebbe per la policy.
+        resources: ["pods", "pods/ephemeralcontainers"]
   variables:
     - name: containers
       expression: >-
@@ -34,6 +36,9 @@ spec:
       expression: >-
         has(object.spec.securityContext) && has(object.spec.securityContext.runAsNonRoot) && object.spec.securityContext.runAsNonRoot
   validations:
+    - expression: >-
+        !(has(request.subResource) && request.subResource == 'ephemeralcontainers')
+      message: "i pod di build non accettano ephemeral container (subresource pods/ephemeralcontainers)"
     - expression: >-
         !has(object.spec.hostNetwork) || !object.spec.hostNetwork
       message: "i pod di build non usano la rete dell'host (hostNetwork)"
