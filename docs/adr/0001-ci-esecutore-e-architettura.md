@@ -223,6 +223,36 @@ Vincoli emersi:
 - `git` rifiuta il workspace per «dubious ownership» se il tar conserva il proprietario:
   `tar --no-same-owner` e `safe.directory`.
 
+**Esito della prova (GIT-317, k3s v1.36 su k3d, `deploy/ci/runner-e2e.sh`).** BuildKit rootless
+(`moby/buildkit:v0.23.2-rootless`, `buildctl-daemonless.sh`, senza demone né socket) gira nel namespace
+`gitstack-ci-build` con questa forma di pod: uid 1000, `seccompProfile` e `appArmorProfile`
+*Unconfined*, `capabilities: drop [ALL], add [SETUID, SETGID]`, `allowPrivilegeEscalation: true`. Le ultime
+due non si possono togliere: `newuidmap` (file con setuid) per creare lo user namespace fallisce con
+«operation not permitted» se `allowPrivilegeEscalation` è false o se mancano SETUID e SETGID. Pod Security
+`restricted` e `baseline` rifiutano la forma, quindi il namespace è `privileged` e l'ammissione la fa una
+`ValidatingAdmissionPolicy` (`templates/ci-build.yaml`, Kubernetes >= 1.30) che vieta `privileged`,
+hostNetwork/PID/IPC, hostPath, token del ServiceAccount, hostPort, capability diverse da SETUID e SETGID, e
+richiede `runAsNonRoot`. Un pod `privileged` nello stesso namespace è rifiutato con
+«i pod di build non possono essere privileged». Stessa NetworkPolicy dei job (nessun ingresso, uscita solo
+verso Internet); **il cancello `gate` non c'è ancora sui pod di build**. Il dispatcher non crea ancora pod
+di build: il tipo di job `build` non esiste nel modello di `ci_jobs` (resta da fare, insieme al ruolo
+del dispatcher nel namespace di build).
+
+**Mirror delle action e `uses:`.** act 0.2.89 non accetta `uses: https://...` e `--github-instance` forza
+`https://`, e inoltre manda `GITHUB_TOKEN` (qui il token del job `gsj_`) come credenziale del clone verso
+github.com. Per questo le action pubbliche le scarica il runner (`cirunner.MirrorActions`) con
+`git fetch --depth 1 <mirror o https://github.com>/<owner>/<repo> <ref>` sotto `workspace/.gitstack-actions/`
+e riscrive il `uses:` in un'action locale (act risolve le action locali nella copia del workspace).
+`actions/checkout` non si scarica: act lo salta perché il codice è già nel workspace. Le action richiamate
+dentro un'action composita le risolve ancora act, quindi, se non sono già locali, con il token del job verso
+github.com: limite aperto. Il mirror è `ci.runner.actionMirror` (http o https); se sta su una rete privata
+serve `ci.runner.actionMirrorEgress` (regole NetworkPolicy di uscita), perché la policy di base chiude le reti
+private.
+
+**Indirizzi del ci-gateway.** Il pod del job sta in un altro namespace: `http://gitstack-core:8081` non si
+risolveva e l'indirizzo del `gate` (`gitstack-core:8080`) risultava «bloccato» solo perché non risolvibile.
+Il chart ora usa il nome completo `<release>-core.<namespace>.svc`.
+
 ## Conseguenze
 
 - Nessun servizio nuovo; `core` cresce (scheduler, coda, storage CI, protocollo runner) e riceve un
@@ -248,6 +278,6 @@ Vincoli emersi:
 
 ## Cosa non è provato in questo item
 
-BuildKit rootless; ResourceQuota; coda e concorrenza; DNS del job; protocollo dei runner esterni;
+ResourceQuota; coda e concorrenza; DNS del job; protocollo dei runner esterni;
 esecuzione di un workflow reale di GitStack; action JavaScript e mirror; `needs`/outputs fra pod;
 più nodi (la prova è su un nodo solo).

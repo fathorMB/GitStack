@@ -50,8 +50,12 @@ type Config struct {
 	// ActBin è il binario di act (default "act"); ActArgs sono argomenti aggiuntivi prima di quelli fissi.
 	ActBin  string
 	ActArgs []string
-	// ActionMirror sostituisce github.com nelle action publiche, se configurato.
+	// ActionMirror e' l'URL base del mirror amministrato (http o https): se presente, le
+	// action pubbliche dei passi si scaricano da li' e non da github.com (vedi MirrorActions).
+	// Vuoto: https://github.com, scaricate comunque dal runner e senza il token del job.
 	ActionMirror string
+	// GitBin e' il binario git per scaricare le action dal mirror (default "git").
+	GitBin string
 	// WorkDir contiene workspace/ (il codice) e workflow/ (il file del workflow).
 	WorkDir string
 	// FetchTimeout: quanto aspettare un job (default 2 minuti).
@@ -137,7 +141,16 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 		if err := os.MkdirAll(filepath.Dir(wf), 0o750); err != nil {
 			return err
 		}
-		return os.WriteFile(wf, RewriteActionMirror(task.GetWorkflowPayload(), cfg.ActionMirror), 0o640)
+		actionsBase := cfg.ActionMirror
+		if strings.TrimSpace(actionsBase) == "" {
+			actionsBase = "https://github.com"
+		}
+		payload, err := MirrorActions(ctx, task.GetWorkflowPayload(), actionsBase, cfg.GitBin,
+			filepath.Join(cfg.WorkDir, "workspace", ".gitstack-actions"), append(withoutCIEnv(os.Environ()), "HOME="+cfg.WorkDir))
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(wf, payload, 0o640)
 	}
 	if err := prepare(); err != nil {
 		rep.line("errore: " + err.Error())
@@ -276,17 +289,6 @@ func runAct(ctx context.Context, cfg Config, rep *reporter, event, jobKey, token
 		return runnerv1.Result_RESULT_FAILURE
 	}
 	return runnerv1.Result_RESULT_SUCCESS
-}
-
-// rewriteActionMirror lascia invariati i riferimenti locali e sostituisce solo le
-// action pubbliche di GitHub. act riceve cosi' un uses completo scaricabile dal
-// mirror amministrato, senza esporre il DNS interno al workflow.
-func RewriteActionMirror(workflow []byte, mirror string) []byte {
-	mirror = strings.TrimRight(strings.TrimSpace(mirror), "/")
-	if mirror == "" {
-		return workflow
-	}
-	return []byte(strings.ReplaceAll(string(workflow), "uses: actions/", "uses: "+mirror+"/actions/"))
 }
 
 // reporter accumula righe di log e stato dei passi e li invia al gateway.

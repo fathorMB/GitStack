@@ -253,7 +253,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: shellcheck
-        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/v5_verify_test.sh deploy/tests/release_changelog_test.sh deploy/tests/network_test.sh deploy/tests/k3s_script_test.sh deploy/tests/chart_hardening_test.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh deploy/ci/install-e2e.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh scripts/ci/retry.sh
+        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/v5_verify_test.sh deploy/tests/release_changelog_test.sh deploy/tests/network_test.sh deploy/tests/k3s_script_test.sh deploy/tests/chart_hardening_test.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh deploy/ci/install-e2e.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh scripts/ci/retry.sh deploy/ci/runner-e2e.sh
 
       # Preflight di install.sh (GIT-144): profili minimo e consigliato di N1,
       # sistema non supportato, verifica del nome host. Senza root né VM.
@@ -1582,7 +1582,7 @@ jobs:
                 env:
                   - {name: GITSTACK_CI_GATEWAY_URL, value: "@GW@"}
                   - {name: GITSTACK_CI_GATE_INTERNAL_ADDR, value: "@GATE@"}
-                command: [sh, -c, 'set -e; gateway="${GITSTACK_CI_GATEWAY_URL#http://}"; host="${gateway%:*}"; port="${gateway##*:}"; echo "barriera: nessun docker.sock"; test ! -e /var/run/docker.sock; blocked() { if nc -z -w3 "$2" "$3"; then echo "KO: $1 raggiungibile"; exit 1; fi; echo "ok: $1 bloccato"; }; blocked "API Kubernetes" kubernetes.default.svc 443; blocked NATS gitstack-nats.default.svc 4222; blocked Postgres gitstack-postgres.default.svc 5432; echo "accesso: DNS del ci-gateway $host"; nslookup "$host"; echo "accesso: ci-gateway $host:$port"; nc -z -w3 "$host" "$port"; echo "ok: ci-gateway raggiungibile"']
+                command: [sh, -c, 'set -e; gateway="${GITSTACK_CI_GATEWAY_URL#http://}"; host="${gateway%:*}"; port="${gateway##*:}"; echo "barriera: nessun docker.sock"; test ! -e /var/run/docker.sock; blocked() { if nc -z -w3 "$2" "$3"; then echo "KO: $1 raggiungibile"; exit 1; fi; echo "ok: $1 bloccato"; }; blocked "API Kubernetes" kubernetes.default.svc 443; blocked NATS gitstack-nats.default.svc 4222; blocked Postgres gitstack-postgres.default.svc 5432; echo "accesso: DNS del ci-gateway $host"; nslookup "$host" || echo "nota: nslookup di busybox non usa i domini di ricerca, la risoluzione la prova nc"; echo "accesso: ci-gateway $host:$port"; nc -z -w3 "$host" "$port"; echo "ok: ci-gateway raggiungibile"']
                 resources:
                   requests: {cpu: 50m, memory: 32Mi, ephemeral-storage: 64Mi}
                   limits: {cpu: 200m, memory: 64Mi, ephemeral-storage: 64Mi}
@@ -1890,6 +1890,17 @@ jobs:
             exit 1
           fi
           echo "OK: repo GitStack creato (201) con le maiuscole conservate"
+
+      # GIT-317: il primo workflow nel runner integrato, su questo cluster. Un push
+      # con `uses:` di action pubbliche (github.com), lo stesso con ci.runner.actionMirror
+      # su un mirror finto in-cluster (le action arrivano da li', non da github.com) e la
+      # build rootless nel namespace gitstack-ci-build, dove un pod privilegiato viene
+      # rifiutato. Una riga ok/KO per controllo; la logica sta in deploy/ci/runner-e2e.sh.
+      # Cambia la password di admin e la rimette all'uscita, come lo smoke qui sopra.
+      - name: Runner integrato - workflow con uses:, mirror delle action e build rootless (GIT-317)
+        env:
+          RUNNER_IMAGE: gitstack-ci-runner:test
+        run: bash deploy/ci/runner-e2e.sh
 
       # GIT-152: smoke della UI nel browser (Chromium headless) attraverso
       # l'Ingress: /login, login admin con la password iniziale del Secret (la

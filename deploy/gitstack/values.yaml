@@ -597,8 +597,25 @@ ci:
     port: 8081
   runner:
     image: ""
-    # URL opzionale del mirror amministrato; vuoto usa GitHub.
+    # URL opzionale del mirror amministrato (es. https://mirror.example/); vuoto usa
+    # GitHub. Le `uses: actions/...` dei workflow vengono scaricate da li'.
     actionMirror: ""
+    # Regole di uscita (NetworkPolicy `egress`, elenco di {to, ports}) da aggiungere
+    # al namespace dei job per raggiungere il mirror quando sta su una rete privata:
+    # la policy di base chiude 10/8, 172.16/12, 192.168/16 e 169.254/16. Esempio:
+    #   - to: [{ipBlock: {cidr: 10.20.0.5/32}}]
+    #     ports: [{protocol: TCP, port: 443}]
+    actionMirrorEgress: []
+  # Job di tipo build (ADR 0001 §6): BuildKit rootless senza demone ne' socket in un
+  # namespace separato. BuildKit rootless chiede seccomp/AppArmor Unconfined, che Pod
+  # Security `restricted` e `baseline` rifiutano: il namespace usa il livello
+  # `privileged` e una ValidatingAdmissionPolicy che accetta solo pod senza privilegi,
+  # senza rete/PID/IPC dell'host, senza hostPath e senza capability aggiunte.
+  build:
+    enabled: false
+    namespace: gitstack-ci-build
+    # Immagine rootless di BuildKit (Apache-2.0).
+    image: docker.io/moby/buildkit:v0.23.2-rootless
   # Log, artefatti e cache dei job (CI5). Il volume ci-data ha due cartelle: logs/
   # (entra nel backup) e data/ (artefatti e cache, fuori dal backup). Con
   # s3.bucket artefatti e cache vanno su S3 (N7) e data/ serve solo da appoggio;
