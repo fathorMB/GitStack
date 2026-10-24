@@ -183,7 +183,7 @@ func TestRunner_ActionsCacheSalvaERipristina(t *testing.T) {
 		res, err := cirunner.Run(context.Background(), cirunner.Config{GatewayURL: srv.URL, Secret: ticket, Name: "pod-test", ActBin: exe,
 			WorkDir: t.TempDir(), FetchTimeout: 3 * time.Second, FlushEvery: 20 * time.Millisecond, HTTP: srv.Client()})
 		if err != nil || res.Conclusion != runnerv1.Result_RESULT_SUCCESS {
-			t.Fatalf("job: %+v %v\n%s", res, err, out.String())
+			t.Fatalf("job: %+v %v", res, err)
 		}
 		return res
 	}
