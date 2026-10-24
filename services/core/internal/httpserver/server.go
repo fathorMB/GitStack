@@ -48,6 +48,10 @@ type apiServer struct {
 	systemInfo SystemInfoConfig
 	// ciLogs: i log dei job su disco (GIT-316); nil = 503.
 	ciLogs *ci.LogStore
+	// ciBlobs: artefatti e cache dei job su disco o S3 (GIT-280); nil = 503.
+	ciBlobs ci.Blobs
+	// ciCapacity: job in corso in tutto (CICapacity, GIT-277); 0 = ci.DefaultCapacity.
+	ciCapacity int
 	// now è l'orologio: serve alla scadenza dei 7 giorni di un repo eliminato.
 	now func() time.Time
 }

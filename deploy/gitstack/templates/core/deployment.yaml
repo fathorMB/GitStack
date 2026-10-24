@@ -1,6 +1,6 @@
 {{- if .Values.core.enabled -}}
-{{- if and .Values.core.attachments.enabled (gt (.Values.core.replicaCount | int) 1) -}}
-{{- fail "core.attachments.enabled=true richiede core.replicaCount=1: il volume degli allegati è ReadWriteOnce (core gira a una replica con strategia Recreate)." -}}
+{{- if and (or .Values.core.attachments.enabled .Values.ci.enabled) (gt (.Values.core.replicaCount | int) 1) -}}
+{{- fail "core.attachments.enabled=true o ci.enabled=true richiedono core.replicaCount=1: i volumi degli allegati e dei log CI sono ReadWriteOnce (core gira a una replica con strategia Recreate)." -}}
 {{- end -}}
 {{- if not .Values.postgres.enabled -}}
 {{- if or (not .Values.postgres.external.host) (not .Values.postgres.external.database) (not .Values.postgres.external.username) (not .Values.postgres.external.existingSecret) -}}
@@ -23,7 +23,7 @@ metadata:
     {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
 spec:
   replicas: {{ .Values.core.replicaCount }}
-  {{- if .Values.core.attachments.enabled }}
+  {{- if or .Values.core.attachments.enabled .Values.ci.enabled }}
   # Il PVC degli allegati è ReadWriteOnce: il nuovo pod non può montarlo finché
   # il vecchio non è fermo, quindi niente RollingUpdate (limite noto, README).
   strategy:
@@ -56,7 +56,7 @@ spec:
       securityContext:
         # L'immagine gira come nonroot (uid 65532): il volume degli allegati
         # deve essere scrivibile.
-        {{- include "gitstack.podSecurityContext" (dict "runAsUser" 65532 "fsGroup" (ternary 65532 0 .Values.core.attachments.enabled)) | nindent 8 }}
+        {{- include "gitstack.podSecurityContext" (dict "runAsUser" 65532 "fsGroup" (ternary 65532 0 (or .Values.core.attachments.enabled .Values.ci.enabled))) | nindent 8 }}
       initContainers:
         - name: wait-for-postgres
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.core.waitFor) }}
@@ -113,8 +113,32 @@ spec:
               value: {{ printf "http://%s-core.%s.svc:%d" (include "gitstack.fullname" .) .Release.Namespace (.Values.ci.gateway.port | int) | quote }}
             - name: GITSTACK_CORE_CI_GATE_INTERNAL_ADDR
               value: {{ printf "%s-core.%s.svc:%d" (include "gitstack.fullname" .) .Release.Namespace (.Values.core.containerPort | int) | quote }}
+            # Log (nel backup) e artefatti/cache (fuori dal backup) stanno nel
+            # volume ci-data: <mountPath>/logs e <mountPath>/data (CI5).
             - name: GITSTACK_CORE_CI_LOGS_DIR
-              value: /tmp/ci-logs
+              value: {{ printf "%s/logs" .Values.ci.storage.mountPath | quote }}
+            - name: GITSTACK_CORE_CI_ARTIFACTS_DIR
+              value: {{ printf "%s/data" .Values.ci.storage.mountPath | quote }}
+            {{- if .Values.ci.storage.s3.bucket }}
+            - name: GITSTACK_CORE_CI_S3_ENDPOINT
+              value: {{ .Values.ci.storage.s3.endpoint | quote }}
+            - name: GITSTACK_CORE_CI_S3_BUCKET
+              value: {{ .Values.ci.storage.s3.bucket | quote }}
+            - name: GITSTACK_CORE_CI_S3_REGION
+              value: {{ .Values.ci.storage.s3.region | quote }}
+            - name: GITSTACK_CORE_CI_S3_PREFIX
+              value: {{ .Values.ci.storage.s3.prefix | quote }}
+            - name: GITSTACK_CORE_CI_S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "ci.storage.s3.existingSecret è obbligatorio con ci.storage.s3.bucket (chiavi accessKey e secretKey)" .Values.ci.storage.s3.existingSecret }}
+                  key: accessKey
+            - name: GITSTACK_CORE_CI_S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.ci.storage.s3.existingSecret }}
+                  key: secretKey
+            {{- end }}
             {{- end }}
             # POSTGRES_PASSWORD deve precedere GITSTACK_CORE_DB_URL: la
             # sintassi "$(VAR)" nei valori di env di un container k8s si
@@ -283,6 +307,10 @@ spec:
             - name: attachments
               mountPath: {{ .Values.core.attachments.mountPath | quote }}
             {{- end }}
+            {{- if .Values.ci.enabled }}
+            - name: ci-data
+              mountPath: {{ .Values.ci.storage.mountPath | quote }}
+            {{- end }}
             {{- if .Values.core.releaseAssets.enabled }}
             - name: release-assets
               mountPath: {{ .Values.core.releaseAssets.mountPath | quote }}
@@ -310,6 +338,11 @@ spec:
         - name: attachments
           persistentVolumeClaim:
             claimName: {{ include "gitstack.fullname" . }}-attachments-data
+        {{- end }}
+        {{- if .Values.ci.enabled }}
+        - name: ci-data
+          persistentVolumeClaim:
+            claimName: {{ include "gitstack.fullname" . }}-ci-data
         {{- end }}
         {{- if .Values.core.releaseAssets.enabled }}
         - name: release-assets

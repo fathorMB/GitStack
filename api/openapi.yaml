@@ -7583,7 +7583,7 @@ paths:
         name: workflow_job_log
         destructive: false
       summary: Legge il log, anche mentre il job e' in esecuzione
-      description: Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni e non sono nei backup (CI5).
+      description: Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job. I log sono conservati 90 giorni (regolabile dall'amministratore con `/admin/ci/storage`) e sono inclusi nei backup (CI5).
       parameters: [{name: follow, in: query, schema: {type: boolean, default: false}}]
       responses:
         "200": {description: Log del job., content: {text/plain: {schema: {type: string}}}}
@@ -7601,7 +7601,7 @@ paths:
         name: workflow_artifact_list
         destructive: false
       summary: Elenca gli artefatti di un'esecuzione
-      description: Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno, fuori dai backup (CI5).
+      description: Artefatti conservati 30 giorni (`expiresAt`), fino a 2 GB ciascuno (valori regolabili dall'amministratore), fuori dai backup (CI5). Serve `read` sul repo (404 se non lo si legge); un artefatto scaduto non compare.
       responses:
         "200": {description: Artefatti., content: {application/json: {schema: {$ref: "#/components/schemas/ArtifactList"}}}}
         "401": {$ref: "#/components/responses/Unauthorized"}
@@ -7637,8 +7637,9 @@ paths:
       description: >
         Serve `read` sul repo (un repo che non si legge risponde 404). La quota e' 10 GB per repository (CI5):
         a quota piena le cache meno usate di recente vengono rimosse. Conservazione: log 90 giorni, artefatti
-        30 giorni fino a 2 GB, cache 10 GB per repo, con job di pulizia. Log, artefatti e cache stanno su un volume
-        di core escluso dai backup.
+        30 giorni fino a 2 GB, cache 10 GB per repo (inutilizzate da 7 giorni eliminate), con job di pulizia; i
+        valori li regola l'amministratore. Log, artefatti e cache stanno su disco o su S3; nei backup entrano i log,
+        artefatti e cache restano fuori.
       parameters:
         - {name: key, in: query, schema: {type: string}, description: Prefisso della chiave.}
         - {name: ref, in: query, schema: {type: string}, description: Ref (ramo o tag) della cache.}
@@ -8005,6 +8006,43 @@ paths:
         "200": {description: Coda e limiti., content: {application/json: {schema: {$ref: "#/components/schemas/CiQueue"}}}}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/ci/storage:
+    get:
+      operationId: getCiStorageSettings
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: ci_storage_view
+        destructive: false
+      summary: Legge conservazione e limiti di log, artefatti e cache CI (solo amministratore)
+      description: >
+        Solo l'amministratore dell'installazione (403 `forbidden` per gli altri, anche con lo scope). I valori sono
+        quelli di CI5: log 90 giorni, artefatti 30 giorni fino a 2 GB, cache 10 GB per repo e 7 giorni di non uso.
+      responses:
+        "200": {description: Impostazioni., content: {application/json: {schema: {$ref: "#/components/schemas/CiStorageSettings"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    put:
+      operationId: updateCiStorageSettings
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: ci_storage_update
+        destructive: false
+      summary: Modifica conservazione e limiti di log, artefatti e cache CI (solo amministratore)
+      description: >
+        Solo l'amministratore dell'installazione. Sostituisce tutti i valori; il giro di pulizia successivo
+        applica subito quelli nuovi. Un artefatto o una cache gia' esistenti non cambiano scadenza retroattivamente
+        se si allunga la conservazione dei soli log.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CiStorageSettings"}}}}
+      responses:
+        "200": {description: Impostazioni aggiornate., content: {application/json: {schema: {$ref: "#/components/schemas/CiStorageSettings"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
   /repos/{owner}/{repo}/packages:
     parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}]
     get:
@@ -10194,11 +10232,21 @@ components:
         queuedJobs: {type: integer}
         runningJobs: {type: integer}
         maxConcurrentJobs: {type: integer, minimum: 1, maximum: 3}
-        avgQueueWaitSeconds: {type: integer, minimum: 0, description: "Attesa media in coda dei job, in secondi."}
-        logBytes: {type: integer, format: int64, minimum: 0, description: "Spazio occupato dai log dei job, in byte."}
-        artifactBytes: {type: integer, format: int64, minimum: 0, description: "Spazio occupato dagli artefatti, in byte. Vale 0 finché non arriva GIT-280."}
-        cacheBytes: {type: integer, format: int64, minimum: 0, description: "Spazio occupato dalle cache, in byte. Vale 0 finché non arriva GIT-280."}
+        avgQueueWaitSeconds: {type: integer, minimum: 0, description: "Attesa media in coda, in secondi, dei job partiti nelle ultime 24 ore (0 se nessuno)."}
+        logBytes: {type: integer, format: int64, minimum: 0, description: "Spazio occupato dai log dei job, in byte (somma dei file su disco)."}
+        artifactBytes: {type: integer, format: int64, minimum: 0, description: "Spazio occupato dagli artefatti non scaduti, in byte."}
+        cacheBytes: {type: integer, format: int64, minimum: 0, description: "Spazio occupato dalle cache, in byte."}
         resourceLimits: {type: object, additionalProperties: false, required: [cpuCores, memoryBytes, ephemeralStorageBytes, maxDurationSeconds], properties: {cpuCores: {type: integer, example: 2}, memoryBytes: {type: integer, format: int64, example: 4294967296}, ephemeralStorageBytes: {type: integer, format: int64, example: 21474836480}, maxDurationSeconds: {type: integer, example: 3600}}}
+    CiStorageSettings:
+      type: object
+      additionalProperties: false
+      required: [logRetentionDays, artifactRetentionDays, artifactMaxBytes, cacheQuotaBytes, cacheUnusedDays]
+      properties:
+        logRetentionDays: {type: integer, minimum: 1, maximum: 3650, default: 90, description: "Giorni di conservazione dei log dei job finiti."}
+        artifactRetentionDays: {type: integer, minimum: 1, maximum: 3650, default: 30, description: "Giorni di conservazione degli artefatti."}
+        artifactMaxBytes: {type: integer, format: int64, minimum: 1, default: 2147483648, description: "Dimensione massima di un artefatto, in byte."}
+        cacheQuotaBytes: {type: integer, format: int64, minimum: 1, default: 10737418240, description: "Quota delle cache per repository, in byte."}
+        cacheUnusedDays: {type: integer, minimum: 1, maximum: 3650, default: 7, description: "Giorni senza uso dopo i quali una cache si elimina."}
     PackageList:
       type: object
       additionalProperties: false

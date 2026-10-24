@@ -271,9 +271,9 @@ func createRun(ctx context.Context, tx pgx.Tx, now time.Time, n NewRun) (Created
 		perm, _ := json.Marshal(stored)
 		jobID := uuid.New()
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO core.ci_jobs (id, run_id, seq, job_key, name, needs, runner_type, permissions, status, queued_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-			jobID, out.RunID, i, j.Key, j.Name, nonNilStrings(j.Needs), runnerTypeOf(j.RunsOn), perm, status, queuedAt); err != nil {
+			INSERT INTO core.ci_jobs (id, run_id, seq, job_key, name, needs, runner_type, runs_on, permissions, status, queued_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+			jobID, out.RunID, i, j.Key, j.Name, nonNilStrings(j.Needs), runnerTypeOf(j.RunsOn), NormalizeLabels(j.RunsOn), perm, status, queuedAt); err != nil {
 			return Created{}, err
 		}
 		out.JobIDs = append(out.JobIDs, jobID)
@@ -296,15 +296,34 @@ func nonNilStrings(s []string) []string {
 }
 
 // runnerTypeOf: i job con etichette di un host vero (self-hosted, Windows, macOS)
-// vanno ai runner esterni (ADR 0001); gli altri a un pod interno.
+// o con un'etichetta che il pod interno non offre (tutto ciò che non è ubuntu-*)
+// vanno ai runner esterni (ADR 0001, GIT-278); gli altri a un pod interno.
 func runnerTypeOf(runsOn []string) string {
-	for _, l := range runsOn {
-		l = strings.ToLower(l)
-		if l == "self-hosted" || strings.HasPrefix(l, "windows") || strings.HasPrefix(l, "macos") {
+	for _, l := range NormalizeLabels(runsOn) {
+		if !strings.HasPrefix(l, "ubuntu-") && !strings.Contains(l, "${{") {
 			return "external"
 		}
 	}
 	return "internal_pod"
+}
+
+// NormalizeLabels porta le etichette in minuscolo, toglie il suffisso «:schema» del
+// protocollo di Gitea (es. «linux:host»), gli spazi, i vuoti e i doppioni.
+func NormalizeLabels(in []string) []string {
+	out := make([]string, 0, len(in))
+	seen := map[string]bool{}
+	for _, l := range in {
+		l = strings.ToLower(strings.TrimSpace(l))
+		if i := strings.IndexByte(l, ':'); i >= 0 {
+			l = l[:i]
+		}
+		if l == "" || seen[l] {
+			continue
+		}
+		seen[l] = true
+		out = append(out, l)
+	}
+	return out
 }
 
 // ClaimNext prende il job in coda più vecchio che rispetta i limiti: al massimo
@@ -352,7 +371,7 @@ func claimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity 
 		return JobRow{}, RunRow{}, "", "", false, err
 	}
 	var running int
-	if err := tx.QueryRow(ctx, `SELECT count(*) FROM core.ci_jobs WHERE status = 'in_progress'`).Scan(&running); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM core.ci_jobs WHERE status = 'in_progress' AND runner_type = 'internal_pod'`).Scan(&running); err != nil {
 		return JobRow{}, RunRow{}, "", "", false, err
 	}
 	if running >= capacity {
@@ -363,7 +382,7 @@ func claimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity 
 		WITH busy AS (
 			SELECT r.owner_type, r.owner_id, count(*) AS n
 			FROM core.ci_jobs j JOIN core.ci_runs r ON r.id = j.run_id
-			WHERE j.status = 'in_progress' GROUP BY r.owner_type, r.owner_id)
+			WHERE j.status = 'in_progress' AND j.runner_type = 'internal_pod' GROUP BY r.owner_type, r.owner_id)
 		SELECT j.id, j.run_id
 		FROM core.ci_jobs j
 		JOIN core.ci_runs r ON r.id = j.run_id
@@ -378,48 +397,58 @@ func claimNext(ctx context.Context, pool *pgxpool.Pool, now time.Time, capacity 
 	if err != nil {
 		return JobRow{}, RunRow{}, "", "", false, err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE core.ci_jobs SET status = 'in_progress', started_at = $2, runner_name = NULLIF($3, '')
-		WHERE id = $1`, jobID, now, runner); err != nil {
+	job, run, token, ticket, err := startClaimed(ctx, tx, now, jobID, runID, runner, nil, tokenTTL, ticketTTL, rep)
+	if err != nil {
 		return JobRow{}, RunRow{}, "", "", false, err
+	}
+	return job, run, token, ticket, true, nil
+}
+
+// startClaimed porta in corso il job scelto, emette token e biglietto richiesti, riporta i
+// cambi e conferma la transazione. runnerID è il runner esterno che lo prende (nil per i pod interni).
+func startClaimed(ctx context.Context, tx pgx.Tx, now time.Time, jobID, runID uuid.UUID, runner string, runnerID *uuid.UUID, tokenTTL, ticketTTL time.Duration, rep Reporter) (JobRow, RunRow, string, string, error) {
+	if _, err := tx.Exec(ctx, `UPDATE core.ci_jobs SET status = 'in_progress', started_at = $2, runner_name = NULLIF($3, ''), runner_id = $4
+		WHERE id = $1`, jobID, now, runner, runnerID); err != nil {
+		return JobRow{}, RunRow{}, "", "", err
 	}
 	// Con questa UPDATE l'esecuzione passa in_progress solo se era in coda: il
 	// report la include in quel caso (started_at = now, appena scritto).
 	runTag, err := tx.Exec(ctx, `UPDATE core.ci_runs SET status = 'in_progress', started_at = COALESCE(started_at, $2)
 		WHERE id = $1 AND status = 'queued'`, runID, now)
 	if err != nil {
-		return JobRow{}, RunRow{}, "", "", false, err
+		return JobRow{}, RunRow{}, "", "", err
 	}
 	var token string
 	if tokenTTL > 0 {
 		if token, err = issueJobToken(ctx, tx, now, jobID, tokenTTL); err != nil {
-			return JobRow{}, RunRow{}, "", "", false, err
+			return JobRow{}, RunRow{}, "", "", err
 		}
 	}
 	var ticket string
 	if ticketTTL > 0 {
 		if ticket, err = issueJobTicket(ctx, tx, now, jobID, ticketTTL); err != nil {
-			return JobRow{}, RunRow{}, "", "", false, err
+			return JobRow{}, RunRow{}, "", "", err
 		}
 	}
 	job, err := scanJob(tx.QueryRow(ctx, `SELECT `+jobColumns+` FROM core.ci_jobs WHERE id = $1`, jobID))
 	if err != nil {
-		return JobRow{}, RunRow{}, "", "", false, err
+		return JobRow{}, RunRow{}, "", "", err
 	}
 	run, err := scanRun(tx.QueryRow(ctx, `SELECT `+runColumns+` FROM core.ci_runs WHERE id = $1`, runID))
 	if err != nil {
-		return JobRow{}, RunRow{}, "", "", false, err
+		return JobRow{}, RunRow{}, "", "", err
 	}
 	var runIDs []uuid.UUID
 	if runTag.RowsAffected() > 0 {
 		runIDs = append(runIDs, runID)
 	}
 	if err := report(ctx, tx, rep, runIDs, []uuid.UUID{jobID}); err != nil {
-		return JobRow{}, RunRow{}, "", "", false, err
+		return JobRow{}, RunRow{}, "", "", err
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return JobRow{}, RunRow{}, "", "", false, err
+		return JobRow{}, RunRow{}, "", "", err
 	}
-	return job, run, token, ticket, true, nil
+	return job, run, token, ticket, nil
 }
 
 // CompleteJob chiude un job in corso. Con successo promuove i job che
