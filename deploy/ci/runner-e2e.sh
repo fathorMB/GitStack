@@ -245,7 +245,7 @@ for _ in $(seq 1 30); do # la policy di ammissione diventa attiva qualche istant
 done
 sleep 5
 build_image=$(helm get values "${RELEASE}" -a -o json | jq -r .ci.build.image)
-kubectl -n "${BUILD_NS}" delete pod ci-build ci-privileged --ignore-not-found --wait=true >/dev/null
+kubectl -n "${BUILD_NS}" delete pod ci-build ci-privileged ci-ephemeral-target --ignore-not-found --wait=true >/dev/null
 kubectl apply -f - >/dev/null <<EOF
 apiVersion: v1
 kind: Pod
@@ -328,6 +328,53 @@ elif grep -q 'non possono essere privileged' "${work}/priv.err"; then
 else
   ko "pod privilegiato rifiutato per un altro motivo: $(head -c 300 "${work}/priv.err")"
 fi
+
+# Sonda ephemeral container (criterio GIT-333): un pod bersaglio conforme alla policy, poi un
+# tentativo di ephemeral container privilegiata sul subresource pods/ephemeralcontainers.
+kubectl apply -f - >/dev/null 2>"${work}/eph-target.err" <<EOF || true
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ci-ephemeral-target
+  namespace: ${BUILD_NS}
+  labels: {gitstack.io/ci-job: "true"}
+spec:
+  restartPolicy: Never
+  activeDeadlineSeconds: 300
+  automountServiceAccountToken: false
+  enableServiceLinks: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile: {type: Unconfined}
+  containers:
+    - name: target
+      image: ${build_image}
+      command: [sleep, "120"]
+      securityContext:
+        allowPrivilegeEscalation: true
+        capabilities: {drop: [ALL], add: [SETUID, SETGID]}
+        seccompProfile: {type: Unconfined}
+        appArmorProfile: {type: Unconfined}
+      volumeMounts:
+        - {name: tmp, mountPath: /tmp}
+  volumes:
+    - {name: tmp, emptyDir: {}}
+EOF
+if kubectl -n "${BUILD_NS}" wait --for=condition=Ready pod/ci-ephemeral-target --timeout=120s >/dev/null 2>&1; then
+  if kubectl -n "${BUILD_NS}" patch pod ci-ephemeral-target --subresource=ephemeralcontainers --type=strategic -p '{"spec":{"ephemeralContainers":[{"name":"dbg","image":"'"${build_image}"'","command":["sleep","30"],"securityContext":{"privileged":true}}]}}' >/dev/null 2>"${work}/eph.err"; then
+    ko "ephemeral container privilegiata accettata nel namespace di build"
+  elif grep -q 'non accettano ephemeral container' "${work}/eph.err"; then
+    ok "ephemeral container rifiutata dalla policy: $(grep -o 'non accettano ephemeral container' "${work}/eph.err")"
+  else
+    ko "ephemeral container rifiutata per un altro motivo: $(head -c 300 "${work}/eph.err")"
+  fi
+else
+  ko "ephemeral: pod bersaglio non pronto"
+fi
+kubectl -n "${BUILD_NS}" delete pod ci-ephemeral-target --ignore-not-found --wait=false >/dev/null
 
 if [ "${fail}" -ne 0 ]; then echo "ESITO: KO" >&2; exit 1; fi
 echo "ESITO: ok"
