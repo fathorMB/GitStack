@@ -440,9 +440,6 @@ func TestEliminatoERipristinato_LeImmaginiTornano(t *testing.T) {
 }
 
 func TestCancellazioneDefinitiva_TogliLeImmagini(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("serve l'archiviazione su disco: in memoria Purge usa un'istanza separata")
-	}
 	e := newEnv(t)
 	e.mustPush("alice/app:v1", "gst_write")
 	e.mustPush("alice/secret:v1", "gst_admin")

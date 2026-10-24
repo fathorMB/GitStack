@@ -69,6 +69,9 @@ type Manifest struct {
 	Release       string    `json:"release"`
 	Namespace     string    `json:"namespace"`
 	Files         []FileSum `json:"files"`
+	// RegistryRepos sono gli id dei repo le cui immagini OCI sono nell'archivio (RG2): di
+	// default nessuno, le immagini restano fuori dal backup.
+	RegistryRepos []string `json:"registry_repos,omitempty"`
 }
 
 // RefusedError è un rifiuto motivato (versione diversa, archivio corrotto,
@@ -122,6 +125,9 @@ type Options struct {
 	Now func() time.Time
 	// Retention sovrascrive cfg.Backup.Retention quando > 0.
 	Retention int
+	// InUseRepoIDs dà gli id dei repo le cui immagini sono in uso dalle app: entrano sempre nel
+	// backup, qualunque sia includeInBackup (RG2/H4). Lo fornirà la v3; nil = nessuna.
+	InUseRepoIDs func(ctx context.Context) ([]string, error)
 }
 
 func (o *Options) logf(format string, a ...any) {
@@ -340,8 +346,16 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 	}); e != nil {
 		return nil, fmt.Errorf("dump del database: %w", e)
 	}
-	o.logf("copia dei repo (git-data)")
-	if e := st.write(GitDataName, func(w io.Writer) error { return tarDir(w, gitPath) }); e != nil {
+	regRepos, e := o.registryRepos(ctx)
+	if e != nil {
+		return nil, e
+	}
+	regSkip, e := registrySkip(gitPath, regRepos)
+	if e != nil {
+		return nil, fmt.Errorf("immagini del registry: %w", e)
+	}
+	o.logf("copia dei repo (git-data); immagini del registry incluse per %d repo", len(regRepos))
+	if e := st.write(GitDataName, func(w io.Writer) error { return tarDirSkip(w, gitPath, regSkip) }); e != nil {
 		return nil, fmt.Errorf("copia di git-data: %w", e)
 	}
 	if hasAtt {
@@ -383,6 +397,7 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 		Release:       o.Cfg.Release,
 		Namespace:     o.Cfg.Namespace,
 		Files:         st.files,
+		RegistryRepos: regRepos,
 	}
 	path, sum, err := writeArchive(dest, o.archiveName(m), st, m, o.Key)
 	if err != nil {

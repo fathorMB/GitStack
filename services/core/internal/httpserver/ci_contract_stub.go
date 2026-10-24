@@ -30,12 +30,6 @@ func (s *apiServer) ListWorkflowArtifacts(w http.ResponseWriter, r *http.Request
 func (s *apiServer) ListRepositoryPackages(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
 	notImplemented(w)
 }
-func (s *apiServer) GetRepositoryPackageSettings(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
-	notImplemented(w)
-}
-func (s *apiServer) UpdateRepositoryPackageSettings(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
-	notImplemented(w)
-}
 func (s *apiServer) ListActionsCaches(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, params openapi.ListActionsCachesParams) {
 	notImplemented(w)
 }

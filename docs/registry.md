@@ -56,9 +56,20 @@ Senza S3 i dati stanno sul PVC `git-data`, in `<dati>/registry`. Variabili d'amb
 
 `v2` è un nome riservato (`pkg/names`): nessun utente o organizzazione può chiamarsi così.
 
+## Pulizia, tag protetti, quote e backup (RG2)
+
+Le impostazioni di un repo stanno in core (`GET/PATCH /repos/{owner}/{repo}/packages/settings`, serve il ruolo admin; il PATCH sostituisce tutto):
+
+- `protectedTagPatterns`: modelli come `v*`. Un tag protetto non si sovrascrive (il push risponde 403 DENIED) e l'immagine che lo porta non si elimina; la pulizia non lo tocca mai.
+- `deleteUntaggedAfterDays` (default 7): le immagini senza tag più vecchie si eliminano. Quelle con un tag mai da sole; un'immagine referenziata da un indice con tag resta.
+- `keepLastTags` (facoltativo): per ogni immagine si tengono solo gli ultimi N tag non protetti. `deleteShaTagsAfterDays` (facoltativo): i tag `sha-*` più vecchi di X giorni si eliminano.
+- `includeInBackup` (default `false`): le immagini del repo entrano in `gitstack backup`. Il restore riporta le sole immagini incluse.
+
+La pulizia gira nel servizio git ogni ora (`GITSTACK_GIT_REGISTRY_CLEANUP_INTERVAL`), salta i repo archiviati e quelli che core non conosce, e raccoglie i blob rimasti senza immagine solo se più vecchi di 24 ore. La quota per owner (`GITSTACK_GIT_REGISTRY_QUOTA`, chart `git.registry.quotaPerOwner`) somma i blob di tutti i repo dell'owner: a quota esaurita il push è rifiutato, oltre l'80% la risposta ha l'intestazione `Warning`.
+
 ## Limiti noti
 
-- Le immagini sono sul PVC `git-data` e quindi nei backup del volume: «immagini escluse di default dai backup» (c_73ffb543ccfe3876) è un item successivo.
-- Nessuna quota, nessun tag protetto, nessuna pulizia (RG2 e successivi).
+- Il backup di `gitstack backup` salta le immagini di tutti i repo che non hanno `includeInBackup` (default); con S3 le immagini non sono nel volume e il backup non le copia.
+- La quota è per owner e unica per tutta l'istanza (`GITSTACK_GIT_REGISTRY_QUOTA`): non c'è una quota diversa per owner. Il conteggio vale pochi secondi e un singolo blob può superarla di poco.
 - Il rate limit del gateway conta le richieste per IP, non per token (il registry usa Basic, non Bearer): un push di molti livelli consuma il burst dell'IP.
 - Un `docker login` fuori da `localhost` richiede HTTPS: usa la CA dell'istanza (`/downloads/ca.crt`, vedi `docs/tls.md`).

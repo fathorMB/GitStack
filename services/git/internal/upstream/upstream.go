@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/fathorMB/GitStack/services/git/internal/access"
+	"github.com/fathorMB/GitStack/services/git/internal/registry"
 	"github.com/fathorMB/GitStack/services/git/internal/trust"
 )
 
@@ -267,4 +268,59 @@ func (c *Client) JobAccess(ctx context.Context, token, owner, repo string) (acce
 		return access.JobAccess{}, fmt.Errorf("%w: risposta di registry-access non valida", access.ErrUnavailable)
 	}
 	return access.JobAccess{RepoID: out.RepoID, Owner: out.Owner, Name: out.Name, Archived: out.Archived, Packages: out.Packages}, nil
+}
+
+// registrySettingsIdentity è l'identità con cui il servizio git chiama la rotta interna di
+// core per le impostazioni del registry: non è un utente, core la accetta solo con la chiave
+// del servizio git e solo per quella rotta.
+var registrySettingsIdentity = trust.Identity{UserID: "00000000-0000-0000-0000-000000000000", Username: "gitstack-registry"}
+
+var _ registry.SettingsSource = (*Client)(nil)
+
+// PackageSettings implementa registry.SettingsSource: GET /internal/registry/settings/{repoId}
+// di core. 404 = repo sconosciuto o eliminato.
+func (c *Client) PackageSettings(ctx context.Context, repoID string) (registry.Settings, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.core+"/internal/registry/settings/"+url.PathEscape(repoID), nil)
+	if err != nil {
+		return registry.Settings{}, err
+	}
+	trust.Sign(req.Header, c.secret, registrySettingsIdentity, c.now())
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return registry.Settings{}, errors.New(sanitize(err))
+	}
+	defer func() { _ = resp.Body.Close() }()
+	data, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	switch resp.StatusCode {
+	case http.StatusOK:
+	case http.StatusNotFound:
+		return registry.Settings{}, registry.ErrSettingsNotFound
+	default:
+		return registry.Settings{}, fmt.Errorf("core ha risposto %d", resp.StatusCode)
+	}
+	var out struct {
+		RepoID                  string   `json:"repoId"`
+		Owner                   string   `json:"owner"`
+		Name                    string   `json:"name"`
+		Archived                bool     `json:"archived"`
+		ProtectedTagPatterns    []string `json:"protectedTagPatterns"`
+		DeleteUntaggedAfterDays int      `json:"deleteUntaggedAfterDays"`
+		KeepLastTags            *int     `json:"keepLastTags"`
+		DeleteShaTagsAfterDays  *int     `json:"deleteShaTagsAfterDays"`
+		IncludeInBackup         bool     `json:"includeInBackup"`
+		OwnerRepoIDs            []string `json:"ownerRepoIds"`
+	}
+	if err := json.Unmarshal(data, &out); err != nil || out.RepoID == "" {
+		return registry.Settings{}, errors.New("risposta di core non valida")
+	}
+	st := registry.Settings{RepoID: out.RepoID, Owner: out.Owner, Name: out.Name, Archived: out.Archived,
+		ProtectedTagPatterns: out.ProtectedTagPatterns, DeleteUntaggedAfterDays: out.DeleteUntaggedAfterDays,
+		IncludeInBackup: out.IncludeInBackup, OwnerRepoIDs: out.OwnerRepoIDs}
+	if out.KeepLastTags != nil {
+		st.KeepLastTags = *out.KeepLastTags
+	}
+	if out.DeleteShaTagsAfterDays != nil {
+		st.DeleteShaTagsAfterDays = *out.DeleteShaTagsAfterDays
+	}
+	return st, nil
 }

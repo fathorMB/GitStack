@@ -363,6 +363,12 @@ git:
   # eliminazione e ripristino entro 7 giorni).
   registry:
     enabled: true
+    # Quota per owner (RG2), per esempio "10GB": il push oltre quota è rifiutato, oltre l'80%
+    # arriva un avviso (intestazione Warning). Vuoto = nessuna quota.
+    quotaPerOwner: ""
+    # Ogni quanto gira la pulizia (immagini senza tag dopo 7 giorni, regole del repo); durata
+    # Go. Vuoto = 1h, "0" la spegne.
+    cleanupInterval: ""
     # Token del job (gsj_): URL e porta del ci-gateway di core, con cui il registry lo
     # convalida. Vuoto = solo i token personali; il ci-gateway non è ancora nel chart.
     ciGateway:

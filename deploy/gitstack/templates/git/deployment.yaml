@@ -75,6 +75,14 @@ spec:
             - name: GITSTACK_GIT_REGISTRY
               value: "off"
             {{- end }}
+            {{- with .Values.git.registry.quotaPerOwner }}
+            - name: GITSTACK_GIT_REGISTRY_QUOTA
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.git.registry.cleanupInterval }}
+            - name: GITSTACK_GIT_REGISTRY_CLEANUP_INTERVAL
+              value: {{ . | quote }}
+            {{- end }}
             {{- with .Values.git.registry.ciGateway.url }}
             - name: GITSTACK_GIT_CI_GATEWAY_URL
               value: {{ . | quote }}

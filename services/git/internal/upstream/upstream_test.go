@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/fathorMB/GitStack/services/git/internal/access"
+	"github.com/fathorMB/GitStack/services/git/internal/registry"
 	"github.com/fathorMB/GitStack/services/git/internal/trust"
 )
 
@@ -173,5 +174,36 @@ func TestLookupKey(t *testing.T) {
 	}
 	if _, err := New("http://127.0.0.1:1", "", "sec", time.Second).LookupKey(ctx, fp); !errors.Is(err, access.ErrUnavailable) {
 		t.Errorf("identity spenta: %v", err)
+	}
+}
+
+func TestPackageSettings(t *testing.T) {
+	var gotPath string
+	var gotID trust.Identity
+	core := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotID, _ = trust.Verify(r.Header, "segreto", time.Now())
+		if strings.HasSuffix(r.URL.Path, "/sconosciuto") {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		_, _ = w.Write([]byte(`{"repoId":"r1","owner":"alice","name":"app","archived":false,"protectedTagPatterns":["v*"],` +
+			`"deleteUntaggedAfterDays":3,"keepLastTags":5,"deleteShaTagsAfterDays":null,"includeInBackup":true,"ownerRepoIds":["r1","r2"]}`))
+	}))
+	defer core.Close()
+	c := New("http://unused", core.URL, "segreto", time.Second)
+	st, err := c.PackageSettings(context.Background(), "r1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotPath != "/internal/registry/settings/r1" || gotID.Username == "" {
+		t.Errorf("richiesta a core: %q %+v", gotPath, gotID)
+	}
+	if st.Owner != "alice" || st.KeepLastTags != 5 || st.DeleteShaTagsAfterDays != 0 || st.DeleteUntaggedAfterDays != 3 ||
+		!st.IncludeInBackup || len(st.ProtectedTagPatterns) != 1 || len(st.OwnerRepoIDs) != 2 {
+		t.Errorf("impostazioni: %+v", st)
+	}
+	if _, err := c.PackageSettings(context.Background(), "sconosciuto"); !errors.Is(err, registry.ErrSettingsNotFound) {
+		t.Errorf("repo sconosciuto: %v", err)
 	}
 }

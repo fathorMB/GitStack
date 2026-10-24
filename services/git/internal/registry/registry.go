@@ -32,6 +32,8 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/distribution/distribution/v3/configuration"
 	"github.com/distribution/distribution/v3/registry/api/errcode"
@@ -111,6 +113,21 @@ type Config struct {
 	// distribution; i test la spengono per non lasciare goroutine.
 	KeepUploadPurging bool
 
+	// QuotaBytes è la quota di ogni owner (RG2); 0 = nessuna quota. Con più repo dello stesso
+	// owner si sommano i blob di tutti i suoi repo (uno condiviso si conta una volta).
+	QuotaBytes int64
+	// SettingsTTL: per quanto si tengono le impostazioni di un repo lette da core
+	// (default 10 s; negativo = mai in cache). UsageTTL vale per il conteggio della quota (default 15 s).
+	SettingsTTL, UsageTTL time.Duration
+	// CleanupInterval: ogni quanto gira la pulizia (RG2); 0 = non parte da sola (Cleanup resta
+	// chiamabile).
+	CleanupInterval time.Duration
+	// BlobGrace: i blob non referenziati più giovani di così non si cancellano (default 24 h):
+	// un push in corso li ha caricati prima del manifest.
+	BlobGrace time.Duration
+	// Now è l'orologio (default time.Now); i test lo sostituiscono.
+	Now func() time.Time
+
 	// testInMemory: archiviazione in memoria. Solo per i test sugli host dove il driver su
 	// disco di distribution non gira (Windows: rinomina di file ancora aperti).
 	testInMemory bool
@@ -123,6 +140,16 @@ type Handler struct {
 	driver  storagedriver.StorageDriver
 	realm   string
 	log     *slog.Logger
+
+	// Impostazioni, quota e pulizia (GIT-325, RG2). settings è nil se il backend non le dà.
+	settings  *settingsCache
+	quota     int64
+	now       func() time.Time
+	blobGrace time.Duration
+	usageTTL  time.Duration
+	usageMu   sync.Mutex
+	usage     map[string]usageEntry
+	cleanup   *cleaner
 }
 
 func (c Config) storage() (configuration.Storage, error) {
@@ -167,7 +194,9 @@ func (c Config) storage() (configuration.Storage, error) {
 		return st, nil
 	}
 	if c.testInMemory {
-		st["inmemory"] = configuration.Parameters{}
+		raw := make([]byte, 8)
+		_, _ = io.ReadFull(rand.Reader, raw)
+		st[sharedMemoryDriver] = configuration.Parameters{"id": hex.EncodeToString(raw)}
 		return st, nil
 	}
 	if c.Dir == "" {
@@ -206,7 +235,27 @@ func New(cfg Config, b Backend) (h *Handler, err error) {
 	if realm == "" {
 		realm = "GitStack registry"
 	}
-	h = &Handler{backend: b, realm: realm, log: log}
+	h = &Handler{backend: b, realm: realm, log: log, quota: cfg.QuotaBytes, usage: map[string]usageEntry{}}
+	h.now = cfg.Now
+	if h.now == nil {
+		h.now = time.Now
+	}
+	h.blobGrace = cfg.BlobGrace
+	if h.blobGrace <= 0 {
+		h.blobGrace = 24 * time.Hour
+	}
+	h.usageTTL = cfg.UsageTTL
+	if h.usageTTL == 0 {
+		h.usageTTL = 15 * time.Second
+	}
+	if src, ok := b.(SettingsSource); ok {
+		ttl := cfg.SettingsTTL
+		if ttl == 0 {
+			ttl = 10 * time.Second
+		}
+		h.settings = newSettingsCache(src, ttl)
+		h.settings.now = h.now
+	}
 
 	// Il log di distribution (logrus) è spento: registra ogni 404 normale di un HEAD e il
 	// nome interno dei repo. Gli errori del server li registra ServeHTTP.
@@ -232,6 +281,12 @@ func New(cfg Config, b Backend) (h *Handler, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("registry: archiviazione non avviabile: %w", err)
 	}
+	if h.settings != nil {
+		h.cleanup = newCleaner(h)
+		if cfg.CleanupInterval > 0 {
+			h.cleanup.start(cfg.CleanupInterval)
+		}
+	}
 	return h, nil
 }
 
@@ -248,7 +303,12 @@ func init() {
 }
 
 // Close ferma i lavori in background di distribution.
-func (h *Handler) Close() error { return h.app.Shutdown() }
+func (h *Handler) Close() error {
+	if h.cleanup != nil {
+		h.cleanup.stop()
+	}
+	return h.app.Shutdown()
+}
 
 // Purge cancella le immagini del repo (cancellazione definitiva, R2): i suoi repository
 // e i tag. I blob che nessun repo referenzia restano finché la pulizia (RG2) non li
@@ -404,6 +464,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	g.user = cl.name
+	if !h.guard(w, r, rt, action, g.repoID) {
+		return
+	}
 	if action == actionPush && r.Method == http.MethodDelete {
 		// Distribution chiede l'azione delete anche per annullare un upload: qui basta write.
 		g.actions[actionDelete] = true

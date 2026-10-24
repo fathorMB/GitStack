@@ -31,6 +31,7 @@ type fakeCluster struct {
 	statefulSets   map[string]bool // StatefulSet presenti
 	failSTSRestart bool
 	ctxAtDump      context.Context
+	registryRepos  string // output della query dei repo con includeInBackup
 }
 
 func (f *fakeCluster) note(s string) { f.mu.Lock(); f.calls = append(f.calls, s); f.mu.Unlock() }
@@ -67,6 +68,11 @@ func (f *fakeCluster) WaitStatefulSetReady(_ context.Context, n string) error {
 	return nil
 }
 func (f *fakeCluster) PGExec(ctx context.Context, stdin io.Reader, stdout io.Writer, args ...string) error {
+	if strings.Contains(strings.Join(args, " "), "repo_package_settings") {
+		// Elenco dei repo con le immagini nel backup (GIT-325): una lettura, non entra nelle chiamate.
+		_, err := io.WriteString(stdout, f.registryRepos)
+		return err
+	}
 	if strings.Contains(strings.Join(args, " "), "pg_dump") {
 		f.note("pg_dump")
 		f.ctxAtDump = ctx

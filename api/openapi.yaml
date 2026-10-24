@@ -10218,7 +10218,9 @@ components:
       properties:
         protectedTagPatterns: {type: array, items: {type: string}, description: Tag che non possono essere sovrascritti o eliminati.}
         deleteUntaggedAfterDays: {type: integer, minimum: 1, default: 7}
-        includeInBackup: {type: boolean, default: false}
+        includeInBackup: {type: boolean, default: false, description: "Include le immagini del repo nei backup (RG2: escluse di default)."}
+        keepLastTags: {type: integer, minimum: 1, description: "Facoltativo: tiene solo gli ultimi N tag per immagine (i tag protetti restano sempre). Assente = nessun limite."}
+        deleteShaTagsAfterDays: {type: integer, minimum: 1, description: "Facoltativo: elimina i tag sha-* più vecchi di X giorni (i tag protetti restano sempre). Assente = mai."}
     ReleaseList:
       type: object
       additionalProperties: false
