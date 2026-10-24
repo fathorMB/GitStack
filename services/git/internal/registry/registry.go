@@ -20,15 +20,19 @@
 package registry
 
 import (
+	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"strings"
@@ -128,6 +132,9 @@ type Config struct {
 	BlobGrace time.Duration
 	// Now è l'orologio (default time.Now); i test lo sostituiscono.
 	Now func() time.Time
+	// SigningKeyFile è una chiave privata ECDSA PEM per le firme cosign dei
+	// manifest ricevuti dai token di job CI. Vuoto usa <Dir>/signing-key.pem.
+	SigningKeyFile string
 
 	// testInMemory: archiviazione in memoria. Solo per i test sugli host dove il driver su
 	// disco di distribution non gira (Windows: rinomina di file ancora aperti).
@@ -143,14 +150,15 @@ type Handler struct {
 	log     *slog.Logger
 
 	// Impostazioni, quota e pulizia (GIT-325, RG2). settings è nil se il backend non le dà.
-	settings  *settingsCache
-	quota     atomic.Int64 // letta una volta per richiesta in guard; scritta solo da costruttore e test
-	now       func() time.Time
-	blobGrace time.Duration
-	usageTTL  time.Duration
-	usageMu   sync.Mutex
-	usage     map[string]usageEntry
-	cleanup   *cleaner
+	settings   *settingsCache
+	quota      atomic.Int64 // letta una volta per richiesta in guard; scritta solo da costruttore e test
+	now        func() time.Time
+	blobGrace  time.Duration
+	usageTTL   time.Duration
+	usageMu    sync.Mutex
+	usage      map[string]usageEntry
+	cleanup    *cleaner
+	signingKey *ecdsa.PrivateKey
 }
 
 func (c Config) storage() (configuration.Storage, error) {
@@ -237,6 +245,11 @@ func New(cfg Config, b Backend) (h *Handler, err error) {
 		realm = "GitStack registry"
 	}
 	h = &Handler{backend: b, realm: realm, log: log, usage: map[string]usageEntry{}}
+	if cfg.SigningKeyFile != "" {
+		if h.signingKey, err = loadSigningKey(cfg.SigningKeyFile); err != nil {
+			return nil, fmt.Errorf("registry: chiave di firma: %w", err)
+		}
+	}
 	h.quota.Store(cfg.QuotaBytes)
 	h.now = cfg.Now
 	if h.now == nil {
@@ -469,6 +482,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !h.guard(w, r, rt, action, g.repoID) {
 		return
 	}
+	var pushedManifestDigest string
+	if cl.job && action == actionPush && r.Method == http.MethodPut && strings.HasPrefix(rt.tail, "manifests/") {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			serveErr(w, errcode.ErrorCodeUnknown)
+			return
+		}
+		_ = r.Body.Close()
+		r.Body = io.NopCloser(bytes.NewReader(body))
+		pushedManifestDigest = digestBytes(body)
+	}
 	if action == actionPush && r.Method == http.MethodDelete {
 		// Distribution chiede l'azione delete anche per annullare un upload: qui basta write.
 		g.actions[actionDelete] = true
@@ -505,9 +529,116 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	rw := &rewriteWriter{ResponseWriter: w, from: "/v2/" + g.repoID, to: "/v2/" + canon}
 	h.app.ServeHTTP(rw, r2)
+	if pushedManifestDigest != "" && (rw.status == 0 || rw.status >= http.StatusOK && rw.status < http.StatusMultipleChoices) {
+		if digest := rw.Header().Get("Docker-Content-Digest"); digest == "" {
+			digest = pushedManifestDigest
+			if err := h.attachProvenance(r.Context(), g, rt, r.Host, digest); err != nil {
+				h.log.Error("firma dell'immagine del job non riuscita", "err", err, "repoId", g.repoID, "digest", digest)
+			}
+		} else {
+			if err := h.attachProvenance(r.Context(), g, rt, r.Host, digest); err != nil {
+				h.log.Error("firma dell'immagine del job non riuscita", "err", err, "repoId", g.repoID, "digest", digest)
+			}
+		}
+	}
 	if rw.status >= 500 {
 		h.log.Error("il registry ha risposto con un errore", "status", rw.status, "method", r.Method, "path", rt.tail, "repoId", g.repoID)
 	}
+}
+
+// attachProvenance salva accanto al manifest pubblicato una firma Cosign e uno
+// SBOM SPDX. Le richieste sono servite direttamente da distribution con lo
+// stesso grant del job: la chiave privata non lascia mai questo processo.
+func (h *Handler) attachProvenance(ctx context.Context, g *authzGrant, rt route, host, digest string) error {
+	if h.signingKey == nil || !strings.HasPrefix(digest, "sha256:") || len(digest) != len("sha256:")+64 {
+		return nil
+	}
+	canonical := g.canonical
+	if rt.image != "" {
+		canonical += "/" + rt.image
+	}
+	reference := strings.TrimPrefix(host, "//") + "/" + canonical
+	payload, signature, err := h.signPayload(reference, digest)
+	if err != nil {
+		return err
+	}
+	if err := h.putArtifact(ctx, g, rt.upstreamName(g.repoID), digest, ".sig", payload, "application/vnd.dev.cosign.simplesigning.v1+json", map[string]string{"dev.cosignproject.cosign/signature": signature}); err != nil {
+		return fmt.Errorf("firma cosign: %w", err)
+	}
+	sbom, err := spdxSBOM(digest)
+	if err != nil {
+		return err
+	}
+	if err := h.putArtifact(ctx, g, rt.upstreamName(g.repoID), digest, ".sbom", sbom, "application/spdx+json", nil); err != nil {
+		return fmt.Errorf("SBOM: %w", err)
+	}
+	return nil
+}
+
+func (h *Handler) putArtifact(ctx context.Context, g *authzGrant, repository, subject, suffix string, layer []byte, mediaType string, annotations map[string]string) error {
+	config := []byte("{}")
+	for _, blob := range [][]byte{config, layer} {
+		if err := h.putBlob(ctx, g, repository, blob); err != nil {
+			return err
+		}
+	}
+	type descriptor struct {
+		MediaType   string            `json:"mediaType"`
+		Digest      string            `json:"digest"`
+		Size        int               `json:"size"`
+		Annotations map[string]string `json:"annotations,omitempty"`
+	}
+	manifest := struct {
+		SchemaVersion int          `json:"schemaVersion"`
+		MediaType     string       `json:"mediaType"`
+		ArtifactType  string       `json:"artifactType"`
+		Subject       descriptor   `json:"subject"`
+		Config        descriptor   `json:"config"`
+		Layers        []descriptor `json:"layers"`
+	}{
+		SchemaVersion: 2, MediaType: "application/vnd.oci.image.manifest.v1+json", ArtifactType: mediaType,
+		Subject: descriptor{MediaType: "application/vnd.oci.image.manifest.v1+json", Digest: subject},
+		Config:  descriptor{MediaType: "application/vnd.oci.empty.v1+json", Digest: digestBytes(config), Size: len(config)},
+		Layers:  []descriptor{{MediaType: mediaType, Digest: digestBytes(layer), Size: len(layer), Annotations: annotations}},
+	}
+	b, err := json.Marshal(manifest)
+	if err != nil {
+		return err
+	}
+	tag := strings.Replace(subject, ":", "-", 1) + suffix
+	req := httptest.NewRequest(http.MethodPut, "http://registry/v2/"+repository+"/manifests/"+tag, strings.NewReader(string(b))).WithContext(context.WithValue(ctx, grantKey{}, g.grant))
+	req.Header.Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
+	rec := httptest.NewRecorder()
+	h.app.ServeHTTP(rec, req)
+	if rec.Code < http.StatusOK || rec.Code >= http.StatusMultipleChoices {
+		return fmt.Errorf("manifest artefatto: %d", rec.Code)
+	}
+	return nil
+}
+
+func (h *Handler) putBlob(ctx context.Context, g *authzGrant, repository string, blob []byte) error {
+	start := httptest.NewRequest(http.MethodPost, "http://registry/v2/"+repository+"/blobs/uploads/", nil).WithContext(context.WithValue(ctx, grantKey{}, g.grant))
+	rec := httptest.NewRecorder()
+	h.app.ServeHTTP(rec, start)
+	if rec.Code != http.StatusAccepted {
+		return fmt.Errorf("avvio upload blob: %d", rec.Code)
+	}
+	location := rec.Header().Get("Location")
+	if location == "" {
+		return errors.New("upload blob senza location")
+	}
+	req := httptest.NewRequest(http.MethodPut, "http://registry"+location+"&digest="+url.QueryEscape(digestBytes(blob)), strings.NewReader(string(blob))).WithContext(context.WithValue(ctx, grantKey{}, g.grant))
+	rec = httptest.NewRecorder()
+	h.app.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		return fmt.Errorf("upload blob: %d", rec.Code)
+	}
+	return nil
+}
+
+func digestBytes(b []byte) string {
+	s := sha256.Sum256(b)
+	return "sha256:" + hex.EncodeToString(s[:])
 }
 
 // jobTokenValid verifica un token del job senza un repo: il ci-gateway lo convalida prima

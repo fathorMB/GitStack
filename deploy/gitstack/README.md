@@ -224,6 +224,14 @@ Come si comportano le email (regola C5):
 - **Errori SMTP.** Un invio fallito si ritenta con attesa crescente (1 minuto, poi 2) per al massimo 3 tentativi in tutto; poi la notifica resta solo in-app e core scrive un log di errore (`email: invio non riuscito, tentativi esauriti`). Gli invii girano in un processo separato dal motore delle notifiche: un SMTP lento o giù non rallenta né blocca le notifiche in-app.
 - **Più repliche.** Un advisory lock su Postgres fa lavorare un solo dispatcher alla volta: nessuna email doppia.
 
+## Firme del registry
+
+Con `git.registry.enabled=true`, il chart crea e conserva il Secret `<release>-registry-signing-key` (chiave `cosign.key`, ECDSA P-256) usato solo dal servizio git per firmare le immagini pubblicate dai job CI. Per fornire una chiave esistente imposta `git.registry.signing.existingSecret`; il Secret deve contenere `cosign.key` in PEM. La chiave pubblica autenticata è disponibile da `GET /api/v1/registry/signing-key` e serve a `cosign verify --key cosign.pub <immagine>`.
+
+### Rotazione
+
+La rotazione è manuale: sostituisci il Secret, riavvia il Deployment git e conserva la chiave pubblica precedente per verificare le firme già emesse. Non esiste rotazione automatica.
+
 ## Probe di liveness/readiness
 
 Tutti i servizi Go (`gateway`, `identity`, `core`, `git`) hanno probe HTTP su `/healthz` (liveness) e `/readyz` (readiness), come da convenzione dei rispettivi README. `web` ha le stesse probe su `/healthz` per coerenza (disattivabili con `web.probes.enabled: false` se GIT-7 non le implementa da subito). `postgres` e `nats` hanno probe non-HTTP (`pg_isready`, endpoint di monitor `/healthz` di NATS).

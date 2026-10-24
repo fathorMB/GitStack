@@ -15,8 +15,9 @@ import (
 // cambia, il generato cambia, e questo file smette di compilare finché non
 // lo si adegua.
 type apiServer struct {
-	proxy   http.Handler
-	version string // versione dell'installazione (GITSTACK_VERSION)
+	proxy       http.Handler
+	registryKey http.Handler
+	version     string // versione dell'installazione (GITSTACK_VERSION)
 }
 
 var _ openapi.ServerInterface = (*apiServer)(nil)
@@ -31,6 +32,14 @@ func (s *apiServer) GetMeta(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(openapi.Meta{ServerVersion: s.version, ApiVersion: GatewayVersion})
+}
+
+func (s *apiServer) GetRegistrySigningKey(w http.ResponseWriter, r *http.Request) {
+	if s.registryKey == nil {
+		http.Error(w, "registry non configurato", http.StatusServiceUnavailable)
+		return
+	}
+	s.registryKey.ServeHTTP(w, r)
 }
 
 func (s *apiServer) ListResources(w http.ResponseWriter, r *http.Request, _ openapi.ListResourcesParams) {

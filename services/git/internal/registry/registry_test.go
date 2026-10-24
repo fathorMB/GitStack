@@ -2,6 +2,12 @@ package registry
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"io"
 	"log/slog"
@@ -10,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -197,6 +204,89 @@ func (e *env) mustPush(path, tok string) v1.Image {
 		e.t.Fatalf("push %s: %v", path, err)
 	}
 	return img
+}
+
+func TestJobPush_CreaFirmaCosignESBOM(t *testing.T) {
+	e := newEnvWith(t, func(c *Config) {
+		c.SigningKeyFile = filepath.Join(t.TempDir(), "cosign.key")
+		c.Logger = slog.Default()
+	})
+	img := e.mustPush("alice/app/build:latest", "gsj_rw")
+	dg, err := img.Digest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tagBase := strings.Replace(dg.String(), ":", "-", 1)
+	tags, err := remote.List(e.ref("alice/app/build").Context(), basic("gst_read"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(tags, tagBase+".sig") || !slices.Contains(tags, tagBase+".sbom") {
+		t.Fatalf("artefatti mancanti: %v", tags)
+	}
+	desc, err := remote.Get(e.ref("alice/app/build:"+tagBase+".sig"), basic("gst_read"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	signed, err := desc.Image()
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := signed.Manifest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(manifest.Layers) != 1 {
+		t.Fatalf("layer firma: %#v", manifest.Layers)
+	}
+	payload, err := signed.LayerByDigest(manifest.Layers[0].Digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader, err := payload.Uncompressed()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	b, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig, err := base64.StdEncoding.DecodeString(manifest.Layers[0].Annotations["dev.cosignproject.cosign/signature"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	pub, err := e.h.PublicKeyPEM()
+	if err != nil {
+		t.Fatal(err)
+	}
+	block, _ := pem.Decode(pub)
+	parsed, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(b)
+	if !ecdsa.VerifyASN1(parsed.(*ecdsa.PublicKey), sum[:], sig) {
+		t.Fatal("firma cosign non verificabile con la chiave pubblica")
+	}
+	var p simpleSigning
+	if err := json.Unmarshal(b, &p); err != nil || p.Critical.Image.DockerManifestDigest != dg.String() {
+		t.Fatalf("payload cosign: %v %#v", err, p)
+	}
+}
+
+func TestUserPush_NonCreaProvenance(t *testing.T) {
+	e := newEnvWith(t, func(c *Config) { c.SigningKeyFile = filepath.Join(t.TempDir(), "cosign.key") })
+	e.mustPush("alice/app/manual:latest", "gst_write")
+	tags, err := remote.List(e.ref("alice/app/manual").Context(), basic("gst_read"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tag := range tags {
+		if strings.HasSuffix(tag, ".sig") || strings.HasSuffix(tag, ".sbom") {
+			t.Fatalf("push manuale firmato: %v", tags)
+		}
+	}
 }
 
 func (e *env) pull(path, tok string) (v1.Hash, error) {

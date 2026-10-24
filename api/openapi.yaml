@@ -166,6 +166,26 @@ paths:
                 server_version: "v0.1.0"
                 api_version: "0.1.0"
 
+  /registry/signing-key:
+    get:
+      operationId: getRegistrySigningKey
+      tags: [registry]
+      x-mcp:
+        expose: false
+        name: registry_signing_key_get
+        destructive: false
+      summary: Chiave pubblica delle firme del registry
+      description: Chiave PEM dell'istanza per `cosign verify`; richiede un utente autenticato.
+      responses:
+        "200":
+          description: Chiave pubblica ECDSA P-256 in PEM.
+          content:
+            application/x-pem-file:
+              schema:
+                type: string
+        "401":
+          description: Credenziali mancanti o non valide.
+
 
   /admin/system:
     get:

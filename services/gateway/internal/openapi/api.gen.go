@@ -6134,6 +6134,9 @@ type ServerInterface interface {
 	// ReactivateOrgWebhook Riattiva un webhook di un'organizzazione
 	// (POST /orgs/{org}/hooks/{hookId}/reactivate)
 	ReactivateOrgWebhook(w http.ResponseWriter, r *http.Request, org OrgParam, hookId WebhookIdParam)
+	// GetRegistrySigningKey Chiave pubblica delle firme del registry
+	// (GET /registry/signing-key)
+	GetRegistrySigningKey(w http.ResponseWriter, r *http.Request)
 	// ListRepositories Elenca i repo leggibili dall'utente
 	// (GET /repos)
 	ListRepositories(w http.ResponseWriter, r *http.Request, params ListRepositoriesParams)
@@ -7579,6 +7582,20 @@ func (siw *ServerInterfaceWrapper) ReactivateOrgWebhook(w http.ResponseWriter, r
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ReactivateOrgWebhook(w, r, org, hookId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRegistrySigningKey operation middleware
+func (siw *ServerInterfaceWrapper) GetRegistrySigningKey(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRegistrySigningKey(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -15344,6 +15361,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/meta", wrapper.GetMeta)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/registry/signing-key", wrapper.GetRegistrySigningKey)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/system", wrapper.GetAdminSystem)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/resources", wrapper.ListResources)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/resources", wrapper.CreateResource)

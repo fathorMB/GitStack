@@ -61,6 +61,8 @@ type Deps struct {
 	Git http.Handler
 	// Registry, se non nil, serve il registry OCI su /v2/ (GIT-286).
 	Registry http.Handler
+	// RegistrySigningKey espone la chiave pubblica del registry, con la propria autenticazione.
+	RegistrySigningKey http.Handler
 	// RegistryPurge toglie le immagini di un repo cancellato definitivamente (nil = niente).
 	RegistryPurge func(ctx context.Context, repoID string) error
 	// Now è iniettabile per i test (nil = time.Now).
@@ -110,6 +112,9 @@ func NewRouter(d Deps) http.Handler {
 		h.mountMerge(api)
 	}
 	mux.Handle("/internal/", trust.Require(d.Secret, nil, d.Now)(api))
+	if d.RegistrySigningKey != nil {
+		mux.Handle("GET /internal/registry/signing-key", d.RegistrySigningKey)
+	}
 	if d.Git == nil && d.Registry == nil {
 		return mux
 	}

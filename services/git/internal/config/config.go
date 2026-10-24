@@ -91,6 +91,10 @@ const (
 	EnvRegistryQuota = "GITSTACK_GIT_REGISTRY_QUOTA"
 	// EnvRegistryCleanupEvery: ogni quanto gira la pulizia del registry (RG2), durata Go (default 1h; 0 la spegne).
 	EnvRegistryCleanupEvery = "GITSTACK_GIT_REGISTRY_CLEANUP_INTERVAL"
+	// EnvRegistrySigningKeyFile contiene la chiave privata ECDSA PEM con cui il
+	// servizio firma i manifest pubblicati da un job CI. Fuori dal chart, se il
+	// file manca, il servizio ne crea uno con permessi 0600.
+	EnvRegistrySigningKeyFile = "GITSTACK_GIT_REGISTRY_SIGNING_KEY_FILE"
 )
 
 // DefaultSSHAddr è la porta SSH di default (R7).
@@ -139,6 +143,8 @@ type Config struct {
 	RegistryQuotaBytes int64
 	// RegistryCleanupEvery: vedi EnvRegistryCleanupEvery.
 	RegistryCleanupEvery time.Duration
+	// RegistrySigningKeyFile: vedi EnvRegistrySigningKeyFile.
+	RegistrySigningKeyFile string
 }
 
 // RegistryS3 è l'archiviazione S3 del registry.
@@ -250,6 +256,9 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	}
 	if v, ok := lookup(EnvCIGatewayURL); ok {
 		cfg.CIGatewayURL = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(EnvRegistrySigningKeyFile); ok {
+		cfg.RegistrySigningKeyFile = strings.TrimSpace(v)
 	}
 	s3get := func(env string) string {
 		v, _ := lookup(env)

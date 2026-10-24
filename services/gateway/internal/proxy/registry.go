@@ -65,6 +65,20 @@ func ToRegistry(registryURL *url.URL, logger *slog.Logger, opts ...Option) http.
 	return rp
 }
 
+// ToRegistrySigningKey inoltra al servizio git la chiave pubblica del registry.
+// La richiesta ha giÃ  superato Auth del gateway; l'header Bearer resta utile al
+// servizio git come difesa ulteriore sul suo endpoint interno.
+func ToRegistrySigningKey(registryURL *url.URL, logger *slog.Logger, opts ...Option) http.Handler {
+	h := ToRegistry(registryURL, logger, opts...)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r2 := r.Clone(r.Context())
+		r2.URL.Path = "/internal/registry/signing-key"
+		r2.URL.RawPath = ""
+		r2.RequestURI = r2.URL.RequestURI()
+		h.ServeHTTP(w, r2)
+	})
+}
+
 func writeOCIError(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

@@ -218,7 +218,7 @@ func TestSicurezza_RotteDiCoreServite(t *testing.T) {
 	table, _ := security.NewTable(security.Routes)
 	param := regexp.MustCompile(`\{[^}]+\}`)
 	for _, r := range security.Routes {
-		if r.Service != security.ServiceCore || r.OperationID == "getMeta" { // getMeta lo risponde il gateway
+		if r.Service != security.ServiceCore || r.OperationID == "getMeta" || r.OperationID == "getRegistrySigningKey" { // le chiavi le risponde il gateway via git
 			continue
 		}
 		e := newEnv(t, allowAll())

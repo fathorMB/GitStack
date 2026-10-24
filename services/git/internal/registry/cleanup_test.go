@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
@@ -175,6 +176,23 @@ func TestCleanup_SenzaTagDopo7GiorniConTagMai(t *testing.T) {
 	}
 	if !e.manifestExists("alice/app", dTagged) {
 		t.Fatal("l'immagine con tag è sparita")
+	}
+}
+
+func TestCleanup_ConservaFirmaESBOMFincheEsisteImmagine(t *testing.T) {
+	e := newCleanEnv(t, func(c *Config) { c.SigningKeyFile = filepath.Join(t.TempDir(), "cosign.key") })
+	img := e.mustPush("alice/app:job", "gsj_rw")
+	d, err := img.Digest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefix := strings.Replace(d.String(), ":", "-", 1)
+	e.clock.advance(8 * day)
+	if rep := e.cleanup(); len(rep.DeletedImages) != 0 || len(rep.DeletedTags) != 0 {
+		t.Fatalf("la pulizia ha rimosso artefatti della immagine ancora taggata: %+v", rep)
+	}
+	if got := e.tags("alice/app"); !slices.Equal(got, []string{"job", prefix + ".sbom", prefix + ".sig"}) {
+		t.Fatalf("firma/SBOM mancanti dopo pulizia: %v", got)
 	}
 }
 
