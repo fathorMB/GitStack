@@ -43,6 +43,8 @@ type Config struct {
 	GatewayURL string
 	// Secret è la credenziale dei runner interni (solo per FetchTask).
 	Secret string
+	// Labels sono le etichette di un runner esterno: act le esegue in modalità host (-P etichetta=-self-hosted).
+	Labels []string
 	// Name compare come runner_name del job.
 	Name string
 	// ActBin è il binario di act (default "act"); ActArgs sono argomenti aggiuntivi prima di quelli fissi.
@@ -184,6 +186,36 @@ var (
 	stepResult = regexp.MustCompile(`(Success|Failure|Skipped)\s+-\s+Main .*\[[0-9.]+[^\]]*\]\s*$`)
 )
 
+// platformsFor sono le piattaforme di act: le ubuntu-* del pod; per un runner esterno (labels
+// non vuote) anche «self-hosted» e le sue etichette normalizzate come sul server
+// (minuscolo, senza «:schema», niente vuoti né doppioni). Una piattaforma che act non
+// conosce fa saltare il job con uscita 0, cioè un job «verde» senza passi eseguiti.
+func platformsFor(labels []string) []string {
+	out := append([]string{}, actPlatforms...)
+	if len(labels) == 0 {
+		return out
+	}
+	return append(out, NormalizeLabels(append([]string{"self-hosted"}, labels...))...)
+}
+
+// NormalizeLabels è ci.NormalizeLabels (qui duplicata: il runner non importa il pacchetto del server).
+func NormalizeLabels(in []string) []string {
+	out := make([]string, 0, len(in))
+	seen := map[string]bool{}
+	for _, l := range in {
+		l = strings.ToLower(strings.TrimSpace(l))
+		if i := strings.IndexByte(l, ':'); i >= 0 {
+			l = l[:i]
+		}
+		if l == "" || seen[l] {
+			continue
+		}
+		seen[l] = true
+		out = append(out, l)
+	}
+	return out
+}
+
 var actPlatforms = []string{"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "ubuntu-20.04"}
 
 // runAct esegue `act <evento> -j <job>` in modalità host sul workspace e ne segue l'output.
@@ -193,7 +225,7 @@ func runAct(ctx context.Context, cfg Config, rep *reporter, event, jobKey, token
 	}
 	args := append([]string{}, cfg.ActArgs...)
 	args = append(args, event, "-W", filepath.Join(cfg.WorkDir, "workflow", "job.yml"), "-j", jobKey)
-	for _, p := range actPlatforms {
+	for _, p := range platformsFor(cfg.Labels) {
 		args = append(args, "-P", p+"=-self-hosted")
 	}
 	args = append(args, "--pull=false", "--no-cache-server", "-s", "GITHUB_TOKEN")
