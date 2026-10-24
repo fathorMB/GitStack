@@ -196,6 +196,31 @@ func TestCleanup_ConservaFirmaESBOMFincheEsisteImmagine(t *testing.T) {
 	}
 }
 
+func TestCleanup_ConservaProvenanceDuranteGraziaEPoiLaElimina(t *testing.T) {
+	e := newCleanEnv(t, func(c *Config) { c.SigningKeyFile = filepath.Join(t.TempDir(), "cosign.key") })
+	job := e.mustPush("alice/app:job", "gsj_rw")
+	d := digestOf(t, job)
+	prefix := strings.Replace(d.String(), ":", "-", 1)
+	time.Sleep(15 * time.Millisecond)
+	e.mustPush("alice/app:new", "gst_write")
+	e.sb.set(idApp, func(s *Settings) { s.KeepLastTags = 1 })
+	e.cleanup() // stacca job ma mantiene manifest e provenance
+	e.clock.advance(3 * day)
+	e.cleanup()
+	if !e.manifestExists("alice/app", d) || !slices.Contains(e.tags("alice/app"), prefix+".sig") || !slices.Contains(e.tags("alice/app"), prefix+".sbom") {
+		t.Fatal("firma/SBOM rimossi durante la grazia dell'immagine senza tag")
+	}
+	e.clock.advance(5 * day)
+	rep := e.cleanup()
+	if !slices.ContainsFunc(rep.DeletedImages, func(v string) bool { return strings.HasSuffix(v, d.String()) }) {
+		t.Fatalf("subject non eliminato dopo la grazia: %+v", rep)
+	}
+	e.cleanup()
+	if got := e.tags("alice/app"); slices.Contains(got, prefix+".sig") || slices.Contains(got, prefix+".sbom") {
+		t.Fatalf("provenance ancora taggata dopo la rimozione subject: %v", got)
+	}
+}
+
 func TestCleanup_GiorniPerRepoEdIndiceNonOrfano(t *testing.T) {
 	e := newCleanEnv(t, nil)
 	e.sb.set(idApp, func(s *Settings) { s.DeleteUntaggedAfterDays = 2 })

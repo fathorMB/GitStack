@@ -249,7 +249,11 @@ func (h *Handler) cleanImage(ctx context.Context, ns distribution.Namespace, nam
 	// mantenere in vita l'immagine sorgente, ma restano finché essa Ã¨ raggiungibile
 	// da un tag o da un indice. Quando la sorgente sparisce si stacca anche l'artefatto.
 	for tag, subject := range auxiliary {
-		if !keep[subject] {
+		exists, err := ms.Exists(ctx, subject)
+		if err != nil {
+			return err
+		}
+		if !exists {
 			if err := repo.Tags(ctx).Untag(ctx, tag); err != nil {
 				return err
 			}

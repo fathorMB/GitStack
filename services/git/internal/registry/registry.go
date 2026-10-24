@@ -34,6 +34,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -245,6 +246,9 @@ func New(cfg Config, b Backend) (h *Handler, err error) {
 		realm = "GitStack registry"
 	}
 	h = &Handler{backend: b, realm: realm, log: log, usage: map[string]usageEntry{}}
+	if cfg.SigningKeyFile == "" && cfg.Dir != "" {
+		cfg.SigningKeyFile = filepath.Join(cfg.Dir, "signing-key.pem")
+	}
 	if cfg.SigningKeyFile != "" {
 		if h.signingKey, err = loadSigningKey(cfg.SigningKeyFile); err != nil {
 			return nil, fmt.Errorf("registry: chiave di firma: %w", err)
@@ -482,7 +486,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !h.guard(w, r, rt, action, g.repoID) {
 		return
 	}
-	var pushedManifestDigest string
+	var pushedManifestDigest, pushedManifestMediaType string
+	var pushedManifestSize int
 	if cl.job && action == actionPush && r.Method == http.MethodPut && strings.HasPrefix(rt.tail, "manifests/") {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -492,6 +497,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = r.Body.Close()
 		r.Body = io.NopCloser(bytes.NewReader(body))
 		pushedManifestDigest = digestBytes(body)
+		pushedManifestSize = len(body)
+		pushedManifestMediaType = r.Header.Get("Content-Type")
 	}
 	if action == actionPush && r.Method == http.MethodDelete {
 		// Distribution chiede l'azione delete anche per annullare un upload: qui basta write.
@@ -530,15 +537,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rw := &rewriteWriter{ResponseWriter: w, from: "/v2/" + g.repoID, to: "/v2/" + canon}
 	h.app.ServeHTTP(rw, r2)
 	if pushedManifestDigest != "" && (rw.status == 0 || rw.status >= http.StatusOK && rw.status < http.StatusMultipleChoices) {
-		if digest := rw.Header().Get("Docker-Content-Digest"); digest == "" {
+		digest := rw.Header().Get("Docker-Content-Digest")
+		if digest == "" {
 			digest = pushedManifestDigest
-			if err := h.attachProvenance(r.Context(), g, rt, r.Host, digest); err != nil {
-				h.log.Error("firma dell'immagine del job non riuscita", "err", err, "repoId", g.repoID, "digest", digest)
-			}
-		} else {
-			if err := h.attachProvenance(r.Context(), g, rt, r.Host, digest); err != nil {
-				h.log.Error("firma dell'immagine del job non riuscita", "err", err, "repoId", g.repoID, "digest", digest)
-			}
+		}
+		if err := h.attachProvenance(r.Context(), g, rt, r.Host, digest, pushedManifestMediaType, pushedManifestSize); err != nil {
+			h.log.Error("firma dell'immagine del job non riuscita", "err", err, "repoId", g.repoID, "digest", digest)
 		}
 	}
 	if rw.status >= 500 {
@@ -549,7 +553,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // attachProvenance salva accanto al manifest pubblicato una firma Cosign e uno
 // SBOM SPDX. Le richieste sono servite direttamente da distribution con lo
 // stesso grant del job: la chiave privata non lascia mai questo processo.
-func (h *Handler) attachProvenance(ctx context.Context, g *authzGrant, rt route, host, digest string) error {
+func (h *Handler) attachProvenance(ctx context.Context, g *authzGrant, rt route, host, digest, subjectMediaType string, subjectSize int) error {
 	if h.signingKey == nil || !strings.HasPrefix(digest, "sha256:") || len(digest) != len("sha256:")+64 {
 		return nil
 	}
@@ -562,20 +566,20 @@ func (h *Handler) attachProvenance(ctx context.Context, g *authzGrant, rt route,
 	if err != nil {
 		return err
 	}
-	if err := h.putArtifact(ctx, g, rt.upstreamName(g.repoID), digest, ".sig", payload, "application/vnd.dev.cosign.simplesigning.v1+json", map[string]string{"dev.cosignproject.cosign/signature": signature}); err != nil {
+	if err := h.putArtifact(ctx, g, rt.upstreamName(g.repoID), digest, subjectMediaType, subjectSize, ".sig", payload, "application/vnd.dev.cosign.simplesigning.v1+json", map[string]string{"dev.cosignproject.cosign/signature": signature}); err != nil {
 		return fmt.Errorf("firma cosign: %w", err)
 	}
 	sbom, err := spdxSBOM(digest)
 	if err != nil {
 		return err
 	}
-	if err := h.putArtifact(ctx, g, rt.upstreamName(g.repoID), digest, ".sbom", sbom, "application/spdx+json", nil); err != nil {
+	if err := h.putArtifact(ctx, g, rt.upstreamName(g.repoID), digest, subjectMediaType, subjectSize, ".sbom", sbom, "application/spdx+json", nil); err != nil {
 		return fmt.Errorf("SBOM: %w", err)
 	}
 	return nil
 }
 
-func (h *Handler) putArtifact(ctx context.Context, g *authzGrant, repository, subject, suffix string, layer []byte, mediaType string, annotations map[string]string) error {
+func (h *Handler) putArtifact(ctx context.Context, g *authzGrant, repository, subject, subjectMediaType string, subjectSize int, suffix string, layer []byte, mediaType string, annotations map[string]string) error {
 	config := []byte("{}")
 	for _, blob := range [][]byte{config, layer} {
 		if err := h.putBlob(ctx, g, repository, blob); err != nil {
@@ -597,7 +601,7 @@ func (h *Handler) putArtifact(ctx context.Context, g *authzGrant, repository, su
 		Layers        []descriptor `json:"layers"`
 	}{
 		SchemaVersion: 2, MediaType: "application/vnd.oci.image.manifest.v1+json", ArtifactType: mediaType,
-		Subject: descriptor{MediaType: "application/vnd.oci.image.manifest.v1+json", Digest: subject},
+		Subject: descriptor{MediaType: subjectMediaType, Digest: subject, Size: subjectSize},
 		Config:  descriptor{MediaType: "application/vnd.oci.empty.v1+json", Digest: digestBytes(config), Size: len(config)},
 		Layers:  []descriptor{{MediaType: mediaType, Digest: digestBytes(layer), Size: len(layer), Annotations: annotations}},
 	}

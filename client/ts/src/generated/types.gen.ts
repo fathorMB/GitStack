@@ -4153,6 +4153,29 @@ export type GetMetaResponses = {
 
 export type GetMetaResponse = GetMetaResponses[keyof GetMetaResponses];
 
+export type GetRegistrySigningKeyData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/registry/signing-key';
+};
+
+export type GetRegistrySigningKeyErrors = {
+    /**
+     * Credenziali mancanti o non valide.
+     */
+    401: unknown;
+};
+
+export type GetRegistrySigningKeyResponses = {
+    /**
+     * Chiave pubblica ECDSA P-256 in PEM.
+     */
+    200: string;
+};
+
+export type GetRegistrySigningKeyResponse = GetRegistrySigningKeyResponses[keyof GetRegistrySigningKeyResponses];
+
 export type GetAdminSystemData = {
     body?: never;
     path?: never;

@@ -122,12 +122,24 @@ func loadSigningKey(file string) (*ecdsa.PrivateKey, error) {
 	if block == nil {
 		return nil, errors.New("chiave di firma non in PEM")
 	}
-	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	var key *ecdsa.PrivateKey
+	if block.Type == "EC PRIVATE KEY" {
+		key, err = x509.ParseECPrivateKey(block.Bytes)
+	} else {
+		parsed, parseErr := x509.ParsePKCS8PrivateKey(block.Bytes)
+		if parseErr != nil {
+			return nil, fmt.Errorf("chiave di firma: %w", parseErr)
+		}
+		var ok bool
+		key, ok = parsed.(*ecdsa.PrivateKey)
+		if !ok {
+			return nil, errors.New("la chiave di firma deve essere ECDSA P-256")
+		}
+	}
 	if err != nil {
 		return nil, fmt.Errorf("chiave di firma: %w", err)
 	}
-	key, ok := parsed.(*ecdsa.PrivateKey)
-	if !ok || key.Curve != elliptic.P256() {
+	if key.Curve != elliptic.P256() {
 		return nil, errors.New("la chiave di firma deve essere ECDSA P-256")
 	}
 	return key, nil
