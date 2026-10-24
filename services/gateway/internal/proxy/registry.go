@@ -66,7 +66,7 @@ func ToRegistry(registryURL *url.URL, logger *slog.Logger, opts ...Option) http.
 }
 
 // ToRegistrySigningKey inoltra al servizio git la chiave pubblica del registry.
-// La richiesta ha giÃ  superato Auth del gateway; l'header Bearer resta utile al
+// La richiesta ha già superato Auth del gateway; l'header Bearer resta utile al
 // servizio git come difesa ulteriore sul suo endpoint interno.
 func ToRegistrySigningKey(registryURL *url.URL, logger *slog.Logger, opts ...Option) http.Handler {
 	h := ToRegistry(registryURL, logger, opts...)

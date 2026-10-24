@@ -246,7 +246,7 @@ func (h *Handler) cleanImage(ctx context.Context, ns distribution.Namespace, nam
 		}
 	}
 	// Le firme Cosign e gli SBOM sono artefatti OCI con tag tecnico. Non devono
-	// mantenere in vita l'immagine sorgente, ma restano finché essa Ã¨ raggiungibile
+	// mantenere in vita l'immagine sorgente, ma restano finché essa è raggiungibile
 	// da un tag o da un indice. Quando la sorgente sparisce si stacca anche l'artefatto.
 	for tag, subject := range auxiliary {
 		exists, err := ms.Exists(ctx, subject)
