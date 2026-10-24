@@ -247,7 +247,7 @@ func TestJobPush_CreaFirmaCosignESBOM(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 	b, err := io.ReadAll(reader)
 	if err != nil {
 		t.Fatal(err)
