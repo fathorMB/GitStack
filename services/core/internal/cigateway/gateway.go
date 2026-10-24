@@ -144,7 +144,7 @@ func (g *gateway) auth() connect.UnaryInterceptorFunc {
 			token := bearer(req.Header())
 			switch req.Spec().Procedure {
 			case runnerv1connect.RunnerServiceFetchTaskProcedure:
-				if !(strings.HasPrefix(token, ci.JobTicketPrefix) || strings.HasPrefix(token, ci.RunnerTokenPrefix)) || len(token) > 128 {
+				if (!strings.HasPrefix(token, ci.JobTicketPrefix) && !strings.HasPrefix(token, ci.RunnerTokenPrefix)) || len(token) > 128 {
 					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("credenziale non valida"))
 				}
 			case runnerv1connect.RunnerServiceRegisterProcedure:
