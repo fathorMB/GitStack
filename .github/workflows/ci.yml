@@ -1582,7 +1582,7 @@ jobs:
                 env:
                   - {name: GITSTACK_CI_GATEWAY_URL, value: "@GW@"}
                   - {name: GITSTACK_CI_GATE_INTERNAL_ADDR, value: "@GATE@"}
-                command: [sh, -c, 'set -e; gateway="${GITSTACK_CI_GATEWAY_URL#http://}"; host="${gateway%:*}"; port="${gateway##*:}"; echo "barriera: nessun docker.sock"; test ! -e /var/run/docker.sock; blocked() { if nc -z -w3 "$2" "$3"; then echo "KO: $1 raggiungibile"; exit 1; fi; echo "ok: $1 bloccato"; }; blocked "API Kubernetes" kubernetes.default.svc 443; blocked NATS gitstack-nats.default.svc 4222; blocked Postgres gitstack-postgres.default.svc 5432; echo "accesso: DNS del ci-gateway $host"; nslookup "$host"; echo "accesso: ci-gateway $host:$port"; nc -z -w3 "$host" "$port"; echo "ok: ci-gateway raggiungibile"']
+                command: [sh, -c, 'set -e; gateway="${GITSTACK_CI_GATEWAY_URL#http://}"; host="${gateway%:*}"; port="${gateway##*:}"; echo "barriera: nessun docker.sock"; test ! -e /var/run/docker.sock; blocked() { if nc -z -w3 "$2" "$3"; then echo "KO: $1 raggiungibile"; exit 1; fi; echo "ok: $1 bloccato"; }; blocked "API Kubernetes" kubernetes.default.svc 443; blocked NATS gitstack-nats.default.svc 4222; blocked Postgres gitstack-postgres.default.svc 5432; echo "accesso: DNS del ci-gateway $host"; nslookup "$host" || echo "nota: nslookup di busybox non usa i domini di ricerca, la risoluzione la prova nc"; echo "accesso: ci-gateway $host:$port"; nc -z -w3 "$host" "$port"; echo "ok: ci-gateway raggiungibile"']
                 resources:
                   requests: {cpu: 50m, memory: 32Mi, ephemeral-storage: 64Mi}
                   limits: {cpu: 200m, memory: 64Mi, ephemeral-storage: 64Mi}
