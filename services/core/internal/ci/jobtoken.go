@@ -38,6 +38,8 @@ type JobAuth struct {
 	RepoID uuid.UUID
 	SHA    string
 	JobKey string
+	// RunnerType è il runner_type del job: internal_pod o external.
+	RunnerType string
 }
 
 func hashJobToken(token string) []byte {
@@ -76,12 +78,12 @@ func ResolveJobToken(ctx context.Context, pool *pgxpool.Pool, now time.Time, tok
 	}
 	var a JobAuth
 	err := pool.QueryRow(ctx, `
-		SELECT j.id, j.task_id, j.run_id, r.repo_id, r.sha, j.job_key
+		SELECT j.id, j.task_id, j.run_id, r.repo_id, r.sha, j.job_key, j.runner_type
 		FROM core.ci_job_tokens t
 		JOIN core.ci_jobs j ON j.id = t.job_id
 		JOIN core.ci_runs r ON r.id = j.run_id
 		WHERE t.token_hash = $1 AND t.revoked_at IS NULL AND t.expires_at > $2 AND j.status = 'in_progress'`,
-		hashJobToken(token), now).Scan(&a.JobID, &a.TaskID, &a.RunID, &a.RepoID, &a.SHA, &a.JobKey)
+		hashJobToken(token), now).Scan(&a.JobID, &a.TaskID, &a.RunID, &a.RepoID, &a.SHA, &a.JobKey, &a.RunnerType)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return JobAuth{}, ErrJobToken
 	}

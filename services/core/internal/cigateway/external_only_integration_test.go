@@ -4,6 +4,8 @@ package cigateway_test
 
 import (
 	"context"
+	"io"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -96,5 +98,98 @@ func TestExternal_TokenDelRunnerPerUpdateLog(t *testing.T) {
 		State: &runnerv1.TaskState{Id: task.GetId() + 99, Result: runnerv1.Result_RESULT_SUCCESS}}, r1))
 	if code(err) != connect.CodePermissionDenied {
 		t.Errorf("task di un altro job: %v", err)
+	}
+}
+
+// TestExternalOnly_TokenDiJobSoloPerJobExternal (GIT-335): sulla porta esterna UpdateTask,
+// UpdateLog e archive accettano il token di un job external, mai quello di un pod interno;
+// sulla porta interna il token del pod continua a valere.
+func TestExternalOnly_TokenDiJobSoloPerJobExternal(t *testing.T) {
+	e := newEnv(t)
+	e.queue("app", "a")
+	cfg := func(extOnly bool) cigateway.Config {
+		return cigateway.Config{
+			Pool: e.pool, Source: e.src, Reader: e.rd, Logs: e.logs, ExternalOnly: extOnly,
+			ArchiveURL: "https://ci.example.test", Now: e.now, PollTimeout: 400 * time.Millisecond, PollEvery: 25 * time.Millisecond,
+		}
+	}
+	ext := httptest.NewServer(cigateway.New(cfg(true)))
+	t.Cleanup(ext.Close)
+	extClient := runnerv1connect.NewRunnerServiceClient(ext.Client(), ext.URL)
+
+	// Job interno: il pod prende il job dal gateway interno e ne ottiene il token.
+	internal, err := e.fetch(runnerSecret)
+	if err != nil || internal == nil {
+		t.Fatalf("job interno: %v %v", internal, err)
+	}
+	intTok := internal.GetSecrets()["GITHUB_TOKEN"]
+	if intTok == "" {
+		t.Fatal("il task interno non ha GITHUB_TOKEN")
+	}
+
+	call := func(name string, c runnerv1connect.RunnerServiceClient, task *runnerv1.Task, tok string) error {
+		switch name {
+		case "UpdateLog":
+			_, err := c.UpdateLog(context.Background(), authed(&runnerv1.UpdateLogRequest{
+				TaskId: task.GetId(), Index: 0, Rows: []*runnerv1.LogRow{{Content: "ciao"}}}, tok))
+			return err
+		default:
+			_, err := c.UpdateTask(context.Background(), authed(&runnerv1.UpdateTaskRequest{
+				State: &runnerv1.TaskState{Id: task.GetId(), Result: runnerv1.Result_RESULT_UNSPECIFIED}}, tok))
+			return err
+		}
+	}
+	archive := func(base string, hc *http.Client, tok string) int {
+		req, _ := http.NewRequest("GET", base+cigateway.ArchivePath, nil)
+		req.Header.Set("Authorization", "Bearer "+tok)
+		res, err := hc.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = res.Body.Close() }()
+		_, _ = io.Copy(io.Discard, res.Body)
+		return res.StatusCode
+	}
+
+	for _, name := range []string{"UpdateTask", "UpdateLog"} {
+		if err := call(name, extClient, internal, intTok); code(err) != connect.CodeUnauthenticated {
+			t.Errorf("KO %s sulla porta esterna con il token di un pod interno: %v", name, err)
+		}
+		if err := call(name, e.client, internal, intTok); err != nil {
+			t.Errorf("KO %s sulla porta interna con il suo token: %v", name, err)
+		}
+	}
+	if st := archive(ext.URL, ext.Client(), intTok); st != http.StatusUnauthorized {
+		t.Errorf("KO archive esterno con token interno: %d", st)
+	}
+	if st := archive(e.srv.URL, e.srv.Client(), intTok); st != http.StatusOK {
+		t.Errorf("KO archive interno con token interno: %d", st)
+	}
+
+	// Job external: il suo token vale sulla porta esterna e non su quella interna.
+	e.queueWF("ext", "b", externalWF)
+	rt, err := e.register("r1", "linux")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := extClient.FetchTask(context.Background(), authed(&runnerv1.FetchTaskRequest{}, rt))
+	if err != nil || res.Msg.GetTask() == nil {
+		t.Fatalf("job external: %v %v", res, err)
+	}
+	task := res.Msg.GetTask()
+	extTok := task.GetSecrets()["GITHUB_TOKEN"]
+	if extTok == "" {
+		t.Fatal("il task external non ha GITHUB_TOKEN")
+	}
+	for _, name := range []string{"UpdateTask", "UpdateLog"} {
+		if err := call(name, extClient, task, extTok); err != nil {
+			t.Errorf("KO %s esterno con token external: %v", name, err)
+		}
+		if err := call(name, extClient, task, rt); err != nil {
+			t.Errorf("KO %s esterno con token gsr_: %v", name, err)
+		}
+	}
+	if st := archive(ext.URL, ext.Client(), extTok); st != http.StatusOK {
+		t.Errorf("KO archive esterno con token external: %d", st)
 	}
 }

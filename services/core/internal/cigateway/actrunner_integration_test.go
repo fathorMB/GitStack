@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
@@ -34,8 +33,7 @@ jobs:
 // come il nostro gateway. Registra il binario pinnato con il token monouso, prende un job
 // `runs-on: self-hosted`, lo esegue in modalità host e il gateway ne conserva log ed esito.
 //
-// Gira solo con GITSTACK_ACT_RUNNER_BIN (percorso del binario Linux, versione e sha256 in
-// deploy/ci/act-runner.pin). Con GITSTACK_ACT_RUNNER_DOCKER=<immagine> il binario gira in un
+// Gira solo con GITSTACK_ACT_RUNNER_BIN (percorso del binario Linux). Con GITSTACK_ACT_RUNNER_DOCKER=<immagine> il binario gira in un
 // container (utile da Windows/macOS); senza, direttamente sull'host Linux. Stampa una riga
 // ok/KO per controllo.
 func TestActRunner_Compat(t *testing.T) {
@@ -158,7 +156,6 @@ func TestActRunner_Compat(t *testing.T) {
 		t.Fatal(err)
 	}
 	line(runStatus == "completed" && runConcl == "success", "esito del run: completed/success", runStatus+"/"+runConcl)
-	_ = http.StatusOK
 }
 
 func err2s(err error) string {
