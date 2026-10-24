@@ -61,6 +61,9 @@ func fakeAct(args []string) int {
 			wf = args[i+1]
 		}
 	}
+	if f := os.Getenv("CIRUNNER_FAKE_ACT_ARGS"); f != "" {
+		_ = os.WriteFile(f, []byte(strings.Join(args, "\n")), 0o600)
+	}
 	b, err := os.ReadFile(wf)
 	if err != nil {
 		fmt.Println("Error:", err)

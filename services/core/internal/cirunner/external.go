@@ -18,27 +18,28 @@ import (
 // Runner esterno (GIT-278, ADR 0001 §4): lo stesso Run del pod interno, in un ciclo, con il
 // token del runner ottenuto registrandosi con un token monouso dell'amministratore.
 
-// Register registra un runner sul ci-gateway e ritorna il token del runner. Il token di
-// registrazione non vale più dopo questa chiamata.
-func Register(ctx context.Context, hc *http.Client, gatewayURL, regToken, name, version string, labels []string) (string, error) {
+// Register registra un runner sul ci-gateway e ritorna il token del runner e le etichette
+// come le ha salvate il server (con «self-hosted», normalizzate). Il token di registrazione
+// non vale più dopo questa chiamata.
+func Register(ctx context.Context, hc *http.Client, gatewayURL, regToken, name, version string, labels []string) (string, []string, error) {
 	if hc == nil {
 		hc = &http.Client{Timeout: 30 * time.Second}
 	}
 	gatewayURL = strings.TrimRight(gatewayURL, "/")
 	if gatewayURL == "" || regToken == "" || name == "" {
-		return "", errors.New("servono l'indirizzo del gateway, il token di registrazione e il nome")
+		return "", nil, errors.New("servono l'indirizzo del gateway, il token di registrazione e il nome")
 	}
 	client := runnerv1connect.NewRunnerServiceClient(hc, gatewayURL)
 	res, err := client.Register(ctx, connect.NewRequest(&runnerv1.RegisterRequest{
 		Name: name, Token: regToken, Version: version, Labels: labels}))
 	if err != nil {
-		return "", fmt.Errorf("registrazione rifiutata: %w", err)
+		return "", nil, fmt.Errorf("registrazione rifiutata: %w", err)
 	}
 	tok := res.Msg.GetRunner().GetToken()
 	if tok == "" {
-		return "", errors.New("il gateway non ha restituito il token del runner")
+		return "", nil, errors.New("il gateway non ha restituito il token del runner")
 	}
-	return tok, nil
+	return tok, res.Msg.GetRunner().GetLabels(), nil
 }
 
 // Serve esegue i job uno dopo l'altro finché ctx non finisce. Ritorna un errore solo se

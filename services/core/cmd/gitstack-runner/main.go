@@ -82,12 +82,12 @@ func register(args []string) int {
 			ls = append(ls, l)
 		}
 	}
-	tok, err := cirunner.Register(ctx, nil, *url, *token, *name, version, ls)
+	tok, saved, err := cirunner.Register(ctx, nil, *url, *token, *name, version, ls)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "errore:", err)
 		return 1
 	}
-	c := config{URL: strings.TrimRight(*url, "/"), Token: tok, Name: *name, Labels: ls}
+	c := config{URL: strings.TrimRight(*url, "/"), Token: tok, Name: *name, Labels: saved}
 	raw, _ := json.MarshalIndent(c, "", "  ")
 	if err := os.MkdirAll(filepath.Dir(*cfgPath), 0o700); err != nil {
 		fmt.Fprintln(os.Stderr, "errore:", err)
