@@ -116,6 +116,7 @@ func New(cfg Config) http.Handler {
 	mux.HandleFunc("GET "+RegistryAccessPath, g.registryAccess)
 	mux.HandleFunc(ArtifactsPath, g.storage)
 	mux.HandleFunc(CachePath, g.storage)
+	mux.HandleFunc(TwirpArtifactPath, g.artifactsV4)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Un percorso fuori dal protocollo è 404, non 405 né un redirect del mux.
 		if strings.HasPrefix(r.URL.Path, path) || r.URL.Path == ArchivePath || r.URL.Path == RegistryAccessPath || g.isStoragePath(r.URL.Path) {

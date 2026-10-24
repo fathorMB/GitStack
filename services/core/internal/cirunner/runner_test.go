@@ -53,6 +53,13 @@ func fakeAct(args []string) int {
 	if f := os.Getenv("CIRUNNER_FAKE_ACT_ARGS"); f != "" {
 		_ = os.WriteFile(f, []byte(strings.Join(args, "\n")), 0o600)
 	}
+	if f := os.Getenv("CIRUNNER_FAKE_ACT_ENV"); f != "" {
+		var kv []string
+		for _, k := range []string{"ACTIONS_CACHE_URL", "ACTIONS_RESULTS_URL", "ACTIONS_RUNTIME_TOKEN", "GITHUB_TOKEN"} {
+			kv = append(kv, k+"="+os.Getenv(k))
+		}
+		_ = os.WriteFile(f, []byte(strings.Join(kv, "\n")), 0o600)
+	}
 	b, err := os.ReadFile(wf)
 	if err != nil {
 		fmt.Println("Error:", err)

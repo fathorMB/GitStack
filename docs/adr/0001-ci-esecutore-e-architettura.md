@@ -144,10 +144,21 @@ pulizia li applica. Il ruolo del `ci-gateway` è l'unica scrittura: il job non v
 **Compatibilità con GitHub (GIT-280).** Le cache parlano il protocollo v1 di `actions/cache`
 (`ACTIONS_CACHE_URL = <ci-gateway>/ci/v1/cache/`: ricerca, prenotazione, pezzi con `Content-Range`,
 conferma). `actions/cache` v4 e `actions/upload-artifact` v4 usano invece un protocollo Twirp con
-upload su Azure Blob: **non è compatibile** e core non lo implementa. Gli artefatti si caricano con
+upload su Azure Blob: **non è compatibile** e core non lo implementa (vedi sotto, GIT-330). Gli artefatti si caricano con
 `PUT /ci/v1/artifacts/{nome}` del ci-gateway (corpo = ZIP), con il token del job. Nel backup i dati
 delle tabelle `ci_artifacts` e `ci_caches` sono esclusi (`pg_dump --exclude-table-data`), così dopo un
 restore non restano righe che puntano a file mancanti.
+
+**Ambiente dei job e artefatti v4 (GIT-330).** Il runner (pod interno e runner esterno: lo stesso
+`cirunner.Run`) dà ad act `ACTIONS_CACHE_URL = <gateway>/ci/v1/cache/`, `ACTIONS_RUNTIME_TOKEN` (il token
+del job: vale solo per il suo repo e scade o si revoca con il job, mai il segreto del runner) e
+`ACTIONS_RESULTS_URL = <gateway>/`. Con questo `actions/cache` (protocollo v1) salva e ripristina dalla
+cache di core. `actions/upload-artifact@v4` e `download-artifact@v4` chiamano il servizio Twirp
+`github.actions.results.api.v1.ArtifactService` e poi caricano su Azure Blob con URL firmati: **core non
+lo implementa**. Il ci-gateway risponde a ogni chiamata Twirp (con il token del job) con HTTP 501 e
+`{"code":"unimplemented","msg":"…"}`, così il passo fallisce con un messaggio chiaro che indica
+l'alternativa (`PUT /ci/v1/artifacts/{nome}` o un runner esterno con un servizio di artefatti compatibile).
+Una cache salvata da `actions/cache@v4` (anch'essa Twirp) non funziona per lo stesso motivo.
 
 ### 6. Build di immagini (CI2)
 

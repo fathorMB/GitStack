@@ -27,7 +27,7 @@ import (
 //	  POST  caches/{id} {size}            conferma (204)
 //	GET  /ci/v1/cache/blob/{id}           scarica l'archivio (è l'archiveLocation)
 //
-// Compatibilità: upload-artifact v4 e cache v4 di GitHub usano un protocollo Twirp con upload su Azure
+// Compatibilità: upload-artifact v4 (rifiutato con un errore chiaro, artifactsv4.go) e cache v4 di GitHub usano un protocollo Twirp con upload su Azure
 // Blob, che core non parla: gli artefatti passano dall'endpoint qui sopra, le cache dal protocollo v1
 // (actions/cache fino alla v3 e client compatibili).
 const (
@@ -38,7 +38,7 @@ const (
 )
 
 func (g *gateway) isStoragePath(p string) bool {
-	return strings.HasPrefix(p, ArtifactsPath) || strings.HasPrefix(p, CachePath)
+	return strings.HasPrefix(p, ArtifactsPath) || strings.HasPrefix(p, CachePath) || strings.HasPrefix(p, TwirpArtifactPath)
 }
 
 // jobAuth verifica il token del job; scrive la risposta d'errore e ritorna false se non va.
