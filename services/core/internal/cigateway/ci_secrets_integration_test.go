@@ -118,8 +118,14 @@ func TestSecrets_SenzaChiaveIlJobNonParte(t *testing.T) {
 		t.Fatal(err)
 	}
 	task, err := e.fetch(runnerSecret)
+	// Il gateway chiude il job in failure e risponde unavailable (il biglietto è già
+	// consumato): senza chiave non si consegna alcun task.
 	if task != nil || code(err) != connect.CodeUnavailable {
-		t.Fatalf("task = %v, err = %v: senza chiave non si consegna", task, err)
+		t.Fatalf("task = %v, err = %v: senza chiave non si consegna, atteso unavailable", task, err)
+	}
+	// Il job non resta in coda: un nuovo giro non trova niente e non c'è loop.
+	if again, err := e.fetch(runnerSecret); err != nil || again != nil {
+		t.Fatalf("secondo fetch: task = %v, err = %v: il job doveva essere chiuso", again, err)
 	}
 	var concl string
 	if err := e.pool.QueryRow(ctx, `SELECT conclusion FROM core.ci_jobs WHERE id = $1`, e.jobID(runID, "build")).Scan(&concl); err != nil || concl != "failure" {
