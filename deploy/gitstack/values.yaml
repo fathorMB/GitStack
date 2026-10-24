@@ -613,7 +613,10 @@ ci:
     # Secret TLS dedicato; vuoto = ingress.tls.secretName (o il certResolver).
     tlsSecretName: ""
   runner:
+    # Immagine completa del runner (act + ci-runner). Vuota = quella pubblicata con le altre,
+    # <global.image.registry>/<repository>:<global.image.tag> (stesso tag dei servizi, firmata).
     image: ""
+    repository: fathormb/gitstack-ci-runner
     # URL opzionale del mirror amministrato (es. https://mirror.example/); vuoto usa
     # GitHub. Le `uses: actions/...` dei workflow vengono scaricate da li'.
     actionMirror: ""

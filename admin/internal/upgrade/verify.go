@@ -188,7 +188,7 @@ var execCommand = func(ctx context.Context, name string, args ...string) *exec.C
 	return exec.CommandContext(ctx, name, args...)
 }
 
-var gitstackImageRe = regexp.MustCompile(`(^|/)gitstack-(gateway|identity|git|core|web)([:@]|$)`)
+var gitstackImageRe = regexp.MustCompile(`(^|/)gitstack-(gateway|identity|git|core|web|ci-runner)([:@]|$)`)
 
 // IsGitstackImage dice se l'immagine è una di quelle firmate dalla CI di
 // GitStack (gitstack-gateway/identity/git/core/web). Postgres e NATS sono

@@ -53,6 +53,22 @@ spec:
       max: {cpu: "2", memory: 4Gi, ephemeral-storage: 20Gi}
       default: {cpu: "2", memory: 4Gi, ephemeral-storage: 20Gi}
       defaultRequest: {cpu: "2", memory: 4Gi, ephemeral-storage: 20Gi}
+{{- if .Values.corporateCA.configMap }}
+{{- $ca := lookup "v1" "ConfigMap" .Release.Namespace .Values.corporateCA.configMap }}
+---
+# CA aziendale per i pod dei job (N9): copia di quella dei servizi. Il ConfigMap e' per
+# namespace, quindi serve una copia accanto ai job. `lookup` la legge al helm upgrade;
+# con `helm template` (senza cluster) resta vuota e non si rende.
+{{- if and $ca $ca.data }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: corporate-ca
+  namespace: {{ .Values.ci.namespace }}
+data:
+  ca.crt: {{ index $ca.data "ca.crt" | quote }}
+{{- end }}
+{{- end }}
 ---
 apiVersion: v1
 kind: ServiceAccount

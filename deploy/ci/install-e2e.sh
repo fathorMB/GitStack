@@ -27,6 +27,12 @@
 #   verify-after-mutate        Solo prima del restore: i dati di `mutate` ci sono.
 #   verify-k3s <versione>      k3s in esecuzione = versione, da `k3s --version`,
 #                              da `kubectl version` e da `gitstack status --json`.
+#   ci-config [posti]          La CI è accesa: core con GITSTACK_CORE_CI_ENABLED, namespace
+#                              dei job, posti (se indicati) e PriorityClass.
+#   ci-off                     Dopo un rollback: core senza CI.
+#   ci-run                     Repo con un workflow di prova, push, run concluso con
+#                              successo in un pod usa e getta e marcatore nel log.
+#   verify-ci                  Dopo restore o upgrade: run e log del job ancora presenti.
 #   latest-backup              Stampa il percorso dell'archivio più recente.
 #   diagnostics <cartella>     Log del cluster e dei servizi (non fallisce mai).
 #
@@ -362,6 +368,102 @@ verify_seed() {
   log "verifica: dati del seed intatti, dati successivi tolti, clone e push funzionano"
 }
 
+# --- CI integrata (GIT-285) ----------------------------------------------
+
+CI_JOBS_NS=gitstack-ci-jobs
+CI_MARKER=CI-INSTALL-PROVA-OK
+
+# ci-config: la CI è accesa nel cluster (core la usa, namespace dei job, posti).
+# Una riga ok per controllo; esce al primo controllo che manca.
+ci_config() {
+  local want="${1:-}" env cap
+  env="$("${KUBECTL[@]}" -n default get deployment gitstack-core -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="GITSTACK_CORE_CI_ENABLED")].value}')"
+  [ "${env}" = true ] || fail "core non ha GITSTACK_CORE_CI_ENABLED=true (trovato '${env}'): la CI non è accesa"
+  "${KUBECTL[@]}" get namespace "${CI_JOBS_NS}" >/dev/null || fail "manca il namespace dei job ${CI_JOBS_NS}"
+  cap="$("${KUBECTL[@]}" -n "${CI_JOBS_NS}" get resourcequota ci-jobs -o jsonpath='{.spec.hard.pods}')"
+  [ -z "${want}" ] || [ "${cap}" = "${want}" ] || fail "posti dei job: ${cap}, attesi ${want}"
+  "${KUBECTL[@]}" get priorityclass gitstack-ci-job >/dev/null || fail "manca la PriorityClass gitstack-ci-job"
+  log "CI accesa: core con CI, namespace ${CI_JOBS_NS}, ${cap} posti, PriorityClass gitstack-ci-job"
+}
+
+# ci-off: dopo il rollback la CI non c'è (revisione di partenza, senza CI).
+ci_off() {
+  local env
+  env="$("${KUBECTL[@]}" -n default get deployment gitstack-core -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="GITSTACK_CORE_CI_ENABLED")].value}')"
+  [ -z "${env}" ] || fail "dopo il rollback core ha ancora GITSTACK_CORE_CI_ENABLED='${env}'"
+  log "CI spenta come prima dell'aggiornamento fallito"
+}
+
+# ci-run: un repo con un workflow di prova, un push, il run concluso con
+# successo in un pod usa e getta e il marcatore nel log del job.
+ci_run() {
+  need E2E_HOST
+  git_env
+  load_seed
+  local repo w sha deadline run="" concl jobid
+  repo="ci-$(date +%H%M%S)"
+  api POST /api/v1/repos "$(jq -n --arg o "${CI_USER}" --arg n "${repo}" '{owner:$o,name:$n,visibility:"private"}')" -H "Authorization: Bearer ${CI_TOKEN}"
+  expect 201 "${CODE}" "creazione del repo del workflow di prova"
+  w="${STATE_DIR}/w-ci"
+  rm -rf "${w}"
+  git init -q -b main "${w}"
+  mkdir -p "${w}/.gitstack/workflows"
+  cat > "${w}/.gitstack/workflows/prova.yml" <<'EOF'
+name: prova
+on: [push]
+jobs:
+  prova:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "CI-INSTALL-PROVA-OK"
+EOF
+  cigit -C "${w}" add -A
+  cigit -C "${w}" commit -q -m 'ci: workflow di prova'
+  cigit -C "${w}" push -q "https://${CI_USER}:${CI_TOKEN}@${HOST}/${CI_USER}/${repo}.git" main
+  sha="$(cigit -C "${w}" rev-parse HEAD)"
+  deadline=$((SECONDS + 600))
+  while [ "${SECONDS}" -lt "${deadline}" ]; do
+    api GET "/api/v1/repos/${CI_USER}/${repo}/actions/runs" '' -H "Authorization: Bearer ${CI_TOKEN}"
+    if [ "${CODE}" = 200 ]; then
+      run="$(printf '%s' "${BODY}" | jq -c --arg s "${sha}" '[.items[]? | select(.sha == $s)][0] // empty')"
+      if [ -n "${run}" ] && [ "$(printf '%s' "${run}" | jq -r .status)" = completed ]; then break; fi
+    fi
+    run=""
+    sleep 5
+  done
+  [ -n "${run}" ] || fail "nessun run concluso per ${sha:0:8} entro 600s (CI accesa ma il job non gira)"
+  concl="$(printf '%s' "${run}" | jq -r '.conclusion // "-"')"
+  [ "${concl}" = success ] || fail "run ${sha:0:8}: conclusione ${concl}, attesa success"
+  jobid="$(printf '%s' "${run}" | jq -r '.jobs[0].id')"
+  api GET "/api/v1/repos/${CI_USER}/${repo}/actions/jobs/${jobid}/logs" '' -H "Authorization: Bearer ${CI_TOKEN}"
+  expect 200 "${CODE}" "log del job"
+  printf '%s' "${BODY}" | grep -q "${CI_MARKER}" || fail "il log del job non contiene ${CI_MARKER}"
+  grep -vE '^(CI_REPO_RUN|CI_RUN_SHA|CI_JOB_ID)=' "${STATE_DIR}/seed.env" > "${STATE_DIR}/seed.env.new" || true
+  {
+    printf 'CI_REPO_RUN=%s\nCI_RUN_SHA=%s\nCI_JOB_ID=%s\n' "${repo}" "${sha}" "${jobid}"
+  } >> "${STATE_DIR}/seed.env.new"
+  mv "${STATE_DIR}/seed.env.new" "${STATE_DIR}/seed.env"
+  log "ci-run: run ${sha:0:8} success nel repo ${repo}, marcatore nel log"
+}
+
+# verify-ci: dopo restore o upgrade il run e il suo log (nel backup, CI5) ci sono ancora.
+verify_ci() {
+  need E2E_HOST
+  git_env
+  load_seed
+  [ -n "${CI_REPO_RUN:-}" ] || fail "ci-run non eseguito (manca CI_REPO_RUN in seed.env)"
+  local run
+  api GET "/api/v1/repos/${CI_USER}/${CI_REPO_RUN}/actions/runs" '' -H "Authorization: Bearer ${CI_TOKEN}"
+  expect 200 "${CODE}" "elenco dei run dopo il ripristino"
+  run="$(printf '%s' "${BODY}" | jq -c --arg s "${CI_RUN_SHA}" '[.items[]? | select(.sha == $s)][0] // empty')"
+  [ -n "${run}" ] || fail "il run ${CI_RUN_SHA:0:8} non c'è più"
+  [ "$(printf '%s' "${run}" | jq -r '.conclusion // "-"')" = success ] || fail "il run ${CI_RUN_SHA:0:8} non è più success"
+  api GET "/api/v1/repos/${CI_USER}/${CI_REPO_RUN}/actions/jobs/${CI_JOB_ID}/logs" '' -H "Authorization: Bearer ${CI_TOKEN}"
+  expect 200 "${CODE}" "log del job dopo il ripristino"
+  printf '%s' "${BODY}" | grep -q "${CI_MARKER}" || fail "il log del job ripristinato non contiene ${CI_MARKER}"
+  log "verify-ci: run e log del job presenti dopo il ripristino"
+}
+
 # --- k3s -----------------------------------------------------------------
 
 verify_k3s() {
@@ -397,6 +499,7 @@ diagnostics() {
   df -h > "${d}/df.txt" 2>&1 || true
   free -m > "${d}/free.txt" 2>&1 || true
   local p
+  "${KUBECTL[@]}" -n "${CI_JOBS_NS}" get pods,resourcequota -o wide > "${d}/ci-jobs.txt" 2>&1 || true
   for p in gateway identity core git web; do
     "${KUBECTL[@]}" -n default logs "deployment/gitstack-${p}" --all-containers --tail=300 > "${d}/log-${p}.txt" 2>&1 || true
   done
@@ -416,6 +519,10 @@ main() {
     verify-seed) verify_seed "$@" ;;
     verify-after-mutate) verify_after_mutate ;;
     verify-k3s) verify_k3s "$@" ;;
+    ci-config) ci_config "$@" ;;
+    ci-off) ci_off ;;
+    ci-run) ci_run ;;
+    verify-ci) verify_ci ;;
     latest-backup) latest_backup ;;
     diagnostics) diagnostics "$@" ;;
     *) fail "sottocomando sconosciuto: ${cmd}" ;;

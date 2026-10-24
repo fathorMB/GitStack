@@ -5,7 +5,7 @@ Tutto ciò che serve a far girare GitStack su k3s: manifest/Helm chart interno d
 - `postgres-prepare.sql` — script per il DBA: database e utente per un Postgres esterno (N8).
 - `gitstack/` — chart Helm interno (M-01/T-08): installa `gateway`, `identity`, `core`, `web`, `postgres` e `nats` (JetStream) con un solo `helm install`, Traefik come ingresso. Dettagli, valori di default e opzioni (mirror, Postgres esterno) in `gitstack/README.md`. `identity` (GIT-36) è nel chart, con ruolo e schema Postgres dedicati e le sue rotte instradate dal gateway; `git` non ha ancora un'immagine: non è nel chart.
 - `install.sh` — Installer v0 (M-01/T-09, questo item): un solo comando installa k3s e GitStack (chart di `gitstack/`) su una macchina Linux pulita. Dettagli sotto.
-- `ci/install-e2e.sh` — passi del workflow `.github/workflows/install.yml` (GIT-203): installazione, backup, aggiornamento con cambio di patch di k3s e ripristino su Ubuntu 22.04 e 24.04, sui tag, ogni notte su main e a mano. Vedi `../docs/operations.md`, «CI tests of install, upgrade and restore».
+- `ci/install-e2e.sh` — passi del workflow `.github/workflows/install.yml` (GIT-203, GIT-285): installazione, backup, aggiornamento con cambio di patch di k3s, rollback e ripristino su Ubuntu 22.04 e 24.04, con la CI integrata accesa e un workflow di prova eseguito in un pod, sui tag, ogni notte su main e a mano. Vedi `../docs/operations.md`, «CI tests of install, upgrade and restore».
 - `test-vm/` — script che creano, ripristinano e distruggono la VM Linux locale usata per provare l'installer (M-01/T-12, GIT-12). Vedi `test-vm/README.md`.
 
 Licenza: AGPL-3.0, come il resto del server (vedi LICENSE in radice).
@@ -177,6 +177,27 @@ Dettagli operativi: [`../docs/operations.md`](../docs/operations.md#external-pos
 **Rete aziendale (N4, N9a, GIT-206).** `--http-proxy`, `--https-proxy`, `--no-proxy` (download di k3s e Helm, containerd di k3s e pod di GitStack), `--registry-mirror` con `--registry-username`/`--registry-password-file` (tutte le immagini, di sistema di k3s comprese, via `registries.yaml`), `--download-mirror` (binari di k3s, Helm e gitstack) e `--ca-bundle` (CA aziendale: sistema, containerd, pod). Il preflight prova a raggiungere proxy e mirror e dice cosa non risponde; dopo l'installazione si cambia con `gitstack config set network`. Struttura del mirror, esempi e prova senza uscita diretta (`test-network/run.sh`): [`../docs/operations.md`](../docs/operations.md), sezione «Corporate network». I valori Helm sono `proxy.*` e `corporateCA.configMap` (GIT-207).
 
 `install.sh --help` le elenca tutte. Le più usate: `--force`, `--skip-preflight`, `--release-name`, `--namespace`, `--image-tag`, `--version` (versione di rilascio), `--image-registry` (mirror, M-08), `--host`, `--tls`, `--tls-cert`/`--tls-key`, `--insecure-http` (HTTPS, vedi sopra), `--postgres-url`/`--postgres-password-file`/`--postgres-ca-file` (Postgres esterno, vedi sopra), `--values`/`--set` (valori Helm aggiuntivi).
+
+### CI integrata (v2-a, GIT-285)
+
+La CI integrata (workflow in `.gitstack/workflows/`, job in pod usa e getta nel namespace `gitstack-ci-jobs`) è **spenta di default**: l'installer la accende con `--ci`, `gitstack upgrade` con `--set ci.enabled=true`.
+
+| Opzione | Significato |
+|---|---|
+| `--ci`, `--no-ci` | accende, spegne. Senza nessuna delle due una riesecuzione **conserva** la scelta (il namespace dei job esiste) e i posti già configurati; la prima installazione è senza CI |
+| `--ci-capacity N` | job in parallelo, da 1 a 3 |
+| `--ci-build` | accende anche le build rootless (BuildKit) nel namespace `gitstack-ci-build` |
+| `--ci-action-mirror URL` | mirror interno delle action (`uses:`) invece di github.com (N4, N9) |
+| `--ci-storage-size SIZE` | volume dei log (default `20Gi`) |
+| `--ci-s3-endpoint`, `--ci-s3-bucket`, `--ci-s3-region`, `--ci-s3-prefix` | S3 per artefatti e cache (N7). Le chiavi stanno in `GITSTACK_CI_S3_ACCESS_KEY` e `GITSTACK_CI_S3_SECRET_KEY`, mai da argomento; l'installer crea il Secret `<release>-ci-s3` |
+
+**Posti dei job nei due profili (N1, CI7).** Senza `--ci-capacity`: **3 posti** con il profilo consigliato (almeno 8 vCPU **e** 16 GB), **1 posto** con il minimo (4 vCPU, 8 GB) o se solo uno dei due numeri arriva al consigliato. Mai oltre 3.
+
+**Spazio dei job e priorità.** Ogni posto è un pod da 2 vCPU, 4 GiB e 20 GiB di disco effimero (ResourceQuota `ci-jobs`, LimitRange `ci-job-limits`). I pod usano la PriorityClass `gitstack-ci-job` (1000, senza preemption), sotto `gitstack-apps` e `gitstack-services`: con poca memoria sono i job a essere sfrattati. Il preflight avvisa (non si ferma) se i GB liberi sono meno di 20 più 20 per ogni posto.
+
+**Rete aziendale.** Proxy e CA dati all'installer arrivano anche ai pod dei job: core passa `HTTP_PROXY`, `HTTPS_PROXY` e `NO_PROXY`, il chart copia il ConfigMap della CA nel namespace dei job (`corporate-ca`, montato in `/etc/gitstack/corporate-ca`, `SSL_CERT_DIR` e `NODE_EXTRA_CA_CERTS`). L'esecutore (`act` e `ci-runner`) sta **nell'immagine** `gitstack-ci-runner`, pubblicata e firmata da `ci.yml` con lo stesso tag dei servizi e verificata da `install.sh` e `gitstack upgrade` come le altre: con `--registry-mirror` arriva dal registry interno. Le action `uses:` si scaricano dal mirror di `--ci-action-mirror`; con un IPv4 l'installer apre anche l'uscita dei job verso `<ip>/32`, con un nome serve `--values` (`ci.runner.actionMirrorEgress`).
+
+**Aggiornare dalla v1.x con la CI.** `sudo gitstack upgrade --to <versione> --set ci.enabled=true --set ci.capacity=1`: backup preventivo, k3s, Helm e rollback come sempre; i valori `--set` restano per gli upgrade successivi. Se l'upgrade fallisce il rollback (uscita 7) torna alla revisione di prima, senza CI. **Backup e restore** includono i log dei job (`ci-logs.tar`); artefatti e cache no. Dettagli: [`../docs/operations.md`](../docs/operations.md), «Built-in CI: install, upgrade, backup». Prova: `tests/ci_install_test.sh` (scelte dell'installer, senza root) e `install.yml` (installazione, workflow di prova, rollback, upgrade, backup e restore con la CI, su 22.04 e 24.04).
 
 ### Firme (V5, GIT-209)
 

@@ -220,6 +220,34 @@ NETWORK_CONFIGURED=0
 NETWORK_HELM_SETS=()
 NETWORK_K3S_CHANGED=0
 
+# --- CI integrata (v2-a, CI7, N1, N4, N9) ---------------------------------
+# --ci accende il runner dei job (pod usa e getta nel namespace ci.namespace),
+# --no-ci lo spegne. Senza nessuno dei due, una riesecuzione conserva la scelta
+# già fatta (il namespace dei job esiste) e una prima installazione non ha la CI.
+GITSTACK_CI="${GITSTACK_CI:-}"
+GITSTACK_CI_CAPACITY="${GITSTACK_CI_CAPACITY:-}"
+GITSTACK_CI_ACTION_MIRROR="${GITSTACK_CI_ACTION_MIRROR:-}"
+GITSTACK_CI_BUILD="${GITSTACK_CI_BUILD:-0}"
+GITSTACK_CI_STORAGE_SIZE="${GITSTACK_CI_STORAGE_SIZE:-}"
+GITSTACK_CI_S3_ENDPOINT="${GITSTACK_CI_S3_ENDPOINT:-}"
+GITSTACK_CI_S3_BUCKET="${GITSTACK_CI_S3_BUCKET:-}"
+GITSTACK_CI_S3_REGION="${GITSTACK_CI_S3_REGION:-}"
+GITSTACK_CI_S3_PREFIX="${GITSTACK_CI_S3_PREFIX:-}"
+# Le chiavi di accesso non si passano mai da argomento.
+GITSTACK_CI_S3_ACCESS_KEY="${GITSTACK_CI_S3_ACCESS_KEY:-}"
+GITSTACK_CI_S3_SECRET_KEY="${GITSTACK_CI_S3_SECRET_KEY:-}"
+CI_NAMESPACE_DEFAULT="gitstack-ci-jobs"
+# Posti dei job per profilo (N1, CI7): ogni posto è un pod da 2 vCPU, 4 GiB e
+# 20 GiB di disco effimero (ResourceQuota ci-jobs del chart).
+CI_CAPACITY_MIN_PROFILE=1
+CI_CAPACITY_REC_PROFILE=3
+CI_JOB_DISK_GB=20
+# Valorizzate da resolve_ci.
+CI_ENABLED=0
+CI_CAPACITY=0
+CI_HELM_SETS=()
+CI_S3_SECRET=""
+
 # --- HTTPS (N5, GIT-143) -----------------------------------------------
 # Vuoto = non indicato: vale la scelta della volta prima o internal (resolve_tls).
 # internal (default): CA interna + certificato dell'host; letsencrypt: ACME
@@ -329,6 +357,29 @@ Opzioni:
                              senza, la configurazione S3 è rifiutata.
   --s3-retention N|bucket   Archivi da tenere su S3 (default 30) oppure «bucket»
                              per lasciar fare al bucket.
+  --ci                      Accende la CI integrata (workflow in
+                             .gitstack/workflows/, job in pod usa e getta).
+                             Senza --ci né --no-ci una riesecuzione conserva la
+                             scelta precedente; la prima installazione è senza CI.
+  --no-ci                   Spegne la CI integrata.
+  --ci-capacity N           Job in parallelo (1-3). Default: 3 se la macchina ha
+                             il profilo consigliato (8 vCPU e 16 GB), altrimenti
+                             1 (profilo minimo). Ogni posto riserva 2 vCPU, 4 GiB
+                             e 20 GiB di disco.
+  --ci-build                Accende anche le build rootless (BuildKit) in un
+                             namespace separato.
+  --ci-action-mirror URL    Mirror interno delle action (uses: actions/...),
+                             invece di github.com. Con un IPv4 apre da solo la
+                             uscita dei job verso il mirror; con un nome usa
+                             --values (ci.runner.actionMirrorEgress).
+  --ci-storage-size SIZE    Volume dei log della CI (default 20Gi).
+  --ci-s3-endpoint HOST|URL S3 per artefatti e cache della CI (i log restano su
+                             disco). Servono anche --ci-s3-bucket e le chiavi
+                             nelle variabili GITSTACK_CI_S3_ACCESS_KEY e
+                             GITSTACK_CI_S3_SECRET_KEY.
+  --ci-s3-bucket NOME       Bucket di artefatti e cache.
+  --ci-s3-region REGIONE    Regione.
+  --ci-s3-prefix PREFISSO   Prefisso nel bucket.
   --egress-allow LISTA      Reti ammesse per le chiamate in uscita di webhook e
                              mirror (egress.allow), separate da virgole: IP,
                              CIDR (es. 192.168.1.0/24) o nomi. Se indicata, sono
@@ -523,6 +574,46 @@ while [ "$#" -gt 0 ]; do
       ;;
     --s3-retention)
       GITSTACK_S3_RETENTION="$2"
+      shift 2
+      ;;
+    --ci)
+      GITSTACK_CI=1
+      shift
+      ;;
+    --no-ci)
+      GITSTACK_CI=0
+      shift
+      ;;
+    --ci-build)
+      GITSTACK_CI_BUILD=1
+      shift
+      ;;
+    --ci-capacity)
+      GITSTACK_CI_CAPACITY="$2"
+      shift 2
+      ;;
+    --ci-action-mirror)
+      GITSTACK_CI_ACTION_MIRROR="$2"
+      shift 2
+      ;;
+    --ci-storage-size)
+      GITSTACK_CI_STORAGE_SIZE="$2"
+      shift 2
+      ;;
+    --ci-s3-endpoint)
+      GITSTACK_CI_S3_ENDPOINT="$2"
+      shift 2
+      ;;
+    --ci-s3-bucket)
+      GITSTACK_CI_S3_BUCKET="$2"
+      shift 2
+      ;;
+    --ci-s3-region)
+      GITSTACK_CI_S3_REGION="$2"
+      shift 2
+      ;;
+    --ci-s3-prefix)
+      GITSTACK_CI_S3_PREFIX="$2"
       shift 2
       ;;
     --values)
@@ -1389,8 +1480,8 @@ verify_deployed_images() {
     --namespace "${GITSTACK_NAMESPACE}" "${HELM_VALUE_ARGS[@]}")" \
     || fail "'helm template' fallito: non posso elencare le immagini da verificare."
   images="$(printf '%s\n' "${rendered}" | tr -d "\"'" \
-    | sed -n -E 's/^[[:space:]]*-?[[:space:]]*image:[[:space:]]*([^[:space:]]+)[[:space:]]*$/\1/p' \
-    | sort -u | grep -E '(^|/)gitstack-(gateway|identity|git|core|web)([:@]|$)' || true)"
+    | sed -n -E 's/^[[:space:]]*-?[[:space:]]*image:[[:space:]]*([^[:space:]]+)[[:space:]]*$/\1/p;/name: GITSTACK_CORE_CI_IMAGE$/{n;s/^[[:space:]]*value:[[:space:]]*([^[:space:]]+)[[:space:]]*$/\1/p}' \
+    | sort -u | grep -E '(^|/)gitstack-(gateway|identity|git|core|web|ci-runner)([:@]|$)' || true)"
   [ -n "${images}" ] || fail "il chart non distribuisce nessuna immagine gitstack-*: chart inatteso, niente da verificare."
   while IFS= read -r img; do
     [ -n "${img}" ] || continue
@@ -1501,6 +1592,11 @@ helm_value_args() {
   if [ -n "${egress_nodes}" ]; then
     helm_args+=(--set "egress.nodeAddresses={${egress_nodes}}")
   fi
+  # CI integrata (resolve_ci): prima dei valori dell'utente.
+  local ci_set
+  for ci_set in "${CI_HELM_SETS[@]:-}"; do
+    [ -n "${ci_set}" ] && helm_args+=(--set "${ci_set}")
+  done
   local f
   for f in "${extra_helm_values[@]:-}"; do
     [ -n "${f}" ] && helm_args+=(-f "${f}")
@@ -2776,6 +2872,8 @@ Per leggerla:
   KUBECONFIG=${GITSTACK_KUBECONFIG} k3s kubectl -n ${GITSTACK_NAMESPACE} get secret ${GITSTACK_RELEASE_NAME}-identity-admin -o jsonpath='{.data.password}' | base64 -d; echo
 Al primo login la password va cambiata prima di qualunque altra operazione.
 
+$(print_ci_summary)
+
 $(print_tls_summary)
 
 $(print_v5_summary)
@@ -3018,6 +3116,169 @@ EOF
   fi
 }
 
+# --- CI integrata: scelte e valori del chart ------------------------------
+
+# Namespace dei job già presente = la CI era accesa (kubeconfig assente = prima
+# installazione).
+ci_previously_enabled() {
+  [ -f "${GITSTACK_KUBECONFIG}" ] || return 1
+  KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl get namespace "${CI_NAMESPACE_DEFAULT}" >/dev/null 2>&1
+}
+
+# Posti già configurati (ResourceQuota ci-jobs), 0 se non si leggono.
+ci_existing_capacity() {
+  local n
+  n="$(KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl -n "${CI_NAMESPACE_DEFAULT}" get resourcequota ci-jobs -o jsonpath='{.spec.hard.pods}' 2>/dev/null || true)"
+  case "${n}" in 1|2|3) printf '%s' "${n}" ;; *) printf '0' ;; esac
+}
+
+# Posti di default per la macchina: 3 con il profilo consigliato, 1 con il minimo.
+ci_default_capacity() {
+  local cpu mem_gb
+  cpu="$(cpu_count)"
+  mem_gb="$(awk -v kib="$(mem_total_kib)" 'BEGIN { printf "%.1f", (kib * 1024) / 1000000000 }')"
+  if [ "${cpu}" -ge "${REC_CPU}" ] && gb_ge "${mem_gb}" "${REC_RAM_GB}"; then
+    printf '%s' "${CI_CAPACITY_REC_PROFILE}"
+  else
+    printf '%s' "${CI_CAPACITY_MIN_PROFILE}"
+  fi
+}
+
+# Host e porta di un URL http(s) del mirror delle action.
+ci_mirror_host_port() {
+  local rest hostport host port scheme
+  scheme="${1%%://*}"
+  rest="${1#*://}"
+  hostport="${rest%%/*}"
+  host="${hostport%%:*}"
+  port=443
+  [ "${scheme}" = "http" ] && port=80
+  case "${hostport}" in *:*) port="${hostport##*:}" ;; esac
+  printf '%s %s' "${host}" "${port}"
+}
+
+resolve_ci() {
+  CI_ENABLED=0
+  CI_CAPACITY=0
+  CI_HELM_SETS=()
+  CI_S3_SECRET=""
+  local requested="${GITSTACK_CI}"
+  if [ -z "${requested}" ]; then
+    if ci_previously_enabled; then
+      requested=1
+      log "CI: già accesa in questa installazione, la conservo (--no-ci per spegnerla)."
+    else
+      requested=0
+    fi
+  fi
+  if [ "${requested}" != "1" ]; then
+    local opt
+    for opt in "${GITSTACK_CI_CAPACITY}" "${GITSTACK_CI_ACTION_MIRROR}" "${GITSTACK_CI_S3_BUCKET}" "${GITSTACK_CI_S3_ENDPOINT}" "${GITSTACK_CI_STORAGE_SIZE}"; do
+      [ -z "${opt}" ] || fail "le opzioni --ci-* servono con --ci: la CI è spenta."
+    done
+    [ "${GITSTACK_CI_BUILD}" != "1" ] || fail "--ci-build serve con --ci: la CI è spenta."
+    return 0
+  fi
+  CI_ENABLED=1
+
+  local cap="${GITSTACK_CI_CAPACITY}"
+  if [ -z "${cap}" ] && [ "${GITSTACK_CI}" != "1" ]; then
+    cap="$(ci_existing_capacity)"
+    [ "${cap}" != "0" ] || cap=""
+  fi
+  if [ -z "${cap}" ]; then
+    cap="$(ci_default_capacity)"
+  fi
+  case "${cap}" in
+    1|2|3) ;;
+    *) fail "--ci-capacity: '${cap}' non valido (1, 2 o 3)." ;;
+  esac
+  CI_CAPACITY="${cap}"
+  CI_HELM_SETS=("ci.enabled=true" "ci.capacity=${cap}")
+
+  if [ -n "${GITSTACK_CI_ACTION_MIRROR}" ]; then
+    net_valid_url "--ci-action-mirror" "${GITSTACK_CI_ACTION_MIRROR}" http https
+    CI_HELM_SETS+=("ci.runner.actionMirror=$(net_helm_escape "${GITSTACK_CI_ACTION_MIRROR}")")
+    local mh mp
+    read -r mh mp <<<"$(ci_mirror_host_port "${GITSTACK_CI_ACTION_MIRROR}")"
+    if is_ipv4 "${mh}"; then
+      CI_HELM_SETS+=("ci.runner.actionMirrorEgress[0].to[0].ipBlock.cidr=${mh}/32"
+        "ci.runner.actionMirrorEgress[0].ports[0].protocol=TCP"
+        "ci.runner.actionMirrorEgress[0].ports[0].port=${mp}")
+    else
+      log "CI: il mirror ${mh} è un nome: se sta su una rete privata aggiungi la regola di uscita con --values (ci.runner.actionMirrorEgress)."
+    fi
+  fi
+  [ "${GITSTACK_CI_BUILD}" != "1" ] || CI_HELM_SETS+=("ci.build.enabled=true")
+  if [ -n "${GITSTACK_CI_STORAGE_SIZE}" ]; then
+    printf '%s' "${GITSTACK_CI_STORAGE_SIZE}" | grep -Eq '^[0-9]+(Gi|Mi|Ti)$' \
+      || fail "--ci-storage-size: '${GITSTACK_CI_STORAGE_SIZE}' non valido (esempio: 40Gi)."
+    CI_HELM_SETS+=("ci.storage.persistence.size=${GITSTACK_CI_STORAGE_SIZE}")
+  fi
+
+  # S3 per artefatti e cache (N7): bucket, endpoint e chiavi vanno insieme.
+  if [ -n "${GITSTACK_CI_S3_ENDPOINT}${GITSTACK_CI_S3_BUCKET}" ]; then
+    if [ -z "${GITSTACK_CI_S3_ENDPOINT}" ] || [ -z "${GITSTACK_CI_S3_BUCKET}" ]; then
+      fail "S3 della CI: servono sia --ci-s3-endpoint sia --ci-s3-bucket."
+    fi
+    if [ -z "${GITSTACK_CI_S3_ACCESS_KEY}" ] || [ -z "${GITSTACK_CI_S3_SECRET_KEY}" ]; then
+      fail "S3 della CI: servono GITSTACK_CI_S3_ACCESS_KEY e GITSTACK_CI_S3_SECRET_KEY (mai da argomento)."
+    fi
+    CI_S3_SECRET="${GITSTACK_RELEASE_NAME}-ci-s3"
+    CI_HELM_SETS+=("ci.storage.s3.endpoint=$(net_helm_escape "${GITSTACK_CI_S3_ENDPOINT}")"
+      "ci.storage.s3.bucket=${GITSTACK_CI_S3_BUCKET}"
+      "ci.storage.s3.existingSecret=${CI_S3_SECRET}")
+    [ -z "${GITSTACK_CI_S3_REGION}" ] || CI_HELM_SETS+=("ci.storage.s3.region=${GITSTACK_CI_S3_REGION}")
+    [ -z "${GITSTACK_CI_S3_PREFIX}" ] || CI_HELM_SETS+=("ci.storage.s3.prefix=${GITSTACK_CI_S3_PREFIX}")
+  fi
+  local profile=minimo posti=posto
+  [ "${cap}" != "${CI_CAPACITY_REC_PROFILE}" ] || profile=consigliato
+  [ "${cap}" = 1 ] || posti=posti
+  log "CI: accesa, ${cap} ${posti} per i job (profilo ${profile})."
+}
+
+# Spazio dei job (CI7): ogni posto può usare 20 GiB di disco effimero sul nodo.
+# Solo avviso: i job rispettano comunque la ResourceQuota.
+preflight_ci() {
+  [ "${CI_ENABLED}" = "1" ] || return 0
+  local target avail_kb avail_gb need
+  target="$(disk_target)"
+  avail_kb="$(df -Pk "${target}" 2>/dev/null | awk 'NR == 2 { print $4 }')"
+  [ -n "${avail_kb}" ] || return 0
+  avail_gb="$(awk -v k="${avail_kb}" 'BEGIN { printf "%.1f", (k * 1024) / 1000000000 }')"
+  need=$((MIN_DISK_FREE_GB + CI_CAPACITY * CI_JOB_DISK_GB))
+  if ! gb_ge "${avail_gb}" "${need}"; then
+    warn "CI: ${avail_gb} GB liberi su ${target}, per ${CI_CAPACITY} job in parallelo ne servono circa ${need} (${MIN_DISK_FREE_GB} per GitStack e ${CI_JOB_DISK_GB} per posto). Riduci --ci-capacity o libera spazio."
+  else
+    log "CI: spazio dei job OK (${avail_gb} GB liberi, servono ${need})."
+  fi
+}
+
+# Secret con le chiavi S3 della CI (accessKey, secretKey). Le chiavi passano da
+# file 0600, mai dalla riga di comando di kubectl.
+ensure_ci_s3_secret() {
+  [ -n "${CI_S3_SECRET}" ] || return 0
+  local dir
+  dir="$(mktemp -d)"
+  TMP_DIRS+=("${dir}")
+  chmod 0700 "${dir}"
+  (umask 077; printf '%s' "${GITSTACK_CI_S3_ACCESS_KEY}" >"${dir}/accessKey"; printf '%s' "${GITSTACK_CI_S3_SECRET_KEY}" >"${dir}/secretKey")
+  KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl create namespace "${GITSTACK_NAMESPACE}" >/dev/null 2>&1 || true
+  KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl -n "${GITSTACK_NAMESPACE}" create secret generic "${CI_S3_SECRET}" \
+    --from-file=accessKey="${dir}/accessKey" --from-file=secretKey="${dir}/secretKey" --dry-run=client -o yaml \
+    | KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl apply -f - >/dev/null \
+    || fail "impossibile creare il Secret ${CI_S3_SECRET} con le chiavi S3 della CI."
+  log "Secret ${CI_S3_SECRET} aggiornato (chiavi S3 della CI)."
+}
+
+print_ci_summary() {
+  if [ "${CI_ENABLED}" = "1" ]; then
+    printf 'CI integrata:  accesa, %s job in parallelo (workflow in .gitstack/workflows/).' "${CI_CAPACITY}"
+  else
+    printf 'CI integrata:  spenta (si accende con --ci, vedi deploy/README.md).'
+  fi
+}
+
 # --- Main ------------------------------------------------------------------
 
 main() {
@@ -3030,9 +3291,13 @@ main() {
   resolve_tls
   resolve_network
   resolve_postgres
+  resolve_ci
   run_preflight
   if [ "${GITSTACK_SKIP_PREFLIGHT}" != "1" ]; then
     preflight_network
+  fi
+  if [ "${GITSTACK_SKIP_PREFLIGHT}" != "1" ]; then
+    preflight_ci
   fi
   apply_ca_trust
 
@@ -3059,6 +3324,7 @@ main() {
   install_helm
   create_postgres_secrets
   ensure_corporate_ca_configmap
+  ensure_ci_s3_secret
   setup_tls "${chart_dir}"
   # V5: le immagini si verificano prima di distribuirle.
   verify_deployed_images "${chart_dir}" "${image_tag}"

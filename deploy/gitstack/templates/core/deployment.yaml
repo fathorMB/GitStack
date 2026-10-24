@@ -104,15 +104,19 @@ spec:
             - name: GITSTACK_CORE_CI_NAMESPACE
               value: {{ .Values.ci.namespace | quote }}
             - name: GITSTACK_CORE_CI_IMAGE
-              value: {{ .Values.ci.runner.image | quote }}
+              value: {{ include "gitstack.ci.runnerImage" . | quote }}
+            {{- if .Values.corporateCA.configMap }}
+            # Proxy (stesse variabili di core) e CA aziendale passano ai pod dei job (N4, N9):
+            # la CA e' copiata da ci-runner.yaml nel namespace dei job con questo nome.
+            - name: GITSTACK_CORE_CI_CA_CONFIGMAP
+              value: "corporate-ca"
+            {{- end }}
             - name: GITSTACK_CORE_CI_ACTION_MIRROR
               value: {{ .Values.ci.runner.actionMirror | quote }}
             - name: GITSTACK_CORE_CI_CAPACITY
               value: {{ .Values.ci.capacity | quote }}
             - name: GITSTACK_CORE_CI_GATEWAY_ADDR
               value: {{ printf ":%d" (.Values.ci.gateway.port | int) | quote }}
-            # I pod dei job stanno in ci.namespace: i nomi vanno qualificati
-            # col namespace del rilascio (GIT-332), altrimenti non si risolvono.
             {{- if .Values.ci.externalGateway.enabled }}
             # Gateway per i runner esterni (GIT-329): solo token di runner registrati.
             - name: GITSTACK_CORE_CI_EXTERNAL_ADDR
@@ -120,6 +124,8 @@ spec:
             - name: GITSTACK_CORE_CI_EXTERNAL_URL
               value: {{ printf "https://%s" .Values.ci.externalGateway.host | quote }}
             {{- end }}
+            # I pod dei job stanno in ci.namespace: i nomi vanno qualificati
+            # col namespace del rilascio (GIT-332), altrimenti non si risolvono.
             - name: GITSTACK_CORE_CI_GATEWAY_URL
               value: {{ printf "http://%s-core.%s.svc:%d" (include "gitstack.fullname" .) .Release.Namespace (.Values.ci.gateway.port | int) | quote }}
             - name: GITSTACK_CORE_CI_GATE_INTERNAL_ADDR

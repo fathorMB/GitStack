@@ -172,6 +172,12 @@ func corePod(p Pod) (*corev1.Pod, error) {
 			Env:          podEnv(p.Env),
 			VolumeMounts: []corev1.VolumeMount{{Name: "tmp", MountPath: "/tmp"}}}}
 	}
+	if p.CAConfigMap != "" {
+		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{Name: "corporate-ca", VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: p.CAConfigMap}}}})
+		mount := corev1.VolumeMount{Name: "corporate-ca", MountPath: CAMountDir, ReadOnly: true}
+		pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, mount)
+	}
 	return pod, nil
 }
 

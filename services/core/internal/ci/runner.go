@@ -54,12 +54,19 @@ type Pod struct {
 	CPU, Memory, EphemeralStorage         string
 	Command                               []string
 	Env                                   map[string]string
+	// CAConfigMap è il ConfigMap (chiave ca.crt) con la CA aziendale, nel namespace dei job (N9).
+	CAConfigMap string
 }
 
 // RunnerConfig contiene solo i dati che l'amministratore può scegliere.
 type RunnerConfig struct {
 	Namespace, Image, GatewayURL, GateInternalAddr, ActionMirror string
 	Capacity                                                     int
+	// ProxyEnv sono HTTP_PROXY, HTTPS_PROXY, NO_PROXY (anche in minuscolo) della rete aziendale (N4, N9):
+	// i job scaricano action ed esecutore attraverso lo stesso proxy dei servizi.
+	ProxyEnv map[string]string
+	// CAConfigMap: ConfigMap con la CA aziendale (chiave ca.crt) nel namespace dei job; vuoto = nessuna.
+	CAConfigMap string
 }
 
 func (c RunnerConfig) normal() RunnerConfig {
@@ -83,16 +90,30 @@ func PodForJob(c RunnerConfig, job JobRow, run RunRow) (Pod, error) {
 		return Pod{}, fmt.Errorf("immagine runner CI obbligatoria")
 	}
 	name := "ci-" + strings.ReplaceAll(job.ID.String(), "-", "")
+	env := map[string]string{}
+	for k, v := range c.ProxyEnv {
+		if v != "" && !strings.HasPrefix(k, "GITSTACK_") {
+			env[k] = v
+		}
+	}
+	if c.CAConfigMap != "" {
+		env["SSL_CERT_DIR"] = CAMountDir
+		env["NODE_EXTRA_CA_CERTS"] = CAMountDir + "/ca.crt"
+	}
+	env["GITSTACK_CI_GATEWAY_URL"] = c.GatewayURL
+	env["GITSTACK_CI_GATE_INTERNAL_ADDR"] = c.GateInternalAddr
+	env["GITSTACK_CI_ACTION_MIRROR"] = c.ActionMirror
+	env["GITSTACK_CI_RUNNER"] = "act-host"
 	return Pod{Name: name, Namespace: c.Namespace, Image: c.Image, PriorityClass: "gitstack-ci-job",
 		ActiveDeadlineSeconds: int64(MaxRuntime / time.Second), AutomountServiceAccountToken: false,
 		RunAsUser: 10001, AllowPrivilegeEscalation: false, ReadOnlyRootFilesystem: true,
 		DropAllCapabilities: true, CPU: MaxCPU, Memory: MaxMemory, EphemeralStorage: MaxEphemeral,
 		InitGate: true,
-		Command:  []string{"/usr/local/bin/ci-runner"},
-		Env: map[string]string{"GITSTACK_CI_GATEWAY_URL": c.GatewayURL,
-			"GITSTACK_CI_GATE_INTERNAL_ADDR": c.GateInternalAddr,
-			"GITSTACK_CI_ACTION_MIRROR":      c.ActionMirror, "GITSTACK_CI_RUNNER": "act-host"}}, nil
+		Command:  []string{"/usr/local/bin/ci-runner"}, Env: env, CAConfigMap: c.CAConfigMap}, nil
 }
+
+// CAMountDir è dove il pod del job monta la CA aziendale (N9).
+const CAMountDir = "/etc/gitstack/corporate-ca"
 
 // PodForJobTicket aggiunge solo al processo supervisore il biglietto monouso
 // emesso per questo job. Il ci-runner lo elimina prima di avviare act.
@@ -210,4 +231,16 @@ func Reconcile(ctx context.Context, pool *pgxpool.Pool, pods PodInspector, names
 		}
 	}
 	return rows.Err()
+}
+
+// ProxyEnvFrom legge le variabili del proxy aziendale (maiuscole e minuscole) con lookup: quelle
+// che core ha già per webhook e SMTP si passano ai pod dei job (N4, N9).
+func ProxyEnvFrom(lookup func(string) string) map[string]string {
+	out := map[string]string{}
+	for _, k := range []string{"HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "NO_PROXY", "no_proxy"} {
+		if v := lookup(k); v != "" {
+			out[k] = v
+		}
+	}
+	return out
 }
