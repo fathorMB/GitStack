@@ -133,7 +133,8 @@ func (h *Handler) guard(w http.ResponseWriter, r *http.Request, rt route, action
 	case isManifest && r.Method == http.MethodDelete:
 		needSettings = true
 	}
-	quotaOn := h.quota > 0 && r.Method != http.MethodDelete && r.Method != http.MethodHead && r.Method != http.MethodGet
+	quota := h.quota.Load() // una sola lettura per richiesta: il valore resta coerente in tutta la guard
+	quotaOn := quota > 0 && r.Method != http.MethodDelete && r.Method != http.MethodHead && r.Method != http.MethodGet
 	if !needSettings && !quotaOn {
 		return true
 	}
@@ -182,7 +183,7 @@ func (h *Handler) guard(w http.ResponseWriter, r *http.Request, rt route, action
 			}
 		}
 	}
-	if quotaOn && !h.checkQuota(w, r, st) {
+	if quotaOn && !h.checkQuota(w, r, st, quota) {
 		return false
 	}
 	return true
@@ -193,7 +194,7 @@ const QuotaWarningPercent = 80
 
 // checkQuota rifiuta il push se l'owner ha finito la quota (o la finirebbe con questa richiesta) e
 // avvisa, con l'intestazione Warning e il log, quando supera l'80%.
-func (h *Handler) checkQuota(w http.ResponseWriter, r *http.Request, st Settings) bool {
+func (h *Handler) checkQuota(w http.ResponseWriter, r *http.Request, st Settings, quota int64) bool {
 	used, err := h.ownerUsage(r.Context(), st)
 	if err != nil {
 		h.log.Error("calcolo della quota non riuscito", "owner", st.Owner, "err", err)
@@ -204,13 +205,13 @@ func (h *Handler) checkQuota(w http.ResponseWriter, r *http.Request, st Settings
 	if incoming < 0 {
 		incoming = 0
 	}
-	if used >= h.quota || used+incoming > h.quota {
-		h.log.Warn("quota del registry esaurita: push rifiutato", "owner", st.Owner, "usedBytes", used, "quotaBytes", h.quota)
-		serveErr(w, denied(fmt.Sprintf("quota del registry esaurita per %s: %d byte usati su %d", st.Owner, used, h.quota)))
+	if used >= quota || used+incoming > quota {
+		h.log.Warn("quota del registry esaurita: push rifiutato", "owner", st.Owner, "usedBytes", used, "quotaBytes", quota)
+		serveErr(w, denied(fmt.Sprintf("quota del registry esaurita per %s: %d byte usati su %d", st.Owner, used, quota)))
 		return false
 	}
-	if pct := (used + incoming) * 100 / h.quota; pct >= QuotaWarningPercent {
-		w.Header().Set("Warning", fmt.Sprintf(`299 - "quota del registry di %s al %d%% (%d byte su %d)"`, st.Owner, pct, used+incoming, h.quota))
+	if pct := (used + incoming) * 100 / quota; pct >= QuotaWarningPercent {
+		w.Header().Set("Warning", fmt.Sprintf(`299 - "quota del registry di %s al %d%% (%d byte su %d)"`, st.Owner, pct, used+incoming, quota))
 		h.log.Warn("quota del registry oltre l'80%", "owner", st.Owner, "percent", pct)
 	}
 	return true

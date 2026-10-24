@@ -307,7 +307,7 @@ func TestQuota_PushOltreQuotaRifiutatoEAvvisoOltre80(t *testing.T) {
 	if err != nil || one < 4000 {
 		t.Fatalf("peso dell'immagine: %d %v", one, err)
 	}
-	e.h.quota = one * 5 / 4
+	e.h.quota.Store(one * 5 / 4)
 
 	// Oltre l'80% della quota: il push continua ma arriva l'avviso.
 	req, _ := http.NewRequest(http.MethodPost, e.srv.URL+"/v2/alice/app/blobs/uploads/", nil)
@@ -321,7 +321,7 @@ func TestQuota_PushOltreQuotaRifiutatoEAvvisoOltre80(t *testing.T) {
 		t.Fatalf("avvisa oltre l'80%%: %d Warning=%q", resp.StatusCode, resp.Header.Get("Warning"))
 	}
 	// Sotto l'80% niente avviso.
-	e.h.quota = one * 10
+	e.h.quota.Store(one * 10)
 	req2, _ := http.NewRequest(http.MethodPost, e.srv.URL+"/v2/alice/app/blobs/uploads/", nil)
 	req2.SetBasicAuth("docker", "gst_write")
 	resp2, err := http.DefaultClient.Do(req2)
@@ -334,13 +334,13 @@ func TestQuota_PushOltreQuotaRifiutatoEAvvisoOltre80(t *testing.T) {
 	}
 
 	// Quota esaurita: il secondo push, anche su un altro repo dello stesso owner, è rifiutato.
-	e.h.quota = one
+	e.h.quota.Store(one)
 	_, err = e.push("alice/app:due", "gst_write")
 	wantErr(t, "push oltre quota", err, 403)
 	_, err = e.push("alice/secret:x", "gst_admin")
 	wantErr(t, "push oltre quota su un altro repo dello stesso owner", err, 403)
 	// La quota è per owner: bob non ne risente. Scaricare e eliminare restano possibili.
-	e.h.quota = one * 3
+	e.h.quota.Store(one * 3)
 	e.mustPush("bob/other:x", "gst_admin")
 	if _, err := e.pull("alice/app:uno", "gst_read"); err != nil {
 		t.Fatalf("pull oltre quota: %v", err)
@@ -352,7 +352,7 @@ func TestQuota_PushOltreQuotaRifiutatoEAvvisoOltre80(t *testing.T) {
 	}
 	e.clock.advance(2 * day)
 	e.cleanup() // raccoglie i blob rimasti senza immagine (oltre la tolleranza)
-	e.h.quota = one * 2
+	e.h.quota.Store(one * 2)
 	e.mustPush("alice/app:tre", "gst_write")
 }
 

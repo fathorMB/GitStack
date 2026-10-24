@@ -33,6 +33,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/distribution/distribution/v3/configuration"
@@ -143,7 +144,7 @@ type Handler struct {
 
 	// Impostazioni, quota e pulizia (GIT-325, RG2). settings è nil se il backend non le dà.
 	settings  *settingsCache
-	quota     int64
+	quota     atomic.Int64 // letta una volta per richiesta in guard; scritta solo da costruttore e test
 	now       func() time.Time
 	blobGrace time.Duration
 	usageTTL  time.Duration
@@ -235,7 +236,8 @@ func New(cfg Config, b Backend) (h *Handler, err error) {
 	if realm == "" {
 		realm = "GitStack registry"
 	}
-	h = &Handler{backend: b, realm: realm, log: log, quota: cfg.QuotaBytes, usage: map[string]usageEntry{}}
+	h = &Handler{backend: b, realm: realm, log: log, usage: map[string]usageEntry{}}
+	h.quota.Store(cfg.QuotaBytes)
 	h.now = cfg.Now
 	if h.now == nil {
 		h.now = time.Now
