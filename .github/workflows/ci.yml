@@ -119,6 +119,25 @@ jobs:
           GITSTACK_REQUIRE_UI_SMOKE: "1"
         run: go test -tags=integration ./... -race
 
+      # Compatibilita' con il runner di Gitea (ex act_runner, GIT-329, ADR 0001 §4): il binario
+      # pinnato per versione e sha256 (gitea.com/gitea/runner, release v5.2.2) si registra col
+      # token monouso sul ci-gateway, esegue un job `runs-on: self-hosted` e ne riporta log ed
+      # esito. Il test stampa una riga ok/KO per controllo; -v le mostra nel log del job.
+      - name: Compatibilita' con il runner di Gitea (act_runner pinnato)
+        working-directory: services/core
+        env:
+          ACT_RUNNER_VERSION: "5.2.2"
+          ACT_RUNNER_SHA256: "5a2639fd2a57feeba29a9b1fb0e941489f092a4fa681c7c333c0372731248b63"
+        run: |
+          set -euo pipefail
+          bin="${RUNNER_TEMP}/gitea-runner"
+          curl -fsSL -o "${bin}" "https://gitea.com/gitea/runner/releases/download/v${ACT_RUNNER_VERSION}/gitea-runner-${ACT_RUNNER_VERSION}-linux-amd64"
+          echo "${ACT_RUNNER_SHA256}  ${bin}" | sha256sum -c -
+          chmod +x "${bin}"
+          GITSTACK_ACT_RUNNER_BIN="${bin}" go test -tags=integration -run TestActRunner_Compat -count=1 -v ./internal/cigateway/ 2>&1 | tee "${RUNNER_TEMP}/act-runner.log"
+          grep -E -- '--- (PASS|FAIL): TestActRunner_Compat' "${RUNNER_TEMP}/act-runner.log"
+          if grep -q 'KO:' "${RUNNER_TEMP}/act-runner.log"; then echo "KO: controlli falliti" >&2; exit 1; fi
+
       # Registry OCI (GIT-286, RG1): docker login, push e pull con il client docker vero
       # contro il registry in processo (127.0.0.1 è un registry non sicuro per docker, senza
       # configurazione), su disco e su S3 finto. ubuntu-24.04 ha già docker; il tag "docker"

@@ -595,6 +595,23 @@ ci:
   gateway:
     # Porta interna del solo endpoint raggiungibile dai pod CI.
     port: 8081
+  # ci-gateway per i runner esterni (GIT-329, ADR 0001 §4). SPENTO per default: senza,
+  # un runner esterno raggiunge il gateway solo se l'amministratore lo espone a mano.
+  # Acceso, core apre una seconda porta (stesso protocollo runner.v1) che accetta SOLO il
+  # token di un runner registrato (gsr_): il biglietto di un pod interno vi riceve
+  # Unauthenticated. La porta non e' raggiungibile dai pod dei job (la loro NetworkPolicy
+  # apre solo ci.gateway.port). Una IngressRoute di Traefik la pubblica su un host
+  # dedicato, con TLS dalla CA dell'istanza: richiede ingress.enabled e ingress.tls.enabled
+  # e un certificato (ingress.tls.secretName) valido anche per questo host.
+  externalGateway:
+    enabled: false
+    # Host dedicato (obbligatorio se acceso), es. ci.gitstack.lan. Il runner si registra
+    # con `gitstack-runner register --url https://<host>`.
+    host: ""
+    # Porta di core per i runner esterni (non quella interna ci.gateway.port).
+    port: 8082
+    # Secret TLS dedicato; vuoto = ingress.tls.secretName (o il certResolver).
+    tlsSecretName: ""
   runner:
     image: ""
     # URL opzionale del mirror amministrato (es. https://mirror.example/); vuoto usa

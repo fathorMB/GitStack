@@ -89,6 +89,10 @@ spec:
             - name: ci-gateway
               containerPort: {{ .Values.ci.gateway.port }}
             {{- end }}
+            {{- if and .Values.ci.enabled .Values.ci.externalGateway.enabled }}
+            - name: ci-external
+              containerPort: {{ .Values.ci.externalGateway.port }}
+            {{- end }}
           env:
             {{- include "gitstack.proxy.env" . | nindent 12 }}
             {{- include "gitstack.nats.authEnv" . | nindent 12 }}
@@ -109,6 +113,13 @@ spec:
               value: {{ printf ":%d" (.Values.ci.gateway.port | int) | quote }}
             # I pod dei job stanno in ci.namespace: i nomi vanno qualificati
             # col namespace del rilascio (GIT-332), altrimenti non si risolvono.
+            {{- if .Values.ci.externalGateway.enabled }}
+            # Gateway per i runner esterni (GIT-329): solo token di runner registrati.
+            - name: GITSTACK_CORE_CI_EXTERNAL_ADDR
+              value: {{ printf ":%d" (.Values.ci.externalGateway.port | int) | quote }}
+            - name: GITSTACK_CORE_CI_EXTERNAL_URL
+              value: {{ printf "https://%s" .Values.ci.externalGateway.host | quote }}
+            {{- end }}
             - name: GITSTACK_CORE_CI_GATEWAY_URL
               value: {{ printf "http://%s-core.%s.svc:%d" (include "gitstack.fullname" .) .Release.Namespace (.Values.ci.gateway.port | int) | quote }}
             - name: GITSTACK_CORE_CI_GATE_INTERNAL_ADDR

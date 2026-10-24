@@ -173,6 +173,16 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.ci.gateway.port }}
+    {{- if .Values.ci.externalGateway.enabled }}
+    # Gateway per i runner esterni (GIT-329): solo dal controller di ingresso.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $np.ingressNamespace }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.ci.externalGateway.port }}
+    {{- end }}
     {{- end }}
   egress:
     # Il dispatcher usa l'API in-cluster per creare e osservare i pod CI.
