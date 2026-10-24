@@ -108,9 +108,9 @@ spec:
             - name: GITSTACK_CORE_CI_GATEWAY_ADDR
               value: {{ printf ":%d" (.Values.ci.gateway.port | int) | quote }}
             - name: GITSTACK_CORE_CI_GATEWAY_URL
-              value: {{ printf "http://%s-core:%d" (include "gitstack.fullname" .) (.Values.ci.gateway.port | int) | quote }}
+              value: {{ printf "http://%s-core.%s.svc:%d" (include "gitstack.fullname" .) .Release.Namespace (.Values.ci.gateway.port | int) | quote }}
             - name: GITSTACK_CORE_CI_GATE_INTERNAL_ADDR
-              value: {{ printf "%s-core:%d" (include "gitstack.fullname" .) (.Values.core.containerPort | int) | quote }}
+              value: {{ printf "%s-core.%s.svc:%d" (include "gitstack.fullname" .) .Release.Namespace (.Values.core.containerPort | int) | quote }}
             - name: GITSTACK_CORE_CI_LOGS_DIR
               value: /tmp/ci-logs
             {{- end }}

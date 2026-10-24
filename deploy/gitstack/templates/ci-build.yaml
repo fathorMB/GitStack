@@ -1,0 +1,134 @@
+{{- if and .Values.ci.enabled .Values.ci.build.enabled }}
+# Namespace dei job di build (ADR 0001 §6): BuildKit rootless, senza demone ne' socket.
+# BuildKit rootless chiede seccomp e AppArmor Unconfined, rifiutati da Pod Security
+# `restricted` e `baseline`: il namespace e' `privileged` per Pod Security e l'unica
+# barriera di ammissione e' la ValidatingAdmissionPolicy qui sotto (Kubernetes >= 1.30).
+# Provato su k3d: lo user namespace si crea con newuidmap/newgidmap (file con setuid), che
+# non parte con allowPrivilegeEscalation: false ne' senza SETUID e SETGID; la policy quindi
+# consente solo queste due capability e continua a vietare privileged, host*, hostPath.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.ci.build.namespace }}
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: latest
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ .Values.ci.build.namespace }}-rootless-only
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  variables:
+    - name: containers
+      expression: >-
+        object.spec.containers + (has(object.spec.initContainers) ? object.spec.initContainers : [])
+    - name: podRunsAsNonRoot
+      expression: >-
+        has(object.spec.securityContext) && has(object.spec.securityContext.runAsNonRoot) && object.spec.securityContext.runAsNonRoot
+  validations:
+    - expression: >-
+        !has(object.spec.hostNetwork) || !object.spec.hostNetwork
+      message: "i pod di build non usano la rete dell'host (hostNetwork)"
+    - expression: >-
+        (!has(object.spec.hostPID) || !object.spec.hostPID) && (!has(object.spec.hostIPC) || !object.spec.hostIPC)
+      message: "i pod di build non condividono PID o IPC dell'host"
+    - expression: >-
+        !has(object.spec.volumes) || object.spec.volumes.all(v, !has(v.hostPath))
+      message: "i pod di build non montano hostPath (ne' socket del runtime)"
+    - expression: >-
+        has(object.spec.automountServiceAccountToken) && !object.spec.automountServiceAccountToken
+      message: "i pod di build non montano il token del ServiceAccount"
+    - expression: >-
+        variables.containers.all(c, has(c.securityContext) && (!has(c.securityContext.privileged) || !c.securityContext.privileged))
+      message: "i pod di build non possono essere privileged"
+    - expression: >-
+        variables.containers.all(c, has(c.securityContext) && has(c.securityContext.capabilities) && has(c.securityContext.capabilities.drop) && 'ALL' in c.securityContext.capabilities.drop && (!has(c.securityContext.capabilities.add) || c.securityContext.capabilities.add.all(x, x in ['SETUID', 'SETGID'])))
+      message: "i pod di build scartano ogni capability e possono aggiungere solo SETUID e SETGID (newuidmap di BuildKit rootless)"
+    - expression: >-
+        variables.containers.all(c, variables.podRunsAsNonRoot || (has(c.securityContext) && has(c.securityContext.runAsNonRoot) && c.securityContext.runAsNonRoot))
+      message: "i pod di build girano come utente non root (runAsNonRoot: true)"
+    - expression: >-
+        variables.containers.all(c, !has(c.ports) || c.ports.all(p, !has(p.hostPort) || p.hostPort == 0))
+      message: "i pod di build non aprono hostPort"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ .Values.ci.build.namespace }}-rootless-only
+spec:
+  policyName: {{ .Values.ci.build.namespace }}-rootless-only
+  validationActions: ["Deny"]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: {{ .Values.ci.build.namespace | quote }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ci-build
+  namespace: {{ .Values.ci.build.namespace }}
+spec:
+  hard:
+    pods: {{ .Values.ci.capacity | quote }}
+    requests.cpu: {{ printf "%d" (mul (.Values.ci.capacity | int) 2) | quote }}
+    requests.memory: {{ printf "%dGi" (mul (.Values.ci.capacity | int) 4) | quote }}
+    limits.cpu: {{ printf "%d" (mul (.Values.ci.capacity | int) 2) | quote }}
+    limits.memory: {{ printf "%dGi" (mul (.Values.ci.capacity | int) 4) | quote }}
+    requests.ephemeral-storage: {{ printf "%dGi" (mul (.Values.ci.capacity | int) 20) | quote }}
+    limits.ephemeral-storage: {{ printf "%dGi" (mul (.Values.ci.capacity | int) 20) | quote }}
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: ci-build-limits
+  namespace: {{ .Values.ci.build.namespace }}
+spec:
+  limits:
+    - type: Container
+      max: {cpu: "2", memory: 4Gi, ephemeral-storage: 20Gi}
+      default: {cpu: "2", memory: 4Gi, ephemeral-storage: 20Gi}
+      defaultRequest: {cpu: "2", memory: 4Gi, ephemeral-storage: 20Gi}
+---
+# Stessa barriera di rete dei job: nessun ingresso, uscita solo verso Internet (e il
+# ci-gateway), mai verso pod, Service, nodi o LAN.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ci-build-egress
+  namespace: {{ .Values.ci.build.namespace }}
+spec:
+  podSelector:
+    matchLabels: {gitstack.io/ci-job: "true"}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.dnsNamespace | quote }}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+{{- end }}

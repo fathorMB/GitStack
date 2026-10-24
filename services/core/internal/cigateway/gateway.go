@@ -182,11 +182,16 @@ func (g *gateway) archive(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "git non disponibile", http.StatusServiceUnavailable)
 		return
 	}
-	st, err := g.Reader.OpenStream(r.Context(), ciCaller, a.RepoID, "archive", url.Values{"ref": {a.SHA}, "format": {"tar.gz"}})
+	st, err := g.Reader.OpenStream(r.Context(), ciCaller, a.RepoID, "archive", url.Values{"ref": {a.SHA}, "format": {"tar.gz"}, "name": {archiveRoot}})
 	if err != nil {
 		var ae *gitclient.APIError
 		if errors.As(err, &ae) {
-			http.Error(w, "repository non trovato", http.StatusNotFound)
+			if ae.Status == http.StatusNotFound {
+				http.Error(w, "repository non trovato", http.StatusNotFound)
+				return
+			}
+			g.Log.Error("ci-gateway: git ha rifiutato la lettura dell'archivio", "err", err)
+			http.Error(w, "archivio non disponibile", http.StatusBadGateway)
 			return
 		}
 		g.Log.Error("ci-gateway: archivio non disponibile", "err", err)
@@ -199,6 +204,10 @@ func (g *gateway) archive(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = io.Copy(w, st.Body)
 }
+
+// archiveRoot è il nome del repo che git vuole per la cartella radice dell'archivio
+// (obbligatorio, solo lettere, cifre, punto, trattino e sottolineato): il runner la scarta.
+const archiveRoot = "repo"
 
 // ciCaller è l'identità con cui il gateway legge da git per conto del job.
 var ciCaller = trust.Identity{UserID: uuid.Nil.String(), Username: "system:ci-job"}

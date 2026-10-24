@@ -58,7 +58,7 @@ func (f *fakeReader) ReadJSON(context.Context, trust.Identity, uuid.UUID, string
 
 func (f *fakeReader) OpenStream(_ context.Context, _ trust.Identity, repo uuid.UUID, path string, q url.Values) (*gitclient.Stream, error) {
 	f.mu.Lock()
-	f.calls = append(f.calls, repo.String()+"|"+path+"|"+q.Get("ref")+"|"+q.Get("format"))
+	f.calls = append(f.calls, repo.String()+"|"+path+"|"+q.Get("ref")+"|"+q.Get("format")+"|"+q.Get("name"))
 	f.mu.Unlock()
 	return &gitclient.Stream{Header: http.Header{}, Body: io.NopCloser(strings.NewReader("TARGZ:" + repo.String()))}, nil
 }
@@ -432,7 +432,7 @@ func TestToken_ClonaSoloIlRepoDelJob(t *testing.T) {
 		t.Fatalf("letture di git: %v", calls)
 	}
 	for _, c := range calls {
-		if c != repoA.String()+"|archive|"+sha("a")+"|tar.gz" {
+		if c != repoA.String()+"|archive|"+sha("a")+"|tar.gz|repo" {
 			t.Errorf("lettura fuori dal repo del job: %s", c)
 		}
 	}
