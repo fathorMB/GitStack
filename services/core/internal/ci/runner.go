@@ -109,7 +109,7 @@ func PodForJob(c RunnerConfig, job JobRow, run RunRow) (Pod, error) {
 		RunAsUser: 10001, AllowPrivilegeEscalation: false, ReadOnlyRootFilesystem: true,
 		DropAllCapabilities: true, CPU: MaxCPU, Memory: MaxMemory, EphemeralStorage: MaxEphemeral,
 		InitGate: true,
-		Command: []string{"/usr/local/bin/ci-runner"}, Env: env, CAConfigMap: c.CAConfigMap}, nil
+		Command:  []string{"/usr/local/bin/ci-runner"}, Env: env, CAConfigMap: c.CAConfigMap}, nil
 }
 
 // CAMountDir è dove il pod del job monta la CA aziendale (N9).
