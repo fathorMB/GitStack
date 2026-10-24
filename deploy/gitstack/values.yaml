@@ -632,6 +632,12 @@ ci:
     #   - to: [{ipBlock: {cidr: 10.20.0.5/32}}]
     #     ports: [{protocol: TCP, port: 443}]
     actionMirrorEgress: []
+    # Come actionMirrorEgress, ma per il proxy aziendale (HTTP_PROXY/HTTPS_PROXY) che
+    # sta su una rete privata. `install.sh` lo riempie da --http-proxy/--https-proxy
+    # quando l'host e' un IPv4; con un nome si scrive a mano. Esempio:
+    #   - to: [{ipBlock: {cidr: 10.0.0.5/32}}]
+    #     ports: [{protocol: TCP, port: 3128}]
+    proxyEgress: []
   # Job di tipo build (ADR 0001 §6): BuildKit rootless senza demone ne' socket in un
   # namespace separato. BuildKit rootless chiede seccomp/AppArmor Unconfined, che Pod
   # Security `restricted` e `baseline` rifiutano: il namespace usa il livello

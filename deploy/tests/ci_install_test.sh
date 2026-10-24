@@ -39,7 +39,7 @@ reset() {
   GITSTACK_CI="" GITSTACK_CI_CAPACITY="" GITSTACK_CI_ACTION_MIRROR="" GITSTACK_CI_BUILD=0
   GITSTACK_CI_STORAGE_SIZE="" GITSTACK_CI_S3_ENDPOINT="" GITSTACK_CI_S3_BUCKET=""
   GITSTACK_CI_S3_ACCESS_KEY="" GITSTACK_CI_S3_SECRET_KEY="" GITSTACK_CI_S3_REGION="" GITSTACK_CI_S3_PREFIX=""
-  GITSTACK_RELEASE_NAME=gitstack
+  GITSTACK_RELEASE_NAME=gitstack GITSTACK_HTTP_PROXY="" GITSTACK_HTTPS_PROXY=""
   T_CPU=8 T_RAM_GB=16 T_PREV=0 T_PREV_CAP=0
 }
 sets() { printf '%s\n' "${CI_HELM_SETS[@]:-}"; }
@@ -98,6 +98,22 @@ case "${OUT}" in *actionMirrorEgress*) bad "mirror con nome: nessuna regola di u
 reset; GITSTACK_CI=1; GITSTACK_CI_ACTION_MIRROR="ftp://x"
 run resolve_ci
 expect_fail "mirror con schema ftp rifiutato"
+
+# 9b. Proxy aziendale: con un IPv4 la regola di uscita verso <ip>/32 e porta.
+reset; GITSTACK_CI=1; GITSTACK_HTTPS_PROXY="http://10.0.0.5:3128"; resolve
+expect_has "proxy IPv4: cidr" "ci.runner.proxyEgress[0].to[0].ipBlock.cidr=10.0.0.5/32"
+expect_has "proxy IPv4: protocollo" "ci.runner.proxyEgress[0].ports[0].protocol=TCP"
+expect_has "proxy IPv4: porta" "ci.runner.proxyEgress[0].ports[0].port=3128"
+reset; GITSTACK_CI=1; GITSTACK_HTTP_PROXY="http://u:p@10.0.0.5:3128"; GITSTACK_HTTPS_PROXY="http://10.0.0.5:3128"; resolve
+expect_has "proxy con credenziali: cidr" "ci.runner.proxyEgress[0].to[0].ipBlock.cidr=10.0.0.5/32"
+case "${OUT}" in *proxyEgress\[1\]*) bad "proxy uguale: una sola regola" ;; *) ok ;; esac
+reset; GITSTACK_CI=1; GITSTACK_HTTP_PROXY="http://10.0.0.5:3128"; GITSTACK_HTTPS_PROXY="http://10.0.0.6"; resolve
+expect_has "due proxy: seconda regola" "ci.runner.proxyEgress[1].to[0].ipBlock.cidr=10.0.0.6/32"
+expect_has "due proxy: porta predefinita" "ci.runner.proxyEgress[1].ports[0].port=80"
+reset; GITSTACK_CI=1; GITSTACK_HTTPS_PROXY="http://proxy.corp.example:3128"; resolve
+case "${OUT}" in *proxyEgress*) bad "proxy con nome: nessuna regola automatica" ;; *) ok ;; esac
+reset; GITSTACK_HTTPS_PROXY="http://10.0.0.5:3128"; resolve
+case "${OUT}" in *proxyEgress*) bad "senza --ci: nessuna regola" ;; *) ok ;; esac
 
 # 10. S3: endpoint, bucket e chiavi insieme; il Secret è quello della release.
 reset; GITSTACK_CI=1; GITSTACK_CI_S3_ENDPOINT=s3.corp.example; GITSTACK_CI_S3_BUCKET=ci-data

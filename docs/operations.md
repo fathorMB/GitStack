@@ -678,6 +678,14 @@ mirror of `--ci-action-mirror` (when the host is an IPv4 address the installer
 also opens the egress of the job namespace towards `<ip>/32` on the mirror
 port; with a host name use `--values` with `ci.runner.actionMirrorEgress`,
 because the base policy closes 10/8, 172.16/12, 192.168/16 and 169.254/16).
+The same holds for the proxy: when `--http-proxy` / `--https-proxy` point to an
+IPv4 address, the installer opens the egress of the job namespace towards
+`<ip>/32` on the proxy port (`ci.runner.proxyEgress`). When the proxy is given
+by **name** and sits on a private network, the installer cannot know its
+address (it does not resolve the name) and logs a notice: add the rule with
+`--values`, e.g. `ci.runner.proxyEgress: [{to: [{ipBlock: {cidr: 10.0.0.5/32}}],
+ports: [{protocol: TCP, port: 3128}]}]`. Without it the job pods cannot reach
+the proxy and every download from a job fails.
 The executor (`act` plus `ci-runner`) is **inside the runner image**
 `gitstack-ci-runner`, published and cosign-signed by `ci.yml` with the same tag
 as the services, so nothing is downloaded at job time except the `uses:`
