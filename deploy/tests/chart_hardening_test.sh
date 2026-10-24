@@ -261,6 +261,12 @@ expect_has "ci-gateway: URL" "${d}" "GITSTACK_GIT_CI_GATEWAY_URL"
 expect_has "ci-gateway: porta aperta verso core" "$(doc NetworkPolicy gitstack-git)" "port: 9090"
 if helm_rc --set git.registry.s3.enabled=true; then bad "S3 senza bucket: helm template doveva fermarsi"; else ok; fi
 
+echo "== GIT-332: indirizzi del ci-gateway qualificati col namespace del rilascio"
+OUT="$(helm template gitstack "${CHART}" --namespace prova-ns --set ci.enabled=true | tr -d '\r')" || { bad "helm template con ci.enabled fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_has "ci: GATEWAY_URL con namespace" "${d}" 'value: "http://gitstack-core.prova-ns.svc:'
+expect_has "ci: GATE_INTERNAL_ADDR con namespace" "${d}" 'value: "gitstack-core.prova-ns.svc:'
+
 echo
 echo "Passati: ${PASS}  Falliti: ${FAILN}"
 [ "${FAILN}" -eq 0 ]
