@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -353,7 +355,7 @@ func TestStorage_PurgeStorageOnce_ConservazioneRegolabile(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Default (90 giorni): il log di 20 giorni resta.
-	if l, _, _, err := PurgeStorageOnce(ctx, pool, logs, blobs, storageNow); err != nil || l != 0 {
+	if l, _, _, err := PurgeStorageOnce(ctx, pool, logs, blobs, t.TempDir(), storageNow); err != nil || l != 0 {
 		t.Fatalf("a 90 giorni: %d, %v", l, err)
 	}
 	// L'amministratore porta la conservazione a 14 giorni: il giro successivo lo elimina.
@@ -362,7 +364,7 @@ func TestStorage_PurgeStorageOnce_ConservazioneRegolabile(t *testing.T) {
 	if _, err := SaveSettings(ctx, pool, storageNow, uuid.New(), st); err != nil {
 		t.Fatal(err)
 	}
-	l, _, _, err := PurgeStorageOnce(ctx, pool, logs, blobs, storageNow)
+	l, _, _, err := PurgeStorageOnce(ctx, pool, logs, blobs, t.TempDir(), storageNow)
 	if err != nil || l != 1 {
 		t.Fatalf("a 14 giorni: %d, %v", l, err)
 	}
@@ -412,5 +414,120 @@ func TestStorage_QueueStats(t *testing.T) {
 	want := QueueStats{Queued: 2, Running: 1, AvgWaitSeconds: 20, LogBytes: logSize, ArtifactBytes: 5, CacheBytes: 7}
 	if s != want {
 		t.Errorf("statistiche = %+v, attese %+v", s, want)
+	}
+}
+
+// TestStorage_FileOrfaniDopoLeCascate: cancellando l'esecuzione o il repo con un DELETE diretto le righe di
+// artefatti e cache cadono in cascata; il giro di pulizia elimina i file (disco e S3) e le tombstone.
+// Un artefatto di un'altra esecuzione dello stesso repo resta apribile.
+func TestStorage_FileOrfaniDopoLeCascate(t *testing.T) {
+	pool, _ := dbtest.NewPool(t)
+	ctx := context.Background()
+	for name, blobs := range backends(t) {
+		t.Run(name, func(t *testing.T) {
+			st := DefaultSettings()
+			repo := seedStorageRepo(t, pool, "app-"+name)
+			jobA := seedStorageJob(t, pool, repo, "in_progress", nil, nil)
+			jobB := seedStorageJob(t, pool, repo, "in_progress", nil, nil)
+			artA, err := SaveArtifact(ctx, pool, blobs, storageNow, jobA, "dist", strings.NewReader("AAA"), st)
+			if err != nil {
+				t.Fatal(err)
+			}
+			artB, err := SaveArtifact(ctx, pool, blobs, storageNow, jobB, "dist", strings.NewReader("BBB"), st)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cache := saveCache(t, pool, blobs, storageNow, repo, "k-"+name, "v", "refs/heads/main", "CCC", st)
+
+			// 1) Cancello l'esecuzione A: cade l'artefatto A, non B né la cache.
+			if _, err := pool.Exec(ctx, `DELETE FROM core.ci_runs WHERE id = $1`, jobA.RunID); err != nil {
+				t.Fatal(err)
+			}
+			var tomb int
+			if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.ci_blob_tombstones WHERE storage_key = $1`, artA.StorageKey).Scan(&tomb); err != nil || tomb != 1 {
+				t.Fatalf("tombstone dell'artefatto A: %d %v", tomb, err)
+			}
+			if _, _, _, err := PurgeStorageOnce(ctx, pool, nil, blobs, t.TempDir(), storageNow); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := readAll(t, blobs, artA.StorageKey); !errors.Is(err, ErrBlobNotFound) {
+				t.Errorf("il file dell'artefatto A doveva sparire: %v", err)
+			}
+			if got, err := readAll(t, blobs, artB.StorageKey); err != nil || got != "BBB" {
+				t.Errorf("l'artefatto di un'altra esecuzione deve restare: %q %v", got, err)
+			}
+			if got, err := readAll(t, blobs, cache.StorageKey); err != nil || got != "CCC" {
+				t.Errorf("la cache deve restare: %q %v", got, err)
+			}
+			if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.ci_blob_tombstones WHERE storage_key = $1`, artA.StorageKey).Scan(&tomb); err != nil || tomb != 0 {
+				t.Errorf("la tombstone doveva sparire: %d %v", tomb, err)
+			}
+
+			// 2) Cancello il repo: cadono artefatto B e cache.
+			if _, err := pool.Exec(ctx, `DELETE FROM core.repositories WHERE resource_id = $1`, repo); err != nil {
+				t.Fatal(err)
+			}
+			if _, _, _, err := PurgeStorageOnce(ctx, pool, nil, blobs, t.TempDir(), storageNow); err != nil {
+				t.Fatal(err)
+			}
+			for _, k := range []string{artB.StorageKey, cache.StorageKey} {
+				if _, err := readAll(t, blobs, k); !errors.Is(err, ErrBlobNotFound) {
+					t.Errorf("%s doveva sparire dopo l'eliminazione del repo: %v", k, err)
+				}
+			}
+			if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.ci_blob_tombstones`).Scan(&tomb); err != nil || tomb != 0 {
+				t.Errorf("tombstone rimaste: %d %v", tomb, err)
+			}
+			// Idempotente: un secondo giro non trova niente.
+			if n, err := PurgeTombstones(ctx, pool, blobs); err != nil || n != 0 {
+				t.Errorf("secondo giro: %d %v", n, err)
+			}
+		})
+	}
+}
+
+// TestStorage_FileDAppoggioAbbandonati: un cache-<seq>.part vecchio senza prenotazione viva sparisce; quello di
+// una prenotazione viva, uno recente e un file estraneo restano.
+func TestStorage_FileDAppoggioAbbandonati(t *testing.T) {
+	pool, _ := dbtest.NewPool(t)
+	ctx := context.Background()
+	repo := seedStorageRepo(t, pool, "app")
+	blobs := DiskBlobs{Dir: t.TempDir()}
+	spool := t.TempDir()
+	st := DefaultSettings()
+	live, err := ReserveCache(ctx, pool, storageNow, repo, "viva", "v", "refs/heads/main", 4, st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write := func(path string, age time.Duration) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		old := storageNow.Add(-age)
+		if err := os.Chtimes(path, old, old); err != nil {
+			t.Fatal(err)
+		}
+	}
+	orphan := SpoolPath(spool, 99999)
+	liveFile := SpoolPath(spool, live.Seq)
+	recent := SpoolPath(spool, 88888)
+	stranger := filepath.Join(spool, "altro.txt")
+	write(orphan, 2*time.Hour)
+	write(liveFile, 2*time.Hour)
+	write(recent, 10*time.Minute)
+	write(stranger, 5*time.Hour)
+
+	if _, _, _, err := PurgeStorageOnce(ctx, pool, nil, blobs, spool, storageNow); err != nil {
+		t.Fatal(err)
+	}
+	exists := func(p string) bool { _, err := os.Stat(p); return err == nil }
+	if exists(orphan) {
+		t.Error("il .part vecchio senza prenotazione doveva sparire")
+	}
+	for name, p := range map[string]string{"prenotazione viva": liveFile, "recente": recent, "estraneo": stranger} {
+		if !exists(p) {
+			t.Errorf("il file %s non andava eliminato", name)
+		}
 	}
 }

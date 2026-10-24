@@ -34723,6 +34723,8 @@ type UpdateCiStorageSettingsResponse struct {
 	JSON401 *Unauthorized
 	// JSON403 the response for an HTTP 403 `application/json` response
 	JSON403 *Forbidden
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -34743,6 +34745,11 @@ func (r UpdateCiStorageSettingsResponse) GetJSON401() *Unauthorized {
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
 func (r UpdateCiStorageSettingsResponse) GetJSON403() *Forbidden {
 	return r.JSON403
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateCiStorageSettingsResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
 }
 
 // GetBody returns the raw response body bytes
@@ -60097,6 +60104,13 @@ func ParseUpdateCiStorageSettingsResponse(rsp *http.Response) (*UpdateCiStorageS
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 

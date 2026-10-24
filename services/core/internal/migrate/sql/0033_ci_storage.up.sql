@@ -48,3 +48,23 @@ CREATE TABLE core.ci_caches (
     CONSTRAINT ci_caches_scope UNIQUE (repo_id, cache_key, version, ref)
 );
 CREATE INDEX ci_caches_repo_used_idx ON core.ci_caches (repo_id, last_used_at);
+
+-- File da eliminare (GIT-280): le FK ON DELETE CASCADE (repo, esecuzione) tolgono le righe di
+-- ci_artifacts e ci_caches senza passare dal codice che cancella i file. Ogni riga eliminata lascia
+-- qui la sua chiave; il giro di pulizia elimina il file (disco o S3) e poi la tombstone.
+CREATE TABLE core.ci_blob_tombstones (
+    storage_key TEXT PRIMARY KEY,
+    deleted_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE FUNCTION core.ci_blob_tombstone() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO core.ci_blob_tombstones (storage_key) VALUES (OLD.storage_key) ON CONFLICT DO NOTHING;
+    RETURN OLD;
+END;
+$$;
+
+CREATE TRIGGER ci_artifacts_tombstone AFTER DELETE ON core.ci_artifacts
+    FOR EACH ROW EXECUTE FUNCTION core.ci_blob_tombstone();
+CREATE TRIGGER ci_caches_tombstone AFTER DELETE ON core.ci_caches
+    FOR EACH ROW EXECUTE FUNCTION core.ci_blob_tombstone();

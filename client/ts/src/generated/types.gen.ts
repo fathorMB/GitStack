@@ -15911,6 +15911,11 @@ export type UpdateCiStorageSettingsErrors = {
      *
      */
     403: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
 };
 
 export type UpdateCiStorageSettingsError = UpdateCiStorageSettingsErrors[keyof UpdateCiStorageSettingsErrors];

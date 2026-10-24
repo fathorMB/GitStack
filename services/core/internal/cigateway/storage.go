@@ -130,13 +130,7 @@ func (g *gateway) refs(r *http.Request, a ci.JobAuth) (ref, defaultRef string, e
 	return ref, "refs/heads/" + branch, err
 }
 
-func (g *gateway) spoolPath(seq int64) string {
-	dir := g.SpoolDir
-	if dir == "" {
-		dir = filepath.Join(os.TempDir(), "gitstack-ci-cache")
-	}
-	return filepath.Join(dir, "cache-"+strconv.FormatInt(seq, 10)+".part")
-}
+func (g *gateway) spoolPath(seq int64) string { return ci.SpoolPath(g.SpoolDir, seq) }
 
 func (g *gateway) cacheAPI(w http.ResponseWriter, r *http.Request) {
 	a, ok := g.jobAuth(w, r)

@@ -240,7 +240,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	routerOpts = append(routerOpts, httpserver.WithCICapacity(cfg.CICapacity))
 	// Pulizia periodica di log, artefatti e cache con le impostazioni dell'amministratore.
 	if ciLogs != nil || ciBlobs != nil {
-		go ci.RunStoragePurge(ctx, pool, ciLogs, ciBlobs, ci.DefaultStoragePurgeInterval, logger)
+		go ci.RunStoragePurge(ctx, pool, ciLogs, ciBlobs, cfg.CIArtifactsDir, ci.DefaultStoragePurgeInterval, logger)
 	}
 
 	if cfg.SystemInfoFile != "" {
