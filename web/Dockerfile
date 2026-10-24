@@ -74,7 +74,7 @@ COPY --from=build /src/web/dist /usr/share/nginx/html
 # (lo copia in /tmp l'entrypoint, che vi aggiunge ca_cert se l'istanza ha una
 # CA interna). Gli script di installazione stanno nella radice: l'nginx vi
 # scrive l'indirizzo dell'istanza (vedi nginx.conf.template).
-COPY --from=gs /out/gs_* /out/SHA256SUMS /out/gs-skills.zip /usr/share/nginx/html/downloads/
+COPY --from=gs /out/gs_* /out/gitstack-runner_* /out/SHA256SUMS /out/gs-skills.zip /usr/share/nginx/html/downloads/
 COPY --from=gs /out/index.json /usr/share/gitstack/downloads-index.json
 COPY web/deploy/install-gs.sh web/deploy/install-gs.ps1 /usr/share/nginx/html/
 COPY --chmod=755 web/deploy/30-gs-index.sh /docker-entrypoint.d/30-gs-index.sh

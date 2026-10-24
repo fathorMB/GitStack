@@ -13,7 +13,7 @@ import (
 )
 
 // DefaultLogRetention: i log dei job finiti da più di questo tempo si eliminano
-// (CI5). Il parametro è della funzione: la manopola dell'amministratore è di GIT-280.
+// (CI5). È il default: l'amministratore lo regola con le impostazioni (Settings.LogRetentionDays, GIT-280).
 const DefaultLogRetention = 90 * 24 * time.Hour
 
 // DefaultLogPurgeInterval: ogni quanto il giro periodico cerca i log scaduti.
@@ -118,7 +118,11 @@ func (l *LogStore) RunPurge(ctx context.Context, pool *pgxpool.Pool, every time.
 	t := time.NewTicker(every)
 	defer t.Stop()
 	for {
-		n, err := l.PurgeOldLogs(ctx, pool, time.Now(), DefaultLogRetention)
+		retention := DefaultLogRetention
+		if st, serr := LoadSettings(ctx, pool); serr == nil {
+			retention = st.LogRetention()
+		}
+		n, err := l.PurgeOldLogs(ctx, pool, time.Now(), retention)
 		if err != nil && ctx.Err() == nil {
 			log.Warn("pulizia dei log dei job non riuscita, si ritenta al giro successivo", "err", err)
 		}

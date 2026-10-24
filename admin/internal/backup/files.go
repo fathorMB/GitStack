@@ -21,6 +21,13 @@ func tarDir(w io.Writer, root string) error { return tarDirSkip(w, root, nil) }
 // tarDirSkip è tarDir che salta le voci (e, per le cartelle, tutto il loro contenuto) per cui
 // skip ritorna true; rel usa / come separatore.
 func tarDirSkip(w io.Writer, root string, skip func(rel string, isDir bool) bool) error {
+	return tarDirSkipOpts(w, root, skip, false)
+}
+
+// tarDirSkipOpts è tarDirSkip; con growing i file che crescono durante la copia (i log dei job
+// in corso, che core continua a scrivere) si copiano per la dimensione che avevano all'inizio
+// invece di far fallire il backup. Un file che si accorcia è comunque un errore.
+func tarDirSkipOpts(w io.Writer, root string, skip func(rel string, isDir bool) bool, growing bool) error {
 	tw := tar.NewWriter(w)
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -73,7 +80,12 @@ func tarDirSkip(w io.Writer, root string, skip func(rel string, isDir bool) bool
 			return err
 		}
 		defer func() { _ = f.Close() }()
-		n, err := io.Copy(tw, f)
+		var n int64
+		if growing {
+			n, err = io.CopyN(tw, f, hdr.Size)
+		} else {
+			n, err = io.Copy(tw, f)
+		}
 		if err != nil {
 			return err
 		}
@@ -216,4 +228,10 @@ func modeBits(m int64) fs.FileMode {
 		f |= fs.ModeSticky
 	}
 	return f
+}
+
+// ciLogsOnly è il filtro di tarDirSkip per il volume ci-data (CI5): entra solo logs/; data/ (artefatti e
+// cache, o la loro cartella d'appoggio) resta fuori dal backup.
+func ciLogsOnly(rel string, _ bool) bool {
+	return rel != "logs" && !strings.HasPrefix(rel, "logs/")
 }

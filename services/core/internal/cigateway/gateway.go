@@ -8,10 +8,12 @@
 //	UpdateLog   righe di log, scritte su disco (ci.LogStore)
 //
 // più un solo endpoint non-RPC, GET /ci/v1/archive: l'archivio del repo del job al suo sha.
-// Register e Declare (runner esterni) sono di GIT-278 e rispondono "unimplemented".
+// Runner esterni (GIT-278): Register (token di registrazione monouso → token del runner),
+// Declare e FetchTask con il token del runner; vedi external.go.
 //
 // Due credenziali, mai scambiabili:
-//   - il segreto dei runner interni (x-runner-token o Authorization: Bearer) vale solo per FetchTask;
+//   - il biglietto del job dei pod interni (gsq_) o il token di un runner esterno (gsr_)
+//     (x-runner-token o Authorization: Bearer) valgono solo per FetchTask (e Declare, il secondo);
 //   - il token del job vale solo per UpdateTask, UpdateLog e l'archivio, e solo per il job a cui
 //     appartiene: un task id diverso è permission_denied, un token scaduto, revocato o sconosciuto
 //     è unauthenticated.
@@ -65,6 +67,10 @@ type Config struct {
 	// Reader serve l'archivio del repo (servizio git).
 	Reader gitclient.Reader
 	Logs   *ci.LogStore
+	// Blobs archivia artefatti e cache (CI5); nil: gli endpoint di artefatti e cache rispondono 503.
+	Blobs ci.Blobs
+	// SpoolDir: dove si appoggiano i pezzi di una cache in caricamento; vuoto = cartella temporanea.
+	SpoolDir string
 	// Keys decifra i segreti della CI del repo (CI4). nil: un job di un repo con segreti non parte.
 	Keys ci.Sealer
 	// RunnerSecrets e' deprecato: FetchTask accetta esclusivamente JobTicket.
@@ -108,9 +114,11 @@ func New(cfg Config) http.Handler {
 	mux.Handle(path, h)
 	mux.HandleFunc("GET "+ArchivePath, g.archive)
 	mux.HandleFunc("GET "+RegistryAccessPath, g.registryAccess)
+	mux.HandleFunc(ArtifactsPath, g.storage)
+	mux.HandleFunc(CachePath, g.storage)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Un percorso fuori dal protocollo è 404, non 405 né un redirect del mux.
-		if strings.HasPrefix(r.URL.Path, path) || r.URL.Path == ArchivePath || r.URL.Path == RegistryAccessPath {
+		if strings.HasPrefix(r.URL.Path, path) || r.URL.Path == ArchivePath || r.URL.Path == RegistryAccessPath || g.isStoragePath(r.URL.Path) {
 			mux.ServeHTTP(w, r)
 			return
 		}
@@ -142,9 +150,21 @@ func (g *gateway) auth() connect.UnaryInterceptorFunc {
 			token := bearer(req.Header())
 			switch req.Spec().Procedure {
 			case runnerv1connect.RunnerServiceFetchTaskProcedure:
-				if !strings.HasPrefix(token, ci.JobTicketPrefix) || len(token) > 128 {
-					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("biglietto del job non valido"))
+				if (!strings.HasPrefix(token, ci.JobTicketPrefix) && !strings.HasPrefix(token, ci.RunnerTokenPrefix)) || len(token) > 128 {
+					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("credenziale non valida"))
 				}
+			case runnerv1connect.RunnerServiceRegisterProcedure:
+				// Il token di registrazione è nel corpo: lo verifica Register.
+			case runnerv1connect.RunnerServiceDeclareProcedure:
+				rn, err := ci.ResolveRunner(ctx, g.Pool, g.Now(), token)
+				if errors.Is(err, ci.ErrRunnerToken) {
+					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("token del runner non valido"))
+				}
+				if err != nil {
+					g.Log.Error("ci-gateway: verifica del runner non riuscita", "err", err)
+					return nil, connect.NewError(connect.CodeUnavailable, errors.New("servizio non disponibile"))
+				}
+				ctx = context.WithValue(ctx, runnerCtxKey{}, rn)
 			case runnerv1connect.RunnerServiceUpdateTaskProcedure, runnerv1connect.RunnerServiceUpdateLogProcedure:
 				a, err := ci.ResolveJobToken(ctx, g.Pool, g.Now(), token)
 				if errors.Is(err, ci.ErrJobToken) {
@@ -156,7 +176,7 @@ func (g *gateway) auth() connect.UnaryInterceptorFunc {
 				}
 				ctx = context.WithValue(ctx, ctxKey{}, a)
 			default:
-				// Register, Declare e qualsiasi altra procedura: GIT-278.
+				// Ogni altra procedura.
 				return nil, connect.NewError(connect.CodeUnimplemented, errors.New("non disponibile in questa versione"))
 			}
 			return next(ctx, req)

@@ -30,7 +30,7 @@ type LogLine struct {
 	Content string
 }
 
-// LogStore scrive i log dei job su disco, nel volume di core, fuori dai backup (CI5).
+// LogStore scrive i log dei job su disco, nel volume di core (cartella logs/ di ci-data), inclusi nel backup (CI5).
 // Un file per job, <Dir>/<jobId>.log, una riga per riga di log: «<RFC3339 UTC> <testo>».
 // Il numero di righe e i byte validi stanno in core.ci_job_logs.
 type LogStore struct {

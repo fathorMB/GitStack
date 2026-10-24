@@ -616,6 +616,24 @@ ci:
     namespace: gitstack-ci-build
     # Immagine rootless di BuildKit (Apache-2.0).
     image: docker.io/moby/buildkit:v0.23.2-rootless
+  # Log, artefatti e cache dei job (CI5). Il volume ci-data ha due cartelle: logs/
+  # (entra nel backup) e data/ (artefatti e cache, fuori dal backup). Con
+  # s3.bucket artefatti e cache vanno su S3 (N7) e data/ serve solo da appoggio;
+  # i log restano su disco. Conservazione e limiti (90 giorni, 30 giorni/2 GB,
+  # 10 GB per repo) li regola l'amministratore con PUT /admin/ci/storage.
+  storage:
+    mountPath: /var/lib/gitstack/ci
+    persistence:
+      size: 20Gi
+      accessMode: ReadWriteOnce
+      storageClassName: ""
+    s3:
+      endpoint: ""
+      bucket: ""
+      region: ""
+      prefix: ""
+      # Secret con le chiavi `accessKey` e `secretKey`.
+      existingSecret: ""
 
 # --- nats (JetStream, D11) -----------------------------------------------
 nats:

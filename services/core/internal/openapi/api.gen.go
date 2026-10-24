@@ -2717,16 +2717,16 @@ type BranchSettings struct {
 
 // CiQueue defines model for CiQueue.
 type CiQueue struct {
-	// ArtifactBytes Spazio occupato dagli artefatti, in byte. Vale 0 finché non arriva GIT-280.
+	// ArtifactBytes Spazio occupato dagli artefatti non scaduti, in byte.
 	ArtifactBytes *int64 `json:"artifactBytes,omitempty"`
 
-	// AvgQueueWaitSeconds Attesa media in coda dei job, in secondi.
+	// AvgQueueWaitSeconds Attesa media in coda, in secondi, dei job partiti nelle ultime 24 ore (0 se nessuno).
 	AvgQueueWaitSeconds *int `json:"avgQueueWaitSeconds,omitempty"`
 
-	// CacheBytes Spazio occupato dalle cache, in byte. Vale 0 finché non arriva GIT-280.
+	// CacheBytes Spazio occupato dalle cache, in byte.
 	CacheBytes *int64 `json:"cacheBytes,omitempty"`
 
-	// LogBytes Spazio occupato dai log dei job, in byte.
+	// LogBytes Spazio occupato dai log dei job, in byte (somma dei file su disco).
 	LogBytes          *int64 `json:"logBytes,omitempty"`
 	MaxConcurrentJobs int    `json:"maxConcurrentJobs"`
 	QueuedJobs        int    `json:"queuedJobs"`
@@ -2766,6 +2766,24 @@ type CiRunnerList struct {
 type CiRunnerRegistrationToken struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 	Token     string    `json:"token"`
+}
+
+// CiStorageSettings defines model for CiStorageSettings.
+type CiStorageSettings struct {
+	// ArtifactMaxBytes Dimensione massima di un artefatto, in byte.
+	ArtifactMaxBytes int64 `json:"artifactMaxBytes"`
+
+	// ArtifactRetentionDays Giorni di conservazione degli artefatti.
+	ArtifactRetentionDays int `json:"artifactRetentionDays"`
+
+	// CacheQuotaBytes Quota delle cache per repository, in byte.
+	CacheQuotaBytes int64 `json:"cacheQuotaBytes"`
+
+	// CacheUnusedDays Giorni senza uso dopo i quali una cache si elimina.
+	CacheUnusedDays int `json:"cacheUnusedDays"`
+
+	// LogRetentionDays Giorni di conservazione dei log dei job finiti.
+	LogRetentionDays int `json:"logRetentionDays"`
 }
 
 // CloseIssueInput defines model for CloseIssueInput.
@@ -5850,6 +5868,9 @@ type GetUserAccessParams struct {
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// UpdateCiStorageSettingsJSONRequestBody defines body for UpdateCiStorageSettings for application/json ContentType.
+type UpdateCiStorageSettingsJSONRequestBody = CiStorageSettings
+
 // UpdateNotificationJSONRequestBody defines body for UpdateNotification for application/json ContentType.
 type UpdateNotificationJSONRequestBody = UpdateNotificationInput
 
@@ -6035,6 +6056,12 @@ type ServerInterface interface {
 	// DeleteCiRunner Revoca un runner esterno (solo amministratore)
 	// (DELETE /admin/ci/runners/{runnerId})
 	DeleteCiRunner(w http.ResponseWriter, r *http.Request, runnerId RunnerIdParam)
+	// GetCiStorageSettings Legge conservazione e limiti di log, artefatti e cache CI (solo amministratore)
+	// (GET /admin/ci/storage)
+	GetCiStorageSettings(w http.ResponseWriter, r *http.Request)
+	// UpdateCiStorageSettings Modifica conservazione e limiti di log, artefatti e cache CI (solo amministratore)
+	// (PUT /admin/ci/storage)
+	UpdateCiStorageSettings(w http.ResponseWriter, r *http.Request)
 	// GetAdminSystem Stato dell'installazione (Admin · System)
 	// (GET /admin/system)
 	GetAdminSystem(w http.ResponseWriter, r *http.Request)
@@ -6654,6 +6681,34 @@ func (siw *ServerInterfaceWrapper) DeleteCiRunner(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteCiRunner(w, r, runnerId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCiStorageSettings operation middleware
+func (siw *ServerInterfaceWrapper) GetCiStorageSettings(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCiStorageSettings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateCiStorageSettings operation middleware
+func (siw *ServerInterfaceWrapper) UpdateCiStorageSettings(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateCiStorageSettings(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -15464,6 +15519,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/admin/ci/runners/registration-token", wrapper.CreateCiRunnerRegistrationToken)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/admin/ci/runners/{runnerId}", wrapper.DeleteCiRunner)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/ci/queue", wrapper.GetCiQueue)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/ci/storage", wrapper.GetCiStorageSettings)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/admin/ci/storage", wrapper.UpdateCiStorageSettings)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/packages", wrapper.ListRepositoryPackages)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/packages/settings", wrapper.GetRepositoryPackageSettings)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/packages/settings", wrapper.UpdateRepositoryPackageSettings)
