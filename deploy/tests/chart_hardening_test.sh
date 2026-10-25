@@ -325,6 +325,9 @@ expect_has "job: core conosce il ConfigMap della CA nel namespace dei job" "${d}
 expect_has "job: core ha il proxy da passare ai pod" "${d}" "name: HTTPS_PROXY"
 OUT="$(helm template gitstack "${CHART}" --namespace prova-ns | tr -d '')" || { bad "helm template di default fallito"; exit 1; }
 expect_eq "CI spenta: nessuna PriorityClass gitstack-ci-job" "$(count 'metadata: {name: gitstack-ci-job}')" "0"
+expect_eq "H11: PriorityClass dei servizi" "$(count 'metadata: {name: gitstack-services}')" "1"
+expect_eq "H11: PriorityClass delle app" "$(count 'metadata: {name: gitstack-apps}')" "1"
+expect_has "H11: core ha priorita servizi" "$(doc Deployment gitstack-core)" "priorityClassName: gitstack-services"
 OUT="$(helm template gitstack "${CHART}" --namespace prova-ns --set ci.enabled=true | tr -d '')" || { bad "helm template con ci.enabled fallito"; exit 1; }
 expect_eq "CI accesa: PriorityClass gitstack-ci-job" "$(count 'metadata: {name: gitstack-ci-job}')" "1"
 expect_has "CI accesa: ResourceQuota dei posti" "$OUT" "name: ci-jobs"

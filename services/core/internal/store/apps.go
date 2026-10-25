@@ -324,21 +324,26 @@ func (s *Store) CreateApp(ctx context.Context, in NewApp, now time.Time) (App, A
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('app-quota:' || lower($1), 0))`, in.Owner); err != nil {
 		return App{}, AppVersion{}, err
 	}
+	// Anche owner distinti condividono la riserva dell'istanza: la stessa
+	// serratura usata da SetAppCapacity evita che due deploy la superino.
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('app-capacity', 0))`); err != nil {
+		return App{}, AppVersion{}, err
+	}
 	limits, used, _, err := ownerAppQuota(ctx, tx, in.Owner)
 	if err != nil {
 		return App{}, AppVersion{}, err
 	}
-	needCPU := int64(in.Config.Guaranteed.CPUMillis) * int64(in.Config.Copies)
-	needMem := in.Config.Guaranteed.MemoryBytes * int64(in.Config.Copies)
-	missing := map[string]int64{}
-	if int64(used.CPUMillis)+needCPU > int64(limits.CPUMillis) {
-		missing["cpuMillis"] = int64(used.CPUMillis) + needCPU - int64(limits.CPUMillis)
+	capacity, err := appCapacity(ctx, tx)
+	if err != nil {
+		return App{}, AppVersion{}, err
 	}
-	if used.MemoryBytes+needMem > limits.MemoryBytes {
-		missing["memoryBytes"] = used.MemoryBytes + needMem - limits.MemoryBytes
+	capacity.Used, err = guaranteedApps(ctx, tx)
+	if err != nil {
+		return App{}, AppVersion{}, err
 	}
-	if len(missing) > 0 {
-		return App{}, AppVersion{}, &CapacityError{Owner: in.Owner, Missing: missing, Limits: limits, Used: used}
+	need := AppResourceAmount{CPUMillis: in.Config.Guaranteed.CPUMillis * in.Config.Copies, MemoryBytes: in.Config.Guaranteed.MemoryBytes * int64(in.Config.Copies)}
+	if err := appCapacityError(in.Owner, limits, used, need, capacity); err != nil {
+		return App{}, AppVersion{}, err
 	}
 	id := uuid.New()
 	c := in.Config

@@ -81,26 +81,6 @@ func (s *apiServer) ListAdminApps(w http.ResponseWriter, r *http.Request, params
 	notImplemented(w)
 }
 
-func (s *apiServer) GetAdminAppsCapacity(w http.ResponseWriter, r *http.Request) {
-	notImplemented(w)
-}
-
-func (s *apiServer) UpdateAdminAppsReserve(w http.ResponseWriter, r *http.Request) {
-	notImplemented(w)
-}
-
-func (s *apiServer) ListAdminAppOwnerQuotas(w http.ResponseWriter, r *http.Request) {
-	notImplemented(w)
-}
-
-func (s *apiServer) PutAdminAppOwnerQuota(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) DeleteAdminAppOwnerQuota(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam) {
-	notImplemented(w)
-}
-
 func (s *apiServer) GetAdminAppsSettings(w http.ResponseWriter, r *http.Request) {
 	notImplemented(w)
 }

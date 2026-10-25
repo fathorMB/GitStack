@@ -127,12 +127,12 @@ func TestMigration0036_App(t *testing.T) {
 		t.Fatalf("app dopo l'eliminazione del repo: %d", n)
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("down 0036: %v", err)
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
+		t.Fatalf("down 0037: %v", err)
 	}
 	var n int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.tables WHERE table_schema = 'core'
-		AND table_name IN ('apps', 'app_versions', 'app_deploys', 'app_owner_quotas')`).Scan(&n); err != nil || n != 0 {
+		AND table_name IN ('apps', 'app_versions', 'app_deploys', 'app_owner_quotas', 'app_capacity_settings')`).Scan(&n); err != nil || n != 0 {
 		t.Fatalf("tabelle dopo il down: %d %v", n, err)
 	}
 	if err := migrate.Up(ctx, pool, dsn); err != nil {

@@ -15,6 +15,7 @@ spec:
       labels:
         {{- include "gitstack.componentLabels" (dict "root" $ "component" "gateway") | nindent 8 }}
     spec:
+      priorityClassName: gitstack-services
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}

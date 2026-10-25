@@ -26,8 +26,8 @@ import (
 const (
 	defaultAppCopies      = 1
 	maxAppCopies          = 50
-	defaultGuaranteedCPU  = 100
-	defaultGuaranteedMem  = 128 << 20
+	defaultGuaranteedCPU  = 500
+	defaultGuaranteedMem  = 512 << 20
 	defaultLimitCPU       = 500
 	defaultLimitMem       = 512 << 20
 	maxAppDNSLabel        = 63
@@ -356,6 +356,21 @@ func (s *apiServer) CreateApp(w http.ResponseWriter, r *http.Request, owner open
 		}
 		cfg.Guaranteed = store.AppResourceAmount{CPUMillis: in.Resources.Guaranteed.CpuMillis, MemoryBytes: in.Resources.Guaranteed.MemoryBytes}
 		cfg.Limit = store.AppResourceAmount{CPUMillis: in.Resources.Limit.CpuMillis, MemoryBytes: in.Resources.Limit.MemoryBytes}
+	}
+	// H11: il tetto per app protegge la riserva comune. Una richiesta piu'
+	// grande non rende il deploy non deterministico: la si riduce al massimo
+	// dell'istanza, mantenendo sempre limit >= guaranteed.
+	if cfg.Guaranteed.CPUMillis > store.DefaultAppMax.CPUMillis {
+		cfg.Guaranteed.CPUMillis = store.DefaultAppMax.CPUMillis
+	}
+	if cfg.Guaranteed.MemoryBytes > store.DefaultAppMax.MemoryBytes {
+		cfg.Guaranteed.MemoryBytes = store.DefaultAppMax.MemoryBytes
+	}
+	if cfg.Limit.CPUMillis > store.DefaultAppMax.CPUMillis {
+		cfg.Limit.CPUMillis = store.DefaultAppMax.CPUMillis
+	}
+	if cfg.Limit.MemoryBytes > store.DefaultAppMax.MemoryBytes {
+		cfg.Limit.MemoryBytes = store.DefaultAppMax.MemoryBytes
 	}
 	if in.Restricted != nil {
 		cfg.Restricted = *in.Restricted

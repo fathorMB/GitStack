@@ -129,7 +129,7 @@ func TestApps_Permessi(t *testing.T) {
 		rec = e.do(http.MethodGet, base, user, "")
 		e.want(rec, http.StatusOK, "")
 		var l openapi.AppList
-		if err := json.Unmarshal(rec.Body.Bytes(), &l); err != nil || len(l.Items) != 1 || l.Quota == nil || l.Quota.Used.CpuMillis != 100 {
+		if err := json.Unmarshal(rec.Body.Bytes(), &l); err != nil || len(l.Items) != 1 || l.Quota == nil || l.Quota.Used.CpuMillis != 500 {
 			t.Fatalf("elenco di %s: %v %s", user, err, rec.Body.String())
 		}
 		e.want(e.do(http.MethodGet, base+"/web", user, ""), http.StatusOK, "")
@@ -205,7 +205,7 @@ func TestApps_QuotaContataSuOwner(t *testing.T) {
 		t.Fatalf("details senza quanto manca: %s", rec.Body.String())
 	}
 	// Una piccola ci sta (800 + 100 = 900) e l'elenco mostra l'uso dell'owner.
-	e.want(e.do(http.MethodPost, "/repos/alice/due/apps", "alice", `{"name":"small","image":"x"}`), http.StatusAccepted, "")
+	e.want(e.do(http.MethodPost, "/repos/alice/due/apps", "alice", `{"name":"small","image":"x","resources":{"guaranteed":{"cpuMillis":100,"memoryBytes":134217728},"limit":{"cpuMillis":100,"memoryBytes":134217728}}}`), http.StatusAccepted, "")
 	rec = e.do(http.MethodGet, "/repos/alice/uno/apps", "alice", "")
 	var l openapi.AppList
 	if err := json.Unmarshal(rec.Body.Bytes(), &l); err != nil || l.Quota == nil || l.Quota.Used.CpuMillis != 900 || l.Quota.Limits.CpuMillis != 1000 || !l.Quota.Warning {
@@ -214,6 +214,39 @@ func TestApps_QuotaContataSuOwner(t *testing.T) {
 	// Eliminare un'app libera la quota.
 	e.want(e.do(http.MethodDelete, "/repos/alice/uno/apps/big", "alice", ""), http.StatusNoContent, "")
 	e.want(e.do(http.MethodPost, "/repos/alice/due/apps", "alice", strings.Replace(big, `"copies":2`, `"copies":1`, 1)), http.StatusAccepted, "")
+}
+
+// H11: la riserva dell'istanza e la quota dell'owner sono entrambe controllate
+// al punto di ingresso del deploy (creazione), mentre un tetto troppo alto si
+// normalizza al massimo dell'istanza.
+func TestApps_RiservaQuotaETetto(t *testing.T) {
+	e := newAppsEnv(t)
+	e.id.sysAdmin[users["carol"]] = true
+	e.repo("uno", true)
+	e.repo("due", true)
+	// L'admin porta la riserva a 600 mCPU / 1 GiB; e' la capacita' globale,
+	// quindi due owner diversi non possono aggirarla.
+	e.want(e.do(http.MethodPut, "/admin/apps/reserve", "carol", `{"cpuMillis":600,"memoryBytes":1073741824}`), http.StatusOK, "")
+	e.want(e.do(http.MethodPut, "/admin/apps/quotas/alice", "carol", `{"cpuMillis":500,"memoryBytes":2147483648,"diskBytes":0}`), http.StatusOK, "")
+	first := `{"name":"first","image":"x","resources":{"guaranteed":{"cpuMillis":400,"memoryBytes":268435456},"limit":{"cpuMillis":9000,"memoryBytes":17179869184}}}`
+	e.want(e.do(http.MethodPost, "/repos/alice/uno/apps", "alice", first), http.StatusAccepted, "")
+	a := e.app(e.do(http.MethodGet, "/repos/alice/uno/apps/first", "alice", ""))
+	if a.Resources.Limit.CpuMillis != store.DefaultAppMax.CPUMillis || a.Resources.Limit.MemoryBytes != store.DefaultAppMax.MemoryBytes {
+		t.Fatalf("tetto non applicato: %+v", a.Resources.Limit)
+	}
+	// 400 + 300 supera la riserva (anche se la quota dell'owner basterebbe).
+	rec := e.do(http.MethodPost, "/repos/alice/due/apps", "alice", `{"name":"second","image":"x","resources":{"guaranteed":{"cpuMillis":300,"memoryBytes":268435456},"limit":{"cpuMillis":300,"memoryBytes":268435456}}}`)
+	e.want(rec, http.StatusConflict, "insufficient_capacity")
+	if !strings.Contains(rec.Body.String(), "reserveCpuMillis") {
+		t.Fatalf("rifiuto della riserva senza dettaglio: %s", rec.Body.String())
+	}
+	// A 80% esatto compare l'avviso nell'API di quota dell'admin.
+	var quotas openapi.AppOwnerQuotaList
+	rec = e.do(http.MethodGet, "/admin/apps/quotas", "carol", "")
+	e.want(rec, http.StatusOK, "")
+	if err := json.Unmarshal(rec.Body.Bytes(), &quotas); err != nil || len(quotas.Items) != 1 || !quotas.Items[0].Warning {
+		t.Fatalf("avviso quota: %v %s", err, rec.Body.String())
+	}
 }
 
 // Ogni modifica di configurazione produce una versione numerata e consultabile (H8).
