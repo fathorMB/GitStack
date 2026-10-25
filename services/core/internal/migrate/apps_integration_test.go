@@ -127,8 +127,8 @@ func TestMigration0036_App(t *testing.T) {
 		t.Fatalf("app dopo l'eliminazione del repo: %d", n)
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
-		t.Fatalf("down 0037: %v", err)
+	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
+		t.Fatalf("down 0038: %v", err)
 	}
 	var n int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.tables WHERE table_schema = 'core'

@@ -240,13 +240,21 @@ func TestApps_RiservaQuotaETetto(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "reserveCpuMillis") {
 		t.Fatalf("rifiuto della riserva senza dettaglio: %s", rec.Body.String())
 	}
-	// A 80% esatto compare l'avviso nell'API di quota dell'admin.
+	// A 80% esatto compare l'avviso nell'API di quota dell'admin, anche se il
+	// disco non ha un limite (0 non e' una soglia raggiunta).
 	var quotas openapi.AppOwnerQuotaList
 	rec = e.do(http.MethodGet, "/admin/apps/quotas", "carol", "")
 	e.want(rec, http.StatusOK, "")
 	if err := json.Unmarshal(rec.Body.Bytes(), &quotas); err != nil || len(quotas.Items) != 1 || !quotas.Items[0].Warning {
 		t.Fatalf("avviso quota: %v %s", err, rec.Body.String())
 	}
+	if quotaWarning(store.AppQuotaAmounts{CPUMillis: 395}, store.AppQuotaAmounts{CPUMillis: 500, DiskBytes: 0}) {
+		t.Fatal("79% con disco senza limite non deve avvisare")
+	}
+	if !quotaWarning(store.AppQuotaAmounts{CPUMillis: 400}, store.AppQuotaAmounts{CPUMillis: 500, DiskBytes: 0}) {
+		t.Fatal("80% con disco senza limite deve avvisare")
+	}
+	e.want(e.do(http.MethodPut, "/admin/apps/quotas/sconosciuto", "carol", `{"cpuMillis":1,"memoryBytes":1,"diskBytes":0}`), http.StatusNotFound, "not_found")
 }
 
 // Ogni modifica di configurazione produce una versione numerata e consultabile (H8).

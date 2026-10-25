@@ -10,9 +10,9 @@ import (
 )
 
 func quotaWarning(used, limits store.AppQuotaAmounts) bool {
-	return float64(used.CPUMillis) >= .8*float64(limits.CPUMillis) ||
-		float64(used.MemoryBytes) >= .8*float64(limits.MemoryBytes) ||
-		float64(used.DiskBytes) >= .8*float64(limits.DiskBytes)
+	return limits.CPUMillis > 0 && float64(used.CPUMillis) >= .8*float64(limits.CPUMillis) ||
+		limits.MemoryBytes > 0 && float64(used.MemoryBytes) >= .8*float64(limits.MemoryBytes) ||
+		limits.DiskBytes > 0 && float64(used.DiskBytes) >= .8*float64(limits.DiskBytes)
 }
 
 func quotaToAPI(q store.AppOwnerQuota) openapi.AppOwnerQuota {
@@ -106,6 +106,13 @@ func (s *apiServer) PutAdminAppOwnerQuota(w http.ResponseWriter, r *http.Request
 		return
 	}
 	name := strings.ToLower(string(owner))
+	if ok, err := s.resources.AppOwnerExists(r.Context(), name); err != nil {
+		appInternalError(w, "verifica dell'owner della quota", err)
+		return
+	} else if !ok {
+		writeError(w, http.StatusNotFound, "not_found", "Owner non trovato.")
+		return
+	}
 	used, err := s.resources.ValidateOwnerQuota(r.Context(), name, store.AppQuotaAmounts{CPUMillis: in.CpuMillis, MemoryBytes: in.MemoryBytes, DiskBytes: in.DiskBytes})
 	var ce *store.CapacityError
 	if errors.As(err, &ce) {

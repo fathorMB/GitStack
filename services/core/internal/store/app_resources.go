@@ -160,6 +160,14 @@ type AppOwnerQuota struct {
 	IsDefault    bool
 }
 
+// AppOwnerExists evita quote orfane: core conosce un owner quando possiede
+// almeno un repository; identity resta l'autorita' per utenti e gruppi.
+func (s *Store) AppOwnerExists(ctx context.Context, owner string) (bool, error) {
+	var exists bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM core.repositories WHERE lower(owner_name) = lower($1))`, owner).Scan(&exists)
+	return exists, err
+}
+
 var ErrAppOwnerNotFound = errors.New("owner senza repo")
 
 func (s *Store) DeleteOwnerAppQuota(ctx context.Context, owner string) error {
