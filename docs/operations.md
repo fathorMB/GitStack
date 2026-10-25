@@ -214,6 +214,51 @@ After installation, the summary printed by the installer shows the public URL,
 the health-check endpoint, how to fetch the admin password, and — for internal
 CA — how to download and trust the CA on your client machines.
 
+#### Apps domain and wildcard DNS (v3, H2)
+
+Apps hosted by GitStack get an automatic address
+`<app>-<repo>.<apps-domain>` (for example `web-site.apps.example.com`). The
+domain is chosen at install time with `--apps-domain` (optional). Without it
+the installer uses `apps.<host>` (`apps.gitstack.internal` when `--host` is an
+IP) and prints a warning. A domain separate from GitStack's own
+(`git.example.com` and `apps.example.com`) is recommended; a subdomain of it
+(`apps.git.example.com`) is allowed; the same name as the host is refused. The
+name is lowercase DNS, at least two labels, letters, digits and `-`.
+
+**DNS to configure.** Create a wildcard record that points to GitStack's IP,
+before users open an app:
+
+```text
+*.apps.example.com.   300  IN  A  192.168.1.20
+```
+
+(dnsmasq: `address=/apps.example.com/192.168.1.20`.) A `.local` domain cannot
+work: mDNS has no wildcard records. The installer and
+`gitstack config set apps-domain` check `getent hosts
+gitstack-dns-check.<apps-domain>` and warn, without stopping, if it does not
+resolve to this machine.
+
+**Certificate.** With the internal CA, `gitstack-tls` adds `*.<apps-domain>`
+to the SANs of the server certificate: same CA, same nightly renewal, no extra
+CA on the clients. A wildcard covers one label (`web-site.apps.example.com`,
+not `a.b.apps.example.com`). With your own certificate (`--tls-cert`) it must
+already cover `*.<apps-domain>`; `gitstack-tls` warns if it does not. With
+`--tls letsencrypt` the address is recorded but the internal-CA wildcard is
+not issued. Check: `openssl x509 -in /etc/gitstack/tls/server.crt -noout -ext
+subjectAltName`.
+
+**Change it later, and upgrade from v2.** `sudo gitstack config set
+apps-domain apps.example.com` reissues the certificate (same CA) and rewrites
+`apps_domain:` in `config.yaml`. An installation upgraded from v2 has no apps
+domain (`gitstack status` prints "Dominio delle app: non impostato"); set it
+with this command. Apps already created keep their address.
+
+**Collisions.** `<app>-<repo>` is a single DNS label (at most 63 characters):
+the repository name is lowercased and `_`, `.` and other characters become
+`-`. If two apps give the same label (`a-b` in `c`, and `a` in `b-c`), the
+first keeps `a-b-c` and the second gets a stable hexadecimal suffix derived
+from `owner/repo/app` (`pkg/names`, `UniqueAppAddress`).
+
 #### Trusting the internal CA on clients
 
 1. Download the certificate: `http://<host>/downloads/ca.crt` (or
@@ -1663,6 +1708,7 @@ Without `GITSTACK_SMOKE_DURATION` the test is skipped, so the `go` job of
 | `gitstack upgrade` | yes | Upgrade with preventive backup and automatic rollback |
 | `gitstack upgrade --dry-run` | yes | Check readiness without making changes |
 | `gitstack config set host NEWNAME` | yes | Change the host name (certificates, services, config) |
+| `gitstack config set apps-domain DOMAIN` | yes | Set or change the apps domain and reissue the wildcard certificate (see [Apps domain](#apps-domain-and-wildcard-dns-v3-h2)) |
 | `gitstack config set network [options]` | yes | Change proxy, registry mirror, download mirror and corporate CA (see [Corporate network](#corporate-network-proxy-mirrors-and-ca)) |
 
 \* `gitstack status` reads `/etc/gitstack/config.yaml` (mode `0600`),

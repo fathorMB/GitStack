@@ -260,6 +260,12 @@ GITSTACK_TLS_EMAIL="${GITSTACK_TLS_EMAIL:-}"
 # (https://acme-staging-v02.api.letsencrypt.org/directory).
 GITSTACK_ACME_CA_SERVER="${GITSTACK_ACME_CA_SERVER:-}"
 HOST_ARGS=()
+# Dominio delle app (H2, GIT-346): le app hanno l'indirizzo <app>-<repo>.<dominio>,
+# con un certificato wildcard *.<dominio> della CA interna. Vuoto = la scelta
+# della volta prima o un default con avviso (resolve_apps_domain).
+GITSTACK_APPS_DOMAIN="${GITSTACK_APPS_DOMAIN:-}"
+APPS_DOMAIN=""
+APPS_DOMAIN_NOTE=""
 TLS_DIR="/etc/gitstack/tls"
 TLS_BIN_PATH="/usr/local/sbin/gitstack-tls"
 TLS_SYSTEMD_DIR="/etc/systemd/system"
@@ -318,6 +324,15 @@ Opzioni:
                              indirizzo della macchina e avvisa se no. Default:
                              il nome completo della macchina (hostname -f) se
                              risolve, altrimenti l'IP; l'IP Ã¨ sempre nei SAN.
+  --apps-domain DOMINIO     Dominio delle app (facoltativo, es. apps.azienda.it):
+                             ogni app avrà l'indirizzo <app>-<repo>.DOMINIO e,
+                             con la CA interna, un certificato wildcard
+                             *.DOMINIO rinnovato in automatico. Serve un record
+                             DNS wildcard (*.DOMINIO) verso questa macchina.
+                             Consigliato un dominio distinto da quello di
+                             GitStack; ammesso anche un suo sottodominio.
+                             Senza, un default (apps.<host>) con avviso.
+                             Si cambia dopo con 'gitstack config set apps-domain'.
   --tls internal|letsencrypt
                             HTTPS (default: internal): CA interna generata qui,
                              con chiave solo sull'host; letsencrypt: certificato
@@ -481,6 +496,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --host)
       HOST_ARGS+=("$2")
+      shift 2
+      ;;
+    --apps-domain)
+      GITSTACK_APPS_DOMAIN="$2"
       shift 2
       ;;
     --tls)
@@ -971,6 +990,9 @@ preflight_host() {
   done
   if [ "${#HOST_ARGS[@]}" -eq 0 ] && [ -n "${DEFAULT_HOST_NOTE}" ]; then
     warn "${DEFAULT_HOST_NOTE}"
+  fi
+  if [ -n "${APPS_DOMAIN}" ] && [ -z "$(resolve_host_addrs "gitstack-dns-check.${APPS_DOMAIN}")" ]; then
+    warn "il dominio delle app ${APPS_DOMAIN} non ha un record DNS wildcard che risolve su questa macchina (getent hosts gitstack-dns-check.${APPS_DOMAIN}): crea *.${APPS_DOMAIN} verso l'IP di GitStack prima che gli utenti aprano le app (deploy/README.md, sezione «Dominio delle app»). L'installazione prosegue."
   fi
 }
 
@@ -1883,6 +1905,7 @@ write_config() {
 # Root-only (0600). Rieseguire l'installer lo riscrive, mantenendo la sezione backup.
 version: 1
 host: ${PUBLIC_HOST}
+apps_domain: ${APPS_DOMAIN}
 ssh_port: $(git_ssh_port)
 chart_dir: ${GITSTACK_CHART_COPY}
 tls: ${GITSTACK_TLS_MODE}
@@ -1920,6 +1943,64 @@ read_kv() {
   local file="$1" key="$2"
   [ -f "${file}" ] || return 0
   awk -F= -v k="${key}" '$1 == k { sub(/^[^=]*=/, ""); print; exit }' "${file}"
+}
+
+# Un dominio per le app: minuscolo, almeno due etichette DNS (lettere, cifre,
+# '-'), niente IP, e abbastanza corto perché <app>-<repo>.<dominio> stia in
+# 253 caratteri con un'etichetta di 63 (stessa regola di pkg/names.AppAddress).
+apps_domain_valid() {
+  local d="$1"
+  [ "${#d}" -le 189 ] || return 1
+  is_ipv4 "${d}" && return 1
+  printf '%s' "${d}" | grep -Eq '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$'
+}
+
+# Imposta APPS_DOMAIN (e APPS_DOMAIN_NOTE se è il default). Ordine: --apps-domain,
+# la scelta salvata in install.conf, apps_domain di config.yaml (anche di una
+# v2 aggiornata: lì manca e vale il default), apps.<host>. Va chiamata dopo
+# aver deciso PUBLIC_HOST.
+resolve_apps_domain() {
+  local conf="${TLS_DIR}/install.conf" d src="" fallback
+  d="$(printf '%s' "${GITSTACK_APPS_DOMAIN}" | tr 'A-Z' 'a-z')"
+  if [ -n "${d}" ]; then
+    src="flag"
+  else
+    d="$(read_kv "${conf}" APPS_DOMAIN)"
+    [ -z "${d}" ] || src="saved"
+  fi
+  if [ -z "${d}" ]; then
+    d="$(existing_config_value "" apps_domain)"
+    [ -z "${d}" ] || src="saved"
+  fi
+  if [ -z "${d}" ]; then
+    if is_ipv4 "${PUBLIC_HOST}" || [ "${PUBLIC_HOST}" = "localhost" ]; then
+      fallback="apps.gitstack.internal"
+    else
+      fallback="apps.${PUBLIC_HOST}"
+    fi
+    d="${fallback}"
+    src="default"
+    warn "--apps-domain non indicato: uso il dominio delle app predefinito ${d}. Crea il record DNS wildcard *.${d} verso questa macchina, oppure scegli un dominio con --apps-domain (o, dopo, 'gitstack config set apps-domain <dominio>'). Consigliato un dominio distinto da quello di GitStack."
+    APPS_DOMAIN_NOTE="default"
+  fi
+  apps_domain_valid "${d}" || fail "--apps-domain '${d}' non valido: servono nomi DNS in minuscolo con almeno due etichette (lettere, cifre, '-'), es. apps.azienda.it."
+  [ "${d}" != "${PUBLIC_HOST}" ] || fail "--apps-domain '${d}' coincide con l'host di GitStack: scegli un dominio distinto (consigliato) o un suo sottodominio, es. apps.${PUBLIC_HOST}."
+  case "${d}" in
+    *.local) warn "il dominio delle app ${d} è un nome .local (mDNS): il wildcard non esiste in mDNS, serve un DNS vero (dnsmasq, router, DNS aziendale)." ;;
+  esac
+  case "${PUBLIC_HOST}" in
+    *".${d}") warn "l'host di GitStack (${PUBLIC_HOST}) sta dentro il dominio delle app ${d}: il wildcard copre anche il suo nome, e un'app chiamata come il primo pezzo dell'host lo oscurerebbe. Meglio un dominio separato." ;;
+  esac
+  case "${d}" in
+    *".${PUBLIC_HOST}") log "Dominio delle app ${d}: sottodominio di ${PUBLIC_HOST} (ammesso; un dominio separato è consigliato)." ;;
+  esac
+  APPS_DOMAIN="${d}"
+  case "${GITSTACK_TLS_MODE}" in
+    letsencrypt) warn "--tls letsencrypt: il certificato wildcard *.${d} delle app interne non viene emesso (la CA interna non è attiva): l'indirizzo delle app è registrato, il certificato per le app arriva con le app pubbliche (Let's Encrypt per dominio)." ;;
+    insecure) warn "--insecure-http: nessun certificato per il dominio delle app ${d}." ;;
+    custom) log "Certificato del cliente: deve coprire anche *.${d} (SAN), altrimenti i browser rifiuteranno le app." ;;
+  esac
+  : "${src}"
 }
 
 # Imposta GITSTACK_TLS_MODE, TLS_NAMES, TLS_IPS, PUBLIC_HOST, PUBLIC_SCHEME e
@@ -2043,6 +2124,7 @@ resolve_tls() {
   case "${GITSTACK_TLS_EMAIL}" in
     *[!A-Za-z0-9.@+_-]*) fail "--tls-email '${GITSTACK_TLS_EMAIL}' non valida." ;;
   esac
+  resolve_apps_domain
 }
 
 # Salva le scelte per le riesecuzioni (vedi resolve_tls).
@@ -2060,6 +2142,7 @@ save_tls_choices() {
 MODE=${GITSTACK_TLS_MODE}
 HOSTS=${hosts}
 EMAIL=${GITSTACK_TLS_EMAIL}
+APPS_DOMAIN=${APPS_DOMAIN}
 EOF
   chmod 0600 "${tmp}"
   mv -f "${tmp}" "${TLS_DIR}/install.conf"
@@ -2216,7 +2299,7 @@ setup_tls() {
     internal|custom)
       rm -f "${ACME_MANIFEST}"
       install_tls_tool "${chart_dir}"
-      local args=(ensure --mode "${GITSTACK_TLS_MODE}" --names "${TLS_NAMES}" --ips "${TLS_IPS}"
+      local args=(ensure --mode "${GITSTACK_TLS_MODE}" --names "${TLS_NAMES}" --ips "${TLS_IPS}" --apps-domain "${APPS_DOMAIN}"
         --release "${GITSTACK_RELEASE_NAME}" --namespace "${GITSTACK_NAMESPACE}" --kubeconfig "${GITSTACK_KUBECONFIG}")
       if [ "${GITSTACK_TLS_MODE}" = "internal" ]; then
         args+=(--ca-configmap "${GITSTACK_RELEASE_NAME}-ca")

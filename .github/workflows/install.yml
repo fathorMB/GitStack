@@ -266,6 +266,8 @@ jobs:
       # signed: firme verificate. unsigned: solo giro manuale, eccezione N9
       # esplicita (vedi il job release e il riepilogo).
       SIGN_MODE: ${{ needs.release.outputs.mode }}
+      # Dominio delle app di prova (H2, GIT-346).
+      APPS_DOMAIN: apps.gitstack-ci.test
     steps:
       - name: Checkout
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -332,8 +334,18 @@ jobs:
           # c'è solo nel giro manuale con artefatti costruiti qui, ed è esplicita.
           extra=()
           if [ "${SIGN_MODE}" = "unsigned" ]; then extra+=(--allow-unsigned-mirrors); fi
+          # H2 (GIT-346): il dominio delle app si prova nei due modi. Su 24.04
+          # con --apps-domain, su 22.04 senza (dominio predefinito e avviso).
+          if [ "${{ matrix.os }}" = "ubuntu-24.04" ]; then
+            extra+=(--apps-domain "${APPS_DOMAIN}")
+            echo "APPS_EXPECT=${APPS_DOMAIN}" >> "$GITHUB_ENV"
+            echo "APPS_WARN=nowarn" >> "$GITHUB_ENV"
+          else
+            echo "APPS_EXPECT=apps.gitstack.internal" >> "$GITHUB_ENV"
+            echo "APPS_WARN=warn" >> "$GITHUB_ENV"
+          fi
           sudo env GITSTACK_REPO="${GITSTACK_REPO}" GITSTACK_ADMIN_REQUIRED=1 \
-            ./deploy/install.sh --skip-preflight --ci --host "${E2E_HOST}" --image-tag "sha-${GITHUB_SHA}" "${extra[@]}"
+            ./deploy/install.sh --skip-preflight --ci --host "${E2E_HOST}" --image-tag "sha-${GITHUB_SHA}" "${extra[@]}" 2>&1 | tee "${RUNNER_TEMP}/install.log"
 
       - name: Installazione del commit precedente (k3s più vecchio)
         if: matrix.scenario == 'upgrade'
@@ -344,6 +356,12 @@ jobs:
 
       - name: Salute
         run: ./deploy/ci/install-e2e.sh wait-healthy 900
+
+      # H2 (GIT-346): dominio delle app e certificato wildcard della CA interna.
+      # Il default (senza --apps-domain) deve avvisare; con l'opzione no.
+      - name: Dominio delle app e certificato wildcard
+        if: matrix.scenario == 'fresh'
+        run: ./deploy/ci/install-e2e.sh verify-apps-domain "${APPS_EXPECT}" "${RUNNER_TEMP}/install.log" "${APPS_WARN}"
 
       - name: Versione di partenza
         if: matrix.scenario == 'upgrade'
@@ -434,6 +452,16 @@ jobs:
           ./deploy/ci/install-e2e.sh verify-k3s "${K3S_TO}"
           sudo gitstack status --json | jq -e --arg v "sha-${GITHUB_SHA}" '.report.server_version == $v and .report.api_healthy == true'
           ./deploy/ci/install-e2e.sh verify-seed --push
+
+      # Una v2 aggiornata non ha un dominio delle app: lo dice lo status e
+      # `gitstack config set apps-domain` lo imposta e rinnova il certificato.
+      - name: Dominio delle app dopo l'upgrade dalla v2
+        if: matrix.scenario == 'upgrade'
+        run: |
+          set -euo pipefail
+          ./deploy/ci/install-e2e.sh verify-apps-domain unset
+          sudo gitstack config set apps-domain "${APPS_DOMAIN}"
+          ./deploy/ci/install-e2e.sh verify-apps-domain "${APPS_DOMAIN}"
 
       - name: CI attiva dopo l'upgrade e workflow di prova
         if: matrix.scenario == 'upgrade'

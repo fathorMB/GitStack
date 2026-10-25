@@ -89,6 +89,11 @@ func printReport(w io.Writer, binVersion string, r *status.Report) {
 	p("  Versione server: %s", r.ServerVersion)
 	p("  Versione gitstack: %s", binVersion)
 	p("  Host: %s (SSH git: porta %d)", r.Host, r.SSHPort)
+	if r.AppsDomain != "" {
+		p("  Dominio delle app: %s (indirizzi <app>-<repo>.%s)", r.AppsDomain, r.AppsDomain)
+	} else {
+		p("  Dominio delle app: non impostato (gitstack config set apps-domain <dominio>)")
+	}
 	p("  Release: %s (namespace %s)", r.Release, r.Namespace)
 	switch {
 	case r.K3sVersion == "":
