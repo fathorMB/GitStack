@@ -29,30 +29,6 @@ func (s *apiServer) ScaleApp(w http.ResponseWriter, r *http.Request, owner opena
 	notImplemented(w)
 }
 
-func (s *apiServer) ListAppVariables(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) PutAppVariable(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, name openapi.AppEnvNameParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) DeleteAppVariable(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, name openapi.AppEnvNameParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) ListAppSecrets(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) PutAppSecret(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, name openapi.AppEnvNameParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) DeleteAppSecret(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, name openapi.AppEnvNameParam) {
-	notImplemented(w)
-}
-
 func (s *apiServer) GetAppAccess(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
 	notImplemented(w)
 }

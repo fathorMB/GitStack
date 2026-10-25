@@ -505,6 +505,11 @@ func (s *Store) UpdateApp(ctx context.Context, repoID uuid.UUID, name string, p 
 		if err != nil {
 			return App{}, nil, err
 		}
+		// Ogni versione copia variabili e nomi dei segreti attuali (GIT-348): senza, una modifica di
+		// porta li cancellerebbe dalla storia.
+		if cfg.Variables, cfg.SecretNames, err = envNames(ctx, tx, cur.ID); err != nil {
+			return App{}, nil, err
+		}
 		summary := strings.Join(changes, ", ")
 		if err := insertAppVersion(ctx, tx, cur.ID, number, "config", last.Image, cfg, &summary, nil, nil, actor, now); err != nil {
 			return App{}, nil, err
