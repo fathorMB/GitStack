@@ -326,3 +326,53 @@ func (c *Client) PackageSettings(ctx context.Context, repoID string) (registry.S
 	}
 	return st, nil
 }
+
+// RecordRemovedTag implementa registry.SettingsSource e salva in core un tag tolto da RG2.
+func (c *Client) RecordRemovedTag(ctx context.Context, repoID string, tag registry.RemovedTag) error {
+	b, err := json.Marshal(tag)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.core+"/internal/registry/removed-tags/"+url.PathEscape(repoID), bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	trust.Sign(req.Header, c.secret, registrySettingsIdentity, c.now())
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return errors.New(sanitize(err))
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("core ha risposto %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// RemovedTags implementa registry.SettingsSource e legge da core il registro della pulizia.
+func (c *Client) RemovedTags(ctx context.Context, repoID string) ([]registry.RemovedTag, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.core+"/internal/registry/removed-tags/"+url.PathEscape(repoID), nil)
+	if err != nil {
+		return nil, err
+	}
+	trust.Sign(req.Header, c.secret, registrySettingsIdentity, c.now())
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, errors.New(sanitize(err))
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, registry.ErrSettingsNotFound
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("core ha risposto %d", resp.StatusCode)
+	}
+	var out struct {
+		Items []registry.RemovedTag `json:"items"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 4<<20)).Decode(&out); err != nil {
+		return nil, errors.New("risposta di core non valida")
+	}
+	return out.Items, nil
+}

@@ -69,6 +69,7 @@ func newPackagesEnv(t *testing.T) (*issuesEnv, *pkgGit) {
 			{Name: "v1", Digest: "sha256:aa", SizeBytes: 1234, PushedAt: pushed, Signature: "verified", HasSbom: true, Protected: true, PushedBy: &gitclient.PackagePusher{Kind: "job", Login: "ci job token"}},
 			{Name: "dev", Digest: "sha256:bb", SizeBytes: 1000, PushedAt: pushed.Add(-time.Hour), Signature: "unverified"},
 		},
+		RemovedTags: []gitclient.RemovedPackageTag{{Name: "sha-a91c3e2", Digest: "sha256:cc", Rule: "after 14 days", RemovedAt: pushed.Add(time.Hour)}},
 	}, {Image: "", Tags: []string{"x"}, Signature: "unverified", UpdatedAt: pushed}}
 	e.router = httpserver.NewRouter(e.pool, events.NoopPublisher{}, trustSecret,
 		httpserver.WithRepoIdentity(e.id), httpserver.WithReadableLister(e.id), httpserver.WithGit(g),
@@ -107,6 +108,10 @@ func TestPackages_ElencoEdEliminazionePerRuolo(t *testing.T) {
 				Signature string                        `json:"signature"`
 				PushedBy  *struct{ Kind, Login string } `json:"pushedBy"`
 			} `json:"tagDetails"`
+			RemovedTags []struct {
+				Name, Digest, Rule string
+				RemovedAt          time.Time
+			} `json:"removedTags"`
 		} `json:"items"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || len(got.Items) != 2 {
@@ -114,7 +119,8 @@ func TestPackages_ElencoEdEliminazionePerRuolo(t *testing.T) {
 	}
 	c := got.Items[0]
 	if c.Name != "alice/app/core" || c.Signature != "verified" || !c.HasSbom || c.Kind != "image" || c.PushedBy == nil || c.PushedBy.Kind != "job" ||
-		len(c.TagDetails) != 2 || !c.TagDetails[0].Protected || c.TagDetails[1].PushedBy != nil || c.TagDetails[1].Signature != "unverified" {
+		len(c.TagDetails) != 2 || !c.TagDetails[0].Protected || c.TagDetails[1].PushedBy != nil || c.TagDetails[1].Signature != "unverified" ||
+		len(c.RemovedTags) != 1 || c.RemovedTags[0].Name != "sha-a91c3e2" || c.RemovedTags[0].Digest != "sha256:cc" || c.RemovedTags[0].Rule != "after 14 days" || c.RemovedTags[0].RemovedAt.IsZero() {
 		t.Fatalf("pacchetto: %s", rec.Body.String())
 	}
 	if got.Items[1].Name != "alice/app" {

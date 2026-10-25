@@ -35,6 +35,7 @@ const pkgs: Package[] = [
       { name: 'v1.2.0', digest, sizeBytes: 52428800, pushedAt: '2026-10-01T10:00:00Z', signature: 'verified', hasSbom: true, protected: true },
       { name: 'debug-mrossi', digest: 'sha256:' + 'cd'.repeat(32), sizeBytes: 1048576, pushedAt: '2026-09-01T10:00:00Z', signature: 'unverified', hasSbom: false, protected: false },
     ],
+    removedTags: [{ name: 'sha-a91c3e2', digest: 'sha256:' + 'ef'.repeat(32), rule: 'after 14 days', removedAt: '2026-10-03T10:00:00Z' }],
   },
   { name: 'acme/api/charts/api', tags: ['1.0.0'], sizeBytes: 1024, updatedAt: '2026-10-02T10:00:00Z', signature: 'unverified', hasSbom: false, kind: 'helm' },
   { name: 'acme/api/worker', tags: [], sizeBytes: 1024, updatedAt: '2026-10-02T10:00:00Z', signature: 'unverified', hasSbom: false },
@@ -84,6 +85,7 @@ describe('PackagesPage (mockup B5)', () => {
     expect(within(hand).queryByText('protected')).toBeNull();
     // Dato non nel contratto: niente «used by app».
     expect(screen.queryByText(/used by app ·/)).toBeNull();
+    expect(screen.getByRole('listitem', { name: 'Tag sha-a91c3e2' })).toHaveTextContent('removed after 14 days by rule');
   }, T);
 
   it('cliccando un\'altra immagine la card e il comando di pull cambiano', async () => {

@@ -5596,6 +5596,9 @@ type Package struct {
 	// PushedBy Chi ha pubblicato, come autenticato dal registry al momento del push. Assente per i push anteriori alla registrazione.
 	PushedBy *PackagePusher `json:"pushedBy,omitempty"`
 
+	// RemovedTags Tag tolti di recente dalle regole di pulizia del registry (RG2).
+	RemovedTags *[]RemovedPackageTag `json:"removedTags,omitempty"`
+
 	// Signature Firma cosign dell'immagine: verificata con la chiave del registry oppure no.
 	Signature PackageSignature `json:"signature"`
 	SizeBytes int64            `json:"sizeBytes"`
@@ -6184,6 +6187,17 @@ type ReleaseAsset struct {
 // ReleaseList defines model for ReleaseList.
 type ReleaseList struct {
 	Items []Release `json:"items"`
+}
+
+// RemovedPackageTag defines model for RemovedPackageTag.
+type RemovedPackageTag struct {
+	// Digest Digest del manifest a cui puntava il tag prima della pulizia.
+	Digest    string    `json:"digest"`
+	Name      string    `json:"name"`
+	RemovedAt time.Time `json:"removedAt"`
+
+	// Rule Regola di pulizia che ha eliminato il tag, per esempio `after 14 days`.
+	Rule string `json:"rule"`
 }
 
 // RepoCloneUrls Indirizzi di clone dell'installazione (R1, R7). L'indirizzo SSH e' sempre quello completo `ssh://git@<host>:<porta>/<owner>/<repo>.git`.

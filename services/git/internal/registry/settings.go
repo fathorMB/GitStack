@@ -39,6 +39,19 @@ type Settings struct {
 type SettingsSource interface {
 	// PackageSettings ritorna ErrSettingsNotFound se core non conosce il repo.
 	PackageSettings(ctx context.Context, repoID string) (Settings, error)
+	// RecordRemovedTag conserva nel core un tag eliminato da una regola di pulizia.
+	RecordRemovedTag(ctx context.Context, repoID string, tag RemovedTag) error
+	// RemovedTags ritorna il registro persistente dei tag tolti dalla pulizia.
+	RemovedTags(ctx context.Context, repoID string) ([]RemovedTag, error)
+}
+
+// RemovedTag è il dettaglio persistente di un tag tolto dalla pulizia automatica.
+type RemovedTag struct {
+	Image     string    `json:"image"`
+	Name      string    `json:"name"`
+	Digest    string    `json:"digest"`
+	Rule      string    `json:"rule"`
+	RemovedAt time.Time `json:"removedAt"`
 }
 
 // protected dice se il tag corrisponde a uno dei modelli protetti.

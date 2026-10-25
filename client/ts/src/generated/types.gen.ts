@@ -247,6 +247,10 @@ export type Package = {
      * Un oggetto per tag (`tags` resta per compatibilità). Le firme e gli SBOM tecnici (sha256-….sig / .sbom) non compaiono.
      */
     tagDetails?: Array<PackageTag>;
+    /**
+     * Tag tolti di recente dalle regole di pulizia del registry (RG2).
+     */
+    removedTags?: Array<RemovedPackageTag>;
 };
 
 /**
@@ -278,6 +282,19 @@ export type PackageTag = {
      */
     protected: boolean;
     pushedBy?: PackagePusher;
+};
+
+export type RemovedPackageTag = {
+    name: string;
+    /**
+     * Digest del manifest a cui puntava il tag prima della pulizia.
+     */
+    digest: string;
+    /**
+     * Regola di pulizia che ha eliminato il tag, per esempio `after 14 days`.
+     */
+    rule: string;
+    removedAt: string;
 };
 
 export type PackageSettings = PackageSettingsInput & {

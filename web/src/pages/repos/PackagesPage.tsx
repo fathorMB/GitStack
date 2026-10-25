@@ -24,10 +24,14 @@ interface TagRow {
   signature?: 'verified' | 'unverified';
   hasSbom?: boolean;
   protected?: boolean;
+  removed?: boolean;
+  rule?: string;
+  removedAt?: string;
 }
 
 function tagRows(pkg: Package): TagRow[] {
-  return pkg.tagDetails ?? pkg.tags.map((name) => ({ name }));
+  const current = pkg.tagDetails ?? pkg.tags.map((name) => ({ name }));
+  return [...current, ...(pkg.removedTags ?? []).map((tag) => ({ name: tag.name, digest: tag.digest, removed: true, rule: tag.rule, removedAt: tag.removedAt }))];
 }
 
 /** Tag più recente (ultimo push); senza date, il primo. */
@@ -206,6 +210,7 @@ function TagsCard({ pkg, repo, admin, onDelete }: { pkg: Package; repo: Reposito
               <span className="mono" style={{ width: 160 }}>
                 {t.name}
               </span>
+              {t.removed ? <span className="small muted">removed {t.rule} by rule</span> : null}
               {t.protected ? (
                 <span className="badge">
                   <Lock size={12} aria-hidden="true" />

@@ -31,18 +31,27 @@ type PackageTag struct {
 	PushedBy  *PackagePusher `json:"pushedBy,omitempty"`
 }
 
+// RemovedPackageTag è un tag eliminato da una regola di pulizia.
+type RemovedPackageTag struct {
+	Name      string    `json:"name"`
+	Digest    string    `json:"digest"`
+	Rule      string    `json:"rule"`
+	RemovedAt time.Time `json:"removedAt"`
+}
+
 // PackageInfo è un'immagine del repo; Image è il nome sotto il repo (vuoto = senza nome).
 type PackageInfo struct {
-	Image      string         `json:"image"`
-	Tags       []string       `json:"tags"`
-	TagDetails []PackageTag   `json:"tagDetails"`
-	Digest     string         `json:"digest"`
-	SizeBytes  int64          `json:"sizeBytes"`
-	UpdatedAt  time.Time      `json:"updatedAt"`
-	Signature  string         `json:"signature"`
-	HasSbom    bool           `json:"hasSbom"`
-	Kind       string         `json:"kind"`
-	PushedBy   *PackagePusher `json:"pushedBy,omitempty"`
+	Image       string              `json:"image"`
+	Tags        []string            `json:"tags"`
+	TagDetails  []PackageTag        `json:"tagDetails"`
+	Digest      string              `json:"digest"`
+	SizeBytes   int64               `json:"sizeBytes"`
+	UpdatedAt   time.Time           `json:"updatedAt"`
+	Signature   string              `json:"signature"`
+	HasSbom     bool                `json:"hasSbom"`
+	Kind        string              `json:"kind"`
+	PushedBy    *PackagePusher      `json:"pushedBy,omitempty"`
+	RemovedTags []RemovedPackageTag `json:"removedTags,omitempty"`
 }
 
 // Packager è ciò che serve a core per elencare ed eliminare i pacchetti.

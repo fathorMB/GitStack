@@ -11114,6 +11114,10 @@ components:
           type: array
           description: "Un oggetto per tag (`tags` resta per compatibilità). Le firme e gli SBOM tecnici (sha256-….sig / .sbom) non compaiono."
           items: {$ref: "#/components/schemas/PackageTag"}
+        removedTags:
+          type: array
+          description: "Tag tolti di recente dalle regole di pulizia del registry (RG2)."
+          items: {$ref: "#/components/schemas/RemovedPackageTag"}
     PackagePusher:
       type: object
       additionalProperties: false
@@ -11135,6 +11139,15 @@ components:
         hasSbom: {type: boolean}
         protected: {type: boolean, description: "Il tag corrisponde a un modello di tag protetti (RG2)."}
         pushedBy: {$ref: "#/components/schemas/PackagePusher"}
+    RemovedPackageTag:
+      type: object
+      additionalProperties: false
+      required: [name, digest, rule, removedAt]
+      properties:
+        name: {type: string}
+        digest: {type: string, description: "Digest del manifest a cui puntava il tag prima della pulizia."}
+        rule: {type: string, description: "Regola di pulizia che ha eliminato il tag, per esempio `after 14 days`."}
+        removedAt: {type: string, format: date-time}
     PackageSettings:
       allOf:
         - $ref: "#/components/schemas/PackageSettingsInput"

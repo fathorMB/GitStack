@@ -146,6 +146,64 @@ func (s *apiServer) UpdateRepositoryPackageSettings(w http.ResponseWriter, r *ht
 
 // RegistrySettingsPathPrefix è la rotta interna con cui il servizio git legge le impostazioni.
 const RegistrySettingsPathPrefix = "/internal/registry/settings/"
+const RegistryRemovedTagPathPrefix = "/internal/registry/removed-tags/"
+
+// registryRemovedTag registra un tag che il servizio git ha appena tolto con una regola RG2.
+func (s *apiServer) registryRemovedTag(w http.ResponseWriter, r *http.Request) {
+	if trust.CallerFromContext(r.Context()) != trust.CallerGit {
+		writeError(w, http.StatusForbidden, "forbidden", "Il servizio chiamante non può fare questa operazione.")
+		return
+	}
+	id, err := uuid.Parse(r.PathValue("repoId"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, "not_found", "Repo non trovato.")
+		return
+	}
+	var tag store.RemovedPackageTag
+	if !decodeIssueJSON(w, r, &tag, false) {
+		return
+	}
+	if tag.Name == "" || tag.Digest == "" || tag.Rule == "" || tag.RemovedAt.IsZero() {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Dati del tag rimosso non validi.")
+		return
+	}
+	if err := s.resources.RecordRemovedPackageTag(r.Context(), id, tag); err != nil {
+		slog.Default().Error("registrazione del tag rimosso", "err", err)
+		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno.")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// registryRemovedTags restituisce al servizio git i tag rimossi che deve inoltrare nell'elenco Packages.
+func (s *apiServer) registryRemovedTags(w http.ResponseWriter, r *http.Request) {
+	if trust.CallerFromContext(r.Context()) != trust.CallerGit {
+		writeError(w, http.StatusForbidden, "forbidden", "Il servizio chiamante non può fare questa operazione.")
+		return
+	}
+	id, err := uuid.Parse(r.PathValue("repoId"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, "not_found", "Repo non trovato.")
+		return
+	}
+	repo, err := s.resources.GetRepoByID(r.Context(), id)
+	if errors.Is(err, store.ErrNotFound) || (err == nil && repo.DeletedAt != nil) {
+		writeError(w, http.StatusNotFound, "not_found", "Repo non trovato.")
+		return
+	}
+	if err != nil {
+		slog.Default().Error("lettura del repo per il registro dei tag rimossi", "err", err)
+		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno.")
+		return
+	}
+	tags, err := s.resources.ListRemovedPackageTags(r.Context(), id)
+	if err != nil {
+		slog.Default().Error("lettura del registro dei tag rimossi", "err", err)
+		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno.")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": tags})
+}
 
 // registrySettings risponde al servizio git (solo con la sua chiave): le impostazioni del
 // repo con i dati che servono alla pulizia e alla quota (archiviato, repo dello stesso owner).

@@ -24,6 +24,41 @@ type PackageSettings struct {
 	UpdatedAt              *time.Time
 }
 
+// RemovedPackageTag è un tag tolto dalla pulizia automatica del registry (RG2).
+type RemovedPackageTag struct {
+	Image     string    `json:"image"`
+	Name      string    `json:"name"`
+	Digest    string    `json:"digest"`
+	Rule      string    `json:"rule"`
+	RemovedAt time.Time `json:"removedAt"`
+}
+
+// RecordRemovedPackageTag conserva un tag eliminato dalla pulizia del registry.
+func (s *Store) RecordRemovedPackageTag(ctx context.Context, repoID uuid.UUID, tag RemovedPackageTag) error {
+	_, err := s.pool.Exec(ctx, `INSERT INTO core.repo_package_removed_tags (repo_id, image, name, digest, rule, removed_at)
+		VALUES ($1, $2, $3, $4, $5, $6)`, repoID, tag.Image, tag.Name, tag.Digest, tag.Rule, tag.RemovedAt)
+	return err
+}
+
+// ListRemovedPackageTags elenca i tag rimossi, dai più recenti, per immagine.
+func (s *Store) ListRemovedPackageTags(ctx context.Context, repoID uuid.UUID) ([]RemovedPackageTag, error) {
+	rows, err := s.pool.Query(ctx, `SELECT image, name, digest, rule, removed_at
+		FROM core.repo_package_removed_tags WHERE repo_id = $1 ORDER BY image, removed_at DESC`, repoID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []RemovedPackageTag
+	for rows.Next() {
+		var tag RemovedPackageTag
+		if err := rows.Scan(&tag.Image, &tag.Name, &tag.Digest, &tag.Rule, &tag.RemovedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, tag)
+	}
+	return out, rows.Err()
+}
+
 // DefaultPackageSettings sono i valori di un repo che non le ha mai salvate.
 func DefaultPackageSettings() PackageSettings {
 	return PackageSettings{ProtectedTagPatterns: []string{}, DeleteUntaggedAfterDays: DefaultDeleteUntaggedAfterDays}

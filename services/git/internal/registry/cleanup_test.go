@@ -24,8 +24,22 @@ import (
 
 type settingsBackend struct {
 	*fakeBackend
-	mu sync.Mutex
-	st map[string]Settings
+	mu      sync.Mutex
+	st      map[string]Settings
+	removed map[string][]RemovedTag
+}
+
+func (s *settingsBackend) RecordRemovedTag(_ context.Context, repoID string, tag RemovedTag) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.removed[repoID] = append(s.removed[repoID], tag)
+	return nil
+}
+
+func (s *settingsBackend) RemovedTags(_ context.Context, repoID string) ([]RemovedTag, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]RemovedTag(nil), s.removed[repoID]...), nil
 }
 
 func (s *settingsBackend) PackageSettings(_ context.Context, repoID string) (Settings, error) {
@@ -78,7 +92,7 @@ type cleanEnv struct {
 func newCleanEnv(t *testing.T, mod func(*Config)) *cleanEnv {
 	t.Helper()
 	b := newBackend()
-	sb := &settingsBackend{fakeBackend: b, st: map[string]Settings{
+	sb := &settingsBackend{fakeBackend: b, removed: map[string][]RemovedTag{}, st: map[string]Settings{
 		idApp:    {Owner: "alice", Name: "app", DeleteUntaggedAfterDays: 7, OwnerRepoIDs: []string{idApp, idSecret}},
 		idSecret: {Owner: "alice", Name: "secret", DeleteUntaggedAfterDays: 7, OwnerRepoIDs: []string{idApp, idSecret}},
 		idOther:  {Owner: "bob", Name: "other", DeleteUntaggedAfterDays: 7, OwnerRepoIDs: []string{idOther}},
@@ -267,6 +281,14 @@ func TestCleanup_UltimeNEShaPiuVecchi(t *testing.T) {
 	// Solo sha-aaa: sha-keep1 è protetto, latest e v1 non sono sha-*.
 	if got := e2.tags("alice/app"); !slices.Equal(got, []string{"latest", "sha-keep1", "v1"}) {
 		t.Fatalf("tag dopo deleteShaTagsAfterDays=5: %v", got)
+	}
+	removed := e2.sb.removed[idApp]
+	if len(removed) != 1 || removed[0].Name != "sha-aaa" || removed[0].Digest == "" || removed[0].Rule != "after 5 days" || !removed[0].RemovedAt.Equal(e2.clock.now().UTC()) {
+		t.Fatalf("registro tag eliminati: %+v", removed)
+	}
+	pk := e2.packages()[""]
+	if len(pk.RemovedTags) != 1 || pk.RemovedTags[0] != removed[0] {
+		t.Fatalf("elenco del registry senza tag rimosso: %+v", pk.RemovedTags)
 	}
 }
 

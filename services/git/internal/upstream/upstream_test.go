@@ -2,6 +2,7 @@ package upstream
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -205,5 +206,27 @@ func TestPackageSettings(t *testing.T) {
 	}
 	if _, err := c.PackageSettings(context.Background(), "sconosciuto"); !errors.Is(err, registry.ErrSettingsNotFound) {
 		t.Errorf("repo sconosciuto: %v", err)
+	}
+}
+
+func TestRecordRemovedTag(t *testing.T) {
+	var got registry.RemovedTag
+	core := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/internal/registry/removed-tags/r1" {
+			t.Fatalf("richiesta: %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+			t.Fatal(err)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer core.Close()
+	c := New("http://unused", core.URL, "segreto", time.Second)
+	when := time.Date(2026, 10, 25, 10, 0, 0, 0, time.UTC)
+	if err := c.RecordRemovedTag(context.Background(), "r1", registry.RemovedTag{Image: "api", Name: "sha-a", Digest: "sha256:aa", Rule: "after 14 days", RemovedAt: when}); err != nil {
+		t.Fatal(err)
+	}
+	if got.Image != "api" || got.Name != "sha-a" || got.Digest != "sha256:aa" || got.Rule != "after 14 days" || !got.RemovedAt.Equal(when) {
+		t.Fatalf("tag registrato: %+v", got)
 	}
 }
