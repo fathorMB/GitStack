@@ -128,7 +128,7 @@ type Config struct {
 	// contesto dei task presi da un runner esterno. Vuoto: nessuna porta esterna.
 	CIExternalAddr string
 	CIExternalURL  string
-	// CIGateInternalAddr Ã¨ un endpoint interno che il gate deve vedere bloccato
+	// CIGateInternalAddr è un endpoint interno che il gate deve vedere bloccato
 	// prima di avviare il job (GITSTACK_CORE_CI_GATE_INTERNAL_ADDR).
 	CIGateInternalAddr string
 	// CIRunnerSecrets sono i segreti dei runner interni accettati da FetchTask
