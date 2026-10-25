@@ -31,6 +31,12 @@ var DefaultAppMax = AppResourceAmount{CPUMillis: 4000, MemoryBytes: 8 << 30}
 // Allocatable da Kubernetes. La riserva iniziale e' meta' del nodo.
 func defaultAppCapacity() AppCapacity {
 	server := AppResourceAmount{CPUMillis: runtime.NumCPU() * 1000, MemoryBytes: hostMemoryBytes()}
+	return capacityForHardware(server)
+}
+
+// capacityForHardware separa il calcolo dal rilevatore dell'host: i test e
+// un futuro provider Kubernetes possono fornire l'Allocatable del nodo.
+func capacityForHardware(server AppResourceAmount) AppCapacity {
 	if server.CPUMillis < 1000 {
 		server.CPUMillis = 1000
 	}
