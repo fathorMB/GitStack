@@ -36,7 +36,7 @@ const (
 	PusherUser  = "user"
 	PusherAgent = "agent"
 	PusherJob   = "job"
-	// JobLogin è il login mostrato per un push col token del job: il registry non sa di più.
+	// JobLogin è il login storico dei push fatti con un token di job.
 	JobLogin = "ci job token"
 )
 

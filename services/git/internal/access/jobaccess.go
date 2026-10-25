@@ -19,6 +19,9 @@ type JobAccess struct {
 	Archived bool
 	// Packages è il livello `packages` del token (CI4): none, read o write.
 	Packages string
+	// Workflow e Job identificano il job che usa il token.
+	Workflow string
+	Job      string
 }
 
 // Jobs risolve un token del job (prefisso gsj_) nel ci-gateway di core.

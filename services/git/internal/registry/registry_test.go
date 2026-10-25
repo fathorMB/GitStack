@@ -49,8 +49,9 @@ type fakeRepo struct {
 }
 
 type fakeJob struct {
-	repoID   string
-	packages string
+	repoID        string
+	packages      string
+	workflow, job string
 }
 
 // fakeBackend è identity, core e ci-gateway.
@@ -81,7 +82,7 @@ func newBackend() *fakeBackend {
 	add("gst_write_scopeadmin", "u-write", "admin:registry")
 	// Scope di codice, non del registry.
 	add("gst_code", "u-admin", "write:resource")
-	b.jobs["gsj_rw"] = fakeJob{repoID: idApp, packages: "write"}
+	b.jobs["gsj_rw"] = fakeJob{repoID: idApp, packages: "write", workflow: "publish", job: "image"}
 	b.jobs["gsj_ro"] = fakeJob{repoID: idApp, packages: "read"}
 	b.jobs["gsj_none"] = fakeJob{repoID: idApp, packages: "none"}
 	return b
@@ -131,7 +132,7 @@ func (b *fakeBackend) JobAccess(_ context.Context, token, owner, repo string) (a
 	if r == nil || r.deleted || r.id != j.repoID {
 		return access.JobAccess{}, access.ErrNotFound
 	}
-	return access.JobAccess{RepoID: r.id, Owner: r.owner, Name: r.name, Archived: r.archived, Packages: j.packages}, nil
+	return access.JobAccess{RepoID: r.id, Owner: r.owner, Name: r.name, Archived: r.archived, Packages: j.packages, Workflow: j.workflow, Job: j.job}, nil
 }
 
 func (b *fakeBackend) set(key string, f func(r *fakeRepo)) {
