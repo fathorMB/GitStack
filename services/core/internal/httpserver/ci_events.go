@@ -239,7 +239,7 @@ func (s *apiServer) ListWorkflows(w http.ResponseWriter, r *http.Request, owner 
 	if !ok {
 		return
 	}
-	sha, err := s.ciResolve(r.Context(), ia.repo.ID, ia.repo.DefaultBranch)
+	_, sha, err := s.ciResolveRef(r.Context(), ia.repo.ID, ia.repo.DefaultBranch) // git risolve solo ref complete o sha (GIT-291)
 	if err != nil {
 		if isGitNotFound(err) { // repo senza commit
 			writeJSON(w, http.StatusOK, openapi.WorkflowList{Items: []openapi.Workflow{}})
@@ -270,17 +270,46 @@ func (s *apiServer) ciResolve(ctx context.Context, repoID uuid.UUID, rev string)
 	if !ok {
 		return "", gitclient.ErrUnavailable
 	}
-	raw, err := rd.ReadJSON(ctx, ciSystemCaller, repoID, "commits/"+url.PathEscape(rev)+"/resolve", nil)
+	// L'API di git risolve solo sha e prefissi (commits/{sha}/resolve): per un branch o un tag
+	// si legge il commit in testa alla ref (GIT-291: il vecchio codice dava 400 su ogni nome).
+	if len(rev) >= 7 && len(rev) <= 40 && isHex(rev) {
+		raw, err := rd.ReadJSON(ctx, ciSystemCaller, repoID, "commits/"+url.PathEscape(rev)+"/resolve", nil)
+		if err != nil {
+			return "", err
+		}
+		var out struct {
+			Sha string `json:"sha"`
+		}
+		if err := json.Unmarshal(raw, &out); err != nil || len(out.Sha) != 40 {
+			return "", fmt.Errorf("risposta di git non valida")
+		}
+		return out.Sha, nil
+	}
+	raw, err := rd.ReadJSON(ctx, ciSystemCaller, repoID, "commits", url.Values{"ref": {rev}, "perPage": {"1"}})
 	if err != nil {
 		return "", err
 	}
-	var out struct {
-		Sha string `json:"sha"`
+	var list struct {
+		Items []struct {
+			Sha string `json:"sha"`
+		} `json:"items"`
 	}
-	if err := json.Unmarshal(raw, &out); err != nil || len(out.Sha) != 40 {
+	if err := json.Unmarshal(raw, &list); err != nil {
 		return "", fmt.Errorf("risposta di git non valida")
 	}
-	return out.Sha, nil
+	if len(list.Items) == 0 || len(list.Items[0].Sha) != 40 {
+		return "", &gitclient.APIError{Status: http.StatusNotFound, Code: "not_found", Message: "Riferimento non trovato."}
+	}
+	return list.Items[0].Sha, nil
+}
+
+func isHex(s string) bool {
+	for _, c := range s {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 // DispatchWorkflow implementa POST /repos/{owner}/{repo}/workflows/{workflow}/dispatches.

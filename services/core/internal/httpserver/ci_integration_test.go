@@ -50,6 +50,12 @@ func (g *ciGit) ReadJSON(ctx context.Context, c trust.Identity, repo uuid.UUID, 
 			return json.RawMessage(`{"sha":"` + ciHeadSHA + `"}`), nil
 		}
 		return nil, notFound
+	case path == "commits" && q.Get("perPage") == "1":
+		// Come il servizio git vero: commit in testa a una ref; la ref sconosciuta non c'è.
+		if r := q.Get("ref"); r == "main" || r == "refs/heads/main" || r == "refs/tags/main" {
+			return json.RawMessage(`{"items":[{"sha":"` + ciHeadSHA + `","subject":"s"}],"page":1,"perPage":1}`), nil
+		}
+		return nil, notFound
 	case path == "commits/"+ciHeadSHA:
 		return json.RawMessage(`{"sha":"` + ciHeadSHA + `","subject":"s","message":"s","parents":[]}`), nil
 	}

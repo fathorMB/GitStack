@@ -3,6 +3,7 @@
 package stackitest
 
 import (
+	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"bytes"
 	"encoding/json"
 	"net/http"
@@ -32,9 +33,9 @@ type gsEnv struct {
 	proxy string
 }
 
-func newGsEnv(t *testing.T) *gsEnv {
+func newGsEnv(t *testing.T, extra ...httpserver.Option) *gsEnv {
 	t.Helper()
-	e := newIssuesE2E(t)
+	e := newIssuesE2E(t, extra...)
 	bin := build(t, "../../../../cli/cmd/gs", "gs")
 	gw, err := url.Parse(e.gateway)
 	if err != nil {
