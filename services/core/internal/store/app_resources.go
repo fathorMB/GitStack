@@ -4,6 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"runtime"
+	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -19,15 +23,38 @@ type AppCapacity struct {
 	Default  bool
 }
 
-var DefaultAppCapacity = AppCapacity{
-	Server:   AppResourceAmount{CPUMillis: 8000, MemoryBytes: 16 << 30},
-	Services: AppResourceAmount{CPUMillis: 2000, MemoryBytes: 5 << 30},
-	Share:    AppResourceAmount{CPUMillis: 4000, MemoryBytes: 8 << 30},
-	Max:      DefaultAppMax,
-	Default:  true,
-}
+var DefaultAppCapacity = defaultAppCapacity()
 
 var DefaultAppMax = AppResourceAmount{CPUMillis: 4000, MemoryBytes: 8 << 30}
+
+// defaultAppCapacity usa l'hardware dell'host quando core non riceve
+// Allocatable da Kubernetes. La riserva iniziale e' meta' del nodo.
+func defaultAppCapacity() AppCapacity {
+	server := AppResourceAmount{CPUMillis: runtime.NumCPU() * 1000, MemoryBytes: hostMemoryBytes()}
+	if server.CPUMillis < 1000 {
+		server.CPUMillis = 1000
+	}
+	if server.MemoryBytes < 1<<30 {
+		server.MemoryBytes = 1 << 30
+	}
+	return AppCapacity{Server: server, Services: AppResourceAmount{CPUMillis: server.CPUMillis / 4, MemoryBytes: server.MemoryBytes / 4}, Share: AppResourceAmount{CPUMillis: server.CPUMillis / 2, MemoryBytes: server.MemoryBytes / 2}, Max: AppResourceAmount{CPUMillis: 4000, MemoryBytes: 8 << 30}, Default: true}
+}
+
+func hostMemoryBytes() int64 {
+	b, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return 16 << 30
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		f := strings.Fields(line)
+		if len(f) >= 2 && f[0] == "MemTotal:" {
+			if kb, err := strconv.ParseInt(f[1], 10, 64); err == nil {
+				return kb << 10
+			}
+		}
+	}
+	return 16 << 30
+}
 
 // ReserveCapacityError indica che la riserva non lascia spazio ai servizi o
 // e' gia' impegnata dalle parti garantite delle app.
