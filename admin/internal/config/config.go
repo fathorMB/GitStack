@@ -27,6 +27,11 @@ type Config struct {
 	Version int `yaml:"version"`
 	// Host è il nome o l'IP con cui si raggiunge GitStack (UI e API).
 	Host string `yaml:"host"`
+	// AppsDomain è il dominio delle app (H2): ogni app ha l'indirizzo
+	// <app>-<repo>-<owner>.<apps_domain>, con il certificato wildcard della CA interna.
+	// Vuoto = installazione v2 non ancora aggiornata con
+	// `gitstack config set apps-domain` (o con un install.sh recente).
+	AppsDomain string `yaml:"apps_domain"`
 	// SSHPort è la porta SSH del servizio git (mai la 22 dell'host).
 	SSHPort int `yaml:"ssh_port"`
 	// TLS è la modalità HTTPS scelta dall'installer: internal, custom,
@@ -182,6 +187,11 @@ func (c *Config) Validate() error {
 	}
 	if strings.ContainsAny(c.Host, " /\t") {
 		return fmt.Errorf("host %q non valido (nome o IP, senza schema)", c.Host)
+	}
+	if c.AppsDomain != "" {
+		if err := ValidateAppsDomain(c.AppsDomain); err != nil {
+			return fmt.Errorf("apps_domain %q non valido: %v", c.AppsDomain, err)
+		}
 	}
 	if c.SSHPort < 1 || c.SSHPort > 65535 {
 		return fmt.Errorf("ssh_port %d fuori intervallo", c.SSHPort)

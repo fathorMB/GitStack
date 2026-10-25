@@ -73,6 +73,7 @@ func (s Service) Healthy() bool { return s.Desired > 0 && s.Ready >= s.Desired }
 type Report struct {
 	Host          string    `json:"host"`
 	SSHPort       int       `json:"ssh_port"`
+	AppsDomain    string    `json:"apps_domain,omitempty"`
 	Release       string    `json:"release"`
 	Namespace     string    `json:"namespace"`
 	ServerVersion string    `json:"server_version"`
@@ -158,10 +159,11 @@ type Collector struct {
 // perché lo stato (API ok, cluster no) resti visibile.
 func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir string) *Report {
 	r := &Report{
-		Host:      cfg.Host,
-		SSHPort:   cfg.SSHPort,
-		Release:   cfg.Release,
-		Namespace: cfg.Namespace,
+		Host:       cfg.Host,
+		SSHPort:    cfg.SSHPort,
+		AppsDomain: cfg.AppsDomain,
+		Release:    cfg.Release,
+		Namespace:  cfg.Namespace,
 	}
 	r.K3sVersion = c.k3sVersion(ctx)
 	svcs, err := c.services(ctx, cfg)
