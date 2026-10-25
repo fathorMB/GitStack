@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -166,6 +167,34 @@ func TestExternalOnly_TokenDiJobSoloPerJobExternal(t *testing.T) {
 		t.Errorf("KO archive interno con token interno: %d", st)
 	}
 
+	// Registry e storage (cache/artefatti): stessa regola dell'archive.
+	get := func(base string, hc *http.Client, path, tok string) int {
+		method := "GET"
+		if strings.HasPrefix(path, cigateway.ArtifactsPath) {
+			method = "PUT" // il caricamento degli artefatti è solo PUT
+		}
+		req, _ := http.NewRequest(method, base+path, nil)
+		req.Header.Set("Authorization", "Bearer "+tok)
+		res, err := hc.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = res.Body.Close() }()
+		_, _ = io.Copy(io.Discard, res.Body)
+		return res.StatusCode
+	}
+	regPath := cigateway.RegistryAccessPath + "?owner=alice&repo=app"
+	cachePath := cigateway.CachePath + "_apis/artifactcache/cache?keys=k&version=v"
+	artPath := cigateway.ArtifactsPath + "1/x"
+	for _, p := range []string{regPath, cachePath, artPath} {
+		if st := get(ext.URL, ext.Client(), p, intTok); st != http.StatusUnauthorized {
+			t.Errorf("KO %s esterno con token interno: %d", p, st)
+		}
+		if st := get(e.srv.URL, e.srv.Client(), p, intTok); st == http.StatusUnauthorized {
+			t.Errorf("KO %s interno con token interno: %d", p, st)
+		}
+	}
+
 	// Job external: il suo token vale sulla porta esterna e non su quella interna.
 	e.queueWF("ext", "b", externalWF)
 	rt, err := e.register("r1", "linux")
@@ -191,5 +220,8 @@ func TestExternalOnly_TokenDiJobSoloPerJobExternal(t *testing.T) {
 	}
 	if st := archive(ext.URL, ext.Client(), extTok); st != http.StatusOK {
 		t.Errorf("KO archive esterno con token external: %d", st)
+	}
+	if st := get(ext.URL, ext.Client(), cigateway.RegistryAccessPath+"?owner=alice&repo=app", extTok); st == http.StatusUnauthorized {
+		t.Errorf("KO registry-access esterno con token external: %d", st)
 	}
 }
