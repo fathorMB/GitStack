@@ -30,7 +30,6 @@ func TestListResourcesFilteredByReadPermission(t *testing.T) {
 	identityBin := build(t, "../../../identity", "identity")
 	gatewayBin := build(t, "../../../gateway", "gateway")
 
-
 	// Fra core e identity c'è un proxy che si può "spegnere": il gateway
 	// continua a parlare con identity, solo core la perde.
 	var down atomic.Bool

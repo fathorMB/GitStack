@@ -80,7 +80,10 @@ func TestStartSvcRiprovaSePortaOccupata(t *testing.T) {
 		mu.Unlock()
 		t.Logf(format, args...)
 	}
-	t.Cleanup(func() { pickHook = nil; startLogf = func(t *testing.T, f string, a ...any) { t.Helper(); t.Logf(f, a...) } })
+	t.Cleanup(func() {
+		pickHook = nil
+		startLogf = func(t *testing.T, f string, a ...any) { t.Helper(); t.Logf(f, a...) }
+	})
 
 	e := newGitEnv(t)
 
