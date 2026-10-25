@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"os"
 	"os/exec"
@@ -81,29 +80,25 @@ func TestCodeReads(t *testing.T) {
 	gatewayBin := build(t, "../../../gateway", "gateway")
 	gitBin := build(t, "../../../git", "git")
 
-	identityAddr, gatewayAddr, gitAddr := freeAddr(t), freeAddr(t), freeAddr(t)
 	dataDir := t.TempDir()
-	coreSrv := httptest.NewServer(httpserver.NewRouter(pool, events.NoopPublisher{}, serviceSecret,
-		httpserver.WithRepoIdentity(identityclient.New(mustURL(t, "http://"+identityAddr), serviceSecret, 5*time.Second)),
-		httpserver.WithGit(gitclient.New(mustURL(t, "http://"+gitAddr), serviceSecret, 30*time.Second)),
-	))
-	t.Cleanup(coreSrv.Close)
+	coreSrv := newLateCore(t)
 
-	start(t, "identity", identityBin, identityAddr,
-		"GITSTACK_IDENTITY_ADDR="+identityAddr,
+	identityAddr := startOne(t, "identity", identityBin, "GITSTACK_IDENTITY_ADDR",
 		"GITSTACK_IDENTITY_DB_URL="+dsn,
 		"GITSTACK_IDENTITY_SERVICE_SECRET="+serviceSecret,
 		"GITSTACK_IDENTITY_ADMIN_USERNAME=admin",
 		"GITSTACK_IDENTITY_ADMIN_PASSWORD="+adminPassword,
 	)
-	start(t, "git", gitBin, gitAddr,
-		"GITSTACK_GIT_ADDR="+gitAddr,
+	gitAddr := startOne(t, "git", gitBin, "GITSTACK_GIT_ADDR",
 		"GITSTACK_GIT_DATA_DIR="+dataDir,
 		"GITSTACK_GIT_SSH_ADDR=off",
 		"GITSTACK_IDENTITY_SERVICE_SECRET="+serviceSecret,
 	)
-	start(t, "gateway", gatewayBin, gatewayAddr,
-		"GITSTACK_GATEWAY_ADDR="+gatewayAddr,
+	coreSrv.set(httpserver.NewRouter(pool, events.NoopPublisher{}, serviceSecret,
+		httpserver.WithRepoIdentity(identityclient.New(mustURL(t, "http://"+identityAddr), serviceSecret, 5*time.Second)),
+		httpserver.WithGit(gitclient.New(mustURL(t, "http://"+gitAddr), serviceSecret, 30*time.Second)),
+	))
+	gatewayAddr := startOne(t, "gateway", gatewayBin, "GITSTACK_GATEWAY_ADDR",
 		"GITSTACK_CORE_URL="+coreSrv.URL,
 		"GITSTACK_IDENTITY_URL=http://"+identityAddr,
 		"GITSTACK_IDENTITY_SERVICE_SECRET="+serviceSecret,

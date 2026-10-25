@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -108,13 +107,9 @@ func newSecEnv(t *testing.T) *secEnv {
 	identityBin := build(t, "../../../identity", "identity")
 	gatewayBin := build(t, "../../../gateway", "gateway")
 
-	identityAddr, gatewayAddr := freeAddr(t), freeAddr(t)
-	coreSrv := httptest.NewServer(httpserver.NewRouter(pool, events.NoopPublisher{}, serviceSecret,
-		httpserver.WithCreatorGranter(identityclient.New(mustURL(t, "http://"+identityAddr), serviceSecret, 5*time.Second))))
-	t.Cleanup(coreSrv.Close)
+	coreSrv := newLateCore(t)
 
-	start(t, "identity", identityBin, identityAddr,
-		"GITSTACK_IDENTITY_ADDR="+identityAddr,
+	identityAddr := startOne(t, "identity", identityBin, "GITSTACK_IDENTITY_ADDR",
 		"GITSTACK_IDENTITY_DB_URL="+dsn,
 		"GITSTACK_IDENTITY_SERVICE_SECRET="+serviceSecret,
 		"GITSTACK_IDENTITY_ADMIN_USERNAME=admin",
@@ -124,8 +119,9 @@ func newSecEnv(t *testing.T) *secEnv {
 		"GITSTACK_IDENTITY_LOGIN_MAX_ATTEMPTS_IP=1000",
 		"GITSTACK_IDENTITY_LOGIN_WINDOW=15m",
 	)
-	start(t, "gateway", gatewayBin, gatewayAddr,
-		"GITSTACK_GATEWAY_ADDR="+gatewayAddr,
+	coreSrv.set(httpserver.NewRouter(pool, events.NoopPublisher{}, serviceSecret,
+		httpserver.WithCreatorGranter(identityclient.New(mustURL(t, "http://"+identityAddr), serviceSecret, 5*time.Second))))
+	gatewayAddr := startOne(t, "gateway", gatewayBin, "GITSTACK_GATEWAY_ADDR",
 		"GITSTACK_CORE_URL="+coreSrv.URL,
 		"GITSTACK_IDENTITY_URL=http://"+identityAddr,
 		"GITSTACK_IDENTITY_SERVICE_SECRET="+serviceSecret,

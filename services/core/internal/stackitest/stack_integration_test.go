@@ -19,8 +19,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/http/httptest"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -88,51 +86,6 @@ func build(t *testing.T, dir, out string) string {
 		t.Fatalf("go build %s: %v\n%s", dir, err, outb)
 	}
 	return bin
-}
-
-// start avvia un binario e lo ferma (per PID) a fine test.
-func start(t *testing.T, name, bin, addr string, env ...string) {
-	t.Helper()
-	var logs bytes.Buffer
-	cmd := exec.Command(bin)
-	cmd.Env = os.Environ()
-	if name == "gateway" {
-		// Timeout ampi gateway→core e gateway→identity: con -race e i
-		// pacchetti in parallelo lo stack è carico e il default di produzione
-		// (5 s) scade (503 core_unavailable, run CI 39300966677, GIT-308).
-		// È un limite del banco di prova: il default di produzione non cambia.
-		// Un valore passato esplicitamente dal test vince (l'ultimo ha la precedenza).
-		cmd.Env = append(cmd.Env, "GITSTACK_CORE_TIMEOUT=60s", "GITSTACK_IDENTITY_TIMEOUT=60s")
-	}
-	cmd.Env = append(cmd.Env, env...)
-	cmd.Stdout, cmd.Stderr = &logs, &logs
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
-		if t.Failed() {
-			t.Logf("log di %s:\n%s", name, logs.String())
-		}
-		for _, secret := range []string{serviceSecret, coreSecret, gitSecret, adminPassword, newPassword} {
-			if strings.Contains(logs.String(), secret) {
-				t.Errorf("un segreto compare nei log di %s", name)
-			}
-		}
-	})
-	deadline := time.Now().Add(30 * time.Second)
-	for time.Now().Before(deadline) {
-		resp, err := http.Get("http://" + addr + "/healthz")
-		if err == nil {
-			_ = resp.Body.Close()
-			if resp.StatusCode == http.StatusOK {
-				return
-			}
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	t.Fatalf("%s non è partito in tempo:\n%s", name, logs.String())
 }
 
 type reply struct {
@@ -207,20 +160,17 @@ func TestGatewayIdentityCore(t *testing.T) {
 
 	// core: il router vero, in-process, sullo stesso database.
 	// POST /resources assegna il grant admin al creatore tramite identity.
-	identityAddr, gatewayAddr := freeAddr(t), freeAddr(t)
-	coreSrv := httptest.NewServer(httpserver.NewRouter(pool, events.NoopPublisher{}, serviceSecret,
-		httpserver.WithCreatorGranter(identityclient.New(mustURL(t, "http://"+identityAddr), serviceSecret, 5*time.Second))))
-	t.Cleanup(coreSrv.Close)
+	coreSrv := newLateCore(t)
 
-	start(t, "identity", identityBin, identityAddr,
-		"GITSTACK_IDENTITY_ADDR="+identityAddr,
+	identityAddr := startOne(t, "identity", identityBin, "GITSTACK_IDENTITY_ADDR",
 		"GITSTACK_IDENTITY_DB_URL="+dsn,
 		"GITSTACK_IDENTITY_SERVICE_SECRET="+serviceSecret,
 		"GITSTACK_IDENTITY_ADMIN_USERNAME=admin",
 		"GITSTACK_IDENTITY_ADMIN_PASSWORD="+adminPassword,
 	)
-	start(t, "gateway", gatewayBin, gatewayAddr,
-		"GITSTACK_GATEWAY_ADDR="+gatewayAddr,
+	coreSrv.set(httpserver.NewRouter(pool, events.NoopPublisher{}, serviceSecret,
+		httpserver.WithCreatorGranter(identityclient.New(mustURL(t, "http://"+identityAddr), serviceSecret, 5*time.Second))))
+	gatewayAddr := startOne(t, "gateway", gatewayBin, "GITSTACK_GATEWAY_ADDR",
 		"GITSTACK_CORE_URL="+coreSrv.URL,
 		"GITSTACK_IDENTITY_URL=http://"+identityAddr,
 		"GITSTACK_IDENTITY_SERVICE_SECRET="+serviceSecret,
