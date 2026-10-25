@@ -30,12 +30,16 @@ func TestListResourcesFilteredByReadPermission(t *testing.T) {
 	identityBin := build(t, "../../../identity", "identity")
 	gatewayBin := build(t, "../../../gateway", "gateway")
 
-	identityAddr, gatewayAddr := freeAddr(t), freeAddr(t)
-
 	// Fra core e identity c'è un proxy che si può "spegnere": il gateway
 	// continua a parlare con identity, solo core la perde.
 	var down atomic.Bool
-	proxy := httputil.NewSingleHostReverseProxy(mustURL(t, "http://"+identityAddr))
+	// L'indirizzo di identity si conosce solo quando è partito (può cambiare se
+	// la porta scelta è occupata, GIT-368): il proxy lo legge a ogni richiesta.
+	var identityHost atomic.Pointer[string]
+	proxy := &httputil.ReverseProxy{Director: func(r *http.Request) {
+		r.URL.Scheme = "http"
+		r.URL.Host = *identityHost.Load()
+	}}
 	identityProxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if down.Load() {
 			if hj, ok := w.(http.Hijacker); ok {
@@ -51,19 +55,18 @@ func TestListResourcesFilteredByReadPermission(t *testing.T) {
 	}))
 	t.Cleanup(identityProxy.Close)
 
-	coreSrv := httptest.NewServer(httpserver.NewRouter(pool, events.NoopPublisher{}, serviceSecret,
-		httpserver.WithCreatorGranter(identityclient.New(mustURL(t, identityProxy.URL), serviceSecret, 5*time.Second))))
-	t.Cleanup(coreSrv.Close)
+	coreSrv := newLateCore(t)
 
-	start(t, "identity", identityBin, identityAddr,
-		"GITSTACK_IDENTITY_ADDR="+identityAddr,
+	identityAddr := startOne(t, "identity", identityBin, "GITSTACK_IDENTITY_ADDR",
 		"GITSTACK_IDENTITY_DB_URL="+dsn,
 		"GITSTACK_IDENTITY_SERVICE_SECRET="+serviceSecret,
 		"GITSTACK_IDENTITY_ADMIN_USERNAME=admin",
 		"GITSTACK_IDENTITY_ADMIN_PASSWORD="+adminPassword,
 	)
-	start(t, "gateway", gatewayBin, gatewayAddr,
-		"GITSTACK_GATEWAY_ADDR="+gatewayAddr,
+	identityHost.Store(&identityAddr)
+	coreSrv.set(httpserver.NewRouter(pool, events.NoopPublisher{}, serviceSecret,
+		httpserver.WithCreatorGranter(identityclient.New(mustURL(t, identityProxy.URL), serviceSecret, 5*time.Second))))
+	gatewayAddr := startOne(t, "gateway", gatewayBin, "GITSTACK_GATEWAY_ADDR",
 		"GITSTACK_CORE_URL="+coreSrv.URL,
 		"GITSTACK_IDENTITY_URL=http://"+identityAddr,
 		"GITSTACK_IDENTITY_SERVICE_SECRET="+serviceSecret,
