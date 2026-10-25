@@ -36,8 +36,9 @@ function tagRows(pkg: Package): TagRow[] {
 
 /** Tag più recente (ultimo push); senza date, il primo. */
 function latestTag(pkg: Package): string | undefined {
-  let best: TagRow | undefined;
-  for (const r of tagRows(pkg)) {
+	let best: TagRow | undefined;
+	const current: TagRow[] = pkg.tagDetails ?? pkg.tags.map((name) => ({ name }));
+	for (const r of current) {
     if (!best || (r.pushedAt && (!best.pushedAt || r.pushedAt > best.pushedAt))) best = r;
   }
   return best?.name;
@@ -205,7 +206,7 @@ function TagsCard({ pkg, repo, admin, onDelete }: { pkg: Package; repo: Reposito
           <div className="list-row small muted">Untagged image: removed by cleanup after 7 days unless it is tagged.</div>
         ) : (
           rows.map((t) => (
-            <div key={t.name} className="list-row" role="listitem" aria-label={`Tag ${t.name}`}>
+			<div key={t.removed ? `removed:${t.name}:${t.removedAt}` : t.name} className="list-row" role="listitem" aria-label={`Tag ${t.name}`}>
               <TagIcon size={16} aria-hidden="true" />
               <span className="mono" style={{ width: 160 }}>
                 {t.name}
@@ -232,13 +233,13 @@ function TagsCard({ pkg, repo, admin, onDelete }: { pkg: Package; repo: Reposito
               {t.hasSbom ? <span className="badge">SBOM</span> : null}
               <span className="sp" />
               {t.signature === 'unverified' ? <span className="small muted">pushed by hand with docker push · no signature</span> : null}
-              {t.digest ? (
+			  {!t.removed && t.digest ? (
                 <span className="small muted" title={t.digest}>
                   {t.digest.slice(0, 11)}…{t.digest.slice(-2)}
                   {t.sizeBytes !== undefined ? ` · ${formatBytes(t.sizeBytes)}` : ''}
                 </span>
               ) : null}
-              {admin ? (
+			  {admin && !t.removed ? (
                 <Button variant="ghost" size="sm" aria-label={`Delete tag ${t.name} of ${pkg.name}`} onClick={() => onDelete(t.name)}>
                   <Trash2 size={12} aria-hidden="true" />
                 </Button>

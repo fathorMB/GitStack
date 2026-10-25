@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -24,14 +25,18 @@ import (
 
 type settingsBackend struct {
 	*fakeBackend
-	mu      sync.Mutex
-	st      map[string]Settings
-	removed map[string][]RemovedTag
+	mu        sync.Mutex
+	st        map[string]Settings
+	removed   map[string][]RemovedTag
+	recordErr error
 }
 
 func (s *settingsBackend) RecordRemovedTag(_ context.Context, repoID string, tag RemovedTag) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.recordErr != nil {
+		return s.recordErr
+	}
 	s.removed[repoID] = append(s.removed[repoID], tag)
 	return nil
 }
@@ -259,6 +264,11 @@ func TestCleanup_UltimeNEShaPiuVecchi(t *testing.T) {
 	if got := e.tags("alice/app"); !slices.Equal(got, []string{"c", "d", "v1"}) {
 		t.Fatalf("tag dopo keepLastTags=2: %v", got)
 	}
+	for _, tag := range e.sb.removed[idApp] {
+		if tag.Rule != "beyond last 2 tags" {
+			t.Fatalf("regola KeepLastTags: %+v", tag)
+		}
+	}
 	// Le immagini dei tag eliminati sono ora senza tag: vanno via dopo 7 giorni.
 	e.clock.advance(8 * day)
 	e.cleanup()
@@ -289,6 +299,24 @@ func TestCleanup_UltimeNEShaPiuVecchi(t *testing.T) {
 	pk := e2.packages()[""]
 	if len(pk.RemovedTags) != 1 || pk.RemovedTags[0] != removed[0] {
 		t.Fatalf("elenco del registry senza tag rimosso: %+v", pk.RemovedTags)
+	}
+}
+
+func TestCleanup_RegistroNonDisponibileNonFermaPulizia(t *testing.T) {
+	e := newCleanEnv(t, nil)
+	e.sb.set(idApp, func(s *Settings) { s.KeepLastTags = 1 })
+	e.sb.recordErr = errors.New("core non raggiungibile")
+	e.pushAt("alice/app:a")
+	e.pushAt("alice/app:b")
+	if rep := e.cleanup(); len(rep.DeletedTags) != 1 {
+		t.Fatalf("pulizia con registro indisponibile: %+v", rep)
+	}
+	if got := e.tags("alice/app"); !slices.Equal(got, []string{"b"}) {
+		t.Fatalf("tag dopo registro indisponibile: %v", got)
+	}
+	e.clock.advance(8 * day)
+	if rep := e.cleanup(); len(rep.DeletedImages) != 1 {
+		t.Fatalf("immagine senza tag dopo registro indisponibile: %+v", rep)
 	}
 }
 

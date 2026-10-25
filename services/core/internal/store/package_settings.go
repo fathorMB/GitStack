@@ -12,6 +12,7 @@ import (
 // DefaultDeleteUntaggedAfterDays è il default di RG2: le immagini senza tag si eliminano
 // dopo 7 giorni.
 const DefaultDeleteUntaggedAfterDays = 7
+const RecentRemovedTagsPerImage = 20
 
 // PackageSettings sono le impostazioni del registry di un repo (GIT-325, RG2).
 type PackageSettings struct {
@@ -42,8 +43,11 @@ func (s *Store) RecordRemovedPackageTag(ctx context.Context, repoID uuid.UUID, t
 
 // ListRemovedPackageTags elenca i tag rimossi, dai più recenti, per immagine.
 func (s *Store) ListRemovedPackageTags(ctx context.Context, repoID uuid.UUID) ([]RemovedPackageTag, error) {
-	rows, err := s.pool.Query(ctx, `SELECT image, name, digest, rule, removed_at
-		FROM core.repo_package_removed_tags WHERE repo_id = $1 ORDER BY image, removed_at DESC`, repoID)
+	rows, err := s.pool.Query(ctx, `SELECT image, name, digest, rule, removed_at FROM (
+		SELECT image, name, digest, rule, removed_at,
+			ROW_NUMBER() OVER (PARTITION BY image ORDER BY removed_at DESC) AS ordinal
+		FROM core.repo_package_removed_tags WHERE repo_id = $1
+	) recent WHERE ordinal <= $2 ORDER BY image, removed_at DESC`, repoID, RecentRemovedTagsPerImage)
 	if err != nil {
 		return nil, err
 	}

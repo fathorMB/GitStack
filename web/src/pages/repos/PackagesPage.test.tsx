@@ -151,4 +151,29 @@ describe('PackagesPage (mockup B5)', () => {
     setup(false, []);
     expect(await screen.findByText('No packages yet')).toBeInTheDocument();
   }, T);
-});
+  });
+
+  it('admin: un tag rimosso non offre Delete né metadati di un tag vivo', async () => {
+    setup(true);
+    await screen.findByRole('listitem', { name: 'Package acme/api' });
+    const removed = screen.getByRole('listitem', { name: 'Tag sha-a91c3e2' });
+    expect(within(removed).queryByRole('button', { name: 'Delete tag sha-a91c3e2 of acme/api' })).toBeNull();
+    expect(removed).toHaveTextContent('removed after 14 days by rule');
+    expect(removed).not.toHaveTextContent('sha256:efef');
+  }, T);
+
+  it('un pacchetto con soli tag rimossi non suggerisce di pullare un tag cancellato', async () => {
+    setup(false, [{ ...pkgs[0], tags: [], tagDetails: [], removedTags: [{ name: 'sha-rimosso', digest, rule: 'after 14 days', removedAt: '2026-10-03T10:00:00Z' }] }]);
+    const row = await screen.findByRole('listitem', { name: 'Package acme/api' });
+    expect(row).not.toHaveTextContent('Latest sha-rimosso');
+    expect(screen.getByLabelText('Pull command for acme/api')).not.toHaveTextContent(':sha-rimosso');
+  }, T);
+
+  it('un tag vivo e uno rimosso con lo stesso nome hanno righe e chiavi distinte', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    setup(false, [{ ...pkgs[0], removedTags: [{ name: 'v1.2.0', digest, rule: 'after 14 days', removedAt: '2026-10-03T10:00:00Z' }] }]);
+    await screen.findByRole('listitem', { name: 'Package acme/api' });
+    expect(screen.getAllByRole('listitem', { name: 'Tag v1.2.0' })).toHaveLength(2);
+    expect(spy).not.toHaveBeenCalledWith(expect.stringContaining('unique "key"'));
+    spy.mockRestore();
+  }, T);

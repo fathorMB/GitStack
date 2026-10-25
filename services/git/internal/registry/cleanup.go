@@ -208,7 +208,7 @@ func (h *Handler) cleanImage(ctx context.Context, ns distribution.Namespace, nam
 	if st.KeepLastTags > 0 && len(open) > st.KeepLastTags {
 		for _, t := range open[st.KeepLastTags:] {
 			if _, already := drop[t.name]; !already {
-				drop[t.name] = fmt.Sprintf("kept last %d tags", st.KeepLastTags)
+				drop[t.name] = fmt.Sprintf("beyond last %d tags", st.KeepLastTags)
 			}
 		}
 	}
@@ -231,7 +231,7 @@ func (h *Handler) cleanImage(ctx context.Context, ns distribution.Namespace, nam
 			Image: strings.TrimPrefix(strings.TrimPrefix(name, st.RepoID), "/"), Name: t,
 			Digest: dg, Rule: drop[t], RemovedAt: now.UTC(),
 		}); err != nil {
-			return fmt.Errorf("registro del tag eliminato %s: %w", t, err)
+			h.log.Warn("registro del tag eliminato non riuscito", "err", err, "repoId", st.RepoID, "image", name, "tag", t)
 		}
 	}
 

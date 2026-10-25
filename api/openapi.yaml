@@ -11116,7 +11116,7 @@ components:
           items: {$ref: "#/components/schemas/PackageTag"}
         removedTags:
           type: array
-          description: "Tag tolti di recente dalle regole di pulizia del registry (RG2)."
+          description: "Al massimo 20 tag rimossi più recenti per immagine dalle regole di pulizia del registry (RG2)."
           items: {$ref: "#/components/schemas/RemovedPackageTag"}
     PackagePusher:
       type: object
@@ -11146,7 +11146,7 @@ components:
       properties:
         name: {type: string}
         digest: {type: string, description: "Digest del manifest a cui puntava il tag prima della pulizia."}
-        rule: {type: string, description: "Regola di pulizia che ha eliminato il tag, per esempio `after 14 days`."}
+        rule: {type: string, description: "Frammento della regola di pulizia che ha eliminato il tag, per esempio `after 14 days` o `beyond last 5 tags`; la UI lo mostra come `removed {rule} by rule`."}
         removedAt: {type: string, format: date-time}
     PackageSettings:
       allOf:

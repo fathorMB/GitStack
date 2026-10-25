@@ -9,6 +9,7 @@ import (
 
 	"github.com/fathorMB/GitStack/services/core/internal/dbtest"
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
+	"github.com/fathorMB/GitStack/services/core/internal/store"
 	"github.com/google/uuid"
 )
 
@@ -24,12 +25,18 @@ func TestMigration0035_TagRimossiDalRegistry(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Now().UTC()
-	if _, err := pool.Exec(ctx, `INSERT INTO core.repo_package_removed_tags (repo_id, image, name, digest, rule, removed_at)
-		VALUES ($1, 'api', 'sha-a', 'sha256:aa', 'after 14 days', $2)`, repo, now); err != nil {
-		t.Fatal(err)
+	for i := range store.RecentRemovedTagsPerImage + 3 {
+		if _, err := pool.Exec(ctx, `INSERT INTO core.repo_package_removed_tags (repo_id, image, name, digest, rule, removed_at)
+			VALUES ($1, 'api', $2, 'sha256:aa', 'after 14 days', $3)`, repo, "sha-"+string(rune('a'+i)), now.Add(time.Duration(i)*time.Minute)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := store.New(pool).ListRemovedPackageTags(ctx, repo)
+	if err != nil || len(got) != store.RecentRemovedTagsPerImage || got[0].Name != "sha-w" {
+		t.Fatalf("tag recenti: %+v %v", got, err)
 	}
 	var count int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.repo_package_removed_tags WHERE repo_id = $1`, repo).Scan(&count); err != nil || count != 1 {
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.repo_package_removed_tags WHERE repo_id = $1`, repo).Scan(&count); err != nil || count != store.RecentRemovedTagsPerImage+3 {
 		t.Fatalf("registro: %d %v", count, err)
 	}
 	if _, err := pool.Exec(ctx, `DELETE FROM core.repositories WHERE resource_id = $1`, repo); err != nil {
