@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
@@ -90,6 +91,7 @@ func newAPIServerWithOptions(pool *pgxpool.Pool, publisher events.Publisher, opt
 		ciCapacity:   o.ciCapacity,
 		now:          now,
 		appsDomain:   o.appsDomain,
+		appCtl:       o.appCtl,
 	}, o
 }
 
@@ -138,6 +140,7 @@ type routerOptions struct {
 	gitSecret    string
 	now          func() time.Time
 	appsDomain   string
+	appCtl       AppController
 	grants       identityclient.CreatorGranter
 	readable     identityclient.ReadableLister
 	repoIdentity identityclient.RepoIdentity
@@ -236,4 +239,17 @@ func WithClock(now func() time.Time) Option {
 // https://<app>-<repo>-<owner>.<dominio>. Vuoto: le app non hanno indirizzo.
 func WithAppsDomain(domain string) Option {
 	return func(o *routerOptions) { o.appsDomain = domain }
+}
+
+// AppController è il controller dei deploy (services/core/internal/apps): gli handler delle app
+// scrivono il modello e lo svegliano; riavvio e scala passano da qui.
+type AppController interface {
+	Kick()
+	Restart(ctx context.Context, app store.App) error
+	Scale(ctx context.Context, app store.App) error
+}
+
+// WithAppController abilita deploy, rollback, riavvio e scala delle app (H7, H12). Senza, rispondono 503.
+func WithAppController(c AppController) Option {
+	return func(o *routerOptions) { o.appCtl = c }
 }

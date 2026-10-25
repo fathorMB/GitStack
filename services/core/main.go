@@ -396,6 +396,12 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		}
 	}
 
+	appOpts, err := startApps(ctx, pool, logger)
+	if err != nil {
+		logger.Error("controller delle app non avviato", "err", err)
+		return 1
+	}
+	routerOpts = append(routerOpts, appOpts...)
 	router := httpserver.NewRouter(pool, publisher, cfg.GatewaySecret, append(routerOpts, httpserver.WithGitSecret(cfg.GitSecret))...)
 
 	// Dispatcher v2-a: core conserva coda e stati, ma e' l'unico processo con

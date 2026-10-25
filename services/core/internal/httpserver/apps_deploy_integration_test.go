@@ -1,0 +1,436 @@
+//go:build integration
+
+package httpserver_test
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"os"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/fathorMB/GitStack/services/core/internal/apps"
+	"github.com/fathorMB/GitStack/services/core/internal/dbtest"
+	"github.com/fathorMB/GitStack/services/core/internal/events"
+	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
+	"github.com/fathorMB/GitStack/services/core/internal/openapi"
+	"github.com/fathorMB/GitStack/services/core/internal/store"
+)
+
+// GIT-343 (v3-a, H7/H12): deploy a mano, salute, ritorno automatico, riavvio, rollback e scala.
+
+// Permessi e abilitazione: senza controller i deploy rispondono 503, `read` 403 (H5).
+func TestApps_DeployPermessiESenzaController(t *testing.T) {
+	e := newAppsEnv(t)
+	repoID := e.repo("handbook", true)
+	e.id.grantWrite(repoID, "bob")
+	base := "/repos/alice/handbook/apps"
+	e.want(e.do(http.MethodPost, base, "alice", createWeb), http.StatusAccepted, "")
+	for _, c := range []struct{ method, path, body string }{
+		{http.MethodPost, base + "/web/deploys", `{"image":"sha-1"}`},
+		{http.MethodPost, base + "/web/rollback", `{"version":1}`},
+		{http.MethodPost, base + "/web/restart", ``},
+		{http.MethodPut, base + "/web/scale", `{"copies":2}`},
+	} {
+		e.want(e.do(c.method, c.path, "carol", c.body), http.StatusForbidden, "forbidden")
+		e.want(e.do(c.method, c.path, "bob", c.body), http.StatusServiceUnavailable, "apps_unavailable")
+	}
+}
+
+type appsDeployEnv struct {
+	*appsEnv
+	kube kubernetes.Interface
+	dyn  dynamic.Interface
+	ns   string
+}
+
+func newDeployEnv(t *testing.T) *appsDeployEnv {
+	t.Helper()
+	kc := os.Getenv("GITSTACK_TEST_KUBECONFIG")
+	if kc == "" {
+		t.Skip("GITSTACK_TEST_KUBECONFIG non impostata: serve un cluster k3d (internal/apps/k3d-test.sh)")
+	}
+	rc, err := clientcmd.BuildConfigFromFlags("", kc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	kube, err := kubernetes.NewForConfig(rc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dyn, err := dynamic.NewForConfig(rc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pool, _ := dbtest.NewPool(t)
+	id := &issuesIdentity{fakeIdentity: newFakeIdentity(), writers: map[uuid.UUID][]string{}}
+	base := &issuesEnv{t: t, pool: pool, id: id}
+	git := newFakeGit()
+	clock := &appClock{t: time.Now().UTC().Truncate(time.Second)}
+	ctl := apps.New(store.New(pool), kube, dyn, apps.Config{
+		AppsDomain: "apps.example.com", ProgressTimeout: 75 * time.Second, FailureGrace: 6 * time.Second,
+		PollInterval: 500 * time.Millisecond, LoopInterval: time.Second, SyncEvery: 2 * time.Second,
+	})
+	base.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
+		httpserver.WithRepoIdentity(id), httpserver.WithReadableLister(id), httpserver.WithGit(git),
+		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "https://git.example.com"}),
+		httpserver.WithAppsDomain("apps.example.com"), httpserver.WithClock(clock.Now), httpserver.WithAppController(ctl))
+	env := &appsDeployEnv{appsEnv: &appsEnv{issuesEnv: base, clock: clock, git: git}, kube: kube, dyn: dyn}
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	go ctl.Run(ctx)
+	return env
+}
+
+func (e *appsDeployEnv) version(path string, n int) openapi.AppVersion {
+	e.t.Helper()
+	return e.versionOf(path+"/versions/"+itoa(n), "alice")
+}
+
+func itoa(n int) string { b, _ := json.Marshal(n); return string(b) }
+
+// waitState aspetta che la versione arrivi allo stato e ne ritorna i dati.
+func (e *appsDeployEnv) waitState(path string, n int, want string) openapi.AppVersion {
+	e.t.Helper()
+	deadline := time.Now().Add(4 * time.Minute)
+	for {
+		v := e.version(path, n)
+		if string(v.State) == want {
+			return v
+		}
+		if string(v.State) != "in_progress" || time.Now().After(deadline) {
+			e.t.Fatalf("versione %d in stato %s (%v), voluto %s", n, v.State, deref(v.StateReason), want)
+		}
+		time.Sleep(time.Second)
+	}
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func (e *appsDeployEnv) getApp(path string) openapi.App {
+	e.t.Helper()
+	rec := e.do(http.MethodGet, path, "alice", "")
+	e.want(rec, http.StatusOK, "")
+	return e.app(rec)
+}
+
+func (e *appsDeployEnv) waitApp(path, what string, ok func(openapi.App) bool) openapi.App {
+	e.t.Helper()
+	deadline := time.Now().Add(3 * time.Minute)
+	for {
+		a := e.getApp(path)
+		if ok(a) {
+			return a
+		}
+		if time.Now().After(deadline) {
+			e.t.Fatalf("%s: stato %s, copie pronte %d/%d", what, a.Status, a.ReadyCopies, a.Copies)
+		}
+		time.Sleep(time.Second)
+	}
+}
+
+// traffic fa richieste continue al Service dell'app (via API server) e conta quelle riuscite e perse.
+type traffic struct {
+	ok, lost atomic.Int64
+	stop     chan struct{}
+	wg       sync.WaitGroup
+	mu       sync.Mutex
+	firstErr string
+	at       []string
+}
+
+func (e *appsDeployEnv) startTraffic() *traffic {
+	tr := &traffic{stop: make(chan struct{})}
+	for i := 0; i < 3; i++ {
+		tr.wg.Add(1)
+		go func() {
+			defer tr.wg.Done()
+			for {
+				select {
+				case <-tr.stop:
+					return
+				default:
+				}
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				_, err := e.kube.CoreV1().Services(e.ns).ProxyGet("http", apps.WorkloadName, "80", "/", nil).DoRaw(ctx)
+				cancel()
+				if err != nil {
+					tr.lost.Add(1)
+					tr.mu.Lock()
+					tr.at = append(tr.at, time.Now().Format("15:04:05.000"))
+					if tr.firstErr == "" {
+						tr.firstErr = err.Error()
+					}
+					tr.mu.Unlock()
+				} else {
+					tr.ok.Add(1)
+				}
+				time.Sleep(20 * time.Millisecond)
+			}
+		}()
+	}
+	return tr
+}
+
+func (tr *traffic) finish() (ok, lost int64, first string) {
+	close(tr.stop)
+	tr.wg.Wait()
+	return tr.ok.Load(), tr.lost.Load(), tr.firstErr
+}
+
+func (e *appsDeployEnv) assertNoLoss(tr *traffic, step string) {
+	e.t.Helper()
+	ok, lost := tr.ok.Load(), tr.lost.Load()
+	if lost != 0 {
+		e.t.Fatalf("%s: %d richieste perse su %d (prima: %s) alle %v, ora %s", step, lost, ok+lost, tr.firstErr, tr.at, time.Now().Format("15:04:05.000"))
+	}
+	if ok == 0 {
+		e.t.Fatalf("%s: nessuna richiesta riuscita", step)
+	}
+	e.t.Logf("%s: %d richieste, 0 perse", step, ok)
+}
+
+// Su k3d: la versione parte solo dopo la salute ok; l'avvio che fallisce lascia la precedente;
+// riavvio, rollback e scala a 2 copie non perdono richieste.
+func TestApps_ControllerSuK3d(t *testing.T) {
+	e := newDeployEnv(t)
+	repoID := e.repo("handbook", true)
+	e.id.grantWrite(repoID, "bob")
+	base := "/repos/alice/handbook/apps"
+	const v1, v2 = "docker.io/traefik/whoami:v1.10.1", "docker.io/traefik/whoami:v1.10.2"
+
+	rec := e.do(http.MethodPost, base, "alice", `{"name":"web","image":"`+v1+`","port":80,"healthCheck":{"path":"/","intervalSeconds":1}}`)
+	e.want(rec, http.StatusAccepted, "")
+	var created openapi.AppCreated
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	e.ns = apps.Namespace(uuid.UUID(created.App.Id))
+	path := base + "/web"
+	t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), e.ns, metav1.DeleteOptions{}) })
+
+	t.Run("la versione risulta partita solo dopo la salute ok", func(t *testing.T) {
+		e.t = t
+		var sawInProgress bool
+		deadline := time.Now().Add(4 * time.Minute)
+		for {
+			v := e.version(path, 1)
+			d, err := e.kube.AppsV1().Deployments(e.ns).Get(context.Background(), apps.WorkloadName, metav1.GetOptions{})
+			if v.State == "serving" {
+				if err != nil || d.Status.ReadyReplicas < 1 || d.Status.AvailableReplicas < 1 {
+					t.Fatalf("versione «serving» ma il Deployment non è pronto: %v %+v", err, d.Status)
+				}
+				break
+			}
+			if v.State != "in_progress" || time.Now().After(deadline) {
+				t.Fatalf("versione 1: %s %s", v.State, deref(v.StateReason))
+			}
+			sawInProgress = true
+			if err == nil && d.Status.AvailableReplicas >= 1 && d.Status.ReadyReplicas >= 1 {
+				// Pronto nel cluster ma non ancora scritto: la scrittura segue entro un ciclo.
+				time.Sleep(500 * time.Millisecond)
+			}
+			time.Sleep(300 * time.Millisecond)
+		}
+		if !sawInProgress {
+			t.Log("la versione 1 era già «serving» alla prima lettura")
+		}
+		a := e.waitApp(path, "app running", func(a openapi.App) bool { return a.Status == "running" && a.ReadyCopies == 1 })
+		if a.ActiveVersion != 1 {
+			t.Fatalf("versione attiva %d", a.ActiveVersion)
+		}
+		// Service e Deployment sono quelli del modello: immagine per tag, nessun token montato.
+		d, _ := e.kube.AppsV1().Deployments(e.ns).Get(context.Background(), apps.WorkloadName, metav1.GetOptions{})
+		if d.Spec.Template.Spec.Containers[0].Image != v1 || *d.Spec.Template.Spec.AutomountServiceAccountToken {
+			t.Fatalf("Deployment: %+v", d.Spec.Template.Spec)
+		}
+		if _, err := e.kube.CoreV1().Services(e.ns).Get(context.Background(), apps.WorkloadName, metav1.GetOptions{}); err != nil {
+			t.Fatalf("Service: %v", err)
+		}
+	})
+
+	tr := e.startTraffic()
+	t.Cleanup(func() {
+		select {
+		case <-tr.stop:
+		default:
+			tr.finish()
+		}
+	})
+
+	t.Run("scala a 2 copie", func(t *testing.T) {
+		e.t = t
+		e.want(e.do(http.MethodPut, path+"/scale", "carol", `{"copies":2}`), http.StatusForbidden, "forbidden")
+		rec := e.do(http.MethodPut, path+"/scale", "bob", `{"copies":2}`)
+		e.want(rec, http.StatusOK, "")
+		if a := e.app(rec); a.Copies != 2 {
+			t.Fatalf("copie %d", a.Copies)
+		}
+		e.waitApp(path, "2 copie pronte", func(a openapi.App) bool { return a.Status == "running" && a.ReadyCopies == 2 })
+		// Oltre la quota dell'owner (4000m di default, 100m a copia): 409 con quanto manca.
+		e.want(e.do(http.MethodPut, path+"/scale", "bob", `{"copies":50}`), http.StatusConflict, "insufficient_capacity")
+		if a := e.getApp(path); a.Copies != 2 {
+			t.Fatalf("copie dopo il rifiuto: %d", a.Copies)
+		}
+		e.assertNoLoss(tr, "scala")
+	})
+
+	podNames := func() map[string]bool {
+		l, err := e.kube.CoreV1().Pods(e.ns).List(context.Background(), metav1.ListOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := map[string]bool{}
+		for _, p := range l.Items {
+			out[p.Name] = true
+		}
+		return out
+	}
+
+	t.Run("deploy con due copie: aggiornamento senza richieste perse", func(t *testing.T) {
+		e.t = t
+		e.want(e.do(http.MethodPost, path+"/deploys", "carol", `{"image":"`+v2+`"}`), http.StatusForbidden, "forbidden")
+		rec := e.do(http.MethodPost, path+"/deploys", "bob", `{"image":"`+v2+`"}`)
+		e.want(rec, http.StatusAccepted, "")
+		e.want(e.do(http.MethodPost, path+"/deploys", "bob", `{"image":"`+v1+`"}`), http.StatusConflict, "deploy_in_progress")
+		v := e.waitState(path, 2, "serving")
+		if v.Trigger != "manual" || v.Image.Reference != v2 {
+			t.Fatalf("versione 2: %+v", v)
+		}
+		a := e.waitApp(path, "v2 a regime", func(a openapi.App) bool { return a.Status == "running" && a.ReadyCopies == 2 })
+		if a.ActiveVersion != 2 || a.Image.Reference != v2 {
+			t.Fatalf("app: versione %d, immagine %s", a.ActiveVersion, a.Image.Reference)
+		}
+		if p := e.version(path, 1); p.State != "superseded" {
+			t.Fatalf("la versione 1 è %s", p.State)
+		}
+		e.assertNoLoss(tr, "deploy")
+	})
+
+	t.Run("riavvio una copia alla volta senza richieste perse", func(t *testing.T) {
+		e.t = t
+		before := podNames()
+		e.want(e.do(http.MethodPost, path+"/restart", "carol", ``), http.StatusForbidden, "forbidden")
+		e.want(e.do(http.MethodPost, path+"/restart", "bob", ``), http.StatusAccepted, "")
+		deadline := time.Now().Add(3 * time.Minute)
+		for {
+			old := 0
+			for n := range podNames() {
+				if before[n] {
+					old++
+				}
+			}
+			a := e.getApp(path)
+			if old == 0 && a.Status == "running" && a.ReadyCopies == 2 {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("riavvio non concluso: %d pod vecchi, stato %s %d/2", old, a.Status, a.ReadyCopies)
+			}
+			time.Sleep(time.Second)
+		}
+		if a := e.getApp(path); a.ActiveVersion != 2 {
+			t.Fatalf("il riavvio non crea versioni: attiva %d", a.ActiveVersion)
+		}
+		e.assertNoLoss(tr, "riavvio")
+	})
+
+	t.Run("rollback alla precedente senza richieste perse", func(t *testing.T) {
+		e.t = t
+		e.want(e.do(http.MethodPost, path+"/rollback", "bob", `{"version":2}`), http.StatusUnprocessableEntity, "")
+		e.want(e.do(http.MethodPost, path+"/rollback", "bob", `{"version":9}`), http.StatusUnprocessableEntity, "")
+		rec := e.do(http.MethodPost, path+"/rollback", "bob", `{"version":1}`)
+		e.want(rec, http.StatusAccepted, "")
+		v := e.waitState(path, 3, "serving")
+		if v.Trigger != "rollback" || v.RollbackOf == nil || *v.RollbackOf != 1 || v.Image.Reference != v1 {
+			t.Fatalf("versione 3: %+v", v)
+		}
+		a := e.waitApp(path, "rollback a regime", func(a openapi.App) bool { return a.Status == "running" && a.ReadyCopies == 2 })
+		if a.ActiveVersion != 3 || a.Image.Reference != v1 {
+			t.Fatalf("app dopo il rollback: versione %d, immagine %s", a.ActiveVersion, a.Image.Reference)
+		}
+		e.assertNoLoss(tr, "rollback")
+	})
+
+	// Avvio che fallisce: resta in esecuzione la versione 3 e il deploy è «fallito» con il motivo.
+	failing := func(t *testing.T, number int, body, wantReason string) {
+		t.Helper()
+		e.t = t
+		e.want(e.do(http.MethodPost, path+"/deploys", "bob", body), http.StatusAccepted, "")
+		v := e.waitState(path, number, "failed")
+		if !strings.Contains(strings.ToLower(deref(v.StateReason)), strings.ToLower(wantReason)) {
+			t.Fatalf("motivo %q, atteso %q", deref(v.StateReason), wantReason)
+		}
+		a := e.getApp(path)
+		if a.ActiveVersion != 3 || a.Image.Reference != v1 || a.RunningPreviousVersion == nil || !*a.RunningPreviousVersion {
+			t.Fatalf("deve restare la versione 3: %+v", a)
+		}
+		if a.LastDeploy == nil || a.LastDeploy.State != "failed" || a.LastDeploy.Version != number || deref(a.LastDeploy.Reason) == "" {
+			t.Fatalf("ultimo deploy: %+v", a.LastDeploy)
+		}
+		a = e.waitApp(path, "versione 3 ancora a regime", func(a openapi.App) bool { return a.Status == "running" && a.ReadyCopies == 2 })
+		d, err := e.kube.AppsV1().Deployments(e.ns).Get(context.Background(), apps.WorkloadName, metav1.GetOptions{})
+		if err != nil || d.Spec.Template.Spec.Containers[0].Image != v1 || d.Status.AvailableReplicas != 2 {
+			t.Fatalf("Deployment dopo il fallimento: %v %+v", err, d.Status)
+		}
+		e.assertNoLoss(tr, "deploy fallito")
+	}
+
+	t.Run("immagine che non esiste: resta la precedente", func(t *testing.T) {
+		failing(t, 4, `{"image":"docker.io/traefik/whoami:non-esiste-343"}`, "pull")
+	})
+	t.Run("immagine che termina subito: resta la precedente", func(t *testing.T) {
+		failing(t, 5, `{"image":"docker.io/library/busybox:1.36"}`, "continuazione")
+	})
+	t.Run("il processo gira ma la salute non passa: resta la precedente", func(t *testing.T) {
+		e.t = t
+		// Porta su cui l'immagine non ascolta: il container è su ma la readiness non passa mai.
+		t.Logf("PATCH porta alle %s", time.Now().Format("15:04:05.000"))
+		e.want(e.do(http.MethodPatch, path, "alice", `{"port":8081}`), http.StatusOK, "")
+		v := e.waitState(path, 6, "failed")
+		if !strings.Contains(deref(v.StateReason), "salute") {
+			t.Fatalf("motivo %q", deref(v.StateReason))
+		}
+		if a := e.getApp(path); a.ActiveVersion != 3 {
+			t.Fatalf("versione attiva %d", a.ActiveVersion)
+		}
+		e.assertNoLoss(tr, "salute non passa")
+	})
+
+	ok, lost, first := tr.finish()
+	if lost != 0 || ok < 300 {
+		t.Fatalf("traffico continuo: %d riuscite, %d perse (%s)", ok, lost, first)
+	}
+	t.Logf("traffico continuo: %d richieste, 0 perse", ok)
+
+	t.Run("eliminata l'app il controller toglie il namespace", func(t *testing.T) {
+		e.t = t
+		e.want(e.do(http.MethodDelete, path, "alice", ""), http.StatusNoContent, "")
+		deadline := time.Now().Add(3 * time.Minute)
+		for {
+			_, err := e.kube.CoreV1().Namespaces().Get(context.Background(), e.ns, metav1.GetOptions{})
+			if err != nil {
+				return
+			}
+			if time.Now().After(deadline) {
+				t.Fatal("il namespace dell'app eliminata esiste ancora")
+			}
+			time.Sleep(2 * time.Second)
+		}
+	})
+}
