@@ -1,7 +1,7 @@
 import { Download, RefreshCw, Square } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Button, ConfirmDialog, ErrorAlert } from '../../components';
+import { Button, ConfirmDialog, ErrorAlert, LogView } from '../../components';
 import { artifactUrl, cancelRun, fetchArtifacts, fetchJobLog, fetchRun, fetchWorkflows, rerunRun } from '../../lib/actionsApi';
 import type { Artifact, WorkflowJob, WorkflowRun } from '../../lib/actionsApi';
 import { formatDuration, isActive, logLineClass, runState, shortRef } from '../../lib/actionsView';
@@ -287,17 +287,13 @@ function JobPanel({ owner, repo, job, pollMs }: { owner: string; repo: string; j
           <ErrorAlert message={logError} />
         </div>
       ) : null}
-      <div className="log" role="log" aria-label={`Log of ${job.name}`} aria-live={jobActive ? 'polite' : 'off'}>
-        {log === null && !logError ? <div>Loading log…</div> : null}
-        {log !== null && lines.length === 0 ? <div>No output yet.</div> : null}
-        {lines.map((line, i) => (
-          <div key={i} className={logLineClass(line) || undefined}>
-            <span className="n">{i + 1}</span>
-            {line}
-          </div>
-        ))}
-        {jobActive ? <div aria-hidden="true">▍</div> : null}
-      </div>
+      <LogView
+        label={`Log of ${job.name}`}
+        live={jobActive}
+        loadingText={log === null && !logError ? 'Loading log…' : undefined}
+        emptyText={log !== null && lines.length === 0 ? 'No output yet.' : undefined}
+        lines={lines.map((line, i) => ({ key: i, prefix: String(i + 1), text: line, cls: logLineClass(line) }))}
+      />
     </section>
   );
 }

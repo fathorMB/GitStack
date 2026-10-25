@@ -12,6 +12,8 @@ export interface AppPermissions {
   canView: boolean;
   /** Legge i log (write). */
   canReadLogs: boolean;
+  /** Legge le variabili di configurazione (write), come da contratto H8. */
+  canReadConfig: boolean;
   canDeploy: boolean;
   canRestart: boolean;
   canRollback: boolean;
@@ -28,6 +30,7 @@ export interface AppPermissions {
 const NONE: AppPermissions = {
   canView: false,
   canReadLogs: false,
+  canReadConfig: false,
   canDeploy: false,
   canRestart: false,
   canRollback: false,
@@ -46,6 +49,7 @@ export function appPermissions(role: AppRole, opts: { archived?: boolean; instan
   return {
     canView: true,
     canReadLogs: write,
+    canReadConfig: write,
     canDeploy: write,
     canRestart: write,
     canRollback: write,
