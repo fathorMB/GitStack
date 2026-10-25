@@ -83,10 +83,16 @@ describe('PackageSettingsPage (mockup B6)', () => {
     const protectedTags = await screen.findByRole('region', { name: 'Protected tags' }, { timeout: 5000 });
     expect(within(protectedTags).getByRole('list', { name: 'Protected tag patterns' })).toHaveTextContent('latest');
     const cleanup = screen.getByRole('region', { name: 'Cleanup' });
-    expect(within(cleanup).getByText(/removed automatically after 7 days/)).toBeInTheDocument();
+    expect(within(cleanup).getByText(/Removed automatically after 7 days/)).toBeInTheDocument();
     expect(within(cleanup).queryByLabelText('Delete untagged images after (days)')).not.toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Backups' })).getByRole('checkbox')).not.toBeChecked();
-  });
+    expect(within(cleanup).getByText(/Space is reclaimed at night/)).toBeInTheDocument();
+    expect(within(protectedTags).getByText(/Can't be overwritten or deleted except by repository admins/)).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Backups' })).getByText(/Images used by apps \(active and previous version\) are always included/)).toBeInTheDocument();
+    // Le regole facoltative sono spente: nessun campo.
+    expect(within(cleanup).getAllByRole('checkbox')).toHaveLength(2);
+    expect(within(cleanup).queryByRole('spinbutton')).not.toBeInTheDocument();
+  }, 20000);
 
   it('non admin: niente impostazioni', async () => {
     session(false);
@@ -101,7 +107,10 @@ describe('PackageSettingsPage (mockup B6)', () => {
     renderPage();
     const protectedTags = await screen.findByRole('region', { name: 'Protected tags' }, { timeout: 5000 });
     await userEvent.type(within(protectedTags).getByLabelText('Tag pattern'), 'stable{Enter}');
-    await userEvent.type(screen.getByLabelText('Keep only the last tags per image'), '5');
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Keep only the last N versions per image' }));
+    const keep = screen.getByLabelText('Versions to keep per image');
+    await userEvent.clear(keep);
+    await userEvent.type(keep, '5');
     await userEvent.click(within(screen.getByRole('region', { name: 'Backups' })).getByRole('checkbox'));
     await userEvent.click(screen.getByRole('button', { name: 'Save package settings' }));
     expect(savePackageSettings).toHaveBeenCalledWith('acme', 'api', {
@@ -110,7 +119,33 @@ describe('PackageSettingsPage (mockup B6)', () => {
       keepLastTags: 5,
     });
     expect(await screen.findByText('Package settings saved.')).toBeInTheDocument();
-  });
+  }, 20000);
+
+  it('regole spente: i campi non vanno nella richiesta', async () => {
+    session(true);
+    vi.mocked(fetchPackageSettings).mockResolvedValue(settings({ keepLastTags: 7, deleteShaTagsAfterDays: 30 }));
+    vi.mocked(savePackageSettings).mockResolvedValue(settings());
+    renderPage();
+    const cleanup = await screen.findByRole('region', { name: 'Cleanup' }, { timeout: 5000 });
+    expect(screen.getByLabelText('Versions to keep per image')).toHaveValue(7);
+    expect(screen.getByLabelText('sha-* tags age in days')).toHaveValue(30);
+    for (const box of within(cleanup).getAllByRole('checkbox')) await userEvent.click(box);
+    await userEvent.click(screen.getByRole('button', { name: 'Save package settings' }));
+    expect(savePackageSettings).toHaveBeenCalledWith('acme', 'api', { protectedTagPatterns: ['latest', 'v*'], includeInBackup: false });
+  }, 20000);
+
+  it('sha-*: acceso, manda deleteShaTagsAfterDays', async () => {
+    session(true);
+    vi.mocked(savePackageSettings).mockResolvedValue(settings());
+    renderPage();
+    const cleanup = await screen.findByRole('region', { name: 'Cleanup' }, { timeout: 5000 });
+    await userEvent.click(within(cleanup).getByRole('checkbox', { name: /sha-*/ }));
+    const days = screen.getByLabelText('sha-* tags age in days');
+    await userEvent.clear(days);
+    await userEvent.type(days, '14');
+    await userEvent.click(screen.getByRole('button', { name: 'Save package settings' }));
+    expect(savePackageSettings).toHaveBeenCalledWith('acme', 'api', { protectedTagPatterns: ['latest', 'v*'], includeInBackup: false, deleteShaTagsAfterDays: 14 });
+  }, 20000);
 
   it('repo archiviato: sola lettura', async () => {
     session(true);
