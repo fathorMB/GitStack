@@ -8,6 +8,8 @@
 #   2. lo stesso con il mirror delle action configurato nel chart (ci.runner.actionMirror):
 #      un mirror finto in-cluster serve actions/checkout, e il log del job contiene il
 #      marcatore del mirror, che nessuna action di github.com stampa;
+#   2b. la cache dei job (actions/cache: salva nel primo run, ripristina nel secondo) e il 501
+#      di upload-artifact@v4 (GIT-291);
 #   3. una build rootless (BuildKit senza demone) nel namespace gitstack-ci-build e un pod
 #      privilegiato nello stesso namespace, rifiutato dalla ValidatingAdmissionPolicy.
 #
@@ -164,6 +166,73 @@ if check_run "action pubbliche" "${sha1}"; then
   if grep -q 'E2E-PASSO-DOPO-CHECKOUT' "${work}/job.log"; then ok "action pubbliche: il passo dopo uses: e' stato eseguito"; else ko "action pubbliche: passo finale assente dal log"; fi
   if grep -q 'E2E-GITHUB-SCRIPT' "${work}/job.log"; then ok "action pubbliche: actions/github-script scaricata da github.com ed eseguita"; else ko "action pubbliche: l'output di actions/github-script manca dal log"; fi
   if grep -q 'MIRROR-FINTO' "${work}/job.log"; then ko "action pubbliche: il marcatore del mirror compare senza mirror"; else ok "action pubbliche: nessun marcatore del mirror"; fi
+fi
+
+# --- 1b. cache dei job e artefatti v4 (GIT-330, GIT-291) --------------------------------------
+# actions/cache salva nel primo run («Cache saved with key») e ripristina nel secondo («Cache
+# restored from key»); upload-artifact@v4 riceve il 501 col messaggio documentato. I run partono
+# con workflow_dispatch: quelli per push di e2e.yml non si confondono con questi.
+cat >"${src}/.gitstack/workflows/cache.yml" <<'EOF'
+name: cache
+on: workflow_dispatch
+jobs:
+  cache:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache@v4
+        with:
+          path: e2e-cache
+          key: e2e-cache-v1
+      - run: |
+          mkdir -p e2e-cache
+          if [ -f e2e-cache/dato ]; then echo "E2E-CACHE-PRESENTE"; else echo ciao >e2e-cache/dato; echo "E2E-CACHE-NUOVA"; fi
+  artefatto:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo contenuto >file.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: file
+          path: file.txt
+EOF
+push "workflow della cache" >/dev/null
+
+dispatch_cache() { # n -> scrive ${work}/cache-<n>.json e i log dei due job
+  local n="$1" id i st
+  code=$(curl -s -o "${work}/disp.json" -w '%{http_code}' -H "Authorization: Bearer ${tok}" -X POST -H 'content-type: application/json' \
+    -d '{"ref":"main"}' "${api}/repos/${OWNER}/${REPO}/workflows/cache.yml/dispatches" || true)
+  [ "${code}" = 202 ] || { ko "cache run ${n}: avvio del workflow, status ${code}, corpo '$(head -c 200 "${work}/disp.json")'"; return 1; }
+  id=$(jq -r .id "${work}/disp.json")
+  for ((i = 0; i < RUN_TIMEOUT / 3; i++)); do
+    curl -s -H "Authorization: Bearer ${tok}" "${api}/repos/${OWNER}/${REPO}/actions/runs/${id}" >"${work}/cache-${n}.json" || true
+    st=$(jq -r '.status // ""' "${work}/cache-${n}.json" 2>/dev/null || true)
+    [ "${st}" = completed ] || [ "${st}" = cancelled ] && break
+    sleep 3
+  done
+  [ "${st}" = completed ] || { ko "cache run ${n}: ${id} non concluso entro ${RUN_TIMEOUT}s (stato '${st}')"; return 1; }
+  local job jid
+  for job in cache artefatto; do
+    jid=$(jq -r --arg j "${job}" '[.jobs[] | select(.name == $j)][0].id' "${work}/cache-${n}.json")
+    curl -s -H "Authorization: Bearer ${tok}" "${api}/repos/${OWNER}/${REPO}/actions/jobs/${jid}/logs" >"${work}/cache-${n}-${job}.log" || true
+  done
+  echo "run cache ${n}: ${id}"
+}
+job_concl() { jq -r --arg j "$2" '[.jobs[] | select(.name == $j)][0].conclusion // "-"' "${work}/cache-$1.json"; }
+
+if dispatch_cache 1; then
+  if [ "$(job_concl 1 cache)" = success ]; then ok "cache run 1: job cache success"; else ko "cache run 1: job cache $(job_concl 1 cache)"; tail -n 30 "${work}/cache-1-cache.log" >&2; fi
+  if grep -q 'Cache saved with key: e2e-cache-v1' "${work}/cache-1-cache.log"; then ok "cache run 1: «$(grep -o 'Cache saved with key: e2e-cache-v1' "${work}/cache-1-cache.log" | head -n1)»"; else ko "cache run 1: manca «Cache saved with key»"; tail -n 30 "${work}/cache-1-cache.log" >&2; fi
+  if grep -q 'E2E-CACHE-NUOVA' "${work}/cache-1-cache.log"; then ok "cache run 1: cache vuota all'avvio"; else ko "cache run 1: la cache non era vuota"; fi
+fi
+if dispatch_cache 2; then
+  if [ "$(job_concl 2 cache)" = success ]; then ok "cache run 2: job cache success"; else ko "cache run 2: job cache $(job_concl 2 cache)"; tail -n 30 "${work}/cache-2-cache.log" >&2; fi
+  if grep -q 'Cache restored from key: e2e-cache-v1' "${work}/cache-2-cache.log"; then ok "cache run 2: «$(grep -o 'Cache restored from key: e2e-cache-v1' "${work}/cache-2-cache.log" | head -n1)»"; else ko "cache run 2: manca «Cache restored from key»"; tail -n 30 "${work}/cache-2-cache.log" >&2; fi
+  if grep -q 'E2E-CACHE-PRESENTE' "${work}/cache-2-cache.log"; then ok "cache run 2: il contenuto salvato nel primo run è tornato"; else ko "cache run 2: il file della cache manca"; fi
+  if [ "$(job_concl 2 artefatto)" = failure ] && grep -q 'GitStack non supporta actions/upload-artifact@v4' "${work}/cache-2-artefatto.log"; then
+    ok "artefatti v4: il passo fallisce col messaggio documentato (501)"
+  else
+    ko "artefatti v4: atteso failure con «GitStack non supporta actions/upload-artifact@v4», trovato $(job_concl 2 artefatto)"; tail -n 20 "${work}/cache-2-artefatto.log" >&2
+  fi
 fi
 
 # --- 2. mirror delle action ----------------------------------------------------------------
