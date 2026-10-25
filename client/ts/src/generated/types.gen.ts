@@ -226,6 +226,18 @@ export type Package = {
     tags: Array<string>;
     sizeBytes: number;
     updatedAt: string;
+    /**
+     * Digest del manifest (sha256:...).
+     */
+    digest?: string;
+    /**
+     * Firma cosign dell'immagine: verificata con la chiave del registry oppure no.
+     */
+    signature: 'verified' | 'unverified';
+    /**
+     * Vero se è conservato uno SBOM dell'immagine.
+     */
+    hasSbom: boolean;
 };
 
 export type PackageSettings = PackageSettingsInput;
@@ -15951,6 +15963,62 @@ export type UpdateCiStorageSettingsResponses = {
 };
 
 export type UpdateCiStorageSettingsResponse = UpdateCiStorageSettingsResponses[keyof UpdateCiStorageSettingsResponses];
+
+export type DeleteRepositoryPackageData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query: {
+        /**
+         * Nome dell'immagine, come in GET packages.
+         */
+        name: string;
+        /**
+         * Elimina solo questo tag.
+         */
+        tag?: string;
+    };
+    url: '/repos/{owner}/{repo}/packages';
+};
+
+export type DeleteRepositoryPackageErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type DeleteRepositoryPackageError = DeleteRepositoryPackageErrors[keyof DeleteRepositoryPackageErrors];
+
+export type DeleteRepositoryPackageResponses = {
+    /**
+     * Pacchetto eliminato.
+     */
+    204: void;
+};
+
+export type DeleteRepositoryPackageResponse = DeleteRepositoryPackageResponses[keyof DeleteRepositoryPackageResponses];
 
 export type ListRepositoryPackagesData = {
     body?: never;

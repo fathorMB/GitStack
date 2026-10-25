@@ -8082,6 +8082,25 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+    delete:
+      operationId: deleteRepositoryPackage
+      tags: [registry]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: package_delete
+        destructive: true
+      summary: Elimina un pacchetto OCI del repository o un suo tag
+      description: "Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409)."
+      parameters:
+        - {name: name, in: query, required: true, schema: {type: string, minLength: 1}, description: "Nome dell'immagine, come in GET packages."}
+        - {name: tag, in: query, required: false, schema: {type: string, minLength: 1}, description: "Elimina solo questo tag."}
+      responses:
+        "204": {description: Pacchetto eliminato.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
   /repos/{owner}/{repo}/packages/settings:
     parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}]
     get:
@@ -10277,8 +10296,15 @@ components:
     Package:
       type: object
       additionalProperties: false
-      required: [name, tags, sizeBytes, updatedAt]
-      properties: {name: {type: string}, tags: {type: array, items: {type: string}}, sizeBytes: {type: integer, format: int64}, updatedAt: {type: string, format: date-time}}
+      required: [name, tags, sizeBytes, updatedAt, signature, hasSbom]
+      properties:
+        name: {type: string}
+        tags: {type: array, items: {type: string}}
+        sizeBytes: {type: integer, format: int64}
+        updatedAt: {type: string, format: date-time}
+        digest: {type: string, description: "Digest del manifest (sha256:...)."}
+        signature: {type: string, enum: [verified, unverified], description: "Firma cosign dell'immagine: verificata con la chiave del registry oppure no."}
+        hasSbom: {type: boolean, description: "Vero se è conservato uno SBOM dell'immagine."}
     PackageSettings:
       allOf: [{$ref: "#/components/schemas/PackageSettingsInput"}]
     PackageSettingsInput:

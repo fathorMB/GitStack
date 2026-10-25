@@ -1,4 +1,4 @@
-import { Key, Lock, Plus, ShieldCheck } from 'lucide-react';
+import { Box, Key, Lock, Plus, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { NavLink, useParams } from 'react-router-dom';
@@ -67,6 +67,11 @@ function SecretsView({ owner, repo }: { owner: string; repo: string }) {
             <NavLink to={`/${owner}/${repo}/settings/secrets`} className="active">
               <Lock size={16} aria-hidden="true" />
               Secrets &amp; variables
+            </NavLink>
+            <div className="grp">Registry</div>
+            <NavLink to={`/${owner}/${repo}/settings/packages`}>
+              <Box size={16} aria-hidden="true" />
+              Packages
             </NavLink>
           </nav>
           <div className="stack" style={{ gap: 24 }}>
