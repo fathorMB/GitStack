@@ -10,9 +10,20 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 work=$(mktemp -d)
 created=false
 
+case "$(uname -s)" in
+  MINGW*|MSYS*)
+    subj_prefix=//
+    curl_tls=(--cacert "$work/ca.crt" --ssl-no-revoke)
+    ;;
+  *)
+    subj_prefix=/
+    curl_tls=(--cacert "$work/ca.crt")
+    ;;
+esac
+
 echo "commit: $(git -C "$root/../../.." rev-parse HEAD)"
 echo "k3d: $("$k3d_bin" version | head -n 1)"
-echo "kubectl: $("$kubectl_bin" version --client --output=json | grep -o '\"gitVersion\":\"[^\"]*' | head -n 1)"
+echo "kubectl: $("$kubectl_bin" version --client --output=json | grep -o '"gitVersion": *"[^"]*' | head -n 1)"
 
 cleanup() {
   rm -rf "$work"
@@ -27,7 +38,7 @@ if "$k3d_bin" cluster list -o json | grep -q "\"$cluster\""; then echo "KO: clus
 
 "$k3d_bin" cluster create "$cluster" --image rancher/k3s:v1.32.5-k3s1 --port "$port:443@loadbalancer" --wait --kubeconfig-update-default=false --kubeconfig-switch-context=false >/dev/null
 created=true
-"$k3d_bin" kubeconfig write "$cluster" > "$work/kubeconfig"
+"$k3d_bin" kubeconfig get "$cluster" > "$work/kubeconfig"
 kubectl=("$kubectl_bin" --kubeconfig "$work/kubeconfig")
 deadline=$((SECONDS + 120))
 until "${kubectl[@]}" get crd ingressroutes.traefik.io >/dev/null 2>&1 && "${kubectl[@]}" get crd middlewares.traefik.io >/dev/null 2>&1; do
@@ -35,20 +46,28 @@ until "${kubectl[@]}" get crd ingressroutes.traefik.io >/dev/null 2>&1 && "${kub
   sleep 2
 done
 
-openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=GitStack App POC CA' -keyout "$work/ca.key" -out "$work/ca.crt" >/dev/null 2>&1
-openssl req -newkey rsa:2048 -nodes -subj '/CN=*.apps.test' -keyout "$work/tls.key" -out "$work/tls.csr" >/dev/null 2>&1
+openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj "${subj_prefix}CN=GitStack App POC CA" -keyout "$work/ca.key" -out "$work/ca.crt" >/dev/null
+openssl req -newkey rsa:2048 -nodes -subj "${subj_prefix}CN=*.apps.test" -keyout "$work/tls.key" -out "$work/tls.csr" >/dev/null
 printf 'subjectAltName=DNS:*.apps.test\n' > "$work/ext.cnf"
-openssl x509 -req -days 1 -in "$work/tls.csr" -CA "$work/ca.crt" -CAkey "$work/ca.key" -CAcreateserial -extfile "$work/ext.cnf" -out "$work/tls.crt" >/dev/null 2>&1
+openssl x509 -req -days 1 -in "$work/tls.csr" -CA "$work/ca.crt" -CAkey "$work/ca.key" -CAcreateserial -extfile "$work/ext.cnf" -out "$work/tls.crt" >/dev/null
 
 "${kubectl[@]}" apply -f "$root/app.yaml" >/dev/null
 "${kubectl[@]}" -n kube-system create secret tls app-wildcard-tls --cert="$work/tls.crt" --key="$work/tls.key" >/dev/null
 "${kubectl[@]}" -n gitstack-poc rollout status deployment/forward-auth --timeout=120s >/dev/null
 "${kubectl[@]}" -n "$namespace" rollout status deployment/app --timeout=120s >/dev/null
+"${kubectl[@]}" -n kube-system rollout status deployment/traefik --timeout=120s >/dev/null
 
-body=$(curl --silent --show-error --fail --cacert "$work/ca.crt" --resolve "app.apps.test:$port:127.0.0.1" "https://app.apps.test:$port/")
+deadline=$((SECONDS + 60))
+until body=$(curl --silent --show-error --fail "${curl_tls[@]}" --resolve "app.apps.test:$port:127.0.0.1" "https://app.apps.test:$port/"); do
+  if [ "$SECONDS" -ge "$deadline" ]; then
+    echo 'KO: Traefik non risponde entro 60 s'
+    exit 1
+  fi
+  sleep 2
+done
 case "$body" in *'X-Gitstack-User: alice'*|*'X-GitStack-User: alice'*) echo 'OK: TLS CA interna e forward-auth autorizzato';; *) echo 'KO: intestazione utente assente'; exit 1;; esac
-spoof=$(curl --silent --show-error --fail --cacert "$work/ca.crt" --resolve "app.apps.test:$port:127.0.0.1" -H 'X-GitStack-User: mallory' -H 'X-GitStack-Teams: admins' "https://app.apps.test:$port/")
+spoof=$(curl --silent --show-error --fail "${curl_tls[@]}" --resolve "app.apps.test:$port:127.0.0.1" -H 'X-GitStack-User: mallory' -H 'X-GitStack-Teams: admins' "https://app.apps.test:$port/")
 if { case "$spoof" in *'X-Gitstack-User: alice'*|*'X-GitStack-User: alice'*) true;; *) false;; esac; } && ! printf '%s' "$spoof" | grep -qi 'X-Gitstack-Teams: admins'; then echo 'OK: header del client sostituiti'; else echo 'KO: header del client non sostituiti'; exit 1; fi
-code=$(curl --silent --output /dev/null --write-out '%{http_code}' --cacert "$work/ca.crt" --resolve "deny.apps.test:$port:127.0.0.1" "https://deny.apps.test:$port/")
+code=$(curl --silent --output /dev/null --write-out '%{http_code}' "${curl_tls[@]}" --resolve "deny.apps.test:$port:127.0.0.1" "https://deny.apps.test:$port/")
 if [ "$code" = 401 ]; then echo 'OK: forward-auth rifiuta senza sessione'; else echo "KO: atteso 401, trovato $code"; exit 1; fi
 echo 'ESITO: OK'
