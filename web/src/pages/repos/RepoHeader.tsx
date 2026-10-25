@@ -1,7 +1,8 @@
-import { Box, CircleDot, FileCode, GitPullRequest, Play, Settings, Tag } from 'lucide-react';
+import { Box, CircleDot, FileCode, GitPullRequest, LayoutGrid, Play, Settings, Tag } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { PullMirrorBadge } from '../../components';
+import { countApps } from '../../lib/appsApi';
 import { countIssues } from '../../lib/issuesApi';
 import { countPackages } from '../../lib/packagesApi';
 import { countPulls } from '../../lib/pullsApi';
@@ -31,6 +32,8 @@ export type RepoHeaderMode =
   | 'actions'
   | 'run'
   | 'packages'
+  | 'apps'
+  | 'appnew'
   | 'settings'
   | 'webhooks';
 
@@ -75,6 +78,23 @@ export function RepoHeader({ repo, mode, admin }: { repo: Repository; mode: Repo
       },
       () => {
         if (live) setPackagesCount(null);
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [owner, name]);
+
+  // Idem per le app del repo.
+  const [appsCount, setAppsCount] = useState<number | null>(null);
+  useEffect(() => {
+    let live = true;
+    countApps(owner, name).then(
+      (n) => {
+        if (live) setAppsCount(n);
+      },
+      () => {
+        if (live) setAppsCount(null);
       },
     );
     return () => {
@@ -139,6 +159,10 @@ export function RepoHeader({ repo, mode, admin }: { repo: Repository; mode: Repo
         <NavLink className={tab(mode === 'packages')} to={`${base}/packages`}>
           <Box size={16} aria-hidden="true" />
           Packages {packagesCount !== null ? <span className="counter">{packagesCount}</span> : null}
+        </NavLink>
+        <NavLink className={tab(mode === 'apps' || mode === 'appnew')} to={`${base}/apps`}>
+          <LayoutGrid size={16} aria-hidden="true" />
+          Apps {appsCount !== null ? <span className="counter">{appsCount}</span> : null}
         </NavLink>
         {admin ? (
           <NavLink className={tab(SETTINGS_MODES.includes(mode))} to={`${base}/settings`}>
