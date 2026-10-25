@@ -246,6 +246,258 @@ func (e AdminSystemVersionsK3sUpdate) Valid() bool {
 	}
 }
 
+// Defines values for AppAccessCertificate.
+const (
+	InstanceCa  AppAccessCertificate = "instance_ca"
+	LetsEncrypt AppAccessCertificate = "lets_encrypt"
+	Uploaded    AppAccessCertificate = "uploaded"
+)
+
+// Valid indicates whether the value is a known member of the AppAccessCertificate enum.
+func (e AppAccessCertificate) Valid() bool {
+	switch e {
+	case InstanceCa:
+		return true
+	case LetsEncrypt:
+		return true
+	case Uploaded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppAccessMode.
+const (
+	AppAccessModeLogin  AppAccessMode = "login"
+	AppAccessModeNone   AppAccessMode = "none"
+	AppAccessModePublic AppAccessMode = "public"
+)
+
+// Valid indicates whether the value is a known member of the AppAccessMode enum.
+func (e AppAccessMode) Valid() bool {
+	switch e {
+	case AppAccessModeLogin:
+		return true
+	case AppAccessModeNone:
+		return true
+	case AppAccessModePublic:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppActorType.
+const (
+	AppActorTypeAgent AppActorType = "agent"
+	AppActorTypeHuman AppActorType = "human"
+)
+
+// Valid indicates whether the value is a known member of the AppActorType enum.
+func (e AppActorType) Valid() bool {
+	switch e {
+	case AppActorTypeAgent:
+		return true
+	case AppActorTypeHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppDeployState.
+const (
+	AppDeployStateFailed     AppDeployState = "failed"
+	AppDeployStateInProgress AppDeployState = "in_progress"
+	AppDeployStateRolledBack AppDeployState = "rolled_back"
+	AppDeployStateServing    AppDeployState = "serving"
+	AppDeployStateSuperseded AppDeployState = "superseded"
+)
+
+// Valid indicates whether the value is a known member of the AppDeployState enum.
+func (e AppDeployState) Valid() bool {
+	switch e {
+	case AppDeployStateFailed:
+		return true
+	case AppDeployStateInProgress:
+		return true
+	case AppDeployStateRolledBack:
+		return true
+	case AppDeployStateServing:
+		return true
+	case AppDeployStateSuperseded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppImageSource.
+const (
+	AppImageSourceExternal AppImageSource = "external"
+	AppImageSourceRegistry AppImageSource = "registry"
+)
+
+// Valid indicates whether the value is a known member of the AppImageSource enum.
+func (e AppImageSource) Valid() bool {
+	switch e {
+	case AppImageSourceExternal:
+		return true
+	case AppImageSourceRegistry:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppLogLineSource.
+const (
+	AppLogLineSourceApp      AppLogLineSource = "app"
+	AppLogLineSourcePlatform AppLogLineSource = "platform"
+)
+
+// Valid indicates whether the value is a known member of the AppLogLineSource enum.
+func (e AppLogLineSource) Valid() bool {
+	switch e {
+	case AppLogLineSourceApp:
+		return true
+	case AppLogLineSourcePlatform:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppMetricSeriesUnit.
+const (
+	Bytes      AppMetricSeriesUnit = "bytes"
+	Count      AppMetricSeriesUnit = "count"
+	Millicores AppMetricSeriesUnit = "millicores"
+	PerSecond  AppMetricSeriesUnit = "per_second"
+	Ratio      AppMetricSeriesUnit = "ratio"
+)
+
+// Valid indicates whether the value is a known member of the AppMetricSeriesUnit enum.
+func (e AppMetricSeriesUnit) Valid() bool {
+	switch e {
+	case Bytes:
+		return true
+	case Count:
+		return true
+	case Millicores:
+		return true
+	case PerSecond:
+		return true
+	case Ratio:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppMetricsRange.
+const (
+	AppMetricsRangeN1h  AppMetricsRange = "1h"
+	AppMetricsRangeN24h AppMetricsRange = "24h"
+	AppMetricsRangeN6h  AppMetricsRange = "6h"
+	AppMetricsRangeN7d  AppMetricsRange = "7d"
+)
+
+// Valid indicates whether the value is a known member of the AppMetricsRange enum.
+func (e AppMetricsRange) Valid() bool {
+	switch e {
+	case AppMetricsRangeN1h:
+		return true
+	case AppMetricsRangeN24h:
+		return true
+	case AppMetricsRangeN6h:
+		return true
+	case AppMetricsRangeN7d:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppStatus.
+const (
+	AppStatusFailed     AppStatus = "failed"
+	AppStatusRestarting AppStatus = "restarting"
+	AppStatusRunning    AppStatus = "running"
+	AppStatusStarting   AppStatus = "starting"
+	AppStatusStopped    AppStatus = "stopped"
+	AppStatusUnhealthy  AppStatus = "unhealthy"
+)
+
+// Valid indicates whether the value is a known member of the AppStatus enum.
+func (e AppStatus) Valid() bool {
+	switch e {
+	case AppStatusFailed:
+		return true
+	case AppStatusRestarting:
+		return true
+	case AppStatusRunning:
+		return true
+	case AppStatusStarting:
+		return true
+	case AppStatusStopped:
+		return true
+	case AppStatusUnhealthy:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppStoppedReason.
+const (
+	AppStoppedReasonManual       AppStoppedReason = "manual"
+	AppStoppedReasonRepoArchived AppStoppedReason = "repo_archived"
+	AppStoppedReasonRepoDeleted  AppStoppedReason = "repo_deleted"
+)
+
+// Valid indicates whether the value is a known member of the AppStoppedReason enum.
+func (e AppStoppedReason) Valid() bool {
+	switch e {
+	case AppStoppedReasonManual:
+		return true
+	case AppStoppedReasonRepoArchived:
+		return true
+	case AppStoppedReasonRepoDeleted:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppVersionTrigger.
+const (
+	AppVersionTriggerBranchPush AppVersionTrigger = "branch_push"
+	AppVersionTriggerConfig     AppVersionTrigger = "config"
+	AppVersionTriggerCreate     AppVersionTrigger = "create"
+	AppVersionTriggerManual     AppVersionTrigger = "manual"
+	AppVersionTriggerRollback   AppVersionTrigger = "rollback"
+)
+
+// Valid indicates whether the value is a known member of the AppVersionTrigger enum.
+func (e AppVersionTrigger) Valid() bool {
+	switch e {
+	case AppVersionTriggerBranchPush:
+		return true
+	case AppVersionTriggerConfig:
+		return true
+	case AppVersionTriggerCreate:
+		return true
+	case AppVersionTriggerManual:
+		return true
+	case AppVersionTriggerRollback:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CiRunnerStatus.
 const (
 	Busy    CiRunnerStatus = "busy"
@@ -1854,9 +2106,64 @@ func (e WebhookDeliveryStatus) Valid() bool {
 	}
 }
 
+// Defines values for WebhookDeploymentPayloadAction.
+const (
+	WebhookDeploymentPayloadActionFailed     WebhookDeploymentPayloadAction = "failed"
+	WebhookDeploymentPayloadActionRolledBack WebhookDeploymentPayloadAction = "rolled_back"
+	WebhookDeploymentPayloadActionStarted    WebhookDeploymentPayloadAction = "started"
+	WebhookDeploymentPayloadActionSucceeded  WebhookDeploymentPayloadAction = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the WebhookDeploymentPayloadAction enum.
+func (e WebhookDeploymentPayloadAction) Valid() bool {
+	switch e {
+	case WebhookDeploymentPayloadActionFailed:
+		return true
+	case WebhookDeploymentPayloadActionRolledBack:
+		return true
+	case WebhookDeploymentPayloadActionStarted:
+		return true
+	case WebhookDeploymentPayloadActionSucceeded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookDeploymentPayloadEvent.
+const (
+	WebhookDeploymentPayloadEventDeployment WebhookDeploymentPayloadEvent = "deployment"
+)
+
+// Valid indicates whether the value is a known member of the WebhookDeploymentPayloadEvent enum.
+func (e WebhookDeploymentPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookDeploymentPayloadEventDeployment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookDeploymentPayloadVersion.
+const (
+	WebhookDeploymentPayloadVersionN1 WebhookDeploymentPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookDeploymentPayloadVersion enum.
+func (e WebhookDeploymentPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookDeploymentPayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WebhookEvent.
 const (
 	WebhookEventCommitStatus      WebhookEvent = "commit_status"
+	WebhookEventDeployment        WebhookEvent = "deployment"
 	WebhookEventIssueComment      WebhookEvent = "issue_comment"
 	WebhookEventIssues            WebhookEvent = "issues"
 	WebhookEventPullRequest       WebhookEvent = "pull_request"
@@ -1872,6 +2179,8 @@ const (
 func (e WebhookEvent) Valid() bool {
 	switch e {
 	case WebhookEventCommitStatus:
+		return true
+	case WebhookEventDeployment:
 		return true
 	case WebhookEventIssueComment:
 		return true
@@ -2505,6 +2814,69 @@ func (e ListNotificationsParamsState) Valid() bool {
 	}
 }
 
+// Defines values for GetAppLogsParamsSource.
+const (
+	GetAppLogsParamsSourceAll      GetAppLogsParamsSource = "all"
+	GetAppLogsParamsSourceApp      GetAppLogsParamsSource = "app"
+	GetAppLogsParamsSourcePlatform GetAppLogsParamsSource = "platform"
+)
+
+// Valid indicates whether the value is a known member of the GetAppLogsParamsSource enum.
+func (e GetAppLogsParamsSource) Valid() bool {
+	switch e {
+	case GetAppLogsParamsSourceAll:
+		return true
+	case GetAppLogsParamsSourceApp:
+		return true
+	case GetAppLogsParamsSourcePlatform:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAppLogsParamsFormat.
+const (
+	GetAppLogsParamsFormatNdjson GetAppLogsParamsFormat = "ndjson"
+	GetAppLogsParamsFormatText   GetAppLogsParamsFormat = "text"
+)
+
+// Valid indicates whether the value is a known member of the GetAppLogsParamsFormat enum.
+func (e GetAppLogsParamsFormat) Valid() bool {
+	switch e {
+	case GetAppLogsParamsFormatNdjson:
+		return true
+	case GetAppLogsParamsFormatText:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAppMetricsParamsRange.
+const (
+	GetAppMetricsParamsRangeN1h  GetAppMetricsParamsRange = "1h"
+	GetAppMetricsParamsRangeN24h GetAppMetricsParamsRange = "24h"
+	GetAppMetricsParamsRangeN6h  GetAppMetricsParamsRange = "6h"
+	GetAppMetricsParamsRangeN7d  GetAppMetricsParamsRange = "7d"
+)
+
+// Valid indicates whether the value is a known member of the GetAppMetricsParamsRange enum.
+func (e GetAppMetricsParamsRange) Valid() bool {
+	switch e {
+	case GetAppMetricsParamsRangeN1h:
+		return true
+	case GetAppMetricsParamsRangeN24h:
+		return true
+	case GetAppMetricsParamsRangeN6h:
+		return true
+	case GetAppMetricsParamsRangeN7d:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetRepositoryArchiveParamsFormat.
 const (
 	GetRepositoryArchiveParamsFormatTarGz GetRepositoryArchiveParamsFormat = "tar.gz"
@@ -2795,6 +3167,41 @@ type AddSshKeyInput struct {
 	Title     string `json:"title"`
 }
 
+// AdminApp Riga della tabella Apps dell'amministratore (H9, H11).
+type AdminApp struct {
+	// AboveGuaranteed Sta usando piu' della parte garantita: e' il primo a essere rallentato.
+	AboveGuaranteed bool `json:"aboveGuaranteed"`
+	Copies          int  `json:"copies"`
+
+	// Guaranteed CPU e memoria, per copia.
+	Guaranteed AppResourceAmount `json:"guaranteed"`
+
+	// Limit CPU e memoria, per copia.
+	Limit AppResourceAmount `json:"limit"`
+
+	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+	Name       AppName `json:"name"`
+	Owner      string  `json:"owner"`
+	Repo       string  `json:"repo"`
+	RunsAsRoot *bool   `json:"runsAsRoot"`
+
+	// Status Stato osservato: `starting` (nessuna copia ancora sana), `running`, `restarting`, `unhealthy` (alcune copie non sane), `failed` (nessuna versione parte), `stopped` (fermata a mano o per il repo, vedi `stoppedReason`).
+	Status AppStatus `json:"status"`
+
+	// Usage Uso corrente, somma delle copie. Le richieste e gli errori ci sono solo per le app web.
+	Usage    AppUsage `json:"usage"`
+	Verified bool     `json:"verified"`
+
+	// ViolatesInstanceRules Non rispetta `restricted` o `signedImagesOnly` d'istanza (valgono dal deploy successivo).
+	ViolatesInstanceRules *bool `json:"violatesInstanceRules,omitempty"`
+}
+
+// AdminAppList defines model for AdminAppList.
+type AdminAppList struct {
+	Items []AdminApp `json:"items"`
+	Total int        `json:"total"`
+}
+
 // AdminSystem Stato dell'installazione per Admin · System (mockup 16). Nessun segreto. `published` dice se l'host ha pubblicato le sue informazioni: se no, le sezioni dell'host hanno `configured: false` o stati `none`.
 type AdminSystem struct {
 	// Access Come si raggiunge GitStack. Nessun segreto.
@@ -3019,6 +3426,555 @@ type AdminSystemVersions struct {
 
 // AdminSystemVersionsK3sUpdate `patch`: applicata da `gitstack upgrade`; `minor`: serve `gitstack upgrade --k3s`.
 type AdminSystemVersionsK3sUpdate string
+
+// App defines model for App.
+type App struct {
+	// Access `login` (login GitStack, default, H6), `none` (senza login, scelta esplicita di admin), `public` (su internet, H1, solo con le app pubbliche abilitate).
+	Access AppAccessMode `json:"access"`
+
+	// ActiveVersion Numero della versione che serve il traffico.
+	ActiveVersion int `json:"activeVersion"`
+
+	// Address Indirizzo automatico (H2); assente per un'app senza indirizzo, raggiungibile solo dalle app dello stesso repo.
+	Address *string `json:"address,omitempty"`
+
+	// Copies Copie volute.
+	Copies      int                `json:"copies"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	CreatedBy   *AppActor          `json:"createdBy,omitempty"`
+	Follow      *AppFollow         `json:"follow,omitempty"`
+	HealthCheck *AppHealthCheck    `json:"healthCheck,omitempty"`
+	Id          openapi_types.UUID `json:"id"`
+
+	// Image Immagine di una versione e sua verifica (H10).
+	Image      AppImage       `json:"image"`
+	LastDeploy *AppLastDeploy `json:"lastDeploy,omitempty"`
+
+	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+	Name AppName `json:"name"`
+
+	// Owner Owner del repo: su di lui contano le quote (H5).
+	Owner string `json:"owner"`
+
+	// Port Porta del container. Null per un'app senza indirizzo (worker).
+	Port *int `json:"port,omitempty"`
+
+	// ReadyCopies Copie sane.
+	ReadyCopies int    `json:"readyCopies"`
+	Repo        string `json:"repo"`
+
+	// Resources Parte garantita (sempre riservata) e tetto (usato se il server ha spazio), per copia (H11).
+	Resources AppResources `json:"resources"`
+
+	// RunningPreviousVersion Il deploy dell'ultima versione e' fallito e serve ancora la precedente.
+	RunningPreviousVersion *bool `json:"runningPreviousVersion,omitempty"`
+
+	// Status Stato osservato: `starting` (nessuna copia ancora sana), `running`, `restarting`, `unhealthy` (alcune copie non sane), `failed` (nessuna versione parte), `stopped` (fermata a mano o per il repo, vedi `stoppedReason`).
+	Status        AppStatus         `json:"status"`
+	StoppedReason *AppStoppedReason `json:"stoppedReason,omitempty"`
+	UpdatedAt     time.Time         `json:"updatedAt"`
+	Usage         *AppUsage         `json:"usage,omitempty"`
+}
+
+// AppAccess defines model for AppAccess.
+type AppAccess struct {
+	Address *string `json:"address,omitempty"`
+
+	// Certificate Origine del certificato dell'indirizzo automatico (H2): CA interna per le interne.
+	Certificate *AppAccessCertificate `json:"certificate,omitempty"`
+	ChangedAt   *time.Time            `json:"changedAt,omitempty"`
+	ChangedBy   *AppActor             `json:"changedBy,omitempty"`
+
+	// IdentityHeaders Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6). I nomi delle intestazioni e la forma della firma non sono ancora fissati dal contratto.
+	IdentityHeaders *bool `json:"identityHeaders,omitempty"`
+
+	// Mode `login` (login GitStack, default, H6), `none` (senza login, scelta esplicita di admin), `public` (su internet, H1, solo con le app pubbliche abilitate).
+	Mode AppAccessMode `json:"mode"`
+
+	// PublicAppsEnabled L'amministratore ha abilitato le app pubbliche (H1, doppio consenso).
+	PublicAppsEnabled bool `json:"publicAppsEnabled"`
+}
+
+// AppAccessCertificate Origine del certificato dell'indirizzo automatico (H2): CA interna per le interne.
+type AppAccessCertificate string
+
+// AppAccessInput defines model for AppAccessInput.
+type AppAccessInput struct {
+	// Mode `login` (login GitStack, default, H6), `none` (senza login, scelta esplicita di admin), `public` (su internet, H1, solo con le app pubbliche abilitate).
+	Mode AppAccessMode `json:"mode"`
+}
+
+// AppAccessMode `login` (login GitStack, default, H6), `none` (senza login, scelta esplicita di admin), `public` (su internet, H1, solo con le app pubbliche abilitate).
+type AppAccessMode string
+
+// AppActor Chi ha fatto un'azione sull'app; un agente compare con la sua identita' (H13).
+type AppActor struct {
+	Id       openapi_types.UUID `json:"id"`
+	Type     AppActorType       `json:"type"`
+	Username string             `json:"username"`
+}
+
+// AppActorType defines model for AppActor.Type.
+type AppActorType string
+
+// AppCopyStatus defines model for AppCopyStatus.
+type AppCopyStatus struct {
+	Name     string `json:"name"`
+	Ready    bool   `json:"ready"`
+	Restarts int    `json:"restarts"`
+}
+
+// AppCreateInput defines model for AppCreateInput.
+type AppCreateInput struct {
+	Copies *int `json:"copies,omitempty"`
+
+	// FollowBranch Branch da seguire (H7). Non disponibile per un'immagine esterna.
+	FollowBranch *string         `json:"followBranch,omitempty"`
+	HealthCheck  *AppHealthCheck `json:"healthCheck,omitempty"`
+
+	// Image Riferimento dell'immagine. Per il registry del repo basta `nome:tag` o il solo tag, risolti contro `<host>/<owner>/<repo>`; altrimenti un riferimento completo a un registry esterno.
+	Image string `json:"image"`
+
+	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+	Name AppName `json:"name"`
+
+	// Port Assente: app senza indirizzo, che parla solo con le app dello stesso repo (H9).
+	Port      *int               `json:"port,omitempty"`
+	Resources *AppResourcesInput `json:"resources,omitempty"`
+
+	// Restricted Rifiuta immagini che girano come root (H9). L'istanza puo' imporlo comunque.
+	Restricted *bool `json:"restricted,omitempty"`
+}
+
+// AppCreated defines model for AppCreated.
+type AppCreated struct {
+	App     App        `json:"app"`
+	Version AppVersion `json:"version"`
+}
+
+// AppDeployInput defines model for AppDeployInput.
+type AppDeployInput struct {
+	// Image Come in `AppCreateInput`: un tag del registry del repo (`sha-91be20d`), `nome:tag`, un digest o un riferimento esterno completo.
+	Image string `json:"image"`
+}
+
+// AppDeployState Esito di una versione: `in_progress` (in avvio o in attesa del controllo di salute), `serving` (serve il traffico), `superseded` (sostituita da una piu' recente), `failed` (non ha superato il controllo di salute) e `rolled_back` (fallita con ritorno automatico alla versione precedente, H12).
+type AppDeployState string
+
+// AppEnvName Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
+type AppEnvName = string
+
+// AppFollow Branch seguito per il deploy automatico (H7).
+type AppFollow struct {
+	Branch string `json:"branch"`
+
+	// Paused Deploy automatici sospesi (per esempio dopo un rollback).
+	Paused bool `json:"paused"`
+}
+
+// AppHealthCheck defines model for AppHealthCheck.
+type AppHealthCheck struct {
+	IntervalSeconds int `json:"intervalSeconds"`
+
+	// Path Percorso HTTP richiesto, per esempio `/healthz`.
+	//
+	// Example: /healthz
+	Path string `json:"path"`
+
+	// TimeoutSeconds Dopo quanto un deploy che non risponde e' considerato fallito.
+	TimeoutSeconds *int `json:"timeoutSeconds,omitempty"`
+}
+
+// AppImage Immagine di una versione e sua verifica (H10).
+type AppImage struct {
+	Digest *string `json:"digest,omitempty"`
+
+	// Reference Riferimento completo, per esempio `homehub.local/acme/handbook/web:sha-7f3a91c`.
+	Reference string `json:"reference"`
+
+	// RunsAsRoot Vero se l'immagine gira come root (avviso baseline, H9); null se non ancora letto.
+	RunsAsRoot *bool `json:"runsAsRoot,omitempty"`
+
+	// SignedBy Impronta o nome della chiave che ha firmato.
+	SignedBy *string `json:"signedBy,omitempty"`
+
+	// Source `registry`: immagine del registry del repo (RG1). `external`: altro registry, mai `verified` a meno di una firma fidata.
+	Source AppImageSource `json:"source"`
+
+	// Verified Firmata con cosign dalla CI dello stesso repo o da una chiave fidata. Falso e' l'etichetta «non verificata» (H10).
+	Verified bool `json:"verified"`
+}
+
+// AppImageSource `registry`: immagine del registry del repo (RG1). `external`: altro registry, mai `verified` a meno di una firma fidata.
+type AppImageSource string
+
+// AppLastDeploy Ultimo deploy tentato, anche fallito (H12).
+type AppLastDeploy struct {
+	FinishedAt *time.Time `json:"finishedAt,omitempty"`
+
+	// Reason Per `failed` e `rolled_back` il perche', per esempio «GET /healthz ha risposto 500 per 2 min».
+	Reason    *string   `json:"reason,omitempty"`
+	StartedAt time.Time `json:"startedAt"`
+
+	// State Esito di una versione: `in_progress` (in avvio o in attesa del controllo di salute), `serving` (serve il traffico), `superseded` (sostituita da una piu' recente), `failed` (non ha superato il controllo di salute) e `rolled_back` (fallita con ritorno automatico alla versione precedente, H12).
+	State   AppDeployState `json:"state"`
+	Version int            `json:"version"`
+}
+
+// AppList defines model for AppList.
+type AppList struct {
+	Items []App `json:"items"`
+
+	// Quota Quota dell'owner del repo (H5, H11), per la riga sopra l'elenco.
+	Quota *AppOwnerQuota `json:"quota,omitempty"`
+}
+
+// AppLogLine defines model for AppLogLine.
+type AppLogLine struct {
+	// Copy Copia che ha scritto la riga (`web-1`); assente per gli eventi della piattaforma.
+	Copy    *string          `json:"copy,omitempty"`
+	Message string           `json:"message"`
+	Source  AppLogLineSource `json:"source"`
+	Time    time.Time        `json:"time"`
+}
+
+// AppLogLineSource defines model for AppLogLine.Source.
+type AppLogLineSource string
+
+// AppLogRetention defines model for AppLogRetention.
+type AppLogRetention struct {
+	Days     int   `json:"days"`
+	MaxBytes int64 `json:"maxBytes"`
+}
+
+// AppMetricPoint defines model for AppMetricPoint.
+type AppMetricPoint struct {
+	Time  time.Time `json:"time"`
+	Value float32   `json:"value"`
+}
+
+// AppMetricSeries defines model for AppMetricSeries.
+type AppMetricSeries struct {
+	Points []AppMetricPoint    `json:"points"`
+	Unit   AppMetricSeriesUnit `json:"unit"`
+}
+
+// AppMetricSeriesUnit defines model for AppMetricSeries.Unit.
+type AppMetricSeriesUnit string
+
+// AppMetrics defines model for AppMetrics.
+type AppMetrics struct {
+	Copies []AppCopyStatus `json:"copies"`
+	Cpu    AppMetricSeries `json:"cpu"`
+
+	// Errors5xx Solo app web.
+	Errors5xx *AppMetricSeries `json:"errors5xx,omitempty"`
+	Memory    AppMetricSeries  `json:"memory"`
+	Range     AppMetricsRange  `json:"range"`
+
+	// Requests Solo app web.
+	Requests    *AppMetricSeries `json:"requests,omitempty"`
+	Restarts24h int              `json:"restarts24h"`
+	StepSeconds int              `json:"stepSeconds"`
+	Usage       *AppUsage        `json:"usage,omitempty"`
+}
+
+// AppMetricsRange defines model for AppMetrics.Range.
+type AppMetricsRange string
+
+// AppName Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+type AppName = string
+
+// AppOwnerQuota Quota delle app di un owner (H5, H11).
+type AppOwnerQuota struct {
+	// IsDefault Valgono i default dell'istanza.
+	IsDefault *bool              `json:"isDefault,omitempty"`
+	Limits    AppOwnerQuotaInput `json:"limits"`
+	Owner     string             `json:"owner"`
+	Used      AppOwnerQuotaInput `json:"used"`
+
+	// Warning Un valore e' oltre l'80% della quota.
+	Warning bool `json:"warning"`
+}
+
+// AppOwnerQuotaInput defines model for AppOwnerQuotaInput.
+type AppOwnerQuotaInput struct {
+	// CpuMillis CPU garantita.
+	CpuMillis int `json:"cpuMillis"`
+
+	// DiskBytes Disco dei volumi (v3-b).
+	DiskBytes int64 `json:"diskBytes"`
+
+	// MemoryBytes RAM garantita.
+	MemoryBytes int64 `json:"memoryBytes"`
+}
+
+// AppOwnerQuotaList defines model for AppOwnerQuotaList.
+type AppOwnerQuotaList struct {
+	Items []AppOwnerQuota `json:"items"`
+}
+
+// AppResourceAmount CPU e memoria, per copia.
+type AppResourceAmount struct {
+	// CpuMillis Millesimi di vCPU (500 = 0,5 vCPU).
+	CpuMillis   int   `json:"cpuMillis"`
+	MemoryBytes int64 `json:"memoryBytes"`
+}
+
+// AppResources Parte garantita (sempre riservata) e tetto (usato se il server ha spazio), per copia (H11).
+type AppResources struct {
+	// Guaranteed CPU e memoria, per copia.
+	Guaranteed AppResourceAmount `json:"guaranteed"`
+
+	// Limit CPU e memoria, per copia.
+	Limit AppResourceAmount `json:"limit"`
+
+	// MaxPerApp Massimo consentito dall'istanza per app.
+	MaxPerApp *AppResourceAmount `json:"maxPerApp,omitempty"`
+}
+
+// AppResourcesInput defines model for AppResourcesInput.
+type AppResourcesInput struct {
+	// Guaranteed CPU e memoria, per copia.
+	Guaranteed AppResourceAmount `json:"guaranteed"`
+
+	// Limit CPU e memoria, per copia.
+	Limit AppResourceAmount `json:"limit"`
+}
+
+// AppRollbackInput defines model for AppRollbackInput.
+type AppRollbackInput struct {
+	PauseAutoDeploy *bool `json:"pauseAutoDeploy,omitempty"`
+
+	// Version Versione da ripristinare come nuova versione.
+	Version int `json:"version"`
+}
+
+// AppScaleInput defines model for AppScaleInput.
+type AppScaleInput struct {
+	// Copies Zero ferma l'app (`stoppedReason: manual`).
+	Copies int `json:"copies"`
+}
+
+// AppSecret defines model for AppSecret.
+type AppSecret struct {
+	// Name Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
+	Name      AppEnvName `json:"name"`
+	UpdatedAt time.Time  `json:"updatedAt"`
+	UpdatedBy *AppActor  `json:"updatedBy,omitempty"`
+	Version   *int       `json:"version,omitempty"`
+}
+
+// AppSecretInput defines model for AppSecretInput.
+type AppSecretInput struct {
+	Value *string `json:"value,omitempty"`
+}
+
+// AppSecretList defines model for AppSecretList.
+type AppSecretList struct {
+	Items []AppSecret `json:"items"`
+}
+
+// AppStatus Stato osservato: `starting` (nessuna copia ancora sana), `running`, `restarting`, `unhealthy` (alcune copie non sane), `failed` (nessuna versione parte), `stopped` (fermata a mano o per il repo, vedi `stoppedReason`).
+type AppStatus string
+
+// AppStoppedReason Perche' e' ferma (H5). `repo_archived` e `repo_deleted` tornano avviabili con il repo; `manual` con scala a zero copie.
+type AppStoppedReason string
+
+// AppTrustedKey defines model for AppTrustedKey.
+type AppTrustedKey struct {
+	CreatedAt   time.Time          `json:"createdAt"`
+	CreatedBy   *AppActor          `json:"createdBy,omitempty"`
+	Fingerprint string             `json:"fingerprint"`
+	Id          openapi_types.UUID `json:"id"`
+
+	// InstanceKey La chiave della CI dell'istanza (H10): sempre presente, non si toglie.
+	InstanceKey bool   `json:"instanceKey"`
+	Name        string `json:"name"`
+
+	// PublicKey Chiave pubblica cosign in PEM.
+	PublicKey *string `json:"publicKey,omitempty"`
+}
+
+// AppTrustedKeyInput defines model for AppTrustedKeyInput.
+type AppTrustedKeyInput struct {
+	Name string `json:"name"`
+
+	// PublicKey Chiave pubblica cosign in PEM.
+	PublicKey string `json:"publicKey"`
+}
+
+// AppTrustedKeyList defines model for AppTrustedKeyList.
+type AppTrustedKeyList struct {
+	Items []AppTrustedKey `json:"items"`
+}
+
+// AppUpdateInput defines model for AppUpdateInput.
+type AppUpdateInput struct {
+	AutoDeployPaused *bool `json:"autoDeployPaused,omitempty"`
+
+	// FollowBranch Branch da seguire; `null` torna ai deploy a mano.
+	FollowBranch *string         `json:"followBranch,omitempty"`
+	HealthCheck  *AppHealthCheck `json:"healthCheck,omitempty"`
+	Port         *int            `json:"port,omitempty"`
+	Restricted   *bool           `json:"restricted,omitempty"`
+}
+
+// AppUsage Uso corrente, somma delle copie. Le richieste e gli errori ci sono solo per le app web.
+type AppUsage struct {
+	CpuMillis int `json:"cpuMillis"`
+
+	// ErrorRatio Quota di risposte 5xx, da 0 a 1.
+	ErrorRatio        *float32 `json:"errorRatio,omitempty"`
+	MemoryBytes       int64    `json:"memoryBytes"`
+	RequestsPerSecond *float32 `json:"requestsPerSecond,omitempty"`
+	Restarts24h       *int     `json:"restarts24h,omitempty"`
+}
+
+// AppVariable defines model for AppVariable.
+type AppVariable struct {
+	// Managed Impostata da GitStack (per esempio l'intestazione dell'utente, H6): sola lettura.
+	Managed bool `json:"managed"`
+
+	// Name Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
+	Name      AppEnvName `json:"name"`
+	UpdatedAt time.Time  `json:"updatedAt"`
+	UpdatedBy *AppActor  `json:"updatedBy,omitempty"`
+	Value     string     `json:"value"`
+
+	// Version Versione creata dall'ultima modifica.
+	Version *int `json:"version,omitempty"`
+}
+
+// AppVariableInput defines model for AppVariableInput.
+type AppVariableInput struct {
+	Value string `json:"value"`
+}
+
+// AppVariableList defines model for AppVariableList.
+type AppVariableList struct {
+	Items []AppVariable `json:"items"`
+}
+
+// AppVersion defines model for AppVersion.
+type AppVersion struct {
+	// Branch Per `branch_push`, il branch.
+	Branch    *string `json:"branch,omitempty"`
+	CommitSha *string `json:"commitSha,omitempty"`
+
+	// Config Configurazione di una versione. I segreti compaiono solo per nome (H8).
+	Config    *AppVersionConfig `json:"config,omitempty"`
+	CreatedAt time.Time         `json:"createdAt"`
+	CreatedBy *AppActor         `json:"createdBy,omitempty"`
+
+	// Image Immagine di una versione e sua verifica (H10).
+	Image AppImage `json:"image"`
+
+	// ImageAvailable L'immagine si puo' ancora scaricare: falso se l'ha tolta la pulizia del registry (RG2).
+	ImageAvailable bool `json:"imageAvailable"`
+
+	// InBackup Versione attiva e precedente: sempre nei backup (H4).
+	InBackup bool `json:"inBackup"`
+	Number   int  `json:"number"`
+
+	// RollbackOf Per `rollback`, la versione ripristinata.
+	RollbackOf *int `json:"rollbackOf,omitempty"`
+
+	// State Esito di una versione: `in_progress` (in avvio o in attesa del controllo di salute), `serving` (serve il traffico), `superseded` (sostituita da una piu' recente), `failed` (non ha superato il controllo di salute) e `rolled_back` (fallita con ritorno automatico alla versione precedente, H12).
+	State       AppDeployState `json:"state"`
+	StateReason *string        `json:"stateReason,omitempty"`
+
+	// Summary Per `config` e `rollback`, che cosa e' cambiato, per esempio «variabile SEARCH_TIMEOUT»; i valori dei segreti non compaiono mai.
+	Summary *string `json:"summary,omitempty"`
+
+	// Trigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta), `rollback`, `create`.
+	Trigger AppVersionTrigger `json:"trigger"`
+}
+
+// AppVersionConfig Configurazione di una versione. I segreti compaiono solo per nome (H8).
+type AppVersionConfig struct {
+	Copies      int             `json:"copies"`
+	HealthCheck *AppHealthCheck `json:"healthCheck,omitempty"`
+	Port        *int            `json:"port,omitempty"`
+
+	// Resources Parte garantita (sempre riservata) e tetto (usato se il server ha spazio), per copia (H11).
+	Resources   AppResources      `json:"resources"`
+	Restricted  *bool             `json:"restricted,omitempty"`
+	SecretNames []AppEnvName      `json:"secretNames"`
+	Variables   map[string]string `json:"variables"`
+}
+
+// AppVersionList defines model for AppVersionList.
+type AppVersionList struct {
+	Items []AppVersion `json:"items"`
+	Total int          `json:"total"`
+}
+
+// AppVersionTrigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta), `rollback`, `create`.
+type AppVersionTrigger string
+
+// AppsCapacity Capacita' del server e priorita' servizi di GitStack, poi app, poi job della CI (H11).
+type AppsCapacity struct {
+	Apps struct {
+		// Guaranteed CPU e memoria, per copia.
+		Guaranteed AppResourceAmount `json:"guaranteed"`
+
+		// Share CPU e memoria, per copia.
+		Share AppResourceAmount `json:"share"`
+
+		// ShareIsDefault La riserva e' quella calcolata dall'hardware, non modificata.
+		ShareIsDefault *bool `json:"shareIsDefault,omitempty"`
+	} `json:"apps"`
+
+	// AppsShareWarning Il garantito supera l'80% della riserva: i nuovi deploy possono essere rifiutati.
+	AppsShareWarning bool `json:"appsShareWarning"`
+	Ci               struct {
+		GuaranteedCpuMillis int  `json:"guaranteedCpuMillis"`
+		Slots               int  `json:"slots"`
+		UsedCpuMillis       *int `json:"usedCpuMillis,omitempty"`
+	} `json:"ci"`
+	Server struct {
+		CpuMillis   int   `json:"cpuMillis"`
+		MemoryBytes int64 `json:"memoryBytes"`
+
+		// Profile Profilo hardware rilevato (per esempio `recommended`).
+		Profile *string `json:"profile,omitempty"`
+	} `json:"server"`
+	Services struct {
+		// Reserved CPU e memoria, per copia.
+		Reserved AppResourceAmount `json:"reserved"`
+	} `json:"services"`
+}
+
+// AppsInstanceSettings defines model for AppsInstanceSettings.
+type AppsInstanceSettings struct {
+	// AppsDomain Dominio wildcard delle app (H2), scelto all'installazione; solo lettura.
+	AppsDomain *string `json:"appsDomain"`
+
+	// AppsDomainIsDefault Senza `--apps-domain` vale il default, con avviso.
+	AppsDomainIsDefault *bool           `json:"appsDomainIsDefault,omitempty"`
+	LogRetention        AppLogRetention `json:"logRetention"`
+
+	// MaxPerApp CPU e memoria, per copia.
+	MaxPerApp         AppResourceAmount `json:"maxPerApp"`
+	PublicAppsEnabled bool              `json:"publicAppsEnabled"`
+	Restricted        bool              `json:"restricted"`
+	SignedImagesOnly  bool              `json:"signedImagesOnly"`
+}
+
+// AppsInstanceSettingsInput defines model for AppsInstanceSettingsInput.
+type AppsInstanceSettingsInput struct {
+	LogRetention AppLogRetention `json:"logRetention"`
+
+	// MaxPerApp CPU e memoria, per copia.
+	MaxPerApp         AppResourceAmount `json:"maxPerApp"`
+	PublicAppsEnabled bool              `json:"publicAppsEnabled"`
+	Restricted        bool              `json:"restricted"`
+	SignedImagesOnly  bool              `json:"signedImagesOnly"`
+}
+
+// AppsReserveInput CPU e memoria, per copia.
+type AppsReserveInput = AppResourceAmount
 
 // Artifact defines model for Artifact.
 type Artifact struct {
@@ -6039,7 +6995,7 @@ type WebhookDeliveryDetail struct {
 	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
 	Error *string `json:"error,omitempty"`
 
-	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`.
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`.
 	Event WebhookEvent `json:"event"`
 
 	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
@@ -6100,7 +7056,7 @@ type WebhookDeliverySummary struct {
 	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
 	Error *string `json:"error,omitempty"`
 
-	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`.
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`.
 	Event WebhookEvent `json:"event"`
 
 	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
@@ -6115,7 +7071,29 @@ type WebhookDeliverySummary struct {
 	StatusCode *int `json:"statusCode,omitempty"`
 }
 
-// WebhookEvent Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`.
+// WebhookDeploymentPayload Payload del webhook `deployment` (H12). `action`: `started` (deploy avviato), `succeeded` (la versione e' sana), `failed` (non ha superato il controllo di salute; resta la precedente), `rolled_back` (rollback a mano riuscito). Una notifica «deploy fallito» va anche a chi l'ha fatto e agli `admin` del repo.
+type WebhookDeploymentPayload struct {
+	Action       WebhookDeploymentPayloadAction  `json:"action"`
+	App          App                             `json:"app"`
+	Deployment   AppVersion                      `json:"deployment"`
+	Event        WebhookDeploymentPayloadEvent   `json:"event"`
+	Organization *WebhookOrganizationRef         `json:"organization,omitempty"`
+	Repository   WebhookRepositoryRef            `json:"repository"`
+	Sender       *WebhookSender                  `json:"sender"`
+	Time         time.Time                       `json:"time"`
+	Version      WebhookDeploymentPayloadVersion `json:"version"`
+}
+
+// WebhookDeploymentPayloadAction defines model for WebhookDeploymentPayload.Action.
+type WebhookDeploymentPayloadAction string
+
+// WebhookDeploymentPayloadEvent defines model for WebhookDeploymentPayload.Event.
+type WebhookDeploymentPayloadEvent string
+
+// WebhookDeploymentPayloadVersion defines model for WebhookDeploymentPayload.Version.
+type WebhookDeploymentPayloadVersion int
+
+// WebhookEvent Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`.
 type WebhookEvent string
 
 // WebhookList defines model for WebhookList.
@@ -6345,6 +7323,18 @@ type WorkflowRunList struct {
 
 // ActionsNameParam defines model for ActionsNameParam.
 type ActionsNameParam = string
+
+// AppEnvNameParam Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
+type AppEnvNameParam = AppEnvName
+
+// AppParam Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+type AppParam = AppName
+
+// AppTrustedKeyIdParam defines model for AppTrustedKeyIdParam.
+type AppTrustedKeyIdParam = openapi_types.UUID
+
+// AppVersionParam defines model for AppVersionParam.
+type AppVersionParam = int
 
 // ArchiveFormatParam defines model for ArchiveFormatParam.
 type ArchiveFormatParam string
@@ -6594,6 +7584,12 @@ type UnexpectedError = Error
 // UnprocessableEntity Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type UnprocessableEntity = Error
 
+// ListAdminAppsParams defines parameters for ListAdminApps.
+type ListAdminAppsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // FinishOidcLoginParams defines parameters for FinishOidcLogin.
 type FinishOidcLoginParams struct {
 	Code  string `form:"code" json:"code"`
@@ -6835,6 +7831,49 @@ type ListActionsCachesParams struct {
 // GetWorkflowJobLogParams defines parameters for GetWorkflowJobLog.
 type GetWorkflowJobLogParams struct {
 	Follow *bool `form:"follow,omitempty" json:"follow,omitempty"`
+}
+
+// GetAppLogsParams defines parameters for GetAppLogs.
+type GetAppLogsParams struct {
+	Follow *bool `form:"follow,omitempty" json:"follow,omitempty"`
+
+	// Since Durata (`5m`, `1h`, `7d`) o istante RFC 3339. Assente: dall'inizio della cronologia, o dall'ultima ora con `follow`.
+	Since *string    `form:"since,omitempty" json:"since,omitempty"`
+	Until *time.Time `form:"until,omitempty" json:"until,omitempty"`
+
+	// Copy Nome di una copia (per esempio `web-1`).
+	Copy   *string                 `form:"copy,omitempty" json:"copy,omitempty"`
+	Source *GetAppLogsParamsSource `form:"source,omitempty" json:"source,omitempty"`
+
+	// Grep Testo da cercare nelle righe (sottostringa).
+	Grep *string `form:"grep,omitempty" json:"grep,omitempty"`
+
+	// Limit Al massimo N righe, le piu' recenti.
+	Limit  *int                    `form:"limit,omitempty" json:"limit,omitempty"`
+	Format *GetAppLogsParamsFormat `form:"format,omitempty" json:"format,omitempty"`
+}
+
+// GetAppLogsParamsSource defines parameters for GetAppLogs.
+type GetAppLogsParamsSource string
+
+// GetAppLogsParamsFormat defines parameters for GetAppLogs.
+type GetAppLogsParamsFormat string
+
+// GetAppMetricsParams defines parameters for GetAppMetrics.
+type GetAppMetricsParams struct {
+	Range *GetAppMetricsParamsRange `form:"range,omitempty" json:"range,omitempty"`
+
+	// Copy Nome di una copia; assente: somma di tutte.
+	Copy *string `form:"copy,omitempty" json:"copy,omitempty"`
+}
+
+// GetAppMetricsParamsRange defines parameters for GetAppMetrics.
+type GetAppMetricsParamsRange string
+
+// ListAppVersionsParams defines parameters for ListAppVersions.
+type ListAppVersionsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
 // GetRepositoryArchiveParams defines parameters for GetRepositoryArchive.
@@ -7200,6 +8239,18 @@ type ListUserTokensParams struct {
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// PutAdminAppOwnerQuotaJSONRequestBody defines body for PutAdminAppOwnerQuota for application/json ContentType.
+type PutAdminAppOwnerQuotaJSONRequestBody = AppOwnerQuotaInput
+
+// UpdateAdminAppsReserveJSONRequestBody defines body for UpdateAdminAppsReserve for application/json ContentType.
+type UpdateAdminAppsReserveJSONRequestBody = AppsReserveInput
+
+// UpdateAdminAppsSettingsJSONRequestBody defines body for UpdateAdminAppsSettings for application/json ContentType.
+type UpdateAdminAppsSettingsJSONRequestBody = AppsInstanceSettingsInput
+
+// AddAdminAppTrustedKeyJSONRequestBody defines body for AddAdminAppTrustedKey for application/json ContentType.
+type AddAdminAppTrustedKeyJSONRequestBody = AppTrustedKeyInput
+
 // UpdateCiStorageSettingsJSONRequestBody defines body for UpdateCiStorageSettings for application/json ContentType.
 type UpdateCiStorageSettingsJSONRequestBody = CiStorageSettings
 
@@ -7295,6 +8346,33 @@ type PutRepositoryActionsSecretJSONRequestBody = ActionsSecretInput
 
 // PutRepositoryActionsVariableJSONRequestBody defines body for PutRepositoryActionsVariable for application/json ContentType.
 type PutRepositoryActionsVariableJSONRequestBody = ActionsVariableInput
+
+// CreateAppJSONRequestBody defines body for CreateApp for application/json ContentType.
+type CreateAppJSONRequestBody = AppCreateInput
+
+// UpdateAppJSONRequestBody defines body for UpdateApp for application/json ContentType.
+type UpdateAppJSONRequestBody = AppUpdateInput
+
+// SetAppAccessJSONRequestBody defines body for SetAppAccess for application/json ContentType.
+type SetAppAccessJSONRequestBody = AppAccessInput
+
+// DeployAppJSONRequestBody defines body for DeployApp for application/json ContentType.
+type DeployAppJSONRequestBody = AppDeployInput
+
+// SetAppResourcesJSONRequestBody defines body for SetAppResources for application/json ContentType.
+type SetAppResourcesJSONRequestBody = AppResourcesInput
+
+// RollbackAppJSONRequestBody defines body for RollbackApp for application/json ContentType.
+type RollbackAppJSONRequestBody = AppRollbackInput
+
+// ScaleAppJSONRequestBody defines body for ScaleApp for application/json ContentType.
+type ScaleAppJSONRequestBody = AppScaleInput
+
+// PutAppSecretJSONRequestBody defines body for PutAppSecret for application/json ContentType.
+type PutAppSecretJSONRequestBody = AppSecretInput
+
+// PutAppVariableJSONRequestBody defines body for PutAppVariable for application/json ContentType.
+type PutAppVariableJSONRequestBody = AppVariableInput
 
 // UpdateBranchSettingsJSONRequestBody defines body for UpdateBranchSettings for application/json ContentType.
 type UpdateBranchSettingsJSONRequestBody = UpdateBranchSettingsInput
@@ -7443,6 +8521,9 @@ type CreateUserTokenJSONRequestBody = CreateTokenInput
 // CommitStatusJSONRequestBody defines body for CommitStatus for application/json ContentType.
 type CommitStatusJSONRequestBody = WebhookCommitStatusPayload
 
+// DeploymentJSONRequestBody defines body for Deployment for application/json ContentType.
+type DeploymentJSONRequestBody = WebhookDeploymentPayload
+
 // PullRequestJSONRequestBody defines body for PullRequest for application/json ContentType.
 type PullRequestJSONRequestBody = WebhookPullRequestPayload
 
@@ -7531,6 +8612,127 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+
+	// ListAdminApps Elenca le app di tutta l'istanza con garantito, uso e tetto (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Console Admin · Apps & resources (H9, H11): per app parte garantita, uso, tetto, copie, se l'immagine e' verificata e se gira come root.
+	//
+	// Corresponds with GET /admin/apps (the `ListAdminApps` operationId).
+	ListAdminApps(ctx context.Context, params *ListAdminAppsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAdminAppsCapacity Legge la capacita' del server e la riserva per le app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Priorita' servizi di GitStack, poi app, poi job della CI (H11): hardware, parte riservata ai servizi, spazio per le app con il garantito gia' assegnato, job della CI. `appsShareWarning` e' vero oltre l'80%.
+	//
+	// Corresponds with GET /admin/apps/capacity (the `GetAdminAppsCapacity` operationId).
+	GetAdminAppsCapacity(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListAdminAppOwnerQuotas Elenca le quote delle app per owner (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Le quote contano sull'owner del repo (H5, H11): CPU e RAM garantite e disco dei volumi, con l'uso e l'avviso all'80%. Compaiono gli owner con almeno un'app o una quota impostata.
+	//
+	// Corresponds with GET /admin/apps/quotas (the `ListAdminAppOwnerQuotas` operationId).
+	ListAdminAppOwnerQuotas(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteAdminAppOwnerQuota Riporta la quota di un owner al default (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Toglie la quota propria dell'owner: valgono i default dell'istanza.
+	//
+	// Corresponds with DELETE /admin/apps/quotas/{owner} (the `DeleteAdminAppOwnerQuota` operationId).
+	DeleteAdminAppOwnerQuota(ctx context.Context, owner RepoOwnerParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutAdminAppOwnerQuotaWithBody Imposta la quota di un owner (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 404 se l'owner non esiste. 422 `quota_below_usage` se un valore e' sotto quanto l'owner usa gia'.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /admin/apps/quotas/{owner} (the `PutAdminAppOwnerQuota` operationId).
+	PutAdminAppOwnerQuotaWithBody(ctx context.Context, owner RepoOwnerParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutAdminAppOwnerQuota Imposta la quota di un owner (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 404 se l'owner non esiste. 422 `quota_below_usage` se un valore e' sotto quanto l'owner usa gia'.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /admin/apps/quotas/{owner} (the `PutAdminAppOwnerQuota` operationId).
+	PutAdminAppOwnerQuota(ctx context.Context, owner RepoOwnerParam, body PutAdminAppOwnerQuotaJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAdminAppsReserveWithBody Modifica la parte del server riservata alle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. La riserva e' calcolata dall'hardware e modificabile (H11). 422 `reserve_below_guaranteed` se e' sotto il garantito gia' assegnato alle app, o se supera quanto resta dopo i servizi di GitStack.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /admin/apps/reserve (the `UpdateAdminAppsReserve` operationId).
+	UpdateAdminAppsReserveWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAdminAppsReserve Modifica la parte del server riservata alle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. La riserva e' calcolata dall'hardware e modificabile (H11). 422 `reserve_below_guaranteed` se e' sotto il garantito gia' assegnato alle app, o se supera quanto resta dopo i servizi di GitStack.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /admin/apps/reserve (the `UpdateAdminAppsReserve` operationId).
+	UpdateAdminAppsReserve(ctx context.Context, body UpdateAdminAppsReserveJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAdminAppsSettings Legge le impostazioni d'istanza delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Dominio delle app (scelto all'installazione, H2), app pubbliche si/no (H1), solo immagini firmate (H10), regola restricted (H9), massimo per app e conservazione dei log (H11, H12).
+	//
+	// Corresponds with GET /admin/apps/settings (the `GetAdminAppsSettings` operationId).
+	GetAdminAppsSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAdminAppsSettingsWithBody Modifica le impostazioni d'istanza delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /admin/apps/settings (the `UpdateAdminAppsSettings` operationId).
+	UpdateAdminAppsSettingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAdminAppsSettings Modifica le impostazioni d'istanza delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /admin/apps/settings (the `UpdateAdminAppsSettings` operationId).
+	UpdateAdminAppsSettings(ctx context.Context, body UpdateAdminAppsSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListAdminAppTrustedKeys Elenca le chiavi cosign fidate (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. La chiave della CI dell'istanza c'e' sempre e non si toglie (H10); le altre sono aggiunte dall'amministratore. Servono con la regola «solo immagini firmate».
+	//
+	// Corresponds with GET /admin/apps/trusted-keys (the `ListAdminAppTrustedKeys` operationId).
+	ListAdminAppTrustedKeys(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddAdminAppTrustedKeyWithBody Aggiunge una chiave cosign fidata (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 422 `invalid_key` se non e' una chiave pubblica cosign valida; 409 se c'e' gia' (stessa impronta).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/apps/trusted-keys (the `AddAdminAppTrustedKey` operationId).
+	AddAdminAppTrustedKeyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddAdminAppTrustedKey Aggiunge una chiave cosign fidata (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 422 `invalid_key` se non e' una chiave pubblica cosign valida; 409 se c'e' gia' (stessa impronta).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/apps/trusted-keys (the `AddAdminAppTrustedKey` operationId).
+	AddAdminAppTrustedKey(ctx context.Context, body AddAdminAppTrustedKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteAdminAppTrustedKey Toglie una chiave cosign fidata (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 409 `instance_key` per la chiave della CI dell'istanza. Le app gia' in esecuzione con immagini firmate da quella chiave non si fermano; i deploy successivi la rifiutano.
+	//
+	// Corresponds with DELETE /admin/apps/trusted-keys/{keyId} (the `DeleteAdminAppTrustedKey` operationId).
+	DeleteAdminAppTrustedKey(ctx context.Context, keyId AppTrustedKeyIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCiQueue Legge coda e concorrenza CI (solo amministratore)
 	//
@@ -8665,6 +9867,266 @@ type ClientInterface interface {
 	//
 	// Corresponds with DELETE /repos/{owner}/{repo}/actions/variables/{name} (the `DeleteRepositoryActionsVariable` operationId).
 	DeleteRepositoryActionsVariable(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListApps Elenca le app del repo
+	//
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Per ogni app stato, indirizzo, accesso, versione attiva, branch seguito, copie e se l'immagine e' verificata (H1, H5). Le app di un repo archiviato compaiono ferme (`stoppedReason: repo_archived`).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps (the `ListApps` operationId).
+	ListApps(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateAppWithBody Crea un'app nel repo e la mette in esecuzione
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps (the `CreateApp` operationId).
+	CreateAppWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateApp Crea un'app nel repo e la mette in esecuzione
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps (the `CreateApp` operationId).
+	CreateApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateAppJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteApp Elimina l'app
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ferma l'app e ne elimina versioni, variabili, segreti e indirizzi; i volumi (v3-b) seguono la regola H5. Non si annulla.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app} (the `DeleteApp` operationId).
+	DeleteApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetApp Legge un'app
+	//
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Stato, controllo di salute, versione attiva, copie pronte, parte garantita e tetto, ultimo deploy (anche fallito con ritorno automatico alla versione precedente, H12) e uso corrente (H3, H5).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app} (the `GetApp` operationId).
+	GetApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAppWithBody Modifica immagine di base, porta, controllo di salute e deploy automatico
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app} (the `UpdateApp` operationId).
+	UpdateAppWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateApp Modifica immagine di base, porta, controllo di salute e deploy automatico
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app} (the `UpdateApp` operationId).
+	UpdateApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body UpdateAppJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAppAccess Legge chi puo' aprire l'app
+	//
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Modo di accesso (login GitStack, senza login, pubblica) e, per le app interne, indirizzo e certificato (H1, H2, H6). I domini propri sono della v3-c e non fanno parte di questa versione del contratto.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/access (the `GetAppAccess` operationId).
+	GetAppAccess(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetAppAccessWithBody Imposta chi puo' aprire l'app
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `login` (default): passa chi ha `read` sul repo e l'app riceve l'utente in intestazioni firmate (H6). `none`: senza login, scelta esplicita. `public`: solo se l'amministratore ha abilitato le app pubbliche (H1, doppio consenso): altrimenti 422 `public_apps_disabled`. Una modifica dell'accesso non crea una versione.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/access (the `SetAppAccess` operationId).
+	SetAppAccessWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetAppAccess Imposta chi puo' aprire l'app
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `login` (default): passa chi ha `read` sul repo e l'app riceve l'utente in intestazioni firmate (H6). `none`: senza login, scelta esplicita. `public`: solo se l'amministratore ha abilitato le app pubbliche (H1, doppio consenso): altrimenti 422 `public_apps_disabled`. Una modifica dell'accesso non crea una versione.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/access (the `SetAppAccess` operationId).
+	SetAppAccess(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeployAppWithBody Mette in produzione un'immagine (nuova versione)
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `write` sul repo (H7).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/deploys (the `DeployApp` operationId).
+	DeployAppWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeployApp Mette in produzione un'immagine (nuova versione)
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `write` sul repo (H7).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/deploys (the `DeployApp` operationId).
+	DeployApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body DeployAppJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAppLogs Legge i log dell'app, in diretta o dalla cronologia
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Righe di tutte le copie o di una (`copy`), mescolate agli eventi della piattaforma (deploy, salute, riavvii: `source=platform`). `follow=true` tiene la connessione aperta (streaming); senza, risponde con le righe fra `since` e `until`. Cronologia indicativa di 7 giorni o 1 GB per app, regolabile dall'amministratore (H12); i segreti sono mascherati `***` (H8). Formato `text` (una riga per riga di log) oppure `ndjson` (un oggetto `AppLogLine` per riga).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/logs (the `GetAppLogs` operationId).
+	GetAppLogs(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *GetAppLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAppMetrics Legge le metriche dell'app
+	//
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio dell'implementazione e non fa parte del contratto.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/metrics (the `GetAppMetrics` operationId).
+	GetAppMetrics(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *GetAppMetricsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAppResources Legge parte garantita, tetto e copie
+	//
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Parte garantita e tetto per copia (H11), copie, uso corrente e massimo consentito dall'istanza. I volumi sono della v3-b.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/resources (the `GetAppResources` operationId).
+	GetAppResources(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetAppResourcesWithBody Imposta parte garantita e tetto
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8). Rifiutato con 409 `insufficient_capacity` solo se le parti garantite non ci stanno (H11); 422 `limit_too_high` oltre il massimo per app dell'istanza; la parte garantita non puo' superare il tetto.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/resources (the `SetAppResources` operationId).
+	SetAppResourcesWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetAppResources Imposta parte garantita e tetto
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8). Rifiutato con 409 `insufficient_capacity` solo se le parti garantite non ci stanno (H11); 422 `limit_too_high` oltre il massimo per app dell'istanza; la parte garantita non puo' superare il tetto.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/resources (the `SetAppResources` operationId).
+	SetAppResources(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RestartApp Riavvia le copie dell'app
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Riavvio una copia alla volta (senza interruzione con due o piu' copie, H12); non crea una versione.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/restart (the `RestartApp` operationId).
+	RestartApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RollbackAppWithBody Torna a una versione precedente
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/rollback (the `RollbackApp` operationId).
+	RollbackAppWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RollbackApp Torna a una versione precedente
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/rollback (the `RollbackApp` operationId).
+	RollbackApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body RollbackAppJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ScaleAppWithBody Imposta il numero di copie
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/scale (the `ScaleApp` operationId).
+	ScaleAppWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ScaleApp Imposta il numero di copie
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/scale (the `ScaleApp` operationId).
+	ScaleApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body ScaleAppJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListAppSecrets Elenca i metadati dei segreti dell'app
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Mai i valori: i segreti sono cifrati, non si rileggono e sono mascherati `***` nei log (H8). Separati dai segreti della CI.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/secrets (the `ListAppSecrets` operationId).
+	ListAppSecrets(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteAppSecret Elimina un segreto
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione. Un nome che non c'e' e' 404.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/secrets/{name} (the `DeleteAppSecret` operationId).
+	DeleteAppSecret(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutAppSecretWithBody Crea o sostituisce un segreto
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8). Il valore non torna mai nelle risposte. Un nome non puo' essere insieme variabile e segreto: 409 `name_in_use`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/secrets/{name} (the `PutAppSecret` operationId).
+	PutAppSecretWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutAppSecret Crea o sostituisce un segreto
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8). Il valore non torna mai nelle risposte. Un nome non puo' essere insieme variabile e segreto: 409 `name_in_use`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/secrets/{name} (the `PutAppSecret` operationId).
+	PutAppSecret(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, body PutAppSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListAppVariables Elenca le variabili dell'app
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Le variabili sono leggibili con `write` (H8); creare o cambiare richiede `admin`. Le variabili impostate da GitStack (`managed: true`) non si modificano.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/variables (the `ListAppVariables` operationId).
+	ListAppVariables(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteAppVariable Elimina una variabile
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione. Un nome che non c'e' e' 404.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/variables/{name} (the `DeleteAppVariable` operationId).
+	DeleteAppVariable(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutAppVariableWithBody Crea o sostituisce una variabile
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8) e riavvia le copie una alla volta. 422 `managed_variable` per un nome riservato a GitStack. Separata dalle variabili della CI.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/variables/{name} (the `PutAppVariable` operationId).
+	PutAppVariableWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutAppVariable Crea o sostituisce una variabile
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8) e riavvia le copie una alla volta. 422 `managed_variable` per un nome riservato a GitStack. Separata dalle variabili della CI.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/variables/{name} (the `PutAppVariable` operationId).
+	PutAppVariable(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, body PutAppVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListAppVersions Elenca le versioni dell'app
+	//
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Dalla piu' recente. Ogni deploy e ogni modifica di configurazione e' una versione (H8) con chi l'ha fatta, anche un agente con la sua identita' (H13). La versione attiva e la precedente sono sempre nei backup (H4); le piu' vecchie si possono riattivare solo se l'immagine e' ancora nel registry (`imageAvailable`, H12).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/versions (the `ListAppVersions` operationId).
+	ListAppVersions(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *ListAppVersionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAppVersion Legge una versione
+	//
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Immagine, configurazione di quella versione (senza i valori dei segreti, H8) ed esito del deploy.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/versions/{version} (the `GetAppVersion` operationId).
+	GetAppVersion(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, version AppVersionParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRepositoryArchive Archivio ZIP o tar.gz di un ref (streaming)
 	//
@@ -10230,6 +11692,277 @@ type ClientInterface interface {
 	//
 	// Corresponds with DELETE /users/{username}/totp (the `ResetUserTotp` operationId).
 	ResetUserTotp(ctx context.Context, username UsernameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+// ListAdminApps Elenca le app di tutta l'istanza con garantito, uso e tetto (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Console Admin · Apps & resources (H9, H11): per app parte garantita, uso, tetto, copie, se l'immagine e' verificata e se gira come root.
+//
+// Corresponds with GET /admin/apps (the `ListAdminApps` operationId).
+func (c *Client) ListAdminApps(ctx context.Context, params *ListAdminAppsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAdminAppsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAdminAppsCapacity Legge la capacita' del server e la riserva per le app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Priorita' servizi di GitStack, poi app, poi job della CI (H11): hardware, parte riservata ai servizi, spazio per le app con il garantito gia' assegnato, job della CI. `appsShareWarning` e' vero oltre l'80%.
+//
+// Corresponds with GET /admin/apps/capacity (the `GetAdminAppsCapacity` operationId).
+func (c *Client) GetAdminAppsCapacity(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAdminAppsCapacityRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListAdminAppOwnerQuotas Elenca le quote delle app per owner (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Le quote contano sull'owner del repo (H5, H11): CPU e RAM garantite e disco dei volumi, con l'uso e l'avviso all'80%. Compaiono gli owner con almeno un'app o una quota impostata.
+//
+// Corresponds with GET /admin/apps/quotas (the `ListAdminAppOwnerQuotas` operationId).
+func (c *Client) ListAdminAppOwnerQuotas(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAdminAppOwnerQuotasRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteAdminAppOwnerQuota Riporta la quota di un owner al default (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Toglie la quota propria dell'owner: valgono i default dell'istanza.
+//
+// Corresponds with DELETE /admin/apps/quotas/{owner} (the `DeleteAdminAppOwnerQuota` operationId).
+func (c *Client) DeleteAdminAppOwnerQuota(ctx context.Context, owner RepoOwnerParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteAdminAppOwnerQuotaRequest(c.Server, owner)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutAdminAppOwnerQuotaWithBody Imposta la quota di un owner (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 404 se l'owner non esiste. 422 `quota_below_usage` se un valore e' sotto quanto l'owner usa gia'.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /admin/apps/quotas/{owner} (the `PutAdminAppOwnerQuota` operationId).
+func (c *Client) PutAdminAppOwnerQuotaWithBody(ctx context.Context, owner RepoOwnerParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutAdminAppOwnerQuotaRequestWithBody(c.Server, owner, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutAdminAppOwnerQuota Imposta la quota di un owner (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 404 se l'owner non esiste. 422 `quota_below_usage` se un valore e' sotto quanto l'owner usa gia'.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /admin/apps/quotas/{owner} (the `PutAdminAppOwnerQuota` operationId).
+func (c *Client) PutAdminAppOwnerQuota(ctx context.Context, owner RepoOwnerParam, body PutAdminAppOwnerQuotaJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutAdminAppOwnerQuotaRequest(c.Server, owner, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAdminAppsReserveWithBody Modifica la parte del server riservata alle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. La riserva e' calcolata dall'hardware e modificabile (H11). 422 `reserve_below_guaranteed` se e' sotto il garantito gia' assegnato alle app, o se supera quanto resta dopo i servizi di GitStack.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /admin/apps/reserve (the `UpdateAdminAppsReserve` operationId).
+func (c *Client) UpdateAdminAppsReserveWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAdminAppsReserveRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAdminAppsReserve Modifica la parte del server riservata alle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. La riserva e' calcolata dall'hardware e modificabile (H11). 422 `reserve_below_guaranteed` se e' sotto il garantito gia' assegnato alle app, o se supera quanto resta dopo i servizi di GitStack.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /admin/apps/reserve (the `UpdateAdminAppsReserve` operationId).
+func (c *Client) UpdateAdminAppsReserve(ctx context.Context, body UpdateAdminAppsReserveJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAdminAppsReserveRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAdminAppsSettings Legge le impostazioni d'istanza delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Dominio delle app (scelto all'installazione, H2), app pubbliche si/no (H1), solo immagini firmate (H10), regola restricted (H9), massimo per app e conservazione dei log (H11, H12).
+//
+// Corresponds with GET /admin/apps/settings (the `GetAdminAppsSettings` operationId).
+func (c *Client) GetAdminAppsSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAdminAppsSettingsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAdminAppsSettingsWithBody Modifica le impostazioni d'istanza delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /admin/apps/settings (the `UpdateAdminAppsSettings` operationId).
+func (c *Client) UpdateAdminAppsSettingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAdminAppsSettingsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAdminAppsSettings Modifica le impostazioni d'istanza delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /admin/apps/settings (the `UpdateAdminAppsSettings` operationId).
+func (c *Client) UpdateAdminAppsSettings(ctx context.Context, body UpdateAdminAppsSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAdminAppsSettingsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListAdminAppTrustedKeys Elenca le chiavi cosign fidate (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. La chiave della CI dell'istanza c'e' sempre e non si toglie (H10); le altre sono aggiunte dall'amministratore. Servono con la regola «solo immagini firmate».
+//
+// Corresponds with GET /admin/apps/trusted-keys (the `ListAdminAppTrustedKeys` operationId).
+func (c *Client) ListAdminAppTrustedKeys(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAdminAppTrustedKeysRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddAdminAppTrustedKeyWithBody Aggiunge una chiave cosign fidata (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 422 `invalid_key` se non e' una chiave pubblica cosign valida; 409 se c'e' gia' (stessa impronta).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/apps/trusted-keys (the `AddAdminAppTrustedKey` operationId).
+func (c *Client) AddAdminAppTrustedKeyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddAdminAppTrustedKeyRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddAdminAppTrustedKey Aggiunge una chiave cosign fidata (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 422 `invalid_key` se non e' una chiave pubblica cosign valida; 409 se c'e' gia' (stessa impronta).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/apps/trusted-keys (the `AddAdminAppTrustedKey` operationId).
+func (c *Client) AddAdminAppTrustedKey(ctx context.Context, body AddAdminAppTrustedKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddAdminAppTrustedKeyRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteAdminAppTrustedKey Toglie una chiave cosign fidata (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 409 `instance_key` per la chiave della CI dell'istanza. Le app gia' in esecuzione con immagini firmate da quella chiave non si fermano; i deploy successivi la rifiutano.
+//
+// Corresponds with DELETE /admin/apps/trusted-keys/{keyId} (the `DeleteAdminAppTrustedKey` operationId).
+func (c *Client) DeleteAdminAppTrustedKey(ctx context.Context, keyId AppTrustedKeyIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteAdminAppTrustedKeyRequest(c.Server, keyId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 // GetCiQueue Legge coda e concorrenza CI (solo amministratore)
@@ -12876,6 +14609,586 @@ func (c *Client) PutRepositoryActionsVariable(ctx context.Context, owner RepoOwn
 // Corresponds with DELETE /repos/{owner}/{repo}/actions/variables/{name} (the `DeleteRepositoryActionsVariable` operationId).
 func (c *Client) DeleteRepositoryActionsVariable(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteRepositoryActionsVariableRequest(c.Server, owner, repo, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListApps Elenca le app del repo
+//
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Per ogni app stato, indirizzo, accesso, versione attiva, branch seguito, copie e se l'immagine e' verificata (H1, H5). Le app di un repo archiviato compaiono ferme (`stoppedReason: repo_archived`).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps (the `ListApps` operationId).
+func (c *Client) ListApps(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAppsRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateAppWithBody Crea un'app nel repo e la mette in esecuzione
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps (the `CreateApp` operationId).
+func (c *Client) CreateAppWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAppRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateApp Crea un'app nel repo e la mette in esecuzione
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps (the `CreateApp` operationId).
+func (c *Client) CreateApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateAppJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAppRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteApp Elimina l'app
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ferma l'app e ne elimina versioni, variabili, segreti e indirizzi; i volumi (v3-b) seguono la regola H5. Non si annulla.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app} (the `DeleteApp` operationId).
+func (c *Client) DeleteApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteAppRequest(c.Server, owner, repo, app)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetApp Legge un'app
+//
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Stato, controllo di salute, versione attiva, copie pronte, parte garantita e tetto, ultimo deploy (anche fallito con ritorno automatico alla versione precedente, H12) e uso corrente (H3, H5).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app} (the `GetApp` operationId).
+func (c *Client) GetApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAppRequest(c.Server, owner, repo, app)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAppWithBody Modifica immagine di base, porta, controllo di salute e deploy automatico
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app} (the `UpdateApp` operationId).
+func (c *Client) UpdateAppWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAppRequestWithBody(c.Server, owner, repo, app, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateApp Modifica immagine di base, porta, controllo di salute e deploy automatico
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app} (the `UpdateApp` operationId).
+func (c *Client) UpdateApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body UpdateAppJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAppRequest(c.Server, owner, repo, app, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAppAccess Legge chi puo' aprire l'app
+//
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Modo di accesso (login GitStack, senza login, pubblica) e, per le app interne, indirizzo e certificato (H1, H2, H6). I domini propri sono della v3-c e non fanno parte di questa versione del contratto.
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/access (the `GetAppAccess` operationId).
+func (c *Client) GetAppAccess(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAppAccessRequest(c.Server, owner, repo, app)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetAppAccessWithBody Imposta chi puo' aprire l'app
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `login` (default): passa chi ha `read` sul repo e l'app riceve l'utente in intestazioni firmate (H6). `none`: senza login, scelta esplicita. `public`: solo se l'amministratore ha abilitato le app pubbliche (H1, doppio consenso): altrimenti 422 `public_apps_disabled`. Una modifica dell'accesso non crea una versione.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/access (the `SetAppAccess` operationId).
+func (c *Client) SetAppAccessWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetAppAccessRequestWithBody(c.Server, owner, repo, app, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetAppAccess Imposta chi puo' aprire l'app
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `login` (default): passa chi ha `read` sul repo e l'app riceve l'utente in intestazioni firmate (H6). `none`: senza login, scelta esplicita. `public`: solo se l'amministratore ha abilitato le app pubbliche (H1, doppio consenso): altrimenti 422 `public_apps_disabled`. Una modifica dell'accesso non crea una versione.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/access (the `SetAppAccess` operationId).
+func (c *Client) SetAppAccess(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetAppAccessRequest(c.Server, owner, repo, app, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeployAppWithBody Mette in produzione un'immagine (nuova versione)
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `write` sul repo (H7).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/deploys (the `DeployApp` operationId).
+func (c *Client) DeployAppWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeployAppRequestWithBody(c.Server, owner, repo, app, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeployApp Mette in produzione un'immagine (nuova versione)
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `write` sul repo (H7).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/deploys (the `DeployApp` operationId).
+func (c *Client) DeployApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body DeployAppJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeployAppRequest(c.Server, owner, repo, app, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAppLogs Legge i log dell'app, in diretta o dalla cronologia
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Righe di tutte le copie o di una (`copy`), mescolate agli eventi della piattaforma (deploy, salute, riavvii: `source=platform`). `follow=true` tiene la connessione aperta (streaming); senza, risponde con le righe fra `since` e `until`. Cronologia indicativa di 7 giorni o 1 GB per app, regolabile dall'amministratore (H12); i segreti sono mascherati `***` (H8). Formato `text` (una riga per riga di log) oppure `ndjson` (un oggetto `AppLogLine` per riga).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/logs (the `GetAppLogs` operationId).
+func (c *Client) GetAppLogs(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *GetAppLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAppLogsRequest(c.Server, owner, repo, app, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAppMetrics Legge le metriche dell'app
+//
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio dell'implementazione e non fa parte del contratto.
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/metrics (the `GetAppMetrics` operationId).
+func (c *Client) GetAppMetrics(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *GetAppMetricsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAppMetricsRequest(c.Server, owner, repo, app, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAppResources Legge parte garantita, tetto e copie
+//
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Parte garantita e tetto per copia (H11), copie, uso corrente e massimo consentito dall'istanza. I volumi sono della v3-b.
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/resources (the `GetAppResources` operationId).
+func (c *Client) GetAppResources(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAppResourcesRequest(c.Server, owner, repo, app)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetAppResourcesWithBody Imposta parte garantita e tetto
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8). Rifiutato con 409 `insufficient_capacity` solo se le parti garantite non ci stanno (H11); 422 `limit_too_high` oltre il massimo per app dell'istanza; la parte garantita non puo' superare il tetto.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/resources (the `SetAppResources` operationId).
+func (c *Client) SetAppResourcesWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetAppResourcesRequestWithBody(c.Server, owner, repo, app, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetAppResources Imposta parte garantita e tetto
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8). Rifiutato con 409 `insufficient_capacity` solo se le parti garantite non ci stanno (H11); 422 `limit_too_high` oltre il massimo per app dell'istanza; la parte garantita non puo' superare il tetto.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/resources (the `SetAppResources` operationId).
+func (c *Client) SetAppResources(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetAppResourcesRequest(c.Server, owner, repo, app, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RestartApp Riavvia le copie dell'app
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Riavvio una copia alla volta (senza interruzione con due o piu' copie, H12); non crea una versione.
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/restart (the `RestartApp` operationId).
+func (c *Client) RestartApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRestartAppRequest(c.Server, owner, repo, app)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RollbackAppWithBody Torna a una versione precedente
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/rollback (the `RollbackApp` operationId).
+func (c *Client) RollbackAppWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRollbackAppRequestWithBody(c.Server, owner, repo, app, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RollbackApp Torna a una versione precedente
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/rollback (the `RollbackApp` operationId).
+func (c *Client) RollbackApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body RollbackAppJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRollbackAppRequest(c.Server, owner, repo, app, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ScaleAppWithBody Imposta il numero di copie
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/scale (the `ScaleApp` operationId).
+func (c *Client) ScaleAppWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewScaleAppRequestWithBody(c.Server, owner, repo, app, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ScaleApp Imposta il numero di copie
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/scale (the `ScaleApp` operationId).
+func (c *Client) ScaleApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body ScaleAppJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewScaleAppRequest(c.Server, owner, repo, app, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListAppSecrets Elenca i metadati dei segreti dell'app
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Mai i valori: i segreti sono cifrati, non si rileggono e sono mascherati `***` nei log (H8). Separati dai segreti della CI.
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/secrets (the `ListAppSecrets` operationId).
+func (c *Client) ListAppSecrets(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAppSecretsRequest(c.Server, owner, repo, app)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteAppSecret Elimina un segreto
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione. Un nome che non c'e' e' 404.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/secrets/{name} (the `DeleteAppSecret` operationId).
+func (c *Client) DeleteAppSecret(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteAppSecretRequest(c.Server, owner, repo, app, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutAppSecretWithBody Crea o sostituisce un segreto
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8). Il valore non torna mai nelle risposte. Un nome non puo' essere insieme variabile e segreto: 409 `name_in_use`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/secrets/{name} (the `PutAppSecret` operationId).
+func (c *Client) PutAppSecretWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutAppSecretRequestWithBody(c.Server, owner, repo, app, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutAppSecret Crea o sostituisce un segreto
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8). Il valore non torna mai nelle risposte. Un nome non puo' essere insieme variabile e segreto: 409 `name_in_use`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/secrets/{name} (the `PutAppSecret` operationId).
+func (c *Client) PutAppSecret(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, body PutAppSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutAppSecretRequest(c.Server, owner, repo, app, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListAppVariables Elenca le variabili dell'app
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Le variabili sono leggibili con `write` (H8); creare o cambiare richiede `admin`. Le variabili impostate da GitStack (`managed: true`) non si modificano.
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/variables (the `ListAppVariables` operationId).
+func (c *Client) ListAppVariables(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAppVariablesRequest(c.Server, owner, repo, app)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteAppVariable Elimina una variabile
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione. Un nome che non c'e' e' 404.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/variables/{name} (the `DeleteAppVariable` operationId).
+func (c *Client) DeleteAppVariable(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteAppVariableRequest(c.Server, owner, repo, app, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutAppVariableWithBody Crea o sostituisce una variabile
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8) e riavvia le copie una alla volta. 422 `managed_variable` per un nome riservato a GitStack. Separata dalle variabili della CI.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/variables/{name} (the `PutAppVariable` operationId).
+func (c *Client) PutAppVariableWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutAppVariableRequestWithBody(c.Server, owner, repo, app, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutAppVariable Crea o sostituisce una variabile
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8) e riavvia le copie una alla volta. 422 `managed_variable` per un nome riservato a GitStack. Separata dalle variabili della CI.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/variables/{name} (the `PutAppVariable` operationId).
+func (c *Client) PutAppVariable(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, body PutAppVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutAppVariableRequest(c.Server, owner, repo, app, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListAppVersions Elenca le versioni dell'app
+//
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Dalla piu' recente. Ogni deploy e ogni modifica di configurazione e' una versione (H8) con chi l'ha fatta, anche un agente con la sua identita' (H13). La versione attiva e la precedente sono sempre nei backup (H4); le piu' vecchie si possono riattivare solo se l'immagine e' ancora nel registry (`imageAvailable`, H12).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/versions (the `ListAppVersions` operationId).
+func (c *Client) ListAppVersions(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *ListAppVersionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAppVersionsRequest(c.Server, owner, repo, app, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAppVersion Legge una versione
+//
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Immagine, configurazione di quella versione (senza i valori dei segreti, H8) ed esito del deploy.
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/versions/{version} (the `GetAppVersion` operationId).
+func (c *Client) GetAppVersion(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, version AppVersionParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAppVersionRequest(c.Server, owner, repo, app, version)
 	if err != nil {
 		return nil, err
 	}
@@ -16479,6 +18792,415 @@ func (c *Client) ResetUserTotp(ctx context.Context, username UsernameParam, reqE
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewListAdminAppsRequest constructs an http.Request for the ListAdminApps method
+func NewListAdminAppsRequest(server string, params *ListAdminAppsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAdminAppsCapacityRequest constructs an http.Request for the GetAdminAppsCapacity method
+func NewGetAdminAppsCapacityRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps/capacity")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListAdminAppOwnerQuotasRequest constructs an http.Request for the ListAdminAppOwnerQuotas method
+func NewListAdminAppOwnerQuotasRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps/quotas")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteAdminAppOwnerQuotaRequest constructs an http.Request for the DeleteAdminAppOwnerQuota method
+func NewDeleteAdminAppOwnerQuotaRequest(server string, owner RepoOwnerParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps/quotas/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutAdminAppOwnerQuotaRequest calls the generic PutAdminAppOwnerQuota builder with application/json body
+func NewPutAdminAppOwnerQuotaRequest(server string, owner RepoOwnerParam, body PutAdminAppOwnerQuotaJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutAdminAppOwnerQuotaRequestWithBody(server, owner, "application/json", bodyReader)
+}
+
+// NewPutAdminAppOwnerQuotaRequestWithBody constructs an http.Request for the PutAdminAppOwnerQuota method, with any body, and a specified content type
+func NewPutAdminAppOwnerQuotaRequestWithBody(server string, owner RepoOwnerParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps/quotas/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewUpdateAdminAppsReserveRequest calls the generic UpdateAdminAppsReserve builder with application/json body
+func NewUpdateAdminAppsReserveRequest(server string, body UpdateAdminAppsReserveJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateAdminAppsReserveRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateAdminAppsReserveRequestWithBody constructs an http.Request for the UpdateAdminAppsReserve method, with any body, and a specified content type
+func NewUpdateAdminAppsReserveRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps/reserve")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetAdminAppsSettingsRequest constructs an http.Request for the GetAdminAppsSettings method
+func NewGetAdminAppsSettingsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps/settings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateAdminAppsSettingsRequest calls the generic UpdateAdminAppsSettings builder with application/json body
+func NewUpdateAdminAppsSettingsRequest(server string, body UpdateAdminAppsSettingsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateAdminAppsSettingsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateAdminAppsSettingsRequestWithBody constructs an http.Request for the UpdateAdminAppsSettings method, with any body, and a specified content type
+func NewUpdateAdminAppsSettingsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps/settings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListAdminAppTrustedKeysRequest constructs an http.Request for the ListAdminAppTrustedKeys method
+func NewListAdminAppTrustedKeysRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps/trusted-keys")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAddAdminAppTrustedKeyRequest calls the generic AddAdminAppTrustedKey builder with application/json body
+func NewAddAdminAppTrustedKeyRequest(server string, body AddAdminAppTrustedKeyJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAddAdminAppTrustedKeyRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAddAdminAppTrustedKeyRequestWithBody constructs an http.Request for the AddAdminAppTrustedKey method, with any body, and a specified content type
+func NewAddAdminAppTrustedKeyRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps/trusted-keys")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteAdminAppTrustedKeyRequest constructs an http.Request for the DeleteAdminAppTrustedKey method
+func NewDeleteAdminAppTrustedKeyRequest(server string, keyId AppTrustedKeyIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "keyId", keyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps/trusted-keys/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewGetCiQueueRequest constructs an http.Request for the GetCiQueue method
@@ -22234,6 +24956,1437 @@ func NewDeleteRepositoryActionsVariableRequest(server string, owner RepoOwnerPar
 	}
 
 	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListAppsRequest constructs an http.Request for the ListApps method
+func NewListAppsRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateAppRequest calls the generic CreateApp builder with application/json body
+func NewCreateAppRequest(server string, owner RepoOwnerParam, repo RepoNameParam, body CreateAppJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateAppRequestWithBody(server, owner, repo, "application/json", bodyReader)
+}
+
+// NewCreateAppRequestWithBody constructs an http.Request for the CreateApp method, with any body, and a specified content type
+func NewCreateAppRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteAppRequest constructs an http.Request for the DeleteApp method
+func NewDeleteAppRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAppRequest constructs an http.Request for the GetApp method
+func NewGetAppRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateAppRequest calls the generic UpdateApp builder with application/json body
+func NewUpdateAppRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body UpdateAppJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateAppRequestWithBody(server, owner, repo, app, "application/json", bodyReader)
+}
+
+// NewUpdateAppRequestWithBody constructs an http.Request for the UpdateApp method, with any body, and a specified content type
+func NewUpdateAppRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetAppAccessRequest constructs an http.Request for the GetAppAccess method
+func NewGetAppAccessRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/access", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetAppAccessRequest calls the generic SetAppAccess builder with application/json body
+func NewSetAppAccessRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppAccessJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetAppAccessRequestWithBody(server, owner, repo, app, "application/json", bodyReader)
+}
+
+// NewSetAppAccessRequestWithBody constructs an http.Request for the SetAppAccess method, with any body, and a specified content type
+func NewSetAppAccessRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/access", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeployAppRequest calls the generic DeployApp builder with application/json body
+func NewDeployAppRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body DeployAppJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewDeployAppRequestWithBody(server, owner, repo, app, "application/json", bodyReader)
+}
+
+// NewDeployAppRequestWithBody constructs an http.Request for the DeployApp method, with any body, and a specified content type
+func NewDeployAppRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/deploys", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetAppLogsRequest constructs an http.Request for the GetAppLogs method
+func NewGetAppLogsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *GetAppLogsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/logs", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Follow != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "follow", *params.Follow, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Since != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "since", *params.Since, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Until != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "until", *params.Until, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Copy != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "copy", *params.Copy, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Source != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "source", *params.Source, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Grep != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "grep", *params.Grep, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Format != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "format", *params.Format, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAppMetricsRequest constructs an http.Request for the GetAppMetrics method
+func NewGetAppMetricsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *GetAppMetricsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/metrics", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Range != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "range", *params.Range, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Copy != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "copy", *params.Copy, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAppResourcesRequest constructs an http.Request for the GetAppResources method
+func NewGetAppResourcesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/resources", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetAppResourcesRequest calls the generic SetAppResources builder with application/json body
+func NewSetAppResourcesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppResourcesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetAppResourcesRequestWithBody(server, owner, repo, app, "application/json", bodyReader)
+}
+
+// NewSetAppResourcesRequestWithBody constructs an http.Request for the SetAppResources method, with any body, and a specified content type
+func NewSetAppResourcesRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/resources", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRestartAppRequest constructs an http.Request for the RestartApp method
+func NewRestartAppRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/restart", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRollbackAppRequest calls the generic RollbackApp builder with application/json body
+func NewRollbackAppRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body RollbackAppJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRollbackAppRequestWithBody(server, owner, repo, app, "application/json", bodyReader)
+}
+
+// NewRollbackAppRequestWithBody constructs an http.Request for the RollbackApp method, with any body, and a specified content type
+func NewRollbackAppRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/rollback", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewScaleAppRequest calls the generic ScaleApp builder with application/json body
+func NewScaleAppRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body ScaleAppJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewScaleAppRequestWithBody(server, owner, repo, app, "application/json", bodyReader)
+}
+
+// NewScaleAppRequestWithBody constructs an http.Request for the ScaleApp method, with any body, and a specified content type
+func NewScaleAppRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/scale", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListAppSecretsRequest constructs an http.Request for the ListAppSecrets method
+func NewListAppSecretsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/secrets", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteAppSecretRequest constructs an http.Request for the DeleteAppSecret method
+func NewDeleteAppSecretRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/secrets/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutAppSecretRequest calls the generic PutAppSecret builder with application/json body
+func NewPutAppSecretRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, body PutAppSecretJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutAppSecretRequestWithBody(server, owner, repo, app, name, "application/json", bodyReader)
+}
+
+// NewPutAppSecretRequestWithBody constructs an http.Request for the PutAppSecret method, with any body, and a specified content type
+func NewPutAppSecretRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/secrets/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListAppVariablesRequest constructs an http.Request for the ListAppVariables method
+func NewListAppVariablesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/variables", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteAppVariableRequest constructs an http.Request for the DeleteAppVariable method
+func NewDeleteAppVariableRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/variables/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutAppVariableRequest calls the generic PutAppVariable builder with application/json body
+func NewPutAppVariableRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, body PutAppVariableJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutAppVariableRequestWithBody(server, owner, repo, app, name, "application/json", bodyReader)
+}
+
+// NewPutAppVariableRequestWithBody constructs an http.Request for the PutAppVariable method, with any body, and a specified content type
+func NewPutAppVariableRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/variables/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListAppVersionsRequest constructs an http.Request for the ListAppVersions method
+func NewListAppVersionsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *ListAppVersionsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/versions", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAppVersionRequest constructs an http.Request for the GetAppVersion method
+func NewGetAppVersionRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, version AppVersionParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "version", version, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/versions/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31407,6 +35560,141 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 
+	// ListAdminAppsWithResponse Elenca le app di tutta l'istanza con garantito, uso e tetto (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Console Admin · Apps & resources (H9, H11): per app parte garantita, uso, tetto, copie, se l'immagine e' verificata e se gira come root.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/apps (the `ListAdminApps` operationId).
+	ListAdminAppsWithResponse(ctx context.Context, params *ListAdminAppsParams, reqEditors ...RequestEditorFn) (*ListAdminAppsResponse, error)
+
+	// GetAdminAppsCapacityWithResponse Legge la capacita' del server e la riserva per le app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Priorita' servizi di GitStack, poi app, poi job della CI (H11): hardware, parte riservata ai servizi, spazio per le app con il garantito gia' assegnato, job della CI. `appsShareWarning` e' vero oltre l'80%.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/apps/capacity (the `GetAdminAppsCapacity` operationId).
+	GetAdminAppsCapacityWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAdminAppsCapacityResponse, error)
+
+	// ListAdminAppOwnerQuotasWithResponse Elenca le quote delle app per owner (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Le quote contano sull'owner del repo (H5, H11): CPU e RAM garantite e disco dei volumi, con l'uso e l'avviso all'80%. Compaiono gli owner con almeno un'app o una quota impostata.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/apps/quotas (the `ListAdminAppOwnerQuotas` operationId).
+	ListAdminAppOwnerQuotasWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAdminAppOwnerQuotasResponse, error)
+
+	// DeleteAdminAppOwnerQuotaWithResponse Riporta la quota di un owner al default (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Toglie la quota propria dell'owner: valgono i default dell'istanza.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /admin/apps/quotas/{owner} (the `DeleteAdminAppOwnerQuota` operationId).
+	DeleteAdminAppOwnerQuotaWithResponse(ctx context.Context, owner RepoOwnerParam, reqEditors ...RequestEditorFn) (*DeleteAdminAppOwnerQuotaResponse, error)
+
+	// PutAdminAppOwnerQuotaWithBodyWithResponse Imposta la quota di un owner (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 404 se l'owner non esiste. 422 `quota_below_usage` se un valore e' sotto quanto l'owner usa gia'.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/apps/quotas/{owner} (the `PutAdminAppOwnerQuota` operationId).
+	PutAdminAppOwnerQuotaWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutAdminAppOwnerQuotaResponse, error)
+
+	// PutAdminAppOwnerQuotaWithResponse Imposta la quota di un owner (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 404 se l'owner non esiste. 422 `quota_below_usage` se un valore e' sotto quanto l'owner usa gia'.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/apps/quotas/{owner} (the `PutAdminAppOwnerQuota` operationId).
+	PutAdminAppOwnerQuotaWithResponse(ctx context.Context, owner RepoOwnerParam, body PutAdminAppOwnerQuotaJSONRequestBody, reqEditors ...RequestEditorFn) (*PutAdminAppOwnerQuotaResponse, error)
+
+	// UpdateAdminAppsReserveWithBodyWithResponse Modifica la parte del server riservata alle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. La riserva e' calcolata dall'hardware e modificabile (H11). 422 `reserve_below_guaranteed` se e' sotto il garantito gia' assegnato alle app, o se supera quanto resta dopo i servizi di GitStack.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/apps/reserve (the `UpdateAdminAppsReserve` operationId).
+	UpdateAdminAppsReserveWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAdminAppsReserveResponse, error)
+
+	// UpdateAdminAppsReserveWithResponse Modifica la parte del server riservata alle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. La riserva e' calcolata dall'hardware e modificabile (H11). 422 `reserve_below_guaranteed` se e' sotto il garantito gia' assegnato alle app, o se supera quanto resta dopo i servizi di GitStack.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/apps/reserve (the `UpdateAdminAppsReserve` operationId).
+	UpdateAdminAppsReserveWithResponse(ctx context.Context, body UpdateAdminAppsReserveJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAdminAppsReserveResponse, error)
+
+	// GetAdminAppsSettingsWithResponse Legge le impostazioni d'istanza delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Dominio delle app (scelto all'installazione, H2), app pubbliche si/no (H1), solo immagini firmate (H10), regola restricted (H9), massimo per app e conservazione dei log (H11, H12).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/apps/settings (the `GetAdminAppsSettings` operationId).
+	GetAdminAppsSettingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAdminAppsSettingsResponse, error)
+
+	// UpdateAdminAppsSettingsWithBodyWithResponse Modifica le impostazioni d'istanza delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/apps/settings (the `UpdateAdminAppsSettings` operationId).
+	UpdateAdminAppsSettingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAdminAppsSettingsResponse, error)
+
+	// UpdateAdminAppsSettingsWithResponse Modifica le impostazioni d'istanza delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/apps/settings (the `UpdateAdminAppsSettings` operationId).
+	UpdateAdminAppsSettingsWithResponse(ctx context.Context, body UpdateAdminAppsSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAdminAppsSettingsResponse, error)
+
+	// ListAdminAppTrustedKeysWithResponse Elenca le chiavi cosign fidate (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. La chiave della CI dell'istanza c'e' sempre e non si toglie (H10); le altre sono aggiunte dall'amministratore. Servono con la regola «solo immagini firmate».
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/apps/trusted-keys (the `ListAdminAppTrustedKeys` operationId).
+	ListAdminAppTrustedKeysWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAdminAppTrustedKeysResponse, error)
+
+	// AddAdminAppTrustedKeyWithBodyWithResponse Aggiunge una chiave cosign fidata (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 422 `invalid_key` se non e' una chiave pubblica cosign valida; 409 se c'e' gia' (stessa impronta).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/apps/trusted-keys (the `AddAdminAppTrustedKey` operationId).
+	AddAdminAppTrustedKeyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddAdminAppTrustedKeyResponse, error)
+
+	// AddAdminAppTrustedKeyWithResponse Aggiunge una chiave cosign fidata (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 422 `invalid_key` se non e' una chiave pubblica cosign valida; 409 se c'e' gia' (stessa impronta).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/apps/trusted-keys (the `AddAdminAppTrustedKey` operationId).
+	AddAdminAppTrustedKeyWithResponse(ctx context.Context, body AddAdminAppTrustedKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*AddAdminAppTrustedKeyResponse, error)
+
+	// DeleteAdminAppTrustedKeyWithResponse Toglie una chiave cosign fidata (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 409 `instance_key` per la chiave della CI dell'istanza. Le app gia' in esecuzione con immagini firmate da quella chiave non si fermano; i deploy successivi la rifiutano.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /admin/apps/trusted-keys/{keyId} (the `DeleteAdminAppTrustedKey` operationId).
+	DeleteAdminAppTrustedKeyWithResponse(ctx context.Context, keyId AppTrustedKeyIdParam, reqEditors ...RequestEditorFn) (*DeleteAdminAppTrustedKeyResponse, error)
+
 	// GetCiQueueWithResponse Legge coda e concorrenza CI (solo amministratore)
 	//
 	// Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
@@ -32716,6 +37004,294 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with DELETE /repos/{owner}/{repo}/actions/variables/{name} (the `DeleteRepositoryActionsVariable` operationId).
 	DeleteRepositoryActionsVariableWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name ActionsNameParam, reqEditors ...RequestEditorFn) (*DeleteRepositoryActionsVariableResponse, error)
+
+	// ListAppsWithResponse Elenca le app del repo
+	//
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Per ogni app stato, indirizzo, accesso, versione attiva, branch seguito, copie e se l'immagine e' verificata (H1, H5). Le app di un repo archiviato compaiono ferme (`stoppedReason: repo_archived`).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps (the `ListApps` operationId).
+	ListAppsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ListAppsResponse, error)
+
+	// CreateAppWithBodyWithResponse Crea un'app nel repo e la mette in esecuzione
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps (the `CreateApp` operationId).
+	CreateAppWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAppResponse, error)
+
+	// CreateAppWithResponse Crea un'app nel repo e la mette in esecuzione
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps (the `CreateApp` operationId).
+	CreateAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateAppJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAppResponse, error)
+
+	// DeleteAppWithResponse Elimina l'app
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ferma l'app e ne elimina versioni, variabili, segreti e indirizzi; i volumi (v3-b) seguono la regola H5. Non si annulla.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app} (the `DeleteApp` operationId).
+	DeleteAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*DeleteAppResponse, error)
+
+	// GetAppWithResponse Legge un'app
+	//
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Stato, controllo di salute, versione attiva, copie pronte, parte garantita e tetto, ultimo deploy (anche fallito con ritorno automatico alla versione precedente, H12) e uso corrente (H3, H5).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app} (the `GetApp` operationId).
+	GetAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*GetAppResponse, error)
+
+	// UpdateAppWithBodyWithResponse Modifica immagine di base, porta, controllo di salute e deploy automatico
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app} (the `UpdateApp` operationId).
+	UpdateAppWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAppResponse, error)
+
+	// UpdateAppWithResponse Modifica immagine di base, porta, controllo di salute e deploy automatico
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app} (the `UpdateApp` operationId).
+	UpdateAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body UpdateAppJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAppResponse, error)
+
+	// GetAppAccessWithResponse Legge chi puo' aprire l'app
+	//
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Modo di accesso (login GitStack, senza login, pubblica) e, per le app interne, indirizzo e certificato (H1, H2, H6). I domini propri sono della v3-c e non fanno parte di questa versione del contratto.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/access (the `GetAppAccess` operationId).
+	GetAppAccessWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*GetAppAccessResponse, error)
+
+	// SetAppAccessWithBodyWithResponse Imposta chi puo' aprire l'app
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `login` (default): passa chi ha `read` sul repo e l'app riceve l'utente in intestazioni firmate (H6). `none`: senza login, scelta esplicita. `public`: solo se l'amministratore ha abilitato le app pubbliche (H1, doppio consenso): altrimenti 422 `public_apps_disabled`. Una modifica dell'accesso non crea una versione.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/access (the `SetAppAccess` operationId).
+	SetAppAccessWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetAppAccessResponse, error)
+
+	// SetAppAccessWithResponse Imposta chi puo' aprire l'app
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `login` (default): passa chi ha `read` sul repo e l'app riceve l'utente in intestazioni firmate (H6). `none`: senza login, scelta esplicita. `public`: solo se l'amministratore ha abilitato le app pubbliche (H1, doppio consenso): altrimenti 422 `public_apps_disabled`. Una modifica dell'accesso non crea una versione.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/access (the `SetAppAccess` operationId).
+	SetAppAccessWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*SetAppAccessResponse, error)
+
+	// DeployAppWithBodyWithResponse Mette in produzione un'immagine (nuova versione)
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `write` sul repo (H7).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/deploys (the `DeployApp` operationId).
+	DeployAppWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeployAppResponse, error)
+
+	// DeployAppWithResponse Mette in produzione un'immagine (nuova versione)
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `write` sul repo (H7).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/deploys (the `DeployApp` operationId).
+	DeployAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body DeployAppJSONRequestBody, reqEditors ...RequestEditorFn) (*DeployAppResponse, error)
+
+	// GetAppLogsWithResponse Legge i log dell'app, in diretta o dalla cronologia
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Righe di tutte le copie o di una (`copy`), mescolate agli eventi della piattaforma (deploy, salute, riavvii: `source=platform`). `follow=true` tiene la connessione aperta (streaming); senza, risponde con le righe fra `since` e `until`. Cronologia indicativa di 7 giorni o 1 GB per app, regolabile dall'amministratore (H12); i segreti sono mascherati `***` (H8). Formato `text` (una riga per riga di log) oppure `ndjson` (un oggetto `AppLogLine` per riga).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/logs (the `GetAppLogs` operationId).
+	GetAppLogsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *GetAppLogsParams, reqEditors ...RequestEditorFn) (*GetAppLogsResponse, error)
+
+	// GetAppMetricsWithResponse Legge le metriche dell'app
+	//
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio dell'implementazione e non fa parte del contratto.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/metrics (the `GetAppMetrics` operationId).
+	GetAppMetricsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *GetAppMetricsParams, reqEditors ...RequestEditorFn) (*GetAppMetricsResponse, error)
+
+	// GetAppResourcesWithResponse Legge parte garantita, tetto e copie
+	//
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Parte garantita e tetto per copia (H11), copie, uso corrente e massimo consentito dall'istanza. I volumi sono della v3-b.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/resources (the `GetAppResources` operationId).
+	GetAppResourcesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*GetAppResourcesResponse, error)
+
+	// SetAppResourcesWithBodyWithResponse Imposta parte garantita e tetto
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8). Rifiutato con 409 `insufficient_capacity` solo se le parti garantite non ci stanno (H11); 422 `limit_too_high` oltre il massimo per app dell'istanza; la parte garantita non puo' superare il tetto.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/resources (the `SetAppResources` operationId).
+	SetAppResourcesWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetAppResourcesResponse, error)
+
+	// SetAppResourcesWithResponse Imposta parte garantita e tetto
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8). Rifiutato con 409 `insufficient_capacity` solo se le parti garantite non ci stanno (H11); 422 `limit_too_high` oltre il massimo per app dell'istanza; la parte garantita non puo' superare il tetto.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/resources (the `SetAppResources` operationId).
+	SetAppResourcesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*SetAppResourcesResponse, error)
+
+	// RestartAppWithResponse Riavvia le copie dell'app
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Riavvio una copia alla volta (senza interruzione con due o piu' copie, H12); non crea una versione.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/restart (the `RestartApp` operationId).
+	RestartAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*RestartAppResponse, error)
+
+	// RollbackAppWithBodyWithResponse Torna a una versione precedente
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/rollback (the `RollbackApp` operationId).
+	RollbackAppWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RollbackAppResponse, error)
+
+	// RollbackAppWithResponse Torna a una versione precedente
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/rollback (the `RollbackApp` operationId).
+	RollbackAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body RollbackAppJSONRequestBody, reqEditors ...RequestEditorFn) (*RollbackAppResponse, error)
+
+	// ScaleAppWithBodyWithResponse Imposta il numero di copie
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/scale (the `ScaleApp` operationId).
+	ScaleAppWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ScaleAppResponse, error)
+
+	// ScaleAppWithResponse Imposta il numero di copie
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/scale (the `ScaleApp` operationId).
+	ScaleAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body ScaleAppJSONRequestBody, reqEditors ...RequestEditorFn) (*ScaleAppResponse, error)
+
+	// ListAppSecretsWithResponse Elenca i metadati dei segreti dell'app
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Mai i valori: i segreti sono cifrati, non si rileggono e sono mascherati `***` nei log (H8). Separati dai segreti della CI.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/secrets (the `ListAppSecrets` operationId).
+	ListAppSecretsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*ListAppSecretsResponse, error)
+
+	// DeleteAppSecretWithResponse Elimina un segreto
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione. Un nome che non c'e' e' 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/secrets/{name} (the `DeleteAppSecret` operationId).
+	DeleteAppSecretWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, reqEditors ...RequestEditorFn) (*DeleteAppSecretResponse, error)
+
+	// PutAppSecretWithBodyWithResponse Crea o sostituisce un segreto
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8). Il valore non torna mai nelle risposte. Un nome non puo' essere insieme variabile e segreto: 409 `name_in_use`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/secrets/{name} (the `PutAppSecret` operationId).
+	PutAppSecretWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutAppSecretResponse, error)
+
+	// PutAppSecretWithResponse Crea o sostituisce un segreto
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8). Il valore non torna mai nelle risposte. Un nome non puo' essere insieme variabile e segreto: 409 `name_in_use`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/secrets/{name} (the `PutAppSecret` operationId).
+	PutAppSecretWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, body PutAppSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*PutAppSecretResponse, error)
+
+	// ListAppVariablesWithResponse Elenca le variabili dell'app
+	//
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Le variabili sono leggibili con `write` (H8); creare o cambiare richiede `admin`. Le variabili impostate da GitStack (`managed: true`) non si modificano.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/variables (the `ListAppVariables` operationId).
+	ListAppVariablesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*ListAppVariablesResponse, error)
+
+	// DeleteAppVariableWithResponse Elimina una variabile
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione. Un nome che non c'e' e' 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/variables/{name} (the `DeleteAppVariable` operationId).
+	DeleteAppVariableWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, reqEditors ...RequestEditorFn) (*DeleteAppVariableResponse, error)
+
+	// PutAppVariableWithBodyWithResponse Crea o sostituisce una variabile
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8) e riavvia le copie una alla volta. 422 `managed_variable` per un nome riservato a GitStack. Separata dalle variabili della CI.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/variables/{name} (the `PutAppVariable` operationId).
+	PutAppVariableWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutAppVariableResponse, error)
+
+	// PutAppVariableWithResponse Crea o sostituisce una variabile
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8) e riavvia le copie una alla volta. 422 `managed_variable` per un nome riservato a GitStack. Separata dalle variabili della CI.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/variables/{name} (the `PutAppVariable` operationId).
+	PutAppVariableWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, body PutAppVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*PutAppVariableResponse, error)
+
+	// ListAppVersionsWithResponse Elenca le versioni dell'app
+	//
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Dalla piu' recente. Ogni deploy e ogni modifica di configurazione e' una versione (H8) con chi l'ha fatta, anche un agente con la sua identita' (H13). La versione attiva e la precedente sono sempre nei backup (H4); le piu' vecchie si possono riattivare solo se l'immagine e' ancora nel registry (`imageAvailable`, H12).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/versions (the `ListAppVersions` operationId).
+	ListAppVersionsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *ListAppVersionsParams, reqEditors ...RequestEditorFn) (*ListAppVersionsResponse, error)
+
+	// GetAppVersionWithResponse Legge una versione
+	//
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Immagine, configurazione di quella versione (senza i valori dei segreti, H8) ed esito del deploy.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/versions/{version} (the `GetAppVersion` operationId).
+	GetAppVersionWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, version AppVersionParam, reqEditors ...RequestEditorFn) (*GetAppVersionResponse, error)
 
 	// GetRepositoryArchiveWithResponse Archivio ZIP o tar.gz di un ref (streaming)
 	//
@@ -34495,6 +39071,695 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with DELETE /users/{username}/totp (the `ResetUserTotp` operationId).
 	ResetUserTotpWithResponse(ctx context.Context, username UsernameParam, reqEditors ...RequestEditorFn) (*ResetUserTotpResponse, error)
+}
+
+type ListAdminAppsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminAppList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAdminAppsResponse) GetJSON200() *AdminAppList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListAdminAppsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListAdminAppsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListAdminAppsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAdminAppsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAdminAppsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAdminAppsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAdminAppsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAdminAppsCapacityResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppsCapacity
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAdminAppsCapacityResponse) GetJSON200() *AppsCapacity {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAdminAppsCapacityResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAdminAppsCapacityResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAdminAppsCapacityResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAdminAppsCapacityResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAdminAppsCapacityResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAdminAppsCapacityResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListAdminAppOwnerQuotasResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppOwnerQuotaList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAdminAppOwnerQuotasResponse) GetJSON200() *AppOwnerQuotaList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListAdminAppOwnerQuotasResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListAdminAppOwnerQuotasResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAdminAppOwnerQuotasResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAdminAppOwnerQuotasResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAdminAppOwnerQuotasResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAdminAppOwnerQuotasResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteAdminAppOwnerQuotaResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteAdminAppOwnerQuotaResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteAdminAppOwnerQuotaResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteAdminAppOwnerQuotaResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteAdminAppOwnerQuotaResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteAdminAppOwnerQuotaResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteAdminAppOwnerQuotaResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteAdminAppOwnerQuotaResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PutAdminAppOwnerQuotaResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppOwnerQuota
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PutAdminAppOwnerQuotaResponse) GetJSON200() *AppOwnerQuota {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r PutAdminAppOwnerQuotaResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r PutAdminAppOwnerQuotaResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r PutAdminAppOwnerQuotaResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r PutAdminAppOwnerQuotaResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r PutAdminAppOwnerQuotaResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r PutAdminAppOwnerQuotaResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PutAdminAppOwnerQuotaResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutAdminAppOwnerQuotaResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PutAdminAppOwnerQuotaResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateAdminAppsReserveResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppsCapacity
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateAdminAppsReserveResponse) GetJSON200() *AppsCapacity {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateAdminAppsReserveResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateAdminAppsReserveResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateAdminAppsReserveResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateAdminAppsReserveResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateAdminAppsReserveResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateAdminAppsReserveResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateAdminAppsReserveResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateAdminAppsReserveResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAdminAppsSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppsInstanceSettings
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAdminAppsSettingsResponse) GetJSON200() *AppsInstanceSettings {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAdminAppsSettingsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAdminAppsSettingsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAdminAppsSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAdminAppsSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAdminAppsSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAdminAppsSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateAdminAppsSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppsInstanceSettings
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateAdminAppsSettingsResponse) GetJSON200() *AppsInstanceSettings {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateAdminAppsSettingsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateAdminAppsSettingsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateAdminAppsSettingsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateAdminAppsSettingsResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateAdminAppsSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateAdminAppsSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateAdminAppsSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateAdminAppsSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListAdminAppTrustedKeysResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppTrustedKeyList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAdminAppTrustedKeysResponse) GetJSON200() *AppTrustedKeyList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListAdminAppTrustedKeysResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListAdminAppTrustedKeysResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAdminAppTrustedKeysResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAdminAppTrustedKeysResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAdminAppTrustedKeysResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAdminAppTrustedKeysResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AddAdminAppTrustedKeyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *AppTrustedKey
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AddAdminAppTrustedKeyResponse) GetJSON201() *AppTrustedKey {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r AddAdminAppTrustedKeyResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r AddAdminAppTrustedKeyResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r AddAdminAppTrustedKeyResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r AddAdminAppTrustedKeyResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r AddAdminAppTrustedKeyResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AddAdminAppTrustedKeyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AddAdminAppTrustedKeyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AddAdminAppTrustedKeyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AddAdminAppTrustedKeyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteAdminAppTrustedKeyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteAdminAppTrustedKeyResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteAdminAppTrustedKeyResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteAdminAppTrustedKeyResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteAdminAppTrustedKeyResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteAdminAppTrustedKeyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteAdminAppTrustedKeyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteAdminAppTrustedKeyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteAdminAppTrustedKeyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetCiQueueResponse struct {
@@ -42563,6 +47828,1642 @@ func (r DeleteRepositoryActionsVariableResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r DeleteRepositoryActionsVariableResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListAppsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAppsResponse) GetJSON200() *AppList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListAppsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListAppsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListAppsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAppsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAppsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAppsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAppsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateAppResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *AppCreated
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r CreateAppResponse) GetJSON202() *AppCreated {
+	return r.JSON202
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateAppResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateAppResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateAppResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateAppResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateAppResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateAppResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateAppResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateAppResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateAppResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateAppResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteAppResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteAppResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteAppResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteAppResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteAppResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteAppResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteAppResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteAppResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteAppResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAppResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *App
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAppResponse) GetJSON200() *App {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAppResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAppResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetAppResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAppResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAppResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAppResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAppResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateAppResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *App
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateAppResponse) GetJSON200() *App {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateAppResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateAppResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateAppResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateAppResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateAppResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateAppResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateAppResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateAppResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateAppResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateAppResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAppAccessResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppAccess
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAppAccessResponse) GetJSON200() *AppAccess {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAppAccessResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAppAccessResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetAppAccessResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAppAccessResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAppAccessResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAppAccessResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAppAccessResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetAppAccessResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppAccess
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetAppAccessResponse) GetJSON200() *AppAccess {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SetAppAccessResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SetAppAccessResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SetAppAccessResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SetAppAccessResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SetAppAccessResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SetAppAccessResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r SetAppAccessResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetAppAccessResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetAppAccessResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetAppAccessResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeployAppResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *AppVersion
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r DeployAppResponse) GetJSON202() *AppVersion {
+	return r.JSON202
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeployAppResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeployAppResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeployAppResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeployAppResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeployAppResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeployAppResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r DeployAppResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeployAppResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeployAppResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeployAppResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAppLogsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetAppLogsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAppLogsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAppLogsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetAppLogsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAppLogsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAppLogsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAppLogsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAppLogsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAppMetricsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppMetrics
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAppMetricsResponse) GetJSON200() *AppMetrics {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetAppMetricsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAppMetricsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAppMetricsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetAppMetricsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAppMetricsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAppMetricsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAppMetricsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAppMetricsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAppResourcesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppResources
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAppResourcesResponse) GetJSON200() *AppResources {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAppResourcesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAppResourcesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetAppResourcesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAppResourcesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAppResourcesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAppResourcesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAppResourcesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetAppResourcesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppResources
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetAppResourcesResponse) GetJSON200() *AppResources {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SetAppResourcesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SetAppResourcesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SetAppResourcesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SetAppResourcesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SetAppResourcesResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SetAppResourcesResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r SetAppResourcesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetAppResourcesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetAppResourcesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetAppResourcesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RestartAppResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *App
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r RestartAppResponse) GetJSON202() *App {
+	return r.JSON202
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RestartAppResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RestartAppResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RestartAppResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r RestartAppResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r RestartAppResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RestartAppResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RestartAppResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RestartAppResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RollbackAppResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *AppVersion
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r RollbackAppResponse) GetJSON202() *AppVersion {
+	return r.JSON202
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RollbackAppResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RollbackAppResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RollbackAppResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RollbackAppResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r RollbackAppResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RollbackAppResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r RollbackAppResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RollbackAppResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RollbackAppResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RollbackAppResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ScaleAppResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *App
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ScaleAppResponse) GetJSON200() *App {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ScaleAppResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ScaleAppResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ScaleAppResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ScaleAppResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ScaleAppResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ScaleAppResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r ScaleAppResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ScaleAppResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ScaleAppResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ScaleAppResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListAppSecretsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppSecretList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAppSecretsResponse) GetJSON200() *AppSecretList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListAppSecretsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListAppSecretsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListAppSecretsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAppSecretsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAppSecretsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAppSecretsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAppSecretsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteAppSecretResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteAppSecretResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteAppSecretResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteAppSecretResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteAppSecretResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteAppSecretResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteAppSecretResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteAppSecretResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteAppSecretResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PutAppSecretResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppSecret
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PutAppSecretResponse) GetJSON200() *AppSecret {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r PutAppSecretResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r PutAppSecretResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r PutAppSecretResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r PutAppSecretResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r PutAppSecretResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r PutAppSecretResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r PutAppSecretResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PutAppSecretResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutAppSecretResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PutAppSecretResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListAppVariablesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppVariableList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAppVariablesResponse) GetJSON200() *AppVariableList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListAppVariablesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListAppVariablesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListAppVariablesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAppVariablesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAppVariablesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAppVariablesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAppVariablesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteAppVariableResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteAppVariableResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteAppVariableResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteAppVariableResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteAppVariableResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteAppVariableResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteAppVariableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteAppVariableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteAppVariableResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PutAppVariableResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppVariable
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PutAppVariableResponse) GetJSON200() *AppVariable {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r PutAppVariableResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r PutAppVariableResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r PutAppVariableResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r PutAppVariableResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r PutAppVariableResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r PutAppVariableResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r PutAppVariableResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PutAppVariableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutAppVariableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PutAppVariableResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListAppVersionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppVersionList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAppVersionsResponse) GetJSON200() *AppVersionList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListAppVersionsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListAppVersionsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListAppVersionsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListAppVersionsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAppVersionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAppVersionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAppVersionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAppVersionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAppVersionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppVersion
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAppVersionResponse) GetJSON200() *AppVersion {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAppVersionResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAppVersionResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetAppVersionResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAppVersionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAppVersionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAppVersionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAppVersionResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -54750,6 +61651,231 @@ func (r ResetUserTotpResponse) ContentType() string {
 	return ""
 }
 
+// ListAdminAppsWithResponse Elenca le app di tutta l'istanza con garantito, uso e tetto (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Console Admin · Apps & resources (H9, H11): per app parte garantita, uso, tetto, copie, se l'immagine e' verificata e se gira come root.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/apps (the `ListAdminApps` operationId).
+func (c *ClientWithResponses) ListAdminAppsWithResponse(ctx context.Context, params *ListAdminAppsParams, reqEditors ...RequestEditorFn) (*ListAdminAppsResponse, error) {
+	rsp, err := c.ListAdminApps(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAdminAppsResponse(rsp)
+}
+
+// GetAdminAppsCapacityWithResponse Legge la capacita' del server e la riserva per le app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Priorita' servizi di GitStack, poi app, poi job della CI (H11): hardware, parte riservata ai servizi, spazio per le app con il garantito gia' assegnato, job della CI. `appsShareWarning` e' vero oltre l'80%.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/apps/capacity (the `GetAdminAppsCapacity` operationId).
+func (c *ClientWithResponses) GetAdminAppsCapacityWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAdminAppsCapacityResponse, error) {
+	rsp, err := c.GetAdminAppsCapacity(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAdminAppsCapacityResponse(rsp)
+}
+
+// ListAdminAppOwnerQuotasWithResponse Elenca le quote delle app per owner (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Le quote contano sull'owner del repo (H5, H11): CPU e RAM garantite e disco dei volumi, con l'uso e l'avviso all'80%. Compaiono gli owner con almeno un'app o una quota impostata.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/apps/quotas (the `ListAdminAppOwnerQuotas` operationId).
+func (c *ClientWithResponses) ListAdminAppOwnerQuotasWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAdminAppOwnerQuotasResponse, error) {
+	rsp, err := c.ListAdminAppOwnerQuotas(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAdminAppOwnerQuotasResponse(rsp)
+}
+
+// DeleteAdminAppOwnerQuotaWithResponse Riporta la quota di un owner al default (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Toglie la quota propria dell'owner: valgono i default dell'istanza.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /admin/apps/quotas/{owner} (the `DeleteAdminAppOwnerQuota` operationId).
+func (c *ClientWithResponses) DeleteAdminAppOwnerQuotaWithResponse(ctx context.Context, owner RepoOwnerParam, reqEditors ...RequestEditorFn) (*DeleteAdminAppOwnerQuotaResponse, error) {
+	rsp, err := c.DeleteAdminAppOwnerQuota(ctx, owner, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteAdminAppOwnerQuotaResponse(rsp)
+}
+
+// PutAdminAppOwnerQuotaWithBodyWithResponse Imposta la quota di un owner (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 404 se l'owner non esiste. 422 `quota_below_usage` se un valore e' sotto quanto l'owner usa gia'.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/apps/quotas/{owner} (the `PutAdminAppOwnerQuota` operationId).
+func (c *ClientWithResponses) PutAdminAppOwnerQuotaWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutAdminAppOwnerQuotaResponse, error) {
+	rsp, err := c.PutAdminAppOwnerQuotaWithBody(ctx, owner, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutAdminAppOwnerQuotaResponse(rsp)
+}
+
+// PutAdminAppOwnerQuotaWithResponse Imposta la quota di un owner (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 404 se l'owner non esiste. 422 `quota_below_usage` se un valore e' sotto quanto l'owner usa gia'.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/apps/quotas/{owner} (the `PutAdminAppOwnerQuota` operationId).
+func (c *ClientWithResponses) PutAdminAppOwnerQuotaWithResponse(ctx context.Context, owner RepoOwnerParam, body PutAdminAppOwnerQuotaJSONRequestBody, reqEditors ...RequestEditorFn) (*PutAdminAppOwnerQuotaResponse, error) {
+	rsp, err := c.PutAdminAppOwnerQuota(ctx, owner, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutAdminAppOwnerQuotaResponse(rsp)
+}
+
+// UpdateAdminAppsReserveWithBodyWithResponse Modifica la parte del server riservata alle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. La riserva e' calcolata dall'hardware e modificabile (H11). 422 `reserve_below_guaranteed` se e' sotto il garantito gia' assegnato alle app, o se supera quanto resta dopo i servizi di GitStack.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/apps/reserve (the `UpdateAdminAppsReserve` operationId).
+func (c *ClientWithResponses) UpdateAdminAppsReserveWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAdminAppsReserveResponse, error) {
+	rsp, err := c.UpdateAdminAppsReserveWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAdminAppsReserveResponse(rsp)
+}
+
+// UpdateAdminAppsReserveWithResponse Modifica la parte del server riservata alle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. La riserva e' calcolata dall'hardware e modificabile (H11). 422 `reserve_below_guaranteed` se e' sotto il garantito gia' assegnato alle app, o se supera quanto resta dopo i servizi di GitStack.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/apps/reserve (the `UpdateAdminAppsReserve` operationId).
+func (c *ClientWithResponses) UpdateAdminAppsReserveWithResponse(ctx context.Context, body UpdateAdminAppsReserveJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAdminAppsReserveResponse, error) {
+	rsp, err := c.UpdateAdminAppsReserve(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAdminAppsReserveResponse(rsp)
+}
+
+// GetAdminAppsSettingsWithResponse Legge le impostazioni d'istanza delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Dominio delle app (scelto all'installazione, H2), app pubbliche si/no (H1), solo immagini firmate (H10), regola restricted (H9), massimo per app e conservazione dei log (H11, H12).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/apps/settings (the `GetAdminAppsSettings` operationId).
+func (c *ClientWithResponses) GetAdminAppsSettingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAdminAppsSettingsResponse, error) {
+	rsp, err := c.GetAdminAppsSettings(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAdminAppsSettingsResponse(rsp)
+}
+
+// UpdateAdminAppsSettingsWithBodyWithResponse Modifica le impostazioni d'istanza delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/apps/settings (the `UpdateAdminAppsSettings` operationId).
+func (c *ClientWithResponses) UpdateAdminAppsSettingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAdminAppsSettingsResponse, error) {
+	rsp, err := c.UpdateAdminAppsSettingsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAdminAppsSettingsResponse(rsp)
+}
+
+// UpdateAdminAppsSettingsWithResponse Modifica le impostazioni d'istanza delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/apps/settings (the `UpdateAdminAppsSettings` operationId).
+func (c *ClientWithResponses) UpdateAdminAppsSettingsWithResponse(ctx context.Context, body UpdateAdminAppsSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAdminAppsSettingsResponse, error) {
+	rsp, err := c.UpdateAdminAppsSettings(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAdminAppsSettingsResponse(rsp)
+}
+
+// ListAdminAppTrustedKeysWithResponse Elenca le chiavi cosign fidate (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. La chiave della CI dell'istanza c'e' sempre e non si toglie (H10); le altre sono aggiunte dall'amministratore. Servono con la regola «solo immagini firmate».
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/apps/trusted-keys (the `ListAdminAppTrustedKeys` operationId).
+func (c *ClientWithResponses) ListAdminAppTrustedKeysWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAdminAppTrustedKeysResponse, error) {
+	rsp, err := c.ListAdminAppTrustedKeys(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAdminAppTrustedKeysResponse(rsp)
+}
+
+// AddAdminAppTrustedKeyWithBodyWithResponse Aggiunge una chiave cosign fidata (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 422 `invalid_key` se non e' una chiave pubblica cosign valida; 409 se c'e' gia' (stessa impronta).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/apps/trusted-keys (the `AddAdminAppTrustedKey` operationId).
+func (c *ClientWithResponses) AddAdminAppTrustedKeyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddAdminAppTrustedKeyResponse, error) {
+	rsp, err := c.AddAdminAppTrustedKeyWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddAdminAppTrustedKeyResponse(rsp)
+}
+
+// AddAdminAppTrustedKeyWithResponse Aggiunge una chiave cosign fidata (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 422 `invalid_key` se non e' una chiave pubblica cosign valida; 409 se c'e' gia' (stessa impronta).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/apps/trusted-keys (the `AddAdminAppTrustedKey` operationId).
+func (c *ClientWithResponses) AddAdminAppTrustedKeyWithResponse(ctx context.Context, body AddAdminAppTrustedKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*AddAdminAppTrustedKeyResponse, error) {
+	rsp, err := c.AddAdminAppTrustedKey(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddAdminAppTrustedKeyResponse(rsp)
+}
+
+// DeleteAdminAppTrustedKeyWithResponse Toglie una chiave cosign fidata (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. 409 `instance_key` per la chiave della CI dell'istanza. Le app gia' in esecuzione con immagini firmate da quella chiave non si fermano; i deploy successivi la rifiutano.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /admin/apps/trusted-keys/{keyId} (the `DeleteAdminAppTrustedKey` operationId).
+func (c *ClientWithResponses) DeleteAdminAppTrustedKeyWithResponse(ctx context.Context, keyId AppTrustedKeyIdParam, reqEditors ...RequestEditorFn) (*DeleteAdminAppTrustedKeyResponse, error) {
+	rsp, err := c.DeleteAdminAppTrustedKey(ctx, keyId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteAdminAppTrustedKeyResponse(rsp)
+}
+
 // GetCiQueueWithResponse Legge coda e concorrenza CI (solo amministratore)
 //
 // Solo l'amministratore dell'installazione: lo scope `write:resource` da solo non basta. Un token o una sessione di un utente senza il ruolo di amministratore d'istanza riceve 403 `forbidden`, anche se lo scope c'e'.
@@ -56970,6 +64096,486 @@ func (c *ClientWithResponses) DeleteRepositoryActionsVariableWithResponse(ctx co
 		return nil, err
 	}
 	return ParseDeleteRepositoryActionsVariableResponse(rsp)
+}
+
+// ListAppsWithResponse Elenca le app del repo
+//
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Per ogni app stato, indirizzo, accesso, versione attiva, branch seguito, copie e se l'immagine e' verificata (H1, H5). Le app di un repo archiviato compaiono ferme (`stoppedReason: repo_archived`).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps (the `ListApps` operationId).
+func (c *ClientWithResponses) ListAppsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ListAppsResponse, error) {
+	rsp, err := c.ListApps(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAppsResponse(rsp)
+}
+
+// CreateAppWithBodyWithResponse Crea un'app nel repo e la mette in esecuzione
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps (the `CreateApp` operationId).
+func (c *ClientWithResponses) CreateAppWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAppResponse, error) {
+	rsp, err := c.CreateAppWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAppResponse(rsp)
+}
+
+// CreateAppWithResponse Crea un'app nel repo e la mette in esecuzione
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps (the `CreateApp` operationId).
+func (c *ClientWithResponses) CreateAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateAppJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAppResponse, error) {
+	rsp, err := c.CreateApp(ctx, owner, repo, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAppResponse(rsp)
+}
+
+// DeleteAppWithResponse Elimina l'app
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ferma l'app e ne elimina versioni, variabili, segreti e indirizzi; i volumi (v3-b) seguono la regola H5. Non si annulla.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app} (the `DeleteApp` operationId).
+func (c *ClientWithResponses) DeleteAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*DeleteAppResponse, error) {
+	rsp, err := c.DeleteApp(ctx, owner, repo, app, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteAppResponse(rsp)
+}
+
+// GetAppWithResponse Legge un'app
+//
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Stato, controllo di salute, versione attiva, copie pronte, parte garantita e tetto, ultimo deploy (anche fallito con ritorno automatico alla versione precedente, H12) e uso corrente (H3, H5).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app} (the `GetApp` operationId).
+func (c *ClientWithResponses) GetAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*GetAppResponse, error) {
+	rsp, err := c.GetApp(ctx, owner, repo, app, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAppResponse(rsp)
+}
+
+// UpdateAppWithBodyWithResponse Modifica immagine di base, porta, controllo di salute e deploy automatico
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app} (the `UpdateApp` operationId).
+func (c *ClientWithResponses) UpdateAppWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAppResponse, error) {
+	rsp, err := c.UpdateAppWithBody(ctx, owner, repo, app, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAppResponse(rsp)
+}
+
+// UpdateAppWithResponse Modifica immagine di base, porta, controllo di salute e deploy automatico
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app} (the `UpdateApp` operationId).
+func (c *ClientWithResponses) UpdateAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body UpdateAppJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAppResponse, error) {
+	rsp, err := c.UpdateApp(ctx, owner, repo, app, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAppResponse(rsp)
+}
+
+// GetAppAccessWithResponse Legge chi puo' aprire l'app
+//
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Modo di accesso (login GitStack, senza login, pubblica) e, per le app interne, indirizzo e certificato (H1, H2, H6). I domini propri sono della v3-c e non fanno parte di questa versione del contratto.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/access (the `GetAppAccess` operationId).
+func (c *ClientWithResponses) GetAppAccessWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*GetAppAccessResponse, error) {
+	rsp, err := c.GetAppAccess(ctx, owner, repo, app, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAppAccessResponse(rsp)
+}
+
+// SetAppAccessWithBodyWithResponse Imposta chi puo' aprire l'app
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `login` (default): passa chi ha `read` sul repo e l'app riceve l'utente in intestazioni firmate (H6). `none`: senza login, scelta esplicita. `public`: solo se l'amministratore ha abilitato le app pubbliche (H1, doppio consenso): altrimenti 422 `public_apps_disabled`. Una modifica dell'accesso non crea una versione.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/access (the `SetAppAccess` operationId).
+func (c *ClientWithResponses) SetAppAccessWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetAppAccessResponse, error) {
+	rsp, err := c.SetAppAccessWithBody(ctx, owner, repo, app, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetAppAccessResponse(rsp)
+}
+
+// SetAppAccessWithResponse Imposta chi puo' aprire l'app
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `login` (default): passa chi ha `read` sul repo e l'app riceve l'utente in intestazioni firmate (H6). `none`: senza login, scelta esplicita. `public`: solo se l'amministratore ha abilitato le app pubbliche (H1, doppio consenso): altrimenti 422 `public_apps_disabled`. Una modifica dell'accesso non crea una versione.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/access (the `SetAppAccess` operationId).
+func (c *ClientWithResponses) SetAppAccessWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*SetAppAccessResponse, error) {
+	rsp, err := c.SetAppAccess(ctx, owner, repo, app, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetAppAccessResponse(rsp)
+}
+
+// DeployAppWithBodyWithResponse Mette in produzione un'immagine (nuova versione)
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `write` sul repo (H7).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/deploys (the `DeployApp` operationId).
+func (c *ClientWithResponses) DeployAppWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeployAppResponse, error) {
+	rsp, err := c.DeployAppWithBody(ctx, owner, repo, app, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeployAppResponse(rsp)
+}
+
+// DeployAppWithResponse Mette in produzione un'immagine (nuova versione)
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `write` sul repo (H7).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/deploys (the `DeployApp` operationId).
+func (c *ClientWithResponses) DeployAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body DeployAppJSONRequestBody, reqEditors ...RequestEditorFn) (*DeployAppResponse, error) {
+	rsp, err := c.DeployApp(ctx, owner, repo, app, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeployAppResponse(rsp)
+}
+
+// GetAppLogsWithResponse Legge i log dell'app, in diretta o dalla cronologia
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Righe di tutte le copie o di una (`copy`), mescolate agli eventi della piattaforma (deploy, salute, riavvii: `source=platform`). `follow=true` tiene la connessione aperta (streaming); senza, risponde con le righe fra `since` e `until`. Cronologia indicativa di 7 giorni o 1 GB per app, regolabile dall'amministratore (H12); i segreti sono mascherati `***` (H8). Formato `text` (una riga per riga di log) oppure `ndjson` (un oggetto `AppLogLine` per riga).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/logs (the `GetAppLogs` operationId).
+func (c *ClientWithResponses) GetAppLogsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *GetAppLogsParams, reqEditors ...RequestEditorFn) (*GetAppLogsResponse, error) {
+	rsp, err := c.GetAppLogs(ctx, owner, repo, app, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAppLogsResponse(rsp)
+}
+
+// GetAppMetricsWithResponse Legge le metriche dell'app
+//
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio dell'implementazione e non fa parte del contratto.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/metrics (the `GetAppMetrics` operationId).
+func (c *ClientWithResponses) GetAppMetricsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *GetAppMetricsParams, reqEditors ...RequestEditorFn) (*GetAppMetricsResponse, error) {
+	rsp, err := c.GetAppMetrics(ctx, owner, repo, app, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAppMetricsResponse(rsp)
+}
+
+// GetAppResourcesWithResponse Legge parte garantita, tetto e copie
+//
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Parte garantita e tetto per copia (H11), copie, uso corrente e massimo consentito dall'istanza. I volumi sono della v3-b.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/resources (the `GetAppResources` operationId).
+func (c *ClientWithResponses) GetAppResourcesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*GetAppResourcesResponse, error) {
+	rsp, err := c.GetAppResources(ctx, owner, repo, app, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAppResourcesResponse(rsp)
+}
+
+// SetAppResourcesWithBodyWithResponse Imposta parte garantita e tetto
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8). Rifiutato con 409 `insufficient_capacity` solo se le parti garantite non ci stanno (H11); 422 `limit_too_high` oltre il massimo per app dell'istanza; la parte garantita non puo' superare il tetto.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/resources (the `SetAppResources` operationId).
+func (c *ClientWithResponses) SetAppResourcesWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetAppResourcesResponse, error) {
+	rsp, err := c.SetAppResourcesWithBody(ctx, owner, repo, app, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetAppResourcesResponse(rsp)
+}
+
+// SetAppResourcesWithResponse Imposta parte garantita e tetto
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8). Rifiutato con 409 `insufficient_capacity` solo se le parti garantite non ci stanno (H11); 422 `limit_too_high` oltre il massimo per app dell'istanza; la parte garantita non puo' superare il tetto.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/resources (the `SetAppResources` operationId).
+func (c *ClientWithResponses) SetAppResourcesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*SetAppResourcesResponse, error) {
+	rsp, err := c.SetAppResources(ctx, owner, repo, app, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetAppResourcesResponse(rsp)
+}
+
+// RestartAppWithResponse Riavvia le copie dell'app
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Riavvio una copia alla volta (senza interruzione con due o piu' copie, H12); non crea una versione.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/restart (the `RestartApp` operationId).
+func (c *ClientWithResponses) RestartAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*RestartAppResponse, error) {
+	rsp, err := c.RestartApp(ctx, owner, repo, app, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRestartAppResponse(rsp)
+}
+
+// RollbackAppWithBodyWithResponse Torna a una versione precedente
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/rollback (the `RollbackApp` operationId).
+func (c *ClientWithResponses) RollbackAppWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RollbackAppResponse, error) {
+	rsp, err := c.RollbackAppWithBody(ctx, owner, repo, app, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRollbackAppResponse(rsp)
+}
+
+// RollbackAppWithResponse Torna a una versione precedente
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/rollback (the `RollbackApp` operationId).
+func (c *ClientWithResponses) RollbackAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body RollbackAppJSONRequestBody, reqEditors ...RequestEditorFn) (*RollbackAppResponse, error) {
+	rsp, err := c.RollbackApp(ctx, owner, repo, app, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRollbackAppResponse(rsp)
+}
+
+// ScaleAppWithBodyWithResponse Imposta il numero di copie
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/scale (the `ScaleApp` operationId).
+func (c *ClientWithResponses) ScaleAppWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ScaleAppResponse, error) {
+	rsp, err := c.ScaleAppWithBody(ctx, owner, repo, app, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseScaleAppResponse(rsp)
+}
+
+// ScaleAppWithResponse Imposta il numero di copie
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/scale (the `ScaleApp` operationId).
+func (c *ClientWithResponses) ScaleAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body ScaleAppJSONRequestBody, reqEditors ...RequestEditorFn) (*ScaleAppResponse, error) {
+	rsp, err := c.ScaleApp(ctx, owner, repo, app, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseScaleAppResponse(rsp)
+}
+
+// ListAppSecretsWithResponse Elenca i metadati dei segreti dell'app
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Mai i valori: i segreti sono cifrati, non si rileggono e sono mascherati `***` nei log (H8). Separati dai segreti della CI.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/secrets (the `ListAppSecrets` operationId).
+func (c *ClientWithResponses) ListAppSecretsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*ListAppSecretsResponse, error) {
+	rsp, err := c.ListAppSecrets(ctx, owner, repo, app, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAppSecretsResponse(rsp)
+}
+
+// DeleteAppSecretWithResponse Elimina un segreto
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione. Un nome che non c'e' e' 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/secrets/{name} (the `DeleteAppSecret` operationId).
+func (c *ClientWithResponses) DeleteAppSecretWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, reqEditors ...RequestEditorFn) (*DeleteAppSecretResponse, error) {
+	rsp, err := c.DeleteAppSecret(ctx, owner, repo, app, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteAppSecretResponse(rsp)
+}
+
+// PutAppSecretWithBodyWithResponse Crea o sostituisce un segreto
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8). Il valore non torna mai nelle risposte. Un nome non puo' essere insieme variabile e segreto: 409 `name_in_use`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/secrets/{name} (the `PutAppSecret` operationId).
+func (c *ClientWithResponses) PutAppSecretWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutAppSecretResponse, error) {
+	rsp, err := c.PutAppSecretWithBody(ctx, owner, repo, app, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutAppSecretResponse(rsp)
+}
+
+// PutAppSecretWithResponse Crea o sostituisce un segreto
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8). Il valore non torna mai nelle risposte. Un nome non puo' essere insieme variabile e segreto: 409 `name_in_use`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/secrets/{name} (the `PutAppSecret` operationId).
+func (c *ClientWithResponses) PutAppSecretWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, body PutAppSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*PutAppSecretResponse, error) {
+	rsp, err := c.PutAppSecret(ctx, owner, repo, app, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutAppSecretResponse(rsp)
+}
+
+// ListAppVariablesWithResponse Elenca le variabili dell'app
+//
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Le variabili sono leggibili con `write` (H8); creare o cambiare richiede `admin`. Le variabili impostate da GitStack (`managed: true`) non si modificano.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/variables (the `ListAppVariables` operationId).
+func (c *ClientWithResponses) ListAppVariablesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*ListAppVariablesResponse, error) {
+	rsp, err := c.ListAppVariables(ctx, owner, repo, app, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAppVariablesResponse(rsp)
+}
+
+// DeleteAppVariableWithResponse Elimina una variabile
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione. Un nome che non c'e' e' 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/variables/{name} (the `DeleteAppVariable` operationId).
+func (c *ClientWithResponses) DeleteAppVariableWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, reqEditors ...RequestEditorFn) (*DeleteAppVariableResponse, error) {
+	rsp, err := c.DeleteAppVariable(ctx, owner, repo, app, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteAppVariableResponse(rsp)
+}
+
+// PutAppVariableWithBodyWithResponse Crea o sostituisce una variabile
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8) e riavvia le copie una alla volta. 422 `managed_variable` per un nome riservato a GitStack. Separata dalle variabili della CI.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/variables/{name} (the `PutAppVariable` operationId).
+func (c *ClientWithResponses) PutAppVariableWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutAppVariableResponse, error) {
+	rsp, err := c.PutAppVariableWithBody(ctx, owner, repo, app, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutAppVariableResponse(rsp)
+}
+
+// PutAppVariableWithResponse Crea o sostituisce una variabile
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione (H8) e riavvia le copie una alla volta. 422 `managed_variable` per un nome riservato a GitStack. Separata dalle variabili della CI.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/variables/{name} (the `PutAppVariable` operationId).
+func (c *ClientWithResponses) PutAppVariableWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam, body PutAppVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*PutAppVariableResponse, error) {
+	rsp, err := c.PutAppVariable(ctx, owner, repo, app, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutAppVariableResponse(rsp)
+}
+
+// ListAppVersionsWithResponse Elenca le versioni dell'app
+//
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Dalla piu' recente. Ogni deploy e ogni modifica di configurazione e' una versione (H8) con chi l'ha fatta, anche un agente con la sua identita' (H13). La versione attiva e la precedente sono sempre nei backup (H4); le piu' vecchie si possono riattivare solo se l'immagine e' ancora nel registry (`imageAvailable`, H12).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/versions (the `ListAppVersions` operationId).
+func (c *ClientWithResponses) ListAppVersionsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *ListAppVersionsParams, reqEditors ...RequestEditorFn) (*ListAppVersionsResponse, error) {
+	rsp, err := c.ListAppVersions(ctx, owner, repo, app, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAppVersionsResponse(rsp)
+}
+
+// GetAppVersionWithResponse Legge una versione
+//
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Immagine, configurazione di quella versione (senza i valori dei segreti, H8) ed esito del deploy.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/versions/{version} (the `GetAppVersion` operationId).
+func (c *ClientWithResponses) GetAppVersionWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, version AppVersionParam, reqEditors ...RequestEditorFn) (*GetAppVersionResponse, error) {
+	rsp, err := c.GetAppVersion(ctx, owner, repo, app, version, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAppVersionResponse(rsp)
 }
 
 // GetRepositoryArchiveWithResponse Archivio ZIP o tar.gz di un ref (streaming)
@@ -59967,6 +67573,536 @@ func (c *ClientWithResponses) ResetUserTotpWithResponse(ctx context.Context, use
 		return nil, err
 	}
 	return ParseResetUserTotpResponse(rsp)
+}
+
+// ParseListAdminAppsResponse parses an HTTP response from a ListAdminAppsWithResponse call
+func ParseListAdminAppsResponse(rsp *http.Response) (*ListAdminAppsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAdminAppsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminAppList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAdminAppsCapacityResponse parses an HTTP response from a GetAdminAppsCapacityWithResponse call
+func ParseGetAdminAppsCapacityResponse(rsp *http.Response) (*GetAdminAppsCapacityResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAdminAppsCapacityResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppsCapacity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAdminAppOwnerQuotasResponse parses an HTTP response from a ListAdminAppOwnerQuotasWithResponse call
+func ParseListAdminAppOwnerQuotasResponse(rsp *http.Response) (*ListAdminAppOwnerQuotasResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAdminAppOwnerQuotasResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppOwnerQuotaList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteAdminAppOwnerQuotaResponse parses an HTTP response from a DeleteAdminAppOwnerQuotaWithResponse call
+func ParseDeleteAdminAppOwnerQuotaResponse(rsp *http.Response) (*DeleteAdminAppOwnerQuotaResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteAdminAppOwnerQuotaResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutAdminAppOwnerQuotaResponse parses an HTTP response from a PutAdminAppOwnerQuotaWithResponse call
+func ParsePutAdminAppOwnerQuotaResponse(rsp *http.Response) (*PutAdminAppOwnerQuotaResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutAdminAppOwnerQuotaResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppOwnerQuota
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateAdminAppsReserveResponse parses an HTTP response from a UpdateAdminAppsReserveWithResponse call
+func ParseUpdateAdminAppsReserveResponse(rsp *http.Response) (*UpdateAdminAppsReserveResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateAdminAppsReserveResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppsCapacity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAdminAppsSettingsResponse parses an HTTP response from a GetAdminAppsSettingsWithResponse call
+func ParseGetAdminAppsSettingsResponse(rsp *http.Response) (*GetAdminAppsSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAdminAppsSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppsInstanceSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateAdminAppsSettingsResponse parses an HTTP response from a UpdateAdminAppsSettingsWithResponse call
+func ParseUpdateAdminAppsSettingsResponse(rsp *http.Response) (*UpdateAdminAppsSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateAdminAppsSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppsInstanceSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAdminAppTrustedKeysResponse parses an HTTP response from a ListAdminAppTrustedKeysWithResponse call
+func ParseListAdminAppTrustedKeysResponse(rsp *http.Response) (*ListAdminAppTrustedKeysResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAdminAppTrustedKeysResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppTrustedKeyList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAddAdminAppTrustedKeyResponse parses an HTTP response from a AddAdminAppTrustedKeyWithResponse call
+func ParseAddAdminAppTrustedKeyResponse(rsp *http.Response) (*AddAdminAppTrustedKeyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AddAdminAppTrustedKeyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest AppTrustedKey
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteAdminAppTrustedKeyResponse parses an HTTP response from a DeleteAdminAppTrustedKeyWithResponse call
+func ParseDeleteAdminAppTrustedKeyResponse(rsp *http.Response) (*DeleteAdminAppTrustedKeyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteAdminAppTrustedKeyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseGetCiQueueResponse parses an HTTP response from a GetCiQueueWithResponse call
@@ -66398,6 +74534,1306 @@ func ParseDeleteRepositoryActionsVariableResponse(rsp *http.Response) (*DeleteRe
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAppsResponse parses an HTTP response from a ListAppsWithResponse call
+func ParseListAppsResponse(rsp *http.Response) (*ListAppsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAppsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateAppResponse parses an HTTP response from a CreateAppWithResponse call
+func ParseCreateAppResponse(rsp *http.Response) (*CreateAppResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateAppResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest AppCreated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteAppResponse parses an HTTP response from a DeleteAppWithResponse call
+func ParseDeleteAppResponse(rsp *http.Response) (*DeleteAppResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteAppResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAppResponse parses an HTTP response from a GetAppWithResponse call
+func ParseGetAppResponse(rsp *http.Response) (*GetAppResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAppResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest App
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateAppResponse parses an HTTP response from a UpdateAppWithResponse call
+func ParseUpdateAppResponse(rsp *http.Response) (*UpdateAppResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateAppResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest App
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAppAccessResponse parses an HTTP response from a GetAppAccessWithResponse call
+func ParseGetAppAccessResponse(rsp *http.Response) (*GetAppAccessResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAppAccessResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppAccess
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetAppAccessResponse parses an HTTP response from a SetAppAccessWithResponse call
+func ParseSetAppAccessResponse(rsp *http.Response) (*SetAppAccessResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetAppAccessResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppAccess
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeployAppResponse parses an HTTP response from a DeployAppWithResponse call
+func ParseDeployAppResponse(rsp *http.Response) (*DeployAppResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeployAppResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest AppVersion
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAppLogsResponse parses an HTTP response from a GetAppLogsWithResponse call
+func ParseGetAppLogsResponse(rsp *http.Response) (*GetAppLogsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAppLogsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAppMetricsResponse parses an HTTP response from a GetAppMetricsWithResponse call
+func ParseGetAppMetricsResponse(rsp *http.Response) (*GetAppMetricsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAppMetricsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppMetrics
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAppResourcesResponse parses an HTTP response from a GetAppResourcesWithResponse call
+func ParseGetAppResourcesResponse(rsp *http.Response) (*GetAppResourcesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAppResourcesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppResources
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetAppResourcesResponse parses an HTTP response from a SetAppResourcesWithResponse call
+func ParseSetAppResourcesResponse(rsp *http.Response) (*SetAppResourcesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetAppResourcesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppResources
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRestartAppResponse parses an HTTP response from a RestartAppWithResponse call
+func ParseRestartAppResponse(rsp *http.Response) (*RestartAppResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RestartAppResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest App
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRollbackAppResponse parses an HTTP response from a RollbackAppWithResponse call
+func ParseRollbackAppResponse(rsp *http.Response) (*RollbackAppResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RollbackAppResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest AppVersion
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseScaleAppResponse parses an HTTP response from a ScaleAppWithResponse call
+func ParseScaleAppResponse(rsp *http.Response) (*ScaleAppResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ScaleAppResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest App
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAppSecretsResponse parses an HTTP response from a ListAppSecretsWithResponse call
+func ParseListAppSecretsResponse(rsp *http.Response) (*ListAppSecretsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAppSecretsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppSecretList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteAppSecretResponse parses an HTTP response from a DeleteAppSecretWithResponse call
+func ParseDeleteAppSecretResponse(rsp *http.Response) (*DeleteAppSecretResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteAppSecretResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutAppSecretResponse parses an HTTP response from a PutAppSecretWithResponse call
+func ParsePutAppSecretResponse(rsp *http.Response) (*PutAppSecretResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutAppSecretResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppSecret
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAppVariablesResponse parses an HTTP response from a ListAppVariablesWithResponse call
+func ParseListAppVariablesResponse(rsp *http.Response) (*ListAppVariablesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAppVariablesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppVariableList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteAppVariableResponse parses an HTTP response from a DeleteAppVariableWithResponse call
+func ParseDeleteAppVariableResponse(rsp *http.Response) (*DeleteAppVariableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteAppVariableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutAppVariableResponse parses an HTTP response from a PutAppVariableWithResponse call
+func ParsePutAppVariableResponse(rsp *http.Response) (*PutAppVariableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutAppVariableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppVariable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAppVersionsResponse parses an HTTP response from a ListAppVersionsWithResponse call
+func ParseListAppVersionsResponse(rsp *http.Response) (*ListAppVersionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAppVersionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppVersionList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAppVersionResponse parses an HTTP response from a GetAppVersionWithResponse call
+func ParseGetAppVersionResponse(rsp *http.Response) (*GetAppVersionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAppVersionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppVersion
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -76533,6 +85969,11 @@ type CallbackInitiatorInterface interface {
 
 	CommitStatus(ctx context.Context, targetURL string, body CommitStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeploymentWithBody fires the deployment callback with any body
+	DeploymentWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	Deployment(ctx context.Context, targetURL string, body DeploymentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PullRequestWithBody fires the pull_request callback with any body
 	PullRequestWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -76573,6 +86014,30 @@ func (p *CallbackInitiator) CommitStatusWithBody(ctx context.Context, targetURL 
 
 func (p *CallbackInitiator) CommitStatus(ctx context.Context, targetURL string, body CommitStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCommitStatusCallbackRequest(targetURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) DeploymentWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeploymentCallbackRequestWithBody(targetURL, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) Deployment(ctx context.Context, targetURL string, body DeploymentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeploymentCallbackRequest(targetURL, body)
 	if err != nil {
 		return nil, err
 	}
@@ -76716,6 +86181,37 @@ func NewCommitStatusCallbackRequest(targetURL string, body CommitStatusJSONReque
 
 // NewCommitStatusCallbackRequestWithBody builds a POST request for the commit_status callback with any body
 func NewCommitStatusCallbackRequestWithBody(targetURL string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+	_ = err
+
+	reqURL, err := url.Parse(targetURL)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, reqURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeploymentCallbackRequest builds a application/json POST request for the deployment callback
+func NewDeploymentCallbackRequest(targetURL string, body DeploymentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewDeploymentCallbackRequestWithBody(targetURL, "application/json", bodyReader)
+}
+
+// NewDeploymentCallbackRequestWithBody builds a POST request for the deployment callback with any body
+func NewDeploymentCallbackRequestWithBody(targetURL string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 	_ = err
 

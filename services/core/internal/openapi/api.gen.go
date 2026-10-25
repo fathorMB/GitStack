@@ -243,6 +243,258 @@ func (e AdminSystemVersionsK3sUpdate) Valid() bool {
 	}
 }
 
+// Defines values for AppAccessCertificate.
+const (
+	InstanceCa  AppAccessCertificate = "instance_ca"
+	LetsEncrypt AppAccessCertificate = "lets_encrypt"
+	Uploaded    AppAccessCertificate = "uploaded"
+)
+
+// Valid indicates whether the value is a known member of the AppAccessCertificate enum.
+func (e AppAccessCertificate) Valid() bool {
+	switch e {
+	case InstanceCa:
+		return true
+	case LetsEncrypt:
+		return true
+	case Uploaded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppAccessMode.
+const (
+	AppAccessModeLogin  AppAccessMode = "login"
+	AppAccessModeNone   AppAccessMode = "none"
+	AppAccessModePublic AppAccessMode = "public"
+)
+
+// Valid indicates whether the value is a known member of the AppAccessMode enum.
+func (e AppAccessMode) Valid() bool {
+	switch e {
+	case AppAccessModeLogin:
+		return true
+	case AppAccessModeNone:
+		return true
+	case AppAccessModePublic:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppActorType.
+const (
+	AppActorTypeAgent AppActorType = "agent"
+	AppActorTypeHuman AppActorType = "human"
+)
+
+// Valid indicates whether the value is a known member of the AppActorType enum.
+func (e AppActorType) Valid() bool {
+	switch e {
+	case AppActorTypeAgent:
+		return true
+	case AppActorTypeHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppDeployState.
+const (
+	AppDeployStateFailed     AppDeployState = "failed"
+	AppDeployStateInProgress AppDeployState = "in_progress"
+	AppDeployStateRolledBack AppDeployState = "rolled_back"
+	AppDeployStateServing    AppDeployState = "serving"
+	AppDeployStateSuperseded AppDeployState = "superseded"
+)
+
+// Valid indicates whether the value is a known member of the AppDeployState enum.
+func (e AppDeployState) Valid() bool {
+	switch e {
+	case AppDeployStateFailed:
+		return true
+	case AppDeployStateInProgress:
+		return true
+	case AppDeployStateRolledBack:
+		return true
+	case AppDeployStateServing:
+		return true
+	case AppDeployStateSuperseded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppImageSource.
+const (
+	AppImageSourceExternal AppImageSource = "external"
+	AppImageSourceRegistry AppImageSource = "registry"
+)
+
+// Valid indicates whether the value is a known member of the AppImageSource enum.
+func (e AppImageSource) Valid() bool {
+	switch e {
+	case AppImageSourceExternal:
+		return true
+	case AppImageSourceRegistry:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppLogLineSource.
+const (
+	AppLogLineSourceApp      AppLogLineSource = "app"
+	AppLogLineSourcePlatform AppLogLineSource = "platform"
+)
+
+// Valid indicates whether the value is a known member of the AppLogLineSource enum.
+func (e AppLogLineSource) Valid() bool {
+	switch e {
+	case AppLogLineSourceApp:
+		return true
+	case AppLogLineSourcePlatform:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppMetricSeriesUnit.
+const (
+	Bytes      AppMetricSeriesUnit = "bytes"
+	Count      AppMetricSeriesUnit = "count"
+	Millicores AppMetricSeriesUnit = "millicores"
+	PerSecond  AppMetricSeriesUnit = "per_second"
+	Ratio      AppMetricSeriesUnit = "ratio"
+)
+
+// Valid indicates whether the value is a known member of the AppMetricSeriesUnit enum.
+func (e AppMetricSeriesUnit) Valid() bool {
+	switch e {
+	case Bytes:
+		return true
+	case Count:
+		return true
+	case Millicores:
+		return true
+	case PerSecond:
+		return true
+	case Ratio:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppMetricsRange.
+const (
+	AppMetricsRangeN1h  AppMetricsRange = "1h"
+	AppMetricsRangeN24h AppMetricsRange = "24h"
+	AppMetricsRangeN6h  AppMetricsRange = "6h"
+	AppMetricsRangeN7d  AppMetricsRange = "7d"
+)
+
+// Valid indicates whether the value is a known member of the AppMetricsRange enum.
+func (e AppMetricsRange) Valid() bool {
+	switch e {
+	case AppMetricsRangeN1h:
+		return true
+	case AppMetricsRangeN24h:
+		return true
+	case AppMetricsRangeN6h:
+		return true
+	case AppMetricsRangeN7d:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppStatus.
+const (
+	AppStatusFailed     AppStatus = "failed"
+	AppStatusRestarting AppStatus = "restarting"
+	AppStatusRunning    AppStatus = "running"
+	AppStatusStarting   AppStatus = "starting"
+	AppStatusStopped    AppStatus = "stopped"
+	AppStatusUnhealthy  AppStatus = "unhealthy"
+)
+
+// Valid indicates whether the value is a known member of the AppStatus enum.
+func (e AppStatus) Valid() bool {
+	switch e {
+	case AppStatusFailed:
+		return true
+	case AppStatusRestarting:
+		return true
+	case AppStatusRunning:
+		return true
+	case AppStatusStarting:
+		return true
+	case AppStatusStopped:
+		return true
+	case AppStatusUnhealthy:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppStoppedReason.
+const (
+	AppStoppedReasonManual       AppStoppedReason = "manual"
+	AppStoppedReasonRepoArchived AppStoppedReason = "repo_archived"
+	AppStoppedReasonRepoDeleted  AppStoppedReason = "repo_deleted"
+)
+
+// Valid indicates whether the value is a known member of the AppStoppedReason enum.
+func (e AppStoppedReason) Valid() bool {
+	switch e {
+	case AppStoppedReasonManual:
+		return true
+	case AppStoppedReasonRepoArchived:
+		return true
+	case AppStoppedReasonRepoDeleted:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppVersionTrigger.
+const (
+	AppVersionTriggerBranchPush AppVersionTrigger = "branch_push"
+	AppVersionTriggerConfig     AppVersionTrigger = "config"
+	AppVersionTriggerCreate     AppVersionTrigger = "create"
+	AppVersionTriggerManual     AppVersionTrigger = "manual"
+	AppVersionTriggerRollback   AppVersionTrigger = "rollback"
+)
+
+// Valid indicates whether the value is a known member of the AppVersionTrigger enum.
+func (e AppVersionTrigger) Valid() bool {
+	switch e {
+	case AppVersionTriggerBranchPush:
+		return true
+	case AppVersionTriggerConfig:
+		return true
+	case AppVersionTriggerCreate:
+		return true
+	case AppVersionTriggerManual:
+		return true
+	case AppVersionTriggerRollback:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CiRunnerStatus.
 const (
 	Busy    CiRunnerStatus = "busy"
@@ -1506,9 +1758,64 @@ func (e WebhookDeliveryStatus) Valid() bool {
 	}
 }
 
+// Defines values for WebhookDeploymentPayloadAction.
+const (
+	WebhookDeploymentPayloadActionFailed     WebhookDeploymentPayloadAction = "failed"
+	WebhookDeploymentPayloadActionRolledBack WebhookDeploymentPayloadAction = "rolled_back"
+	WebhookDeploymentPayloadActionStarted    WebhookDeploymentPayloadAction = "started"
+	WebhookDeploymentPayloadActionSucceeded  WebhookDeploymentPayloadAction = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the WebhookDeploymentPayloadAction enum.
+func (e WebhookDeploymentPayloadAction) Valid() bool {
+	switch e {
+	case WebhookDeploymentPayloadActionFailed:
+		return true
+	case WebhookDeploymentPayloadActionRolledBack:
+		return true
+	case WebhookDeploymentPayloadActionStarted:
+		return true
+	case WebhookDeploymentPayloadActionSucceeded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookDeploymentPayloadEvent.
+const (
+	WebhookDeploymentPayloadEventDeployment WebhookDeploymentPayloadEvent = "deployment"
+)
+
+// Valid indicates whether the value is a known member of the WebhookDeploymentPayloadEvent enum.
+func (e WebhookDeploymentPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookDeploymentPayloadEventDeployment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookDeploymentPayloadVersion.
+const (
+	WebhookDeploymentPayloadVersionN1 WebhookDeploymentPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookDeploymentPayloadVersion enum.
+func (e WebhookDeploymentPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookDeploymentPayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WebhookEvent.
 const (
 	WebhookEventCommitStatus      WebhookEvent = "commit_status"
+	WebhookEventDeployment        WebhookEvent = "deployment"
 	WebhookEventIssueComment      WebhookEvent = "issue_comment"
 	WebhookEventIssues            WebhookEvent = "issues"
 	WebhookEventPullRequest       WebhookEvent = "pull_request"
@@ -1524,6 +1831,8 @@ const (
 func (e WebhookEvent) Valid() bool {
 	switch e {
 	case WebhookEventCommitStatus:
+		return true
+	case WebhookEventDeployment:
 		return true
 	case WebhookEventIssueComment:
 		return true
@@ -2139,6 +2448,69 @@ func (e ListNotificationsParamsState) Valid() bool {
 	}
 }
 
+// Defines values for GetAppLogsParamsSource.
+const (
+	GetAppLogsParamsSourceAll      GetAppLogsParamsSource = "all"
+	GetAppLogsParamsSourceApp      GetAppLogsParamsSource = "app"
+	GetAppLogsParamsSourcePlatform GetAppLogsParamsSource = "platform"
+)
+
+// Valid indicates whether the value is a known member of the GetAppLogsParamsSource enum.
+func (e GetAppLogsParamsSource) Valid() bool {
+	switch e {
+	case GetAppLogsParamsSourceAll:
+		return true
+	case GetAppLogsParamsSourceApp:
+		return true
+	case GetAppLogsParamsSourcePlatform:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAppLogsParamsFormat.
+const (
+	GetAppLogsParamsFormatNdjson GetAppLogsParamsFormat = "ndjson"
+	GetAppLogsParamsFormatText   GetAppLogsParamsFormat = "text"
+)
+
+// Valid indicates whether the value is a known member of the GetAppLogsParamsFormat enum.
+func (e GetAppLogsParamsFormat) Valid() bool {
+	switch e {
+	case GetAppLogsParamsFormatNdjson:
+		return true
+	case GetAppLogsParamsFormatText:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAppMetricsParamsRange.
+const (
+	GetAppMetricsParamsRangeN1h  GetAppMetricsParamsRange = "1h"
+	GetAppMetricsParamsRangeN24h GetAppMetricsParamsRange = "24h"
+	GetAppMetricsParamsRangeN6h  GetAppMetricsParamsRange = "6h"
+	GetAppMetricsParamsRangeN7d  GetAppMetricsParamsRange = "7d"
+)
+
+// Valid indicates whether the value is a known member of the GetAppMetricsParamsRange enum.
+func (e GetAppMetricsParamsRange) Valid() bool {
+	switch e {
+	case GetAppMetricsParamsRangeN1h:
+		return true
+	case GetAppMetricsParamsRangeN24h:
+		return true
+	case GetAppMetricsParamsRangeN6h:
+		return true
+	case GetAppMetricsParamsRangeN7d:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetRepositoryArchiveParamsFormat.
 const (
 	GetRepositoryArchiveParamsFormatTarGz GetRepositoryArchiveParamsFormat = "tar.gz"
@@ -2420,6 +2792,41 @@ type ActionsVariableList struct {
 	Items []ActionsVariable `json:"items"`
 }
 
+// AdminApp Riga della tabella Apps dell'amministratore (H9, H11).
+type AdminApp struct {
+	// AboveGuaranteed Sta usando piu' della parte garantita: e' il primo a essere rallentato.
+	AboveGuaranteed bool `json:"aboveGuaranteed"`
+	Copies          int  `json:"copies"`
+
+	// Guaranteed CPU e memoria, per copia.
+	Guaranteed AppResourceAmount `json:"guaranteed"`
+
+	// Limit CPU e memoria, per copia.
+	Limit AppResourceAmount `json:"limit"`
+
+	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+	Name       AppName `json:"name"`
+	Owner      string  `json:"owner"`
+	Repo       string  `json:"repo"`
+	RunsAsRoot *bool   `json:"runsAsRoot"`
+
+	// Status Stato osservato: `starting` (nessuna copia ancora sana), `running`, `restarting`, `unhealthy` (alcune copie non sane), `failed` (nessuna versione parte), `stopped` (fermata a mano o per il repo, vedi `stoppedReason`).
+	Status AppStatus `json:"status"`
+
+	// Usage Uso corrente, somma delle copie. Le richieste e gli errori ci sono solo per le app web.
+	Usage    AppUsage `json:"usage"`
+	Verified bool     `json:"verified"`
+
+	// ViolatesInstanceRules Non rispetta `restricted` o `signedImagesOnly` d'istanza (valgono dal deploy successivo).
+	ViolatesInstanceRules *bool `json:"violatesInstanceRules,omitempty"`
+}
+
+// AdminAppList defines model for AdminAppList.
+type AdminAppList struct {
+	Items []AdminApp `json:"items"`
+	Total int        `json:"total"`
+}
+
 // AdminSystem Stato dell'installazione per Admin · System (mockup 16). Nessun segreto. `published` dice se l'host ha pubblicato le sue informazioni: se no, le sezioni dell'host hanno `configured: false` o stati `none`.
 type AdminSystem struct {
 	// Access Come si raggiunge GitStack. Nessun segreto.
@@ -2644,6 +3051,555 @@ type AdminSystemVersions struct {
 
 // AdminSystemVersionsK3sUpdate `patch`: applicata da `gitstack upgrade`; `minor`: serve `gitstack upgrade --k3s`.
 type AdminSystemVersionsK3sUpdate string
+
+// App defines model for App.
+type App struct {
+	// Access `login` (login GitStack, default, H6), `none` (senza login, scelta esplicita di admin), `public` (su internet, H1, solo con le app pubbliche abilitate).
+	Access AppAccessMode `json:"access"`
+
+	// ActiveVersion Numero della versione che serve il traffico.
+	ActiveVersion int `json:"activeVersion"`
+
+	// Address Indirizzo automatico (H2); assente per un'app senza indirizzo, raggiungibile solo dalle app dello stesso repo.
+	Address *string `json:"address,omitempty"`
+
+	// Copies Copie volute.
+	Copies      int                `json:"copies"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	CreatedBy   *AppActor          `json:"createdBy,omitempty"`
+	Follow      *AppFollow         `json:"follow,omitempty"`
+	HealthCheck *AppHealthCheck    `json:"healthCheck,omitempty"`
+	Id          openapi_types.UUID `json:"id"`
+
+	// Image Immagine di una versione e sua verifica (H10).
+	Image      AppImage       `json:"image"`
+	LastDeploy *AppLastDeploy `json:"lastDeploy,omitempty"`
+
+	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+	Name AppName `json:"name"`
+
+	// Owner Owner del repo: su di lui contano le quote (H5).
+	Owner string `json:"owner"`
+
+	// Port Porta del container. Null per un'app senza indirizzo (worker).
+	Port *int `json:"port,omitempty"`
+
+	// ReadyCopies Copie sane.
+	ReadyCopies int    `json:"readyCopies"`
+	Repo        string `json:"repo"`
+
+	// Resources Parte garantita (sempre riservata) e tetto (usato se il server ha spazio), per copia (H11).
+	Resources AppResources `json:"resources"`
+
+	// RunningPreviousVersion Il deploy dell'ultima versione e' fallito e serve ancora la precedente.
+	RunningPreviousVersion *bool `json:"runningPreviousVersion,omitempty"`
+
+	// Status Stato osservato: `starting` (nessuna copia ancora sana), `running`, `restarting`, `unhealthy` (alcune copie non sane), `failed` (nessuna versione parte), `stopped` (fermata a mano o per il repo, vedi `stoppedReason`).
+	Status        AppStatus         `json:"status"`
+	StoppedReason *AppStoppedReason `json:"stoppedReason,omitempty"`
+	UpdatedAt     time.Time         `json:"updatedAt"`
+	Usage         *AppUsage         `json:"usage,omitempty"`
+}
+
+// AppAccess defines model for AppAccess.
+type AppAccess struct {
+	Address *string `json:"address,omitempty"`
+
+	// Certificate Origine del certificato dell'indirizzo automatico (H2): CA interna per le interne.
+	Certificate *AppAccessCertificate `json:"certificate,omitempty"`
+	ChangedAt   *time.Time            `json:"changedAt,omitempty"`
+	ChangedBy   *AppActor             `json:"changedBy,omitempty"`
+
+	// IdentityHeaders Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6). I nomi delle intestazioni e la forma della firma non sono ancora fissati dal contratto.
+	IdentityHeaders *bool `json:"identityHeaders,omitempty"`
+
+	// Mode `login` (login GitStack, default, H6), `none` (senza login, scelta esplicita di admin), `public` (su internet, H1, solo con le app pubbliche abilitate).
+	Mode AppAccessMode `json:"mode"`
+
+	// PublicAppsEnabled L'amministratore ha abilitato le app pubbliche (H1, doppio consenso).
+	PublicAppsEnabled bool `json:"publicAppsEnabled"`
+}
+
+// AppAccessCertificate Origine del certificato dell'indirizzo automatico (H2): CA interna per le interne.
+type AppAccessCertificate string
+
+// AppAccessInput defines model for AppAccessInput.
+type AppAccessInput struct {
+	// Mode `login` (login GitStack, default, H6), `none` (senza login, scelta esplicita di admin), `public` (su internet, H1, solo con le app pubbliche abilitate).
+	Mode AppAccessMode `json:"mode"`
+}
+
+// AppAccessMode `login` (login GitStack, default, H6), `none` (senza login, scelta esplicita di admin), `public` (su internet, H1, solo con le app pubbliche abilitate).
+type AppAccessMode string
+
+// AppActor Chi ha fatto un'azione sull'app; un agente compare con la sua identita' (H13).
+type AppActor struct {
+	Id       openapi_types.UUID `json:"id"`
+	Type     AppActorType       `json:"type"`
+	Username string             `json:"username"`
+}
+
+// AppActorType defines model for AppActor.Type.
+type AppActorType string
+
+// AppCopyStatus defines model for AppCopyStatus.
+type AppCopyStatus struct {
+	Name     string `json:"name"`
+	Ready    bool   `json:"ready"`
+	Restarts int    `json:"restarts"`
+}
+
+// AppCreateInput defines model for AppCreateInput.
+type AppCreateInput struct {
+	Copies *int `json:"copies,omitempty"`
+
+	// FollowBranch Branch da seguire (H7). Non disponibile per un'immagine esterna.
+	FollowBranch *string         `json:"followBranch,omitempty"`
+	HealthCheck  *AppHealthCheck `json:"healthCheck,omitempty"`
+
+	// Image Riferimento dell'immagine. Per il registry del repo basta `nome:tag` o il solo tag, risolti contro `<host>/<owner>/<repo>`; altrimenti un riferimento completo a un registry esterno.
+	Image string `json:"image"`
+
+	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+	Name AppName `json:"name"`
+
+	// Port Assente: app senza indirizzo, che parla solo con le app dello stesso repo (H9).
+	Port      *int               `json:"port,omitempty"`
+	Resources *AppResourcesInput `json:"resources,omitempty"`
+
+	// Restricted Rifiuta immagini che girano come root (H9). L'istanza puo' imporlo comunque.
+	Restricted *bool `json:"restricted,omitempty"`
+}
+
+// AppCreated defines model for AppCreated.
+type AppCreated struct {
+	App     App        `json:"app"`
+	Version AppVersion `json:"version"`
+}
+
+// AppDeployInput defines model for AppDeployInput.
+type AppDeployInput struct {
+	// Image Come in `AppCreateInput`: un tag del registry del repo (`sha-91be20d`), `nome:tag`, un digest o un riferimento esterno completo.
+	Image string `json:"image"`
+}
+
+// AppDeployState Esito di una versione: `in_progress` (in avvio o in attesa del controllo di salute), `serving` (serve il traffico), `superseded` (sostituita da una piu' recente), `failed` (non ha superato il controllo di salute) e `rolled_back` (fallita con ritorno automatico alla versione precedente, H12).
+type AppDeployState string
+
+// AppEnvName Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
+type AppEnvName = string
+
+// AppFollow Branch seguito per il deploy automatico (H7).
+type AppFollow struct {
+	Branch string `json:"branch"`
+
+	// Paused Deploy automatici sospesi (per esempio dopo un rollback).
+	Paused bool `json:"paused"`
+}
+
+// AppHealthCheck defines model for AppHealthCheck.
+type AppHealthCheck struct {
+	IntervalSeconds int `json:"intervalSeconds"`
+
+	// Path Percorso HTTP richiesto, per esempio `/healthz`.
+	//
+	// Example: /healthz
+	Path string `json:"path"`
+
+	// TimeoutSeconds Dopo quanto un deploy che non risponde e' considerato fallito.
+	TimeoutSeconds *int `json:"timeoutSeconds,omitempty"`
+}
+
+// AppImage Immagine di una versione e sua verifica (H10).
+type AppImage struct {
+	Digest *string `json:"digest,omitempty"`
+
+	// Reference Riferimento completo, per esempio `homehub.local/acme/handbook/web:sha-7f3a91c`.
+	Reference string `json:"reference"`
+
+	// RunsAsRoot Vero se l'immagine gira come root (avviso baseline, H9); null se non ancora letto.
+	RunsAsRoot *bool `json:"runsAsRoot,omitempty"`
+
+	// SignedBy Impronta o nome della chiave che ha firmato.
+	SignedBy *string `json:"signedBy,omitempty"`
+
+	// Source `registry`: immagine del registry del repo (RG1). `external`: altro registry, mai `verified` a meno di una firma fidata.
+	Source AppImageSource `json:"source"`
+
+	// Verified Firmata con cosign dalla CI dello stesso repo o da una chiave fidata. Falso e' l'etichetta «non verificata» (H10).
+	Verified bool `json:"verified"`
+}
+
+// AppImageSource `registry`: immagine del registry del repo (RG1). `external`: altro registry, mai `verified` a meno di una firma fidata.
+type AppImageSource string
+
+// AppLastDeploy Ultimo deploy tentato, anche fallito (H12).
+type AppLastDeploy struct {
+	FinishedAt *time.Time `json:"finishedAt,omitempty"`
+
+	// Reason Per `failed` e `rolled_back` il perche', per esempio «GET /healthz ha risposto 500 per 2 min».
+	Reason    *string   `json:"reason,omitempty"`
+	StartedAt time.Time `json:"startedAt"`
+
+	// State Esito di una versione: `in_progress` (in avvio o in attesa del controllo di salute), `serving` (serve il traffico), `superseded` (sostituita da una piu' recente), `failed` (non ha superato il controllo di salute) e `rolled_back` (fallita con ritorno automatico alla versione precedente, H12).
+	State   AppDeployState `json:"state"`
+	Version int            `json:"version"`
+}
+
+// AppList defines model for AppList.
+type AppList struct {
+	Items []App `json:"items"`
+
+	// Quota Quota dell'owner del repo (H5, H11), per la riga sopra l'elenco.
+	Quota *AppOwnerQuota `json:"quota,omitempty"`
+}
+
+// AppLogLine defines model for AppLogLine.
+type AppLogLine struct {
+	// Copy Copia che ha scritto la riga (`web-1`); assente per gli eventi della piattaforma.
+	Copy    *string          `json:"copy,omitempty"`
+	Message string           `json:"message"`
+	Source  AppLogLineSource `json:"source"`
+	Time    time.Time        `json:"time"`
+}
+
+// AppLogLineSource defines model for AppLogLine.Source.
+type AppLogLineSource string
+
+// AppLogRetention defines model for AppLogRetention.
+type AppLogRetention struct {
+	Days     int   `json:"days"`
+	MaxBytes int64 `json:"maxBytes"`
+}
+
+// AppMetricPoint defines model for AppMetricPoint.
+type AppMetricPoint struct {
+	Time  time.Time `json:"time"`
+	Value float32   `json:"value"`
+}
+
+// AppMetricSeries defines model for AppMetricSeries.
+type AppMetricSeries struct {
+	Points []AppMetricPoint    `json:"points"`
+	Unit   AppMetricSeriesUnit `json:"unit"`
+}
+
+// AppMetricSeriesUnit defines model for AppMetricSeries.Unit.
+type AppMetricSeriesUnit string
+
+// AppMetrics defines model for AppMetrics.
+type AppMetrics struct {
+	Copies []AppCopyStatus `json:"copies"`
+	Cpu    AppMetricSeries `json:"cpu"`
+
+	// Errors5xx Solo app web.
+	Errors5xx *AppMetricSeries `json:"errors5xx,omitempty"`
+	Memory    AppMetricSeries  `json:"memory"`
+	Range     AppMetricsRange  `json:"range"`
+
+	// Requests Solo app web.
+	Requests    *AppMetricSeries `json:"requests,omitempty"`
+	Restarts24h int              `json:"restarts24h"`
+	StepSeconds int              `json:"stepSeconds"`
+	Usage       *AppUsage        `json:"usage,omitempty"`
+}
+
+// AppMetricsRange defines model for AppMetrics.Range.
+type AppMetricsRange string
+
+// AppName Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+type AppName = string
+
+// AppOwnerQuota Quota delle app di un owner (H5, H11).
+type AppOwnerQuota struct {
+	// IsDefault Valgono i default dell'istanza.
+	IsDefault *bool              `json:"isDefault,omitempty"`
+	Limits    AppOwnerQuotaInput `json:"limits"`
+	Owner     string             `json:"owner"`
+	Used      AppOwnerQuotaInput `json:"used"`
+
+	// Warning Un valore e' oltre l'80% della quota.
+	Warning bool `json:"warning"`
+}
+
+// AppOwnerQuotaInput defines model for AppOwnerQuotaInput.
+type AppOwnerQuotaInput struct {
+	// CpuMillis CPU garantita.
+	CpuMillis int `json:"cpuMillis"`
+
+	// DiskBytes Disco dei volumi (v3-b).
+	DiskBytes int64 `json:"diskBytes"`
+
+	// MemoryBytes RAM garantita.
+	MemoryBytes int64 `json:"memoryBytes"`
+}
+
+// AppOwnerQuotaList defines model for AppOwnerQuotaList.
+type AppOwnerQuotaList struct {
+	Items []AppOwnerQuota `json:"items"`
+}
+
+// AppResourceAmount CPU e memoria, per copia.
+type AppResourceAmount struct {
+	// CpuMillis Millesimi di vCPU (500 = 0,5 vCPU).
+	CpuMillis   int   `json:"cpuMillis"`
+	MemoryBytes int64 `json:"memoryBytes"`
+}
+
+// AppResources Parte garantita (sempre riservata) e tetto (usato se il server ha spazio), per copia (H11).
+type AppResources struct {
+	// Guaranteed CPU e memoria, per copia.
+	Guaranteed AppResourceAmount `json:"guaranteed"`
+
+	// Limit CPU e memoria, per copia.
+	Limit AppResourceAmount `json:"limit"`
+
+	// MaxPerApp Massimo consentito dall'istanza per app.
+	MaxPerApp *AppResourceAmount `json:"maxPerApp,omitempty"`
+}
+
+// AppResourcesInput defines model for AppResourcesInput.
+type AppResourcesInput struct {
+	// Guaranteed CPU e memoria, per copia.
+	Guaranteed AppResourceAmount `json:"guaranteed"`
+
+	// Limit CPU e memoria, per copia.
+	Limit AppResourceAmount `json:"limit"`
+}
+
+// AppRollbackInput defines model for AppRollbackInput.
+type AppRollbackInput struct {
+	PauseAutoDeploy *bool `json:"pauseAutoDeploy,omitempty"`
+
+	// Version Versione da ripristinare come nuova versione.
+	Version int `json:"version"`
+}
+
+// AppScaleInput defines model for AppScaleInput.
+type AppScaleInput struct {
+	// Copies Zero ferma l'app (`stoppedReason: manual`).
+	Copies int `json:"copies"`
+}
+
+// AppSecret defines model for AppSecret.
+type AppSecret struct {
+	// Name Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
+	Name      AppEnvName `json:"name"`
+	UpdatedAt time.Time  `json:"updatedAt"`
+	UpdatedBy *AppActor  `json:"updatedBy,omitempty"`
+	Version   *int       `json:"version,omitempty"`
+}
+
+// AppSecretInput defines model for AppSecretInput.
+type AppSecretInput struct {
+	Value *string `json:"value,omitempty"`
+}
+
+// AppSecretList defines model for AppSecretList.
+type AppSecretList struct {
+	Items []AppSecret `json:"items"`
+}
+
+// AppStatus Stato osservato: `starting` (nessuna copia ancora sana), `running`, `restarting`, `unhealthy` (alcune copie non sane), `failed` (nessuna versione parte), `stopped` (fermata a mano o per il repo, vedi `stoppedReason`).
+type AppStatus string
+
+// AppStoppedReason Perche' e' ferma (H5). `repo_archived` e `repo_deleted` tornano avviabili con il repo; `manual` con scala a zero copie.
+type AppStoppedReason string
+
+// AppTrustedKey defines model for AppTrustedKey.
+type AppTrustedKey struct {
+	CreatedAt   time.Time          `json:"createdAt"`
+	CreatedBy   *AppActor          `json:"createdBy,omitempty"`
+	Fingerprint string             `json:"fingerprint"`
+	Id          openapi_types.UUID `json:"id"`
+
+	// InstanceKey La chiave della CI dell'istanza (H10): sempre presente, non si toglie.
+	InstanceKey bool   `json:"instanceKey"`
+	Name        string `json:"name"`
+
+	// PublicKey Chiave pubblica cosign in PEM.
+	PublicKey *string `json:"publicKey,omitempty"`
+}
+
+// AppTrustedKeyInput defines model for AppTrustedKeyInput.
+type AppTrustedKeyInput struct {
+	Name string `json:"name"`
+
+	// PublicKey Chiave pubblica cosign in PEM.
+	PublicKey string `json:"publicKey"`
+}
+
+// AppTrustedKeyList defines model for AppTrustedKeyList.
+type AppTrustedKeyList struct {
+	Items []AppTrustedKey `json:"items"`
+}
+
+// AppUpdateInput defines model for AppUpdateInput.
+type AppUpdateInput struct {
+	AutoDeployPaused *bool `json:"autoDeployPaused,omitempty"`
+
+	// FollowBranch Branch da seguire; `null` torna ai deploy a mano.
+	FollowBranch *string         `json:"followBranch,omitempty"`
+	HealthCheck  *AppHealthCheck `json:"healthCheck,omitempty"`
+	Port         *int            `json:"port,omitempty"`
+	Restricted   *bool           `json:"restricted,omitempty"`
+}
+
+// AppUsage Uso corrente, somma delle copie. Le richieste e gli errori ci sono solo per le app web.
+type AppUsage struct {
+	CpuMillis int `json:"cpuMillis"`
+
+	// ErrorRatio Quota di risposte 5xx, da 0 a 1.
+	ErrorRatio        *float32 `json:"errorRatio,omitempty"`
+	MemoryBytes       int64    `json:"memoryBytes"`
+	RequestsPerSecond *float32 `json:"requestsPerSecond,omitempty"`
+	Restarts24h       *int     `json:"restarts24h,omitempty"`
+}
+
+// AppVariable defines model for AppVariable.
+type AppVariable struct {
+	// Managed Impostata da GitStack (per esempio l'intestazione dell'utente, H6): sola lettura.
+	Managed bool `json:"managed"`
+
+	// Name Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
+	Name      AppEnvName `json:"name"`
+	UpdatedAt time.Time  `json:"updatedAt"`
+	UpdatedBy *AppActor  `json:"updatedBy,omitempty"`
+	Value     string     `json:"value"`
+
+	// Version Versione creata dall'ultima modifica.
+	Version *int `json:"version,omitempty"`
+}
+
+// AppVariableInput defines model for AppVariableInput.
+type AppVariableInput struct {
+	Value string `json:"value"`
+}
+
+// AppVariableList defines model for AppVariableList.
+type AppVariableList struct {
+	Items []AppVariable `json:"items"`
+}
+
+// AppVersion defines model for AppVersion.
+type AppVersion struct {
+	// Branch Per `branch_push`, il branch.
+	Branch    *string `json:"branch,omitempty"`
+	CommitSha *string `json:"commitSha,omitempty"`
+
+	// Config Configurazione di una versione. I segreti compaiono solo per nome (H8).
+	Config    *AppVersionConfig `json:"config,omitempty"`
+	CreatedAt time.Time         `json:"createdAt"`
+	CreatedBy *AppActor         `json:"createdBy,omitempty"`
+
+	// Image Immagine di una versione e sua verifica (H10).
+	Image AppImage `json:"image"`
+
+	// ImageAvailable L'immagine si puo' ancora scaricare: falso se l'ha tolta la pulizia del registry (RG2).
+	ImageAvailable bool `json:"imageAvailable"`
+
+	// InBackup Versione attiva e precedente: sempre nei backup (H4).
+	InBackup bool `json:"inBackup"`
+	Number   int  `json:"number"`
+
+	// RollbackOf Per `rollback`, la versione ripristinata.
+	RollbackOf *int `json:"rollbackOf,omitempty"`
+
+	// State Esito di una versione: `in_progress` (in avvio o in attesa del controllo di salute), `serving` (serve il traffico), `superseded` (sostituita da una piu' recente), `failed` (non ha superato il controllo di salute) e `rolled_back` (fallita con ritorno automatico alla versione precedente, H12).
+	State       AppDeployState `json:"state"`
+	StateReason *string        `json:"stateReason,omitempty"`
+
+	// Summary Per `config` e `rollback`, che cosa e' cambiato, per esempio «variabile SEARCH_TIMEOUT»; i valori dei segreti non compaiono mai.
+	Summary *string `json:"summary,omitempty"`
+
+	// Trigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta), `rollback`, `create`.
+	Trigger AppVersionTrigger `json:"trigger"`
+}
+
+// AppVersionConfig Configurazione di una versione. I segreti compaiono solo per nome (H8).
+type AppVersionConfig struct {
+	Copies      int             `json:"copies"`
+	HealthCheck *AppHealthCheck `json:"healthCheck,omitempty"`
+	Port        *int            `json:"port,omitempty"`
+
+	// Resources Parte garantita (sempre riservata) e tetto (usato se il server ha spazio), per copia (H11).
+	Resources   AppResources      `json:"resources"`
+	Restricted  *bool             `json:"restricted,omitempty"`
+	SecretNames []AppEnvName      `json:"secretNames"`
+	Variables   map[string]string `json:"variables"`
+}
+
+// AppVersionList defines model for AppVersionList.
+type AppVersionList struct {
+	Items []AppVersion `json:"items"`
+	Total int          `json:"total"`
+}
+
+// AppVersionTrigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta), `rollback`, `create`.
+type AppVersionTrigger string
+
+// AppsCapacity Capacita' del server e priorita' servizi di GitStack, poi app, poi job della CI (H11).
+type AppsCapacity struct {
+	Apps struct {
+		// Guaranteed CPU e memoria, per copia.
+		Guaranteed AppResourceAmount `json:"guaranteed"`
+
+		// Share CPU e memoria, per copia.
+		Share AppResourceAmount `json:"share"`
+
+		// ShareIsDefault La riserva e' quella calcolata dall'hardware, non modificata.
+		ShareIsDefault *bool `json:"shareIsDefault,omitempty"`
+	} `json:"apps"`
+
+	// AppsShareWarning Il garantito supera l'80% della riserva: i nuovi deploy possono essere rifiutati.
+	AppsShareWarning bool `json:"appsShareWarning"`
+	Ci               struct {
+		GuaranteedCpuMillis int  `json:"guaranteedCpuMillis"`
+		Slots               int  `json:"slots"`
+		UsedCpuMillis       *int `json:"usedCpuMillis,omitempty"`
+	} `json:"ci"`
+	Server struct {
+		CpuMillis   int   `json:"cpuMillis"`
+		MemoryBytes int64 `json:"memoryBytes"`
+
+		// Profile Profilo hardware rilevato (per esempio `recommended`).
+		Profile *string `json:"profile,omitempty"`
+	} `json:"server"`
+	Services struct {
+		// Reserved CPU e memoria, per copia.
+		Reserved AppResourceAmount `json:"reserved"`
+	} `json:"services"`
+}
+
+// AppsInstanceSettings defines model for AppsInstanceSettings.
+type AppsInstanceSettings struct {
+	// AppsDomain Dominio wildcard delle app (H2), scelto all'installazione; solo lettura.
+	AppsDomain *string `json:"appsDomain"`
+
+	// AppsDomainIsDefault Senza `--apps-domain` vale il default, con avviso.
+	AppsDomainIsDefault *bool           `json:"appsDomainIsDefault,omitempty"`
+	LogRetention        AppLogRetention `json:"logRetention"`
+
+	// MaxPerApp CPU e memoria, per copia.
+	MaxPerApp         AppResourceAmount `json:"maxPerApp"`
+	PublicAppsEnabled bool              `json:"publicAppsEnabled"`
+	Restricted        bool              `json:"restricted"`
+	SignedImagesOnly  bool              `json:"signedImagesOnly"`
+}
+
+// AppsInstanceSettingsInput defines model for AppsInstanceSettingsInput.
+type AppsInstanceSettingsInput struct {
+	LogRetention AppLogRetention `json:"logRetention"`
+
+	// MaxPerApp CPU e memoria, per copia.
+	MaxPerApp         AppResourceAmount `json:"maxPerApp"`
+	PublicAppsEnabled bool              `json:"publicAppsEnabled"`
+	Restricted        bool              `json:"restricted"`
+	SignedImagesOnly  bool              `json:"signedImagesOnly"`
+}
+
+// AppsReserveInput CPU e memoria, per copia.
+type AppsReserveInput = AppResourceAmount
 
 // Artifact defines model for Artifact.
 type Artifact struct {
@@ -4900,7 +5856,7 @@ type WebhookDeliveryDetail struct {
 	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
 	Error *string `json:"error,omitempty"`
 
-	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`.
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`.
 	Event WebhookEvent `json:"event"`
 
 	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
@@ -4961,7 +5917,7 @@ type WebhookDeliverySummary struct {
 	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
 	Error *string `json:"error,omitempty"`
 
-	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`.
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`.
 	Event WebhookEvent `json:"event"`
 
 	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
@@ -4976,7 +5932,29 @@ type WebhookDeliverySummary struct {
 	StatusCode *int `json:"statusCode,omitempty"`
 }
 
-// WebhookEvent Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`.
+// WebhookDeploymentPayload Payload del webhook `deployment` (H12). `action`: `started` (deploy avviato), `succeeded` (la versione e' sana), `failed` (non ha superato il controllo di salute; resta la precedente), `rolled_back` (rollback a mano riuscito). Una notifica «deploy fallito» va anche a chi l'ha fatto e agli `admin` del repo.
+type WebhookDeploymentPayload struct {
+	Action       WebhookDeploymentPayloadAction  `json:"action"`
+	App          App                             `json:"app"`
+	Deployment   AppVersion                      `json:"deployment"`
+	Event        WebhookDeploymentPayloadEvent   `json:"event"`
+	Organization *WebhookOrganizationRef         `json:"organization,omitempty"`
+	Repository   WebhookRepositoryRef            `json:"repository"`
+	Sender       *WebhookSender                  `json:"sender"`
+	Time         time.Time                       `json:"time"`
+	Version      WebhookDeploymentPayloadVersion `json:"version"`
+}
+
+// WebhookDeploymentPayloadAction defines model for WebhookDeploymentPayload.Action.
+type WebhookDeploymentPayloadAction string
+
+// WebhookDeploymentPayloadEvent defines model for WebhookDeploymentPayload.Event.
+type WebhookDeploymentPayloadEvent string
+
+// WebhookDeploymentPayloadVersion defines model for WebhookDeploymentPayload.Version.
+type WebhookDeploymentPayloadVersion int
+
+// WebhookEvent Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`.
 type WebhookEvent string
 
 // WebhookList defines model for WebhookList.
@@ -5206,6 +6184,18 @@ type WorkflowRunList struct {
 
 // ActionsNameParam defines model for ActionsNameParam.
 type ActionsNameParam = string
+
+// AppEnvNameParam Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
+type AppEnvNameParam = AppEnvName
+
+// AppParam Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+type AppParam = AppName
+
+// AppTrustedKeyIdParam defines model for AppTrustedKeyIdParam.
+type AppTrustedKeyIdParam = openapi_types.UUID
+
+// AppVersionParam defines model for AppVersionParam.
+type AppVersionParam = int
 
 // ArchiveFormatParam defines model for ArchiveFormatParam.
 type ArchiveFormatParam string
@@ -5449,6 +6439,12 @@ type UnexpectedError = Error
 // UnprocessableEntity Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type UnprocessableEntity = Error
 
+// ListAdminAppsParams defines parameters for ListAdminApps.
+type ListAdminAppsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // DeleteNotificationsParams defines parameters for DeleteNotifications.
 type DeleteNotificationsParams struct {
 	State DeleteNotificationsParamsState `form:"state" json:"state"`
@@ -5535,6 +6531,49 @@ type ListActionsCachesParams struct {
 // GetWorkflowJobLogParams defines parameters for GetWorkflowJobLog.
 type GetWorkflowJobLogParams struct {
 	Follow *bool `form:"follow,omitempty" json:"follow,omitempty"`
+}
+
+// GetAppLogsParams defines parameters for GetAppLogs.
+type GetAppLogsParams struct {
+	Follow *bool `form:"follow,omitempty" json:"follow,omitempty"`
+
+	// Since Durata (`5m`, `1h`, `7d`) o istante RFC 3339. Assente: dall'inizio della cronologia, o dall'ultima ora con `follow`.
+	Since *string    `form:"since,omitempty" json:"since,omitempty"`
+	Until *time.Time `form:"until,omitempty" json:"until,omitempty"`
+
+	// Copy Nome di una copia (per esempio `web-1`).
+	Copy   *string                 `form:"copy,omitempty" json:"copy,omitempty"`
+	Source *GetAppLogsParamsSource `form:"source,omitempty" json:"source,omitempty"`
+
+	// Grep Testo da cercare nelle righe (sottostringa).
+	Grep *string `form:"grep,omitempty" json:"grep,omitempty"`
+
+	// Limit Al massimo N righe, le piu' recenti.
+	Limit  *int                    `form:"limit,omitempty" json:"limit,omitempty"`
+	Format *GetAppLogsParamsFormat `form:"format,omitempty" json:"format,omitempty"`
+}
+
+// GetAppLogsParamsSource defines parameters for GetAppLogs.
+type GetAppLogsParamsSource string
+
+// GetAppLogsParamsFormat defines parameters for GetAppLogs.
+type GetAppLogsParamsFormat string
+
+// GetAppMetricsParams defines parameters for GetAppMetrics.
+type GetAppMetricsParams struct {
+	Range *GetAppMetricsParamsRange `form:"range,omitempty" json:"range,omitempty"`
+
+	// Copy Nome di una copia; assente: somma di tutte.
+	Copy *string `form:"copy,omitempty" json:"copy,omitempty"`
+}
+
+// GetAppMetricsParamsRange defines parameters for GetAppMetrics.
+type GetAppMetricsParamsRange string
+
+// ListAppVersionsParams defines parameters for ListAppVersions.
+type ListAppVersionsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
 // GetRepositoryArchiveParams defines parameters for GetRepositoryArchive.
@@ -5868,6 +6907,18 @@ type GetUserAccessParams struct {
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// PutAdminAppOwnerQuotaJSONRequestBody defines body for PutAdminAppOwnerQuota for application/json ContentType.
+type PutAdminAppOwnerQuotaJSONRequestBody = AppOwnerQuotaInput
+
+// UpdateAdminAppsReserveJSONRequestBody defines body for UpdateAdminAppsReserve for application/json ContentType.
+type UpdateAdminAppsReserveJSONRequestBody = AppsReserveInput
+
+// UpdateAdminAppsSettingsJSONRequestBody defines body for UpdateAdminAppsSettings for application/json ContentType.
+type UpdateAdminAppsSettingsJSONRequestBody = AppsInstanceSettingsInput
+
+// AddAdminAppTrustedKeyJSONRequestBody defines body for AddAdminAppTrustedKey for application/json ContentType.
+type AddAdminAppTrustedKeyJSONRequestBody = AppTrustedKeyInput
+
 // UpdateCiStorageSettingsJSONRequestBody defines body for UpdateCiStorageSettings for application/json ContentType.
 type UpdateCiStorageSettingsJSONRequestBody = CiStorageSettings
 
@@ -5903,6 +6954,33 @@ type PutRepositoryActionsSecretJSONRequestBody = ActionsSecretInput
 
 // PutRepositoryActionsVariableJSONRequestBody defines body for PutRepositoryActionsVariable for application/json ContentType.
 type PutRepositoryActionsVariableJSONRequestBody = ActionsVariableInput
+
+// CreateAppJSONRequestBody defines body for CreateApp for application/json ContentType.
+type CreateAppJSONRequestBody = AppCreateInput
+
+// UpdateAppJSONRequestBody defines body for UpdateApp for application/json ContentType.
+type UpdateAppJSONRequestBody = AppUpdateInput
+
+// SetAppAccessJSONRequestBody defines body for SetAppAccess for application/json ContentType.
+type SetAppAccessJSONRequestBody = AppAccessInput
+
+// DeployAppJSONRequestBody defines body for DeployApp for application/json ContentType.
+type DeployAppJSONRequestBody = AppDeployInput
+
+// SetAppResourcesJSONRequestBody defines body for SetAppResources for application/json ContentType.
+type SetAppResourcesJSONRequestBody = AppResourcesInput
+
+// RollbackAppJSONRequestBody defines body for RollbackApp for application/json ContentType.
+type RollbackAppJSONRequestBody = AppRollbackInput
+
+// ScaleAppJSONRequestBody defines body for ScaleApp for application/json ContentType.
+type ScaleAppJSONRequestBody = AppScaleInput
+
+// PutAppSecretJSONRequestBody defines body for PutAppSecret for application/json ContentType.
+type PutAppSecretJSONRequestBody = AppSecretInput
+
+// PutAppVariableJSONRequestBody defines body for PutAppVariable for application/json ContentType.
+type PutAppVariableJSONRequestBody = AppVariableInput
 
 // UpdateBranchSettingsJSONRequestBody defines body for UpdateBranchSettings for application/json ContentType.
 type UpdateBranchSettingsJSONRequestBody = UpdateBranchSettingsInput
@@ -6027,6 +7105,9 @@ type UpdateNotificationPreferencesJSONRequestBody = UpdateNotificationPreference
 // CommitStatusJSONRequestBody defines body for CommitStatus for application/json ContentType.
 type CommitStatusJSONRequestBody = WebhookCommitStatusPayload
 
+// DeploymentJSONRequestBody defines body for Deployment for application/json ContentType.
+type DeploymentJSONRequestBody = WebhookDeploymentPayload
+
 // PullRequestJSONRequestBody defines body for PullRequest for application/json ContentType.
 type PullRequestJSONRequestBody = WebhookPullRequestPayload
 
@@ -6044,6 +7125,39 @@ type WorkflowRunJSONRequestBody = WebhookWorkflowRunPayload
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// ListAdminApps Elenca le app di tutta l'istanza con garantito, uso e tetto (solo amministratore)
+	// (GET /admin/apps)
+	ListAdminApps(w http.ResponseWriter, r *http.Request, params ListAdminAppsParams)
+	// GetAdminAppsCapacity Legge la capacita' del server e la riserva per le app (solo amministratore)
+	// (GET /admin/apps/capacity)
+	GetAdminAppsCapacity(w http.ResponseWriter, r *http.Request)
+	// ListAdminAppOwnerQuotas Elenca le quote delle app per owner (solo amministratore)
+	// (GET /admin/apps/quotas)
+	ListAdminAppOwnerQuotas(w http.ResponseWriter, r *http.Request)
+	// DeleteAdminAppOwnerQuota Riporta la quota di un owner al default (solo amministratore)
+	// (DELETE /admin/apps/quotas/{owner})
+	DeleteAdminAppOwnerQuota(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam)
+	// PutAdminAppOwnerQuota Imposta la quota di un owner (solo amministratore)
+	// (PUT /admin/apps/quotas/{owner})
+	PutAdminAppOwnerQuota(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam)
+	// UpdateAdminAppsReserve Modifica la parte del server riservata alle app (solo amministratore)
+	// (PUT /admin/apps/reserve)
+	UpdateAdminAppsReserve(w http.ResponseWriter, r *http.Request)
+	// GetAdminAppsSettings Legge le impostazioni d'istanza delle app (solo amministratore)
+	// (GET /admin/apps/settings)
+	GetAdminAppsSettings(w http.ResponseWriter, r *http.Request)
+	// UpdateAdminAppsSettings Modifica le impostazioni d'istanza delle app (solo amministratore)
+	// (PUT /admin/apps/settings)
+	UpdateAdminAppsSettings(w http.ResponseWriter, r *http.Request)
+	// ListAdminAppTrustedKeys Elenca le chiavi cosign fidate (solo amministratore)
+	// (GET /admin/apps/trusted-keys)
+	ListAdminAppTrustedKeys(w http.ResponseWriter, r *http.Request)
+	// AddAdminAppTrustedKey Aggiunge una chiave cosign fidata (solo amministratore)
+	// (POST /admin/apps/trusted-keys)
+	AddAdminAppTrustedKey(w http.ResponseWriter, r *http.Request)
+	// DeleteAdminAppTrustedKey Toglie una chiave cosign fidata (solo amministratore)
+	// (DELETE /admin/apps/trusted-keys/{keyId})
+	DeleteAdminAppTrustedKey(w http.ResponseWriter, r *http.Request, keyId AppTrustedKeyIdParam)
 	// GetCiQueue Legge coda e concorrenza CI (solo amministratore)
 	// (GET /admin/ci/queue)
 	GetCiQueue(w http.ResponseWriter, r *http.Request)
@@ -6218,6 +7332,75 @@ type ServerInterface interface {
 	// DeleteRepositoryActionsVariable Elimina una variabile CI del repository
 	// (DELETE /repos/{owner}/{repo}/actions/variables/{name})
 	DeleteRepositoryActionsVariable(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, name ActionsNameParam)
+	// ListApps Elenca le app del repo
+	// (GET /repos/{owner}/{repo}/apps)
+	ListApps(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// CreateApp Crea un'app nel repo e la mette in esecuzione
+	// (POST /repos/{owner}/{repo}/apps)
+	CreateApp(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// DeleteApp Elimina l'app
+	// (DELETE /repos/{owner}/{repo}/apps/{app})
+	DeleteApp(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// GetApp Legge un'app
+	// (GET /repos/{owner}/{repo}/apps/{app})
+	GetApp(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// UpdateApp Modifica immagine di base, porta, controllo di salute e deploy automatico
+	// (PATCH /repos/{owner}/{repo}/apps/{app})
+	UpdateApp(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// GetAppAccess Legge chi puo' aprire l'app
+	// (GET /repos/{owner}/{repo}/apps/{app}/access)
+	GetAppAccess(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// SetAppAccess Imposta chi puo' aprire l'app
+	// (PUT /repos/{owner}/{repo}/apps/{app}/access)
+	SetAppAccess(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// DeployApp Mette in produzione un'immagine (nuova versione)
+	// (POST /repos/{owner}/{repo}/apps/{app}/deploys)
+	DeployApp(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// GetAppLogs Legge i log dell'app, in diretta o dalla cronologia
+	// (GET /repos/{owner}/{repo}/apps/{app}/logs)
+	GetAppLogs(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params GetAppLogsParams)
+	// GetAppMetrics Legge le metriche dell'app
+	// (GET /repos/{owner}/{repo}/apps/{app}/metrics)
+	GetAppMetrics(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params GetAppMetricsParams)
+	// GetAppResources Legge parte garantita, tetto e copie
+	// (GET /repos/{owner}/{repo}/apps/{app}/resources)
+	GetAppResources(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// SetAppResources Imposta parte garantita e tetto
+	// (PUT /repos/{owner}/{repo}/apps/{app}/resources)
+	SetAppResources(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// RestartApp Riavvia le copie dell'app
+	// (POST /repos/{owner}/{repo}/apps/{app}/restart)
+	RestartApp(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// RollbackApp Torna a una versione precedente
+	// (POST /repos/{owner}/{repo}/apps/{app}/rollback)
+	RollbackApp(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// ScaleApp Imposta il numero di copie
+	// (PUT /repos/{owner}/{repo}/apps/{app}/scale)
+	ScaleApp(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// ListAppSecrets Elenca i metadati dei segreti dell'app
+	// (GET /repos/{owner}/{repo}/apps/{app}/secrets)
+	ListAppSecrets(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// DeleteAppSecret Elimina un segreto
+	// (DELETE /repos/{owner}/{repo}/apps/{app}/secrets/{name})
+	DeleteAppSecret(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam)
+	// PutAppSecret Crea o sostituisce un segreto
+	// (PUT /repos/{owner}/{repo}/apps/{app}/secrets/{name})
+	PutAppSecret(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam)
+	// ListAppVariables Elenca le variabili dell'app
+	// (GET /repos/{owner}/{repo}/apps/{app}/variables)
+	ListAppVariables(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// DeleteAppVariable Elimina una variabile
+	// (DELETE /repos/{owner}/{repo}/apps/{app}/variables/{name})
+	DeleteAppVariable(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam)
+	// PutAppVariable Crea o sostituisce una variabile
+	// (PUT /repos/{owner}/{repo}/apps/{app}/variables/{name})
+	PutAppVariable(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, name AppEnvNameParam)
+	// ListAppVersions Elenca le versioni dell'app
+	// (GET /repos/{owner}/{repo}/apps/{app}/versions)
+	ListAppVersions(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params ListAppVersionsParams)
+	// GetAppVersion Legge una versione
+	// (GET /repos/{owner}/{repo}/apps/{app}/versions/{version})
+	GetAppVersion(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, version AppVersionParam)
 	// GetRepositoryArchive Archivio ZIP o tar.gz di un ref (streaming)
 	// (GET /repos/{owner}/{repo}/archive)
 	GetRepositoryArchive(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryArchiveParams)
@@ -6621,6 +7804,228 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListAdminApps operation middleware
+func (siw *ServerInterfaceWrapper) ListAdminApps(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAdminAppsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAdminApps(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAdminAppsCapacity operation middleware
+func (siw *ServerInterfaceWrapper) GetAdminAppsCapacity(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAdminAppsCapacity(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAdminAppOwnerQuotas operation middleware
+func (siw *ServerInterfaceWrapper) ListAdminAppOwnerQuotas(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAdminAppOwnerQuotas(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteAdminAppOwnerQuota operation middleware
+func (siw *ServerInterfaceWrapper) DeleteAdminAppOwnerQuota(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteAdminAppOwnerQuota(w, r, owner)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PutAdminAppOwnerQuota operation middleware
+func (siw *ServerInterfaceWrapper) PutAdminAppOwnerQuota(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutAdminAppOwnerQuota(w, r, owner)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateAdminAppsReserve operation middleware
+func (siw *ServerInterfaceWrapper) UpdateAdminAppsReserve(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateAdminAppsReserve(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAdminAppsSettings operation middleware
+func (siw *ServerInterfaceWrapper) GetAdminAppsSettings(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAdminAppsSettings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateAdminAppsSettings operation middleware
+func (siw *ServerInterfaceWrapper) UpdateAdminAppsSettings(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateAdminAppsSettings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAdminAppTrustedKeys operation middleware
+func (siw *ServerInterfaceWrapper) ListAdminAppTrustedKeys(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAdminAppTrustedKeys(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AddAdminAppTrustedKey operation middleware
+func (siw *ServerInterfaceWrapper) AddAdminAppTrustedKey(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddAdminAppTrustedKey(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteAdminAppTrustedKey operation middleware
+func (siw *ServerInterfaceWrapper) DeleteAdminAppTrustedKey(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "keyId" -------------
+	var keyId AppTrustedKeyIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "keyId", r.PathValue("keyId"), &keyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "keyId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteAdminAppTrustedKey(w, r, keyId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetCiQueue operation middleware
 func (siw *ServerInterfaceWrapper) GetCiQueue(w http.ResponseWriter, r *http.Request) {
@@ -8703,6 +10108,1210 @@ func (siw *ServerInterfaceWrapper) DeleteRepositoryActionsVariable(w http.Respon
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteRepositoryActionsVariable(w, r, owner, repo, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListApps operation middleware
+func (siw *ServerInterfaceWrapper) ListApps(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListApps(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateApp operation middleware
+func (siw *ServerInterfaceWrapper) CreateApp(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateApp(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteApp operation middleware
+func (siw *ServerInterfaceWrapper) DeleteApp(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteApp(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetApp operation middleware
+func (siw *ServerInterfaceWrapper) GetApp(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetApp(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateApp operation middleware
+func (siw *ServerInterfaceWrapper) UpdateApp(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateApp(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAppAccess operation middleware
+func (siw *ServerInterfaceWrapper) GetAppAccess(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAppAccess(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetAppAccess operation middleware
+func (siw *ServerInterfaceWrapper) SetAppAccess(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetAppAccess(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeployApp operation middleware
+func (siw *ServerInterfaceWrapper) DeployApp(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeployApp(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAppLogs operation middleware
+func (siw *ServerInterfaceWrapper) GetAppLogs(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetAppLogsParams
+
+	// ------------- Optional query parameter "follow" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "follow", r.URL.Query(), &params.Follow, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "follow"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "follow", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "since" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "since", r.URL.Query(), &params.Since, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "since"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "since", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "until" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "until", r.URL.Query(), &params.Until, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "until"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "until", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "copy" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "copy", r.URL.Query(), &params.Copy, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "copy"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "copy", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "source" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "source", r.URL.Query(), &params.Source, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "source"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "source", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "grep" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "grep", r.URL.Query(), &params.Grep, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "grep"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "grep", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "format" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "format", r.URL.Query(), &params.Format, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "format"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "format", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAppLogs(w, r, owner, repo, app, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAppMetrics operation middleware
+func (siw *ServerInterfaceWrapper) GetAppMetrics(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetAppMetricsParams
+
+	// ------------- Optional query parameter "range" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "range", r.URL.Query(), &params.Range, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "range"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "range", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "copy" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "copy", r.URL.Query(), &params.Copy, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "copy"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "copy", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAppMetrics(w, r, owner, repo, app, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAppResources operation middleware
+func (siw *ServerInterfaceWrapper) GetAppResources(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAppResources(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetAppResources operation middleware
+func (siw *ServerInterfaceWrapper) SetAppResources(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetAppResources(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RestartApp operation middleware
+func (siw *ServerInterfaceWrapper) RestartApp(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RestartApp(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RollbackApp operation middleware
+func (siw *ServerInterfaceWrapper) RollbackApp(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RollbackApp(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ScaleApp operation middleware
+func (siw *ServerInterfaceWrapper) ScaleApp(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ScaleApp(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAppSecrets operation middleware
+func (siw *ServerInterfaceWrapper) ListAppSecrets(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAppSecrets(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteAppSecret operation middleware
+func (siw *ServerInterfaceWrapper) DeleteAppSecret(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name AppEnvNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteAppSecret(w, r, owner, repo, app, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PutAppSecret operation middleware
+func (siw *ServerInterfaceWrapper) PutAppSecret(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name AppEnvNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutAppSecret(w, r, owner, repo, app, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAppVariables operation middleware
+func (siw *ServerInterfaceWrapper) ListAppVariables(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAppVariables(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteAppVariable operation middleware
+func (siw *ServerInterfaceWrapper) DeleteAppVariable(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name AppEnvNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteAppVariable(w, r, owner, repo, app, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PutAppVariable operation middleware
+func (siw *ServerInterfaceWrapper) PutAppVariable(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name AppEnvNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutAppVariable(w, r, owner, repo, app, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAppVersions operation middleware
+func (siw *ServerInterfaceWrapper) ListAppVersions(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAppVersionsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAppVersions(w, r, owner, repo, app, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAppVersion operation middleware
+func (siw *ServerInterfaceWrapper) GetAppVersion(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "version" -------------
+	var version AppVersionParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "version", r.PathValue("version"), &version, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "version", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAppVersion(w, r, owner, repo, app, version)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -15531,6 +18140,40 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/releases/{releaseId}", wrapper.UpdateRelease)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/releases/{releaseId}/assets", wrapper.UploadReleaseAsset)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/releases/{releaseId}/assets/{assetId}/download", wrapper.DownloadReleaseAsset)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps", wrapper.ListApps)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/apps", wrapper.CreateApp)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}", wrapper.DeleteApp)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}", wrapper.GetApp)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}", wrapper.UpdateApp)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/deploys", wrapper.DeployApp)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/versions", wrapper.ListAppVersions)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/versions/{version}", wrapper.GetAppVersion)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/rollback", wrapper.RollbackApp)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/restart", wrapper.RestartApp)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/scale", wrapper.ScaleApp)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/variables", wrapper.ListAppVariables)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/variables/{name}", wrapper.DeleteAppVariable)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/variables/{name}", wrapper.PutAppVariable)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/secrets", wrapper.ListAppSecrets)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/secrets/{name}", wrapper.DeleteAppSecret)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/secrets/{name}", wrapper.PutAppSecret)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/access", wrapper.GetAppAccess)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/access", wrapper.SetAppAccess)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/resources", wrapper.GetAppResources)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/resources", wrapper.SetAppResources)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/logs", wrapper.GetAppLogs)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/metrics", wrapper.GetAppMetrics)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps", wrapper.ListAdminApps)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps/capacity", wrapper.GetAdminAppsCapacity)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/admin/apps/reserve", wrapper.UpdateAdminAppsReserve)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps/quotas", wrapper.ListAdminAppOwnerQuotas)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/admin/apps/quotas/{owner}", wrapper.DeleteAdminAppOwnerQuota)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/admin/apps/quotas/{owner}", wrapper.PutAdminAppOwnerQuota)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps/settings", wrapper.GetAdminAppsSettings)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/admin/apps/settings", wrapper.UpdateAdminAppsSettings)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps/trusted-keys", wrapper.ListAdminAppTrustedKeys)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/admin/apps/trusted-keys", wrapper.AddAdminAppTrustedKey)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/admin/apps/trusted-keys/{keyId}", wrapper.DeleteAdminAppTrustedKey)
 
 	return m
 }
@@ -15544,6 +18187,9 @@ type CallbackReceiverInterface interface {
 	// Consegna dell'evento commit_status (PR11)
 	// HandleCommitStatusCallback handles the POST callback for commit_status.
 	HandleCommitStatusCallback(w http.ResponseWriter, r *http.Request)
+	// Consegna dell'evento deployment (app, H12)
+	// HandleDeploymentCallback handles the POST callback for deployment.
+	HandleDeploymentCallback(w http.ResponseWriter, r *http.Request)
 	// Consegna dell'evento pull_request (PR11)
 	// HandlePullRequestCallback handles the POST callback for pull_request.
 	HandlePullRequestCallback(w http.ResponseWriter, r *http.Request)
@@ -15578,6 +18224,26 @@ func CommitStatusCallbackHandler(si CallbackReceiverInterface, errHandler func(w
 	}
 	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		si.HandleCommitStatusCallback(w, r)
+	})
+	for _, mw := range middlewares {
+		h = mw(h)
+	}
+	return h
+}
+
+// DeploymentCallbackHandler returns the http.Handler for the deployment callback.
+// Mount this at the URL path advertised to callback senders. errHandler
+// may be nil; if so, parameter-binding errors return 400 with the error
+// message. Middlewares are applied in the order provided -- the last
+// argument becomes the outermost wrapper.
+func DeploymentCallbackHandler(si CallbackReceiverInterface, errHandler func(w http.ResponseWriter, r *http.Request, err error), middlewares ...CallbackReceiverMiddlewareFunc) http.Handler {
+	if errHandler == nil {
+		errHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		si.HandleDeploymentCallback(w, r)
 	})
 	for _, mw := range middlewares {
 		h = mw(h)

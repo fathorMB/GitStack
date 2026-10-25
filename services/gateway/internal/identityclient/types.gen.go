@@ -344,6 +344,12 @@ type AccessSource struct {
 // AccessSourceKind defines model for AccessSource.Kind.
 type AccessSourceKind string
 
+// AppEnvName Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
+type AppEnvName = string
+
+// AppName Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+type AppName = string
+
 // CheckPermissionInput defines model for CheckPermissionInput.
 type CheckPermissionInput struct {
 	ResourceId openapi_types.UUID `json:"resourceId"`
@@ -688,6 +694,18 @@ type VerifyCredentialResult struct {
 
 // ActionsNameParam defines model for ActionsNameParam.
 type ActionsNameParam = string
+
+// AppEnvNameParam Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
+type AppEnvNameParam = AppEnvName
+
+// AppParam Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+type AppParam = AppName
+
+// AppTrustedKeyIdParam defines model for AppTrustedKeyIdParam.
+type AppTrustedKeyIdParam = openapi_types.UUID
+
+// AppVersionParam defines model for AppVersionParam.
+type AppVersionParam = int
 
 // ArtifactIdParam defines model for ArtifactIdParam.
 type ArtifactIdParam = openapi_types.UUID
