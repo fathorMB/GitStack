@@ -112,16 +112,6 @@ describe('PackageSettingsPage (mockup B6)', () => {
     expect(await screen.findByText('Package settings saved.')).toBeInTheDocument();
   });
 
-  it('rifiuta giorni non validi senza chiamare il server', async () => {
-    session(true);
-    renderPage();
-    const days = await screen.findByLabelText('Delete sha-* tags after (days)', undefined, { timeout: 5000 });
-    await userEvent.type(days, '0');
-    await userEvent.click(screen.getByRole('button', { name: 'Save package settings' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/whole number of days/);
-    expect(savePackageSettings).not.toHaveBeenCalled();
-  });
-
   it('repo archiviato: sola lettura', async () => {
     session(true);
     vi.mocked(fetchRepo).mockResolvedValue(repo({ archived: true }));

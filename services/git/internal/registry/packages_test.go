@@ -39,7 +39,7 @@ func tagDetail(t *testing.T, p Package, tag string) PackageTag {
 func TestListPackages_FirmaSbomEAutore(t *testing.T) {
 	e := newCleanEnv(t, func(c *Config) { c.SigningKeyFile = filepath.Join(t.TempDir(), "cosign.key") })
 	e.sb.set(idApp, func(s *Settings) { s.ProtectedTagPatterns = []string{"v*"} })
-	signed := e.mustPush("alice/app/ci:v1", "gsj_rw")      // il job firma e allega lo SBOM
+	signed := e.mustPush("alice/app/ci:v1", "gsj_rw")         // il job firma e allega lo SBOM
 	manual := e.mustPush("alice/app/hand:debug", "gst_write") // a mano: nessuna firma
 	e.mustPush("alice/app/hand:debug2", "gst_admin")
 	e.mustPush("alice/app/bot:x", "gst_write")

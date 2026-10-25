@@ -97,14 +97,14 @@ func TestPackages_ElencoEdEliminazionePerRuolo(t *testing.T) {
 		Items []struct {
 			Name       string `json:"name"`
 			Tags       []string
-			Signature  string `json:"signature"`
-			HasSbom    bool   `json:"hasSbom"`
-			Kind       string `json:"kind"`
+			Signature  string                        `json:"signature"`
+			HasSbom    bool                          `json:"hasSbom"`
+			Kind       string                        `json:"kind"`
 			PushedBy   *struct{ Kind, Login string } `json:"pushedBy"`
 			TagDetails []struct {
-				Name      string `json:"name"`
-				Protected bool   `json:"protected"`
-				Signature string `json:"signature"`
+				Name      string                        `json:"name"`
+				Protected bool                          `json:"protected"`
+				Signature string                        `json:"signature"`
 				PushedBy  *struct{ Kind, Login string } `json:"pushedBy"`
 			} `json:"tagDetails"`
 		} `json:"items"`

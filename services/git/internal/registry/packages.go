@@ -459,8 +459,8 @@ func (h *Handler) appDelete(ctx context.Context, repoID, name, ref string) error
 	req := httptest.NewRequest(http.MethodDelete, "http://registry/v2/"+name+"/manifests/"+ref, nil).WithContext(context.WithValue(ctx, grantKey{}, g))
 	rec := httptest.NewRecorder()
 	h.app.ServeHTTP(rec, req)
-	switch {
-	case rec.Code == http.StatusAccepted, rec.Code == http.StatusNotFound:
+	switch rec.Code {
+	case http.StatusAccepted, http.StatusNotFound:
 		return nil
 	default:
 		return fmt.Errorf("registry: eliminazione di %s: %d", ref, rec.Code)
