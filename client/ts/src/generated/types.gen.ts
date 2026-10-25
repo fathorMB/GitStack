@@ -238,16 +238,60 @@ export type Package = {
      * Vero se è conservato uno SBOM dell'immagine.
      */
     hasSbom: boolean;
+    /**
+     * Tipo di artefatto, dal mediaType del manifest (helm = chart OCI).
+     */
+    kind?: 'image' | 'helm';
+    pushedBy?: PackagePusher;
+    /**
+     * Un oggetto per tag (`tags` resta per compatibilità). Le firme e gli SBOM tecnici (sha256-….sig / .sbom) non compaiono.
+     */
+    tagDetails?: Array<PackageTag>;
 };
 
-export type PackageSettings = PackageSettingsInput;
+/**
+ * Chi ha pubblicato, come autenticato dal registry al momento del push. Assente per i push anteriori alla registrazione.
+ */
+export type PackagePusher = {
+    kind: 'user' | 'agent' | 'job';
+    /**
+     * Username dell'utente o dell'agente; «ci job token» per il token del job.
+     */
+    login: string;
+};
+
+export type PackageTag = {
+    name: string;
+    /**
+     * Digest del manifest a cui punta il tag (sha256:...).
+     */
+    digest: string;
+    sizeBytes: number;
+    /**
+     * Data dell'ultimo push del tag.
+     */
+    pushedAt: string;
+    signature: 'verified' | 'unverified';
+    hasSbom: boolean;
+    /**
+     * Il tag corrisponde a un modello di tag protetti (RG2).
+     */
+    protected: boolean;
+    pushedBy?: PackagePusher;
+};
+
+export type PackageSettings = PackageSettingsInput & {
+    /**
+     * Regola fissa di RG2: le immagini senza tag si eliminano dopo 7 giorni. Non è impostabile.
+     */
+    readonly deleteUntaggedAfterDays: number;
+};
 
 export type PackageSettingsInput = {
     /**
      * Tag che non possono essere sovrascritti o eliminati.
      */
     protectedTagPatterns: Array<string>;
-    deleteUntaggedAfterDays: number;
     /**
      * Include le immagini del repo nei backup (RG2: escluse di default).
      */
@@ -3427,6 +3471,8 @@ export type ActionsSecretInputWritable = {
     name: string;
     value: string;
 };
+
+export type PackageSettingsWritable = PackageSettingsInput;
 
 /**
  * Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.

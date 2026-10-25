@@ -18,7 +18,7 @@ import (
 	gitstack "github.com/fathorMB/GitStack/client/go"
 )
 
-var fields = []string{"name", "tags", "sizeBytes", "updatedAt", "digest", "signature", "hasSbom"}
+var fields = []string{"name", "tags", "sizeBytes", "updatedAt", "digest", "signature", "hasSbom", "kind", "pushedBy", "tagDetails"}
 
 func NewCmd(f *cmdutil.Factory) *cobra.Command {
 	c := &cobra.Command{Use: "package", Aliases: []string{"pkg"}, Short: "Gestisci le immagini del registry di un repository", Args: cmdutil.NoArgs, RunE: cmdutil.GroupRun}

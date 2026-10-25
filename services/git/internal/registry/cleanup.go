@@ -306,7 +306,7 @@ func (h *Handler) cleanImage(ctx context.Context, ns distribution.Namespace, nam
 	return nil
 }
 
-var provenanceTag = regexp.MustCompile(`^sha256-([a-f0-9]{64})\.(sig|sbom)$`)
+var provenanceTag = regexp.MustCompile(`^sha256-([a-f0-9]{64})(?:\.(?:sig|sbom|att))?$`)
 
 func provenanceSubject(tag string) (digest.Digest, bool) {
 	m := provenanceTag.FindStringSubmatch(tag)

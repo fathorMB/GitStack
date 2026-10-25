@@ -79,7 +79,6 @@ function PackageSettingsForm({ repo, initial }: { repo: Repository; initial: Pac
   const readOnly = repo.archived;
   const [patterns, setPatterns] = useState<string[]>(initial.protectedTagPatterns);
   const [draft, setDraft] = useState('');
-  const [untagged, setUntagged] = useState(String(initial.deleteUntaggedAfterDays));
   const [keepLast, setKeepLast] = useState(initial.keepLastTags !== undefined ? String(initial.keepLastTags) : '');
   const [shaDays, setShaDays] = useState(initial.deleteShaTagsAfterDays !== undefined ? String(initial.deleteShaTagsAfterDays) : '');
   const [backup, setBackup] = useState(initial.includeInBackup);
@@ -102,11 +101,6 @@ function PackageSettingsForm({ repo, initial }: { repo: Repository; initial: Pac
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    const days = toInt(untagged);
-    if (days === undefined) {
-      setError('Delete untagged images after: enter a whole number of days, 1 or more.');
-      return;
-    }
     if (keepLast.trim() !== '' && toInt(keepLast) === undefined) {
       setError('Keep the last tags: enter a whole number, 1 or more, or leave it empty.');
       return;
@@ -120,7 +114,6 @@ function PackageSettingsForm({ repo, initial }: { repo: Repository; initial: Pac
     try {
       const saved = await savePackageSettings(repo.owner.name, repo.name, {
         protectedTagPatterns: patterns,
-        deleteUntaggedAfterDays: days,
         includeInBackup: backup,
         ...(toInt(keepLast) !== undefined ? { keepLastTags: toInt(keepLast) } : {}),
         ...(toInt(shaDays) !== undefined ? { deleteShaTagsAfterDays: toInt(shaDays) } : {}),
@@ -182,9 +175,9 @@ function PackageSettingsForm({ repo, initial }: { repo: Repository; initial: Pac
           <h2>Cleanup</h2>
         </div>
         <div className="card card-b stack form-stack">
-          <FormField label="Delete untagged images after (days)" hint="Images without a tag are deleted after this time. Tagged images are never deleted by this rule.">
-            <TextInput type="number" min={1} style={{ width: 120 }} value={untagged} disabled={readOnly} onChange={(e) => setUntagged(e.target.value)} />
-          </FormField>
+          <p className="muted">
+            <b>Untagged images</b> are removed automatically after {initial.deleteUntaggedAfterDays ?? 7} days. Tagged images are never removed unless a rule below says so.
+          </p>
           <FormField label="Keep only the last tags per image" hint="Optional. Protected tags always stay. Empty means no limit.">
             <TextInput type="number" min={1} style={{ width: 120 }} value={keepLast} disabled={readOnly} onChange={(e) => setKeepLast(e.target.value)} />
           </FormField>
