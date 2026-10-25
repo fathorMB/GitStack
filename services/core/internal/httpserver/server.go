@@ -54,6 +54,8 @@ type apiServer struct {
 	ciCapacity int
 	// now è l'orologio: serve alla scadenza dei 7 giorni di un repo eliminato.
 	now func() time.Time
+	// appsDomain è il dominio delle app (H2); vuoto = nessun indirizzo.
+	appsDomain string
 }
 
 var _ openapi.ServerInterface = (*apiServer)(nil)
