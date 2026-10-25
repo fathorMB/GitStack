@@ -473,7 +473,7 @@ type AddSshKeyInput struct {
 // AppEnvName Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
 type AppEnvName = string
 
-// AppName Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+// AppName Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
 type AppName = string
 
 // ChangePasswordInput defines model for ChangePasswordInput.
@@ -1241,7 +1241,7 @@ type ActionsNameParam = string
 // AppEnvNameParam Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
 type AppEnvNameParam = AppEnvName
 
-// AppParam Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+// AppParam Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
 type AppParam = AppName
 
 // AppTrustedKeyIdParam defines model for AppTrustedKeyIdParam.

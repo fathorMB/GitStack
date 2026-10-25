@@ -2822,7 +2822,7 @@ type AdminApp struct {
 	// Limit CPU e memoria, per copia.
 	Limit AppResourceAmount `json:"limit"`
 
-	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
 	Name       AppName `json:"name"`
 	Owner      string  `json:"owner"`
 	Repo       string  `json:"repo"`
@@ -3093,7 +3093,7 @@ type App struct {
 	Image      AppImage       `json:"image"`
 	LastDeploy *AppLastDeploy `json:"lastDeploy,omitempty"`
 
-	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
 	Name AppName `json:"name"`
 
 	// Owner Owner del repo: su di lui contano le quote (H5).
@@ -3180,7 +3180,7 @@ type AppCreateInput struct {
 	// Image Riferimento dell'immagine. Per il registry del repo basta `nome:tag` o il solo tag, risolti contro `<host>/<owner>/<repo>`; altrimenti un riferimento completo a un registry esterno.
 	Image string `json:"image"`
 
-	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
 	Name AppName `json:"name"`
 
 	// Port Assente: app senza indirizzo, che parla solo con le app dello stesso repo (H9).
@@ -3331,7 +3331,7 @@ type AppMetrics struct {
 // AppMetricsRange defines model for AppMetrics.Range.
 type AppMetricsRange string
 
-// AppName Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+// AppName Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
 type AppName = string
 
 // AppOwnerQuota Quota delle app di un owner (H5, H11).
@@ -6223,7 +6223,7 @@ type ActionsNameParam = string
 // AppEnvNameParam Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
 type AppEnvNameParam = AppEnvName
 
-// AppParam Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+// AppParam Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
 type AppParam = AppName
 
 // AppTrustedKeyIdParam defines model for AppTrustedKeyIdParam.

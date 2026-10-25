@@ -3197,7 +3197,7 @@ type AdminApp struct {
 	// Limit CPU e memoria, per copia.
 	Limit AppResourceAmount `json:"limit"`
 
-	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
 	Name       AppName `json:"name"`
 	Owner      string  `json:"owner"`
 	Repo       string  `json:"repo"`
@@ -3468,7 +3468,7 @@ type App struct {
 	Image      AppImage       `json:"image"`
 	LastDeploy *AppLastDeploy `json:"lastDeploy,omitempty"`
 
-	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
 	Name AppName `json:"name"`
 
 	// Owner Owner del repo: su di lui contano le quote (H5).
@@ -3555,7 +3555,7 @@ type AppCreateInput struct {
 	// Image Riferimento dell'immagine. Per il registry del repo basta `nome:tag` o il solo tag, risolti contro `<host>/<owner>/<repo>`; altrimenti un riferimento completo a un registry esterno.
 	Image string `json:"image"`
 
-	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
 	Name AppName `json:"name"`
 
 	// Port Assente: app senza indirizzo, che parla solo con le app dello stesso repo (H9).
@@ -3706,7 +3706,7 @@ type AppMetrics struct {
 // AppMetricsRange defines model for AppMetrics.Range.
 type AppMetricsRange string
 
-// AppName Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+// AppName Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
 type AppName = string
 
 // AppOwnerQuota Quota delle app di un owner (H5, H11).
@@ -7362,7 +7362,7 @@ type ActionsNameParam = string
 // AppEnvNameParam Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
 type AppEnvNameParam = AppEnvName
 
-// AppParam Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+// AppParam Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
 type AppParam = AppName
 
 // AppTrustedKeyIdParam defines model for AppTrustedKeyIdParam.
@@ -9921,7 +9921,7 @@ type ClientInterface interface {
 
 	// CreateAppWithBody Crea un'app nel repo e la mette in esecuzione
 	//
-	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `address_conflict` se l'indirizzo automatico normalizzato coincide con quello di un'altra app (per esempio l'app `a-b` nel repo `c` e l'app `a` nel repo `b-c` dello stesso owner); 422 `address_too_long` se l'etichetta DNS supera 63 caratteri; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -9930,7 +9930,7 @@ type ClientInterface interface {
 
 	// CreateApp Crea un'app nel repo e la mette in esecuzione
 	//
-	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `address_conflict` se l'indirizzo automatico normalizzato coincide con quello di un'altra app (per esempio l'app `a-b` nel repo `c` e l'app `a` nel repo `b-c` dello stesso owner); 422 `address_too_long` se l'etichetta DNS supera 63 caratteri; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -14689,7 +14689,7 @@ func (c *Client) ListApps(ctx context.Context, owner RepoOwnerParam, repo RepoNa
 
 // CreateAppWithBody Crea un'app nel repo e la mette in esecuzione
 //
-// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `address_conflict` se l'indirizzo automatico normalizzato coincide con quello di un'altra app (per esempio l'app `a-b` nel repo `c` e l'app `a` nel repo `b-c` dello stesso owner); 422 `address_too_long` se l'etichetta DNS supera 63 caratteri; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
 //
 // Takes any type of body and a specified content type.
 //
@@ -14708,7 +14708,7 @@ func (c *Client) CreateAppWithBody(ctx context.Context, owner RepoOwnerParam, re
 
 // CreateApp Crea un'app nel repo e la mette in esecuzione
 //
-// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `address_conflict` se l'indirizzo automatico normalizzato coincide con quello di un'altra app (per esempio l'app `a-b` nel repo `c` e l'app `a` nel repo `b-c` dello stesso owner); 422 `address_too_long` se l'etichetta DNS supera 63 caratteri; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
 //
 // Takes a body of the `application/json` content type.
 //
@@ -37160,7 +37160,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateAppWithBodyWithResponse Crea un'app nel repo e la mette in esecuzione
 	//
-	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `address_conflict` se l'indirizzo automatico normalizzato coincide con quello di un'altra app (per esempio l'app `a-b` nel repo `c` e l'app `a` nel repo `b-c` dello stesso owner); 422 `address_too_long` se l'etichetta DNS supera 63 caratteri; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -37169,7 +37169,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateAppWithResponse Crea un'app nel repo e la mette in esecuzione
 	//
-	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `address_conflict` se l'indirizzo automatico normalizzato coincide con quello di un'altra app (per esempio l'app `a-b` nel repo `c` e l'app `a` nel repo `b-c` dello stesso owner); 422 `address_too_long` se l'etichetta DNS supera 63 caratteri; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -64330,7 +64330,7 @@ func (c *ClientWithResponses) ListAppsWithResponse(ctx context.Context, owner Re
 
 // CreateAppWithBodyWithResponse Crea un'app nel repo e la mette in esecuzione
 //
-// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `address_conflict` se l'indirizzo automatico normalizzato coincide con quello di un'altra app (per esempio l'app `a-b` nel repo `c` e l'app `a` nel repo `b-c` dello stesso owner); 422 `address_too_long` se l'etichetta DNS supera 63 caratteri; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -64345,7 +64345,7 @@ func (c *ClientWithResponses) CreateAppWithBodyWithResponse(ctx context.Context,
 
 // CreateAppWithResponse Crea un'app nel repo e la mette in esecuzione
 //
-// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). L'app nasce interna con il login GitStack (H1, H6). Crea la versione 1 (immagine piu' configurazione, H8) e la distribuisce come un deploy; la risposta e' 202 con la versione in corso. Un'immagine esterna richiede un repo, anche vuoto (H5). 409 `name_taken` se il repo ha gia' un'app con quel nome; 409 `address_conflict` se l'indirizzo automatico normalizzato coincide con quello di un'altra app (per esempio l'app `a-b` nel repo `c` e l'app `a` nel repo `b-c` dello stesso owner); 422 `address_too_long` se l'etichetta DNS supera 63 caratteri; 409 `insufficient_capacity` se le parti garantite non ci stanno nello spazio per le app o nella quota dell'owner (H11, `details` dice cosa manca); 422 `image_not_allowed` se l'istanza accetta solo immagini firmate e questa non lo e', o `root_not_allowed` con la regola restricted (H9, H10); 422 `follow_branch_unsigned` se si segue un branch con un'immagine non firmata dalla CI del repo (H7, H10).
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

@@ -3424,7 +3424,7 @@ export type WebhookReleasePayload = {
 };
 
 /**
- * Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`.
+ * Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
  *
  */
 export type AppName = string;
