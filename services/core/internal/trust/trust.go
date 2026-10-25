@@ -78,6 +78,17 @@ func Sign(h http.Header, secret string, id Identity, now time.Time) {
 	h.Set(HeaderSignature, mac(SigningKey(secret), ts, id.UserID, id.Username, scopes, id.TokenID, id.TokenName))
 }
 
+// JobUsername è lo username dell'identità che il gateway firma per una richiesta
+// autenticata dal token del job (gsj_, GIT-372), con UserID nullo e lo scope JobScope.
+// Gli username veri non ammettono i due punti.
+const JobUsername = "system:ci-job"
+
+// JobScope è l'unico scope dell'identità del job.
+const JobScope = "ci-job"
+
+// HeaderJobToken porta a core il token del job, che core verifica da sé.
+const HeaderJobToken = "X-Gitstack-Job-Token"
+
 // Chiamanti noti: ognuno ha il suo segreto di servizio (F9, ASVS V2.10.1).
 // Chi verifica sa da quale chiave è stata firmata una richiesta e quindi chi
 // la manda; la chiave di un servizio non firma per un altro.

@@ -17,6 +17,7 @@ import (
 
 	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
+	"github.com/fathorMB/GitStack/services/core/internal/trust"
 	"github.com/google/uuid"
 )
 
@@ -137,7 +138,14 @@ func (s *apiServer) releaseTagExists(ctx context.Context, ia issueAccess, tag st
 }
 
 func releaseAccess(w http.ResponseWriter, r *http.Request, s *apiServer, o, n string, write bool) (issueAccess, bool) {
-	ia, ok := s.issueAccessFor(w, r, o, n)
+	var ia issueAccess
+	var ok bool
+	if id, has := trust.FromContext(r.Context()); has && isJobIdentity(id) {
+		// Token del job (GIT-372): jobGuard lo lascia passare solo su create/upload.
+		ia, ok = s.jobReleaseAccess(w, r, o, n)
+	} else {
+		ia, ok = s.issueAccessFor(w, r, o, n)
+	}
 	if !ok {
 		return ia, false
 	}

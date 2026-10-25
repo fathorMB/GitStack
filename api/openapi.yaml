@@ -8178,6 +8178,7 @@ paths:
       operationId: createRelease
       tags: [releases]
       x-required-scopes: ["write:resource"]
+      x-job-token: true
       x-mcp:
         expose: true
         name: release_create
@@ -8243,6 +8244,7 @@ paths:
       operationId: uploadReleaseAsset
       tags: [releases]
       x-required-scopes: ["write:resource"]
+      x-job-token: true
       x-mcp:
         expose: false
         name: release_asset_upload

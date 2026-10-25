@@ -274,16 +274,20 @@ func (s *apiServer) ciResolve(ctx context.Context, repoID uuid.UUID, rev string)
 	// si legge il commit in testa alla ref (GIT-291: il vecchio codice dava 400 su ogni nome).
 	if len(rev) >= 7 && len(rev) <= 40 && isHex(rev) {
 		raw, err := rd.ReadJSON(ctx, ciSystemCaller, repoID, "commits/"+url.PathEscape(rev)+"/resolve", nil)
-		if err != nil {
+		switch {
+		case err == nil:
+			var out struct {
+				Sha string `json:"sha"`
+			}
+			if err := json.Unmarshal(raw, &out); err != nil || len(out.Sha) != 40 {
+				return "", fmt.Errorf("risposta di git non valida")
+			}
+			return out.Sha, nil
+		case !isGitNotFound(err):
 			return "", err
 		}
-		var out struct {
-			Sha string `json:"sha"`
-		}
-		if err := json.Unmarshal(raw, &out); err != nil || len(out.Sha) != 40 {
-			return "", fmt.Errorf("risposta di git non valida")
-		}
-		return out.Sha, nil
+		// Nessuno sha con questo nome (GIT-372): un branch o un tag può avere un nome
+		// esadecimale di 7-40 caratteri (es. deadbeef). Si ripiega sulla ref.
 	}
 	raw, err := rd.ReadJSON(ctx, ciSystemCaller, repoID, "commits", url.Values{"ref": {rev}, "perPage": {"1"}})
 	if err != nil {
