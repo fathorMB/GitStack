@@ -35,7 +35,7 @@ rinvia dal log (`redeliver`).
 |---|---|
 | `Content-Type` | `application/json` |
 | `User-Agent` | `GitStack-Webhook/1` |
-| `X-GitStack-Event` | l'evento: `push`, `issues`, `issue_comment`, `repository`, `pull_request`, `pull_request_review`, `commit_status`, `workflow_run` o `workflow_job` |
+| `X-GitStack-Event` | l'evento: `push`, `issues`, `issue_comment`, `repository`, `pull_request`, `pull_request_review`, `commit_status`, `workflow_run`, `workflow_job` o `deployment` |
 | `X-GitStack-Delivery` | uuid della consegna: è l'`id` nel log (`…/deliveries`); una *Redeliver* ne ha uno nuovo |
 | `X-GitStack-Payload-Version` | `1` |
 | `X-GitStack-Signature` | `sha256=<hex>`, solo se il webhook ha un segreto |
@@ -303,6 +303,15 @@ Ogni job scrive anche lo stato del commit con contesto `<workflow> / <job>`
 (PR9): `pending` mentre è in coda o in corso; `success`; `failure` se fallisce o
 scade; `error` se è annullato o saltato perché una dipendenza non è riuscita. Un
 contesto obbligatorio della PR (PR4) rosso o mancante blocca il merge.
+
+## `deployment` (v3-a, H12, GIT-341)
+
+Contratto: schema `WebhookDeploymentPayload` in `api/openapi.yaml`; l'implementazione arriva con gli item
+della v3-a. Stessi corpo comune, intestazioni, firma e tentativi. `action` è `started` (deploy avviato),
+`succeeded` (la versione ha superato il controllo di salute), `failed` (non l'ha superato: resta la
+versione precedente) o `rolled_back` (rollback a mano riuscito). `app` è l'app e `deployment` la versione
+(`AppVersion`) con chi l'ha fatta, anche un agente con la sua identità (H13). Lo stesso evento di dominio
+alimenta la notifica a chi ha fatto il deploy e agli `admin` del repo quando fallisce.
 
 ## Da dove nascono
 

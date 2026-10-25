@@ -224,8 +224,8 @@ func TestSicurezza_RotteDiCoreServite(t *testing.T) {
 		e := newEnv(t, allowAll())
 		// ?path=x&q=xx&state=read&name=x&sha=…: `name` e' obbligatorio nel caricamento degli allegati; le letture di file hanno `path` obbligatorio nel contratto, la ricerca `q`, l'eliminazione in blocco delle notifiche `state`, gli stati batch `sha`.
 		path := param.ReplaceAllStringFunc(r.Path, func(p string) string {
-			if p == "{number}" || p == "{milestoneNumber}" {
-				return "1" // numeri interi (issues, milestone), non UUID
+			if p == "{number}" || p == "{milestoneNumber}" || p == "{version}" {
+				return "1" // numeri interi (issues, milestone, versioni di un'app), non UUID
 			}
 			return "00000000-0000-0000-0000-000000000000"
 		})

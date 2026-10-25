@@ -2344,10 +2344,10 @@ export type IssueSubscription = {
 export type WebhookScope = 'repo' | 'org';
 
 /**
- * Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`.
+ * Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`.
  *
  */
-export type WebhookEvent = 'push' | 'issues' | 'issue_comment' | 'repository' | 'pull_request' | 'pull_request_review' | 'commit_status' | 'workflow_run' | 'workflow_job' | 'release';
+export type WebhookEvent = 'push' | 'issues' | 'issue_comment' | 'repository' | 'pull_request' | 'pull_request_review' | 'commit_status' | 'workflow_run' | 'workflow_job' | 'release' | 'deployment';
 
 /**
  * Stato di un mirror in push. `pending`: in coda (mai spinto, o un push nuovo da fare); `syncing`: un worker lo sta spingendo; `in_sync`: la destinazione ha lo stato dell'ultimo push riuscito; `error`: l'ultimo tentativo e' fallito (rete, credenziale, destinazione non ammessa...), si ritenta con attesa crescente 30 s, 2 min, 10 min, 1 ora fino a 6 ore, tranne un blocco egress (C8) che non si ritenta; `diverged`: la destinazione ha una storia diversa (non fast-forward, o un tag gia' presente con un altro commit): fermo, nessun tentativo automatico e nessuna sovrascrittura, gli admin del repo ricevono una notifica `mirror`; riparte solo con `syncRepoMirror`.
@@ -3467,6 +3467,617 @@ export type WebhookReleasePayload = {
     release: Release;
 };
 
+/**
+ * Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
+ *
+ */
+export type AppName = string;
+
+/**
+ * Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
+ */
+export type AppEnvName = string;
+
+/**
+ * Chi ha fatto un'azione sull'app; un agente compare con la sua identita' (H13).
+ */
+export type AppActor = {
+    id: string;
+    username: string;
+    type: 'human' | 'agent';
+};
+
+/**
+ * CPU e memoria, per copia.
+ */
+export type AppResourceAmount = {
+    /**
+     * Millesimi di vCPU (500 = 0,5 vCPU).
+     */
+    cpuMillis: number;
+    memoryBytes: number;
+};
+
+/**
+ * Stato osservato: `starting` (nessuna copia ancora sana), `running`, `restarting`, `unhealthy` (alcune copie non sane), `failed` (nessuna versione parte), `stopped` (fermata a mano o per il repo, vedi `stoppedReason`).
+ *
+ */
+export type AppStatus = 'starting' | 'running' | 'restarting' | 'unhealthy' | 'failed' | 'stopped';
+
+/**
+ * Perche' e' ferma (H5). `repo_archived` e `repo_deleted` tornano avviabili con il repo; `manual` con scala a zero copie.
+ */
+export type AppStoppedReason = 'manual' | 'repo_archived' | 'repo_deleted';
+
+/**
+ * `login` (login GitStack, default, H6), `none` (senza login, scelta esplicita di admin), `public` (su internet, H1, solo con le app pubbliche abilitate).
+ */
+export type AppAccessMode = 'login' | 'none' | 'public';
+
+/**
+ * Esito di una versione: `in_progress` (in avvio o in attesa del controllo di salute), `serving` (serve il traffico), `superseded` (sostituita da una piu' recente), `failed` (non ha superato il controllo di salute) e `rolled_back` (fallita con ritorno automatico alla versione precedente, H12).
+ *
+ */
+export type AppDeployState = 'in_progress' | 'serving' | 'superseded' | 'failed' | 'rolled_back';
+
+/**
+ * `registry`: immagine del registry del repo (RG1). `external`: altro registry, mai `verified` a meno di una firma fidata.
+ */
+export type AppImageSource = 'registry' | 'external';
+
+/**
+ * Immagine di una versione e sua verifica (H10).
+ */
+export type AppImage = {
+    /**
+     * Riferimento completo, per esempio `homehub.local/acme/handbook/web:sha-7f3a91c`.
+     */
+    reference: string;
+    digest?: string | null;
+    source: AppImageSource;
+    /**
+     * Firmata con cosign dalla CI dello stesso repo o da una chiave fidata. Falso e' l'etichetta «non verificata» (H10).
+     */
+    verified: boolean;
+    /**
+     * Impronta o nome della chiave che ha firmato.
+     */
+    signedBy?: string | null;
+    /**
+     * Vero se l'immagine gira come root (avviso baseline, H9); null se non ancora letto.
+     */
+    runsAsRoot?: boolean | null;
+};
+
+/**
+ * Branch seguito per il deploy automatico (H7).
+ */
+export type AppFollow = {
+    branch: string;
+    /**
+     * Deploy automatici sospesi (per esempio dopo un rollback).
+     */
+    paused: boolean;
+};
+
+export type AppHealthCheck = {
+    /**
+     * Percorso HTTP richiesto, per esempio `/healthz`.
+     */
+    path: string;
+    intervalSeconds: number;
+    /**
+     * Dopo quanto un deploy che non risponde e' considerato fallito.
+     */
+    timeoutSeconds?: number;
+};
+
+/**
+ * Ultimo deploy tentato, anche fallito (H12).
+ */
+export type AppLastDeploy = {
+    version: number;
+    state: AppDeployState;
+    startedAt: string;
+    finishedAt?: string | null;
+    /**
+     * Per `failed` e `rolled_back` il perche', per esempio «GET /healthz ha risposto 500 per 2 min».
+     */
+    reason?: string | null;
+};
+
+/**
+ * Uso corrente, somma delle copie. Le richieste e gli errori ci sono solo per le app web.
+ */
+export type AppUsage = {
+    cpuMillis: number;
+    memoryBytes: number;
+    requestsPerSecond?: number | null;
+    /**
+     * Quota di risposte 5xx, da 0 a 1.
+     */
+    errorRatio?: number | null;
+    restarts24h?: number;
+};
+
+export type App = {
+    id: string;
+    name: AppName;
+    /**
+     * Owner del repo: su di lui contano le quote (H5).
+     */
+    owner: string;
+    repo: string;
+    status: AppStatus;
+    stoppedReason?: AppStoppedReason | null;
+    /**
+     * Il deploy dell'ultima versione e' fallito e serve ancora la precedente.
+     */
+    runningPreviousVersion?: boolean;
+    access: AppAccessMode;
+    /**
+     * Indirizzo automatico (H2); assente per un'app senza indirizzo, raggiungibile solo dalle app dello stesso repo.
+     */
+    address?: string | null;
+    image: AppImage;
+    /**
+     * Numero della versione che serve il traffico.
+     */
+    activeVersion: number;
+    follow?: AppFollow | null;
+    /**
+     * Porta del container. Null per un'app senza indirizzo (worker).
+     */
+    port?: number | null;
+    healthCheck?: AppHealthCheck | null;
+    /**
+     * Copie volute.
+     */
+    copies: number;
+    /**
+     * Copie sane.
+     */
+    readyCopies: number;
+    resources: AppResources;
+    /**
+     * Uso corrente; null vuol dire metriche non disponibili.
+     */
+    usage?: AppUsage | null;
+    lastDeploy?: AppLastDeploy | null;
+    createdAt: string;
+    createdBy?: AppActor | null;
+    updatedAt: string;
+};
+
+export type AppList = {
+    items: Array<App>;
+    /**
+     * Quota dell'owner del repo (H5, H11), per la riga sopra l'elenco.
+     */
+    quota?: AppOwnerQuota | null;
+};
+
+export type AppCreated = {
+    app: App;
+    version: AppVersion;
+};
+
+export type AppCreateInput = {
+    name: AppName;
+    /**
+     * Riferimento dell'immagine. Per il registry del repo basta `nome:tag` o il solo tag, risolti contro `<host>/<owner>/<repo>`; altrimenti un riferimento completo a un registry esterno.
+     */
+    image: string;
+    /**
+     * Assente: app senza indirizzo, che parla solo con le app dello stesso repo (H9).
+     */
+    port?: number;
+    healthCheck?: AppHealthCheck;
+    /**
+     * Branch da seguire (H7). Non disponibile per un'immagine esterna.
+     */
+    followBranch?: string | null;
+    resources?: AppResourcesInput;
+    copies?: number;
+    /**
+     * Rifiuta immagini che girano come root (H9). L'istanza puo' imporlo comunque.
+     */
+    restricted?: boolean;
+};
+
+export type AppUpdateInput = {
+    port?: number | null;
+    healthCheck?: AppHealthCheck;
+    /**
+     * Branch da seguire; `null` torna ai deploy a mano.
+     */
+    followBranch?: string | null;
+    autoDeployPaused?: boolean;
+    restricted?: boolean;
+};
+
+export type AppDeployInput = {
+    /**
+     * Come in `AppCreateInput`: un tag del registry del repo (`sha-91be20d`), `nome:tag`, un digest o un riferimento esterno completo.
+     */
+    image: string;
+};
+
+export type AppRollbackInput = {
+    /**
+     * Versione da ripristinare come nuova versione.
+     */
+    version: number;
+    pauseAutoDeploy?: boolean;
+};
+
+export type AppScaleInput = {
+    /**
+     * Zero ferma l'app (`stoppedReason: manual`).
+     */
+    copies: number;
+};
+
+/**
+ * `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta), `rollback`, `create`.
+ */
+export type AppVersionTrigger = 'create' | 'manual' | 'branch_push' | 'config' | 'rollback';
+
+/**
+ * Configurazione di una versione. I segreti compaiono solo per nome (H8).
+ */
+export type AppVersionConfig = {
+    port?: number | null;
+    healthCheck?: AppHealthCheck | null;
+    variables: {
+        [key: string]: string;
+    };
+    secretNames: Array<AppEnvName>;
+    resources: AppResources;
+    copies: number;
+    restricted?: boolean;
+};
+
+export type AppVersion = {
+    number: number;
+    trigger: AppVersionTrigger;
+    state: AppDeployState;
+    stateReason?: string | null;
+    image: AppImage;
+    /**
+     * L'immagine si puo' ancora scaricare: falso se l'ha tolta la pulizia del registry (RG2).
+     */
+    imageAvailable: boolean;
+    /**
+     * Versione attiva e precedente: sempre nei backup (H4).
+     */
+    inBackup: boolean;
+    /**
+     * Per `branch_push`, il branch.
+     */
+    branch?: string | null;
+    commitSha?: string | null;
+    /**
+     * Per `config` e `rollback`, che cosa e' cambiato, per esempio «variabile SEARCH_TIMEOUT»; i valori dei segreti non compaiono mai.
+     */
+    summary?: string | null;
+    /**
+     * Per `rollback`, la versione ripristinata.
+     */
+    rollbackOf?: number | null;
+    config?: AppVersionConfig;
+    createdAt: string;
+    createdBy?: AppActor | null;
+};
+
+export type AppVersionList = {
+    items: Array<AppVersion>;
+    total: number;
+};
+
+export type AppVariable = {
+    name: AppEnvName;
+    value: string;
+    /**
+     * Impostata da GitStack (per esempio l'intestazione dell'utente, H6): sola lettura.
+     */
+    managed: boolean;
+    /**
+     * Versione creata dall'ultima modifica.
+     */
+    version?: number | null;
+    updatedAt: string;
+    updatedBy?: AppActor | null;
+};
+
+export type AppVariableList = {
+    items: Array<AppVariable>;
+};
+
+export type AppVariableInput = {
+    value: string;
+};
+
+export type AppSecret = {
+    name: AppEnvName;
+    version?: number | null;
+    updatedAt: string;
+    updatedBy?: AppActor | null;
+};
+
+export type AppSecretList = {
+    items: Array<AppSecret>;
+};
+
+export type AppSecretInput = {
+    value: string;
+};
+
+export type AppAccess = {
+    mode: AppAccessMode;
+    /**
+     * L'amministratore ha abilitato le app pubbliche (H1, doppio consenso).
+     */
+    publicAppsEnabled: boolean;
+    address?: string | null;
+    /**
+     * Origine del certificato dell'indirizzo automatico (H2): CA interna per le interne.
+     */
+    certificate?: 'instance_ca' | 'lets_encrypt' | 'uploaded';
+    /**
+     * Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6). I nomi delle intestazioni e la forma della firma non sono ancora fissati dal contratto.
+     */
+    identityHeaders?: boolean;
+    changedAt?: string | null;
+    changedBy?: AppActor | null;
+};
+
+export type AppAccessInput = {
+    mode: AppAccessMode;
+};
+
+/**
+ * Parte garantita (sempre riservata) e tetto (usato se il server ha spazio), per copia (H11).
+ */
+export type AppResources = {
+    guaranteed: AppResourceAmount;
+    limit: AppResourceAmount;
+    /**
+     * Massimo consentito dall'istanza per app.
+     */
+    maxPerApp?: AppResourceAmount | null;
+};
+
+export type AppResourcesInput = {
+    guaranteed: AppResourceAmount;
+    limit: AppResourceAmount;
+};
+
+export type AppLogLine = {
+    time: string;
+    source: 'app' | 'platform';
+    /**
+     * Copia che ha scritto la riga (`web-1`); assente per gli eventi della piattaforma.
+     */
+    copy?: string | null;
+    message: string;
+};
+
+export type AppMetricPoint = {
+    time: string;
+    value: number;
+};
+
+export type AppMetricSeries = {
+    unit: 'millicores' | 'bytes' | 'per_second' | 'ratio' | 'count';
+    points: Array<AppMetricPoint>;
+};
+
+export type AppCopyStatus = {
+    name: string;
+    ready: boolean;
+    restarts: number;
+};
+
+export type AppMetrics = {
+    /**
+     * Falso se la sorgente delle metriche non risponde: le serie sono vuote, non zero.
+     */
+    available: boolean;
+    range: '1h' | '6h' | '24h' | '7d';
+    stepSeconds: number;
+    cpu: AppMetricSeries;
+    memory: AppMetricSeries;
+    /**
+     * Solo app web.
+     */
+    requests?: AppMetricSeries | null;
+    /**
+     * Solo app web.
+     */
+    errors5xx?: AppMetricSeries | null;
+    restarts24h: number;
+    copies: Array<AppCopyStatus>;
+    /**
+     * Uso corrente; null vuol dire metriche non disponibili.
+     */
+    usage?: AppUsage | null;
+};
+
+/**
+ * Capacita' del server e priorita' servizi di GitStack, poi app, poi job della CI (H11).
+ */
+export type AppsCapacity = {
+    server: {
+        cpuMillis: number;
+        memoryBytes: number;
+        /**
+         * Profilo hardware rilevato (per esempio `recommended`).
+         */
+        profile?: string | null;
+    };
+    services: {
+        reserved: AppResourceAmount;
+    };
+    apps: {
+        share: AppResourceAmount;
+        guaranteed: AppResourceAmount;
+        /**
+         * La riserva e' quella calcolata dall'hardware, non modificata.
+         */
+        shareIsDefault?: boolean;
+    };
+    ci: {
+        guaranteedCpuMillis: number;
+        usedCpuMillis?: number;
+        slots: number;
+    };
+    /**
+     * Il garantito supera l'80% della riserva: i nuovi deploy possono essere rifiutati.
+     */
+    appsShareWarning: boolean;
+};
+
+export type AppsReserveInput = AppResourceAmount;
+
+/**
+ * Quota delle app di un owner (H5, H11).
+ */
+export type AppOwnerQuota = {
+    owner: string;
+    /**
+     * Valgono i default dell'istanza.
+     */
+    isDefault?: boolean;
+    limits: AppOwnerQuotaInput;
+    used: AppOwnerQuotaInput;
+    /**
+     * Un valore e' oltre l'80% della quota.
+     */
+    warning: boolean;
+};
+
+export type AppOwnerQuotaInput = {
+    /**
+     * CPU garantita.
+     */
+    cpuMillis: number;
+    /**
+     * RAM garantita.
+     */
+    memoryBytes: number;
+    /**
+     * Disco dei volumi (v3-b).
+     */
+    diskBytes: number;
+};
+
+export type AppOwnerQuotaList = {
+    items: Array<AppOwnerQuota>;
+};
+
+export type AppsInstanceSettings = {
+    /**
+     * Dominio wildcard delle app (H2), scelto all'installazione; solo lettura.
+     */
+    appsDomain: string | null;
+    /**
+     * Senza `--apps-domain` vale il default, con avviso.
+     */
+    appsDomainIsDefault?: boolean;
+    publicAppsEnabled: boolean;
+    signedImagesOnly: boolean;
+    restricted: boolean;
+    maxPerApp: AppResourceAmount;
+    logRetention: AppLogRetention;
+};
+
+export type AppsInstanceSettingsInput = {
+    publicAppsEnabled: boolean;
+    signedImagesOnly: boolean;
+    restricted: boolean;
+    maxPerApp: AppResourceAmount;
+    logRetention: AppLogRetention;
+};
+
+export type AppLogRetention = {
+    days: number;
+    maxBytes: number;
+};
+
+export type AppTrustedKey = {
+    id: string;
+    name: string;
+    fingerprint: string;
+    /**
+     * Chiave pubblica cosign in PEM.
+     */
+    publicKey?: string;
+    /**
+     * La chiave della CI dell'istanza (H10): sempre presente, non si toglie.
+     */
+    instanceKey: boolean;
+    createdAt: string;
+    createdBy?: AppActor | null;
+};
+
+export type AppTrustedKeyList = {
+    items: Array<AppTrustedKey>;
+};
+
+export type AppTrustedKeyInput = {
+    name: string;
+    /**
+     * Chiave pubblica cosign in PEM.
+     */
+    publicKey: string;
+};
+
+/**
+ * Riga della tabella Apps dell'amministratore (H9, H11).
+ */
+export type AdminApp = {
+    owner: string;
+    repo: string;
+    name: AppName;
+    status: AppStatus;
+    copies: number;
+    guaranteed: AppResourceAmount;
+    limit: AppResourceAmount;
+    usage: AppUsage;
+    verified: boolean;
+    runsAsRoot: boolean | null;
+    /**
+     * Sta usando piu' della parte garantita: e' il primo a essere rallentato.
+     */
+    aboveGuaranteed: boolean;
+    /**
+     * Non rispetta `restricted` o `signedImagesOnly` d'istanza (valgono dal deploy successivo).
+     */
+    violatesInstanceRules?: boolean;
+};
+
+export type AdminAppList = {
+    items: Array<AdminApp>;
+    total: number;
+};
+
+/**
+ * Payload del webhook `deployment` (H12). `action`: `started` (deploy avviato), `succeeded` (la versione e' sana), `failed` (non ha superato il controllo di salute; resta la precedente), `rolled_back` (rollback a mano riuscito). Una notifica «deploy fallito» va anche a chi l'ha fatto e agli `admin` del repo.
+ *
+ */
+export type WebhookDeploymentPayload = {
+    version: 1;
+    event: 'deployment';
+    action: 'started' | 'succeeded' | 'failed' | 'rolled_back';
+    time: string;
+    repository: WebhookRepositoryRef;
+    organization?: WebhookOrganizationRef;
+    sender: WebhookSender | null;
+    app: App;
+    deployment: AppVersion;
+};
+
 export type ActionsSecretInputWritable = {
     name: string;
     value: string;
@@ -4172,6 +4783,20 @@ export type ArtifactIdParam = string;
 export type CacheIdParam = string;
 
 export type ActionsNameParam = string;
+
+/**
+ * Nome dell'app dentro il repo (H5).
+ */
+export type AppParam = AppName;
+
+/**
+ * Numero della versione dell'app.
+ */
+export type AppVersionParam = number;
+
+export type AppEnvNameParam = AppEnvName;
+
+export type AppTrustedKeyIdParam = string;
 
 export type RunnerIdParam = string;
 
@@ -18031,3 +18656,1664 @@ export type GitSearchCodeResponses = {
 };
 
 export type GitSearchCodeResponse = GitSearchCodeResponses[keyof GitSearchCodeResponses];
+
+export type ListAppsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps';
+};
+
+export type ListAppsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListAppsError = ListAppsErrors[keyof ListAppsErrors];
+
+export type ListAppsResponses = {
+    /**
+     * App del repo.
+     */
+    200: AppList;
+};
+
+export type ListAppsResponse = ListAppsResponses[keyof ListAppsResponses];
+
+export type CreateAppData = {
+    body: AppCreateInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps';
+};
+
+export type CreateAppErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type CreateAppError = CreateAppErrors[keyof CreateAppErrors];
+
+export type CreateAppResponses = {
+    /**
+     * App creata, deploy iniziale in corso.
+     */
+    202: AppCreated;
+};
+
+export type CreateAppResponse = CreateAppResponses[keyof CreateAppResponses];
+
+export type DeleteAppData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}';
+};
+
+export type DeleteAppErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type DeleteAppError = DeleteAppErrors[keyof DeleteAppErrors];
+
+export type DeleteAppResponses = {
+    /**
+     * App eliminata.
+     */
+    204: void;
+};
+
+export type DeleteAppResponse = DeleteAppResponses[keyof DeleteAppResponses];
+
+export type GetAppData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}';
+};
+
+export type GetAppErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetAppError = GetAppErrors[keyof GetAppErrors];
+
+export type GetAppResponses = {
+    /**
+     * App.
+     */
+    200: App;
+};
+
+export type GetAppResponse = GetAppResponses[keyof GetAppResponses];
+
+export type UpdateAppData = {
+    body: AppUpdateInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}';
+};
+
+export type UpdateAppErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type UpdateAppError = UpdateAppErrors[keyof UpdateAppErrors];
+
+export type UpdateAppResponses = {
+    /**
+     * App aggiornata.
+     */
+    200: App;
+};
+
+export type UpdateAppResponse = UpdateAppResponses[keyof UpdateAppResponses];
+
+export type DeployAppData = {
+    body: AppDeployInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/deploys';
+};
+
+export type DeployAppErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type DeployAppError = DeployAppErrors[keyof DeployAppErrors];
+
+export type DeployAppResponses = {
+    /**
+     * Deploy avviato.
+     */
+    202: AppVersion;
+};
+
+export type DeployAppResponse = DeployAppResponses[keyof DeployAppResponses];
+
+export type ListAppVersionsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/apps/{app}/versions';
+};
+
+export type ListAppVersionsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListAppVersionsError = ListAppVersionsErrors[keyof ListAppVersionsErrors];
+
+export type ListAppVersionsResponses = {
+    /**
+     * Versioni.
+     */
+    200: AppVersionList;
+};
+
+export type ListAppVersionsResponse = ListAppVersionsResponses[keyof ListAppVersionsResponses];
+
+export type GetAppVersionData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+        /**
+         * Numero della versione dell'app.
+         */
+        version: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/versions/{version}';
+};
+
+export type GetAppVersionErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetAppVersionError = GetAppVersionErrors[keyof GetAppVersionErrors];
+
+export type GetAppVersionResponses = {
+    /**
+     * Versione.
+     */
+    200: AppVersion;
+};
+
+export type GetAppVersionResponse = GetAppVersionResponses[keyof GetAppVersionResponses];
+
+export type RollbackAppData = {
+    body: AppRollbackInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/rollback';
+};
+
+export type RollbackAppErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type RollbackAppError = RollbackAppErrors[keyof RollbackAppErrors];
+
+export type RollbackAppResponses = {
+    /**
+     * Rollback avviato come nuova versione.
+     */
+    202: AppVersion;
+};
+
+export type RollbackAppResponse = RollbackAppResponses[keyof RollbackAppResponses];
+
+export type RestartAppData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/restart';
+};
+
+export type RestartAppErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type RestartAppError = RestartAppErrors[keyof RestartAppErrors];
+
+export type RestartAppResponses = {
+    /**
+     * Riavvio avviato.
+     */
+    202: App;
+};
+
+export type RestartAppResponse = RestartAppResponses[keyof RestartAppResponses];
+
+export type ScaleAppData = {
+    body: AppScaleInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/scale';
+};
+
+export type ScaleAppErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type ScaleAppError = ScaleAppErrors[keyof ScaleAppErrors];
+
+export type ScaleAppResponses = {
+    /**
+     * App con le nuove copie.
+     */
+    200: App;
+};
+
+export type ScaleAppResponse = ScaleAppResponses[keyof ScaleAppResponses];
+
+export type ListAppVariablesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/variables';
+};
+
+export type ListAppVariablesErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListAppVariablesError = ListAppVariablesErrors[keyof ListAppVariablesErrors];
+
+export type ListAppVariablesResponses = {
+    /**
+     * Variabili.
+     */
+    200: AppVariableList;
+};
+
+export type ListAppVariablesResponse = ListAppVariablesResponses[keyof ListAppVariablesResponses];
+
+export type DeleteAppVariableData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+        name: AppEnvName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/variables/{name}';
+};
+
+export type DeleteAppVariableErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type DeleteAppVariableError = DeleteAppVariableErrors[keyof DeleteAppVariableErrors];
+
+export type DeleteAppVariableResponses = {
+    /**
+     * Variabile eliminata.
+     */
+    204: void;
+};
+
+export type DeleteAppVariableResponse = DeleteAppVariableResponses[keyof DeleteAppVariableResponses];
+
+export type PutAppVariableData = {
+    body: AppVariableInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+        name: AppEnvName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/variables/{name}';
+};
+
+export type PutAppVariableErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type PutAppVariableError = PutAppVariableErrors[keyof PutAppVariableErrors];
+
+export type PutAppVariableResponses = {
+    /**
+     * Variabile salvata; `version` e' la versione creata.
+     */
+    200: AppVariable;
+};
+
+export type PutAppVariableResponse = PutAppVariableResponses[keyof PutAppVariableResponses];
+
+export type ListAppSecretsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/secrets';
+};
+
+export type ListAppSecretsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListAppSecretsError = ListAppSecretsErrors[keyof ListAppSecretsErrors];
+
+export type ListAppSecretsResponses = {
+    /**
+     * Segreti, senza valori.
+     */
+    200: AppSecretList;
+};
+
+export type ListAppSecretsResponse = ListAppSecretsResponses[keyof ListAppSecretsResponses];
+
+export type DeleteAppSecretData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+        name: AppEnvName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/secrets/{name}';
+};
+
+export type DeleteAppSecretErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type DeleteAppSecretError = DeleteAppSecretErrors[keyof DeleteAppSecretErrors];
+
+export type DeleteAppSecretResponses = {
+    /**
+     * Segreto eliminato.
+     */
+    204: void;
+};
+
+export type DeleteAppSecretResponse = DeleteAppSecretResponses[keyof DeleteAppSecretResponses];
+
+export type PutAppSecretData = {
+    body: AppSecretInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+        name: AppEnvName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/secrets/{name}';
+};
+
+export type PutAppSecretErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type PutAppSecretError = PutAppSecretErrors[keyof PutAppSecretErrors];
+
+export type PutAppSecretResponses = {
+    /**
+     * Segreto salvato (solo metadati).
+     */
+    200: AppSecret;
+};
+
+export type PutAppSecretResponse = PutAppSecretResponses[keyof PutAppSecretResponses];
+
+export type GetAppAccessData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/access';
+};
+
+export type GetAppAccessErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetAppAccessError = GetAppAccessErrors[keyof GetAppAccessErrors];
+
+export type GetAppAccessResponses = {
+    /**
+     * Accesso.
+     */
+    200: AppAccess;
+};
+
+export type GetAppAccessResponse = GetAppAccessResponses[keyof GetAppAccessResponses];
+
+export type SetAppAccessData = {
+    body: AppAccessInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/access';
+};
+
+export type SetAppAccessErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type SetAppAccessError = SetAppAccessErrors[keyof SetAppAccessErrors];
+
+export type SetAppAccessResponses = {
+    /**
+     * Accesso aggiornato.
+     */
+    200: AppAccess;
+};
+
+export type SetAppAccessResponse = SetAppAccessResponses[keyof SetAppAccessResponses];
+
+export type GetAppResourcesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/resources';
+};
+
+export type GetAppResourcesErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetAppResourcesError = GetAppResourcesErrors[keyof GetAppResourcesErrors];
+
+export type GetAppResourcesResponses = {
+    /**
+     * Risorse.
+     */
+    200: AppResources;
+};
+
+export type GetAppResourcesResponse = GetAppResourcesResponses[keyof GetAppResourcesResponses];
+
+export type SetAppResourcesData = {
+    body: AppResourcesInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/resources';
+};
+
+export type SetAppResourcesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type SetAppResourcesError = SetAppResourcesErrors[keyof SetAppResourcesErrors];
+
+export type SetAppResourcesResponses = {
+    /**
+     * Risorse aggiornate.
+     */
+    200: AppResources;
+};
+
+export type SetAppResourcesResponse = SetAppResourcesResponses[keyof SetAppResourcesResponses];
+
+export type GetAppLogsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: {
+        follow?: boolean;
+        /**
+         * Durata (`5m`, `1h`, `7d`) o istante RFC 3339. Assente: dall'inizio della cronologia, o dall'ultima ora con `follow`.
+         */
+        since?: string;
+        until?: string;
+        /**
+         * Nome di una copia (per esempio `web-1`).
+         */
+        copy?: string;
+        source?: 'all' | 'app' | 'platform';
+        /**
+         * Testo da cercare nelle righe (sottostringa).
+         */
+        grep?: string;
+        /**
+         * Al massimo N righe, le piu' recenti.
+         */
+        limit?: number;
+        format?: 'text' | 'ndjson';
+    };
+    url: '/repos/{owner}/{repo}/apps/{app}/logs';
+};
+
+export type GetAppLogsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetAppLogsError = GetAppLogsErrors[keyof GetAppLogsErrors];
+
+export type GetAppLogsResponses = {
+    /**
+     * Log.
+     */
+    200: string;
+};
+
+export type GetAppLogsResponse = GetAppLogsResponses[keyof GetAppLogsResponses];
+
+export type GetAppMetricsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: {
+        range?: '1h' | '6h' | '24h' | '7d';
+        /**
+         * Nome di una copia; assente: somma di tutte.
+         */
+        copy?: string;
+    };
+    url: '/repos/{owner}/{repo}/apps/{app}/metrics';
+};
+
+export type GetAppMetricsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetAppMetricsError = GetAppMetricsErrors[keyof GetAppMetricsErrors];
+
+export type GetAppMetricsResponses = {
+    /**
+     * Metriche.
+     */
+    200: AppMetrics;
+};
+
+export type GetAppMetricsResponse = GetAppMetricsResponses[keyof GetAppMetricsResponses];
+
+export type ListAdminAppsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/admin/apps';
+};
+
+export type ListAdminAppsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+};
+
+export type ListAdminAppsError = ListAdminAppsErrors[keyof ListAdminAppsErrors];
+
+export type ListAdminAppsResponses = {
+    /**
+     * App dell'istanza.
+     */
+    200: AdminAppList;
+};
+
+export type ListAdminAppsResponse = ListAdminAppsResponses[keyof ListAdminAppsResponses];
+
+export type GetAdminAppsCapacityData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/apps/capacity';
+};
+
+export type GetAdminAppsCapacityErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+};
+
+export type GetAdminAppsCapacityError = GetAdminAppsCapacityErrors[keyof GetAdminAppsCapacityErrors];
+
+export type GetAdminAppsCapacityResponses = {
+    /**
+     * Capacita'.
+     */
+    200: AppsCapacity;
+};
+
+export type GetAdminAppsCapacityResponse = GetAdminAppsCapacityResponses[keyof GetAdminAppsCapacityResponses];
+
+export type UpdateAdminAppsReserveData = {
+    body: AppResourceAmount;
+    path?: never;
+    query?: never;
+    url: '/admin/apps/reserve';
+};
+
+export type UpdateAdminAppsReserveErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type UpdateAdminAppsReserveError = UpdateAdminAppsReserveErrors[keyof UpdateAdminAppsReserveErrors];
+
+export type UpdateAdminAppsReserveResponses = {
+    /**
+     * Capacita' aggiornata.
+     */
+    200: AppsCapacity;
+};
+
+export type UpdateAdminAppsReserveResponse = UpdateAdminAppsReserveResponses[keyof UpdateAdminAppsReserveResponses];
+
+export type ListAdminAppOwnerQuotasData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/apps/quotas';
+};
+
+export type ListAdminAppOwnerQuotasErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+};
+
+export type ListAdminAppOwnerQuotasError = ListAdminAppOwnerQuotasErrors[keyof ListAdminAppOwnerQuotasErrors];
+
+export type ListAdminAppOwnerQuotasResponses = {
+    /**
+     * Quote.
+     */
+    200: AppOwnerQuotaList;
+};
+
+export type ListAdminAppOwnerQuotasResponse = ListAdminAppOwnerQuotasResponses[keyof ListAdminAppOwnerQuotasResponses];
+
+export type DeleteAdminAppOwnerQuotaData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+    };
+    query?: never;
+    url: '/admin/apps/quotas/{owner}';
+};
+
+export type DeleteAdminAppOwnerQuotaErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type DeleteAdminAppOwnerQuotaError = DeleteAdminAppOwnerQuotaErrors[keyof DeleteAdminAppOwnerQuotaErrors];
+
+export type DeleteAdminAppOwnerQuotaResponses = {
+    /**
+     * Quota riportata al default.
+     */
+    204: void;
+};
+
+export type DeleteAdminAppOwnerQuotaResponse = DeleteAdminAppOwnerQuotaResponses[keyof DeleteAdminAppOwnerQuotaResponses];
+
+export type PutAdminAppOwnerQuotaData = {
+    body: AppOwnerQuotaInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+    };
+    query?: never;
+    url: '/admin/apps/quotas/{owner}';
+};
+
+export type PutAdminAppOwnerQuotaErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type PutAdminAppOwnerQuotaError = PutAdminAppOwnerQuotaErrors[keyof PutAdminAppOwnerQuotaErrors];
+
+export type PutAdminAppOwnerQuotaResponses = {
+    /**
+     * Quota.
+     */
+    200: AppOwnerQuota;
+};
+
+export type PutAdminAppOwnerQuotaResponse = PutAdminAppOwnerQuotaResponses[keyof PutAdminAppOwnerQuotaResponses];
+
+export type GetAdminAppsSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/apps/settings';
+};
+
+export type GetAdminAppsSettingsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+};
+
+export type GetAdminAppsSettingsError = GetAdminAppsSettingsErrors[keyof GetAdminAppsSettingsErrors];
+
+export type GetAdminAppsSettingsResponses = {
+    /**
+     * Impostazioni.
+     */
+    200: AppsInstanceSettings;
+};
+
+export type GetAdminAppsSettingsResponse = GetAdminAppsSettingsResponses[keyof GetAdminAppsSettingsResponses];
+
+export type UpdateAdminAppsSettingsData = {
+    body: AppsInstanceSettingsInput;
+    path?: never;
+    query?: never;
+    url: '/admin/apps/settings';
+};
+
+export type UpdateAdminAppsSettingsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type UpdateAdminAppsSettingsError = UpdateAdminAppsSettingsErrors[keyof UpdateAdminAppsSettingsErrors];
+
+export type UpdateAdminAppsSettingsResponses = {
+    /**
+     * Impostazioni aggiornate.
+     */
+    200: AppsInstanceSettings;
+};
+
+export type UpdateAdminAppsSettingsResponse = UpdateAdminAppsSettingsResponses[keyof UpdateAdminAppsSettingsResponses];
+
+export type ListAdminAppTrustedKeysData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/apps/trusted-keys';
+};
+
+export type ListAdminAppTrustedKeysErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+};
+
+export type ListAdminAppTrustedKeysError = ListAdminAppTrustedKeysErrors[keyof ListAdminAppTrustedKeysErrors];
+
+export type ListAdminAppTrustedKeysResponses = {
+    /**
+     * Chiavi fidate.
+     */
+    200: AppTrustedKeyList;
+};
+
+export type ListAdminAppTrustedKeysResponse = ListAdminAppTrustedKeysResponses[keyof ListAdminAppTrustedKeysResponses];
+
+export type AddAdminAppTrustedKeyData = {
+    body: AppTrustedKeyInput;
+    path?: never;
+    query?: never;
+    url: '/admin/apps/trusted-keys';
+};
+
+export type AddAdminAppTrustedKeyErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type AddAdminAppTrustedKeyError = AddAdminAppTrustedKeyErrors[keyof AddAdminAppTrustedKeyErrors];
+
+export type AddAdminAppTrustedKeyResponses = {
+    /**
+     * Chiave aggiunta.
+     */
+    201: AppTrustedKey;
+};
+
+export type AddAdminAppTrustedKeyResponse = AddAdminAppTrustedKeyResponses[keyof AddAdminAppTrustedKeyResponses];
+
+export type DeleteAdminAppTrustedKeyData = {
+    body?: never;
+    path: {
+        keyId: string;
+    };
+    query?: never;
+    url: '/admin/apps/trusted-keys/{keyId}';
+};
+
+export type DeleteAdminAppTrustedKeyErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type DeleteAdminAppTrustedKeyError = DeleteAdminAppTrustedKeyErrors[keyof DeleteAdminAppTrustedKeyErrors];
+
+export type DeleteAdminAppTrustedKeyResponses = {
+    /**
+     * Chiave tolta.
+     */
+    204: void;
+};
+
+export type DeleteAdminAppTrustedKeyResponse = DeleteAdminAppTrustedKeyResponses[keyof DeleteAdminAppTrustedKeyResponses];
