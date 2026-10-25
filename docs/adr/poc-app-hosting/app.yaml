@@ -153,7 +153,6 @@ spec:
   routes:
     - match: Host(`deny.apps.test`)
       kind: Rule
-      middlewares: [{name: app-forward-auth-deny}]
       middlewares: [{name: app-strip-client-identity}, {name: app-forward-auth-deny}]
       services: [{name: app, port: 8080}]
   tls: {}
