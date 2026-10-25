@@ -127,8 +127,9 @@ func TestMigration0036_App(t *testing.T) {
 		t.Fatalf("app dopo l'eliminazione del repo: %d", n)
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("down 0036: %v", err)
+	// Due passi: con la 0037 (GIT-348, variabili e segreti) sopra, il down di 0036 ne toglie due.
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
+		t.Fatalf("down 0037 e 0036: %v", err)
 	}
 	var n int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.tables WHERE table_schema = 'core'
