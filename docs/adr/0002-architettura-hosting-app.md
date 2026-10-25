@@ -32,28 +32,39 @@ Rischio: un client Kubernetes bloccato non deve bloccare HTTP; worker e timeout 
 Ogni app ha namespace `gitstack-app-<app-id>`, ServiceAccount senza token montato e Role/
 RoleBinding limitati al namespace. Il controller riceve un RoleBinding per namespace solo per
 Deployment, Service, Secret, ConfigMap, IngressRoute, Pod e `pods/log` dell'app; non esiste un
-ClusterRole per le app. Il namespace applica Pod Security `restricted`, default-deny
+ClusterRole per le app. Per creare e cancellare i namespace, `core` ha invece un ClusterRole
+strettamente del controller: `create`, `get`, `list`, `watch`, `delete` su `namespaces`; `get`,
+`list`, `watch`, `create`, `delete` su `rolebindings`; e `bind` solo sui Role `gitstack-app-*`.
+Il reconciler agisce esclusivamente su namespace con label `gitstack.io/managed-app=true` e
+verifica app-id/owner prima di ogni mutazione. Il namespace applica Pod Security `restricted`, default-deny
 NetworkPolicy, ResourceQuota e LimitRange. Root nell'app è consentito da H9, mai privilegi
 Kubernetes, host namespace, hostPath o capability.
 
 Un namespace per repo impedisce quota, policy, identità e rimozione indipendenti; uno condiviso
-rende un errore RBAC laterale: entrambi scartati. Rischi: più namespace/RoleBinding e policy di
+ rende un errore RBAC laterale: entrambi scartati. Rischi: più namespace/RoleBinding e policy di
 egress da esplicitare dall'admin; capacità e naming vanno provati con molte app.
+Il ClusterRole di `core` resta un privilegio critico: una label falsificata o un bug nel selector
+può allargare il perimetro; il chart deve impedirne la scrittura ai ServiceAccount delle app.
 
 ### Esposizione e TLS
 
 Ogni app interna usa `<app>-<repo>-<owner>.apps.<dominio-istanza>` (per esempio
 `web-handbook-acme.apps.acme.it`). Owner, repo e app sono normalizzati per DNS e la label
-deve restare entro 63 caratteri: altrimenti l'API rifiuta con `address_too_long`. Questo evita
-collisioni fra repository omonimi di owner diversi. Il controller crea una
+deve restare entro 63 caratteri: altrimenti l'API rifiuta con `address_too_long`. Un indice unico
+su `apps.normalized_host` rifiuta creazione o rinomina ambigua con `address_conflict`: app/repo
+con trattini possono infatti produrre la stessa label. La forma evita solo le collisioni fra repo
+omonimi di owner diversi. Il controller crea una
 `IngressRoute` Traefik `websecure` verso il Service; chart e installer distribuiscono un
-wildcard `*.apps.<dominio-istanza>` firmato dalla CA interna. La chiave CA resta sull'host, come
-nel TLS esistente. La prova k3d esercita esattamente questo percorso.
+wildcard `*.apps.<dominio-istanza>` firmato dalla CA interna. Il Secret TLS resta solo nel
+namespace Traefik, come `TLSStore` `default`; le IngressRoute dichiarano `tls: {}` e non ne
+ricevono una copia. La chiave CA resta sull'host, come nel TLS esistente. La prova k3d esercita
+esattamente questo percorso.
 
 Ingress standard è scartato: Traefik già governa middleware e routing GitStack. Un certificato
-per app è scartato per costo di rinnovo; domini propri/Let's Encrypt sono v3-c. Rischi: DNS
-wildcard e distribuzione CA sono prerequisiti; il Secret wildcard resta leggibile solo da Traefik
-e dal controller che lo copia.
+per app è scartato per costo di rinnovo; la copia del wildcard in ogni namespace è scartata perché
+moltiplica la chiave privata. Domini propri/Let's Encrypt sono v3-c. Rischi: DNS wildcard e
+distribuzione CA sono prerequisiti; il TLSStore default richiede che nessun'altra rotta possa
+inavvertitamente usare quel certificato.
 
 ### Login H6 e intestazioni firmate
 
@@ -61,7 +72,9 @@ Traefik usa `Middleware.forwardAuth` verso il **gateway**. Gateway verifica sess
 controlla `read` sul repo in `core` e risponde 2xx solo se autorizzato. Passano solo
 `X-GitStack-User`, `X-GitStack-Email`, `X-GitStack-Teams`, `X-GitStack-Auth-Time` e
 `X-GitStack-Signature`: HMAC-SHA-256 su metodo, path, host, timestamp e valori canonici; firma
-con versione e key id, chiave per app in Secret. Traefik elimina tali header inviati dal client.
+con versione e key id, chiave per app in Secret. Un Middleware Traefik `headers` con
+`customRequestHeaders` vuoti rimuove tutti gli `X-GitStack-*` dal client ed è ordinato prima del
+forward-auth; soltanto le intestazioni restituite dal gateway arrivano all'app.
 
 Un proxy dedicato duplicherebbe sessioni e policy; header non firmati o token inoltrato lasciano
 spoofing/riuso: scartati. Rischi: TTL breve, rotazione con doppia chiave e verifica WebSocket/
