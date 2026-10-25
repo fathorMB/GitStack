@@ -88,11 +88,10 @@ export async function fetchAppMetrics(owner: string, repo: string, app: string):
   return unwrap(await sdkGetAppMetrics({ ...atApp(owner, repo, app), query: { range: '6h' } }));
 }
 
-export async function fetchAppLogs(owner: string, repo: string, app: string, options: { follow?: boolean; since?: string; copy?: string; source?: 'all' | 'app' | 'platform'; grep?: string } = {}): Promise<AppLogLine[]> {
+export async function fetchAppLogs(owner: string, repo: string, app: string, options: { since?: string; copy?: string; source?: 'all' | 'app' | 'platform'; grep?: string } = {}): Promise<AppLogLine[]> {
   const result = await sdkGetAppLogs({ ...atApp(owner, repo, app), query: { ...options, format: 'ndjson', limit: 1000 }, parseAs: 'text' });
-  const raw = (result as { data?: unknown }).data;
-  if (typeof raw !== 'string') return unwrap(result as { data?: string; error?: unknown; response?: Response }).split('\n').filter(Boolean).map((line) => JSON.parse(line) as AppLogLine);
-  return raw.split('\n').filter(Boolean).map((line) => JSON.parse(line) as AppLogLine);
+  const text = unwrap(result) as unknown as string;
+  return text.split('\n').filter(Boolean).map((line) => JSON.parse(line) as AppLogLine);
 }
 
 export async function fetchAppVariables(owner: string, repo: string, app: string): Promise<AppVariableList> {

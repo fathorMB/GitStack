@@ -1,7 +1,7 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { appPermissions } from '../../../lib/appsPermissions';
 import type { AppRole } from '../../../lib/appsPermissions';
 import * as api from '../../../lib/appsApi';
@@ -27,14 +27,20 @@ beforeEach(() => {
   vi.mocked(api.fetchAppVariables).mockResolvedValue({ items: [{ name: 'SEARCH_URL', value: 'http://search:9200', managed: false, updatedAt: '2026-10-24T10:00:00Z' }] });
   vi.mocked(api.fetchAppSecrets).mockResolvedValue({ items: [{ name: 'DATABASE_URL', updatedAt: '2026-10-24T10:00:00Z', updatedBy: { id: 'u1', username: 'mrossi', type: 'human' } }] });
 });
+afterEach(() => vi.useRealTimers());
 
 // Mockup: .prisma/design/mockups-v3-hosting/index.html, data-screen="logs".
 describe('AppLogsPage (H4)', () => {
-  it('mostra i log del visore condiviso e filtra per copia/intervallo', async () => {
+  it('in live interroga subito e ripete dopo tre secondi senza aprire uno stream', async () => {
+    vi.useFakeTimers();
     mount(<AppLogsPage repo={repo} app={makeApp()} perms={perms('write')} />);
-    expect(await screen.findByText('deploy v43 started')).toBeInTheDocument();
-    expect(screen.getByRole('log', { name: 'App logs' })).toBeInTheDocument();
-    expect(api.fetchAppLogs).toHaveBeenCalledWith('acme', 'handbook', 'web', expect.objectContaining({ source: 'all', since: '1h' }));
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(api.fetchAppLogs).toHaveBeenCalledTimes(1);
+    expect(api.fetchAppLogs.mock.calls[0][3]).toMatchObject({ since: '1h' });
+    expect(api.fetchAppLogs.mock.calls[0][3]).not.toHaveProperty('follow');
+    await act(async () => { vi.advanceTimersByTime(3000); await Promise.resolve(); await Promise.resolve(); });
+    expect(api.fetchAppLogs).toHaveBeenCalledTimes(2);
+    expect(api.fetchAppLogs.mock.calls[1][3]).not.toHaveProperty('follow');
   });
 
   it('read non vede i log e non invia richieste', () => {
@@ -46,33 +52,55 @@ describe('AppLogsPage (H4)', () => {
 
 // Mockup: .prisma/design/mockups-v3-hosting/index.html, data-screen="config".
 describe('AppConfigPage (H6)', () => {
-  it('read e write non possono gestire variabili o segreti', () => {
-    for (const role of ['read', 'write'] as const) {
-      const { unmount } = mount(<AppConfigPage repo={repo} app={makeApp()} perms={perms(role)} />);
-      expect(screen.queryByRole('button', { name: 'New variable' })).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'New secret' })).not.toBeInTheDocument();
-      expect(api.fetchAppSecrets).not.toHaveBeenCalled();
-      unmount();
-    }
+  it('read non legge variabili e vede il gate write', () => {
+    mount(<AppConfigPage repo={repo} app={makeApp()} perms={perms('read')} />);
+    expect(screen.getByText('Variables and secrets require write access to this repository.')).toBeInTheDocument();
+    expect(api.fetchAppVariables).not.toHaveBeenCalled();
+    expect(api.fetchAppSecrets).not.toHaveBeenCalled();
   });
 
-  it('admin salva e sostituisce un segreto senza mostrare il valore salvato', async () => {
-    vi.mocked(api.saveAppSecret).mockResolvedValue();
+  it('write legge variabili ma non gestisce variabili o segreti', async () => {
+    mount(<AppConfigPage repo={repo} app={makeApp()} perms={perms('write')} />);
+    expect(await screen.findByText('SEARCH_URL')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'New variable' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit variable SEARCH_URL' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete variable SEARCH_URL' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'New secret' })).not.toBeInTheDocument();
+    expect(api.fetchAppSecrets).not.toHaveBeenCalled();
+  });
+
+  it('admin vede i controlli di gestione', async () => {
     mount(<AppConfigPage repo={repo} app={makeApp()} perms={perms('admin')} />);
     expect(await screen.findByText('SEARCH_URL')).toBeInTheDocument();
     expect(await screen.findByText('DATABASE_URL')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'New variable' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit variable SEARCH_URL' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete variable SEARCH_URL' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'New secret' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Update' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete secret DATABASE_URL' })).toBeInTheDocument();
+  });
+
+  it('dopo aver sostituito un segreto il valore non resta nella pagina', async () => {
+    vi.mocked(api.saveAppSecret).mockResolvedValue();
+    mount(<AppConfigPage repo={repo} app={makeApp()} perms={perms('admin')} />);
+    expect(await screen.findByText('DATABASE_URL')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Update' }));
-    const form = screen.getByLabelText('Value');
-    await userEvent.type(form, 'super-secret-value');
+    await userEvent.type(screen.getByLabelText('Value'), 'super-secret-value');
     await userEvent.click(screen.getByRole('button', { name: 'Save secret' }));
     await waitFor(() => expect(api.saveAppSecret).toHaveBeenCalledWith('acme', 'handbook', 'web', 'DATABASE_URL', 'super-secret-value'));
+    await waitFor(() => expect(api.fetchAppSecrets).toHaveBeenCalledTimes(2));
     expect(screen.queryByText('super-secret-value')).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue('super-secret-value')).not.toBeInTheDocument();
   });
 
-  it('segreti mostrano solo nome e metadati, mai il valore', async () => {
+  it('non mostra un eventuale campo value ricevuto per errore nei metadati', async () => {
+    vi.mocked(api.fetchAppSecrets).mockResolvedValueOnce({
+      items: [{ name: 'DATABASE_URL', updatedAt: '2026-10-24T10:00:00Z', value: 'leak' } as unknown as Awaited<ReturnType<typeof api.fetchAppSecrets>>['items'][number]],
+    });
     mount(<AppConfigPage repo={repo} app={makeApp()} perms={perms('admin')} />);
-    const row = await screen.findByText('DATABASE_URL');
-    expect(within(row.closest('.list-row') as HTMLElement).queryByDisplayValue('sensitive-secret')).not.toBeInTheDocument();
+    expect(await screen.findByText('DATABASE_URL')).toBeInTheDocument();
+    expect(screen.queryByText('leak')).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue('leak')).not.toBeInTheDocument();
   });
 });

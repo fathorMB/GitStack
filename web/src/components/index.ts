@@ -6,6 +6,7 @@ export { CopyButton } from './CopyButton';
 export { DataTable } from './DataTable';
 export type { Column } from './DataTable';
 export { EmptyState } from './EmptyState';
+export { LogView } from './LogView';
 export { FormField } from './FormField';
 export { Select } from './Select';
 export type { SelectOption } from './Select';

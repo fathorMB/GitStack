@@ -1,4 +1,4 @@
-import { Key, Lock, Plus } from 'lucide-react';
+import { HardDrive, Key, Lock, Plus, Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button, ConfirmDialog, EmptyState, ErrorAlert, FormField, PasswordInput, TextInput, useToast } from '../../../components';
@@ -19,7 +19,7 @@ export function AppConfigPage({ repo, app, perms }: { repo: Repository; app: App
   const owner = repo.owner.name;
   const name = repo.name;
   const { data, loading, error, reload: reloadData } = useLoad(async () => {
-    if (!perms.canReadLogs) return null;
+    if (!perms.canReadConfig) return null;
     const [variables, secrets] = await Promise.all([
       fetchAppVariables(owner, name, app.name),
       perms.canConfigure ? fetchAppSecrets(owner, name, app.name) : Promise.resolve(null),
@@ -44,10 +44,12 @@ export function AppConfigPage({ repo, app, perms }: { repo: Repository; app: App
   return <>
     <AppHeader repo={repo} app={app} mode="app-config" />
     <main className="page">
-      {!perms.canReadLogs ? <p className="muted">Variables and secrets require write access to this repository.</p> : <div className="settings-grid">
+      {!perms.canReadConfig ? <p className="muted">Variables and secrets require write access to this repository.</p> : <div className="settings-grid">
         <nav className="subnav" aria-label="App settings">
+          <span className="subnav-disabled" aria-disabled="true"><Settings size={16} aria-hidden="true" />General</span>
           <a className="active" href={appsPath(owner, name, app.name, 'settings')} aria-current="page"><Key size={16} aria-hidden="true" />Variables &amp; secrets</a>
           <Link to={appsPath(owner, name, app.name, 'settings/access')}><Key size={16} aria-hidden="true" />Access &amp; domains</Link>
+          <span className="subnav-disabled" aria-disabled="true"><HardDrive size={16} aria-hidden="true" />Volumes &amp; resources</span>
         </nav>
         <div className="stack" style={{ gap: 24 }}>
           {loading && data === null ? <p className="muted">Loading variables and secrets…</p> : null}
@@ -93,7 +95,7 @@ function EntryForm({ kind, save, onCancel, onSaved, initialName, initialValue = 
     finally { setBusy(false); }
   }
   return <form className="card stack" onSubmit={(e) => void submit(e)} style={{ padding: 16 }}>
-    <FormField label="Name"><TextInput autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} required readOnly={kind === 'secret' && initialName !== undefined} /></FormField>
+    <FormField label="Name"><TextInput autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} required readOnly={initialName !== undefined} /></FormField>
     <FormField label="Value">{kind === 'secret' ? <PasswordInput autoComplete="new-password" value={value} onChange={(e) => setValue(e.target.value)} required /> : <TextInput autoComplete="off" value={value} onChange={(e) => setValue(e.target.value)} required />}</FormField>
     {error ? <ErrorAlert message={error} /> : null}
     <div className="row"><Button type="submit" variant="primary" disabled={busy || !value}>Save {kind}</Button><Button onClick={onCancel} disabled={busy}>Cancel</Button></div>

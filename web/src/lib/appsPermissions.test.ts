@@ -13,6 +13,7 @@ describe('appPermissions (H5)', () => {
     expect(appPermissions('read')).toEqual({
       canView: true,
       canReadLogs: false,
+      canReadConfig: false,
       canDeploy: false,
       canRestart: false,
       canRollback: false,
@@ -26,6 +27,7 @@ describe('appPermissions (H5)', () => {
 
   it('write opera sull app ma non la crea, non la configura, non cambia l accesso', () => {
     const p = appPermissions('write');
+    expect(p.canReadConfig).toBe(true);
     expect([p.canView, p.canReadLogs, p.canDeploy, p.canRestart, p.canRollback, p.canScale]).toEqual([true, true, true, true, true, true]);
     expect([p.canCreate, p.canDelete, p.canConfigure, p.canChangeAccess]).toEqual([false, false, false, false]);
   });
