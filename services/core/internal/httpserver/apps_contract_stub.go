@@ -17,46 +17,6 @@ func notImplemented(w http.ResponseWriter) {
 	http.Error(w, "not implemented", http.StatusNotImplemented)
 }
 
-func (s *apiServer) DeployApp(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) RollbackApp(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) RestartApp(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) ScaleApp(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) ListAppVariables(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) PutAppVariable(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, name openapi.AppEnvNameParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) DeleteAppVariable(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, name openapi.AppEnvNameParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) ListAppSecrets(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) PutAppSecret(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, name openapi.AppEnvNameParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) DeleteAppSecret(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, name openapi.AppEnvNameParam) {
-	notImplemented(w)
-}
-
 func (s *apiServer) GetAppAccess(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
 	notImplemented(w)
 }
@@ -109,12 +69,28 @@ func (s *apiServer) UpdateAdminAppsSettings(w http.ResponseWriter, r *http.Reque
 		writeFieldError(w, "maxPerApp", "CPU e memoria devono essere positive.")
 		return
 	}
+	if in.PublicAppsEnabled {
+		writeFieldError(w, "publicAppsEnabled", "non ancora configurabile")
+		return
+	}
+	if in.SignedImagesOnly {
+		writeFieldError(w, "signedImagesOnly", "non ancora configurabile")
+		return
+	}
+	if in.Restricted {
+		writeFieldError(w, "restricted", "non ancora configurabile")
+		return
+	}
+	if in.LogRetention.Days != 7 || in.LogRetention.MaxBytes != 1<<30 {
+		writeFieldError(w, "logRetention", "non ancora configurabile")
+		return
+	}
 	c, err := s.resources.SetAppMax(r.Context(), store.AppResourceAmount{CPUMillis: in.MaxPerApp.CpuMillis, MemoryBytes: in.MaxPerApp.MemoryBytes})
 	if err != nil {
 		appInternalError(w, "aggiornamento del massimo per app", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, openapi.AppsInstanceSettings{AppsDomain: appStringPtr(s.appsDomain), AppsDomainIsDefault: appBoolPtr(s.appsDomain == ""), MaxPerApp: openapi.AppResourceAmount{CpuMillis: c.Max.CPUMillis, MemoryBytes: c.Max.MemoryBytes}, PublicAppsEnabled: in.PublicAppsEnabled, SignedImagesOnly: in.SignedImagesOnly, Restricted: in.Restricted, LogRetention: in.LogRetention})
+	writeJSON(w, http.StatusOK, openapi.AppsInstanceSettings{AppsDomain: appStringPtr(s.appsDomain), AppsDomainIsDefault: appBoolPtr(s.appsDomain == ""), MaxPerApp: openapi.AppResourceAmount{CpuMillis: c.Max.CPUMillis, MemoryBytes: c.Max.MemoryBytes}, PublicAppsEnabled: false, SignedImagesOnly: false, Restricted: false, LogRetention: openapi.AppLogRetention{Days: 7, MaxBytes: 1 << 30}})
 }
 
 func (s *apiServer) ListAdminAppTrustedKeys(w http.ResponseWriter, r *http.Request) {
