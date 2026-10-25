@@ -59,7 +59,6 @@ GITSTACK_TLS_MODE="internal"
 # Senza opzione: default apps.<host> con avviso.
 GITSTACK_APPS_DOMAIN=""
 APPS_DOMAIN=""
-APPS_DOMAIN_NOTE=""
 run resolve_apps_domain
 expect_ok "default: esito"
 expect_has "default: avviso" "--apps-domain non indicato"
@@ -68,24 +67,21 @@ expect_has "default: DNS wildcard" "*.apps.homehub.local"
 resolve_apps_domain >/dev/null 2>&1
 check_eq() { if [ "$2" = "$3" ]; then ok; else OUT="atteso '$3', trovato '$2'"; RC=1; bad "$1"; fi; }
 check_eq "default: APPS_DOMAIN" "${APPS_DOMAIN}" "apps.homehub.local"
-check_eq "default: nota" "${APPS_DOMAIN_NOTE}" "default"
+run resolve_apps_domain; expect_has "default: origine" "(predefinito)"
 
 # Host con IP: default fisso.
 PUBLIC_HOST="10.1.2.3"
-APPS_DOMAIN_NOTE=""
 resolve_apps_domain >/dev/null 2>&1
 check_eq "default con IP" "${APPS_DOMAIN}" "apps.gitstack.internal"
 
 # Con l'opzione (anche in maiuscole): nessun avviso del default.
 PUBLIC_HOST="git.azienda.it"
 GITSTACK_APPS_DOMAIN="Apps.Azienda.IT"
-APPS_DOMAIN_NOTE=""
 run resolve_apps_domain
 expect_ok "opzione: esito"
 expect_lacks "opzione: niente avviso" "--apps-domain non indicato"
 resolve_apps_domain >/dev/null 2>&1
 check_eq "opzione: dominio minuscolo" "${APPS_DOMAIN}" "apps.azienda.it"
-check_eq "opzione: nessuna nota" "${APPS_DOMAIN_NOTE}" ""
 
 # Sottodominio dell'host: ammesso; dominio uguale all'host: rifiutato.
 GITSTACK_APPS_DOMAIN="apps.git.azienda.it"
@@ -109,7 +105,6 @@ resolve_apps_domain >/dev/null 2>&1
 check_eq "salvato" "${APPS_DOMAIN}" "apps.salvato.it"
 printf 'MODE=internal\nHOSTS=git.azienda.it\nEMAIL=\n' >"${TLS_DIR}/install.conf"
 printf 'version: 1\nhost: git.azienda.it\ntls: internal\n' >"${GITSTACK_CONFIG_FILE}"
-APPS_DOMAIN_NOTE=""
 run resolve_apps_domain
 expect_has "v2 senza dominio: avviso" "--apps-domain non indicato"
 printf 'version: 1\nhost: git.azienda.it\napps_domain: apps.dalconfig.it\ntls: internal\n' >"${GITSTACK_CONFIG_FILE}"

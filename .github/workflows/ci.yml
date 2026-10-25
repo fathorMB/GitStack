@@ -280,7 +280,7 @@ jobs:
         run: ./deploy/tests/preflight_test.sh
 
       # Dominio delle app (H2, GIT-346): scelta di --apps-domain e certificato
-      # wildcard della CA interna con openssl vero. Senza root né VM.
+      # wildcard della CA interna con openssl vero. Senza root nÃ© VM.
       - name: test del dominio delle app
         run: ./deploy/tests/apps_domain_test.sh
 

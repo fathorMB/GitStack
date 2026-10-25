@@ -486,7 +486,7 @@ verify_k3s() {
   log "k3s ${want}: kubectl version e gitstack status --json concordano"
 }
 
-# Una riga per controllo: ok/ko; l'esito finale è il codice di uscita.
+# Una riga per controllo: ok/ko; l'esito finale Ã¨ il codice di uscita.
 APPS_KO=0
 apps_check() { # <descrizione> <comando...>
   local d="$1"
