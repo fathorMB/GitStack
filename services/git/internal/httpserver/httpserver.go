@@ -63,6 +63,8 @@ type Deps struct {
 	Registry http.Handler
 	// RegistrySigningKey espone la chiave pubblica del registry, con la propria autenticazione.
 	RegistrySigningKey http.Handler
+	// Packages elenca ed elimina i pacchetti del registry per core (GIT-361); nil = rotte non montate.
+	Packages Packages
 	// RegistryPurge toglie le immagini di un repo cancellato definitivamente (nil = niente).
 	RegistryPurge func(ctx context.Context, repoID string) error
 	// Now è iniettabile per i test (nil = time.Now).
@@ -110,6 +112,9 @@ func NewRouter(d Deps) http.Handler {
 	}
 	if d.Merge != nil {
 		h.mountMerge(api)
+	}
+	if d.Packages != nil {
+		h.mountPackages(api)
 	}
 	mux.Handle("/internal/", trust.Require(d.Secret, nil, d.Now)(api))
 	if d.RegistrySigningKey != nil {

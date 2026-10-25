@@ -23,7 +23,7 @@ func TestPackageSettings_PermessiDefaultEValidazione(t *testing.T) {
 	repoID := e.repo("app", true) // internal: bob e carol leggono
 	e.hid.grantWrite(repoID, "bob")
 	base := "/repos/alice/app/packages/settings"
-	const body = `{"protectedTagPatterns":["v*","release-*"],"deleteUntaggedAfterDays":3,"includeInBackup":true,"keepLastTags":5,"deleteShaTagsAfterDays":30}`
+	const body = `{"protectedTagPatterns":["v*","release-*"],"includeInBackup":true,"keepLastTags":5,"deleteShaTagsAfterDays":30}`
 
 	// Chi non è admin (anche con write) riceve 403 sia in lettura sia in modifica; non è più 501.
 	e.want(e.do(http.MethodGet, base, "bob", ""), http.StatusForbidden, "forbidden")
@@ -53,13 +53,13 @@ func TestPackageSettings_PermessiDefaultEValidazione(t *testing.T) {
 	e.want(rec, http.StatusOK, "")
 	rec = e.do(http.MethodGet, base, "alice", "")
 	e.want(rec, http.StatusOK, "")
-	for _, want := range []string{`"v*"`, `"release-*"`, `"deleteUntaggedAfterDays":3`, `"includeInBackup":true`, `"keepLastTags":5`, `"deleteShaTagsAfterDays":30`} {
+	for _, want := range []string{`"v*"`, `"release-*"`, `"includeInBackup":true`, `"keepLastTags":5`, `"deleteShaTagsAfterDays":30`} {
 		if !strings.Contains(rec.Body.String(), want) {
 			t.Fatalf("manca %s: %s", want, rec.Body.String())
 		}
 	}
 	// Il PATCH sostituisce: i campi facoltativi assenti spengono la regola.
-	e.want(e.do(http.MethodPatch, base, "alice", `{"protectedTagPatterns":[],"deleteUntaggedAfterDays":7,"includeInBackup":false}`), http.StatusOK, "")
+	e.want(e.do(http.MethodPatch, base, "alice", `{"protectedTagPatterns":[],"includeInBackup":false}`), http.StatusOK, "")
 	rec = e.do(http.MethodGet, base, "alice", "")
 	if strings.Contains(rec.Body.String(), "keepLastTags") || strings.Contains(rec.Body.String(), "deleteShaTagsAfterDays") {
 		t.Fatalf("regole non spente: %s", rec.Body.String())
@@ -67,16 +67,17 @@ func TestPackageSettings_PermessiDefaultEValidazione(t *testing.T) {
 
 	// Validazione.
 	for _, bad := range []string{
-		`{"protectedTagPatterns":[],"deleteUntaggedAfterDays":0,"includeInBackup":false}`,
-		`{"protectedTagPatterns":["a/b"],"deleteUntaggedAfterDays":7,"includeInBackup":false}`,
-		`{"protectedTagPatterns":["["],"deleteUntaggedAfterDays":7,"includeInBackup":false}`,
-		`{"protectedTagPatterns":["v*","v*"],"deleteUntaggedAfterDays":7,"includeInBackup":false}`,
-		`{"protectedTagPatterns":[],"deleteUntaggedAfterDays":7,"includeInBackup":false,"keepLastTags":0}`,
-		`{"protectedTagPatterns":[],"deleteUntaggedAfterDays":7,"includeInBackup":false,"deleteShaTagsAfterDays":-1}`,
+		`{"protectedTagPatterns":["a/b"],"includeInBackup":false}`,
+		`{"protectedTagPatterns":["["],"includeInBackup":false}`,
+		`{"protectedTagPatterns":["v*","v*"],"includeInBackup":false}`,
+		`{"protectedTagPatterns":[],"includeInBackup":false,"keepLastTags":0}`,
+		`{"protectedTagPatterns":[],"includeInBackup":false,"deleteShaTagsAfterDays":-1}`,
 	} {
 		e.want(e.do(http.MethodPatch, base, "alice", bad), http.StatusUnprocessableEntity, "validation_failed")
 	}
-	e.want(e.do(http.MethodPatch, base, "alice", `{"protectedTagPatterns":[],"deleteUntaggedAfterDays":7,"includeInBackup":false,"altro":1}`), http.StatusBadRequest, "")
+	e.want(e.do(http.MethodPatch, base, "alice", `{"protectedTagPatterns":[],"includeInBackup":false,"altro":1}`), http.StatusBadRequest, "")
+	// La regola dei 7 giorni è fissa (GIT-361): non è più impostabile, il campo è rifiutato.
+	e.want(e.do(http.MethodPatch, base, "alice", `{"protectedTagPatterns":[],"includeInBackup":false,"deleteUntaggedAfterDays":3}`), http.StatusBadRequest, "")
 
 	// Repo archiviato: la lettura passa, la modifica è 409.
 	e.sql(`UPDATE core.repositories SET archived_at = now() WHERE resource_id = $1`, repoID)
@@ -90,7 +91,7 @@ func TestPackageSettings_RottaInternaSoloPerGit(t *testing.T) {
 	e.repo("altro", true)
 	other := e.repo("terzo", true)
 	e.want(e.do(http.MethodPatch, "/repos/alice/app/packages/settings", "alice",
-		`{"protectedTagPatterns":["v*"],"deleteUntaggedAfterDays":2,"includeInBackup":true,"keepLastTags":4}`), http.StatusOK, "")
+		`{"protectedTagPatterns":["v*"],"includeInBackup":true,"keepLastTags":4}`), http.StatusOK, "")
 
 	const gitSecret = "segreto-del-servizio-git"
 	router := httpserver.NewRouter(e.pool, events.NoopPublisher{}, trustSecret, httpserver.WithGitSecret(gitSecret), httpserver.WithRepoIdentity(e.hid))
@@ -116,7 +117,7 @@ func TestPackageSettings_RottaInternaSoloPerGit(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.Owner != "alice" || got.Name != "app" || got.Archived || len(got.Protected) != 1 || got.Untagged != 2 || got.Keep == nil || *got.Keep != 4 || !got.Backup {
+	if got.Owner != "alice" || got.Name != "app" || got.Archived || len(got.Protected) != 1 || got.Untagged != 7 || got.Keep == nil || *got.Keep != 4 || !got.Backup {
 		t.Fatalf("impostazioni: %s", rec.Body.String())
 	}
 	found := false

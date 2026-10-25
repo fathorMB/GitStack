@@ -27,9 +27,11 @@ const (
 )
 
 func packageSettingsToAPI(p store.PackageSettings) openapi.PackageSettings {
+	// La regola dei 7 giorni è fissa (RG2): si espone in sola lettura, mai il valore salvato.
+	fixed := store.DefaultDeleteUntaggedAfterDays
 	out := openapi.PackageSettings{
 		ProtectedTagPatterns:    p.ProtectedTagPatterns,
-		DeleteUntaggedAfterDays: p.DeleteUntaggedAfterDays,
+		DeleteUntaggedAfterDays: &fixed,
 		IncludeInBackup:         p.IncludeInBackup,
 		KeepLastTags:            p.KeepLastTags,
 		DeleteShaTagsAfterDays:  p.DeleteShaTagsAfterDays,
@@ -57,9 +59,6 @@ func validatePackageSettings(in openapi.PackageSettingsInput) (string, string) {
 			return "protectedTagPatterns", "protectedTagPatterns: modello ripetuto."
 		}
 		seen[p] = true
-	}
-	if in.DeleteUntaggedAfterDays < 1 || in.DeleteUntaggedAfterDays > maxRetentionDays {
-		return "deleteUntaggedAfterDays", "deleteUntaggedAfterDays: da 1 a 3650."
 	}
 	if in.DeleteShaTagsAfterDays != nil && (*in.DeleteShaTagsAfterDays < 1 || *in.DeleteShaTagsAfterDays > maxRetentionDays) {
 		return "deleteShaTagsAfterDays", "deleteShaTagsAfterDays: da 1 a 3650."
@@ -132,7 +131,7 @@ func (s *apiServer) UpdateRepositoryPackageSettings(w http.ResponseWriter, r *ht
 	}
 	p, err := s.resources.PutPackageSettings(r.Context(), repo.ID, userID, store.PackageSettings{
 		ProtectedTagPatterns:    in.ProtectedTagPatterns,
-		DeleteUntaggedAfterDays: in.DeleteUntaggedAfterDays,
+		DeleteUntaggedAfterDays: store.DefaultDeleteUntaggedAfterDays,
 		IncludeInBackup:         in.IncludeInBackup,
 		KeepLastTags:            in.KeepLastTags,
 		DeleteShaTagsAfterDays:  in.DeleteShaTagsAfterDays,
@@ -194,7 +193,7 @@ func (s *apiServer) registrySettings(w http.ResponseWriter, r *http.Request) {
 		"name":                    repo.Name,
 		"archived":                repo.ArchivedAt != nil,
 		"protectedTagPatterns":    packageSettingsToAPI(p).ProtectedTagPatterns,
-		"deleteUntaggedAfterDays": p.DeleteUntaggedAfterDays,
+		"deleteUntaggedAfterDays": store.DefaultDeleteUntaggedAfterDays,
 		"keepLastTags":            p.KeepLastTags,
 		"deleteShaTagsAfterDays":  p.DeleteShaTagsAfterDays,
 		"includeInBackup":         p.IncludeInBackup,

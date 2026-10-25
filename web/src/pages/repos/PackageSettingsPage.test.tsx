@@ -83,7 +83,8 @@ describe('PackageSettingsPage (mockup B6)', () => {
     const protectedTags = await screen.findByRole('region', { name: 'Protected tags' }, { timeout: 5000 });
     expect(within(protectedTags).getByRole('list', { name: 'Protected tag patterns' })).toHaveTextContent('latest');
     const cleanup = screen.getByRole('region', { name: 'Cleanup' });
-    expect(within(cleanup).getByLabelText('Delete untagged images after (days)')).toHaveValue(7);
+    expect(within(cleanup).getByText(/removed automatically after 7 days/)).toBeInTheDocument();
+    expect(within(cleanup).queryByLabelText('Delete untagged images after (days)')).not.toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Backups' })).getByRole('checkbox')).not.toBeChecked();
   });
 
@@ -96,33 +97,19 @@ describe('PackageSettingsPage (mockup B6)', () => {
 
   it('salva le modifiche con il PATCH completo', async () => {
     session(true);
-    vi.mocked(savePackageSettings).mockResolvedValue(settings({ protectedTagPatterns: ['latest', 'v*', 'stable'], deleteUntaggedAfterDays: 3, includeInBackup: true, keepLastTags: 5 }));
+    vi.mocked(savePackageSettings).mockResolvedValue(settings({ protectedTagPatterns: ['latest', 'v*', 'stable'], includeInBackup: true, keepLastTags: 5 }));
     renderPage();
     const protectedTags = await screen.findByRole('region', { name: 'Protected tags' }, { timeout: 5000 });
     await userEvent.type(within(protectedTags).getByLabelText('Tag pattern'), 'stable{Enter}');
-    const days = screen.getByLabelText('Delete untagged images after (days)');
-    await userEvent.clear(days);
-    await userEvent.type(days, '3');
     await userEvent.type(screen.getByLabelText('Keep only the last tags per image'), '5');
     await userEvent.click(within(screen.getByRole('region', { name: 'Backups' })).getByRole('checkbox'));
     await userEvent.click(screen.getByRole('button', { name: 'Save package settings' }));
     expect(savePackageSettings).toHaveBeenCalledWith('acme', 'api', {
       protectedTagPatterns: ['latest', 'v*', 'stable'],
-      deleteUntaggedAfterDays: 3,
       includeInBackup: true,
       keepLastTags: 5,
     });
     expect(await screen.findByText('Package settings saved.')).toBeInTheDocument();
-  });
-
-  it('rifiuta giorni non validi senza chiamare il server', async () => {
-    session(true);
-    renderPage();
-    const days = await screen.findByLabelText('Delete untagged images after (days)', undefined, { timeout: 5000 });
-    await userEvent.clear(days);
-    await userEvent.click(screen.getByRole('button', { name: 'Save package settings' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/whole number of days/);
-    expect(savePackageSettings).not.toHaveBeenCalled();
   });
 
   it('repo archiviato: sola lettura', async () => {

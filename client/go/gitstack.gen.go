@@ -1113,18 +1113,75 @@ func (e OwnerType) Valid() bool {
 	}
 }
 
+// Defines values for PackageKind.
+const (
+	PackageKindHelm  PackageKind = "helm"
+	PackageKindImage PackageKind = "image"
+)
+
+// Valid indicates whether the value is a known member of the PackageKind enum.
+func (e PackageKind) Valid() bool {
+	switch e {
+	case PackageKindHelm:
+		return true
+	case PackageKindImage:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PackageSignature.
 const (
-	Unverified PackageSignature = "unverified"
-	Verified   PackageSignature = "verified"
+	PackageSignatureUnverified PackageSignature = "unverified"
+	PackageSignatureVerified   PackageSignature = "verified"
 )
 
 // Valid indicates whether the value is a known member of the PackageSignature enum.
 func (e PackageSignature) Valid() bool {
 	switch e {
-	case Unverified:
+	case PackageSignatureUnverified:
 		return true
-	case Verified:
+	case PackageSignatureVerified:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PackagePusherKind.
+const (
+	PackagePusherKindAgent PackagePusherKind = "agent"
+	PackagePusherKindJob   PackagePusherKind = "job"
+	PackagePusherKindUser  PackagePusherKind = "user"
+)
+
+// Valid indicates whether the value is a known member of the PackagePusherKind enum.
+func (e PackagePusherKind) Valid() bool {
+	switch e {
+	case PackagePusherKindAgent:
+		return true
+	case PackagePusherKindJob:
+		return true
+	case PackagePusherKindUser:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PackageTagSignature.
+const (
+	PackageTagSignatureUnverified PackageTagSignature = "unverified"
+	PackageTagSignatureVerified   PackageTagSignature = "verified"
+)
+
+// Valid indicates whether the value is a known member of the PackageTagSignature enum.
+func (e PackageTagSignature) Valid() bool {
+	switch e {
+	case PackageTagSignatureUnverified:
+		return true
+	case PackageTagSignatureVerified:
 		return true
 	default:
 		return false
@@ -4568,15 +4625,27 @@ type Package struct {
 	Digest *string `json:"digest,omitempty"`
 
 	// HasSbom Vero se è conservato uno SBOM dell'immagine.
-	HasSbom bool   `json:"hasSbom"`
-	Name    string `json:"name"`
+	HasSbom bool `json:"hasSbom"`
+
+	// Kind Tipo di artefatto, dal mediaType del manifest (helm = chart OCI).
+	Kind *PackageKind `json:"kind,omitempty"`
+	Name string       `json:"name"`
+
+	// PushedBy Chi ha pubblicato, come autenticato dal registry al momento del push. Assente per i push anteriori alla registrazione.
+	PushedBy *PackagePusher `json:"pushedBy,omitempty"`
 
 	// Signature Firma cosign dell'immagine: verificata con la chiave del registry oppure no.
 	Signature PackageSignature `json:"signature"`
 	SizeBytes int64            `json:"sizeBytes"`
-	Tags      []string         `json:"tags"`
-	UpdatedAt time.Time        `json:"updatedAt"`
+
+	// TagDetails Un oggetto per tag (`tags` resta per compatibilità). Le firme e gli SBOM tecnici (sha256-….sig / .sbom) non compaiono.
+	TagDetails *[]PackageTag `json:"tagDetails,omitempty"`
+	Tags       []string      `json:"tags"`
+	UpdatedAt  time.Time     `json:"updatedAt"`
 }
+
+// PackageKind Tipo di artefatto, dal mediaType del manifest (helm = chart OCI).
+type PackageKind string
 
 // PackageSignature Firma cosign dell'immagine: verificata con la chiave del registry oppure no.
 type PackageSignature string
@@ -4586,14 +4655,24 @@ type PackageList struct {
 	Items []Package `json:"items"`
 }
 
-// PackageSettings defines model for PackageSettings.
-type PackageSettings = PackageSettingsInput
+// PackagePusher Chi ha pubblicato, come autenticato dal registry al momento del push. Assente per i push anteriori alla registrazione.
+type PackagePusher struct {
+	Kind PackagePusherKind `json:"kind"`
 
-// PackageSettingsInput defines model for PackageSettingsInput.
-type PackageSettingsInput struct {
+	// Login Username dell'utente o dell'agente; «ci job token» per il token del job.
+	Login string `json:"login"`
+}
+
+// PackagePusherKind defines model for PackagePusher.Kind.
+type PackagePusherKind string
+
+// PackageSettings defines model for PackageSettings.
+type PackageSettings struct {
 	// DeleteShaTagsAfterDays Facoltativo: elimina i tag sha-* più vecchi di X giorni (i tag protetti restano sempre). Assente = mai.
-	DeleteShaTagsAfterDays  *int `json:"deleteShaTagsAfterDays,omitempty"`
-	DeleteUntaggedAfterDays int  `json:"deleteUntaggedAfterDays"`
+	DeleteShaTagsAfterDays *int `json:"deleteShaTagsAfterDays,omitempty"`
+
+	// DeleteUntaggedAfterDays Regola fissa di RG2: le immagini senza tag si eliminano dopo 7 giorni. Non è impostabile.
+	DeleteUntaggedAfterDays *int `json:"deleteUntaggedAfterDays,omitempty"`
 
 	// IncludeInBackup Include le immagini del repo nei backup (RG2: escluse di default).
 	IncludeInBackup bool `json:"includeInBackup"`
@@ -4604,6 +4683,43 @@ type PackageSettingsInput struct {
 	// ProtectedTagPatterns Tag che non possono essere sovrascritti o eliminati.
 	ProtectedTagPatterns []string `json:"protectedTagPatterns"`
 }
+
+// PackageSettingsInput defines model for PackageSettingsInput.
+type PackageSettingsInput struct {
+	// DeleteShaTagsAfterDays Facoltativo: elimina i tag sha-* più vecchi di X giorni (i tag protetti restano sempre). Assente = mai.
+	DeleteShaTagsAfterDays *int `json:"deleteShaTagsAfterDays,omitempty"`
+
+	// IncludeInBackup Include le immagini del repo nei backup (RG2: escluse di default).
+	IncludeInBackup bool `json:"includeInBackup"`
+
+	// KeepLastTags Facoltativo: tiene solo gli ultimi N tag per immagine (i tag protetti restano sempre). Assente = nessun limite.
+	KeepLastTags *int `json:"keepLastTags,omitempty"`
+
+	// ProtectedTagPatterns Tag che non possono essere sovrascritti o eliminati.
+	ProtectedTagPatterns []string `json:"protectedTagPatterns"`
+}
+
+// PackageTag defines model for PackageTag.
+type PackageTag struct {
+	// Digest Digest del manifest a cui punta il tag (sha256:...).
+	Digest  string `json:"digest"`
+	HasSbom bool   `json:"hasSbom"`
+	Name    string `json:"name"`
+
+	// Protected Il tag corrisponde a un modello di tag protetti (RG2).
+	Protected bool `json:"protected"`
+
+	// PushedAt Data dell'ultimo push del tag.
+	PushedAt time.Time `json:"pushedAt"`
+
+	// PushedBy Chi ha pubblicato, come autenticato dal registry al momento del push. Assente per i push anteriori alla registrazione.
+	PushedBy  *PackagePusher      `json:"pushedBy,omitempty"`
+	Signature PackageTagSignature `json:"signature"`
+	SizeBytes int64               `json:"sizeBytes"`
+}
+
+// PackageTagSignature defines model for PackageTag.Signature.
+type PackageTagSignature string
 
 // Principal Chi ha presentato la credenziale.
 type Principal struct {
@@ -9390,7 +9506,7 @@ type ClientInterface interface {
 
 	// DeleteRepositoryPackage Elimina un pacchetto OCI del repository o un suo tag
 	//
-	// Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).
+	// Solo admin del repository (RG1; la rotta chiede write:resource, il ruolo admin lo verifica core: write da solo dà 403). Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).
 	//
 	// Corresponds with DELETE /repos/{owner}/{repo}/packages (the `DeleteRepositoryPackage` operationId).
 	DeleteRepositoryPackage(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *DeleteRepositoryPackageParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -14477,7 +14593,7 @@ func (c *Client) SyncRepoMirror(ctx context.Context, owner RepoOwnerParam, repo 
 
 // DeleteRepositoryPackage Elimina un pacchetto OCI del repository o un suo tag
 //
-// Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).
+// Solo admin del repository (RG1; la rotta chiede write:resource, il ruolo admin lo verifica core: write da solo dà 403). Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).
 //
 // Corresponds with DELETE /repos/{owner}/{repo}/packages (the `DeleteRepositoryPackage` operationId).
 func (c *Client) DeleteRepositoryPackage(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *DeleteRepositoryPackageParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -33631,7 +33747,7 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteRepositoryPackageWithResponse Elimina un pacchetto OCI del repository o un suo tag
 	//
-	// Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).
+	// Solo admin del repository (RG1; la rotta chiede write:resource, il ruolo admin lo verifica core: write da solo dà 403). Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -58473,7 +58589,7 @@ func (c *ClientWithResponses) SyncRepoMirrorWithResponse(ctx context.Context, ow
 
 // DeleteRepositoryPackageWithResponse Elimina un pacchetto OCI del repository o un suo tag
 //
-// Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).
+// Solo admin del repository (RG1; la rotta chiede write:resource, il ruolo admin lo verifica core: write da solo dà 403). Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).
 //
 // Returns a wrapper object for the known response body format(s).
 //
