@@ -30,7 +30,6 @@ export function AppConfigPage({ repo, app, perms }: { repo: Repository; app: App
   const [form, setForm] = useState<{ kind: 'variable' | 'secret'; name?: string; value?: string } | null>(null);
   const [target, setTarget] = useState<{ kind: 'variable' | 'secret'; name: string } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const { toast } = useToast();
   useEffect(() => { if (reload > 0) void reloadData(); }, [reload, reloadData]);
 
   async function remove() {
@@ -94,8 +93,8 @@ function EntryForm({ kind, save, onCancel, onSaved, initialName, initialValue = 
     finally { setBusy(false); }
   }
   return <form className="card stack" onSubmit={(e) => void submit(e)} style={{ padding: 16 }}>
-    <FormField label="Name" htmlFor={`${kind}-name`}><TextInput id={`${kind}-name`} autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} required readOnly={kind === 'secret' && initialName !== undefined} /></FormField>
-    <FormField label="Value" htmlFor={`${kind}-value`}>{kind === 'secret' ? <PasswordInput id={`${kind}-value`} autoComplete="new-password" value={value} onChange={(e) => setValue(e.target.value)} required /> : <TextInput id={`${kind}-value`} autoComplete="off" value={value} onChange={(e) => setValue(e.target.value)} required />}</FormField>
+    <FormField label="Name"><TextInput autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} required readOnly={kind === 'secret' && initialName !== undefined} /></FormField>
+    <FormField label="Value">{kind === 'secret' ? <PasswordInput autoComplete="new-password" value={value} onChange={(e) => setValue(e.target.value)} required /> : <TextInput autoComplete="off" value={value} onChange={(e) => setValue(e.target.value)} required />}</FormField>
     {error ? <ErrorAlert message={error} /> : null}
     <div className="row"><Button type="submit" variant="primary" disabled={busy || !value}>Save {kind}</Button><Button onClick={onCancel} disabled={busy}>Cancel</Button></div>
   </form>;

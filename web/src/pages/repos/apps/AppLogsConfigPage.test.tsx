@@ -62,7 +62,7 @@ describe('AppConfigPage (H6)', () => {
     expect(await screen.findByText('SEARCH_URL')).toBeInTheDocument();
     expect(await screen.findByText('DATABASE_URL')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Update' }));
-    const form = screen.getByRole('textbox', { name: 'Value' });
+    const form = screen.getByLabelText('Value');
     await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), '');
     await userEvent.type(form, 'super-secret-value');
     await userEvent.click(screen.getByRole('button', { name: 'Save secret' }));

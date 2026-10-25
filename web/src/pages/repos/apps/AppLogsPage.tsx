@@ -5,7 +5,6 @@ import { fetchAppLogs } from '../../../lib/appsApi';
 import type { App, AppLogLine } from '../../../lib/appsApi';
 import type { AppPermissions } from '../../../lib/appsPermissions';
 import { logLineClass } from '../../../lib/actionsView';
-import { timeAgo } from '../../../lib/format';
 import { describeError } from '../../../lib/http';
 import type { Repository } from '../../../lib/reposApi';
 import { AppHeader } from './AppHeader';
