@@ -88,7 +88,7 @@ describe('PackageSettingsPage (mockup B6)', () => {
     expect(within(screen.getByRole('region', { name: 'Backups' })).getByRole('checkbox')).not.toBeChecked();
     expect(within(cleanup).getByText(/Space is reclaimed at night/)).toBeInTheDocument();
     expect(within(protectedTags).getByText(/Can't be overwritten or deleted except by repository admins/)).toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: 'Backups' })).getByText(/Images used by apps (active and previous version) are always included/)).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Backups' })).getByText(/Images used by apps \(active and previous version\) are always included/)).toBeInTheDocument();
     // Le regole facoltative sono spente: nessun campo.
     expect(within(cleanup).getAllByRole('checkbox')).toHaveLength(2);
     expect(within(cleanup).queryByRole('spinbutton')).not.toBeInTheDocument();
