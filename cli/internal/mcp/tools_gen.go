@@ -666,6 +666,18 @@ var Tools = []Tool{
 		Schema:      "{\"additionalProperties\":false,\"properties\":{\"notificationId\":{\"format\":\"uuid\",\"type\":\"string\"}},\"required\":[\"notificationId\"],\"type\":\"object\"}",
 	},
 	{
+		Name:        "package_delete",
+		Operation:   "deleteRepositoryPackage",
+		Method:      "DELETE",
+		Path:        "/repos/{owner}/{repo}/packages",
+		Description: "Elimina un pacchetto OCI del repository o un suo tag. Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).",
+		Destructive: true,
+		PathParams:  []string{"owner", "repo"},
+		QueryParams: []string{"name", "tag"},
+		Body:        false,
+		Schema:      "{\"additionalProperties\":false,\"properties\":{\"name\":{\"description\":\"Nome dell'immagine, come in GET packages.\",\"minLength\":1,\"type\":\"string\"},\"owner\":{\"description\":\"Nome dell'utente o dell'organizzazione proprietaria (R1).\",\"maxLength\":39,\"minLength\":1,\"pattern\":\"^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$\",\"type\":\"string\"},\"repo\":{\"description\":\"Nome del repo.\",\"maxLength\":100,\"minLength\":1,\"pattern\":\"^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$\",\"type\":\"string\"},\"tag\":{\"description\":\"Elimina solo questo tag.\",\"minLength\":1,\"type\":\"string\"}},\"required\":[\"name\",\"owner\",\"repo\"],\"type\":\"object\"}",
+	},
+	{
 		Name:        "package_list",
 		Operation:   "listRepositoryPackages",
 		Method:      "GET",

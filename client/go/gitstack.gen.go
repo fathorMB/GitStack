@@ -1365,6 +1365,24 @@ func (e OwnerType) Valid() bool {
 	}
 }
 
+// Defines values for PackageSignature.
+const (
+	Unverified PackageSignature = "unverified"
+	Verified   PackageSignature = "verified"
+)
+
+// Valid indicates whether the value is a known member of the PackageSignature enum.
+func (e PackageSignature) Valid() bool {
+	switch e {
+	case Unverified:
+		return true
+	case Verified:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PrincipalAuthMethod.
 const (
 	PrincipalAuthMethodOidc     PrincipalAuthMethod = "oidc"
@@ -5508,11 +5526,22 @@ type OwnerType string
 
 // Package defines model for Package.
 type Package struct {
-	Name      string    `json:"name"`
-	SizeBytes int64     `json:"sizeBytes"`
-	Tags      []string  `json:"tags"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	// Digest Digest del manifest (sha256:...).
+	Digest *string `json:"digest,omitempty"`
+
+	// HasSbom Vero se è conservato uno SBOM dell'immagine.
+	HasSbom bool   `json:"hasSbom"`
+	Name    string `json:"name"`
+
+	// Signature Firma cosign dell'immagine: verificata con la chiave del registry oppure no.
+	Signature PackageSignature `json:"signature"`
+	SizeBytes int64            `json:"sizeBytes"`
+	Tags      []string         `json:"tags"`
+	UpdatedAt time.Time        `json:"updatedAt"`
 }
+
+// PackageSignature Firma cosign dell'immagine: verificata con la chiave del registry oppure no.
+type PackageSignature string
 
 // PackageList defines model for PackageList.
 type PackageList struct {
@@ -8052,6 +8081,15 @@ type ListRepoMirrorsParams struct {
 type ListRepoMirrorRunsParams struct {
 	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// DeleteRepositoryPackageParams defines parameters for DeleteRepositoryPackage.
+type DeleteRepositoryPackageParams struct {
+	// Name Nome dell'immagine, come in GET packages.
+	Name string `form:"name" json:"name"`
+
+	// Tag Elimina solo questo tag.
+	Tag *string `form:"tag,omitempty" json:"tag,omitempty"`
 }
 
 // ListRepoPullMirrorRunsParams defines parameters for ListRepoPullMirrorRuns.
@@ -10817,6 +10855,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /repos/{owner}/{repo}/mirrors/{mirrorId}/sync (the `SyncRepoMirror` operationId).
 	SyncRepoMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteRepositoryPackage Elimina un pacchetto OCI del repository o un suo tag
+	//
+	// Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/packages (the `DeleteRepositoryPackage` operationId).
+	DeleteRepositoryPackage(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *DeleteRepositoryPackageParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListRepositoryPackages Elenca i pacchetti OCI del repository
 	//
@@ -16739,6 +16784,23 @@ func (c *Client) ListRepoMirrorRuns(ctx context.Context, owner RepoOwnerParam, r
 // Corresponds with POST /repos/{owner}/{repo}/mirrors/{mirrorId}/sync (the `SyncRepoMirror` operationId).
 func (c *Client) SyncRepoMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSyncRepoMirrorRequest(c.Server, owner, repo, mirrorId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteRepositoryPackage Elimina un pacchetto OCI del repository o un suo tag
+//
+// Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/packages (the `DeleteRepositoryPackage` operationId).
+func (c *Client) DeleteRepositoryPackage(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *DeleteRepositoryPackageParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteRepositoryPackageRequest(c.Server, owner, repo, params)
 	if err != nil {
 		return nil, err
 	}
@@ -30564,6 +30626,82 @@ func NewSyncRepoMirrorRequest(server string, owner RepoOwnerParam, repo RepoName
 	return req, nil
 }
 
+// NewDeleteRepositoryPackageRequest constructs an http.Request for the DeleteRepositoryPackage method
+func NewDeleteRepositoryPackageRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *DeleteRepositoryPackageParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/packages", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "name", params.Name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Tag != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "tag", *params.Tag, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListRepositoryPackagesRequest constructs an http.Request for the ListRepositoryPackages method
 func NewListRepositoryPackagesRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
 	var err error
@@ -38072,6 +38210,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /repos/{owner}/{repo}/mirrors/{mirrorId}/sync (the `SyncRepoMirror` operationId).
 	SyncRepoMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*SyncRepoMirrorResponse, error)
+
+	// DeleteRepositoryPackageWithResponse Elimina un pacchetto OCI del repository o un suo tag
+	//
+	// Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/packages (the `DeleteRepositoryPackage` operationId).
+	DeleteRepositoryPackageWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *DeleteRepositoryPackageParams, reqEditors ...RequestEditorFn) (*DeleteRepositoryPackageResponse, error)
 
 	// ListRepositoryPackagesWithResponse Elenca i pacchetti OCI del repository
 	//
@@ -54820,6 +54967,68 @@ func (r SyncRepoMirrorResponse) ContentType() string {
 	return ""
 }
 
+type DeleteRepositoryPackageResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteRepositoryPackageResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteRepositoryPackageResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteRepositoryPackageResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteRepositoryPackageResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteRepositoryPackageResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteRepositoryPackageResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteRepositoryPackageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteRepositoryPackageResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListRepositoryPackagesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -65872,6 +66081,21 @@ func (c *ClientWithResponses) SyncRepoMirrorWithResponse(ctx context.Context, ow
 		return nil, err
 	}
 	return ParseSyncRepoMirrorResponse(rsp)
+}
+
+// DeleteRepositoryPackageWithResponse Elimina un pacchetto OCI del repository o un suo tag
+//
+// Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/packages (the `DeleteRepositoryPackage` operationId).
+func (c *ClientWithResponses) DeleteRepositoryPackageWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *DeleteRepositoryPackageParams, reqEditors ...RequestEditorFn) (*DeleteRepositoryPackageResponse, error) {
+	rsp, err := c.DeleteRepositoryPackage(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteRepositoryPackageResponse(rsp)
 }
 
 // ListRepositoryPackagesWithResponse Elenca i pacchetti OCI del repository
@@ -80293,6 +80517,56 @@ func ParseSyncRepoMirrorResponse(rsp *http.Response) (*SyncRepoMirrorResponse, e
 			return nil, err
 		}
 		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteRepositoryPackageResponse parses an HTTP response from a DeleteRepositoryPackageWithResponse call
+func ParseDeleteRepositoryPackageResponse(rsp *http.Response) (*DeleteRepositoryPackageResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteRepositoryPackageResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 

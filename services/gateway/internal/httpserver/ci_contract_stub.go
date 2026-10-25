@@ -136,3 +136,7 @@ func (s *apiServer) GetRepositoryActionsPermissions(w http.ResponseWriter, r *ht
 func (s *apiServer) PutRepositoryActionsPermissions(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
 	s.ciProxy(w, r)
 }
+
+func (s *apiServer) DeleteRepositoryPackage(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, p openapi.DeleteRepositoryPackageParams) {
+	s.ciProxy(w, r)
+}

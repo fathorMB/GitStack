@@ -33,6 +33,14 @@
 #   ci-run                     Repo con un workflow di prova, push, run concluso con
 #                              successo in un pod usa e getta e marcatore nel log.
 #   verify-ci                  Dopo restore o upgrade: run e log del job ancora presenti.
+#   verify-apps-domain <dominio>|unset [install.log warn|nowarn]
+#                              Dominio delle app (H2, GIT-346): con un dominio, config.yaml
+#                              e `gitstack status` lo riportano, il certificato del server ha
+#                              il SAN *.<dominio>, si verifica con la CA interna per
+#                              <app>-<repo>-<owner>.<dominio> e Traefik lo serve sulla porta 443
+#                              (SNI <app>-<repo>-<owner>.<dominio>). Con install.log e warn|nowarn controlla
+#                              che l'avviso del dominio predefinito ci sia (warn) o manchi (nowarn). Con `unset` (v2 aggiornata): nessun apps_domain
+#                              in config.yaml e status lo dice. Una riga ok/ko per controllo.
 #   latest-backup              Stampa il percorso dell'archivio più recente.
 #   diagnostics <cartella>     Log del cluster e dei servizi (non fallisce mai).
 #
@@ -478,6 +486,46 @@ verify_k3s() {
   log "k3s ${want}: kubectl version e gitstack status --json concordano"
 }
 
+# Una riga per controllo: ok/ko; l'esito finale è il codice di uscita.
+APPS_KO=0
+apps_check() { # <descrizione> <comando...>
+  local d="$1"
+  shift
+  if "$@"; then printf 'ok  %s
+' "${d}"; else printf 'ko  %s
+' "${d}"; APPS_KO=$((APPS_KO + 1)); fi
+}
+
+verify_apps_domain() {
+  local want="${1:-}" log="${2:-}" warn="${3:-}"
+  [ -n "${want}" ] || fail "uso: verify-apps-domain <dominio>|unset [install.log]"
+  local cfg=/etc/gitstack/config.yaml tls=/etc/gitstack/tls
+  if [ "${want}" = "unset" ]; then
+    apps_check "config.yaml senza apps_domain (installazione v2 aggiornata)" bash -c "! sudo grep -q '^apps_domain:' ${cfg}"
+    apps_check "gitstack status: dominio delle app non impostato" bash -c "sudo gitstack status | grep -q 'Dominio delle app: non impostato'"
+    [ "${APPS_KO}" -eq 0 ] || fail "verify-apps-domain unset: ${APPS_KO} controlli ko"
+    return 0
+  fi
+  local app="web-sito-acme.${want}"
+  apps_check "config.yaml: apps_domain: ${want}" bash -c "sudo grep -qx 'apps_domain: ${want}' ${cfg}"
+  apps_check "gitstack status: Dominio delle app: ${want}" bash -c "sudo gitstack status | grep -q 'Dominio delle app: ${want}'"
+  apps_check "server.crt: SAN DNS:*.${want}" bash -c "sudo openssl x509 -in ${tls}/server.crt -noout -ext subjectAltName | grep -q 'DNS:\*\.${want}'"
+  apps_check "server.crt verificato con la CA interna per ${app}" sudo openssl verify -CAfile "${tls}/ca.crt" -verify_hostname "${app}" "${tls}/server.crt"
+  apps_check "un livello solo: x.y.${want} non coperto" bash -c "! sudo openssl verify -CAfile ${tls}/ca.crt -verify_hostname x.y.${want} ${tls}/server.crt >/dev/null 2>&1"
+  # Quello che serve Traefik, con la CA scaricata dall'istanza (fetch_ca la tiene in STATE_DIR).
+  [ -f "${STATE_DIR}/ca.crt" ] || fetch_ca
+  apps_check "porta 443 (SNI ${app}): certificato valido per la CA e per il nome" bash -c "openssl s_client -connect '${HOST}:443' -servername '${app}' -CAfile '${STATE_DIR}/ca.crt' -verify_hostname '${app}' -verify_return_error </dev/null 2>&1 | grep -Eq 'Verification: OK|Verify return code: 0 \(ok\)'"
+  case "${warn}" in
+    warn) apps_check "install.log: avviso del dominio predefinito presente" grep -q -- '--apps-domain non indicato' "${log}" ;;
+    nowarn) apps_check "install.log: nessun avviso, il dominio era esplicito" bash -c "! grep -q -- '--apps-domain non indicato' '${log}'" ;;
+    '') ;;
+    *) fail "verify-apps-domain: terzo argomento warn|nowarn" ;;
+  esac
+  [ "${APPS_KO}" -eq 0 ] || fail "verify-apps-domain ${want}: ${APPS_KO} controlli ko"
+  printf 'ok  verify-apps-domain %s
+' "${want}"
+}
+
 latest_backup() {
   local f
   f="$(sudo find /var/backups/gitstack -maxdepth 1 -type f -name 'gitstack-backup-*' -not -name '*.sha256' -printf '%T@ %p\n' | sort -rn | head -n1 | cut -d' ' -f2-)"
@@ -523,6 +571,7 @@ main() {
     ci-off) ci_off ;;
     ci-run) ci_run ;;
     verify-ci) verify_ci ;;
+    verify-apps-domain) verify_apps_domain "$@" ;;
     latest-backup) latest_backup ;;
     diagnostics) diagnostics "$@" ;;
     *) fail "sottocomando sconosciuto: ${cmd}" ;;

@@ -15,6 +15,7 @@ import { DeletedReposPage } from './pages/repos/DeletedReposPage';
 import { RepoSettingsPage } from './pages/repos/RepoSettingsPage';
 import { RepoSettingsSecretsPage } from './pages/repos/RepoSettingsSecretsPage';
 import { BranchSettingsPage } from './pages/repos/BranchSettingsPage';
+import { PackageSettingsPage } from './pages/repos/PackageSettingsPage';
 import { RepoPage } from "./pages/repos/RepoPage";
 import { ReposPage } from "./pages/repos/ReposPage";
 import { OrgPage } from './pages/orgs/OrgPage';
@@ -343,6 +344,26 @@ export function AppRoutes() {
           <RequireAuth>
             <AppShell crumb="Repository">
               <RepoPage mode="run" />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/:owner/:repo/packages"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Repository">
+              <RepoPage mode="packages" />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/:owner/:repo/settings/packages"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Repository settings">
+              <PackageSettingsPage />
             </AppShell>
           </RequireAuth>
         }

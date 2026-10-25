@@ -19,6 +19,10 @@ bad() { FAILN=$((FAILN + 1)); printf 'FALLITO: %s\n' "$1"; }
 expect_eq() { if [ "$2" = "$3" ]; then ok; else bad "$1 (atteso '$3', trovato '$2')"; fi; }
 expect_has() { case "$2" in *"$3"*) ok ;; *) bad "$1: manca '$3'" ;; esac; }
 expect_lacks() { case "$2" in *"$3"*) bad "$1: non doveva esserci '$3'" ;; *) ok ;; esac; }
+# expect_line_has / expect_line_lacks NOME TESTO RIGA: la riga intera (senza rientro),
+# non una sottostringa: GITSTACK_GIT_REGISTRY non combacia con GITSTACK_GIT_REGISTRY_*.
+expect_line_has() { if printf '%s' "$2" | grep -Eq "^[[:space:]]*$3\$"; then ok; else bad "$1: manca la riga '$3'"; fi; }
+expect_line_lacks() { if printf '%s' "$2" | grep -Eq "^[[:space:]]*$3\$"; then bad "$1: non doveva esserci la riga '$3'"; else ok; fi; }
 
 render() { helm template gitstack "${CHART}" "$@" | tr -d '\r'; }
 # count PATTERN: righe del rendering che combaciano (grep -E).
@@ -250,14 +254,14 @@ expect_has "gateway: GITSTACK_REGISTRY_URL" "$(doc Deployment gitstack-gateway)"
 expect_has "gateway: verso il servizio git" "$(doc NetworkPolicy gitstack-gateway)" "app.kubernetes.io/name: git"
 expect_has "git: ingresso dal gateway" "$(doc NetworkPolicy gitstack-git)" "app.kubernetes.io/name: gateway"
 d="$(doc Deployment gitstack-git)"
-expect_lacks "git: registry acceso di default" "${d}" "name: GITSTACK_GIT_REGISTRY"
+expect_line_lacks "git: registry acceso di default" "${d}" "- name: GITSTACK_GIT_REGISTRY"
 expect_lacks "git: niente S3 di default" "${d}" "GITSTACK_GIT_REGISTRY_S3_BUCKET"
 expect_lacks "git: niente ci-gateway di default" "${d}" "GITSTACK_GIT_CI_GATEWAY_URL"
 
 OUT="$(render --set ingress.enabled=true --set git.registry.enabled=false)"
 expect_eq "registry spento: nessuna IngressRoute" "$(count 'name: gitstack-registry$')" "0"
 expect_lacks "registry spento: gateway senza GITSTACK_REGISTRY_URL" "$(doc Deployment gitstack-gateway)" "GITSTACK_REGISTRY_URL"
-expect_has "registry spento: git lo spegne" "$(doc Deployment gitstack-git)" "name: GITSTACK_GIT_REGISTRY"
+expect_line_has "registry spento: git lo spegne" "$(doc Deployment gitstack-git)" "- name: GITSTACK_GIT_REGISTRY"
 
 OUT="$(render --set git.registry.s3.enabled=true --set git.registry.s3.bucket=img --set git.registry.s3.endpoint=http://minio:9000 \
   --set git.registry.s3.pathStyle=true --set git.registry.s3.existingSecret=s3keys \

@@ -18,3 +18,7 @@ func notImplemented(w http.ResponseWriter) {
 func (s *apiServer) ListRepositoryPackages(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
 	notImplemented(w)
 }
+
+func (s *apiServer) DeleteRepositoryPackage(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, p openapi.DeleteRepositoryPackageParams) {
+	notImplemented(w)
+}

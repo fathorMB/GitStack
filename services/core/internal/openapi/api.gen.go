@@ -1206,6 +1206,24 @@ func (e OwnerType) Valid() bool {
 	}
 }
 
+// Defines values for PackageSignature.
+const (
+	Unverified PackageSignature = "unverified"
+	Verified   PackageSignature = "verified"
+)
+
+// Valid indicates whether the value is a known member of the PackageSignature enum.
+func (e PackageSignature) Valid() bool {
+	switch e {
+	case Unverified:
+		return true
+	case Verified:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PullMirrorDivergedRefKind.
 const (
 	PullMirrorDivergedRefKindDeleted   PullMirrorDivergedRefKind = "deleted"
@@ -4748,11 +4766,22 @@ type OwnerType string
 
 // Package defines model for Package.
 type Package struct {
-	Name      string    `json:"name"`
-	SizeBytes int64     `json:"sizeBytes"`
-	Tags      []string  `json:"tags"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	// Digest Digest del manifest (sha256:...).
+	Digest *string `json:"digest,omitempty"`
+
+	// HasSbom Vero se è conservato uno SBOM dell'immagine.
+	HasSbom bool   `json:"hasSbom"`
+	Name    string `json:"name"`
+
+	// Signature Firma cosign dell'immagine: verificata con la chiave del registry oppure no.
+	Signature PackageSignature `json:"signature"`
+	SizeBytes int64            `json:"sizeBytes"`
+	Tags      []string         `json:"tags"`
+	UpdatedAt time.Time        `json:"updatedAt"`
 }
+
+// PackageSignature Firma cosign dell'immagine: verificata con la chiave del registry oppure no.
+type PackageSignature string
 
 // PackageList defines model for PackageList.
 type PackageList struct {
@@ -6754,6 +6783,15 @@ type ListRepoMirrorRunsParams struct {
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// DeleteRepositoryPackageParams defines parameters for DeleteRepositoryPackage.
+type DeleteRepositoryPackageParams struct {
+	// Name Nome dell'immagine, come in GET packages.
+	Name string `form:"name" json:"name"`
+
+	// Tag Elimina solo questo tag.
+	Tag *string `form:"tag,omitempty" json:"tag,omitempty"`
+}
+
 // ListRepoPullMirrorRunsParams defines parameters for ListRepoPullMirrorRuns.
 type ListRepoPullMirrorRunsParams struct {
 	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
@@ -7605,6 +7643,9 @@ type ServerInterface interface {
 	// SyncRepoMirror Sincronizza ora un mirror in push
 	// (POST /repos/{owner}/{repo}/mirrors/{mirrorId}/sync)
 	SyncRepoMirror(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam)
+	// DeleteRepositoryPackage Elimina un pacchetto OCI del repository o un suo tag
+	// (DELETE /repos/{owner}/{repo}/packages)
+	DeleteRepositoryPackage(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params DeleteRepositoryPackageParams)
 	// ListRepositoryPackages Elenca i pacchetti OCI del repository
 	// (GET /repos/{owner}/{repo}/packages)
 	ListRepositoryPackages(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
@@ -14759,6 +14800,70 @@ func (siw *ServerInterfaceWrapper) SyncRepoMirror(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// DeleteRepositoryPackage operation middleware
+func (siw *ServerInterfaceWrapper) DeleteRepositoryPackage(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteRepositoryPackageParams
+
+	// ------------- Required query parameter "name" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "name", r.URL.Query(), &params.Name, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "name"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "tag" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "tag", r.URL.Query(), &params.Tag, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "tag"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tag", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteRepositoryPackage(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListRepositoryPackages operation middleware
 func (siw *ServerInterfaceWrapper) ListRepositoryPackages(w http.ResponseWriter, r *http.Request) {
 
@@ -18136,6 +18241,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/ci/queue", wrapper.GetCiQueue)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/ci/storage", wrapper.GetCiStorageSettings)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/admin/ci/storage", wrapper.UpdateCiStorageSettings)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/packages", wrapper.DeleteRepositoryPackage)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/packages", wrapper.ListRepositoryPackages)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/packages/settings", wrapper.GetRepositoryPackageSettings)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/packages/settings", wrapper.UpdateRepositoryPackageSettings)

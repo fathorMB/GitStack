@@ -81,6 +81,23 @@ Il preflight verifica che il nome risolva a un indirizzo della macchina e **avvi
 
 Per cambiare nome dopo l'installazione: `sudo gitstack config set host <nome>`. Rigenera il certificato (`gitstack-tls ensure`, stessa CA, SAN col nuovo nome e gli IP già presenti), aggiorna gli URL pubblici dei servizi con `helm upgrade --reuse-values` sulla copia locale del chart (`/usr/local/share/gitstack/chart`, `chart_dir` in `config.yaml`), poi `host:` di `config.yaml` e le scelte salvate per le riesecuzioni di `install.sh`. Avvisa che gli indirizzi di clone e i link nelle email già inviate puntano al nome vecchio (`git remote set-url` per i clone esistenti). Per Let's Encrypt il nome deve essere pubblico; con `--insecure-http` non c'è certificato.
 
+### Dominio delle app (H2, GIT-346)
+
+Le app che GitStack ospiterà (v3) hanno un indirizzo automatico `<app>-<repo>-<owner>.<dominio-delle-app>`, per esempio `web-handbook-acme.apps.acme.it` (ADR 0002). Il dominio si sceglie all'installazione:
+
+```bash
+sudo ./deploy/install.sh --host git.azienda.it --apps-domain apps.azienda.it
+```
+
+- **`--apps-domain DOMINIO` è facoltativo.** Senza, l'installer usa `apps.<host>` (con un `--host` che è un IP: `apps.gitstack.internal`) e **avvisa** che il record DNS wildcard va creato. Una riesecuzione dell'installer conserva la scelta fatta (`/etc/gitstack/tls/install.conf`, `apps_domain:` in `config.yaml`).
+- **Consigliato un dominio separato** da quello di GitStack (`git.azienda.it` e `apps.azienda.it`): le app non possono oscurare i nomi di GitStack. È ammesso anche un suo sottodominio (`apps.git.azienda.it`); il dominio uguale all'host è rifiutato, e un host dentro il dominio delle app dà un avviso. Regole: nome DNS in minuscolo, almeno due etichette, solo lettere, cifre e `-`.
+- **DNS wildcard da configurare.** Serve un record `*.<dominio-delle-app>` che punta all'IP di GitStack, per esempio `*.apps.azienda.it. A 192.168.1.20` (o `CNAME` verso il nome dell'host), oppure `address=/apps.azienda.it/192.168.1.20` in dnsmasq. Il preflight prova `getent hosts gitstack-dns-check.<dominio>` e avvisa, senza fermarsi, se non risolve a questa macchina. Un dominio `.local` non va bene: mDNS non ha record wildcard.
+- **Certificato wildcard.** Con la CA interna (default) `gitstack-tls` aggiunge ai SAN del certificato del server `*.<dominio-delle-app>`: la stessa CA e lo stesso rinnovo notturno (`gitstack-tls-renew.timer`) del certificato di GitStack, nessuna CA da installare in più sui client. Un wildcard copre un solo livello (`web-handbook-acme.apps.acme.it`, non `a.b.apps.acme.it`). Con il certificato del cliente (`--tls-cert`) il certificato deve già coprire `*.<dominio>`: altrimenti `gitstack-tls` avvisa. Con `--tls letsencrypt` l'indirizzo è registrato ma il wildcard della CA interna non viene emesso.
+- **Indirizzo e collisioni.** `<app>-<repo>-<owner>` è una sola etichetta DNS (massimo 63 caratteri): owner e repository passano in minuscolo, con `_`, `.` e altri caratteri trasformati in `-`. L'owner nell'etichetta distingue due repo omonimi di owner diversi (`web-handbook-acme`, `web-handbook-globex`). Non ci sono suffissi automatici: oltre i 63 caratteri l'API rifiuta con `address_too_long`, e un'etichetta già in uso (`a-b` in `c` contro `a` in `b-c`, stesso owner) con `address_conflict`, garantito dall'indice unico su `apps.normalized_host`. Le regole sono in `pkg/names` (`AppAddress`, `CheckAppAddress`, `ErrAddressTooLong`, `ErrAddressConflict`, con i test).
+- **Cambiarlo dopo.** `sudo gitstack config set apps-domain apps.azienda.it` rigenera il certificato (stessa CA, nuovo SAN wildcard) e riscrive `apps_domain:` di `config.yaml` e le scelte salvate. Serve anche dopo l'**aggiornamento dalla v2**, che non ha un dominio: `gitstack upgrade` non lo inventa, `gitstack status` dice «Dominio delle app: non impostato». Le app già create mantengono il loro indirizzo.
+
+Prova in CI: `deploy/tests/apps_domain_test.sh` (scelta del dominio e certificato con openssl vero) e `.github/workflows/install.yml` (installazione con e senza `--apps-domain`, upgrade dalla v2 e `config set apps-domain`).
+
 #### Nomi `.local` (mDNS)
 
 Il caso reale di homehub: il router di casa (Sky) non permette record DNS locali, quindi la macchina si chiama `homehub.local`, risolto via mDNS.
@@ -176,7 +193,7 @@ Dettagli operativi: [`../docs/operations.md`](../docs/operations.md#external-pos
 
 **Rete aziendale (N4, N9a, GIT-206).** `--http-proxy`, `--https-proxy`, `--no-proxy` (download di k3s e Helm, containerd di k3s e pod di GitStack), `--registry-mirror` con `--registry-username`/`--registry-password-file` (tutte le immagini, di sistema di k3s comprese, via `registries.yaml`), `--download-mirror` (binari di k3s, Helm e gitstack) e `--ca-bundle` (CA aziendale: sistema, containerd, pod). Il preflight prova a raggiungere proxy e mirror e dice cosa non risponde; dopo l'installazione si cambia con `gitstack config set network`. Struttura del mirror, esempi e prova senza uscita diretta (`test-network/run.sh`): [`../docs/operations.md`](../docs/operations.md), sezione «Corporate network». I valori Helm sono `proxy.*` e `corporateCA.configMap` (GIT-207).
 
-`install.sh --help` le elenca tutte. Le più usate: `--force`, `--skip-preflight`, `--release-name`, `--namespace`, `--image-tag`, `--version` (versione di rilascio), `--image-registry` (mirror, M-08), `--host`, `--tls`, `--tls-cert`/`--tls-key`, `--insecure-http` (HTTPS, vedi sopra), `--postgres-url`/`--postgres-password-file`/`--postgres-ca-file` (Postgres esterno, vedi sopra), `--values`/`--set` (valori Helm aggiuntivi).
+`install.sh --help` le elenca tutte. Le più usate: `--force`, `--skip-preflight`, `--release-name`, `--namespace`, `--image-tag`, `--version` (versione di rilascio), `--image-registry` (mirror, M-08), `--host`, `--apps-domain` (dominio delle app, vedi sopra), `--tls`, `--tls-cert`/`--tls-key`, `--insecure-http` (HTTPS, vedi sopra), `--postgres-url`/`--postgres-password-file`/`--postgres-ca-file` (Postgres esterno, vedi sopra), `--values`/`--set` (valori Helm aggiuntivi).
 
 ### CI integrata (v2-a, GIT-285)
 

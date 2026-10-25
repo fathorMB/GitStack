@@ -20,6 +20,8 @@
 #   gitstack-tls status             scadenze e impronte, senza modificare niente
 # Opzioni di ensure (le salva in tls.conf; senza opzioni si usa tls.conf):
 #   --mode internal|custom   --names a,b,c   --ips 1.2.3.4,...
+#   --apps-domain D   (H2: aggiunge il SAN wildcard *.D per le app; senza
+#                      l'opzione vale il dominio gia' in tls.conf)
 #   --release NOME  --namespace NS  --kubeconfig FILE
 #   --secret NOME   --ca-configmap NOME
 #   --days N (validita' del certificato, default 397)  --renew-before N (default 30)
@@ -32,6 +34,7 @@ CONF="${TLS_DIR}/tls.conf"
 TLS_MODE="internal"
 TLS_NAMES=""
 TLS_IPS=""
+APPS_DOMAIN=""
 RELEASE="gitstack"
 NAMESPACE="default"
 KUBECONFIG_FILE="/etc/rancher/k3s/k3s.yaml"
@@ -63,6 +66,7 @@ load_conf() {
       TLS_MODE) TLS_MODE="${val}" ;;
       TLS_NAMES) TLS_NAMES="${val}" ;;
       TLS_IPS) TLS_IPS="${val}" ;;
+      APPS_DOMAIN) APPS_DOMAIN="${val}" ;;
       RELEASE) RELEASE="${val}" ;;
       NAMESPACE) NAMESPACE="${val}" ;;
       KUBECONFIG_FILE) KUBECONFIG_FILE="${val}" ;;
@@ -86,6 +90,7 @@ save_conf() {
 TLS_MODE=${TLS_MODE}
 TLS_NAMES=${TLS_NAMES}
 TLS_IPS=${TLS_IPS}
+APPS_DOMAIN=${APPS_DOMAIN}
 RELEASE=${RELEASE}
 NAMESPACE=${NAMESPACE}
 KUBECONFIG_FILE=${KUBECONFIG_FILE}
@@ -118,6 +123,10 @@ validate_sans() {
     printf '%s' "${n}" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$|^[0-9A-Fa-f:]+:[0-9A-Fa-f:]*$' \
       || fail "indirizzo IP non valido per il certificato: '${n}'."
   done
+  if [ -n "${APPS_DOMAIN}" ]; then
+    printf '%s' "${APPS_DOMAIN}" | grep -Eq '^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]*[a-z0-9])?$' \
+      || fail "dominio delle app non valido per il certificato: '${APPS_DOMAIN}'."
+  fi
 }
 
 # Elenco SAN nel formato di openssl: DNS:a,DNS:b,IP:1.2.3.4. Include sempre
@@ -131,6 +140,10 @@ san_list() {
   for n in ${TLS_IPS}; do
     [ -n "${n}" ] && out="${out:+${out},}IP:${n}"
   done
+  # Wildcard delle app (H2): copre <app>-<repo>.<dominio>, un solo livello.
+  if [ -n "${APPS_DOMAIN}" ]; then
+    out="${out:+${out},}DNS:*.${APPS_DOMAIN}"
+  fi
   printf '%s' "${out},DNS:localhost,IP:127.0.0.1"
 }
 
@@ -225,6 +238,10 @@ check_custom() {
     openssl x509 -in "${crt}" -noout -checkhost "${n}" 2>/dev/null | grep -q 'does match' \
       || warn "il certificato del cliente non copre il nome '${n}' (SAN): i client lo rifiuteranno."
   done
+  if [ -n "${APPS_DOMAIN}" ]; then
+    openssl x509 -in "${crt}" -noout -checkhost "probe.${APPS_DOMAIN}" 2>/dev/null | grep -q 'does match' \
+      || warn "il certificato del cliente non copre *.${APPS_DOMAIN} (SAN wildcard): le app interne mostreranno un errore di certificato."
+  fi
   for n in ${TLS_IPS}; do
     [ -z "${n}" ] && continue
     openssl x509 -in "${crt}" -noout -checkip "${n}" 2>/dev/null | grep -q 'does match' \
@@ -268,6 +285,7 @@ cmd_ensure() {
       --mode) TLS_MODE="$2"; shift 2 ;;
       --names) TLS_NAMES="$2"; shift 2 ;;
       --ips) TLS_IPS="$2"; shift 2 ;;
+      --apps-domain) APPS_DOMAIN="$2"; shift 2 ;;
       --release) RELEASE="$2"; shift 2 ;;
       --namespace) NAMESPACE="$2"; shift 2 ;;
       --kubeconfig) KUBECONFIG_FILE="$2"; shift 2 ;;

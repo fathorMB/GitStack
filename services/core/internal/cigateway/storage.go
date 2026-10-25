@@ -43,7 +43,7 @@ func (g *gateway) isStoragePath(p string) bool {
 
 // jobAuth verifica il token del job; scrive la risposta d'errore e ritorna false se non va.
 func (g *gateway) jobAuth(w http.ResponseWriter, r *http.Request) (ci.JobAuth, bool) {
-	a, err := ci.ResolveJobToken(r.Context(), g.Pool, g.Now(), bearer(r.Header))
+	a, err := g.resolveJob(r.Context(), bearer(r.Header))
 	if errors.Is(err, ci.ErrJobToken) {
 		w.Header().Set("WWW-Authenticate", `Bearer realm="gitstack-ci"`)
 		http.Error(w, "token del job non valido", http.StatusUnauthorized)

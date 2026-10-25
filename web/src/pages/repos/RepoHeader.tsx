@@ -1,4 +1,4 @@
-import { CircleDot, FileCode, GitPullRequest, Play, Settings, Tag } from 'lucide-react';
+import { Box, CircleDot, FileCode, GitPullRequest, Play, Settings, Tag } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { PullMirrorBadge } from '../../components';
@@ -29,6 +29,7 @@ export type RepoHeaderMode =
   | 'pullfiles'
   | 'actions'
   | 'run'
+  | 'packages'
   | 'settings'
   | 'webhooks';
 
@@ -116,6 +117,10 @@ export function RepoHeader({ repo, mode, admin }: { repo: Repository; mode: Repo
         <NavLink className={tab(RELEASES_MODES.includes(mode))} to={`${base}/releases`}>
           <Tag size={16} aria-hidden="true" />
           Releases
+        </NavLink>
+        <NavLink className={tab(mode === 'packages')} to={`${base}/packages`}>
+          <Box size={16} aria-hidden="true" />
+          Packages
         </NavLink>
         {admin ? (
           <NavLink className={tab(SETTINGS_MODES.includes(mode))} to={`${base}/settings`}>
