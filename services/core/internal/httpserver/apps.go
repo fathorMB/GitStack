@@ -522,14 +522,26 @@ func (s *apiServer) UpdateApp(w http.ResponseWriter, r *http.Request, owner open
 			return
 		}
 	}
-	// Senza porta non c'è indirizzo: togliere la porta non cambia l'etichetta già riservata.
+	// Una porta data a un'app senza indirizzo gliene dà uno (stessi controlli della creazione);
+	// togliere la porta non cambia l'etichetta già riservata.
+	if p.SetPort && p.Port != nil && cur.AddressLabel == nil {
+		l := appAddressLabel(cur.Name, repo.Name, repo.OwnerName)
+		if len(l) > maxAppDNSLabel {
+			writeErrorDetails(w, http.StatusUnprocessableEntity, "address_too_long", "L'indirizzo automatico supera i 63 caratteri: scegli un nome più corto.",
+				map[string]any{"label": l, "length": len(l), "max": maxAppDNSLabel})
+			return
+		}
+		p.AddressLabel = &l
+	}
 	updated, _, err := s.resources.UpdateApp(r.Context(), repo.ID, app, p, actor.store(), s.now())
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "not_found", "App non trovata.")
 		return
 	}
 	if err != nil {
-		appInternalError(w, "modifica dell'app", err)
+		if !s.writeAppConflict(w, err) {
+			appInternalError(w, "modifica dell'app", err)
+		}
 		return
 	}
 	writeJSON(w, http.StatusOK, s.appToAPI(updated))

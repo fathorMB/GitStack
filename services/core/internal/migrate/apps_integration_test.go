@@ -12,10 +12,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// TestMigration0035_App (GIT-342, H5/H8): app, versioni e deploy; unicità del nome nel repo e
+// TestMigration0036_App (GIT-342, H5/H8): app, versioni e deploy; unicità del nome nel repo e
 // dell'indirizzo, versione unica per app, cascata dal repo (purge dopo 7 giorni, R2) e dall'app;
 // il down toglie le quattro tabelle e il nuovo up rifunziona.
-func TestMigration0035_App(t *testing.T) {
+func TestMigration0036_App(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 	exec := func(q string, args ...any) error {
@@ -128,7 +128,7 @@ func TestMigration0035_App(t *testing.T) {
 	}
 
 	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("down 0035: %v", err)
+		t.Fatalf("down 0036: %v", err)
 	}
 	var n int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.tables WHERE table_schema = 'core'

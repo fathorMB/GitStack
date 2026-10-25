@@ -452,6 +452,9 @@ type AppPatch struct {
 	FollowBranch     *string
 	SetPaused        bool
 	AutoDeployPaused bool
+	// AddressLabel è l'etichetta da riservare se l'app non ne ha ancora una (porta data dopo la
+	// creazione, H2). Ignorata se l'app ce l'ha già: togliere la porta non la libera.
+	AddressLabel *string
 }
 
 // UpdateApp applica la modifica. Se cambia qualcosa che entra in una versione (porta, controllo
@@ -516,8 +519,12 @@ func (s *Store) UpdateApp(ctx context.Context, repoID uuid.UUID, name string, p 
 		ver = &v
 	}
 	if _, err := tx.Exec(ctx, `UPDATE core.apps SET port = $2, health_check = $3, restricted = $4, follow_branch = $5,
-			auto_deploy_paused = $6, updated_at = $7 WHERE id = $1`,
-		cur.ID, cfg.Port, healthJSON(cfg.HealthCheck), cfg.Restricted, follow, paused, now); err != nil {
+			auto_deploy_paused = $6, updated_at = $7, address_label = COALESCE(address_label, $8) WHERE id = $1`,
+		cur.ID, cfg.Port, healthJSON(cfg.HealthCheck), cfg.Restricted, follow, paused, now, p.AddressLabel); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation && pgErr.ConstraintName == "apps_address_label_key" {
+			return App{}, nil, ErrAppAddressConflict
+		}
 		return App{}, nil, err
 	}
 	out, err := scanApp(tx.QueryRow(ctx, `SELECT `+appCols+appFrom+` WHERE a.id = $1`, cur.ID))

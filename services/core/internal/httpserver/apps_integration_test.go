@@ -420,3 +420,51 @@ func TestApps_RepoEliminatoRipristinoEPurge(t *testing.T) {
 		}
 	}
 }
+
+// H2: l'indirizzo automatico arriva anche se la porta viene data dopo la creazione; togliere la
+// porta lascia l'etichetta riservata; gli stessi controlli della creazione valgono per il PATCH.
+func TestApps_IndirizzoDopoLaCreazione(t *testing.T) {
+	e := newAppsEnv(t)
+	e.repo("handbook", true)
+	e.repo("c", true)
+	e.repo("b-c", true)
+	base := "/repos/alice/handbook/apps/worker"
+
+	e.want(e.do(http.MethodPost, "/repos/alice/handbook/apps", "alice", `{"name":"worker","image":"x"}`), http.StatusAccepted, "")
+	if a := e.app(e.do(http.MethodGet, base, "alice", "")); a.Address != nil {
+		t.Fatalf("app senza porta con indirizzo: %v", *a.Address)
+	}
+	e.clock.advance(time.Minute)
+	a := e.app(e.do(http.MethodPatch, base, "alice", `{"port":8080}`))
+	if a.Address == nil || *a.Address != "https://worker-handbook-alice.apps.example.com" {
+		t.Fatalf("indirizzo dopo il PATCH: %v", a.Address)
+	}
+	if l := e.versions(base+"/versions", "alice"); l.Total != 2 || l.Items[0].Trigger != openapi.AppVersionTriggerConfig {
+		t.Fatalf("versioni dopo il PATCH: %+v", l)
+	}
+	// Togliere la porta lascia l'etichetta riservata (l'indirizzo resta).
+	a = e.app(e.do(http.MethodPatch, base, "alice", `{"port":null}`))
+	if a.Port != nil || a.Address == nil || *a.Address != "https://worker-handbook-alice.apps.example.com" {
+		t.Fatalf("dopo aver tolto la porta: port=%v address=%v", a.Port, a.Address)
+	}
+	if l := e.versions(base+"/versions", "alice"); l.Total != 3 {
+		t.Fatalf("versioni dopo aver tolto la porta: %d", l.Total)
+	}
+
+	// Conflitto: a-b in c e a in b-c danno la stessa etichetta.
+	e.want(e.do(http.MethodPost, "/repos/alice/c/apps", "alice", `{"name":"a-b","image":"x","port":80}`), http.StatusAccepted, "")
+	e.want(e.do(http.MethodPost, "/repos/alice/b-c/apps", "alice", `{"name":"a","image":"x"}`), http.StatusAccepted, "")
+	e.want(e.do(http.MethodPatch, "/repos/alice/b-c/apps/a", "alice", `{"port":80}`), http.StatusConflict, "address_conflict")
+	if a := e.app(e.do(http.MethodGet, "/repos/alice/b-c/apps/a", "alice", "")); a.Port != nil || a.Address != nil {
+		t.Fatalf("PATCH respinto ma app cambiata: %+v", a)
+	}
+	if l := e.versions("/repos/alice/b-c/apps/a/versions", "alice"); l.Total != 1 {
+		t.Fatalf("versione creata da un PATCH respinto: %d", l.Total)
+	}
+
+	// Etichetta oltre 63 caratteri.
+	long := strings.Repeat("r", 40)
+	e.repo(long, true)
+	e.want(e.do(http.MethodPost, "/repos/alice/"+long+"/apps", "alice", `{"name":"`+strings.Repeat("n", 25)+`","image":"x"}`), http.StatusAccepted, "")
+	e.want(e.do(http.MethodPatch, "/repos/alice/"+long+"/apps/"+strings.Repeat("n", 25), "alice", `{"port":80}`), http.StatusUnprocessableEntity, "address_too_long")
+}
