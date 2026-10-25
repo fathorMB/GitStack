@@ -67,16 +67,17 @@ type PackageTag struct {
 // Package è un'immagine del repo. Image è il nome sotto il repo (vuoto = l'immagine senza
 // nome). Digest, firma, SBOM, dimensione e data sono quelli del tag più recente.
 type Package struct {
-	Image      string       `json:"image"`
-	Tags       []string     `json:"tags"`
-	TagDetails []PackageTag `json:"tagDetails"`
-	Digest     string       `json:"digest"`
-	SizeBytes  int64        `json:"sizeBytes"`
-	UpdatedAt  time.Time    `json:"updatedAt"`
-	Signature  string       `json:"signature"`
-	HasSbom    bool         `json:"hasSbom"`
-	Kind       string       `json:"kind"`
-	PushedBy   *Pusher      `json:"pushedBy,omitempty"`
+	Image       string       `json:"image"`
+	Tags        []string     `json:"tags"`
+	TagDetails  []PackageTag `json:"tagDetails"`
+	Digest      string       `json:"digest"`
+	SizeBytes   int64        `json:"sizeBytes"`
+	UpdatedAt   time.Time    `json:"updatedAt"`
+	Signature   string       `json:"signature"`
+	HasSbom     bool         `json:"hasSbom"`
+	Kind        string       `json:"kind"`
+	PushedBy    *Pusher      `json:"pushedBy,omitempty"`
+	RemovedTags []RemovedTag `json:"removedTags,omitempty"`
 }
 
 // pusherPath è il file dove si ricorda chi ha pubblicato un tag. Sta sotto «_gitstack», che né
@@ -290,6 +291,16 @@ func (h *Handler) ListPackages(ctx context.Context, repoID string) ([]Package, e
 	if err != nil {
 		return nil, err
 	}
+	removedByImage := map[string][]RemovedTag{}
+	if h.settings != nil {
+		removed, err := h.settings.src.RemovedTags(ctx, repoID)
+		if err != nil {
+			return nil, err
+		}
+		for _, tag := range removed {
+			removedByImage[tag.Image] = append(removedByImage[tag.Image], tag)
+		}
+	}
 	names, err := h.imageNames(ctx, repoID)
 	if err != nil {
 		return nil, err
@@ -301,6 +312,7 @@ func (h *Handler) ListPackages(ctx context.Context, repoID string) ([]Package, e
 			return nil, err
 		}
 		pkg := Package{Image: strings.TrimPrefix(strings.TrimPrefix(name, repoID), "/"), Tags: []string{}, TagDetails: []PackageTag{}}
+		pkg.RemovedTags = removedByImage[pkg.Image]
 		for t, dg := range all {
 			if _, aux := provenanceSubject(t); aux {
 				continue

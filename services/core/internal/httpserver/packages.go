@@ -48,9 +48,14 @@ func packageToAPI(repo store.Repo, p gitclient.PackageInfo) openapi.Package {
 			PushedBy: pusherToAPI(t.PushedBy),
 		})
 	}
+	removed := make([]openapi.RemovedPackageTag, 0, len(p.RemovedTags))
+	for _, t := range p.RemovedTags {
+		removed = append(removed, openapi.RemovedPackageTag{Name: t.Name, Digest: t.Digest, Rule: t.Rule, RemovedAt: t.RemovedAt})
+	}
 	out := openapi.Package{
 		Name: name, Tags: tags, TagDetails: &details, SizeBytes: p.SizeBytes, UpdatedAt: p.UpdatedAt,
 		Signature: openapi.PackageSignature(p.Signature), HasSbom: p.HasSbom, PushedBy: pusherToAPI(p.PushedBy),
+		RemovedTags: &removed,
 	}
 	if p.Digest != "" {
 		d := p.Digest

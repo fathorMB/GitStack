@@ -197,28 +197,42 @@ func (h *Handler) cleanImage(ctx context.Context, ns distribution.Namespace, nam
 		}
 		return open[i].name > open[j].name
 	})
-	drop := map[string]bool{}
+	drop := map[string]string{}
 	if st.DeleteShaTagsAfterDays > 0 {
 		for _, t := range open {
 			if isShaTag(t.name) && now.Sub(t.at) > time.Duration(st.DeleteShaTagsAfterDays)*24*time.Hour {
-				drop[t.name] = true
+				drop[t.name] = fmt.Sprintf("after %d days", st.DeleteShaTagsAfterDays)
 			}
 		}
 	}
 	if st.KeepLastTags > 0 && len(open) > st.KeepLastTags {
 		for _, t := range open[st.KeepLastTags:] {
-			drop[t.name] = true
+			if _, already := drop[t.name]; !already {
+				drop[t.name] = fmt.Sprintf("beyond last %d tags", st.KeepLastTags)
+			}
 		}
 	}
+	toDrop := make([]string, 0, len(drop))
 	for t := range drop {
+		toDrop = append(toDrop, t)
+	}
+	sort.Strings(toDrop)
+	for _, t := range toDrop {
 		if st.protected(t) {
 			continue // difesa in più: i protetti non sono mai in open
 		}
 		if err := repo.Tags(ctx).Untag(ctx, t); err != nil {
 			return err
 		}
+		dg := tags[t]
 		delete(tags, t)
 		rep.DeletedTags = append(rep.DeletedTags, name+":"+t)
+		if err := h.settings.src.RecordRemovedTag(ctx, st.RepoID, RemovedTag{
+			Image: strings.TrimPrefix(strings.TrimPrefix(name, st.RepoID), "/"), Name: t,
+			Digest: dg, Rule: drop[t], RemovedAt: now.UTC(),
+		}); err != nil {
+			h.log.Warn("registro del tag eliminato non riuscito", "err", err, "repoId", st.RepoID, "image", name, "tag", t)
+		}
 	}
 
 	// Immagini senza tag: quelle che nessun tag, né un indice con tag, referenzia.

@@ -46,6 +46,8 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 	})
 	// Impostazioni del registry per il servizio git (GIT-325): solo con la sua chiave.
 	mux.HandleFunc("GET "+RegistrySettingsPathPrefix+"{repoId}", server.registrySettings)
+	mux.HandleFunc("POST "+RegistryRemovedTagPathPrefix+"{repoId}", server.registryRemovedTag)
+	mux.HandleFunc("GET "+RegistryRemovedTagPathPrefix+"{repoId}", server.registryRemovedTags)
 	// Un segreto per chiamante (F9): il gateway può fare tutto, il servizio git
 	// solo risolvere owner/repo. Il Keyring del solo gateway è il caso senza git.
 	ring := trust.NewKeyring(map[string]string{trust.CallerGateway: serviceSecret, trust.CallerGit: o.gitSecret})
@@ -116,11 +118,17 @@ func callerAllowed(caller string, r *http.Request) bool {
 	if caller != trust.CallerGit {
 		return true
 	}
+	if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, RegistrySettingsPathPrefix) {
+		return len(strings.Split(strings.Trim(r.URL.Path, "/"), "/")) == 4
+	}
+	if r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, RegistryRemovedTagPathPrefix) {
+		return len(strings.Split(strings.Trim(r.URL.Path, "/"), "/")) == 4
+	}
+	if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, RegistryRemovedTagPathPrefix) {
+		return len(strings.Split(strings.Trim(r.URL.Path, "/"), "/")) == 4
+	}
 	if r.Method != http.MethodGet {
 		return false
-	}
-	if strings.HasPrefix(r.URL.Path, RegistrySettingsPathPrefix) {
-		return len(strings.Split(strings.Trim(r.URL.Path, "/"), "/")) == 4
 	}
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	return len(parts) == 3 && parts[0] == "repos" && parts[1] != "" && parts[2] != ""
