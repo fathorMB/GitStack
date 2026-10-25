@@ -59,7 +59,7 @@ func TestAppEnv_WriteLeggeVariabiliNonSegreti(t *testing.T) {
 	e.repo("riservato", false)
 	e.want(e.do(http.MethodPost, "/repos/alice/handbook/apps", "alice", createWeb), http.StatusAccepted, "")
 	base := "/repos/alice/handbook/apps/web"
-	const secret = "valore-segreto-app-7731"
+	const secret = "s3cr3t-sentinella" // valore sentinella: non deve comparire in nessuna risposta
 
 	// admin imposta una variabile e un segreto: ognuno crea una versione.
 	e.want(e.do(http.MethodPut, base+"/variables/SEARCH_TIMEOUT", "alice", `{"value":"30"}`), http.StatusOK, "")
@@ -84,12 +84,21 @@ func TestAppEnv_WriteLeggeVariabiliNonSegreti(t *testing.T) {
 	e.want(e.do(http.MethodGet, base+"/variables", "carol", ""), http.StatusForbidden, "forbidden")
 	e.want(e.do(http.MethodGet, "/repos/alice/riservato/apps/web/variables", "carol", ""), http.StatusNotFound, "")
 
-	// Nessuna GET riporta il valore del segreto, né l'elenco né le versioni che lo hanno creato.
-	for _, p := range []string{"", "/versions", "/versions/1", "/versions/2", "/versions/3", "/variables"} {
-		rec = e.do(http.MethodGet, base+p, "bob", "")
-		e.want(rec, http.StatusOK, "")
-		assertNoSecret(t, "GET "+p, rec.Body.String(), secret)
+	// Nessuna GET riporta il valore del segreto, né come admin né come write: dettaglio dell'app,
+	// versioni, variabili ed elenco dei segreti (write riceve 403 lì, ma il corpo non deve averlo).
+	for _, user := range []string{"alice", "bob"} {
+		for _, p := range []string{"", "/versions", "/versions/1", "/versions/2", "/versions/3", "/variables", "/secrets"} {
+			rec = e.do(http.MethodGet, base+p, user, "")
+			if rec.Code != http.StatusOK && rec.Code != http.StatusForbidden {
+				t.Fatalf("GET %s come %s: %d %s", p, user, rec.Code, rec.Body.String())
+			}
+			assertNoSecret(t, "GET "+p+" come "+user, rec.Body.String(), secret)
+		}
 	}
+	// Anche il corpo delle versioni con il segreto (secretNames) non riporta il valore.
+	rec = e.do(http.MethodGet, base+"/versions/3", "alice", "")
+	e.want(rec, http.StatusOK, "")
+	assertNoSecret(t, "GET versione 3", rec.Body.String(), secret)
 	rec = e.do(http.MethodGet, base+"/versions/3", "bob", "")
 	if !strings.Contains(rec.Body.String(), `"secretNames":["DB_PASSWORD"]`) {
 		t.Fatalf("la versione deve dire il nome del segreto, non il valore: %s", rec.Body.String())
