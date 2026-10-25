@@ -75,13 +75,15 @@ func currentConfig(ctx context.Context, tx pgx.Tx, appID uuid.UUID) (AppConfig, 
 }
 
 // writeConfigVersion scrive la versione number con la configurazione data e il suo deploy.
-// L'immagine è quella dell'ultima versione, come in UpdateApp.
+// L'immagine è quella della versione ATTIVA, come in UpdateApp (GIT-343): l'ultima può essere un
+// deploy fallito, che una modifica di variabile non deve riportare in vita.
 func writeConfigVersion(ctx context.Context, tx pgx.Tx, appID uuid.UUID, number int, cfg AppConfig, summary string, actor *AppActor, now time.Time) (AppVersion, error) {
-	last, err := scanVersion(tx.QueryRow(ctx, `SELECT `+versionCols+` FROM core.app_versions v WHERE v.app_id = $1 ORDER BY v.number DESC LIMIT 1`, appID))
+	active, err := scanVersion(tx.QueryRow(ctx, `SELECT `+versionCols+` FROM core.app_versions v
+		JOIN core.apps a ON a.id = v.app_id AND v.number = a.active_version WHERE a.id = $1`, appID))
 	if err != nil {
 		return AppVersion{}, err
 	}
-	if err := insertAppVersion(ctx, tx, appID, number, "config", last.Image, cfg, &summary, nil, nil, actor, now); err != nil {
+	if err := insertAppVersion(ctx, tx, appID, number, "config", active.Image, cfg, &summary, nil, nil, actor, now); err != nil {
 		return AppVersion{}, err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO core.app_deploys (id, app_id, version, started_at) VALUES ($1, $2, $3, $4)`, uuid.New(), appID, number, now); err != nil {

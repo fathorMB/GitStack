@@ -211,6 +211,28 @@ func TestAppEnv_VersioniCopianoVariabiliESegreti(t *testing.T) {
 	assertNoSecret(t, "versione 4", rec.Body.String(), "abc-token-999")
 }
 
+// GIT-348 (rework GIT-343): l'ultima versione è un deploy fallito con un'altra immagine. Una modifica
+// di variabile deve prendere l'immagine della versione ATTIVA, non quella fallita.
+func TestAppEnv_VariabileDopoDeployFallitoUsaLaVersioneAttiva(t *testing.T) {
+	e := newAppEnvWithKeys(t)
+	e.repo("handbook", true)
+	e.want(e.do(http.MethodPost, "/repos/alice/handbook/apps", "alice", createWeb), http.StatusAccepted, "")
+	base := "/repos/alice/handbook/apps/web"
+	const active = "git.example.com/alice/handbook:sha-7f3a91c"
+
+	// Versione 2: deploy fallito con un'immagine diversa; l'attiva resta la 1.
+	e.sql(`INSERT INTO core.app_versions (app_id, number, trigger, state, image_reference, image_source, config, created_at)
+		SELECT id, 2, 'manual', 'failed', 'git.example.com/alice/handbook:sha-bad000', 'registry', '{}'::jsonb, now()
+		FROM core.apps WHERE name = 'web'`)
+	e.sql(`UPDATE core.apps SET next_version = 3 WHERE name = 'web'`)
+
+	e.want(e.do(http.MethodPut, base+"/variables/REGION", "alice", `{"value":"eu"}`), http.StatusOK, "")
+	v := e.versionOf(base+"/versions/3", "alice")
+	if v.Image.Reference != active {
+		t.Fatalf("la versione 3 deve avere l'immagine dell'attiva (%s), non quella fallita: %s", active, v.Image.Reference)
+	}
+}
+
 // GIT-348: senza la chiave dei segreti (GITSTACK_WEBHOOK_SECRET_KEY) un segreto risponde 503, mentre
 // le variabili funzionano lo stesso.
 func TestAppEnv_SenzaChiaveSegretiNon503SuVariabili(t *testing.T) {

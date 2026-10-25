@@ -496,12 +496,13 @@ func (s *Store) UpdateApp(ctx context.Context, repoID uuid.UUID, name string, p 
 	}
 	var ver *AppVersion
 	if len(changes) > 0 {
-		// L'immagine di una nuova versione di configurazione è quella dell'ultima versione.
+		// L'immagine di una nuova versione di configurazione è quella della versione attiva (GIT-343):
+		// l'ultima potrebbe essere un deploy fallito, che non deve tornare con una modifica di porta.
 		var number int
 		if err := tx.QueryRow(ctx, `UPDATE core.apps SET next_version = next_version + 1 WHERE id = $1 RETURNING next_version - 1`, cur.ID).Scan(&number); err != nil {
 			return App{}, nil, err
 		}
-		last, err := scanVersion(tx.QueryRow(ctx, `SELECT `+versionCols+` FROM core.app_versions v WHERE v.app_id = $1 ORDER BY v.number DESC LIMIT 1`, cur.ID))
+		last, err := scanVersion(tx.QueryRow(ctx, `SELECT `+versionCols+` FROM core.app_versions v WHERE v.app_id = $1 AND v.number = $2`, cur.ID, cur.ActiveVersion))
 		if err != nil {
 			return App{}, nil, err
 		}
