@@ -63,7 +63,6 @@ describe('AppConfigPage (H6)', () => {
     expect(await screen.findByText('DATABASE_URL')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Update' }));
     const form = screen.getByLabelText('Value');
-    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), '');
     await userEvent.type(form, 'super-secret-value');
     await userEvent.click(screen.getByRole('button', { name: 'Save secret' }));
     await waitFor(() => expect(api.saveAppSecret).toHaveBeenCalledWith('acme', 'handbook', 'web', 'DATABASE_URL', 'super-secret-value'));
