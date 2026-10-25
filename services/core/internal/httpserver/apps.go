@@ -152,9 +152,7 @@ func (s *apiServer) versionToAPI(v store.AppVersion, active, previous int) opena
 		Resources: resourcesToAPI(v.Config), Copies: v.Config.Copies, Restricted: &v.Config.Restricted,
 		SecretNames: []openapi.AppEnvName{},
 	}
-	for _, n := range v.Config.SecretNames {
-		cfg.SecretNames = append(cfg.SecretNames, n)
-	}
+	cfg.SecretNames = append(cfg.SecretNames, v.Config.SecretNames...)
 	return openapi.AppVersion{
 		Number: v.Number, Trigger: openapi.AppVersionTrigger(v.Trigger), State: openapi.AppDeployState(v.State),
 		StateReason: v.StateReason, Image: imageToAPI(v.Image),
