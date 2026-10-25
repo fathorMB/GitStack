@@ -28,7 +28,7 @@ type Config struct {
 	// Host è il nome o l'IP con cui si raggiunge GitStack (UI e API).
 	Host string `yaml:"host"`
 	// AppsDomain è il dominio delle app (H2): ogni app ha l'indirizzo
-	// <app>-<repo>.<apps_domain>, con il certificato wildcard della CA interna.
+	// <app>-<repo>-<owner>.<apps_domain>, con il certificato wildcard della CA interna.
 	// Vuoto = installazione v2 non ancora aggiornata con
 	// `gitstack config set apps-domain` (o con un install.sh recente).
 	AppsDomain string `yaml:"apps_domain"`

@@ -146,7 +146,7 @@ EOF
     case "${sans}" in *"DNS:homehub.local"*"IP Address:10.1.2.3"*) echo "ok: host e IP presenti" ;; *) echo "KO: SAN senza host/IP: ${sans}"; exit 14 ;; esac
     openssl verify -CAfile "${TLS_DIR}/ca.crt" "${TLS_DIR}/server.crt" >/dev/null 2>&1 || { echo "KO: il certificato non si verifica con la CA"; exit 15; }
     echo "ok: verifica con la CA interna"
-    for h in web-sito.apps.azienda.it a-b-c.apps.azienda.it; do
+    for h in web-sito-acme.apps.azienda.it a-b-c-acme.apps.azienda.it; do
       openssl verify -CAfile "${TLS_DIR}/ca.crt" -verify_hostname "${h}" "${TLS_DIR}/server.crt" >/dev/null 2>&1 || { echo "KO: ${h} non coperto"; exit 16; }
       echo "ok: ${h} coperto dal wildcard"
     done

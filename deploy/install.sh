@@ -260,7 +260,7 @@ GITSTACK_TLS_EMAIL="${GITSTACK_TLS_EMAIL:-}"
 # (https://acme-staging-v02.api.letsencrypt.org/directory).
 GITSTACK_ACME_CA_SERVER="${GITSTACK_ACME_CA_SERVER:-}"
 HOST_ARGS=()
-# Dominio delle app (H2, GIT-346): le app hanno l'indirizzo <app>-<repo>.<dominio>,
+# Dominio delle app (H2, GIT-346): le app hanno l'indirizzo <app>-<repo>-<owner>.<dominio>,
 # con un certificato wildcard *.<dominio> della CA interna. Vuoto = la scelta
 # della volta prima o un default con avviso (resolve_apps_domain).
 GITSTACK_APPS_DOMAIN="${GITSTACK_APPS_DOMAIN:-}"
@@ -324,7 +324,7 @@ Opzioni:
                              il nome completo della macchina (hostname -f) se
                              risolve, altrimenti l'IP; l'IP è sempre nei SAN.
   --apps-domain DOMINIO     Dominio delle app (facoltativo, es. apps.azienda.it):
-                             ogni app avrà l'indirizzo <app>-<repo>.DOMINIO e,
+                             ogni app avrà l'indirizzo <app>-<repo>-<owner>.DOMINIO e,
                              con la CA interna, un certificato wildcard
                              *.DOMINIO rinnovato in automatico. Serve un record
                              DNS wildcard (*.DOMINIO) verso questa macchina.
@@ -1945,7 +1945,7 @@ read_kv() {
 }
 
 # Un dominio per le app: minuscolo, almeno due etichette DNS (lettere, cifre,
-# '-'), niente IP, e abbastanza corto perché <app>-<repo>.<dominio> stia in
+# '-'), niente IP, e abbastanza corto perché <app>-<repo>-<owner>.<dominio> stia in
 # 253 caratteri con un'etichetta di 63 (stessa regola di pkg/names.AppAddress).
 apps_domain_valid() {
   local d="$1"

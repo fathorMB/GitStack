@@ -1,21 +1,21 @@
 package names
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
-	"fmt"
 	"strings"
 )
 
-// Indirizzi automatici delle app (v3, H2): <app>-<repo>.<apps-domain>.
+// Indirizzi automatici delle app (v3, H2): <app>-<repo>-<owner>.<apps-domain>,
+// per esempio web-handbook-acme.apps.acme.it (ADR 0002, «Esposizione e TLS»).
 //
-// Lo schema è quello dell'ADR 0002 (bozza, item GIT-340): un'unica etichetta
-// DNS, così il certificato wildcard *.<apps-domain> della CA interna le copre
-// tutte. Il nome del repository ammette '_', '.' e maiuscole (R11), che in un
-// nome DNS non possono stare: diventano '-' e minuscole. Due coppie diverse
-// possono dare la stessa etichetta (app «a-b» in «c» e app «a» in «b-c»):
-// UniqueAppAddress le distingue con un suffisso stabile.
+// È un'unica etichetta DNS, così il certificato wildcard *.<apps-domain> della
+// CA interna le copre tutte. Owner e repo ammettono '_', '.' e maiuscole (R11),
+// che in un nome DNS non possono stare: diventano '-' e minuscole. L'owner
+// nell'etichetta evita le collisioni fra repo omonimi di owner diversi. Non ci
+// sono suffissi automatici: un'etichetta oltre 63 caratteri è rifiutata
+// (ErrAddressTooLong, «address_too_long» nell'API) e un'etichetta già in uso
+// da un'altra app è un conflitto (ErrAddressConflict, «address_conflict»; a
+// garantirlo è l'indice unico su apps.normalized_host).
 
 const (
 	// MaxAppNameLen è la lunghezza massima del nome di un'app.
@@ -30,12 +30,14 @@ const (
 
 // Errori di ValidateAppName, ValidateAppsDomain e UniqueAppAddress.
 var (
-	ErrAppNameEmpty   = errors.New("app name must not be empty")
-	ErrAppNameTooLong = errors.New("app name must be at most 40 characters long")
-	ErrAppNameChar    = errors.New("app name may only contain lowercase letters, digits and '-'")
-	ErrAppNameDash    = errors.New("app name must not start or end with '-'")
-	ErrAppsDomain     = errors.New("apps domain must be a lowercase DNS name with at least two labels (letters, digits, '-')")
-	ErrNoFreeAddress  = errors.New("no free app address")
+	ErrAppNameEmpty    = errors.New("app name must not be empty")
+	ErrAppNameTooLong  = errors.New("app name must be at most 40 characters long")
+	ErrAppNameChar     = errors.New("app name may only contain lowercase letters, digits and '-'")
+	ErrAppNameDash     = errors.New("app name must not start or end with '-'")
+	ErrAppsDomain      = errors.New("apps domain must be a lowercase DNS name with at least two labels (letters, digits, '-')")
+	ErrAddressInvalid  = errors.New("owner and repository names must contain at least one letter or digit")
+	ErrAddressTooLong  = errors.New("app address label must be at most 63 characters long")
+	ErrAddressConflict = errors.New("app address already in use")
 )
 
 func isLower(c byte) bool { return c >= 'a' && c <= 'z' }
@@ -117,42 +119,10 @@ func dnsSlug(s string) string {
 	return b.String()
 }
 
-func hashOf(parts ...string) string {
-	sum := sha256.Sum256([]byte(strings.ToLower(strings.Join(parts, "/"))))
-	return hex.EncodeToString(sum[:])
-}
-
-// fitLabel aggiunge il suffisso (se c'è) e porta l'etichetta a
-// MaxDNSLabelLen tagliando la parte iniziale, mai il suffisso.
-func fitLabel(label, suffix string) string {
-	if suffix != "" {
-		suffix = "-" + suffix
-	}
-	if len(label)+len(suffix) <= MaxDNSLabelLen {
-		return label + suffix
-	}
-	cut := MaxDNSLabelLen - len(suffix)
-	return strings.TrimRight(label[:cut], "-") + suffix
-}
-
-// baseLabel è l'etichetta senza il suffisso di disambiguazione. Se supera
-// il limite DNS è tagliata con un hash, così due nomi lunghi che differiscono
-// solo dopo il taglio restano distinti.
-func baseLabel(owner, repo, app string) string {
-	slug := dnsSlug(repo)
-	if slug == "" {
-		slug = "repo"
-	}
-	label := app + "-" + slug
-	if len(label) > MaxDNSLabelLen {
-		return fitLabel(label, hashOf(owner, repo, app)[:8])
-	}
-	return label
-}
-
-// AppAddress è l'indirizzo automatico <app>-<repo>.<domain> senza controllo
-// delle collisioni. app e domain devono essere validi (ValidateAppName,
-// ValidateAppsDomain); repo è il nome del repository come scritto (R11).
+// AppAddress è l'indirizzo automatico <app>-<repo>-<owner>.<domain>. app e
+// domain devono essere validi (ValidateAppName, ValidateAppsDomain); owner e
+// repo sono i nomi come scritti (R11) e vengono normalizzati per il DNS.
+// Restituisce ErrAddressTooLong se l'etichetta supera MaxDNSLabelLen.
 func AppAddress(owner, repo, app, domain string) (string, error) {
 	if err := ValidateAppName(app); err != nil {
 		return "", err
@@ -163,31 +133,28 @@ func AppAddress(owner, repo, app, domain string) (string, error) {
 	if err := ValidateRepoName(repo); err != nil {
 		return "", err
 	}
-	return baseLabel(owner, repo, app) + "." + domain, nil
+	r, o := dnsSlug(repo), dnsSlug(owner)
+	if r == "" || o == "" {
+		return "", ErrAddressInvalid
+	}
+	label := app + "-" + r + "-" + o
+	if len(label) > MaxDNSLabelLen {
+		return "", ErrAddressTooLong
+	}
+	return label + "." + domain, nil
 }
 
-// UniqueAppAddress sceglie l'indirizzo dell'app evitando quelli già presi
-// (taken dice se un indirizzo è in uso da un'altra app). Prima prova
-// <app>-<repo>; se è occupato aggiunge un suffisso esadecimale ricavato da
-// owner/repo/app, quindi stabile e diverso per ogni coppia, e se serve lo
-// allunga. Con gli stessi indirizzi occupati lo stesso input dà sempre lo
-// stesso indirizzo. Un'app che ha già il suo indirizzo lo conserva: il
-// chiamante non chiede un indirizzo nuovo per un'app esistente.
-func UniqueAppAddress(owner, repo, app, domain string, taken func(address string) bool) (string, error) {
-	first, err := AppAddress(owner, repo, app, domain)
+// CheckAppAddress calcola l'indirizzo come AppAddress e restituisce
+// ErrAddressConflict se taken dice che è già in uso da un'altra app. Non
+// inventa suffissi: app e repo con trattini possono dare la stessa etichetta
+// (app «a-b» in «c» e app «a» in «b-c», stesso owner) e il secondo è rifiutato.
+func CheckAppAddress(owner, repo, app, domain string, taken func(address string) bool) (string, error) {
+	addr, err := AppAddress(owner, repo, app, domain)
 	if err != nil {
 		return "", err
 	}
-	if taken == nil || !taken(first) {
-		return first, nil
+	if taken != nil && taken(addr) {
+		return "", ErrAddressConflict
 	}
-	label := baseLabel(owner, repo, app)
-	h := hashOf(owner, repo, app)
-	for _, n := range []int{6, 8, 12, 16, 24, 32} {
-		cand := fitLabel(label, h[:n]) + "." + domain
-		if !taken(cand) {
-			return cand, nil
-		}
-	}
-	return "", fmt.Errorf("%w for %s/%s app %s", ErrNoFreeAddress, owner, repo, app)
+	return addr, nil
 }

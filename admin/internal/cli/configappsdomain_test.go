@@ -31,7 +31,7 @@ func TestConfigSetAppsDomainInternal(t *testing.T) {
 	if !strings.Contains(string(ic), "APPS_DOMAIN=apps.azienda.it") || !strings.Contains(string(ic), "HOSTS=192.168.1.20") {
 		t.Errorf("install.conf: %s", ic)
 	}
-	if !strings.Contains(out.String(), "<app>-<repo>.apps.azienda.it") {
+	if !strings.Contains(out.String(), "<app>-<repo>-<owner>.apps.azienda.it") {
 		t.Errorf("manca lo schema dell'indirizzo: %s", out)
 	}
 	if strings.Contains(errb.String(), "ATTENZIONE") {

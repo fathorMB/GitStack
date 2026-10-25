@@ -217,7 +217,8 @@ CA — how to download and trust the CA on your client machines.
 #### Apps domain and wildcard DNS (v3, H2)
 
 Apps hosted by GitStack get an automatic address
-`<app>-<repo>.<apps-domain>` (for example `web-site.apps.example.com`). The
+`<app>-<repo>-<owner>.<apps-domain>` (for example
+`web-handbook-acme.apps.acme.it`, ADR 0002). The
 domain is chosen at install time with `--apps-domain` (optional). Without it
 the installer uses `apps.<host>` (`apps.gitstack.internal` when `--host` is an
 IP) and prints a warning. A domain separate from GitStack's own
@@ -240,8 +241,8 @@ resolve to this machine.
 
 **Certificate.** With the internal CA, `gitstack-tls` adds `*.<apps-domain>`
 to the SANs of the server certificate: same CA, same nightly renewal, no extra
-CA on the clients. A wildcard covers one label (`web-site.apps.example.com`,
-not `a.b.apps.example.com`). With your own certificate (`--tls-cert`) it must
+CA on the clients. A wildcard covers one label (`web-handbook-acme.apps.acme.it`,
+not `a.b.apps.acme.it`). With your own certificate (`--tls-cert`) it must
 already cover `*.<apps-domain>`; `gitstack-tls` warns if it does not. With
 `--tls letsencrypt` the address is recorded but the internal-CA wildcard is
 not issued. Check: `openssl x509 -in /etc/gitstack/tls/server.crt -noout -ext
@@ -253,11 +254,14 @@ apps-domain apps.example.com` reissues the certificate (same CA) and rewrites
 domain (`gitstack status` prints "Dominio delle app: non impostato"); set it
 with this command. Apps already created keep their address.
 
-**Collisions.** `<app>-<repo>` is a single DNS label (at most 63 characters):
-the repository name is lowercased and `_`, `.` and other characters become
-`-`. If two apps give the same label (`a-b` in `c`, and `a` in `b-c`), the
-first keeps `a-b-c` and the second gets a stable hexadecimal suffix derived
-from `owner/repo/app` (`pkg/names`, `UniqueAppAddress`).
+**Collisions.** `<app>-<repo>-<owner>` is a single DNS label (at most 63
+characters): owner and repository are lowercased and `_`, `.` and other
+characters become `-`. The owner in the label keeps same-named repositories of
+different owners apart. There are no automatic suffixes: a label over 63
+characters is refused with `address_too_long`, and one already in use (`a-b`
+in `c` against `a` in `b-c`, same owner) with `address_conflict`, enforced by
+the unique index on `apps.normalized_host` (`pkg/names`: `AppAddress`,
+`CheckAppAddress`).
 
 #### Trusting the internal CA on clients
 

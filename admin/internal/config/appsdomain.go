@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// MaxAppsDomainLen lascia posto a <app>-<repo> di 63 caratteri e al punto:
+// MaxAppsDomainLen lascia posto a <app>-<repo>-<owner> di 63 caratteri e al punto:
 // la stessa regola di pkg/names.ValidateAppsDomain e di install.sh.
 const MaxAppsDomainLen = 253 - 63 - 1
 

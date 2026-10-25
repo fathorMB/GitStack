@@ -13,7 +13,7 @@ import (
 )
 
 // runConfigSetAppsDomain cambia il dominio delle app (H2): ogni app ha
-// l'indirizzo <app>-<repo>.<dominio>, coperto da un certificato wildcard
+// l'indirizzo <app>-<repo>-<owner>.<dominio>, coperto da un certificato wildcard
 // *.<dominio> della CA interna. Serve anche a un'installazione v2 aggiornata,
 // che non ha ancora un dominio.
 func runConfigSetAppsDomain(ctx context.Context, a *App, args []string) int {
@@ -98,7 +98,7 @@ func runConfigSetAppsDomain(ctx context.Context, a *App, args []string) int {
 	updateInstallConfKey(tlsDir, "APPS_DOMAIN", domain)
 
 	_, _ = fmt.Fprintf(a.Stdout, "Dominio delle app impostato a %s (config: %s).\n", domain, path)
-	_, _ = fmt.Fprintf(a.Stdout, "Gli indirizzi automatici delle app sono <app>-<repo>.%s. Le app già create mantengono il loro indirizzo finché non vengono aggiornate.\n", domain)
+	_, _ = fmt.Fprintf(a.Stdout, "Gli indirizzi automatici delle app sono <app>-<repo>-<owner>.%s. Le app già create mantengono il loro indirizzo finché non vengono aggiornate.\n", domain)
 	return ExitOK
 }
 

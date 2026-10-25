@@ -72,7 +72,7 @@ Un file leggibile da gruppo o altri viene rifiutato. Percorso alternativo:
 ```yaml
 version: 1                       # versione dello schema
 host: 10.0.0.5                   # nome o IP con cui si raggiunge GitStack (senza schema)
-apps_domain: apps.azienda.it     # dominio delle app (H2): indirizzi <app>-<repo>.<dominio>; assente = v2 non ancora configurata
+apps_domain: apps.azienda.it     # dominio delle app (H2): indirizzi <app>-<repo>-<owner>.<dominio>; assente = v2 non ancora configurata
 ssh_port: 2222                   # porta SSH del servizio git (mai la 22 dell'host)
 tls: internal                    # internal | custom | letsencrypt | insecure (assente = HTTP, installazioni precedenti)
 ca_cert: /etc/gitstack/tls/ca.crt  # solo con tls: internal; la chiave (ca.key) sta accanto, solo root

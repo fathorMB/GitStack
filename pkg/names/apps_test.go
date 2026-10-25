@@ -49,119 +49,89 @@ func TestValidateAppsDomain(t *testing.T) {
 
 func TestAppAddress(t *testing.T) {
 	tests := []struct{ owner, repo, app, want string }{
-		{"acme", "sito", "web", "web-sito.apps.azienda.it"},
-		{"acme", "My_Repo.v2", "api", "api-my-repo-v2.apps.azienda.it"},
-		{"acme", "a--b__c", "x", "x-a-b-c.apps.azienda.it"},
-		{"acme", "___", "x", "x-repo.apps.azienda.it"},
+		{"acme", "handbook", "web", "web-handbook-acme.apps.acme.it"},
+		{"acme", "My_Repo.v2", "api", "api-my-repo-v2-acme.apps.acme.it"},
+		{"Acme_Corp", "a--b__c", "x", "x-a-b-c-acme-corp.apps.acme.it"},
 	}
 	for _, tt := range tests {
-		got, err := AppAddress(tt.owner, tt.repo, tt.app, "apps.azienda.it")
+		got, err := AppAddress(tt.owner, tt.repo, tt.app, "apps.acme.it")
 		if err != nil || got != tt.want {
 			t.Errorf("AppAddress(%q,%q,%q) = %q, %v; want %q", tt.owner, tt.repo, tt.app, got, err, tt.want)
 		}
 	}
-	if _, err := AppAddress("acme", "sito", "Web", "apps.azienda.it"); err == nil {
-		t.Error("app name with uppercase must be rejected")
+	// Lo stesso repo e la stessa app con owner diversi: indirizzi leggibili e diversi.
+	a, _ := AppAddress("acme", "handbook", "web", "apps.acme.it")
+	b, _ := AppAddress("globex", "handbook", "web", "apps.acme.it")
+	if a == b || b != "web-handbook-globex.apps.acme.it" {
+		t.Errorf("owners must give different addresses: %q %q", a, b)
 	}
-	if _, err := AppAddress("acme", "sito", "web", "azienda"); err == nil {
-		t.Error("domain with one label must be rejected")
+	for _, tc := range []struct{ owner, repo, app, domain string }{
+		{"acme", "handbook", "Web", "apps.acme.it"},
+		{"acme", "handbook", "web", "acme"},
+		{"acme", "x.git", "web", "apps.acme.it"},
+	} {
+		if _, err := AppAddress(tc.owner, tc.repo, tc.app, tc.domain); err == nil {
+			t.Errorf("%+v must be rejected", tc)
+		}
 	}
-	if _, err := AppAddress("acme", "x.git", "web", "apps.azienda.it"); err == nil {
-		t.Error("invalid repo name must be rejected")
+	for _, tc := range []struct{ owner, repo string }{{"acme", "___"}, {"___", "handbook"}, {"", "handbook"}} {
+		if _, err := AppAddress(tc.owner, tc.repo, "web", "apps.acme.it"); !errors.Is(err, ErrAddressInvalid) {
+			t.Errorf("%+v: err = %v, want ErrAddressInvalid", tc, err)
+		}
 	}
 }
 
-func TestAppAddressLabelLimit(t *testing.T) {
-	repo := strings.Repeat("r", 100)
-	repo = repo[:99] + "q"
-	app := strings.Repeat("a", 40)
-	got, err := AppAddress("acme", repo, app, "apps.azienda.it")
+// Nessun taglio e nessun hash: 63 caratteri passano, 64 no.
+func TestAppAddressTooLong(t *testing.T) {
+	// "web-" (4) + repo + "-acme" (5) = 63 con repo di 54 caratteri.
+	ok, err := AppAddress("acme", strings.Repeat("r", 54), "web", "apps.acme.it")
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("63 caratteri: %v", err)
 	}
-	label := strings.TrimSuffix(got, ".apps.azienda.it")
-	if len(label) > MaxDNSLabelLen || strings.HasSuffix(label, "-") || strings.Contains(label, "--") {
-		t.Errorf("label %q (len %d) breaks DNS rules", label, len(label))
+	if label := strings.TrimSuffix(ok, ".apps.acme.it"); len(label) != MaxDNSLabelLen {
+		t.Errorf("label %q has %d characters", label, len(label))
 	}
-	// Due repo che differiscono solo dopo il punto di taglio non coincidono.
-	other, err := AppAddress("acme", repo[:99]+"x", app, "apps.azienda.it")
-	if err != nil {
-		t.Fatal(err)
+	got, err := AppAddress("acme", strings.Repeat("r", 55), "web", "apps.acme.it")
+	if !errors.Is(err, ErrAddressTooLong) || got != "" {
+		t.Errorf("64 caratteri: %q, %v; want ErrAddressTooLong", got, err)
 	}
-	if other == got {
-		t.Errorf("truncated labels collide: %q", got)
+	if _, err := AppAddress("acme", strings.Repeat("r", 100), strings.Repeat("a", 40), "apps.acme.it"); !errors.Is(err, ErrAddressTooLong) {
+		t.Errorf("err = %v, want ErrAddressTooLong", err)
 	}
 }
 
-// Il caso classico: «a-b» in «c» e «a» in «b-c» danno entrambe a-b-c.
-func TestUniqueAppAddressCollisions(t *testing.T) {
-	const domain = "apps.azienda.it"
-	used := map[string]string{} // indirizzo -> chiave dell'app
-	taken := func(a string) bool { _, ok := used[a]; return ok }
-	type app struct{ owner, repo, name string }
-	apps := []app{
-		{"acme", "c", "a-b"},
-		{"acme", "b-c", "a"},         // stessa etichetta a-b-c
-		{"acme", "B_C", "a"},         // '_' e maiuscole: ancora a-b-c
-		{"other", "b.c", "a"},        // owner diverso, stessa etichetta
-		{"acme", "sito", "web"},      // nessuna collisione
-		{"other", "sito", "web"},     // stesso repo e app, owner diverso
-		{"acme", "sito", "web-sito"}, // web-sito-sito: non collide
+// «a-b» in «c» e «a» in «b-c» (stesso owner) danno la stessa etichetta: il
+// secondo è un conflitto, senza alcun suffisso automatico.
+func TestCheckAppAddressConflict(t *testing.T) {
+	const domain = "apps.acme.it"
+	used := map[string]bool{}
+	taken := func(a string) bool { return used[a] }
+	first, err := CheckAppAddress("acme", "c", "a-b", domain, taken)
+	if err != nil || first != "a-b-c-acme.apps.acme.it" {
+		t.Fatalf("first = %q, %v", first, err)
 	}
-	got := map[app]string{}
-	for _, a := range apps {
-		addr, err := UniqueAppAddress(a.owner, a.repo, a.name, domain, taken)
-		if err != nil {
-			t.Fatalf("%v: %v", a, err)
-		}
-		if prev, dup := used[addr]; dup {
-			t.Fatalf("%v: address %q already used by %s", a, addr, prev)
-		}
-		if !strings.HasSuffix(addr, "."+domain) {
-			t.Errorf("%v: %q outside %s", a, addr, domain)
-		}
-		label := strings.TrimSuffix(addr, "."+domain)
-		if len(label) > MaxDNSLabelLen || strings.Contains(label, ".") {
-			t.Errorf("%v: label %q invalid", a, label)
-		}
-		used[addr] = a.owner + "/" + a.repo + "/" + a.name
-		got[a] = addr
+	used[first] = true
+	got, err := CheckAppAddress("acme", "b-c", "a", domain, taken)
+	if !errors.Is(err, ErrAddressConflict) || got != "" {
+		t.Errorf("second = %q, %v; want ErrAddressConflict", got, err)
 	}
-	if got[apps[0]] != "a-b-c.apps.azienda.it" {
-		t.Errorf("first app keeps the plain address, got %q", got[apps[0]])
+	// Anche '_' e maiuscole portano alla stessa etichetta.
+	if _, err := CheckAppAddress("acme", "B_C", "a", domain, taken); !errors.Is(err, ErrAddressConflict) {
+		t.Errorf("B_C: err = %v, want ErrAddressConflict", err)
 	}
-	if got[apps[4]] != "web-sito.apps.azienda.it" {
-		t.Errorf("app without collision keeps the plain address, got %q", got[apps[4]])
+	// Un altro owner non confligge: l'owner è nell'etichetta.
+	other, err := CheckAppAddress("globex", "b-c", "a", domain, taken)
+	if err != nil || other != "a-b-c-globex.apps.acme.it" {
+		t.Errorf("other owner = %q, %v", other, err)
 	}
-	if len(used) != len(apps) {
-		t.Errorf("%d addresses for %d apps", len(used), len(apps))
+	// Senza taken non c'è controllo; gli errori di AppAddress passano.
+	if _, err := CheckAppAddress("acme", "c", "a-b", domain, nil); err != nil {
+		t.Errorf("nil taken: %v", err)
 	}
-
-	// Un indirizzo occupato non si restituisce di nuovo.
-	again, err := UniqueAppAddress("acme", "b-c", "a", domain, taken)
-	if err != nil {
-		t.Fatal(err)
+	if _, err := CheckAppAddress("acme", "c", "Web", domain, taken); err == nil {
+		t.Error("invalid app name must fail")
 	}
-	if again == got[apps[1]] {
-		t.Errorf("an occupied address cannot be returned again: %q", again)
-	}
-	// Stabilità: liberato il suo, l'app riprende lo stesso suffisso.
-	delete(used, got[apps[1]])
-	same, err := UniqueAppAddress("acme", "b-c", "a", domain, taken)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if same != got[apps[1]] {
-		t.Errorf("suffix not stable: %q vs %q", same, got[apps[1]])
-	}
-}
-
-func TestUniqueAppAddressExhausted(t *testing.T) {
-	_, err := UniqueAppAddress("acme", "sito", "web", "apps.azienda.it", func(string) bool { return true })
-	if !errors.Is(err, ErrNoFreeAddress) {
-		t.Errorf("err = %v, want ErrNoFreeAddress", err)
-	}
-	if _, err := UniqueAppAddress("acme", "sito", "Web", "apps.azienda.it", nil); err == nil {
-		t.Error("invalid app name must fail even with nil taken")
+	if _, err := CheckAppAddress("acme", strings.Repeat("r", 60), "web", domain, taken); !errors.Is(err, ErrAddressTooLong) {
+		t.Errorf("too long: err = %v", err)
 	}
 }

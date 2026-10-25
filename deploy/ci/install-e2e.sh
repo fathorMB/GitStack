@@ -37,8 +37,8 @@
 #                              Dominio delle app (H2, GIT-346): con un dominio, config.yaml
 #                              e `gitstack status` lo riportano, il certificato del server ha
 #                              il SAN *.<dominio>, si verifica con la CA interna per
-#                              <app>-<repo>.<dominio> e Traefik lo serve sulla porta 443
-#                              (SNI <app>-<repo>.<dominio>). Con install.log e warn|nowarn controlla
+#                              <app>-<repo>-<owner>.<dominio> e Traefik lo serve sulla porta 443
+#                              (SNI <app>-<repo>-<owner>.<dominio>). Con install.log e warn|nowarn controlla
 #                              che l'avviso del dominio predefinito ci sia (warn) o manchi (nowarn). Con `unset` (v2 aggiornata): nessun apps_domain
 #                              in config.yaml e status lo dice. Una riga ok/ko per controllo.
 #   latest-backup              Stampa il percorso dell'archivio più recente.
@@ -506,7 +506,7 @@ verify_apps_domain() {
     [ "${APPS_KO}" -eq 0 ] || fail "verify-apps-domain unset: ${APPS_KO} controlli ko"
     return 0
   fi
-  local app="web-sito.${want}"
+  local app="web-sito-acme.${want}"
   apps_check "config.yaml: apps_domain: ${want}" bash -c "sudo grep -qx 'apps_domain: ${want}' ${cfg}"
   apps_check "gitstack status: Dominio delle app: ${want}" bash -c "sudo gitstack status | grep -q 'Dominio delle app: ${want}'"
   apps_check "server.crt: SAN DNS:*.${want}" bash -c "sudo openssl x509 -in ${tls}/server.crt -noout -ext subjectAltName | grep -q 'DNS:\*\.${want}'"
