@@ -82,7 +82,7 @@ var Tools = []Tool{
 		Operation:   "getAppMetrics",
 		Method:      "GET",
 		Path:        "/repos/{owner}/{repo}/apps/{app}/metrics",
-		Description: "Legge le metriche dell'app. Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio dell'implementazione e non fa parte del contratto.",
+		Description: "Legge le metriche dell'app. Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio dell'implementazione e non fa parte del contratto. Se la sorgente delle metriche non risponde la risposta e' comunque 200 con `available: false` e serie vuote (non zeri): l'Overview mostra il resto.",
 		Destructive: false,
 		PathParams:  []string{"app", "owner", "repo"},
 		QueryParams: []string{"copy", "range"},

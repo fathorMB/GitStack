@@ -3473,7 +3473,9 @@ type App struct {
 	Status        AppStatus         `json:"status"`
 	StoppedReason *AppStoppedReason `json:"stoppedReason,omitempty"`
 	UpdatedAt     time.Time         `json:"updatedAt"`
-	Usage         *AppUsage         `json:"usage,omitempty"`
+
+	// Usage Uso corrente; null vuol dire metriche non disponibili.
+	Usage *AppUsage `json:"usage,omitempty"`
 }
 
 // AppAccess defines model for AppAccess.
@@ -3664,8 +3666,10 @@ type AppMetricSeriesUnit string
 
 // AppMetrics defines model for AppMetrics.
 type AppMetrics struct {
-	Copies []AppCopyStatus `json:"copies"`
-	Cpu    AppMetricSeries `json:"cpu"`
+	// Available Falso se la sorgente delle metriche non risponde: le serie sono vuote, non zero.
+	Available bool            `json:"available"`
+	Copies    []AppCopyStatus `json:"copies"`
+	Cpu       AppMetricSeries `json:"cpu"`
 
 	// Errors5xx Solo app web.
 	Errors5xx *AppMetricSeries `json:"errors5xx,omitempty"`
@@ -3676,7 +3680,9 @@ type AppMetrics struct {
 	Requests    *AppMetricSeries `json:"requests,omitempty"`
 	Restarts24h int              `json:"restarts24h"`
 	StepSeconds int              `json:"stepSeconds"`
-	Usage       *AppUsage        `json:"usage,omitempty"`
+
+	// Usage Uso corrente; null vuol dire metriche non disponibili.
+	Usage *AppUsage `json:"usage,omitempty"`
 }
 
 // AppMetricsRange defines model for AppMetrics.Range.
@@ -9977,7 +9983,7 @@ type ClientInterface interface {
 
 	// GetAppMetrics Legge le metriche dell'app
 	//
-	// Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio dell'implementazione e non fa parte del contratto.
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio dell'implementazione e non fa parte del contratto. Se la sorgente delle metriche non risponde la risposta e' comunque 200 con `available: false` e serie vuote (non zeri): l'Overview mostra il resto.
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/metrics (the `GetAppMetrics` operationId).
 	GetAppMetrics(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *GetAppMetricsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -14858,7 +14864,7 @@ func (c *Client) GetAppLogs(ctx context.Context, owner RepoOwnerParam, repo Repo
 
 // GetAppMetrics Legge le metriche dell'app
 //
-// Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio dell'implementazione e non fa parte del contratto.
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio dell'implementazione e non fa parte del contratto. Se la sorgente delle metriche non risponde la risposta e' comunque 200 con `available: false` e serie vuote (non zeri): l'Overview mostra il resto.
 //
 // Corresponds with GET /repos/{owner}/{repo}/apps/{app}/metrics (the `GetAppMetrics` operationId).
 func (c *Client) GetAppMetrics(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *GetAppMetricsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -37124,7 +37130,7 @@ type ClientWithResponsesInterface interface {
 
 	// GetAppMetricsWithResponse Legge le metriche dell'app
 	//
-	// Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio dell'implementazione e non fa parte del contratto.
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio dell'implementazione e non fa parte del contratto. Se la sorgente delle metriche non risponde la risposta e' comunque 200 con `available: false` e serie vuote (non zeri): l'Overview mostra il resto.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -64295,7 +64301,7 @@ func (c *ClientWithResponses) GetAppLogsWithResponse(ctx context.Context, owner 
 
 // GetAppMetricsWithResponse Legge le metriche dell'app
 //
-// Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio dell'implementazione e non fa parte del contratto.
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio dell'implementazione e non fa parte del contratto. Se la sorgente delle metriche non risponde la risposta e' comunque 200 con `available: false` e serie vuote (non zeri): l'Overview mostra il resto.
 //
 // Returns a wrapper object for the known response body format(s).
 //

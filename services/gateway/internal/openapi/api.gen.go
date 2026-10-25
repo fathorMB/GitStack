@@ -3098,7 +3098,9 @@ type App struct {
 	Status        AppStatus         `json:"status"`
 	StoppedReason *AppStoppedReason `json:"stoppedReason,omitempty"`
 	UpdatedAt     time.Time         `json:"updatedAt"`
-	Usage         *AppUsage         `json:"usage,omitempty"`
+
+	// Usage Uso corrente; null vuol dire metriche non disponibili.
+	Usage *AppUsage `json:"usage,omitempty"`
 }
 
 // AppAccess defines model for AppAccess.
@@ -3289,8 +3291,10 @@ type AppMetricSeriesUnit string
 
 // AppMetrics defines model for AppMetrics.
 type AppMetrics struct {
-	Copies []AppCopyStatus `json:"copies"`
-	Cpu    AppMetricSeries `json:"cpu"`
+	// Available Falso se la sorgente delle metriche non risponde: le serie sono vuote, non zero.
+	Available bool            `json:"available"`
+	Copies    []AppCopyStatus `json:"copies"`
+	Cpu       AppMetricSeries `json:"cpu"`
 
 	// Errors5xx Solo app web.
 	Errors5xx *AppMetricSeries `json:"errors5xx,omitempty"`
@@ -3301,7 +3305,9 @@ type AppMetrics struct {
 	Requests    *AppMetricSeries `json:"requests,omitempty"`
 	Restarts24h int              `json:"restarts24h"`
 	StepSeconds int              `json:"stepSeconds"`
-	Usage       *AppUsage        `json:"usage,omitempty"`
+
+	// Usage Uso corrente; null vuol dire metriche non disponibili.
+	Usage *AppUsage `json:"usage,omitempty"`
 }
 
 // AppMetricsRange defines model for AppMetrics.Range.

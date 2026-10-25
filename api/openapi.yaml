@@ -123,7 +123,7 @@ tags:
       Hosting di app (v3-a, regole H1-H13 [c_c4431e5184995e4f], H5 [c_111f298013335dbc]): app di un repo, versioni,
       deploy, rollback, riavvio e scala, variabili e segreti, accesso, risorse, log e metriche; console
       dell'amministratore (capacita', riserva, quote per owner, impostazioni d'istanza, chiavi fidate). Il permesso
-      del repo di ogni operazione e' in `x-required-permission` (read, write, admin) e nella descrizione; le
+      del repo di ogni operazione e' in `x-repo-permission` (read, write, admin) e nella descrizione; le
       operazioni da `admin` portano `x-mcp.destructive: true` (H13). Servite da core.
 
 paths:
@@ -10046,7 +10046,8 @@ paths:
       description: >
         Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e
         riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio
-        dell'implementazione e non fa parte del contratto.
+        dell'implementazione e non fa parte del contratto. Se la sorgente delle metriche non risponde la
+        risposta e' comunque 200 con `available: false` e serie vuote (non zeri): l'Overview mostra il resto.
       parameters: [{name: range, in: query, schema: {type: string, enum: ["1h", "6h", "24h", "7d"], default: "1h"}}, {name: copy, in: query, description: "Nome di una copia; assente: somma di tutte.", schema: {type: string, maxLength: 63}}]
       responses:
         "200": {description: "Metriche.", content: {application/json: {schema: {$ref: "#/components/schemas/AppMetrics"}}}}
@@ -16803,7 +16804,7 @@ components:
         copies: {type: integer, minimum: 0, description: "Copie volute."}
         readyCopies: {type: integer, minimum: 0, description: "Copie sane."}
         resources: {$ref: "#/components/schemas/AppResources"}
-        usage: {allOf: [{$ref: "#/components/schemas/AppUsage"}], nullable: true, type: object}
+        usage: {allOf: [{$ref: "#/components/schemas/AppUsage"}], nullable: true, type: object, description: "Uso corrente; null vuol dire metriche non disponibili."}
         lastDeploy: {allOf: [{$ref: "#/components/schemas/AppLastDeploy"}], nullable: true, type: object}
         createdAt: {type: string, format: date-time}
         createdBy: {allOf: [{$ref: "#/components/schemas/AppActor"}], nullable: true, type: object}
@@ -17015,8 +17016,9 @@ components:
     AppMetrics:
       type: object
       additionalProperties: false
-      required: [range, stepSeconds, cpu, memory, restarts24h, copies]
+      required: [available, range, stepSeconds, cpu, memory, restarts24h, copies]
       properties:
+        available: {type: boolean, description: "Falso se la sorgente delle metriche non risponde: le serie sono vuote, non zero."}
         range: {type: string, enum: ["1h", "6h", "24h", "7d"]}
         stepSeconds: {type: integer, minimum: 1}
         cpu: {$ref: "#/components/schemas/AppMetricSeries"}
@@ -17025,7 +17027,7 @@ components:
         errors5xx: {allOf: [{$ref: "#/components/schemas/AppMetricSeries"}], nullable: true, type: object, description: "Solo app web."}
         restarts24h: {type: integer, minimum: 0}
         copies: {type: array, items: {$ref: "#/components/schemas/AppCopyStatus"}}
-        usage: {allOf: [{$ref: "#/components/schemas/AppUsage"}], nullable: true, type: object}
+        usage: {allOf: [{$ref: "#/components/schemas/AppUsage"}], nullable: true, type: object, description: "Uso corrente; null vuol dire metriche non disponibili."}
     AppsCapacity:
       type: object
       description: Capacita' del server e priorita' servizi di GitStack, poi app, poi job della CI (H11).

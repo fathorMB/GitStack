@@ -3583,6 +3583,9 @@ export type App = {
      */
     readyCopies: number;
     resources: AppResources;
+    /**
+     * Uso corrente; null vuol dire metriche non disponibili.
+     */
     usage?: AppUsage | null;
     lastDeploy?: AppLastDeploy | null;
     createdAt: string;
@@ -3821,6 +3824,10 @@ export type AppCopyStatus = {
 };
 
 export type AppMetrics = {
+    /**
+     * Falso se la sorgente delle metriche non risponde: le serie sono vuote, non zero.
+     */
+    available: boolean;
     range: '1h' | '6h' | '24h' | '7d';
     stepSeconds: number;
     cpu: AppMetricSeries;
@@ -3835,6 +3842,9 @@ export type AppMetrics = {
     errors5xx?: AppMetricSeries | null;
     restarts24h: number;
     copies: Array<AppCopyStatus>;
+    /**
+     * Uso corrente; null vuol dire metriche non disponibili.
+     */
     usage?: AppUsage | null;
 };
 

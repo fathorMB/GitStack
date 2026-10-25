@@ -5957,7 +5957,7 @@ export const getAppLogs = <ThrowOnError extends boolean = false>(options: Option
 /**
  * Legge le metriche dell'app
  *
- * Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio dell'implementazione e non fa parte del contratto.
+ * Serve `read` sul repo (H5): 404 se il repo non si legge. Metriche minime (H12): CPU, memoria e riavvii; richieste ed errori 5xx solo per le app web. La sorgente dei dati e' un dettaglio dell'implementazione e non fa parte del contratto. Se la sorgente delle metriche non risponde la risposta e' comunque 200 con `available: false` e serie vuote (non zeri): l'Overview mostra il resto.
  *
  */
 export const getAppMetrics = <ThrowOnError extends boolean = false>(options: Options<GetAppMetricsData, ThrowOnError>): RequestResult<GetAppMetricsResponses, GetAppMetricsErrors, ThrowOnError> => (options.client ?? client).get<GetAppMetricsResponses, GetAppMetricsErrors, ThrowOnError>({
