@@ -45,6 +45,10 @@ vi.mock('../../lib/issuesApi', async (orig) => ({
   ...(await orig<typeof import('../../lib/issuesApi')>()),
   countIssues: vi.fn().mockResolvedValue(3),
 }));
+vi.mock('../../lib/packagesApi', async (orig) => ({
+  ...(await orig<typeof import('../../lib/packagesApi')>()),
+  countPackages: vi.fn().mockResolvedValue(5),
+}));
 vi.mock('../../lib/orgsApi', () => ({ fetchOrgMembers: vi.fn() }));
 vi.mock('../../lib/authApi', () => ({ fetchSession: vi.fn() }));
 vi.mock('./RepoWatchSelect', () => ({ RepoWatchSelect: () => <span>watch</span> }));
@@ -53,6 +57,7 @@ import { fetchSession } from '../../lib/authApi';
 import { fetchOrgMembers } from '../../lib/orgsApi';
 import { fetchRepo } from '../../lib/reposApi';
 import { fetchPullMirror } from '../../lib/pullMirrorsApi';
+import { countPackages } from '../../lib/packagesApi';
 
 function repo(): Repository {
   return {
@@ -85,6 +90,7 @@ function tab(name: string) {
 beforeEach(() => {
   vi.mocked(fetchRepo).mockReset().mockResolvedValue(repo());
   vi.mocked(fetchPullMirror).mockReset().mockResolvedValue(null);
+  vi.mocked(countPackages).mockReset().mockResolvedValue(5);
 });
 
 describe('RepoHeader: schede', () => {
@@ -108,6 +114,22 @@ describe('RepoHeader: schede', () => {
     const { container } = renderHeader('tree', true);
     const title = container.querySelector('.repo-title') as HTMLElement;
     expect(within(title).queryByRole('link', { name: /Settings/ })).not.toBeInTheDocument();
+  });
+
+  it('Packages mostra il numero di immagini', async () => {
+    renderHeader('packages', false);
+    const packages = tab('Packages');
+    expect(packages).toHaveAttribute('href', '/acme/api-gateway/packages');
+    expect(await within(packages).findByText('5')).toHaveClass('counter');
+  });
+
+  it('Packages resta visibile senza contatore se il conteggio fallisce', async () => {
+    vi.mocked(countPackages).mockRejectedValueOnce(new Error('registry unavailable'));
+    renderHeader('packages', false);
+    const packages = tab('Packages');
+    expect(packages).toHaveAttribute('href', '/acme/api-gateway/packages');
+    await waitFor(() => expect(countPackages).toHaveBeenCalled());
+    expect(packages.querySelector('.counter')).not.toBeInTheDocument();
   });
 
   it.each(['tree', 'commits', 'commit', 'search', 'blob', 'blame'] as RepoHeaderMode[])('Code e\' attiva su %s', (mode) => {

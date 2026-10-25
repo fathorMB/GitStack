@@ -15,6 +15,11 @@ export async function fetchPackages(owner: string, repo: string): Promise<Packag
   return unwrap(await sdkListPackages({ baseUrl: API_BASE_URL, path: { owner, repo } }));
 }
 
+/** Numero di immagini pubblicate nel repository. */
+export async function countPackages(owner: string, repo: string): Promise<number> {
+  return (await fetchPackages(owner, repo)).items.length;
+}
+
 /** Elimina l'immagine o, con `tag`, solo quel tag. */
 export async function deletePackage(owner: string, repo: string, name: string, tag?: string): Promise<void> {
   unwrapEmpty(await sdkDeletePackage({ baseUrl: API_BASE_URL, path: { owner, repo }, query: tag ? { name, tag } : { name } }));

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { PullMirrorBadge } from '../../components';
 import { countIssues } from '../../lib/issuesApi';
+import { countPackages } from '../../lib/packagesApi';
 import { countPulls } from '../../lib/pullsApi';
 import type { Repository } from '../../lib/reposApi';
 import { RepoWatchSelect } from './RepoWatchSelect';
@@ -57,6 +58,23 @@ export function RepoHeader({ repo, mode, admin }: { repo: Repository; mode: Repo
       },
       () => {
         if (live) setOpenIssues(null);
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [owner, name]);
+
+  // Il registry può non essere disponibile: in quel caso il tab resta senza contatore.
+  const [packagesCount, setPackagesCount] = useState<number | null>(null);
+  useEffect(() => {
+    let live = true;
+    countPackages(owner, name).then(
+      (n) => {
+        if (live) setPackagesCount(n);
+      },
+      () => {
+        if (live) setPackagesCount(null);
       },
     );
     return () => {
@@ -120,7 +138,7 @@ export function RepoHeader({ repo, mode, admin }: { repo: Repository; mode: Repo
         </NavLink>
         <NavLink className={tab(mode === 'packages')} to={`${base}/packages`}>
           <Box size={16} aria-hidden="true" />
-          Packages
+          Packages {packagesCount !== null ? <span className="counter">{packagesCount}</span> : null}
         </NavLink>
         {admin ? (
           <NavLink className={tab(SETTINGS_MODES.includes(mode))} to={`${base}/settings`}>

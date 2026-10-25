@@ -7,7 +7,7 @@ import type { PackageSettings } from '../../lib/packagesApi';
 import type { Repository } from '../../lib/reposApi';
 import { PackageSettingsPage } from './PackageSettingsPage';
 
-vi.mock('../../lib/packagesApi', () => ({ fetchPackageSettings: vi.fn(), savePackageSettings: vi.fn() }));
+vi.mock('../../lib/packagesApi', () => ({ countPackages: vi.fn(), fetchPackageSettings: vi.fn(), savePackageSettings: vi.fn() }));
 vi.mock('../../lib/reposApi', async (orig) => ({ ...(await orig<typeof import('../../lib/reposApi')>()), fetchRepo: vi.fn() }));
 vi.mock('../../lib/authApi', () => ({ fetchSession: vi.fn() }));
 vi.mock('../../lib/orgsApi', () => ({ fetchOrgMembers: vi.fn() }));
@@ -18,7 +18,7 @@ vi.mock('../../lib/pullsApi', () => ({ countPulls: vi.fn() }));
 vi.mock('./RepoWatchSelect', () => ({ RepoWatchSelect: () => null }));
 
 import { fetchSession } from '../../lib/authApi';
-import { fetchPackageSettings, savePackageSettings } from '../../lib/packagesApi';
+import { countPackages, fetchPackageSettings, savePackageSettings } from '../../lib/packagesApi';
 import { fetchOrgMembers } from '../../lib/orgsApi';
 import { countIssues } from '../../lib/issuesApi';
 import { countPulls } from '../../lib/pullsApi';
@@ -72,6 +72,7 @@ describe('PackageSettingsPage (mockup B6)', () => {
     vi.resetAllMocks();
     vi.mocked(countIssues).mockResolvedValue(0);
     vi.mocked(countPulls).mockResolvedValue(0);
+    vi.mocked(countPackages).mockResolvedValue(0);
     vi.mocked(fetchRepo).mockResolvedValue(repo());
     vi.mocked(fetchPackageSettings).mockResolvedValue(settings());
     vi.mocked(fetchOrgMembers).mockResolvedValue([{ user: { username: 'owner' }, role: 'owner' }] as never);
