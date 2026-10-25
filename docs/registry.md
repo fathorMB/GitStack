@@ -56,12 +56,20 @@ Senza S3 i dati stanno sul PVC `git-data`, in `<dati>/registry`. Variabili d'amb
 
 `v2` è un nome riservato (`pkg/names`): nessun utente o organizzazione può chiamarsi così.
 
+## Elenco ed eliminazione dei pacchetti (GIT-361)
+
+- `GET /repos/{owner}/{repo}/packages`: chi legge il repo vede le immagini (nessun accesso anonimo; un repo non leggibile dà 404). Per ogni immagine: `name` (`owner/repo[/immagine]`), `tags`, `tagDetails` (nome, digest, dimensione, data dell'ultimo push, `signature`, `hasSbom`, `protected`, `pushedBy`), `digest`, `sizeBytes`, `updatedAt`, `kind` (`image` o `helm`, dal mediaType del config) e `pushedBy` (quello del tag più recente). Digest, firma, SBOM e dimensione dell'immagine sono quelli del tag più recente.
+- `DELETE /repos/{owner}/{repo}/packages?name=…[&tag=…]`: solo admin (RG1). La rotta dichiara `write:resource`, il ruolo admin lo controlla core: con solo `write` la risposta è 403. 404 se l'immagine o il tag non esistono, 409 su un tag protetto (con l'immagine intera basta un tag protetto), 409 su un repo archiviato. L'eliminazione passa da distribution: tolti i tag, il manifest con la sua firma e il suo SBOM; i blob li raccoglie la pulizia.
+- `signature` è `verified` solo se esiste l'artefatto `sha256-<digest>.sig` con una firma ECDSA valida con la chiave dell'istanza e un payload che nomina quel digest; «nessuna firma» e «firma non valida» sono entrambe `unverified`. `hasSbom` è vero se esiste l'artefatto `.sbom` o `.att` per il digest o se l'indice dei referrer (`sha256-<digest>`) elenca un artefatto SPDX/CycloneDX. Questi tag tecnici non compaiono fra i tag.
+- `pushedBy` (`kind` `user`, `agent` o `job`, e `login`) è registrato dal registry al momento del push, per tag, in `<repo>/_gitstack/pushers/`. I tag pubblicati prima di GIT-361 non l'hanno: il campo manca, non si inventa. Un push col token del job è `job` con login `ci job token`.
+- Core parla col servizio git con `GET|DELETE /internal/git/repos/{repoId}/packages`, firmate col segreto di servizio come le altre rotte interne.
+
 ## Pulizia, tag protetti, quote e backup (RG2)
 
 Le impostazioni di un repo stanno in core (`GET/PATCH /repos/{owner}/{repo}/packages/settings`, serve il ruolo admin; il PATCH sostituisce tutto):
 
 - `protectedTagPatterns`: modelli come `v*`. Un tag protetto non si sovrascrive (il push risponde 403 DENIED) e l'immagine che lo porta non si elimina; la pulizia non lo tocca mai.
-- `deleteUntaggedAfterDays` (default 7): le immagini senza tag più vecchie si eliminano. Quelle con un tag mai da sole; un'immagine referenziata da un indice con tag resta.
+- `deleteUntaggedAfterDays` (sola lettura, sempre 7; GIT-361): le immagini senza tag più vecchie di 7 giorni si eliminano. Non è impostabile: il PATCH che lo contiene è rifiutato (400). Quelle con un tag mai da sole; un'immagine referenziata da un indice con tag resta.
 - `keepLastTags` (facoltativo): per ogni immagine si tengono solo gli ultimi N tag non protetti. `deleteShaTagsAfterDays` (facoltativo): i tag `sha-*` più vecchi di X giorni si eliminano.
 - `includeInBackup` (default `false`): le immagini del repo entrano in `gitstack backup`. Il restore riporta le sole immagini incluse.
 

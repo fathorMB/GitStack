@@ -4696,7 +4696,7 @@ export const updateCiStorageSettings = <ThrowOnError extends boolean = false>(op
 /**
  * Elimina un pacchetto OCI del repository o un suo tag
  *
- * Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).
+ * Solo admin del repository (RG1; la rotta chiede write:resource, il ruolo admin lo verifica core: write da solo dà 403). Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).
  */
 export const deleteRepositoryPackage = <ThrowOnError extends boolean = false>(options: Options<DeleteRepositoryPackageData, ThrowOnError>): RequestResult<DeleteRepositoryPackageResponses, DeleteRepositoryPackageErrors, ThrowOnError> => (options.client ?? client).delete<DeleteRepositoryPackageResponses, DeleteRepositoryPackageErrors, ThrowOnError>({
     security: [{

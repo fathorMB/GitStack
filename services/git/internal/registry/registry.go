@@ -545,6 +545,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.log.Error("firma dell'immagine del job non riuscita", "err", err, "repoId", g.repoID, "digest", digest)
 		}
 	}
+	if action == actionPush && r.Method == http.MethodPut && strings.HasPrefix(rt.tail, "manifests/") && (rw.status == 0 || rw.status >= http.StatusOK && rw.status < http.StatusMultipleChoices) {
+		// Chi ha pubblicato il tag, come lo ha autenticato il registry (GIT-361).
+		p := Pusher{Kind: PusherUser, Login: cl.name}
+		switch {
+		case cl.job:
+			p = Pusher{Kind: PusherJob, Login: JobLogin}
+		case cl.principal.Kind == PusherAgent:
+			p.Kind = PusherAgent
+		}
+		h.recordPusher(r.Context(), name, strings.TrimPrefix(rt.tail, "manifests/"), p)
+	}
 	if rw.status >= 500 {
 		h.log.Error("il registry ha risposto con un errore", "status", rw.status, "method", r.Method, "path", rt.tail, "repoId", g.repoID)
 	}

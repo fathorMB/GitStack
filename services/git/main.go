@@ -115,13 +115,14 @@ func run(out io.Writer) int {
 		regHandler    http.Handler
 		regSigningKey http.Handler
 		regPurge      func(context.Context, string) error
+		regPackages   httpserver.Packages
 	)
 	if rh, err := newRegistry(cfg, logger); err != nil {
 		logger.Error("registry non avviabile", "err", err)
 		return 1
 	} else if rh != nil {
 		defer func() { _ = rh.Close() }()
-		regHandler, regSigningKey, regPurge = rh, http.HandlerFunc(rh.ServeSigningKey), rh.Purge
+		regHandler, regSigningKey, regPurge, regPackages = rh, http.HandlerFunc(rh.ServeSigningKey), rh.Purge, rh
 	}
 
 	srv := &http.Server{
@@ -130,6 +131,7 @@ func run(out io.Writer) int {
 			Registry:           regHandler,
 			RegistrySigningKey: regSigningKey,
 			RegistryPurge:      regPurge,
+			Packages:           regPackages,
 			Store:              store,
 			Reads:              gitread.New(runner, store.Dir),
 			Merge:              &gitmerge.Service{Run: runner, Dir: store.Dir, Events: events},

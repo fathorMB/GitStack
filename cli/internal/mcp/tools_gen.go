@@ -670,7 +670,7 @@ var Tools = []Tool{
 		Operation:   "deleteRepositoryPackage",
 		Method:      "DELETE",
 		Path:        "/repos/{owner}/{repo}/packages",
-		Description: "Elimina un pacchetto OCI del repository o un suo tag. Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).",
+		Description: "Elimina un pacchetto OCI del repository o un suo tag. Solo admin del repository (RG1; la rotta chiede write:resource, il ruolo admin lo verifica core: write da solo dà 403). Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409).",
 		Destructive: true,
 		PathParams:  []string{"owner", "repo"},
 		QueryParams: []string{"name", "tag"},

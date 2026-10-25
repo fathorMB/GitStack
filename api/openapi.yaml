@@ -8116,7 +8116,7 @@ paths:
         name: package_delete
         destructive: true
       summary: Elimina un pacchetto OCI del repository o un suo tag
-      description: "Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409)."
+      description: "Solo admin del repository (RG1; la rotta chiede write:resource, il ruolo admin lo verifica core: write da solo dà 403). Senza tag elimina l'immagine con tutti i suoi tag. I tag protetti non si eliminano (409)."
       parameters:
         - {name: name, in: query, required: true, schema: {type: string, minLength: 1}, description: "Nome dell'immagine, come in GET packages."}
         - {name: tag, in: query, required: false, schema: {type: string, minLength: 1}, description: "Elimina solo questo tag."}
@@ -11108,15 +11108,46 @@ components:
         digest: {type: string, description: "Digest del manifest (sha256:...)."}
         signature: {type: string, enum: [verified, unverified], description: "Firma cosign dell'immagine: verificata con la chiave del registry oppure no."}
         hasSbom: {type: boolean, description: "Vero se è conservato uno SBOM dell'immagine."}
+        kind: {type: string, enum: [image, helm], description: "Tipo di artefatto, dal mediaType del manifest (helm = chart OCI)."}
+        pushedBy: {$ref: "#/components/schemas/PackagePusher"}
+        tagDetails:
+          type: array
+          description: "Un oggetto per tag (`tags` resta per compatibilità). Le firme e gli SBOM tecnici (sha256-….sig / .sbom) non compaiono."
+          items: {$ref: "#/components/schemas/PackageTag"}
+    PackagePusher:
+      type: object
+      additionalProperties: false
+      description: "Chi ha pubblicato, come autenticato dal registry al momento del push. Assente per i push anteriori alla registrazione."
+      required: [kind, login]
+      properties:
+        kind: {type: string, enum: [user, agent, job]}
+        login: {type: string, description: "Username dell'utente o dell'agente; «ci job token» per il token del job."}
+    PackageTag:
+      type: object
+      additionalProperties: false
+      required: [name, digest, sizeBytes, pushedAt, signature, hasSbom, protected]
+      properties:
+        name: {type: string}
+        digest: {type: string, description: "Digest del manifest a cui punta il tag (sha256:...)."}
+        sizeBytes: {type: integer, format: int64}
+        pushedAt: {type: string, format: date-time, description: "Data dell'ultimo push del tag."}
+        signature: {type: string, enum: [verified, unverified]}
+        hasSbom: {type: boolean}
+        protected: {type: boolean, description: "Il tag corrisponde a un modello di tag protetti (RG2)."}
+        pushedBy: {$ref: "#/components/schemas/PackagePusher"}
     PackageSettings:
-      allOf: [{$ref: "#/components/schemas/PackageSettingsInput"}]
+      allOf:
+        - $ref: "#/components/schemas/PackageSettingsInput"
+        - type: object
+          required: [deleteUntaggedAfterDays]
+          properties:
+            deleteUntaggedAfterDays: {type: integer, readOnly: true, default: 7, description: "Regola fissa di RG2: le immagini senza tag si eliminano dopo 7 giorni. Non è impostabile."}
     PackageSettingsInput:
       type: object
       additionalProperties: false
-      required: [protectedTagPatterns, deleteUntaggedAfterDays, includeInBackup]
+      required: [protectedTagPatterns, includeInBackup]
       properties:
         protectedTagPatterns: {type: array, items: {type: string}, description: Tag che non possono essere sovrascritti o eliminati.}
-        deleteUntaggedAfterDays: {type: integer, minimum: 1, default: 7}
         includeInBackup: {type: boolean, default: false, description: "Include le immagini del repo nei backup (RG2: escluse di default)."}
         keepLastTags: {type: integer, minimum: 1, description: "Facoltativo: tiene solo gli ultimi N tag per immagine (i tag protetti restano sempre). Assente = nessun limite."}
         deleteShaTagsAfterDays: {type: integer, minimum: 1, description: "Facoltativo: elimina i tag sha-* più vecchi di X giorni (i tag protetti restano sempre). Assente = mai."}
