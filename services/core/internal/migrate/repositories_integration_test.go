@@ -151,7 +151,7 @@ func TestMigration0002_SaleEScende(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 
-	if err := migrate.Down(ctx, pool, dsn, 33); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 34); err != nil {
 		t.Fatalf("down 0002: %v", err)
 	}
 	for _, tbl := range []string{"repositories", "repo_counters", "pull_requests"} {
