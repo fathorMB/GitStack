@@ -13,35 +13,7 @@ func notImplemented(w http.ResponseWriter) {
 	http.Error(w, "not implemented", http.StatusNotImplemented)
 }
 
-func (s *apiServer) ListApps(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) CreateApp(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) GetApp(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) UpdateApp(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) DeleteApp(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
-	notImplemented(w)
-}
-
 func (s *apiServer) DeployApp(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) ListAppVersions(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, params openapi.ListAppVersionsParams) {
-	notImplemented(w)
-}
-
-func (s *apiServer) GetAppVersion(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, version openapi.AppVersionParam) {
 	notImplemented(w)
 }
 

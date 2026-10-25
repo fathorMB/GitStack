@@ -87,6 +87,7 @@ func newAPIServerWithOptions(pool *pgxpool.Pool, publisher events.Publisher, opt
 		ciBlobs:      o.ciBlobs,
 		ciCapacity:   o.ciCapacity,
 		now:          now,
+		appsDomain:   o.appsDomain,
 	}, o
 }
 
@@ -128,6 +129,7 @@ func callerAllowed(caller string, r *http.Request) bool {
 type routerOptions struct {
 	gitSecret    string
 	now          func() time.Time
+	appsDomain   string
 	grants       identityclient.CreatorGranter
 	readable     identityclient.ReadableLister
 	repoIdentity identityclient.RepoIdentity
@@ -220,4 +222,10 @@ func WithWebhooks(c WebhookConfig) Option {
 // firma.
 func WithClock(now func() time.Time) Option {
 	return func(o *routerOptions) { o.now = now }
+}
+
+// WithAppsDomain imposta il dominio delle app (H2): l'indirizzo automatico di un'app è
+// https://<app>-<repo>-<owner>.<dominio>. Vuoto: le app non hanno indirizzo.
+func WithAppsDomain(domain string) Option {
+	return func(o *routerOptions) { o.appsDomain = domain }
 }
