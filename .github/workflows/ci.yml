@@ -827,8 +827,8 @@ jobs:
             fi
             ref="${img%:*}@${digest}"
             echo "${svc}=${img}" >> "$GITHUB_OUTPUT"
-            echo "IMAGE_${svc}=${img}" >> "$GITHUB_ENV"
-            echo "IMAGEREF_${svc}=${ref}" >> "$GITHUB_ENV"
+            echo "IMAGE_${svc//-/_}=${img}" >> "$GITHUB_ENV"
+            echo "IMAGEREF_${svc//-/_}=${ref}" >> "$GITHUB_ENV"
             echo "OK: immagine trovata ${svc}: ${ref}"
           done
 
@@ -841,7 +841,7 @@ jobs:
           set -euo pipefail
           mkdir -p sbom
           for svc in gateway identity git core web ci-runner; do
-            ref_var="IMAGEREF_${svc}"
+            ref_var="IMAGEREF_${svc//-/_}"
             ref="${!ref_var}"
             out="sbom/gitstack-${svc}-sbom.spdx.json"
             echo "SBOM per ${svc} (${ref})..."
@@ -864,7 +864,7 @@ jobs:
           source scripts/ci/retry.sh
 
           for svc in gateway identity git core web ci-runner; do
-            ref_var="IMAGEREF_${svc}"
+            ref_var="IMAGEREF_${svc//-/_}"
             ref="${!ref_var}"
             sbom="sbom/gitstack-${svc}-sbom.spdx.json"
             echo "=== Attestazione + firma immagine: ${ref} ==="
