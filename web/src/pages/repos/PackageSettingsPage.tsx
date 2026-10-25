@@ -2,7 +2,7 @@ import { Box, Key, Lock, ShieldCheck, X } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import { NavLink, useParams } from 'react-router-dom';
-import { Button, Checkbox, ErrorAlert, FormField, TextInput, useToast } from '../../components';
+import { Button, Checkbox, ErrorAlert, TextInput, useToast } from '../../components';
 import { ApiError, describeError, fieldErrors } from '../../lib/http';
 import { fetchPackageSettings, savePackageSettings } from '../../lib/packagesApi';
 import type { PackageSettings } from '../../lib/packagesApi';
@@ -79,8 +79,11 @@ function PackageSettingsForm({ repo, initial }: { repo: Repository; initial: Pac
   const readOnly = repo.archived;
   const [patterns, setPatterns] = useState<string[]>(initial.protectedTagPatterns);
   const [draft, setDraft] = useState('');
-  const [keepLast, setKeepLast] = useState(initial.keepLastTags !== undefined ? String(initial.keepLastTags) : '');
-  const [shaDays, setShaDays] = useState(initial.deleteShaTagsAfterDays !== undefined ? String(initial.deleteShaTagsAfterDays) : '');
+  // Regola facoltativa = checkbox: spenta, il campo non si manda (assente = regola spenta).
+  const [keepOn, setKeepOn] = useState(initial.keepLastTags !== undefined);
+  const [keepLast, setKeepLast] = useState(initial.keepLastTags !== undefined ? String(initial.keepLastTags) : '20');
+  const [shaOn, setShaOn] = useState(initial.deleteShaTagsAfterDays !== undefined);
+  const [shaDays, setShaDays] = useState(initial.deleteShaTagsAfterDays !== undefined ? String(initial.deleteShaTagsAfterDays) : '14');
   const [backup, setBackup] = useState(initial.includeInBackup);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -101,12 +104,12 @@ function PackageSettingsForm({ repo, initial }: { repo: Repository; initial: Pac
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (keepLast.trim() !== '' && toInt(keepLast) === undefined) {
-      setError('Keep the last tags: enter a whole number, 1 or more, or leave it empty.');
+    if (keepOn && toInt(keepLast) === undefined) {
+      setError('Keep only the last versions: enter a whole number, 1 or more, or turn the rule off.');
       return;
     }
-    if (shaDays.trim() !== '' && toInt(shaDays) === undefined) {
-      setError('Delete sha-* tags after: enter a whole number of days, 1 or more, or leave it empty.');
+    if (shaOn && toInt(shaDays) === undefined) {
+      setError('Delete sha-* tags: enter a whole number of days, 1 or more, or turn the rule off.');
       return;
     }
     setBusy(true);
@@ -115,8 +118,8 @@ function PackageSettingsForm({ repo, initial }: { repo: Repository; initial: Pac
       const saved = await savePackageSettings(repo.owner.name, repo.name, {
         protectedTagPatterns: patterns,
         includeInBackup: backup,
-        ...(toInt(keepLast) !== undefined ? { keepLastTags: toInt(keepLast) } : {}),
-        ...(toInt(shaDays) !== undefined ? { deleteShaTagsAfterDays: toInt(shaDays) } : {}),
+        ...(keepOn ? { keepLastTags: toInt(keepLast) } : {}),
+        ...(shaOn ? { deleteShaTagsAfterDays: toInt(shaDays) } : {}),
       });
       setPatterns(saved.protectedTagPatterns);
       toast('Package settings saved.', 'success');
@@ -139,7 +142,7 @@ function PackageSettingsForm({ repo, initial }: { repo: Repository; initial: Pac
           <h2>Protected tags</h2>
         </div>
         <div className="card card-b stack form-stack">
-          <p className="muted">Protected tags can&apos;t be overwritten or deleted, and cleanup never removes them.</p>
+          <p className="hint">Can&apos;t be overwritten or deleted except by repository admins.</p>
           <ul aria-label="Protected tag patterns" className="row" style={{ gap: 6, flexWrap: 'wrap', listStyle: 'none', padding: 0, margin: 0 }}>
             {patterns.map((p) => (
               <li key={p}>
@@ -175,15 +178,22 @@ function PackageSettingsForm({ repo, initial }: { repo: Repository; initial: Pac
           <h2>Cleanup</h2>
         </div>
         <div className="card card-b stack form-stack">
-          <p className="muted">
-            <b>Untagged images</b> are removed automatically after {initial.deleteUntaggedAfterDays ?? 7} days. Tagged images are never removed unless a rule below says so.
-          </p>
-          <FormField label="Keep only the last tags per image" hint="Optional. Protected tags always stay. Empty means no limit.">
-            <TextInput type="number" min={1} style={{ width: 120 }} value={keepLast} disabled={readOnly} onChange={(e) => setKeepLast(e.target.value)} />
-          </FormField>
-          <FormField label="Delete sha-* tags after (days)" hint="Optional. Protected tags always stay. Empty means never.">
-            <TextInput type="number" min={1} style={{ width: 120 }} value={shaDays} disabled={readOnly} onChange={(e) => setShaDays(e.target.value)} />
-          </FormField>
+          <div>
+            <b>Untagged images</b>
+            <p className="muted">Removed automatically after 7 days. Tagged images are never removed unless a rule below says so.</p>
+          </div>
+          <div className="stack" style={{ gap: 8 }}>
+            <b>Cleanup rules</b>
+            <div className="row" style={{ gap: 12 }}>
+              <Checkbox label={<>Delete tags matching <span className="mono">sha-*</span> older than (days)</>} checked={shaOn} disabled={readOnly} onCheckedChange={(v) => setShaOn(v === true)} />
+              {shaOn ? <TextInput type="number" min={1} aria-label="sha-* tags age in days" style={{ width: 90 }} value={shaDays} disabled={readOnly} onChange={(e) => setShaDays(e.target.value)} /> : null}
+            </div>
+            <div className="row" style={{ gap: 12 }}>
+              <Checkbox label="Keep only the last N versions per image" checked={keepOn} disabled={readOnly} onCheckedChange={(v) => setKeepOn(v === true)} />
+              {keepOn ? <TextInput type="number" min={1} aria-label="Versions to keep per image" style={{ width: 90 }} value={keepLast} disabled={readOnly} onChange={(e) => setKeepLast(e.target.value)} /> : null}
+            </div>
+            <p className="hint">Space is reclaimed at night without stopping the registry. Protected tags always stay.</p>
+          </div>
         </div>
       </section>
       <section aria-label="Backups">
@@ -192,8 +202,8 @@ function PackageSettingsForm({ repo, initial }: { repo: Repository; initial: Pac
         </div>
         <div className="card card-b stack form-stack">
           <Checkbox
-            label="Include this repository's images in backups"
-            hint="Off by default: images can be rebuilt by CI, and they can be large."
+            label="Include all of this repository's images in backups"
+            hint="Off by default: images can be rebuilt by CI from tags. Images used by apps (active and previous version) are always included, so apps restart right after a restore."
             checked={backup}
             disabled={readOnly}
             onCheckedChange={(v) => setBackup(v === true)}
