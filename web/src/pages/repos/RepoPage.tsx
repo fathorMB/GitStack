@@ -21,6 +21,11 @@ import { SearchPage } from './SearchPage';
 import { ReleasesPage } from './ReleasesPage';
 import { ActionsPage } from './ActionsPage';
 import { PackagesPage } from './PackagesPage';
+import { AppPage } from './apps/AppPage';
+import { AppsPage } from './apps/AppsPage';
+import { NewAppPage } from './apps/NewAppPage';
+import { isAppMode } from './apps/appMode';
+import type { AppMode } from './apps/appMode';
 import { RunDetailPage } from './RunDetailPage';
 import { TagsPage } from './TagsPage';
 import { FileView } from './FileView';
@@ -31,7 +36,7 @@ import { isRepoAdmin, loadMe } from './repoAdmin';
 // Pagina /<owner>/<repo> (R1): con repo vuoto mostra il quick setup
 // (mockup 06); altrimenti un segnaposto in attesa del browser di M-04.
 // key sul repo: passando da /a/x a /b/y senza smontare la pagina i dati si ricaricano.
-export type RepoMode = 'tree' | 'commits' | 'commit' | 'tags' | 'releases' | 'search' | 'issues' | 'issue' | 'newissue' | 'labels' | 'milestones' | 'pulls' | 'pull' | 'pullfiles' | 'newpull' | 'actions' | 'run' | 'packages' | FileMode;
+export type RepoMode = 'tree' | 'commits' | 'commit' | 'tags' | 'releases' | 'search' | 'issues' | 'issue' | 'newissue' | 'labels' | 'milestones' | 'pulls' | 'pull' | 'pullfiles' | 'newpull' | 'actions' | 'run' | 'packages' | AppMode | FileMode;
 
 export function RepoPage({ mode = 'tree' }: { mode?: RepoMode }) {
   const { owner = '', repo = '', '*': splat = '' } = useParams();
@@ -75,8 +80,18 @@ function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: stri
 
   return (
     <div>
-      <RepoHeader repo={data} mode={mode} admin={admin} />
-      {mode === 'labels' ? (
+      {isAppMode(mode) && mode !== 'apps' && mode !== 'appnew' ? null : <RepoHeader repo={data} mode={mode} admin={admin} />}
+      {mode === 'apps' ? (
+        <div className="section-gap">
+          <AppsPage repo={data} />
+        </div>
+      ) : mode === 'appnew' ? (
+        <div className="section-gap">
+          <NewAppPage repo={data} />
+        </div>
+      ) : isAppMode(mode) ? (
+        <AppPage repo={data} mode={mode} />
+      ) : mode === 'labels' ? (
         <div className="section-gap">
           <LabelsPage repo={data} />
         </div>
