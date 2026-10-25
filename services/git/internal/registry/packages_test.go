@@ -1,6 +1,9 @@
 package registry
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"errors"
 	"path/filepath"
@@ -8,8 +11,73 @@ import (
 	"strings"
 	"testing"
 
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/static"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 )
+
+// helmChart costruisce un chart Helm OCI come lo produce `helm push`: un layer tar.gz con
+// Chart.yaml e values.yaml dal mediaType application/vnd.cncf.helm.chart.content.v1.tar+gzip, e
+// una config con application/vnd.cncf.helm.config.v1+json; il manifest è OCI.
+func helmChart(t *testing.T) v1.Image {
+	t.Helper()
+	files := []struct{ name, body string }{
+		{"app/Chart.yaml", "apiVersion: v2\nname: app\nversion: 0.1.0\ntype: application\n"},
+		{"app/values.yaml", "replicaCount: 1\n"},
+	}
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+	for _, f := range files {
+		if err := tw.WriteHeader(&tar.Header{Name: f.name, Mode: 0o644, Size: int64(len(f.body)), Typeflag: tar.TypeReg}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tw.Write([]byte(f.body)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	layer := static.NewLayer(buf.Bytes(), types.MediaType("application/vnd.cncf.helm.chart.content.v1.tar+gzip"))
+	img, err := mutate.Append(empty.Image, mutate.Addendum{Layer: layer})
+	if err != nil {
+		t.Fatal(err)
+	}
+	img = mutate.ConfigMediaType(img, types.MediaType("application/vnd.cncf.helm.config.v1+json"))
+	return mutate.MediaType(img, types.OCIManifestSchema1)
+}
+
+// GIT-365: un chart Helm OCI è kind=helm; un'immagine normale nello stesso repo resta image.
+func TestListPackages_KindHelmEImage(t *testing.T) {
+	e := newCleanEnv(t, nil)
+	chart := helmChart(t)
+	if err := remote.Write(e.ref("alice/app/chart:0.1.0"), chart, basic("gst_write")); err != nil {
+		t.Fatalf("push del chart: %v", err)
+	}
+	e.mustPush("alice/app/web:v1", "gst_write")
+
+	pk := e.packages()
+	if len(pk) != 2 {
+		t.Fatalf("pacchetti: %d (%v)", len(pk), pk)
+	}
+	ch := pk["chart"]
+	if ch.Kind != "helm" {
+		t.Fatalf("chart: kind %q, atteso helm: %+v", ch.Kind, ch)
+	}
+	if ch.Digest != digestOf(t, chart).String() || len(ch.Tags) != 1 || ch.Tags[0] != "0.1.0" {
+		t.Fatalf("chart: digest o tag inattesi: %+v", ch)
+	}
+	if w := pk["web"]; w.Kind != "image" {
+		t.Fatalf("web: kind %q, atteso image: %+v", w.Kind, w)
+	}
+}
 
 func (e *cleanEnv) packages() map[string]Package {
 	e.t.Helper()
