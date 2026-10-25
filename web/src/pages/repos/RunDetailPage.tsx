@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button, ConfirmDialog, ErrorAlert, LogView } from '../../components';
 import { artifactUrl, cancelRun, fetchArtifacts, fetchJobLog, fetchRun, fetchWorkflows, rerunRun } from '../../lib/actionsApi';
 import type { Artifact, WorkflowJob, WorkflowRun } from '../../lib/actionsApi';
-import { formatDuration, isActive, runState, shortRef } from '../../lib/actionsView';
+import { formatDuration, isActive, logLineClass, runState, shortRef } from '../../lib/actionsView';
 import { formatBytes } from '../../lib/format';
 import { describeError } from '../../lib/http';
 import { fetchCommitStatus } from '../../lib/pullsApi';

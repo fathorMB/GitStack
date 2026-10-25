@@ -36,11 +36,11 @@ describe('AppLogsPage (H4)', () => {
     mount(<AppLogsPage repo={repo} app={makeApp()} perms={perms('write')} />);
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
     expect(api.fetchAppLogs).toHaveBeenCalledTimes(1);
-    expect(api.fetchAppLogs.mock.calls[0][3]).toMatchObject({ since: '1h' });
-    expect(api.fetchAppLogs.mock.calls[0][3]).not.toHaveProperty('follow');
+    expect(vi.mocked(api.fetchAppLogs).mock.calls[0][3]).toMatchObject({ since: '1h' });
+    expect(vi.mocked(api.fetchAppLogs).mock.calls[0][3]).not.toHaveProperty('follow');
     await act(async () => { vi.advanceTimersByTime(3000); await Promise.resolve(); await Promise.resolve(); });
     expect(api.fetchAppLogs).toHaveBeenCalledTimes(2);
-    expect(api.fetchAppLogs.mock.calls[1][3]).not.toHaveProperty('follow');
+    expect(vi.mocked(api.fetchAppLogs).mock.calls[1][3]).not.toHaveProperty('follow');
   });
 
   it('read non vede i log e non invia richieste', () => {
