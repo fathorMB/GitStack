@@ -1,8 +1,8 @@
-import { HardDrive, Key, Lock, Plus, Settings } from 'lucide-react';
+import { HardDrive, Key, Lock, Plus, Settings, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button, ConfirmDialog, EmptyState, ErrorAlert, FormField, PasswordInput, TextInput, useToast } from '../../../components';
-import { fetchAppSecrets, fetchAppVariables, removeAppSecret, removeAppVariable, saveAppSecret, saveAppVariable } from '../../../lib/appsApi';
+import { fetchAppSecrets, fetchAppVariables, removeApp, removeAppSecret, removeAppVariable, saveAppSecret, saveAppVariable } from '../../../lib/appsApi';
 import type { App } from '../../../lib/appsApi';
 import type { AppPermissions } from '../../../lib/appsPermissions';
 import { timeAgo } from '../../../lib/format';
@@ -11,13 +11,14 @@ import type { Repository } from '../../../lib/reposApi';
 import { useLoad } from '../../../lib/useLoad';
 import { AppHeader } from './AppHeader';
 import { appsPath } from './appMode';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const KEY_PATTERN = /^[A-Z_][A-Z0-9_]*$/;
 
 export function AppConfigPage({ repo, app, perms }: { repo: Repository; app: App; perms: AppPermissions }) {
   const owner = repo.owner.name;
   const name = repo.name;
+  const navigate = useNavigate();
   const { data, loading, error, reload: reloadData } = useLoad(async () => {
     if (!perms.canReadConfig) return null;
     const [variables, secrets] = await Promise.all([
@@ -29,6 +30,7 @@ export function AppConfigPage({ repo, app, perms }: { repo: Repository; app: App
   const [reload, setReload] = useState(0);
   const [form, setForm] = useState<{ kind: 'variable' | 'secret'; name?: string; value?: string } | null>(null);
   const [target, setTarget] = useState<{ kind: 'variable' | 'secret'; name: string } | null>(null);
+  const [deleteAppOpen, setDeleteAppOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   useEffect(() => { if (reload > 0) void reloadData(); }, [reload, reloadData]);
 
@@ -41,6 +43,13 @@ export function AppConfigPage({ repo, app, perms }: { repo: Repository; app: App
     } catch (err) { setActionError(describeError(err)); }
   }
 
+  async function confirmDeleteApp() {
+    try {
+      await removeApp(owner, name, app.name);
+      navigate(appsPath(owner, name));
+    } catch (err) { setActionError(describeError(err)); }
+  }
+
   return <>
     <AppHeader repo={repo} app={app} mode="app-config" />
     <main className="page">
@@ -50,6 +59,7 @@ export function AppConfigPage({ repo, app, perms }: { repo: Repository; app: App
           <a className="active" href={appsPath(owner, name, app.name, 'settings')} aria-current="page"><Key size={16} aria-hidden="true" />Variables &amp; secrets</a>
           <Link to={appsPath(owner, name, app.name, 'settings/access')}><Key size={16} aria-hidden="true" />Access &amp; domains</Link>
           <span className="subnav-disabled" aria-disabled="true"><HardDrive size={16} aria-hidden="true" />Volumes &amp; resources</span>
+          {perms.canDelete ? <><div className="grp">Danger zone</div><Button variant="danger" size="sm" onClick={() => setDeleteAppOpen(true)}><Trash2 size={14} aria-hidden="true" />Delete app</Button></> : null}
         </nav>
         <div className="stack" style={{ gap: 24 }}>
           {loading && data === null ? <p className="muted">Loading variables and secrets…</p> : null}
@@ -72,6 +82,7 @@ export function AppConfigPage({ repo, app, perms }: { repo: Repository; app: App
       </div>}
     </main>
     <ConfirmDialog open={target !== null} onOpenChange={(open) => { if (!open) setTarget(null); }} title={`Delete ${target?.kind ?? ''}?`} description={`${target?.name ?? ''} will be removed from the app configuration.`} confirmLabel="Delete" destructive onConfirm={() => void remove()} />
+    <ConfirmDialog open={deleteAppOpen} onOpenChange={setDeleteAppOpen} title={`Delete ${app.name}?`} description="This stops the app and removes its configuration." confirmLabel="Delete app" destructive onConfirm={() => void confirmDeleteApp()} />
   </>;
 }
 

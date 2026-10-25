@@ -20,6 +20,7 @@ import {
   putAppVariable as sdkPutAppVariable,
   deleteAppSecret as sdkDeleteAppSecret,
   deleteAppVariable as sdkDeleteAppVariable,
+  deleteApp as sdkDeleteApp,
 } from '@gitstack/api-client';
 import type {
   App,
@@ -116,6 +117,10 @@ export async function removeAppVariable(owner: string, repo: string, app: string
 
 export async function removeAppSecret(owner: string, repo: string, app: string, key: string): Promise<void> {
   unwrapEmpty(await sdkDeleteAppSecret({ ...atApp(owner, repo, app), path: { ...atApp(owner, repo, app).path, name: key } }));
+}
+
+export async function removeApp(owner: string, repo: string, app: string): Promise<void> {
+  unwrapEmpty(await sdkDeleteApp(atApp(owner, repo, app)));
 }
 
 export async function fetchAppAccess(owner: string, repo: string, app: string): Promise<AppAccess> {

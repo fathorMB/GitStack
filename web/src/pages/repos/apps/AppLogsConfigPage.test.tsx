@@ -11,7 +11,7 @@ import { makeApp, repo } from './fixtures';
 
 vi.mock('../../../lib/appsApi', () => ({
   fetchAppLogs: vi.fn(), fetchAppVariables: vi.fn(), fetchAppSecrets: vi.fn(),
-  saveAppVariable: vi.fn(), saveAppSecret: vi.fn(), removeAppVariable: vi.fn(), removeAppSecret: vi.fn(),
+  saveAppVariable: vi.fn(), saveAppSecret: vi.fn(), removeAppVariable: vi.fn(), removeAppSecret: vi.fn(), removeApp: vi.fn(),
 }));
 vi.mock('../../../components', async (original) => ({
   ...await original<typeof import('../../../components')>(),
@@ -79,6 +79,7 @@ describe('AppConfigPage (H6)', () => {
     expect(screen.getByRole('button', { name: 'New secret' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Update' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Delete secret DATABASE_URL' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete app' })).toBeInTheDocument();
   });
 
   it('dopo aver sostituito un segreto il valore non resta nella pagina', async () => {
