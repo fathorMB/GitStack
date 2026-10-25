@@ -87,6 +87,13 @@
          e issue chiusa come completed. Poi lo stesso ciclo con gs mcp (stdio):
          issue, PR, merge con gli strumenti MCP, --read-only che rifiuta le
          scritture (e2e/gs-pr-cycle.sh; log in gs-pr-cycle.log).
+      e12. CI (GIT-291, v2): riesegue l'installer con --ci --ci-build (idempotente,
+         accende il runner integrato e le build), poi sulla VM un workflow
+         manuale con un input costruisce e prova un'immagine OCI in un pod;
+         gs run watch --exit-status (0 se riesce, non zero se fallisce),
+         gs run view --log-failed (solo il job fallito), l'immagine nel registry
+         (gs package list), il tag v0.0.0-test.1 e gs release con un file allegato
+         (e2e/gs-ci-cycle.sh; log in gs-ci-cycle.log).
       f. idempotenza: una seconda esecuzione dell'installer, senza reset,
          deve uscire con successo, non reinstallare k3s e non generare una
          nuova password di Postgres.
@@ -1359,6 +1366,49 @@ function Main {
             $e11Details += "[$e11Stage] $($_.Exception.Message)"
         }
         Add-StepResult -Name 'e11. Pull Request (GIT-273): agente con gs e con gs mcp apre issue e PR, la persona approva, merge e issue chiusa come completed' -Ok $e11Ok -Detail ($e11Details -join '; ')
+
+        # --- e12. CI: build, prova, immagine e release (GIT-291, v2) ---
+        # Accende il runner integrato con una riesecuzione dell'installer, poi
+        # e2e/gs-ci-cycle.sh con gs: workflow con input, run watch / view
+        # --log-failed, immagine nel registry e gs release.
+        Write-Log "==> Passo e12: CI sulla VM (workflow, run watch, log-failed, immagine nel registry, release) ..."
+        $e12Ok = $true
+        $e12Details = @()
+        $e12Stage = 'preparazione'
+        try {
+            if (-not $e5Ok -or -not $gitToken -or -not $gitUser) { throw 'e5 non riuscito: manca l''utente di prova con il token' }
+            if (-not $script:CaFingerprint) { throw 'manca l''impronta della CA (passo d3 fallito)' }
+
+            $e12Stage = 'installer con --ci --ci-build'
+            $ciInstall = Invoke-VmSsh -Command "$installCmd -s -- --ci --ci-build" -TimeoutSeconds $InstallTimeoutSeconds
+            Write-E2eText -Path (Join-Path $OutDir 'installer-ci.log') -Stdout $ciInstall.StdOut -Stderr $ciInstall.StdErr
+            if ($ciInstall.ExitCode -ne 0) { throw "installer --ci: exit $($ciInstall.ExitCode) (log: installer-ci.log)" }
+
+            $e12Stage = 'copia di gs-ci-cycle.sh sulla VM'
+            $mk12 = Invoke-VmSsh -Command 'mkdir -p /tmp/gitstack-e2e' -TimeoutSeconds $SshCommandTimeoutSeconds
+            if ($mk12.ExitCode -ne 0) { throw "mkdir sulla VM: exit $($mk12.ExitCode) $($mk12.StdErr)" }
+            $cp12 = Copy-ToVm -LocalPath (Join-Path $PSScriptRoot 'e2e\gs-ci-cycle.sh') -RemotePath '/tmp/gitstack-e2e/gs-ci-cycle.sh' -TimeoutSeconds $SshCommandTimeoutSeconds
+            if ($cp12.ExitCode -ne 0) { throw "scp di gs-ci-cycle.sh: exit $($cp12.ExitCode) $($cp12.StdErr)" }
+
+            $e12Stage = 'ciclo CI sulla VM'
+            $e12Env = @(
+                "GS_VM_IP='$($script:VmIp)'", "GS_CA_SHA256='$($script:CaFingerprint)'",
+                "GS_USER_TOKEN='$gitToken'", "GS_USER_NAME='$gitUser'", "GS_REPO_NAME='gs-ci-$suffix'"
+            ) -join ' '
+            $run12 = Invoke-VmSsh -Command "$e12Env bash /tmp/gitstack-e2e/gs-ci-cycle.sh" -TimeoutSeconds 1500
+            Set-Content -LiteralPath (Join-Path $OutDir 'gs-ci-cycle.log') -Value ($run12.StdOut + "`n" + $run12.StdErr) -Encoding utf8
+            if ($run12.ExitCode -ne 0 -or $run12.StdOut -notmatch 'GS-CI-CYCLE-DONE') {
+                $failLine12 = ($run12.StdOut -split "`n" | Where-Object { $_ -match '^STEP FAIL' } | Select-Object -First 1)
+                throw "gs-ci-cycle.sh: exit $($run12.ExitCode) $failLine12 $($run12.StdErr)"
+            }
+            foreach ($stepName in 'install', 'repo_create', 'workflow_push', 'workflow_list', 'workflow_input', 'run_watch_ok', 'run_watch_ko', 'run_log_failed', 'image_push', 'package_list', 'release') {
+                if ($run12.StdOut -notmatch "STEP ok $stepName\b") { throw "manca il passo '$stepName' nell'output di gs-ci-cycle.sh" }
+            }
+        } catch {
+            $e12Ok = $false
+            $e12Details += "[$e12Stage] $($_.Exception.Message)"
+        }
+        Add-StepResult -Name 'e12. CI (GIT-291): workflow con input, run watch --exit-status, view --log-failed, immagine nel registry e release' -Ok $e12Ok -Detail ($e12Details -join '; ')
 
         # --- f. idempotenza -----------------------------------------------
         Write-Log "==> Passo f: idempotenza (seconda esecuzione dell'installer, senza reset) ..."

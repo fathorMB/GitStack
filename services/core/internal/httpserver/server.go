@@ -56,6 +56,8 @@ type apiServer struct {
 	now func() time.Time
 	// appsDomain è il dominio delle app (H2); vuoto = nessun indirizzo.
 	appsDomain string
+	// appCtl è il controller dei deploy; nil = deploy non disponibili (503).
+	appCtl AppController
 }
 
 var _ openapi.ServerInterface = (*apiServer)(nil)

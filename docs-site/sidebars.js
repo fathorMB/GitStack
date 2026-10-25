@@ -8,6 +8,8 @@ const sidebars = {
         'user/mirrors',
         'user/issues',
         'user/pull-requests',
+        'user/ci',
+        'user/registry-and-releases',
         'user/tokens-and-ssh',
         'user/webhooks',
         'user/gs-and-agents',
