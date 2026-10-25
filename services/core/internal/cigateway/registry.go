@@ -30,7 +30,7 @@ type RegistryAccess struct {
 // repo del job a cui appartiene il token: ogni altro repo, anche esistente, è 404, così il
 // token non rivela nulla degli altri repo. Token non valido: 401.
 func (g *gateway) registryAccess(w http.ResponseWriter, r *http.Request) {
-	a, err := ci.ResolveJobToken(r.Context(), g.Pool, g.Now(), bearer(r.Header))
+	a, err := g.resolveJob(r.Context(), bearer(r.Header))
 	if errors.Is(err, ci.ErrJobToken) {
 		w.Header().Set("WWW-Authenticate", `Bearer realm="gitstack-ci"`)
 		http.Error(w, "token del job non valido", http.StatusUnauthorized)

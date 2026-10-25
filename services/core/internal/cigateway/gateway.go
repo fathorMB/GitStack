@@ -177,6 +177,20 @@ func bearer(h http.Header) string {
 	return ""
 }
 
+// resolveJob verifica il token di un job e il tipo del suo runner: il gateway esposto
+// (ExternalOnly) accetta solo job external (GIT-335). Il token di un job external esiste solo
+// in mano al suo runner: il gateway interno non lo distingue.
+func (g *gateway) resolveJob(ctx context.Context, token string) (ci.JobAuth, error) {
+	a, err := ci.ResolveJobToken(ctx, g.Pool, g.Now(), token)
+	if err != nil {
+		return a, err
+	}
+	if g.ExternalOnly && a.RunnerType != "external" {
+		return ci.JobAuth{}, ci.ErrJobToken
+	}
+	return a, nil
+}
+
 // auth è l'interceptor che applica le due credenziali per procedura.
 func (g *gateway) auth() connect.UnaryInterceptorFunc {
 	return func(next connect.UnaryFunc) connect.UnaryFunc {
@@ -203,7 +217,7 @@ func (g *gateway) auth() connect.UnaryInterceptorFunc {
 				}
 				ctx = context.WithValue(ctx, runnerCtxKey{}, rn)
 			case runnerv1connect.RunnerServiceUpdateTaskProcedure, runnerv1connect.RunnerServiceUpdateLogProcedure:
-				a, err := ci.ResolveJobToken(ctx, g.Pool, g.Now(), token)
+				a, err := g.resolveJob(ctx, token)
 				if strings.HasPrefix(token, ci.RunnerTokenPrefix) {
 					// Il runner di Gitea (act_runner) non conosce il token del job: usa il suo.
 					a, err = ci.ResolveRunnerJob(ctx, g.Pool, g.Now(), token)
@@ -228,7 +242,7 @@ func (g *gateway) auth() connect.UnaryInterceptorFunc {
 // archive serve l'archivio tar.gz del repo del job al suo sha: è tutto ciò che il
 // token del job dà sul codice (read), e solo per il repo del job.
 func (g *gateway) archive(w http.ResponseWriter, r *http.Request) {
-	a, err := ci.ResolveJobToken(r.Context(), g.Pool, g.Now(), bearer(r.Header))
+	a, err := g.resolveJob(r.Context(), bearer(r.Header))
 	if errors.Is(err, ci.ErrJobToken) {
 		w.Header().Set("WWW-Authenticate", `Bearer realm="gitstack-ci"`)
 		http.Error(w, "token del job non valido", http.StatusUnauthorized)

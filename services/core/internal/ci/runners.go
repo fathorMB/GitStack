@@ -306,13 +306,13 @@ func ResolveRunnerJob(ctx context.Context, pool *pgxpool.Pool, now time.Time, to
 	}
 	var a JobAuth
 	err := pool.QueryRow(ctx, `
-		SELECT j.id, j.task_id, j.run_id, r.repo_id, r.sha, j.job_key
+		SELECT j.id, j.task_id, j.run_id, r.repo_id, r.sha, j.job_key, j.runner_type
 		FROM core.ci_runners rn
 		JOIN core.ci_jobs j ON j.runner_id = rn.id AND j.status = 'in_progress'
 		JOIN core.ci_runs r ON r.id = j.run_id
 		WHERE rn.token_hash = $1
 		ORDER BY j.started_at DESC NULLS LAST
-		LIMIT 1`, hashJobToken(token)).Scan(&a.JobID, &a.TaskID, &a.RunID, &a.RepoID, &a.SHA, &a.JobKey)
+		LIMIT 1`, hashJobToken(token)).Scan(&a.JobID, &a.TaskID, &a.RunID, &a.RepoID, &a.SHA, &a.JobKey, &a.RunnerType)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return JobAuth{}, ErrJobToken
 	}
