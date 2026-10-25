@@ -81,10 +81,16 @@ func (s *Store) AppCapacity(ctx context.Context) (AppCapacity, error) {
 
 func appCapacity(ctx context.Context, q queryer) (AppCapacity, error) {
 	c := DefaultAppCapacity
-	err := q.QueryRow(ctx, `SELECT apps_cpu_millis, apps_memory_bytes, app_max_cpu_millis, app_max_memory_bytes FROM core.app_capacity_settings WHERE singleton`).
+	err := q.QueryRow(ctx, `SELECT COALESCE(apps_cpu_millis, $1), COALESCE(apps_memory_bytes, $2), app_max_cpu_millis, app_max_memory_bytes FROM core.app_capacity_settings WHERE singleton`, c.Share.CPUMillis, c.Share.MemoryBytes).
 		Scan(&c.Share.CPUMillis, &c.Share.MemoryBytes, &c.Max.CPUMillis, &c.Max.MemoryBytes)
 	if err == nil {
-		c.Default = false
+		// Una riga puo' esistere solo per maxPerApp: la riserva resta allora
+		// calcolata dall'hardware e va esposta come predefinita.
+		var overridden bool
+		if err := q.QueryRow(ctx, `SELECT apps_cpu_millis IS NOT NULL FROM core.app_capacity_settings WHERE singleton`).Scan(&overridden); err != nil {
+			return c, err
+		}
+		c.Default = !overridden
 		return c, nil
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
