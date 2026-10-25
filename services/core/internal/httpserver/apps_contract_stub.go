@@ -4,7 +4,11 @@ import (
 	"net/http"
 
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
+	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
+
+func appStringPtr(v string) *string { return &v }
+func appBoolPtr(v bool) *bool       { return &v }
 
 // Le operazioni delle app (v3-a, H1-H13) sono fissate dal contratto GIT-341;
 // l'implementazione arriva negli item successivi. Restituire 501 mantiene il
@@ -82,11 +86,35 @@ func (s *apiServer) ListAdminApps(w http.ResponseWriter, r *http.Request, params
 }
 
 func (s *apiServer) GetAdminAppsSettings(w http.ResponseWriter, r *http.Request) {
-	notImplemented(w)
+	if _, ok := s.requireInstanceAdmin(w, r, "vedere le impostazioni delle app"); !ok {
+		return
+	}
+	c, err := s.resources.AppCapacity(r.Context())
+	if err != nil {
+		appInternalError(w, "lettura delle impostazioni delle app", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, openapi.AppsInstanceSettings{AppsDomain: appStringPtr(s.appsDomain), AppsDomainIsDefault: appBoolPtr(s.appsDomain == ""), MaxPerApp: openapi.AppResourceAmount{CpuMillis: c.Max.CPUMillis, MemoryBytes: c.Max.MemoryBytes}, PublicAppsEnabled: false, SignedImagesOnly: false, Restricted: false, LogRetention: openapi.AppLogRetention{Days: 7, MaxBytes: 1 << 30}})
 }
 
 func (s *apiServer) UpdateAdminAppsSettings(w http.ResponseWriter, r *http.Request) {
-	notImplemented(w)
+	if _, ok := s.requireInstanceAdmin(w, r, "modificare le impostazioni delle app"); !ok {
+		return
+	}
+	var in openapi.AppsInstanceSettingsInput
+	if !decodeIssueJSON(w, r, &in, false) {
+		return
+	}
+	if in.MaxPerApp.CpuMillis < 1 || in.MaxPerApp.MemoryBytes < 1 {
+		writeFieldError(w, "maxPerApp", "CPU e memoria devono essere positive.")
+		return
+	}
+	c, err := s.resources.SetAppMax(r.Context(), store.AppResourceAmount{CPUMillis: in.MaxPerApp.CpuMillis, MemoryBytes: in.MaxPerApp.MemoryBytes})
+	if err != nil {
+		appInternalError(w, "aggiornamento del massimo per app", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, openapi.AppsInstanceSettings{AppsDomain: appStringPtr(s.appsDomain), AppsDomainIsDefault: appBoolPtr(s.appsDomain == ""), MaxPerApp: openapi.AppResourceAmount{CpuMillis: c.Max.CPUMillis, MemoryBytes: c.Max.MemoryBytes}, PublicAppsEnabled: in.PublicAppsEnabled, SignedImagesOnly: in.SignedImagesOnly, Restricted: in.Restricted, LogRetention: in.LogRetention})
 }
 
 func (s *apiServer) ListAdminAppTrustedKeys(w http.ResponseWriter, r *http.Request) {

@@ -341,6 +341,20 @@ func (s *Store) CreateApp(ctx context.Context, in NewApp, now time.Time) (App, A
 	if err != nil {
 		return App{}, AppVersion{}, err
 	}
+	// Il massimo e' configurazione d'istanza: applicarlo qui, nella stessa
+	// transazione della quota, evita che una modifica concorrente venga persa.
+	if in.Config.Guaranteed.CPUMillis > capacity.Max.CPUMillis {
+		in.Config.Guaranteed.CPUMillis = capacity.Max.CPUMillis
+	}
+	if in.Config.Guaranteed.MemoryBytes > capacity.Max.MemoryBytes {
+		in.Config.Guaranteed.MemoryBytes = capacity.Max.MemoryBytes
+	}
+	if in.Config.Limit.CPUMillis > capacity.Max.CPUMillis {
+		in.Config.Limit.CPUMillis = capacity.Max.CPUMillis
+	}
+	if in.Config.Limit.MemoryBytes > capacity.Max.MemoryBytes {
+		in.Config.Limit.MemoryBytes = capacity.Max.MemoryBytes
+	}
 	need := AppResourceAmount{CPUMillis: in.Config.Guaranteed.CPUMillis * in.Config.Copies, MemoryBytes: in.Config.Guaranteed.MemoryBytes * int64(in.Config.Copies)}
 	if err := appCapacityError(in.Owner, limits, used, need, capacity); err != nil {
 		return App{}, AppVersion{}, err

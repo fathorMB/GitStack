@@ -224,35 +224,45 @@ func TestApps_RiservaQuotaETetto(t *testing.T) {
 	e.id.sysAdmin[users["carol"]] = true
 	e.repo("uno", true)
 	e.repo("due", true)
+	// Il massimo per copia e' una scelta persistita dall'amministratore.
+	e.want(e.do(http.MethodPut, "/admin/apps/settings", "carol", `{"publicAppsEnabled":false,"signedImagesOnly":false,"restricted":false,"maxPerApp":{"cpuMillis":700,"memoryBytes":536870912},"logRetention":{"days":7,"maxBytes":1073741824}}`), http.StatusOK, "")
 	// L'admin porta la riserva a 600 mCPU / 1 GiB; e' la capacita' globale,
 	// quindi due owner diversi non possono aggirarla.
 	e.want(e.do(http.MethodPut, "/admin/apps/reserve", "carol", `{"cpuMillis":600,"memoryBytes":1073741824}`), http.StatusOK, "")
 	e.want(e.do(http.MethodPut, "/admin/apps/quotas/alice", "carol", `{"cpuMillis":500,"memoryBytes":2147483648,"diskBytes":0}`), http.StatusOK, "")
-	first := `{"name":"first","image":"x","resources":{"guaranteed":{"cpuMillis":400,"memoryBytes":268435456},"limit":{"cpuMillis":9000,"memoryBytes":17179869184}}}`
+	// Con disco senza limite, lo 0% non deve attivare falsamente l'avviso.
+	var quotas openapi.AppOwnerQuotaList
+	rec := e.do(http.MethodGet, "/admin/apps/quotas", "carol", "")
+	e.want(rec, http.StatusOK, "")
+	if err := json.Unmarshal(rec.Body.Bytes(), &quotas); err != nil || len(quotas.Items) != 1 || quotas.Items[0].Warning {
+		t.Fatalf("avviso quota prima dell'80%%: %v %s", err, rec.Body.String())
+	}
+	first := `{"name":"first","image":"x","resources":{"guaranteed":{"cpuMillis":395,"memoryBytes":268435456},"limit":{"cpuMillis":9000,"memoryBytes":17179869184}}}`
 	e.want(e.do(http.MethodPost, "/repos/alice/uno/apps", "alice", first), http.StatusAccepted, "")
 	a := e.app(e.do(http.MethodGet, "/repos/alice/uno/apps/first", "alice", ""))
-	if a.Resources.Limit.CpuMillis != store.DefaultAppMax.CPUMillis || a.Resources.Limit.MemoryBytes != store.DefaultAppMax.MemoryBytes {
+	if a.Resources.Limit.CpuMillis != 700 || a.Resources.Limit.MemoryBytes != 536870912 {
 		t.Fatalf("tetto non applicato: %+v", a.Resources.Limit)
 	}
+	// Il 79% non avvisa, anche con diskBytes:0.
+	rec = e.do(http.MethodGet, "/admin/apps/quotas", "carol", "")
+	e.want(rec, http.StatusOK, "")
+	if err := json.Unmarshal(rec.Body.Bytes(), &quotas); err != nil || quotas.Items[0].Warning {
+		t.Fatalf("79%% non deve avvisare: %v %s", err, rec.Body.String())
+	}
+	// Arriva all'80% esatto senza cambiare la memoria in modo significativo.
+	e.want(e.do(http.MethodPost, "/repos/alice/due/apps", "alice", `{"name":"eighty","image":"x","resources":{"guaranteed":{"cpuMillis":5,"memoryBytes":1},"limit":{"cpuMillis":5,"memoryBytes":1}}}`), http.StatusAccepted, "")
 	// 400 + 300 supera la riserva (anche se la quota dell'owner basterebbe).
-	rec := e.do(http.MethodPost, "/repos/alice/due/apps", "alice", `{"name":"second","image":"x","resources":{"guaranteed":{"cpuMillis":300,"memoryBytes":268435456},"limit":{"cpuMillis":300,"memoryBytes":268435456}}}`)
+	rec = e.do(http.MethodPost, "/repos/alice/due/apps", "alice", `{"name":"second","image":"x","resources":{"guaranteed":{"cpuMillis":300,"memoryBytes":268435456},"limit":{"cpuMillis":300,"memoryBytes":268435456}}}`)
 	e.want(rec, http.StatusConflict, "insufficient_capacity")
 	if !strings.Contains(rec.Body.String(), "reserveCpuMillis") {
 		t.Fatalf("rifiuto della riserva senza dettaglio: %s", rec.Body.String())
 	}
 	// A 80% esatto compare l'avviso nell'API di quota dell'admin, anche se il
 	// disco non ha un limite (0 non e' una soglia raggiunta).
-	var quotas openapi.AppOwnerQuotaList
 	rec = e.do(http.MethodGet, "/admin/apps/quotas", "carol", "")
 	e.want(rec, http.StatusOK, "")
 	if err := json.Unmarshal(rec.Body.Bytes(), &quotas); err != nil || len(quotas.Items) != 1 || !quotas.Items[0].Warning {
 		t.Fatalf("avviso quota: %v %s", err, rec.Body.String())
-	}
-	if quotaWarning(store.AppQuotaAmounts{CPUMillis: 395}, store.AppQuotaAmounts{CPUMillis: 500, DiskBytes: 0}) {
-		t.Fatal("79% con disco senza limite non deve avvisare")
-	}
-	if !quotaWarning(store.AppQuotaAmounts{CPUMillis: 400}, store.AppQuotaAmounts{CPUMillis: 500, DiskBytes: 0}) {
-		t.Fatal("80% con disco senza limite deve avvisare")
 	}
 	e.want(e.do(http.MethodPut, "/admin/apps/quotas/sconosciuto", "carol", `{"cpuMillis":1,"memoryBytes":1,"diskBytes":0}`), http.StatusNotFound, "not_found")
 }

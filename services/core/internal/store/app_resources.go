@@ -15,6 +15,7 @@ type AppCapacity struct {
 	Services AppResourceAmount
 	Share    AppResourceAmount
 	Used     AppResourceAmount
+	Max      AppResourceAmount
 	Default  bool
 }
 
@@ -22,6 +23,7 @@ var DefaultAppCapacity = AppCapacity{
 	Server:   AppResourceAmount{CPUMillis: 8000, MemoryBytes: 16 << 30},
 	Services: AppResourceAmount{CPUMillis: 2000, MemoryBytes: 5 << 30},
 	Share:    AppResourceAmount{CPUMillis: 4000, MemoryBytes: 8 << 30},
+	Max:      DefaultAppMax,
 	Default:  true,
 }
 
@@ -46,8 +48,8 @@ func (s *Store) AppCapacity(ctx context.Context) (AppCapacity, error) {
 
 func appCapacity(ctx context.Context, q queryer) (AppCapacity, error) {
 	c := DefaultAppCapacity
-	err := q.QueryRow(ctx, `SELECT apps_cpu_millis, apps_memory_bytes FROM core.app_capacity_settings WHERE singleton`).
-		Scan(&c.Share.CPUMillis, &c.Share.MemoryBytes)
+	err := q.QueryRow(ctx, `SELECT apps_cpu_millis, apps_memory_bytes, app_max_cpu_millis, app_max_memory_bytes FROM core.app_capacity_settings WHERE singleton`).
+		Scan(&c.Share.CPUMillis, &c.Share.MemoryBytes, &c.Max.CPUMillis, &c.Max.MemoryBytes)
 	if err == nil {
 		c.Default = false
 		return c, nil
@@ -56,6 +58,19 @@ func appCapacity(ctx context.Context, q queryer) (AppCapacity, error) {
 		return c, nil
 	}
 	return c, err
+}
+
+// SetAppMax salva il tetto per copia fissato dall'amministratore.
+func (s *Store) SetAppMax(ctx context.Context, max AppResourceAmount) (AppCapacity, error) {
+	if max.CPUMillis < 1 || max.MemoryBytes < 1 {
+		return AppCapacity{}, fmt.Errorf("massimo per app non positivo")
+	}
+	_, err := s.pool.Exec(ctx, `INSERT INTO core.app_capacity_settings (singleton, app_max_cpu_millis, app_max_memory_bytes, updated_at)
+		VALUES (true, $1, $2, now()) ON CONFLICT (singleton) DO UPDATE SET app_max_cpu_millis = EXCLUDED.app_max_cpu_millis, app_max_memory_bytes = EXCLUDED.app_max_memory_bytes, updated_at = now()`, max.CPUMillis, max.MemoryBytes)
+	if err != nil {
+		return AppCapacity{}, err
+	}
+	return s.AppCapacity(ctx)
 }
 
 func guaranteedApps(ctx context.Context, q queryer) (AppResourceAmount, error) {
