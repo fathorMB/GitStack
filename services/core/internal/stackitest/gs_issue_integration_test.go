@@ -3,7 +3,6 @@
 package stackitest
 
 import (
-	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"bytes"
 	"encoding/json"
 	"net/http"
@@ -14,6 +13,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 )
 
 // M-07/E (GIT-166): `gs issue` sullo stack completo. Il binario gs è quello
