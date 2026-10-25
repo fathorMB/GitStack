@@ -2332,6 +2332,64 @@ Registro del dogfooding: cosa è stato fatto su homehub (GIT-249, 18/10/2026, or
 | Segreti per chiamante (GIT-235) | Il secondo `gitstack upgrade` ha cancellato `gitstack-identity-service` e lasciato `gitstack-service-secrets` (gateway, core, git). Servizi sani |
 | Mirror in pull di `fathorMB/GitStack` | Creato dal board dalla UI (Importa da URL, «Mantieni sincronizzato») il 18/10 alle 14:39 UTC come `gitstack/gitstack-mirror` (non `GitStack`: il vecchio repo è nel cestino dell'organizzazione fino al 25/10 e il nome è occupato, GIT-257). Origine `https://github.com/fathorMB/GitStack.git`, senza credenziali, `intervalSeconds: 3600`. Primo sync riuscito alle 14:39:52 UTC: stato `in_sync`, nessun errore, prossimo giro 15:39:52. Verifica dei ref sul disco del servizio git: 67 ref (branch e tag) identici a `git ls-remote` di GitHub, `main` a `1c78ff42e8c2552799ea2197d08ad3694c34a5e0`. Il login dal browser in HTTPS è da confermare dal board (l'agente non ha un browser). La condizione 1 della tappa 2 (2 settimane di mirror senza errori) è stata tolta dal board il 18/10: questo sync non fa partire nessun conteggio |
 
+## Dogfooding della CI di GitStack su homehub (v2, GIT-291)
+
+Questa sezione dice cosa è stato provato prima di portare la CI su homehub, cosa resta da fare al board con un runbook e dove si scrivono i risultati con i link ai run. I passi su homehub li fa il board: nessun agente ha accesso a homehub.
+
+### Provato prima (senza homehub)
+
+| Cosa | Dove | Esito |
+|---|---|---|
+| `gs workflow list`, `gs workflow run -f`, `gs run watch --exit-status` (uscita 0 e 1), `gs run view --log-failed`, `gs release create/list/upload/download` contro core, gateway, identity e git veri | `TestGsCI_RunWatchViewWorkflowReleaseSulloStack` (`services/core/internal/stackitest/gs_ci_integration_test.go`, `-tags integration`) | verde in locale (Windows, Docker Desktop) il 2026-10-25; gira anche nel job `go` di `ci.yml` |
+| Stesso ciclo con un workflow vero nel pod del runner integrato, immagine OCI nel registry, tag `v0.0.0-test.1` e release | passo e12 di `deploy/test-vm/e2e.ps1` (`e2e/gs-ci-cycle.sh`) | scritto e controllato con `bash -n`, shellcheck e il parser di PowerShell; **non ancora eseguito**: `e2e.ps1` vuole l'amministratore sull'host del board |
+| `actions/cache` sul runner integrato (primo run «Cache saved with key: …», secondo «Cache restored from key: …») e 501 di `upload-artifact@v4` | `deploy/ci/runner-e2e.sh`, sezione 1b, nel job `chart` di `ci.yml` | scritto e controllato con shellcheck; **non ancora eseguito** su un cluster. Si legge il risultato nel job `chart` del primo run di `ci.yml` dopo il merge |
+
+La prova contro git vero ha trovato un difetto di core, corretto in GIT-291: `GET /repos/{owner}/{repo}/workflows` e l'avvio a mano con `--ref main` risolvevano il nome del branch con `commits/{sha}/resolve`, che per git accetta solo sha. L'elenco dei workflow usciva sempre vuoto e `gs workflow run --ref main` non trovava il branch. Ora il nome si risolve col commit in testa alla ref (`commits?ref=…&perPage=1`).
+
+### Modifiche minime ai workflow di GitStack (previsione dell'ADR 0001, da confermare)
+
+`act -l` legge tutti i workflow di `.github/workflows` (28 job). Nel runner integrato non girano, e vanno riscritti o spostati su un runner esterno, i punti seguenti (ADR 0001, «Quanto girano i workflow di GitStack»):
+
+- `services:` e `docker run` (job `identity-oidc`), `docker build`, `docker/*-action`, `imagetools` (job `registry`, `images`, `chart`, `security`, `install.yml`);
+- job `chart` (k3d) e `install-ubuntu-22`/`e2e` (`sudo ./deploy/install.sh`): runner esterno su una macchina vera;
+- `runs-on: windows-latest` (job `pwsh`): runner esterno Windows;
+- firma keyless di cosign con `id-token: write` (job `sign`, `release`): su GitStack la firma è quella del registry, con la chiave dell'istanza;
+- `gh release …`/`gh pr …` con `secrets.GITHUB_TOKEN`: si sostituiscono con `gs release` e con un token personale o di agente (il token del job non apre `/repos/…/releases`);
+- `actions/upload-artifact@v6` (usato in `ci.yml`, `install.yml`, `security.yml`) e `actions/cache`: l'artefatto v4+ riceve 501; si carica con `PUT /ci/v1/artifacts/{nome}` o si usa un runner esterno con un servizio di artefatti compatibile;
+- `actions/deploy-pages`, `environment:` (job `docs`): solo GitHub.
+
+Il dogfooding scrive qui, per ogni workflow, se gira com'è o con quale modifica; la prima colonna è la previsione, la seconda la scrive il board dopo il run.
+
+| Workflow | Previsione | Esito su homehub (run) |
+|---|---|---|
+| `docs.yml` | build del sito sì; `deploy-pages` no | da eseguire |
+| `api-contract.yml` | sì (go e redocly nel pod, rete aperta verso internet) | da eseguire |
+| `ci.yml` (job `go`, `web`, `lint`) | sì con l'immagine del runner e la toolchain; `upload-artifact@v6` da cambiare | da eseguire |
+| `ci.yml` (job `chart`, `registry`, `images`, `release`) | no: Docker, k3d, firma keyless | da eseguire (runner esterno o riscrittura) |
+| `smoke.yml`, `install.yml`, `security.yml` | no nel pod (Docker, k3s, Trivy sulle immagini) | da eseguire |
+
+### Runbook per il board
+
+Prima: `ci_status` di main verde (al 2026-10-25 il run `api-contract` di `c01e14b` era rosso: guardarlo), CI accesa su homehub (`sudo ./deploy/install.sh --ci --ci-build`, oppure `sudo gitstack upgrade --to <versione> --set ci.enabled=true --set ci.build.enabled=true`), un token del board (lezione dell'azienda: serve anche la CA interna, `--cacert`/`http.sslCAInfo`).
+
+1. Repo di prova su homehub (`admin/ci-dogfood`) con una copia dei workflow di GitStack: `git push` da una copia locale, con la CA e `Basic gs:<token>`.
+2. Cache: due `gs workflow run cache.yml --ref main` di fila (il workflow è in `deploy/ci/runner-e2e.sh`, sezione 1b). Il log del job `cache` deve avere «Cache saved with key: e2e-cache-v1» nel primo run e «Cache restored from key: e2e-cache-v1» nel secondo; il job `artefatto` deve fallire col messaggio «GitStack non supporta actions/upload-artifact@v4…».
+3. Workflow di GitStack: uno alla volta con `gs workflow run <file> --ref main` e `gs run watch --exit-status`; per ogni job rosso, `gs run view --log-failed` e la modifica minima fatta.
+4. Release di prova: tag `v0.0.0-test.N` sul repo di prova e `gs release create --tag v0.0.0-test.N --generate-notes --prerelease`. Le immagini si pubblicano nel registry di homehub e `gs package list` mostra `signature: verified` (il registry firma da solo). **Limite noto:** un workflow oggi non può costruire un'immagine nel pod (il tipo di job `build` del chart non è collegato a `runs-on:`) e non può creare la release col token del job: build e release del passo 4 si fanno da un runner esterno o dal terminale.
+5. Un riepilogo per controllo, una riga ciascuno (repo, atteso, trovato, ok/ko), senza espressioni `--jq` con spazi.
+
+### Risultati (li scrive il board)
+
+| Voce | Valore |
+|---|---|
+| Data del giro su homehub | da eseguire |
+| Run della cache: primo run («Cache saved with key: …») | da eseguire (link al run) |
+| Run della cache: secondo run («Cache restored from key: …») | da eseguire (link al run) |
+| `upload-artifact@v4`: messaggio 501 nel log | da eseguire (link al run) |
+| Workflow di GitStack che girano com'è | da eseguire |
+| Workflow di GitStack con modifica minima (quale) | da eseguire |
+| Release di prova `v0.0.0-test.N` e immagini firmate | da eseguire (link alla release e a `gs package list`) |
+
 ## Registro del dogfooding (dalla tappa 2 di V7)
 
 Il dogfooding della v1.0 dura almeno **2 settimane dalla tappa 2** (decisione del board del 18/10/2026). Lo compila il board: la data di inizio è il giorno della tappa 2; i fatti si scrivono quando succedono, con data e orari UTC.

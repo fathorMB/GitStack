@@ -13,6 +13,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 )
 
 // M-07/E (GIT-166): `gs issue` sullo stack completo. Il binario gs è quello
@@ -32,9 +34,9 @@ type gsEnv struct {
 	proxy string
 }
 
-func newGsEnv(t *testing.T) *gsEnv {
+func newGsEnv(t *testing.T, extra ...httpserver.Option) *gsEnv {
 	t.Helper()
-	e := newIssuesE2E(t)
+	e := newIssuesE2E(t, extra...)
 	bin := build(t, "../../../../cli/cmd/gs", "gs")
 	gw, err := url.Parse(e.gateway)
 	if err != nil {

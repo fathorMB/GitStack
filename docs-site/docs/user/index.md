@@ -13,6 +13,8 @@ instance.
 | Copy a repository from GitHub, or publish to it | [Mirrors and import](./mirrors.md) |
 | Track work | [Issues](./issues.md) |
 | Review and merge code, commit statuses | [Pull requests](./pull-requests.md) |
+| Run workflows, watch runs, use the cache | [CI, workflows and runs](./ci.md) |
+| Publish images, cut releases | [Container registry and releases](./registry-and-releases.md) |
 | Authenticate Git | [Tokens and SSH keys](./tokens-and-ssh.md) |
 | React to events | [Webhooks](./webhooks.md) |
 | Work from the terminal or with an agent | [gs and skills for agents](./gs-and-agents.md) |
