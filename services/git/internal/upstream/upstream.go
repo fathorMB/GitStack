@@ -263,11 +263,13 @@ func (c *Client) JobAccess(ctx context.Context, token, owner, repo string) (acce
 		Name     string `json:"name"`
 		Archived bool   `json:"archived"`
 		Packages string `json:"packages"`
+		Workflow string `json:"workflow"`
+		Job      string `json:"job"`
 	}
 	if err := json.Unmarshal(data, &out); err != nil || out.RepoID == "" {
 		return access.JobAccess{}, fmt.Errorf("%w: risposta di registry-access non valida", access.ErrUnavailable)
 	}
-	return access.JobAccess{RepoID: out.RepoID, Owner: out.Owner, Name: out.Name, Archived: out.Archived, Packages: out.Packages}, nil
+	return access.JobAccess{RepoID: out.RepoID, Owner: out.Owner, Name: out.Name, Archived: out.Archived, Packages: out.Packages, Workflow: out.Workflow, Job: out.Job}, nil
 }
 
 // registrySettingsIdentity è l'identità con cui il servizio git chiama la rotta interna di

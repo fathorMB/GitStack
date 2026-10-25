@@ -19,6 +19,9 @@ type RegistryAccess struct {
 	RepoID string `json:"repoId"`
 	Owner  string `json:"owner"`
 	Name   string `json:"name"`
+	// Workflow e Job identificano chi pubblica con il token del job.
+	Workflow string `json:"workflow"`
+	Job      string `json:"job"`
 	// Archived: il repo è archiviato (R10): si scarica, non si pubblica.
 	Archived bool `json:"archived"`
 	// Packages è il livello `packages` del token del job (CI4): none, read o write.
@@ -46,12 +49,13 @@ func (g *gateway) registryAccess(w http.ResponseWriter, r *http.Request) {
 	var out RegistryAccess
 	var perms []byte
 	err = g.Pool.QueryRow(r.Context(), `
-		SELECT rp.resource_id::text, rp.owner_name, rp.name, rp.archived_at IS NOT NULL, j.permissions
+		SELECT rp.resource_id::text, rp.owner_name, rp.name, r.workflow_name, j.name,
+		       rp.archived_at IS NOT NULL, j.permissions
 		FROM core.ci_jobs j
 		JOIN core.ci_runs r ON r.id = j.run_id
 		JOIN core.repositories rp ON rp.resource_id = r.repo_id
 		WHERE j.id = $1 AND rp.deleted_at IS NULL AND lower(rp.owner_name) = $2 AND lower(rp.name) = $3`,
-		a.JobID, owner, name).Scan(&out.RepoID, &out.Owner, &out.Name, &out.Archived, &perms)
+		a.JobID, owner, name).Scan(&out.RepoID, &out.Owner, &out.Name, &out.Workflow, &out.Job, &out.Archived, &perms)
 	if errors.Is(err, pgx.ErrNoRows) {
 		http.NotFound(w, r)
 		return

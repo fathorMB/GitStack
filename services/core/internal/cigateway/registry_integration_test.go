@@ -62,7 +62,7 @@ func TestRegistryAccess_SoloIlRepoDelJob(t *testing.T) {
 	tok := taskToken(t, ta)
 
 	st, got := e.registryAccess(tok, "alice", "uno")
-	if st != 200 || got.RepoID != repoA.String() || got.Owner != "alice" || got.Name != "uno" || got.Archived {
+	if st != 200 || got.RepoID != repoA.String() || got.Owner != "alice" || got.Name != "uno" || got.Workflow != "due" || got.Job != "build" || got.Archived {
 		t.Fatalf("repo del job: %d %+v", st, got)
 	}
 	if got.Packages != "read" {

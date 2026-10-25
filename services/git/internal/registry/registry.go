@@ -550,7 +550,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p := Pusher{Kind: PusherUser, Login: cl.name}
 		switch {
 		case cl.job:
-			p = Pusher{Kind: PusherJob, Login: JobLogin}
+			p = Pusher{Kind: PusherJob, Login: g.jobLogin}
 		case cl.principal.Kind == PusherAgent:
 			p.Kind = PusherAgent
 		}
@@ -728,6 +728,7 @@ func (h *Handler) authenticate(w http.ResponseWriter, r *http.Request, cred stri
 type authzGrant struct {
 	*grant
 	canonical string
+	jobLogin  string
 }
 
 // authorize decide l'azione su owner/repo e ritorna il permesso da passare a distribution.
@@ -825,7 +826,12 @@ func (h *Handler) authorizeJob(w http.ResponseWriter, r *http.Request, c who, ow
 		serveErr(w, errcode.ErrorCodeDenied.WithMessage("il token del job non elimina immagini"))
 		return nil, false
 	}
-	return newGrant(ja.RepoID, action, ja.Owner, ja.Name), true
+	g := newGrant(ja.RepoID, action, ja.Owner, ja.Name)
+	g.jobLogin = JobLogin
+	if ja.Workflow != "" && ja.Job != "" {
+		g.jobLogin = ja.Workflow + " / " + ja.Job
+	}
+	return g, true
 }
 
 // resolveFrom dice se il chiamante può leggere il repo sorgente di un montaggio.

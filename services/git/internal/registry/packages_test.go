@@ -58,7 +58,7 @@ func TestListPackages_FirmaSbomEAutore(t *testing.T) {
 	if ci.Signature != SignatureVerified || !ci.HasSbom || ci.Kind != "image" || ci.Digest != digestOf(t, signed).String() {
 		t.Fatalf("ci: %+v", ci)
 	}
-	if ci.SizeBytes < 4096 || ci.PushedBy == nil || ci.PushedBy.Kind != PusherJob || ci.PushedBy.Login != JobLogin {
+	if ci.SizeBytes < 4096 || ci.PushedBy == nil || ci.PushedBy.Kind != PusherJob || ci.PushedBy.Login != "publish / image" {
 		t.Fatalf("ci dimensione/autore: %+v", ci)
 	}
 	if len(ci.Tags) != 1 || ci.Tags[0] != "v1" {
@@ -84,6 +84,18 @@ func TestListPackages_FirmaSbomEAutore(t *testing.T) {
 	}
 	if d := tagDetail(t, bot, "x"); d.PushedBy == nil || d.PushedBy.Kind != PusherUser {
 		t.Fatalf("tag x: %+v", d)
+	}
+}
+
+// I metadati dei push precedenti a GIT-366 restano leggibili senza modificarne il login.
+func TestListPackages_AutoreJobStorico(t *testing.T) {
+	e := newCleanEnv(t, nil)
+	e.mustPush("alice/app/legacy:v1", "gst_write")
+	e.h.recordPusher(context.Background(), idApp+"/legacy", "v1", Pusher{Kind: PusherJob, Login: JobLogin})
+
+	legacy := e.packages()["legacy"]
+	if legacy.PushedBy == nil || legacy.PushedBy.Kind != PusherJob || legacy.PushedBy.Login != JobLogin {
+		t.Fatalf("autore storico: %+v", legacy.PushedBy)
 	}
 }
 
