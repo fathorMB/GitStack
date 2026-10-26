@@ -10,9 +10,9 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
 )
 
-// TestMigration0038_CIMirrorEnabledBy (GIT-374, CI3): ci_repo_state ha la colonna di chi ha acceso la
+// TestMigration0039_CIMirrorEnabledBy (GIT-374, CI3): ci_repo_state ha la colonna di chi ha acceso la
 // CI sul mirror (nullable, le righe esistenti restano valide); il down la toglie e il nuovo up la rimette.
-func TestMigration0038_CIMirrorEnabledBy(t *testing.T) {
+func TestMigration0039_CIMirrorEnabledBy(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 	has := func() bool {
@@ -27,12 +27,12 @@ func TestMigration0038_CIMirrorEnabledBy(t *testing.T) {
 		t.Fatal("run_on_pull_mirror_by manca dopo le migrazioni")
 	}
 	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("down 0038: %v", err)
+		t.Fatalf("down 0039: %v", err)
 	}
 	if has() {
 		t.Fatal("run_on_pull_mirror_by resta dopo il down")
 	}
-	// Il resto di ci_repo_state resta (il down è solo della 0038).
+	// Il resto di ci_repo_state resta (il down è solo della 0039).
 	var n int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.columns WHERE table_schema = 'core' AND table_name = 'ci_repo_state' AND column_name = 'run_on_pull_mirror'`).Scan(&n); err != nil || n != 1 {
 		t.Fatalf("run_on_pull_mirror dopo il down: %d %v", n, err)

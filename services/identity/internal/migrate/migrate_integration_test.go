@@ -87,7 +87,7 @@ func TestUpDownUp(t *testing.T) {
 		}
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 6); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 7); err != nil {
 		t.Fatalf("Down: %v", err)
 	}
 	got = tables(t, pool)
@@ -186,7 +186,7 @@ func TestOwnerNamesBackfillAndCollision(t *testing.T) {
 		t.Fatalf("Up: %v", err)
 	}
 	// Quattro passi: 0006 (scope del registry), 0005 (eventi), 0004 (TOTP) e 0003 (nomi degli owner).
-	if err := migrate.Down(ctx, pool, dsn, 4); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 5); err != nil {
 		t.Fatalf("Down 4: %v", err)
 	}
 	exec(`INSERT INTO identity.users (id, username) VALUES (gen_random_uuid(), 'alice')`)
@@ -200,7 +200,7 @@ func TestOwnerNamesBackfillAndCollision(t *testing.T) {
 	}
 
 	// Collisione: stesso nome in users e organizations prima della 0003.
-	if err := migrate.Down(ctx, pool, dsn, 4); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 5); err != nil {
 		t.Fatalf("Down 4 (bis): %v", err)
 	}
 	exec(`INSERT INTO identity.users (id, username) VALUES (gen_random_uuid(), 'acme')`)
@@ -246,7 +246,7 @@ func TestRegistryScopes(t *testing.T) {
 		t.Error("uno scope del registry inventato doveva violare il vincolo")
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
 		t.Fatalf("Down 1: %v", err)
 	}
 	var names []string

@@ -2100,6 +2100,24 @@ func (e UserKind) Valid() bool {
 	}
 }
 
+// Defines values for UserProfileResultKind.
+const (
+	UserProfileResultKindAgent UserProfileResultKind = "agent"
+	UserProfileResultKindHuman UserProfileResultKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the UserProfileResultKind enum.
+func (e UserProfileResultKind) Valid() bool {
+	switch e {
+	case UserProfileResultKindAgent:
+		return true
+	case UserProfileResultKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for VerifyCredentialInputKind.
 const (
 	VerifyCredentialInputKindSession VerifyCredentialInputKind = "session"
@@ -3600,7 +3618,7 @@ type AppAccess struct {
 	ChangedAt   *time.Time            `json:"changedAt,omitempty"`
 	ChangedBy   *AppActor             `json:"changedBy,omitempty"`
 
-	// IdentityHeaders Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6). I nomi delle intestazioni e la forma della firma non sono ancora fissati dal contratto.
+	// IdentityHeaders Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6): X-GitStack-User, X-GitStack-Email, X-GitStack-Teams, X-GitStack-Auth-Time, X-GitStack-Key-Id e X-GitStack-Signature (Ed25519, chiave pubblica su /.well-known/gitstack-app-keys del gateway). Forma della firma e esempio in docs/apps-login.md.
 	IdentityHeaders *bool `json:"identityHeaders,omitempty"`
 
 	// Mode `login` (login GitStack, default, H6), `none` (senza login, scelta esplicita di admin), `public` (su internet, H1, solo con le app pubbliche abilitate).
@@ -7113,6 +7131,31 @@ type UserList struct {
 	Total   int    `json:"total"`
 }
 
+// UserProfileInput defines model for UserProfileInput.
+type UserProfileInput struct {
+	UserId openapi_types.UUID `json:"userId"`
+}
+
+// UserProfileResult defines model for UserProfileResult.
+type UserProfileResult struct {
+	Active bool `json:"active"`
+
+	// Email Email dell'utente, se ne ha una. Assente senza email.
+	Email *string               `json:"email,omitempty"`
+	Id    openapi_types.UUID    `json:"id"`
+	Kind  UserProfileResultKind `json:"kind"`
+	Teams []string              `json:"teams"`
+
+	// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Username Name `json:"username"`
+}
+
+// UserProfileResultKind defines model for UserProfileResult.Kind.
+type UserProfileResultKind string
+
 // VerifyCredentialInput defines model for VerifyCredentialInput.
 type VerifyCredentialInput struct {
 	// Credential Valore grezzo della credenziale (cookie `gst_session` o token `gst_...`).
@@ -8520,6 +8563,9 @@ type LookupUsersByEmailJSONRequestBody = LookupEmailsInput
 // LookupUsersByIdsJSONRequestBody defines body for LookupUsersByIds for application/json ContentType.
 type LookupUsersByIdsJSONRequestBody = LookupIdsInput
 
+// LookupUserProfileJSONRequestBody defines body for LookupUserProfile for application/json ContentType.
+type LookupUserProfileJSONRequestBody = UserProfileInput
+
 // VerifyCredentialJSONRequestBody defines body for VerifyCredential for application/json ContentType.
 type VerifyCredentialJSONRequestBody = VerifyCredentialInput
 
@@ -9484,6 +9530,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /internal/users/lookup-ids (the `LookupUsersByIds` operationId).
 	LookupUsersByIds(ctx context.Context, body LookupUsersByIdsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LookupUserProfileWithBody Nome, email e team di un utente
+	//
+	// Per il gateway (v3-a, GIT-347, H6): il login davanti alle app interne passa all'app nome, email e team dell'utente in intestazioni firmate. `teams` elenca i team di cui l'utente e' membro come `organizzazione/team`, ordinati. 404 se l'utente non esiste; un utente disattivato torna con `active` falso (il gateway lo rifiuta).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /internal/users/profile (the `LookupUserProfile` operationId).
+	LookupUserProfileWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LookupUserProfile Nome, email e team di un utente
+	//
+	// Per il gateway (v3-a, GIT-347, H6): il login davanti alle app interne passa all'app nome, email e team dell'utente in intestazioni firmate. `teams` elenca i team di cui l'utente e' membro come `organizzazione/team`, ordinati. 404 se l'utente non esiste; un utente disattivato torna con `active` falso (il gateway lo rifiuta).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /internal/users/profile (the `LookupUserProfile` operationId).
+	LookupUserProfile(ctx context.Context, body LookupUserProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// VerifyCredentialWithBody Verifica una credenziale (per il gateway)
 	//
@@ -13415,6 +13479,44 @@ func (c *Client) LookupUsersByIdsWithBody(ctx context.Context, contentType strin
 // Corresponds with POST /internal/users/lookup-ids (the `LookupUsersByIds` operationId).
 func (c *Client) LookupUsersByIds(ctx context.Context, body LookupUsersByIdsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewLookupUsersByIdsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LookupUserProfileWithBody Nome, email e team di un utente
+//
+// Per il gateway (v3-a, GIT-347, H6): il login davanti alle app interne passa all'app nome, email e team dell'utente in intestazioni firmate. `teams` elenca i team di cui l'utente e' membro come `organizzazione/team`, ordinati. 404 se l'utente non esiste; un utente disattivato torna con `active` falso (il gateway lo rifiuta).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /internal/users/profile (the `LookupUserProfile` operationId).
+func (c *Client) LookupUserProfileWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLookupUserProfileRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LookupUserProfile Nome, email e team di un utente
+//
+// Per il gateway (v3-a, GIT-347, H6): il login davanti alle app interne passa all'app nome, email e team dell'utente in intestazioni firmate. `teams` elenca i team di cui l'utente e' membro come `organizzazione/team`, ordinati. 404 se l'utente non esiste; un utente disattivato torna con `active` falso (il gateway lo rifiuta).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /internal/users/profile (the `LookupUserProfile` operationId).
+func (c *Client) LookupUserProfile(ctx context.Context, body LookupUserProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLookupUserProfileRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -21892,6 +21994,46 @@ func NewLookupUsersByIdsRequestWithBody(server string, contentType string, body 
 	}
 
 	operationPath := fmt.Sprintf("/internal/users/lookup-ids")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewLookupUserProfileRequest calls the generic LookupUserProfile builder with application/json body
+func NewLookupUserProfileRequest(server string, body LookupUserProfileJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewLookupUserProfileRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewLookupUserProfileRequestWithBody constructs an http.Request for the LookupUserProfile method, with any body, and a specified content type
+func NewLookupUserProfileRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/users/profile")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -36850,6 +36992,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /internal/users/lookup-ids (the `LookupUsersByIds` operationId).
 	LookupUsersByIdsWithResponse(ctx context.Context, body LookupUsersByIdsJSONRequestBody, reqEditors ...RequestEditorFn) (*LookupUsersByIdsResponse, error)
 
+	// LookupUserProfileWithBodyWithResponse Nome, email e team di un utente
+	//
+	// Per il gateway (v3-a, GIT-347, H6): il login davanti alle app interne passa all'app nome, email e team dell'utente in intestazioni firmate. `teams` elenca i team di cui l'utente e' membro come `organizzazione/team`, ordinati. 404 se l'utente non esiste; un utente disattivato torna con `active` falso (il gateway lo rifiuta).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/users/profile (the `LookupUserProfile` operationId).
+	LookupUserProfileWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LookupUserProfileResponse, error)
+
+	// LookupUserProfileWithResponse Nome, email e team di un utente
+	//
+	// Per il gateway (v3-a, GIT-347, H6): il login davanti alle app interne passa all'app nome, email e team dell'utente in intestazioni firmate. `teams` elenca i team di cui l'utente e' membro come `organizzazione/team`, ordinati. 404 se l'utente non esiste; un utente disattivato torna con `active` falso (il gateway lo rifiuta).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/users/profile (the `LookupUserProfile` operationId).
+	LookupUserProfileWithResponse(ctx context.Context, body LookupUserProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*LookupUserProfileResponse, error)
+
 	// VerifyCredentialWithBodyWithResponse Verifica una credenziale (per il gateway)
 	//
 	// Il gateway invia il valore grezzo della credenziale (cookie di sessione oppure token `gst_...`) e riceve il principal. Non c'e' distinzione fra "sconosciuta", "scaduta" e "revocata": `active` false. Aggiorna `last_used_at` (al piu' una volta al minuto per credenziale).
@@ -43732,6 +43892,75 @@ func (r LookupUsersByIdsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r LookupUsersByIdsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type LookupUserProfileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserProfileResult
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r LookupUserProfileResponse) GetJSON200() *UserProfileResult {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r LookupUserProfileResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r LookupUserProfileResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r LookupUserProfileResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r LookupUserProfileResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r LookupUserProfileResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r LookupUserProfileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r LookupUserProfileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r LookupUserProfileResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -63719,6 +63948,36 @@ func (c *ClientWithResponses) LookupUsersByIdsWithResponse(ctx context.Context, 
 	return ParseLookupUsersByIdsResponse(rsp)
 }
 
+// LookupUserProfileWithBodyWithResponse Nome, email e team di un utente
+//
+// Per il gateway (v3-a, GIT-347, H6): il login davanti alle app interne passa all'app nome, email e team dell'utente in intestazioni firmate. `teams` elenca i team di cui l'utente e' membro come `organizzazione/team`, ordinati. 404 se l'utente non esiste; un utente disattivato torna con `active` falso (il gateway lo rifiuta).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/users/profile (the `LookupUserProfile` operationId).
+func (c *ClientWithResponses) LookupUserProfileWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LookupUserProfileResponse, error) {
+	rsp, err := c.LookupUserProfileWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLookupUserProfileResponse(rsp)
+}
+
+// LookupUserProfileWithResponse Nome, email e team di un utente
+//
+// Per il gateway (v3-a, GIT-347, H6): il login davanti alle app interne passa all'app nome, email e team dell'utente in intestazioni firmate. `teams` elenca i team di cui l'utente e' membro come `organizzazione/team`, ordinati. 404 se l'utente non esiste; un utente disattivato torna con `active` falso (il gateway lo rifiuta).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/users/profile (the `LookupUserProfile` operationId).
+func (c *ClientWithResponses) LookupUserProfileWithResponse(ctx context.Context, body LookupUserProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*LookupUserProfileResponse, error) {
+	rsp, err := c.LookupUserProfile(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLookupUserProfileResponse(rsp)
+}
+
 // VerifyCredentialWithBodyWithResponse Verifica una credenziale (per il gateway)
 //
 // Il gateway invia il valore grezzo della credenziale (cookie di sessione oppure token `gst_...`) e riceve il principal. Non c'e' distinzione fra "sconosciuta", "scaduta" e "revocata": `active` false. Aggiorna `last_used_at` (al piu' una volta al minuto per credenziale).
@@ -71697,6 +71956,60 @@ func ParseLookupUsersByIdsResponse(rsp *http.Response) (*LookupUsersByIdsRespons
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseLookupUserProfileResponse parses an HTTP response from a LookupUserProfileWithResponse call
+func ParseLookupUserProfileResponse(rsp *http.Response) (*LookupUserProfileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &LookupUserProfileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserProfileResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError
