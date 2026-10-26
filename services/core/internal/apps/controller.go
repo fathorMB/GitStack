@@ -91,7 +91,7 @@ type Config struct {
 	// repo ricevono una notifica). Nil: nessun avviso. Non deve bloccare a lungo.
 	OnDeployFailed func(ctx context.Context, app store.App, v store.AppVersion, reason string)
 	Now            func() time.Time
-	Log          *slog.Logger
+	Log            *slog.Logger
 }
 
 func (c *Config) defaults() {

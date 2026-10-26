@@ -216,11 +216,11 @@ func newRestartCmd(f *cmdutil.Factory) *cobra.Command {
 
 func newRollbackCmd(f *cmdutil.Factory) *cobra.Command {
 	var (
-		to     int
-		pause  bool
-		doWait bool
+		to      int
+		pause   bool
+		doWait  bool
 		waitFor    time.Duration
-		jo     output.JSONOptions
+		jo      output.JSONOptions
 	)
 	cmd := &cobra.Command{
 		Use:   "rollback <app> --to <versione>",
@@ -290,7 +290,7 @@ func newScaleCmd(f *cmdutil.Factory) *cobra.Command {
 	var (
 		copies int
 		yes    bool
-		jo     output.JSONOptions
+		jo      output.JSONOptions
 	)
 	cmd := &cobra.Command{
 		Use:   "scale <app> --copies <n>",
