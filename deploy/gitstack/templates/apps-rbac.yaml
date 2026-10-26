@@ -81,6 +81,9 @@ rules:
   - apiGroups: [""]
     resources: ["pods/log"]
     verbs: ["get"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "create", "update"]
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["list"]
@@ -112,6 +115,10 @@ spec:
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE"]
         resources: ["rolebindings"]
+      - apiGroups: ["networking.k8s.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["networkpolicies"]
   matchConditions:
     - name: solo-il-serviceaccount-di-core
       expression: >-
@@ -132,6 +139,11 @@ spec:
         (request.namespace.startsWith('gitstack-app-') && has(namespaceObject.metadata.labels) &&
          'gitstack.io/managed-app' in namespaceObject.metadata.labels && namespaceObject.metadata.labels['gitstack.io/managed-app'] == 'true')
       message: "core può creare RoleBinding solo nei namespace gitstack-app-* marcati gitstack.io/managed-app=true"
+    - expression: >-
+        request.resource.resource != 'networkpolicies' ||
+        (request.namespace.startsWith('gitstack-app-') && has(namespaceObject.metadata.labels) &&
+         'gitstack.io/managed-app' in namespaceObject.metadata.labels && namespaceObject.metadata.labels['gitstack.io/managed-app'] == 'true')
+      message: "core può creare NetworkPolicy solo nei namespace gitstack-app-* marcati gitstack.io/managed-app=true"
     - expression: >-
         request.resource.resource != 'rolebindings' ||
         (object.roleRef.kind == 'ClusterRole' && object.roleRef.name == {{ $workload | quote }})

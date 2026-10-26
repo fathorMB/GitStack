@@ -26,10 +26,11 @@ import (
 // quest'ultimo le app con accesso `login` non ricevono una rotta. GITSTACK_CORE_APPS_PROGRESS_TIMEOUT
 // (secondi) è il tempo massimo perché una versione superi il controllo di salute.
 const (
-	envAppsEnabled         = "GITSTACK_CORE_APPS_ENABLED"
-	envAppsDomain          = "GITSTACK_CORE_APPS_DOMAIN"
-	envAppsAuthURL         = "GITSTACK_CORE_APPS_AUTH_URL"
-	envAppsProgressTimeout = "GITSTACK_CORE_APPS_PROGRESS_TIMEOUT"
+	envAppsEnabled          = "GITSTACK_CORE_APPS_ENABLED"
+	envAppsDomain           = "GITSTACK_CORE_APPS_DOMAIN"
+	envAppsAuthURL          = "GITSTACK_CORE_APPS_AUTH_URL"
+	envAppsTraefikNamespace = "GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE"
+	envAppsProgressTimeout  = "GITSTACK_CORE_APPS_PROGRESS_TIMEOUT"
 	// ServiceAccount di core (`namespace/nome`) e ClusterRole modello dei permessi sull'app: con
 	// entrambi il controller crea un RoleBinding in ogni namespace delle app (ADR 0002).
 	envAppsControllerSA = "GITSTACK_CORE_APPS_CONTROLLER_SA"
@@ -63,7 +64,8 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, lo
 	}
 	st := store.New(pool)
 	cfg := apps.Config{AppsDomain: domain, AuthURL: strings.TrimSpace(os.Getenv(envAppsAuthURL)), AuthSecret: trust.SigningKey(gatewaySecret), Secrets: secrets, Log: logger,
-		ControllerServiceAccount: strings.TrimSpace(os.Getenv(envAppsControllerSA)), WorkloadRole: strings.TrimSpace(os.Getenv(envAppsWorkloadRole))}
+		ControllerServiceAccount: strings.TrimSpace(os.Getenv(envAppsControllerSA)), WorkloadRole: strings.TrimSpace(os.Getenv(envAppsWorkloadRole)),
+		ProxyEnv: apps.ProxyEnvFrom(os.Getenv), TraefikNamespace: strings.TrimSpace(os.Getenv(envAppsTraefikNamespace))}
 	if v, err := strconv.Atoi(strings.TrimSpace(os.Getenv(envAppsProgressTimeout))); err == nil && v > 0 {
 		cfg.ProgressTimeout = time.Duration(v) * time.Second
 	}
