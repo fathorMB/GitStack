@@ -25,10 +25,6 @@ func (s *apiServer) SetAppResources(w http.ResponseWriter, r *http.Request, owne
 	notImplemented(w)
 }
 
-func (s *apiServer) GetAppLogs(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, params openapi.GetAppLogsParams) {
-	notImplemented(w)
-}
-
 func (s *apiServer) GetAppMetrics(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, params openapi.GetAppMetricsParams) {
 	notImplemented(w)
 }

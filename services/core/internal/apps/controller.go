@@ -76,14 +76,31 @@ type Config struct {
 	ProxyEnv map[string]string
 	// TraefikNamespace è il namespace dell'Ingress controller k3s.
 	TraefikNamespace string
-	// Secrets decifra i valori correnti da iniettare nei pod. E' lo stesso keyring dei segreti
-	// dell'app; nil consente solo versioni senza segreti.
+	// Secrets decifra i valori correnti dei segreti dell'app: si iniettano nei pod e si usano per
+	// mascherarli nei log (GIT-348, GIT-350). Nil: le righe delle copie non si raccolgono, e nei pod
+	// non entra nessun segreto.
 	Secrets store.AppSealer
-	Now     func() time.Time
-	Log     *slog.Logger
+	// PodLogs legge le righe di una copia; nil usa l'API di Kubernetes (i test la sostituiscono).
+	PodLogs PodLogReader
+	// LogsEvery: ogni quanto si raccolgono le righe delle copie (default 2 s, la «diretta»).
+	LogsEvery time.Duration
+	// LogRetention: per quanto si tengono le righe (default 7 giorni); LogMaxBytes: per app (default 1 GiB).
+	LogRetention time.Duration
+	LogMaxBytes  int64
+	Now          func() time.Time
+	Log          *slog.Logger
 }
 
 func (c *Config) defaults() {
+	if c.LogsEvery <= 0 {
+		c.LogsEvery = defaultLogsEvery
+	}
+	if c.LogRetention <= 0 {
+		c.LogRetention = defaultLogRetention
+	}
+	if c.LogMaxBytes <= 0 {
+		c.LogMaxBytes = defaultLogMaxBytes
+	}
 	if c.ProgressTimeout <= 0 {
 		c.ProgressTimeout = 120 * time.Second
 	}
@@ -117,12 +134,15 @@ type Controller struct {
 	kick    chan struct{}
 	mu      sync.Mutex
 	running map[uuid.UUID]bool
+	// oomSeen: ultimo riavvio per OOM già registrato, per app e copia (mu).
+	oomSeen map[uuid.UUID]map[string]int32
 }
 
 // New crea il controller. dyn può essere nil: allora non crea le rotte Traefik.
 func New(st *store.Store, kube kubernetes.Interface, dyn dynamic.Interface, cfg Config) *Controller {
 	cfg.defaults()
-	return &Controller{st: st, kube: kube, dyn: dyn, cfg: cfg, kick: make(chan struct{}, 1), running: map[uuid.UUID]bool{}}
+	return &Controller{st: st, kube: kube, dyn: dyn, cfg: cfg, kick: make(chan struct{}, 1),
+		running: map[uuid.UUID]bool{}, oomSeen: map[uuid.UUID]map[string]int32{}}
 }
 
 // Kick sveglia il ciclo: c'è un deploy nuovo o una scala da applicare.
@@ -138,7 +158,7 @@ func (c *Controller) Kick() {
 func (c *Controller) Run(ctx context.Context) {
 	tick := time.NewTicker(c.cfg.LoopInterval)
 	defer tick.Stop()
-	var lastSync, lastCollect time.Time
+	var lastSync, lastCollect, lastLogs, lastPrune time.Time
 	for {
 		c.processPending(ctx)
 		if now := time.Now(); now.Sub(lastSync) >= c.cfg.SyncEvery {
@@ -148,6 +168,14 @@ func (c *Controller) Run(ctx context.Context) {
 				lastCollect = now
 				c.Collect(ctx)
 			}
+		}
+		if now := time.Now(); now.Sub(lastLogs) >= c.cfg.LogsEvery {
+			lastLogs = now
+			c.CollectLogs(ctx)
+		}
+		if now := time.Now(); now.Sub(lastPrune) >= time.Minute {
+			lastPrune = now
+			c.PruneLogs(ctx)
 		}
 		select {
 		case <-ctx.Done():
@@ -218,6 +246,7 @@ func (c *Controller) RunDeploy(ctx context.Context, p store.PendingAppDeploy) {
 			return
 		}
 		log.Info("apps: versione partita")
+		c.platform(ctx, app.ID, fmt.Sprintf("deploy della versione %d: partita (controllo di salute superato)", v.Number))
 		c.Sync(ctx)
 		return
 	}
@@ -236,6 +265,7 @@ func (c *Controller) RunDeploy(ctx context.Context, p store.PendingAppDeploy) {
 		log.Warn("apps: esito del deploy non scritto", "err", err)
 		return
 	}
+	c.platform(ctx, app.ID, fmt.Sprintf("deploy della versione %d: fallito: %s", v.Number, reason))
 	c.Sync(ctx)
 }
 
@@ -745,6 +775,7 @@ func (c *Controller) Restart(ctx context.Context, app store.App) error {
 		if err := c.st.SetAppObserved(ctx, app.ID, "restarting", app.ReadyCopies); err != nil {
 			return err
 		}
+		c.platform(ctx, app.ID, "riavvio delle copie richiesto")
 		c.Kick()
 		return nil
 	}
@@ -848,6 +879,8 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 	if status != app.Status || ready != app.ReadyCopies {
 		if err := c.st.SetAppObserved(ctx, app.ID, status, ready); err != nil {
 			c.cfg.Log.Warn("apps: stato osservato non scritto", "app", app.ID, "err", err)
+		} else if status != app.Status {
+			c.platform(ctx, app.ID, fmt.Sprintf("stato dell'app: %s (copie pronte %d di %d)", status, ready, want))
 		}
 	}
 }
