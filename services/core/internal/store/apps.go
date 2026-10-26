@@ -70,6 +70,8 @@ type AppConfig struct {
 	Limit       AppResourceAmount `json:"limit"`
 	Copies      int               `json:"copies"`
 	Restricted  bool              `json:"restricted"`
+	// Volumes: volumi persistenti (v3-b, H3); sono sempre quelli attuali dell'app, anche in un rollback.
+	Volumes []AppVolumeSpec `json:"volumes,omitempty"`
 }
 
 // AppActor è chi ha fatto un'azione (H13).
@@ -138,6 +140,8 @@ type App struct {
 	RepoArchivedAt     *time.Time
 	RepoDeletedAt      *time.Time
 	RunningPreviousVer bool
+	// Volumes: i volumi persistenti attuali (v3-b, H3), riempiti da fillApp.
+	Volumes []AppVolume
 }
 
 // Effective dà lo stato che l'API mostra e il motivo dello stop: repo eliminato (R2) o archiviato
@@ -232,12 +236,21 @@ func scanVersion(row pgx.Row) (AppVersion, error) {
 }
 
 // fill completa immagine, ultimo deploy e «gira ancora la precedente» di un'app.
-func (s *Store) fillApp(ctx context.Context, q queryer, a *App) error {
+func (s *Store) fillApp(ctx context.Context, q execQuerier, a *App) error {
 	v, err := scanVersion(q.QueryRow(ctx, `SELECT `+versionCols+` FROM core.app_versions v WHERE v.app_id = $1 AND v.number = $2`, a.ID, a.ActiveVersion))
 	if err != nil {
 		return err
 	}
 	a.Image = v.Image
+	if vols, err := volumesOfApp(ctx, q, a.ID); err != nil {
+		return err
+	} else {
+		a.Volumes = vols
+		a.Config.Volumes = nil
+		for _, vol := range vols {
+			a.Config.Volumes = append(a.Config.Volumes, vol.AppVolumeSpec)
+		}
+	}
 	var d AppDeploy
 	err = q.QueryRow(ctx, `SELECT version, state, reason, started_at, finished_at FROM core.app_deploys
 		WHERE app_id = $1 ORDER BY started_at DESC, version DESC LIMIT 1`, a.ID).
@@ -302,6 +315,13 @@ func ownerAppQuota(ctx context.Context, q queryer, owner string) (limits, used A
 			COALESCE(sum(a.guaranteed_memory_bytes * a.copies), 0)::bigint
 		FROM core.apps a JOIN core.repositories r ON r.resource_id = a.repo_id WHERE lower(r.owner_name) = lower($1)`, owner).
 		Scan(&used.CPUMillis, &used.MemoryBytes)
+	if err != nil {
+		return limits, used, isDefault, err
+	}
+	// Disco (v3-b, H3): la dimensione dei volumi di tutte le app dell'owner, nei casi di CPU e RAM.
+	err = q.QueryRow(ctx, `SELECT COALESCE(sum(v.size_bytes), 0)::bigint FROM core.app_volumes v
+		JOIN core.apps a ON a.id = v.app_id JOIN core.repositories r ON r.resource_id = a.repo_id
+		WHERE lower(r.owner_name) = lower($1)`, owner).Scan(&used.DiskBytes)
 	return limits, used, isDefault, err
 }
 
@@ -530,6 +550,9 @@ func (s *Store) UpdateApp(ctx context.Context, repoID uuid.UUID, name string, p 
 		// Ogni versione copia variabili e nomi dei segreti attuali (GIT-348): senza, una modifica di
 		// porta li cancellerebbe dalla storia.
 		if cfg.Variables, cfg.SecretNames, err = envNames(ctx, tx, cur.ID); err != nil {
+			return App{}, nil, err
+		}
+		if cfg.Volumes, err = volumeSpecs(ctx, tx, cur.ID); err != nil {
 			return App{}, nil, err
 		}
 		summary := strings.Join(changes, ", ")

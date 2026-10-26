@@ -351,6 +351,9 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 		// può partire: la rotta si riprova al prossimo deploy.
 		c.cfg.Log.Warn("apps: rotta non applicata", "app", app.ID, "err", err)
 	}
+	if err := c.ensureVolumes(ctx, app, v); err != nil {
+		return fmt.Errorf("volumi: %w", err)
+	}
 	deps := c.kube.AppsV1().Deployments(ns)
 	opts := BuildOptions{Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret, ProxyEnv: c.cfg.ProxyEnv}
 	cur, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})
@@ -917,6 +920,8 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 	if err := c.ensureSiblingAliases(ctx, app, false); err != nil {
 		c.cfg.Log.Warn("apps: nomi interni non riallineati", "app", app.ID, "err", err)
 	}
+	// H3: i volumi tolti si eliminano quando la versione in servizio non li monta più.
+	c.pruneVolumes(ctx, app)
 	if app.Status == "failed" {
 		if v, err := c.st.GetAppVersion(ctx, app.ID, app.ActiveVersion); err == nil && v.State == "failed" {
 			return // il primo deploy è fallito: l'app resta «fallita» finché non ne arriva un altro

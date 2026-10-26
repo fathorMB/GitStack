@@ -368,6 +368,9 @@ type AppEnvName = string
 // AppName Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
 type AppName = string
 
+// AppVolumeName Nome del volume dentro l'app: lettere minuscole, cifre e trattini, 1-30 caratteri. Il PVC si chiama `vol-<nome>`.
+type AppVolumeName = string
+
 // CheckPermissionInput defines model for CheckPermissionInput.
 type CheckPermissionInput struct {
 	ResourceId openapi_types.UUID `json:"resourceId"`
@@ -749,6 +752,9 @@ type AppTrustedKeyIdParam = openapi_types.UUID
 
 // AppVersionParam defines model for AppVersionParam.
 type AppVersionParam = int
+
+// AppVolumeParam Nome del volume dentro l'app: lettere minuscole, cifre e trattini, 1-30 caratteri. Il PVC si chiama `vol-<nome>`.
+type AppVolumeParam = AppVolumeName
 
 // ArtifactIdParam defines model for ArtifactIdParam.
 type ArtifactIdParam = openapi_types.UUID

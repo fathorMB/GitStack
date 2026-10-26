@@ -3664,6 +3664,9 @@ type App struct {
 
 	// Usage Uso corrente; null vuol dire metriche non disponibili.
 	Usage *AppUsage `json:"usage,omitempty"`
+
+	// Volumes Volumi persistenti (H3, v3-b); con almeno un volume l'app gira in una sola copia.
+	Volumes *[]AppVolume `json:"volumes,omitempty"`
 }
 
 // AppAccess defines model for AppAccess.
@@ -4143,7 +4146,7 @@ type AppVersion struct {
 	// Summary Per `config` e `rollback`, che cosa e' cambiato, per esempio «variabile SEARCH_TIMEOUT»; i valori dei segreti non compaiono mai.
 	Summary *string `json:"summary,omitempty"`
 
-	// Trigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta), `rollback`, `create`.
+	// Trigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`.
 	Trigger AppVersionTrigger `json:"trigger"`
 }
 
@@ -4158,6 +4161,9 @@ type AppVersionConfig struct {
 	Restricted  *bool             `json:"restricted,omitempty"`
 	SecretNames []AppEnvName      `json:"secretNames"`
 	Variables   map[string]string `json:"variables"`
+
+	// Volumes Volumi dell'app quando la versione e' stata creata (H3). Un rollback non li cambia: i volumi sono dati.
+	Volumes *[]AppVolumeSpec `json:"volumes,omitempty"`
 }
 
 // AppVersionList defines model for AppVersionList.
@@ -4166,8 +4172,69 @@ type AppVersionList struct {
 	Total int          `json:"total"`
 }
 
-// AppVersionTrigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta), `rollback`, `create`.
+// AppVersionTrigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`.
 type AppVersionTrigger string
+
+// AppVolume Volume persistente dell'app (PVC su local-path, dimensione fissa, H3).
+type AppVolume struct {
+	CreatedAt time.Time `json:"createdAt"`
+	CreatedBy *AppActor `json:"createdBy,omitempty"`
+
+	// MountPath Percorso di mount nel container.
+	MountPath string `json:"mountPath"`
+
+	// Name Nome del volume dentro l'app: lettere minuscole, cifre e trattini, 1-30 caratteri. Il PVC si chiama `vol-<nome>`.
+	Name AppVolumeName `json:"name"`
+
+	// SizeBytes Dimensione fissa; conta nella quota disco dell'owner. local-path non la applica come limite fisico del disco.
+	SizeBytes int64 `json:"sizeBytes"`
+
+	// Version Versione creata dall'aggiunta del volume.
+	Version int `json:"version"`
+}
+
+// AppVolumeChange Esito di un'aggiunta o di una rimozione di volume.
+type AppVolumeChange struct {
+	// Quota Quota delle app di un owner (H5, H11).
+	Quota   AppOwnerQuota `json:"quota"`
+	Version AppVersion    `json:"version"`
+
+	// Volume Volume persistente dell'app (PVC su local-path, dimensione fissa, H3).
+	Volume AppVolume `json:"volume"`
+}
+
+// AppVolumeInput defines model for AppVolumeInput.
+type AppVolumeInput struct {
+	// MountPath Percorso assoluto e normalizzato; non la radice e non sotto /proc, /sys, /dev.
+	MountPath string `json:"mountPath"`
+
+	// Name Nome del volume dentro l'app: lettere minuscole, cifre e trattini, 1-30 caratteri. Il PVC si chiama `vol-<nome>`.
+	Name AppVolumeName `json:"name"`
+
+	// SizeBytes Almeno 1 MiB.
+	SizeBytes int64 `json:"sizeBytes"`
+}
+
+// AppVolumeList defines model for AppVolumeList.
+type AppVolumeList struct {
+	Items []AppVolume `json:"items"`
+
+	// Quota Quota delle app di un owner (H5, H11).
+	Quota AppOwnerQuota `json:"quota"`
+}
+
+// AppVolumeName Nome del volume dentro l'app: lettere minuscole, cifre e trattini, 1-30 caratteri. Il PVC si chiama `vol-<nome>`.
+type AppVolumeName = string
+
+// AppVolumeSpec Un volume come lo congela una versione (H3, H8).
+type AppVolumeSpec struct {
+	// MountPath Percorso assoluto nel container.
+	MountPath string `json:"mountPath"`
+
+	// Name Nome del volume dentro l'app: lettere minuscole, cifre e trattini, 1-30 caratteri. Il PVC si chiama `vol-<nome>`.
+	Name      AppVolumeName `json:"name"`
+	SizeBytes int64         `json:"sizeBytes"`
+}
 
 // AppsCapacity Capacita' del server e priorita' servizi di GitStack, poi app, poi job della CI (H11).
 type AppsCapacity struct {
@@ -7716,6 +7783,9 @@ type AppTrustedKeyIdParam = openapi_types.UUID
 // AppVersionParam defines model for AppVersionParam.
 type AppVersionParam = int
 
+// AppVolumeParam Nome del volume dentro l'app: lettere minuscole, cifre e trattini, 1-30 caratteri. Il PVC si chiama `vol-<nome>`.
+type AppVolumeParam = AppVolumeName
+
 // ArchiveFormatParam defines model for ArchiveFormatParam.
 type ArchiveFormatParam string
 
@@ -8771,6 +8841,9 @@ type PutAppSecretJSONRequestBody = AppSecretInput
 
 // PutAppVariableJSONRequestBody defines body for PutAppVariable for application/json ContentType.
 type PutAppVariableJSONRequestBody = AppVariableInput
+
+// CreateAppVolumeJSONRequestBody defines body for CreateAppVolume for application/json ContentType.
+type CreateAppVolumeJSONRequestBody = AppVolumeInput
 
 // UpdateBranchSettingsJSONRequestBody defines body for UpdateBranchSettings for application/json ContentType.
 type UpdateBranchSettingsJSONRequestBody = UpdateBranchSettingsInput
@@ -10478,7 +10551,7 @@ type ClientInterface interface {
 
 	// GetAppResources Legge parte garantita, tetto e copie
 	//
-	// Serve `read` sul repo (H5): 404 se il repo non si legge. Parte garantita e tetto per copia (H11), copie, uso corrente e massimo consentito dall'istanza. I volumi sono della v3-b.
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Parte garantita e tetto per copia (H11), copie, uso corrente e massimo consentito dall'istanza. I volumi hanno operazioni proprie (`listAppVolumes`).
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/resources (the `GetAppResources` operationId).
 	GetAppResources(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -10528,7 +10601,7 @@ type ClientInterface interface {
 
 	// ScaleAppWithBody Imposta il numero di copie
 	//
-	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3): `copies` oltre 1 e' rifiutato con il messaggio «un'app con volumi gira in una sola copia», zero e uno restano ammessi. Non crea una versione.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -10537,7 +10610,7 @@ type ClientInterface interface {
 
 	// ScaleApp Imposta il numero di copie
 	//
-	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3): `copies` oltre 1 e' rifiutato con il messaggio «un'app con volumi gira in una sola copia», zero e uno restano ammessi. Non crea una versione.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -10621,6 +10694,38 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/versions/{version} (the `GetAppVersion` operationId).
 	GetAppVersion(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, version AppVersionParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListAppVolumes Elenca i volumi persistenti dell'app
+	//
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Per ogni volume nome, percorso di mount e dimensione fissa (H3); `quota` e' la quota delle app dell'owner con il disco dei volumi, l'uso e l'avviso all'80% (H11).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/volumes (the `ListAppVolumes` operationId).
+	ListAppVolumes(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateAppVolumeWithBody Aggiunge un volume persistente all'app
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea un PVC di dimensione fissa su local-path (lo storage di k3s) montato in `mountPath`. La dimensione conta nella quota disco dell'owner (H11): 409 `insufficient_capacity` con `details.missing.diskBytes` se non ci sta. Crea una nuova versione (H8) e distribuisce l'app con aggiornamento di tipo Recreate: con i volumi l'app gira in una sola copia (H3), quindi la scala oltre 1 e' rifiutata (409 `single_copy`), come l'aggiunta di un volume a un'app che ha piu' di una copia. 409 `volume_exists` se il nome c'e' gia', 409 `mount_path_in_use` se il percorso e' gia' di un altro volume, 422 `too_many_volumes` oltre 8 volumi per app, 422 per un percorso o una dimensione non validi. `quota.warning` e' vero se i volumi superano l'80% del disco dell'owner. La dimensione non si cambia dopo la creazione. GitStack non ne fa il dump: per un database il dump resta della persona che lo gestisce (v3-b).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/volumes (the `CreateAppVolume` operationId).
+	CreateAppVolumeWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateAppVolume Aggiunge un volume persistente all'app
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea un PVC di dimensione fissa su local-path (lo storage di k3s) montato in `mountPath`. La dimensione conta nella quota disco dell'owner (H11): 409 `insufficient_capacity` con `details.missing.diskBytes` se non ci sta. Crea una nuova versione (H8) e distribuisce l'app con aggiornamento di tipo Recreate: con i volumi l'app gira in una sola copia (H3), quindi la scala oltre 1 e' rifiutata (409 `single_copy`), come l'aggiunta di un volume a un'app che ha piu' di una copia. 409 `volume_exists` se il nome c'e' gia', 409 `mount_path_in_use` se il percorso e' gia' di un altro volume, 422 `too_many_volumes` oltre 8 volumi per app, 422 per un percorso o una dimensione non validi. `quota.warning` e' vero se i volumi superano l'80% del disco dell'owner. La dimensione non si cambia dopo la creazione. GitStack non ne fa il dump: per un database il dump resta della persona che lo gestisce (v3-b).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/volumes (the `CreateAppVolume` operationId).
+	CreateAppVolume(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body CreateAppVolumeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteAppVolume Elimina un volume dell'app e i suoi dati
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione senza il volume; quando e' in servizio il PVC e i dati che contiene sono eliminati: non si annulla. Libera la quota disco dell'owner. Un nome che non c'e' e' 404.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `DeleteAppVolume` operationId).
+	DeleteAppVolume(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRepositoryArchive Archivio ZIP o tar.gz di un ref (streaming)
 	//
@@ -15592,7 +15697,7 @@ func (c *Client) GetAppMetrics(ctx context.Context, owner RepoOwnerParam, repo R
 
 // GetAppResources Legge parte garantita, tetto e copie
 //
-// Serve `read` sul repo (H5): 404 se il repo non si legge. Parte garantita e tetto per copia (H11), copie, uso corrente e massimo consentito dall'istanza. I volumi sono della v3-b.
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Parte garantita e tetto per copia (H11), copie, uso corrente e massimo consentito dall'istanza. I volumi hanno operazioni proprie (`listAppVolumes`).
 //
 // Corresponds with GET /repos/{owner}/{repo}/apps/{app}/resources (the `GetAppResources` operationId).
 func (c *Client) GetAppResources(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -15702,7 +15807,7 @@ func (c *Client) RollbackApp(ctx context.Context, owner RepoOwnerParam, repo Rep
 
 // ScaleAppWithBody Imposta il numero di copie
 //
-// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3): `copies` oltre 1 e' rifiutato con il messaggio «un'app con volumi gira in una sola copia», zero e uno restano ammessi. Non crea una versione.
 //
 // Takes any type of body and a specified content type.
 //
@@ -15721,7 +15826,7 @@ func (c *Client) ScaleAppWithBody(ctx context.Context, owner RepoOwnerParam, rep
 
 // ScaleApp Imposta il numero di copie
 //
-// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3): `copies` oltre 1 e' rifiutato con il messaggio «un'app con volumi gira in una sola copia», zero e uno restano ammessi. Non crea una versione.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -15906,6 +16011,78 @@ func (c *Client) ListAppVersions(ctx context.Context, owner RepoOwnerParam, repo
 // Corresponds with GET /repos/{owner}/{repo}/apps/{app}/versions/{version} (the `GetAppVersion` operationId).
 func (c *Client) GetAppVersion(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, version AppVersionParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetAppVersionRequest(c.Server, owner, repo, app, version)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListAppVolumes Elenca i volumi persistenti dell'app
+//
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Per ogni volume nome, percorso di mount e dimensione fissa (H3); `quota` e' la quota delle app dell'owner con il disco dei volumi, l'uso e l'avviso all'80% (H11).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/volumes (the `ListAppVolumes` operationId).
+func (c *Client) ListAppVolumes(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAppVolumesRequest(c.Server, owner, repo, app)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateAppVolumeWithBody Aggiunge un volume persistente all'app
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea un PVC di dimensione fissa su local-path (lo storage di k3s) montato in `mountPath`. La dimensione conta nella quota disco dell'owner (H11): 409 `insufficient_capacity` con `details.missing.diskBytes` se non ci sta. Crea una nuova versione (H8) e distribuisce l'app con aggiornamento di tipo Recreate: con i volumi l'app gira in una sola copia (H3), quindi la scala oltre 1 e' rifiutata (409 `single_copy`), come l'aggiunta di un volume a un'app che ha piu' di una copia. 409 `volume_exists` se il nome c'e' gia', 409 `mount_path_in_use` se il percorso e' gia' di un altro volume, 422 `too_many_volumes` oltre 8 volumi per app, 422 per un percorso o una dimensione non validi. `quota.warning` e' vero se i volumi superano l'80% del disco dell'owner. La dimensione non si cambia dopo la creazione. GitStack non ne fa il dump: per un database il dump resta della persona che lo gestisce (v3-b).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/volumes (the `CreateAppVolume` operationId).
+func (c *Client) CreateAppVolumeWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAppVolumeRequestWithBody(c.Server, owner, repo, app, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateAppVolume Aggiunge un volume persistente all'app
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea un PVC di dimensione fissa su local-path (lo storage di k3s) montato in `mountPath`. La dimensione conta nella quota disco dell'owner (H11): 409 `insufficient_capacity` con `details.missing.diskBytes` se non ci sta. Crea una nuova versione (H8) e distribuisce l'app con aggiornamento di tipo Recreate: con i volumi l'app gira in una sola copia (H3), quindi la scala oltre 1 e' rifiutata (409 `single_copy`), come l'aggiunta di un volume a un'app che ha piu' di una copia. 409 `volume_exists` se il nome c'e' gia', 409 `mount_path_in_use` se il percorso e' gia' di un altro volume, 422 `too_many_volumes` oltre 8 volumi per app, 422 per un percorso o una dimensione non validi. `quota.warning` e' vero se i volumi superano l'80% del disco dell'owner. La dimensione non si cambia dopo la creazione. GitStack non ne fa il dump: per un database il dump resta della persona che lo gestisce (v3-b).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/volumes (the `CreateAppVolume` operationId).
+func (c *Client) CreateAppVolume(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body CreateAppVolumeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAppVolumeRequest(c.Server, owner, repo, app, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteAppVolume Elimina un volume dell'app e i suoi dati
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione senza il volume; quando e' in servizio il PVC e i dati che contiene sono eliminati: non si annulla. Libera la quota disco dell'owner. Un nome che non c'e' e' 404.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `DeleteAppVolume` operationId).
+func (c *Client) DeleteAppVolume(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteAppVolumeRequest(c.Server, owner, repo, app, volume)
 	if err != nil {
 		return nil, err
 	}
@@ -27536,6 +27713,170 @@ func NewGetAppVersionRequest(server string, owner RepoOwnerParam, repo RepoNameP
 	return req, nil
 }
 
+// NewListAppVolumesRequest constructs an http.Request for the ListAppVolumes method
+func NewListAppVolumesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/volumes", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateAppVolumeRequest calls the generic CreateAppVolume builder with application/json body
+func NewCreateAppVolumeRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body CreateAppVolumeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateAppVolumeRequestWithBody(server, owner, repo, app, "application/json", bodyReader)
+}
+
+// NewCreateAppVolumeRequestWithBody constructs an http.Request for the CreateAppVolume method, with any body, and a specified content type
+func NewCreateAppVolumeRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/volumes", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteAppVolumeRequest constructs an http.Request for the DeleteAppVolume method
+func NewDeleteAppVolumeRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "volume", volume, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/volumes/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetRepositoryArchiveRequest constructs an http.Request for the GetRepositoryArchive method
 func NewGetRepositoryArchiveRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryArchiveParams) (*http.Request, error) {
 	var err error
@@ -38459,7 +38800,7 @@ type ClientWithResponsesInterface interface {
 
 	// GetAppResourcesWithResponse Legge parte garantita, tetto e copie
 	//
-	// Serve `read` sul repo (H5): 404 se il repo non si legge. Parte garantita e tetto per copia (H11), copie, uso corrente e massimo consentito dall'istanza. I volumi sono della v3-b.
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Parte garantita e tetto per copia (H11), copie, uso corrente e massimo consentito dall'istanza. I volumi hanno operazioni proprie (`listAppVolumes`).
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -38513,7 +38854,7 @@ type ClientWithResponsesInterface interface {
 
 	// ScaleAppWithBodyWithResponse Imposta il numero di copie
 	//
-	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3): `copies` oltre 1 e' rifiutato con il messaggio «un'app con volumi gira in una sola copia», zero e uno restano ammessi. Non crea una versione.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -38522,7 +38863,7 @@ type ClientWithResponsesInterface interface {
 
 	// ScaleAppWithResponse Imposta il numero di copie
 	//
-	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3): `copies` oltre 1 e' rifiutato con il messaggio «un'app con volumi gira in una sola copia», zero e uno restano ammessi. Non crea una versione.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -38618,6 +38959,42 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/versions/{version} (the `GetAppVersion` operationId).
 	GetAppVersionWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, version AppVersionParam, reqEditors ...RequestEditorFn) (*GetAppVersionResponse, error)
+
+	// ListAppVolumesWithResponse Elenca i volumi persistenti dell'app
+	//
+	// Serve `read` sul repo (H5): 404 se il repo non si legge. Per ogni volume nome, percorso di mount e dimensione fissa (H3); `quota` e' la quota delle app dell'owner con il disco dei volumi, l'uso e l'avviso all'80% (H11).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/volumes (the `ListAppVolumes` operationId).
+	ListAppVolumesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*ListAppVolumesResponse, error)
+
+	// CreateAppVolumeWithBodyWithResponse Aggiunge un volume persistente all'app
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea un PVC di dimensione fissa su local-path (lo storage di k3s) montato in `mountPath`. La dimensione conta nella quota disco dell'owner (H11): 409 `insufficient_capacity` con `details.missing.diskBytes` se non ci sta. Crea una nuova versione (H8) e distribuisce l'app con aggiornamento di tipo Recreate: con i volumi l'app gira in una sola copia (H3), quindi la scala oltre 1 e' rifiutata (409 `single_copy`), come l'aggiunta di un volume a un'app che ha piu' di una copia. 409 `volume_exists` se il nome c'e' gia', 409 `mount_path_in_use` se il percorso e' gia' di un altro volume, 422 `too_many_volumes` oltre 8 volumi per app, 422 per un percorso o una dimensione non validi. `quota.warning` e' vero se i volumi superano l'80% del disco dell'owner. La dimensione non si cambia dopo la creazione. GitStack non ne fa il dump: per un database il dump resta della persona che lo gestisce (v3-b).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/volumes (the `CreateAppVolume` operationId).
+	CreateAppVolumeWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAppVolumeResponse, error)
+
+	// CreateAppVolumeWithResponse Aggiunge un volume persistente all'app
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea un PVC di dimensione fissa su local-path (lo storage di k3s) montato in `mountPath`. La dimensione conta nella quota disco dell'owner (H11): 409 `insufficient_capacity` con `details.missing.diskBytes` se non ci sta. Crea una nuova versione (H8) e distribuisce l'app con aggiornamento di tipo Recreate: con i volumi l'app gira in una sola copia (H3), quindi la scala oltre 1 e' rifiutata (409 `single_copy`), come l'aggiunta di un volume a un'app che ha piu' di una copia. 409 `volume_exists` se il nome c'e' gia', 409 `mount_path_in_use` se il percorso e' gia' di un altro volume, 422 `too_many_volumes` oltre 8 volumi per app, 422 per un percorso o una dimensione non validi. `quota.warning` e' vero se i volumi superano l'80% del disco dell'owner. La dimensione non si cambia dopo la creazione. GitStack non ne fa il dump: per un database il dump resta della persona che lo gestisce (v3-b).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/volumes (the `CreateAppVolume` operationId).
+	CreateAppVolumeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body CreateAppVolumeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAppVolumeResponse, error)
+
+	// DeleteAppVolumeWithResponse Elimina un volume dell'app e i suoi dati
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione senza il volume; quando e' in servizio il PVC e i dati che contiene sono eliminati: non si annulla. Libera la quota disco dell'owner. Un nome che non c'e' e' 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `DeleteAppVolume` operationId).
+	DeleteAppVolumeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, reqEditors ...RequestEditorFn) (*DeleteAppVolumeResponse, error)
 
 	// GetRepositoryArchiveWithResponse Archivio ZIP o tar.gz di un ref (streaming)
 	//
@@ -51378,6 +51755,220 @@ func (r GetAppVersionResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetAppVersionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListAppVolumesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppVolumeList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAppVolumesResponse) GetJSON200() *AppVolumeList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListAppVolumesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListAppVolumesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListAppVolumesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAppVolumesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAppVolumesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAppVolumesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAppVolumesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateAppVolumeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *AppVolumeChange
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r CreateAppVolumeResponse) GetJSON202() *AppVolumeChange {
+	return r.JSON202
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateAppVolumeResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateAppVolumeResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateAppVolumeResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateAppVolumeResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateAppVolumeResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateAppVolumeResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateAppVolumeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateAppVolumeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateAppVolumeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateAppVolumeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteAppVolumeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *AppVolumeChange
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r DeleteAppVolumeResponse) GetJSON202() *AppVolumeChange {
+	return r.JSON202
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteAppVolumeResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteAppVolumeResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteAppVolumeResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteAppVolumeResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteAppVolumeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteAppVolumeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteAppVolumeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteAppVolumeResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -66466,7 +67057,7 @@ func (c *ClientWithResponses) GetAppMetricsWithResponse(ctx context.Context, own
 
 // GetAppResourcesWithResponse Legge parte garantita, tetto e copie
 //
-// Serve `read` sul repo (H5): 404 se il repo non si legge. Parte garantita e tetto per copia (H11), copie, uso corrente e massimo consentito dall'istanza. I volumi sono della v3-b.
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Parte garantita e tetto per copia (H11), copie, uso corrente e massimo consentito dall'istanza. I volumi hanno operazioni proprie (`listAppVolumes`).
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -66556,7 +67147,7 @@ func (c *ClientWithResponses) RollbackAppWithResponse(ctx context.Context, owner
 
 // ScaleAppWithBodyWithResponse Imposta il numero di copie
 //
-// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3): `copies` oltre 1 e' rifiutato con il messaggio «un'app con volumi gira in una sola copia», zero e uno restano ammessi. Non crea una versione.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -66571,7 +67162,7 @@ func (c *ClientWithResponses) ScaleAppWithBodyWithResponse(ctx context.Context, 
 
 // ScaleAppWithResponse Imposta il numero di copie
 //
-// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto manca); 409 `single_copy` per un'app con volumi (H3): `copies` oltre 1 e' rifiutato con il messaggio «un'app con volumi gira in una sola copia», zero e uno restano ammessi. Non crea una versione.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -66732,6 +67323,66 @@ func (c *ClientWithResponses) GetAppVersionWithResponse(ctx context.Context, own
 		return nil, err
 	}
 	return ParseGetAppVersionResponse(rsp)
+}
+
+// ListAppVolumesWithResponse Elenca i volumi persistenti dell'app
+//
+// Serve `read` sul repo (H5): 404 se il repo non si legge. Per ogni volume nome, percorso di mount e dimensione fissa (H3); `quota` e' la quota delle app dell'owner con il disco dei volumi, l'uso e l'avviso all'80% (H11).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/volumes (the `ListAppVolumes` operationId).
+func (c *ClientWithResponses) ListAppVolumesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*ListAppVolumesResponse, error) {
+	rsp, err := c.ListAppVolumes(ctx, owner, repo, app, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAppVolumesResponse(rsp)
+}
+
+// CreateAppVolumeWithBodyWithResponse Aggiunge un volume persistente all'app
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea un PVC di dimensione fissa su local-path (lo storage di k3s) montato in `mountPath`. La dimensione conta nella quota disco dell'owner (H11): 409 `insufficient_capacity` con `details.missing.diskBytes` se non ci sta. Crea una nuova versione (H8) e distribuisce l'app con aggiornamento di tipo Recreate: con i volumi l'app gira in una sola copia (H3), quindi la scala oltre 1 e' rifiutata (409 `single_copy`), come l'aggiunta di un volume a un'app che ha piu' di una copia. 409 `volume_exists` se il nome c'e' gia', 409 `mount_path_in_use` se il percorso e' gia' di un altro volume, 422 `too_many_volumes` oltre 8 volumi per app, 422 per un percorso o una dimensione non validi. `quota.warning` e' vero se i volumi superano l'80% del disco dell'owner. La dimensione non si cambia dopo la creazione. GitStack non ne fa il dump: per un database il dump resta della persona che lo gestisce (v3-b).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/volumes (the `CreateAppVolume` operationId).
+func (c *ClientWithResponses) CreateAppVolumeWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAppVolumeResponse, error) {
+	rsp, err := c.CreateAppVolumeWithBody(ctx, owner, repo, app, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAppVolumeResponse(rsp)
+}
+
+// CreateAppVolumeWithResponse Aggiunge un volume persistente all'app
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea un PVC di dimensione fissa su local-path (lo storage di k3s) montato in `mountPath`. La dimensione conta nella quota disco dell'owner (H11): 409 `insufficient_capacity` con `details.missing.diskBytes` se non ci sta. Crea una nuova versione (H8) e distribuisce l'app con aggiornamento di tipo Recreate: con i volumi l'app gira in una sola copia (H3), quindi la scala oltre 1 e' rifiutata (409 `single_copy`), come l'aggiunta di un volume a un'app che ha piu' di una copia. 409 `volume_exists` se il nome c'e' gia', 409 `mount_path_in_use` se il percorso e' gia' di un altro volume, 422 `too_many_volumes` oltre 8 volumi per app, 422 per un percorso o una dimensione non validi. `quota.warning` e' vero se i volumi superano l'80% del disco dell'owner. La dimensione non si cambia dopo la creazione. GitStack non ne fa il dump: per un database il dump resta della persona che lo gestisce (v3-b).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/volumes (the `CreateAppVolume` operationId).
+func (c *ClientWithResponses) CreateAppVolumeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body CreateAppVolumeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAppVolumeResponse, error) {
+	rsp, err := c.CreateAppVolume(ctx, owner, repo, app, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAppVolumeResponse(rsp)
+}
+
+// DeleteAppVolumeWithResponse Elimina un volume dell'app e i suoi dati
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione senza il volume; quando e' in servizio il PVC e i dati che contiene sono eliminati: non si annulla. Libera la quota disco dell'owner. Un nome che non c'e' e' 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `DeleteAppVolume` operationId).
+func (c *ClientWithResponses) DeleteAppVolumeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, reqEditors ...RequestEditorFn) (*DeleteAppVolumeResponse, error) {
+	rsp, err := c.DeleteAppVolume(ctx, owner, repo, app, volume, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteAppVolumeResponse(rsp)
 }
 
 // GetRepositoryArchiveWithResponse Archivio ZIP o tar.gz di un ref (streaming)
@@ -78452,6 +79103,175 @@ func ParseGetAppVersionResponse(rsp *http.Response) (*GetAppVersionResponse, err
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAppVolumesResponse parses an HTTP response from a ListAppVolumesWithResponse call
+func ParseListAppVolumesResponse(rsp *http.Response) (*ListAppVolumesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAppVolumesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppVolumeList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateAppVolumeResponse parses an HTTP response from a CreateAppVolumeWithResponse call
+func ParseCreateAppVolumeResponse(rsp *http.Response) (*CreateAppVolumeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateAppVolumeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest AppVolumeChange
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteAppVolumeResponse parses an HTTP response from a DeleteAppVolumeWithResponse call
+func ParseDeleteAppVolumeResponse(rsp *http.Response) (*DeleteAppVolumeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteAppVolumeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest AppVolumeChange
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 
