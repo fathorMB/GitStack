@@ -199,13 +199,13 @@ func addBuildKit(pod *corev1.Pod, p Pod) {
 	nonRoot := true
 	user := int64(BuildUser)
 	sidecar := corev1.Container{Name: "buildkitd", Image: p.BuildKit.Image,
-		Args: []string{"--addr", BuildKitAddr, "--oci-worker-no-process-sandbox"},
-		Env: []corev1.EnvVar{{Name: "HOME", Value: "/home/user"}, {Name: "XDG_RUNTIME_DIR", Value: "/run/user/1000"}},
+		Args:          []string{"--addr", BuildKitAddr, "--oci-worker-no-process-sandbox"},
+		Env:           []corev1.EnvVar{{Name: "HOME", Value: "/home/user"}, {Name: "XDG_RUNTIME_DIR", Value: "/run/user/1000"}},
 		RestartPolicy: ptr(corev1.ContainerRestartPolicyAlways),
 		Resources:     corev1.ResourceRequirements{Requests: limits, Limits: limits},
 		SecurityContext: &corev1.SecurityContext{AllowPrivilegeEscalation: &escalate, RunAsNonRoot: &nonRoot, RunAsUser: &user,
-			Capabilities:   &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}, Add: []corev1.Capability{"SETUID", "SETGID"}},
-			SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeUnconfined},
+			Capabilities:    &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}, Add: []corev1.Capability{"SETUID", "SETGID"}},
+			SeccompProfile:  &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeUnconfined},
 			AppArmorProfile: &corev1.AppArmorProfile{Type: corev1.AppArmorProfileTypeUnconfined}},
 		VolumeMounts: []corev1.VolumeMount{{Name: "buildkit-sock", MountPath: BuildKitSocketDir},
 			{Name: "buildkit-state", MountPath: "/home/user/.local/share/buildkit"}, {Name: "buildkit-tmp", MountPath: "/home/user/.local/tmp"},

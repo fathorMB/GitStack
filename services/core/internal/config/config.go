@@ -135,17 +135,17 @@ type Config struct {
 	// (GITSTACK_CORE_CI_RUNNER_SECRET, "nuova,vecchia" come i segreti di servizio).
 	CIRunnerSecrets []string
 	// CIEnabled abilita il dispatcher Kubernetes dei job interni.
-	CIEnabled      bool
-	CINamespace    string
-	CIImage        string
+	CIEnabled   bool
+	CINamespace string
+	CIImage     string
 	// CIBuildNamespace, CIBuildImage e CIRegistryAddr (GITSTACK_CORE_CI_BUILD_NAMESPACE, _BUILD_IMAGE,
 	// _REGISTRY_ADDR): i job con la label gitstack-build girano nel namespace di build, con BuildKit
 	// rootless come sidecar e il registry nel cluster (host:porta del gateway). Vuoti: i job build falliscono.
 	CIBuildNamespace string
 	CIBuildImage     string
 	CIRegistryAddr   string
-	CIActionMirror string
-	CICapacity     int
+	CIActionMirror   string
+	CICapacity       int
 	// CILogsDir è la cartella dei log dei job, nel volume di core e nel
 	// backup (GITSTACK_CORE_CI_LOGS_DIR, CI5). Vuoto: i log dei job rispondono 503.
 	CILogsDir string
