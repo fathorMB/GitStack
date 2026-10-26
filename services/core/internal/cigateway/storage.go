@@ -1,6 +1,7 @@
 package cigateway
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -43,7 +44,32 @@ func (g *gateway) isStoragePath(p string) bool {
 
 // jobAuth verifica il token del job; scrive la risposta d'errore e ritorna false se non va.
 func (g *gateway) jobAuth(w http.ResponseWriter, r *http.Request) (ci.JobAuth, bool) {
-	a, err := g.resolveJob(r.Context(), bearer(r.Header))
+	return g.jobAuthToken(w, r, bearer(r.Header))
+}
+
+// runtimeJobToken e' il token del job dentro ACTIONS_RUNTIME_TOKEN: il runner lo avvolge in un JWT
+// senza firma (cirunner.RuntimeToken) perche' upload-artifact@v4 lo decodifica. Un token che non ha
+// quella forma passa com'e'; quello estratto si verifica comunque come ogni token del job.
+func runtimeJobToken(tok string) string {
+	parts := strings.Split(tok, ".")
+	if len(parts) != 3 || !strings.HasPrefix(tok, "eyJ") {
+		return tok
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return tok
+	}
+	var claims struct {
+		Gsj string `json:"gsj"`
+	}
+	if json.Unmarshal(raw, &claims) != nil || claims.Gsj == "" {
+		return tok
+	}
+	return claims.Gsj
+}
+
+func (g *gateway) jobAuthToken(w http.ResponseWriter, r *http.Request, tok string) (ci.JobAuth, bool) {
+	a, err := g.resolveJob(r.Context(), runtimeJobToken(tok))
 	if errors.Is(err, ci.ErrJobToken) {
 		w.Header().Set("WWW-Authenticate", `Bearer realm="gitstack-ci"`)
 		http.Error(w, "token del job non valido", http.StatusUnauthorized)
@@ -180,7 +206,7 @@ func (g *gateway) cacheLookup(w http.ResponseWriter, r *http.Request, a ci.JobAu
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"result": "hit", "cacheKey": c.Key, "scope": c.Ref,
-		"archiveLocation": g.baseURL(r) + cacheBlobPath + strconv.FormatInt(c.Seq, 10),
+		"archiveLocation": g.baseURL(r) + cacheBlobPath + strconv.FormatInt(c.Seq, 10) + "?token=" + url.QueryEscape(bearer(r.Header)),
 	})
 }
 
@@ -335,7 +361,13 @@ func (g *gateway) cacheDownload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "metodo non consentito", http.StatusMethodNotAllowed)
 		return
 	}
-	a, ok := g.jobAuth(w, r)
+	// actions/cache scarica l'archivio con un GET senza intestazioni (su GitHub l'URL e' firmato):
+	// il token del job, lo stesso che ha chiesto la ricerca, torna nell'archiveLocation come ?token=.
+	tok := bearer(r.Header)
+	if tok == "" {
+		tok = r.URL.Query().Get("token")
+	}
+	a, ok := g.jobAuthToken(w, r, tok)
 	if !ok {
 		return
 	}

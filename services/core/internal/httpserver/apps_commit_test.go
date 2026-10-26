@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -167,6 +168,26 @@ func TestImageCommit_ErroreDelServizioGitNonBloccaIlDeploy(t *testing.T) {
 	}
 	if g.calls != 1 {
 		t.Fatalf("chiamate al servizio git: %d, attesa 1", g.calls)
+	}
+}
+
+// Un errore generico o un timeout (non ErrNotFound) segue il ramo con warning: il deploy va avanti,
+// commit nil, una sola lettura.
+func TestImageCommit_ErroreGenericoETimeoutNonBloccanoIlDeploy(t *testing.T) {
+	for name, err := range map[string]error{
+		"errore generico": errors.New("git giù"),
+		"timeout":         context.DeadlineExceeded,
+	} {
+		t.Run(name, func(t *testing.T) {
+			g := &commitGit{t: t, err: err}
+			img := store.AppImage{Reference: "git.example.com/alice/handbook/web:v1", Source: "registry"}
+			if got := commitServer(g).imageCommit(commitCtx(t), commitRepo(), img); got != nil {
+				t.Fatalf("commit %q con errore del servizio git", *got)
+			}
+			if g.calls != 1 {
+				t.Fatalf("chiamate al servizio git: %d, attesa 1", g.calls)
+			}
+		})
 	}
 }
 
