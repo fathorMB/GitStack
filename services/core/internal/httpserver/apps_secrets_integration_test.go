@@ -16,7 +16,75 @@ import (
 
 	"github.com/fathorMB/GitStack/services/core/internal/apps"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
+	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
+
+type h8NoopController struct{}
+
+func (h8NoopController) Kick()                                    {}
+func (h8NoopController) Restart(context.Context, store.App) error { return nil }
+func (h8NoopController) Scale(context.Context, store.App) error   { return nil }
+
+// GIT-373 (H8): i due endpoint verificano l'assenza prima di creare una versione. Il controller
+// no-op basta agli handler e mantiene questa prova indipendente da un cluster Kubernetes.
+func TestApps_DeployERollbackRifiutanoSegretiMancanti(t *testing.T) {
+	e := newAppEnvWithKeysAndController(t, h8NoopController{})
+	e.repo("secrets", true)
+	base := "/repos/alice/secrets/apps/web"
+	e.want(e.do(http.MethodPost, "/repos/alice/secrets/apps", "alice", createWeb), http.StatusAccepted, "")
+	a := e.app(e.do(http.MethodGet, base, "alice", ""))
+	appID := uuid.UUID(a.Id)
+	st := store.New(e.pool)
+	if err := st.FinishAppDeploy(context.Background(), appID, 1, "serving", "", e.clock.Now()); err != nil {
+		t.Fatal(err)
+	}
+
+	e.want(e.do(http.MethodPut, base+"/secrets/TOKEN", "alice", `{"value":"first-secret-value"}`), http.StatusOK, "")
+	if err := st.FinishAppDeploy(context.Background(), appID, 2, "serving", "", e.clock.Now()); err != nil {
+		t.Fatal(err)
+	}
+	e.want(e.do(http.MethodDelete, base+"/secrets/TOKEN", "alice", ""), http.StatusNoContent, "")
+	if err := st.FinishAppDeploy(context.Background(), appID, 3, "serving", "", e.clock.Now()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Il DELETE crea la versione 3 senza TOKEN. Per coprire POST /deploys verso una versione che
+	// elenca TOKEN ma il cui valore e' stato rimosso, la fixture ne riporta la configurazione alla 2.
+	e.sql(`UPDATE core.app_versions SET config = (
+		SELECT config FROM core.app_versions WHERE app_id = $1 AND number = 2
+	) WHERE app_id = $1 AND number = 3`, appID)
+	var beforeActive, beforeNext, beforeVersions int
+	if err := e.pool.QueryRow(context.Background(), `SELECT active_version, next_version FROM core.apps WHERE id = $1`, appID).Scan(&beforeActive, &beforeNext); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.pool.QueryRow(context.Background(), `SELECT count(*) FROM core.app_versions WHERE app_id = $1`, appID).Scan(&beforeVersions); err != nil {
+		t.Fatal(err)
+	}
+	assertMissing := func(recBody string) {
+		t.Helper()
+		if !strings.Contains(recBody, `"names":["TOKEN"]`) {
+			t.Fatalf("409 senza il nome TOKEN: %s", recBody)
+		}
+	}
+
+	rec := e.do(http.MethodPost, base+"/rollback", "alice", `{"version":2}`)
+	e.want(rec, http.StatusConflict, "app_secrets_missing")
+	assertMissing(rec.Body.String())
+	rec = e.do(http.MethodPost, base+"/deploys", "alice", `{"image":"sha-7f3a91c"}`)
+	e.want(rec, http.StatusConflict, "app_secrets_missing")
+	assertMissing(rec.Body.String())
+
+	var active, next, versions int
+	if err := e.pool.QueryRow(context.Background(), `SELECT active_version, next_version FROM core.apps WHERE id = $1`, appID).Scan(&active, &next); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.pool.QueryRow(context.Background(), `SELECT count(*) FROM core.app_versions WHERE app_id = $1`, appID).Scan(&versions); err != nil {
+		t.Fatal(err)
+	}
+	if active != beforeActive || next != beforeNext || versions != beforeVersions {
+		t.Fatalf("409 ha modificato le versioni: active %d->%d, next %d->%d, righe %d->%d", beforeActive, active, beforeNext, next, beforeVersions, versions)
+	}
+}
 
 // GIT-373 (H8): il controller porta nei pod soltanto un riferimento al Secret Kubernetes; i
 // rollback usano i valori correnti e rifiutano i nomi eliminati prima di cambiare il cluster.
