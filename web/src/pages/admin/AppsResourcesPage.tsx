@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button, ErrorAlert, FormField, TextInput, useToast } from '../../components';
 import { fetchSession } from '../../lib/authApi';
-import { addTrustedKey, fetchAdminAppsData, removeTrustedKey, resetOwnerQuota, saveAppsSettings, saveOwnerQuota, updateAppsReserve } from '../../lib/adminAppsApi';
+import { addTrustedKey, fetchAdminAppsData, fetchOwnerQuotas, removeTrustedKey, resetOwnerQuota, saveAppsSettings, saveOwnerQuota, updateAppsReserve } from '../../lib/adminAppsApi';
 import type { AppOwnerQuota, AppOwnerQuotaInput, AppsInstanceSettingsInput } from '../../lib/adminAppsApi';
 import { describeError } from '../../lib/http';
 import { useLoad } from '../../lib/useLoad';
@@ -73,6 +73,15 @@ function AppsResourcesConsole() {
     } catch (e) { setFormError(describeError(e)); }
     finally { setBusy(false); }
   }
+  async function resetQuota(owner: string) {
+    setBusy(true); setFormError('');
+    try {
+      await resetOwnerQuota(owner);
+      const quotas = await fetchOwnerQuotas();
+      setData((previous) => previous ? { ...previous, quotas } : previous);
+    } catch (e) { setFormError(describeError(e)); }
+    finally { setBusy(false); }
+  }
 
   const { capacity, quotas, settings, keys, apps } = data;
   const cpuPercent = (n: number, total: number) => Math.min(100, total ? n / total * 100 : 0);
@@ -87,7 +96,7 @@ function AppsResourcesConsole() {
       {capacity.appsShareWarning ? <p className="hint" role="status">Apps share above 80%: new deploys may be refused.</p> : null}
     </div></section>
     <div className="admin-apps-grid">
-      <section className="card" aria-labelledby="owner-quotas"><h2 className="card-h" id="owner-quotas">Quotas by owner</h2><div className="list">{quotas.map((q) => <div className="list-row" key={q.owner}><div style={{ flex: 1 }}><b>{q.owner}</b><div className={`meter${q.warning ? ' warn' : ''}`}><i style={{ width: `${quotaPercent(q)}%` }} /></div><div className="small muted">{vcpu(q.used.cpuMillis)} / {vcpu(q.limits.cpuMillis)} · {memory(q.used.memoryBytes)} / {memory(q.limits.memoryBytes)} · disk {disk(q.used.diskBytes)} / {disk(q.limits.diskBytes)}</div></div><Button size="sm" onClick={() => setQuotaOwner(q)}>Edit</Button>{!q.isDefault ? <Button size="sm" variant="ghost" disabled={busy} onClick={async () => { try { await resetOwnerQuota(q.owner); setData((previous) => previous ? { ...previous, quotas: previous.quotas.filter((it) => it.owner !== q.owner) } : previous); } catch (e) { setFormError(describeError(e)); } }}>Reset</Button> : null}</div>)}</div></section>
+      <section className="card" aria-labelledby="owner-quotas"><h2 className="card-h" id="owner-quotas">Quotas by owner</h2><div className="list">{quotas.map((q) => <div className="list-row" key={q.owner}><div style={{ flex: 1 }}><b>{q.owner}</b><div className={`meter${q.warning ? ' warn' : ''}`}><i style={{ width: `${quotaPercent(q)}%` }} /></div><div className="small muted">{vcpu(q.used.cpuMillis)} / {vcpu(q.limits.cpuMillis)} · {memory(q.used.memoryBytes)} / {memory(q.limits.memoryBytes)} · disk {disk(q.used.diskBytes)} / {disk(q.limits.diskBytes)}</div></div><Button size="sm" onClick={() => setQuotaOwner(q)}>Edit</Button>{!q.isDefault ? <Button size="sm" variant="ghost" disabled={busy} onClick={() => void resetQuota(q.owner)}>Reset</Button> : null}</div>)}</div></section>
       <section className="card" aria-labelledby="instance-settings"><h2 className="card-h" id="instance-settings">Instance settings</h2><dl className="kv admin-apps-kv">
         <dt>Apps domain</dt><dd><span className="mono">{settings.appsDomain ?? 'Not configured'}</span>{settings.appsDomainIsDefault ? <span className="hint"> · default</span> : null}<span className="hint"> · separate from the GitStack domain</span></dd>
         <dt>Public apps</dt><dd><label className="row"><input type="checkbox" role="switch" aria-label="Public apps" checked={false} disabled /> <span className="hint">Off · repository admins can&apos;t publish apps (v3-c)</span></label></dd>
@@ -100,7 +109,7 @@ function AppsResourcesConsole() {
       <section className="card admin-app-list" aria-labelledby="admin-app-list-title"><h2 className="card-h" id="admin-app-list-title">Apps</h2><div className="list"><div className="list-row list-head"><span>App</span><span>Guaranteed</span><span>Using</span><span>Limit</span><span>Copies</span></div>{apps.map((app) => <div className="list-row" key={`${app.owner}/${app.repo}/${app.name}`}><span><b className="mono">{app.owner}/{app.repo}/{app.name}</b>{!app.verified ? <span className="badge badge-run">not verified</span> : null}{app.runsAsRoot ? <span className="badge">root</span> : null}{app.violatesInstanceRules ? <span className="badge badge-err">instance policy</span> : null}</span><span>{vcpu(app.guaranteed.cpuMillis)} · {memory(app.guaranteed.memoryBytes)}</span><span>{vcpu(app.usage.cpuMillis)} · {memory(app.usage.memoryBytes)}{app.aboveGuaranteed ? <span className="badge badge-run">above</span> : null}</span><span>{vcpu(app.limit.cpuMillis)} · {memory(app.limit.memoryBytes)}</span><span>{app.copies}</span></div>)}</div></section>
     </div>
     {quotaOwner ? <div className="modal-back" role="presentation"><form className="modal" aria-label={`Edit quota for ${quotaOwner.owner}`} onSubmit={saveQuota}><h2 className="modal-h">Edit quota · {quotaOwner.owner}</h2><div className="modal-b stack"><FormField label="Guaranteed CPU (vCPU)"><TextInput name="cpu" type="number" min="0.1" step="0.1" defaultValue={quotaOwner.limits.cpuMillis / 1000} /></FormField><FormField label="Memory (GB)"><TextInput name="memory" type="number" min="0.1" step="0.1" defaultValue={quotaOwner.limits.memoryBytes / GiB} /></FormField><FormField label="Disk (GB)"><TextInput name="disk" type="number" min="0" step="1" defaultValue={quotaOwner.limits.diskBytes / GiB} /></FormField></div><div className="modal-f"><Button onClick={() => setQuotaOwner(null)}>Cancel</Button><Button type="submit" variant="primary" disabled={busy}>Save quota</Button></div></form></div> : null}
-    {keyForm ? <div className="modal-back" role="presentation"><form className="modal" aria-label="Add trusted key" onSubmit={addKey}><h2 className="modal-h">Add trusted key</h2><div className="modal-b stack"><FormField label="Name"><TextInput value={keyName} onChange={(e) => setKeyName(e.target.value)} required /></FormField><FormField label="Public key (PEM)"><textarea className="input mono" rows={6} value={publicKey} onChange={(e) => setPublicKey(e.target.value)} required /></FormField></div><div className="modal-f"><Button onClick={() => setKeyForm(false)}>Cancel</Button><Button variant="primary" disabled={busy}>Add key</Button></div></form></div> : null}
+    {keyForm ? <div className="modal-back" role="presentation"><form className="modal" aria-label="Add trusted key" onSubmit={addKey}><h2 className="modal-h">Add trusted key</h2><div className="modal-b stack"><FormField label="Name"><TextInput value={keyName} onChange={(e) => setKeyName(e.target.value)} required /></FormField><FormField label="Public key (PEM)"><textarea className="input mono" rows={6} value={publicKey} onChange={(e) => setPublicKey(e.target.value)} required /></FormField></div><div className="modal-f"><Button onClick={() => setKeyForm(false)}>Cancel</Button><Button type="submit" variant="primary" disabled={busy}>Add key</Button></div></form></div> : null}
   </div>;
 }
 

@@ -34,6 +34,9 @@ export async function saveOwnerQuota(owner: string, limits: AppOwnerQuotaInput):
 export async function resetOwnerQuota(owner: string): Promise<void> {
   unwrapEmpty(await sdkDeleteQuota({ ...at, path: { owner } }));
 }
+export async function fetchOwnerQuotas(): Promise<AppOwnerQuota[]> {
+  return unwrap(await sdkQuotas(at)).items;
+}
 export async function saveAppsSettings(settings: AppsInstanceSettingsInput): Promise<AppsInstanceSettings> {
   return unwrap(await sdkUpdateSettings({ ...at, body: settings }));
 }

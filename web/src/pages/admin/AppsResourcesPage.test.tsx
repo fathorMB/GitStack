@@ -7,7 +7,7 @@ import { AppsResourcesPage } from './AppsResourcesPage';
 vi.mock('../../lib/authApi', () => ({ fetchSession: vi.fn() }));
 vi.mock('../../lib/adminAppsApi', () => ({
   fetchAdminAppsData: vi.fn(), updateAppsReserve: vi.fn(), saveOwnerQuota: vi.fn(), resetOwnerQuota: vi.fn(),
-  saveAppsSettings: vi.fn(), addTrustedKey: vi.fn(), removeTrustedKey: vi.fn(),
+  fetchOwnerQuotas: vi.fn(), saveAppsSettings: vi.fn(), addTrustedKey: vi.fn(), removeTrustedKey: vi.fn(),
 }));
 
 import { fetchSession } from '../../lib/authApi';
@@ -57,6 +57,61 @@ describe('AppsResourcesPage', { timeout: 30000 }, () => {
     await user.type(within(dialog).getByLabelText('Guaranteed CPU (vCPU)'), '4');
     await user.click(within(dialog).getByRole('button', { name: 'Save quota' }));
     await waitFor(() => expect(api.saveOwnerQuota).toHaveBeenCalledWith('acme', { cpuMillis: 4000, memoryBytes: 6 * 1024 ** 3, diskBytes: 50 * 1024 ** 3 }));
+  });
+
+  it('adds a trusted key through the admin API', async () => {
+    vi.mocked(api.addTrustedKey).mockResolvedValue({ id: 'k2', name: 'ci', fingerprint: 'SHA256:def', instanceKey: false, createdAt: '2026-10-26T00:00:00Z' });
+    const user = userEvent.setup(); setup();
+    await user.click(await screen.findByRole('button', { name: 'Add key' }));
+    const form = screen.getByRole('form', { name: 'Add trusted key' });
+    await user.type(within(form).getByLabelText('Name'), 'ci');
+    await user.type(within(form).getByLabelText('Public key (PEM)'), 'PEM...');
+    await user.click(within(form).getByRole('button', { name: 'Add key' }));
+    await waitFor(() => expect(api.addTrustedKey).toHaveBeenCalledWith('ci', 'PEM...'));
+  });
+
+  it('removes a non-instance trusted key and keeps the instance key non-removable', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchAdminAppsData).mockResolvedValue({ ...data, keys: [
+      ...data.keys,
+      { id: 'k2', name: 'repo CI', fingerprint: 'SHA256:def', instanceKey: false, createdAt: '2026-10-26T00:00:00Z' },
+    ] } as never);
+    setup();
+    expect(await screen.findByText('Instance CI key')).toBeInTheDocument();
+    const keys = screen.getByText('Trusted keys').parentElement!;
+    expect(within(keys).getAllByRole('button', { name: 'Remove' })).toHaveLength(1);
+    await user.click(within(keys).getByRole('button', { name: 'Remove' }));
+    await waitFor(() => expect(api.removeTrustedKey).toHaveBeenCalledWith('k2'));
+    expect(within(keys).queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
+    expect(within(keys).getByText('Instance CI key')).toBeInTheDocument();
+  });
+
+  it('saves the apps share with CPU and memory converted to API units', async () => {
+    vi.mocked(api.updateAppsReserve).mockResolvedValue(data.capacity as never);
+    const user = userEvent.setup(); setup();
+    await screen.findByRole('heading', { name: 'Apps & resources' });
+    await user.clear(screen.getByRole('spinbutton', { name: 'Apps share CPU' }));
+    await user.type(screen.getByRole('spinbutton', { name: 'Apps share CPU' }), '3.5');
+    await user.clear(screen.getByRole('spinbutton', { name: 'Apps share memory' }));
+    await user.type(screen.getByRole('spinbutton', { name: 'Apps share memory' }), '6');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(api.updateAppsReserve).toHaveBeenCalledWith({ cpuMillis: 3500, memoryBytes: 6 * 1024 ** 3 }));
+  });
+
+  it('resets a custom owner quota and reloads the owner with instance defaults', async () => {
+    const defaultQuota = { ...ownerQuota, isDefault: true, limits: { cpuMillis: 5000, memoryBytes: 10 * 1024 ** 3, diskBytes: 100 * 1024 ** 3 }, warning: false };
+    vi.mocked(api.resetOwnerQuota).mockResolvedValue();
+    vi.mocked(api.fetchOwnerQuotas).mockResolvedValue([defaultQuota] as never);
+    const user = userEvent.setup(); setup();
+    await screen.findByText('Quotas by owner');
+    const quotaSection = screen.getByText('Quotas by owner').parentElement!;
+    expect(within(quotaSection).getByRole('button', { name: 'Reset' })).toBeInTheDocument();
+    await user.click(within(quotaSection).getByRole('button', { name: 'Reset' }));
+    await waitFor(() => expect(api.resetOwnerQuota).toHaveBeenCalledWith('acme'));
+    await waitFor(() => expect(api.fetchOwnerQuotas).toHaveBeenCalled());
+    expect(within(quotaSection).getByText('acme')).toBeInTheDocument();
+    expect(within(quotaSection).getByText(/5 vCPU/)).toBeInTheDocument();
+    expect(within(quotaSection).queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
   });
 
   it('does not load admin resources for non-admins', async () => {
