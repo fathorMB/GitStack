@@ -432,6 +432,16 @@ export function AppRoutes() {
         }
       />
       <Route
+        path="/:owner/:repo/apps/:app/settings/volumes"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Repository">
+              <RepoPage mode="app-volumes" />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/:owner/:repo/packages"
         element={
           <RequireAuth>

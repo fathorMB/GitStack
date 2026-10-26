@@ -60,7 +60,7 @@ export function AppConfigPage({ repo, app, perms }: { repo: Repository; app: App
           <span className="subnav-disabled" aria-disabled="true"><Settings size={16} aria-hidden="true" />General</span>
           <a className="active" href={appsPath(owner, name, app.name, 'settings')} aria-current="page"><Key size={16} aria-hidden="true" />Variables &amp; secrets</a>
           <Link to={appsPath(owner, name, app.name, 'settings/access')}><Key size={16} aria-hidden="true" />Access &amp; domains</Link>
-          <span className="subnav-disabled" aria-disabled="true"><HardDrive size={16} aria-hidden="true" />Volumes &amp; resources</span>
+          <Link to={appsPath(owner, name, app.name, 'settings/volumes')}><HardDrive size={16} aria-hidden="true" />Volumes &amp; resources</Link>
           {perms.canDelete ? <><div className="grp">Danger zone</div><Button variant="danger" size="sm" onClick={() => setDeleteAppOpen(true)}><Trash2 size={14} aria-hidden="true" />Delete app</Button></> : null}
         </nav>
         <div className="stack" style={{ gap: 24 }}>

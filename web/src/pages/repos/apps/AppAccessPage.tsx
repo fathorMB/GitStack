@@ -1,4 +1,4 @@
-import { Globe, Key, Link as LinkIcon, ShieldCheck } from 'lucide-react';
+import { Globe, HardDrive, Key, Link as LinkIcon, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ErrorAlert } from '../../../components';
@@ -70,6 +70,10 @@ export function AppAccessPage({ repo, app, perms, onChange }: Props) {
             <Link className="active" to={appsPath(owner, name, app.name, 'settings/access')} aria-current="page">
               <Globe size={16} aria-hidden="true" />
               Access &amp; domains
+            </Link>
+            <Link to={appsPath(owner, name, app.name, 'settings/volumes')}>
+              <HardDrive size={16} aria-hidden="true" />
+              Volumes &amp; resources
             </Link>
           </nav>
           <div className="stack" style={{ gap: 24 }}>
