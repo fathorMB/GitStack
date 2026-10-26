@@ -35,6 +35,7 @@ function AppsResourcesConsole() {
   if (!data) return null;
 
   async function saveSettings(patch: Partial<AppsInstanceSettingsInput>) {
+    if (!data) return;
     setBusy(true); setFormError('');
     try {
       const settings = await saveAppsSettings({ publicAppsEnabled: false, signedImagesOnly: data.settings.signedImagesOnly, restricted: data.settings.restricted, maxPerApp: data.settings.maxPerApp, logRetention: data.settings.logRetention, ...patch });
