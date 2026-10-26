@@ -134,6 +134,28 @@ export type ActionsJobTokenDefaults = {
     actions: 'none' | 'read' | 'write';
 };
 
+/**
+ * Impostazione CI3 di un repository in mirror in pull.
+ */
+export type ActionsPullMirrorSettings = {
+    /**
+     * Il repo e' un mirror in pull attivo: solo allora l'impostazione ha effetto.
+     */
+    pullMirror: boolean;
+    /**
+     * I workflow girano sulle sincronizzazioni del mirror.
+     */
+    runOnPullMirror: boolean;
+    /**
+     * Nome utente di chi ha acceso la CI (autore delle esecuzioni); null se spenta.
+     */
+    enabledBy?: string | null;
+};
+
+export type ActionsPullMirrorSettingsInput = {
+    runOnPullMirror: boolean;
+};
+
 export type ActionsSecretList = {
     items: Array<ActionsSecret>;
 };
@@ -383,6 +405,21 @@ export type Meta = {
      * Versione del contratto API (`info.version`).
      */
     api_version: string;
+};
+
+export type InstanceCa = {
+    /**
+     * `internal` = CA interna di GitStack (N5); `custom` = certificato del cliente o Let's Encrypt; `none` = nessuna CA da installare.
+     */
+    mode: 'internal' | 'custom' | 'none';
+    /**
+     * Impronta SHA-256 del DER di `ca.crt` (formato `openssl x509 -fingerprint -sha256`, senza il prefisso). Null se `mode` non e' `internal`.
+     */
+    fingerprintSha256: string | null;
+    /**
+     * Indirizzo del certificato, `/downloads/ca.crt`. Null se `mode` non e' `internal`.
+     */
+    downloadUrl: string | null;
 };
 
 /**
@@ -1814,6 +1851,22 @@ export type LookupIdsResult = {
          */
         email?: string;
     }>;
+};
+
+export type UserProfileInput = {
+    userId: string;
+};
+
+export type UserProfileResult = {
+    id: string;
+    username: Name;
+    kind: 'human' | 'agent';
+    active: boolean;
+    /**
+     * Email dell'utente, se ne ha una. Assente senza email.
+     */
+    email?: string;
+    teams: Array<string>;
 };
 
 export type ResolveMentionsInput = {
@@ -3842,7 +3895,7 @@ export type AppAccess = {
      */
     certificate?: 'instance_ca' | 'lets_encrypt' | 'uploaded';
     /**
-     * Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6). I nomi delle intestazioni e la forma della firma non sono ancora fissati dal contratto.
+     * Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6): X-GitStack-User, X-GitStack-Email, X-GitStack-Teams, X-GitStack-Auth-Time, X-GitStack-Key-Id e X-GitStack-Signature (Ed25519, chiave pubblica su /.well-known/gitstack-app-keys del gateway). Forma della firma e esempio in docs/apps-login.md.
      */
     identityHeaders?: boolean;
     changedAt?: string | null;
@@ -4852,6 +4905,22 @@ export type GetMetaResponses = {
 };
 
 export type GetMetaResponse = GetMetaResponses[keyof GetMetaResponses];
+
+export type GetInstanceCaData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/instance/ca';
+};
+
+export type GetInstanceCaResponses = {
+    /**
+     * Stato della CA dell'istanza.
+     */
+    200: InstanceCa;
+};
+
+export type GetInstanceCaResponse = GetInstanceCaResponses[keyof GetInstanceCaResponses];
 
 export type GetRegistrySigningKeyData = {
     body?: never;
@@ -16457,6 +16526,101 @@ export type PutRepositoryActionsPermissionsResponses = {
 
 export type PutRepositoryActionsPermissionsResponse = PutRepositoryActionsPermissionsResponses[keyof PutRepositoryActionsPermissionsResponses];
 
+export type GetRepositoryActionsPullMirrorData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/pull-mirror';
+};
+
+export type GetRepositoryActionsPullMirrorErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetRepositoryActionsPullMirrorError = GetRepositoryActionsPullMirrorErrors[keyof GetRepositoryActionsPullMirrorErrors];
+
+export type GetRepositoryActionsPullMirrorResponses = {
+    /**
+     * Impostazione.
+     */
+    200: ActionsPullMirrorSettings;
+};
+
+export type GetRepositoryActionsPullMirrorResponse = GetRepositoryActionsPullMirrorResponses[keyof GetRepositoryActionsPullMirrorResponses];
+
+export type PutRepositoryActionsPullMirrorData = {
+    body: ActionsPullMirrorSettingsInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/pull-mirror';
+};
+
+export type PutRepositoryActionsPullMirrorErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type PutRepositoryActionsPullMirrorError = PutRepositoryActionsPullMirrorErrors[keyof PutRepositoryActionsPullMirrorErrors];
+
+export type PutRepositoryActionsPullMirrorResponses = {
+    /**
+     * Impostazione salvata.
+     */
+    200: ActionsPullMirrorSettings;
+};
+
+export type PutRepositoryActionsPullMirrorResponse = PutRepositoryActionsPullMirrorResponses[keyof PutRepositoryActionsPullMirrorResponses];
+
 export type ListCiRunnersData = {
     body?: never;
     path?: never;
@@ -17806,6 +17970,43 @@ export type LookupUsersByIdsResponses = {
 };
 
 export type LookupUsersByIdsResponse = LookupUsersByIdsResponses[keyof LookupUsersByIdsResponses];
+
+export type LookupUserProfileData = {
+    body: UserProfileInput;
+    path?: never;
+    query?: never;
+    url: '/internal/users/profile';
+};
+
+export type LookupUserProfileErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type LookupUserProfileError = LookupUserProfileErrors[keyof LookupUserProfileErrors];
+
+export type LookupUserProfileResponses = {
+    /**
+     * Il profilo.
+     */
+    200: UserProfileResult;
+};
+
+export type LookupUserProfileResponse = LookupUserProfileResponses[keyof LookupUserProfileResponses];
 
 export type ListCredentialEventsData = {
     body?: never;

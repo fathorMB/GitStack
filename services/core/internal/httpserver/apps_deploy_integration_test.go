@@ -28,6 +28,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
+	"github.com/fathorMB/GitStack/services/core/internal/webhooks"
 )
 
 // GIT-343 (v3-a, H7/H12): deploy a mano, salute, ritorno automatico, riavvio, rollback e scala.
@@ -82,6 +83,10 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 		return waitPodIP(t, e.kube, p.Namespace, p.Name)
 	}
 	peerIP := server(peer, "peer")
+	// Con N9 configurato le variabili del proxy sono iniettate dal controller;
+	// la policy deve almeno lasciare raggiungere il proxy, senza riaprire il
+	// resto della rete. GIT-380 aggiungerà qui la sola apertura esterna.
+	proxyIP := server(peer, "proxy")
 	postgresIP := server(system, "postgres")
 	natsIP := server(system, "nats")
 	coreIP := server(system, "core")
@@ -110,6 +115,7 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 		}
 	}
 	probe("same-repo", peerIP, true)
+	probe("proxy", proxyIP, true)
 	probe("postgres", postgresIP, false)
 	probe("nats", natsIP, false)
 	probe("core", coreIP, false)
@@ -209,14 +215,19 @@ func newDeployEnv(t *testing.T) *appsDeployEnv {
 	base := &issuesEnv{t: t, pool: pool, id: id}
 	git := newFakeGit()
 	clock := &appClock{t: time.Now().UTC().Truncate(time.Second)}
+	keys, err := webhooks.NewKeyring("k1", hookSecretKey, "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctl := apps.New(store.New(pool), kube, dyn, apps.Config{
 		AppsDomain: "apps.example.com", ProgressTimeout: 75 * time.Second, FailureGrace: 6 * time.Second,
 		PollInterval: 500 * time.Millisecond, LoopInterval: time.Second, SyncEvery: 2 * time.Second,
+		Secrets: keys,
 	})
 	base.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
 		httpserver.WithRepoIdentity(id), httpserver.WithReadableLister(id), httpserver.WithGit(git),
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "https://git.example.com"}),
-		httpserver.WithAppsDomain("apps.example.com"), httpserver.WithClock(clock.Now), httpserver.WithAppController(ctl))
+		httpserver.WithAppsDomain("apps.example.com"), httpserver.WithClock(clock.Now), httpserver.WithWebhooks(httpserver.WebhookConfig{Keys: keys}), httpserver.WithAppController(ctl))
 	env := &appsDeployEnv{appsEnv: &appsEnv{issuesEnv: base, clock: clock, git: git}, kube: kube, dyn: dyn}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)

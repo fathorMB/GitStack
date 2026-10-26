@@ -60,6 +60,28 @@ con i servizi (stesso registry e stesso tag, quindi stessa firma).
 {{- end -}}
 
 {{/*
+ci-gateway con cui il registry convalida il token del job (GIT-286, GIT-371): quello scelto da
+git.registry.ciGateway, altrimenti con ci.enabled il ci-gateway di core. Vuoto = solo token personali.
+*/}}
+{{- define "gitstack.registry.ciGatewayURL" -}}
+{{- if .Values.git.registry.ciGateway.url -}}
+{{- .Values.git.registry.ciGateway.url -}}
+{{- else if .Values.ci.enabled -}}
+{{- printf "http://%s-core.%s.svc:%d" (include "gitstack.fullname" .) .Release.Namespace (.Values.ci.gateway.port | int) -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "gitstack.registry.ciGatewayPort" -}}
+{{- if .Values.git.registry.ciGateway.url -}}
+{{- .Values.git.registry.ciGateway.port | int -}}
+{{- else if .Values.ci.enabled -}}
+{{- .Values.ci.gateway.port | int -}}
+{{- else -}}
+0
+{{- end -}}
+{{- end -}}
+
+{{/*
 Tag effettivo di un componente (stessa risoluzione di gitstack.image): quello
 che legge `gitstack status` e che il gateway riporta in GET /v1/meta.
 */}}

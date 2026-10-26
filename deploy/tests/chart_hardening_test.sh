@@ -325,9 +325,70 @@ expect_has "job: core conosce il ConfigMap della CA nel namespace dei job" "${d}
 expect_has "job: core ha il proxy da passare ai pod" "${d}" "name: HTTPS_PROXY"
 OUT="$(helm template gitstack "${CHART}" --namespace prova-ns | tr -d '')" || { bad "helm template di default fallito"; exit 1; }
 expect_eq "CI spenta: nessuna PriorityClass gitstack-ci-job" "$(count 'metadata: {name: gitstack-ci-job}')" "0"
+expect_eq "H11: PriorityClass dei servizi" "$(count 'metadata: {name: gitstack-services}')" "1"
+expect_eq "H11: PriorityClass delle app" "$(count 'metadata: {name: gitstack-apps}')" "1"
+expect_has "H11: core ha priorita servizi" "$(doc Deployment gitstack-core)" "priorityClassName: gitstack-services"
 OUT="$(helm template gitstack "${CHART}" --namespace prova-ns --set ci.enabled=true | tr -d '')" || { bad "helm template con ci.enabled fallito"; exit 1; }
 expect_eq "CI accesa: PriorityClass gitstack-ci-job" "$(count 'metadata: {name: gitstack-ci-job}')" "1"
 expect_has "CI accesa: ResourceQuota dei posti" "$OUT" "name: ci-jobs"
+
+echo "== GIT-371: job gitstack-build (BuildKit rootless nel namespace di build, registry dal gateway)"
+OUT="$(render --set ci.enabled=true)" || { bad "helm template con ci.enabled fallito"; exit 1; }
+expect_lacks "build spenta: core senza GITSTACK_CORE_CI_BUILD_NAMESPACE" "$(doc Deployment gitstack-core)" "GITSTACK_CORE_CI_BUILD_NAMESPACE"
+expect_lacks "build spenta: core non accetta il namespace di build" "$(doc NetworkPolicy gitstack-core)" "gitstack-ci-build"
+expect_lacks "build spenta: il gateway non accetta il namespace di build" "$(doc NetworkPolicy gitstack-gateway)" "gitstack-ci-build"
+expect_eq "build spenta: nessuna policy di build" "$(count 'name: ci-build-egress$')" "0"
+expect_has "CI accesa: git convalida il token del job nel ci-gateway di core" "$(doc Deployment gitstack-git)" 'value: "http://gitstack-core.default.svc:8081"'
+expect_has "CI accesa: git raggiunge il ci-gateway" "$(doc NetworkPolicy gitstack-git)" "port: 8081"
+expect_has "CI accesa: core accetta il pod git sulla porta del ci-gateway" "$(doc NetworkPolicy gitstack-core)" "app.kubernetes.io/name: git"
+OUT="$(render --set ci.enabled=true --set ci.build.enabled=true)" || { bad "helm template con ci.build.enabled fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_has "build: core conosce il namespace di build" "${d}" 'value: "gitstack-ci-build"'
+expect_has "build: core conosce l'immagine di BuildKit" "${d}" "moby/buildkit"
+expect_has "build: registry nel cluster = gateway, mai l'ingress" "${d}" 'value: "gitstack-gateway.default.svc:8080"'
+d="$(doc NetworkPolicy ci-build-egress)"
+expect_has "build: uscita verso core" "${d}" "app.kubernetes.io/name: core"
+expect_has "build: solo la porta del ci-gateway di core" "${d}" "port: 8081"
+expect_has "build: uscita verso il gateway (registry)" "${d}" "app.kubernetes.io/name: gateway"
+expect_has "build: porta del gateway" "${d}" "port: 8080"
+expect_lacks "build: niente postgres" "${d}" "app.kubernetes.io/name: postgres"
+expect_lacks "build: niente nats" "${d}" "app.kubernetes.io/name: nats"
+expect_lacks "build: niente identity" "${d}" "app.kubernetes.io/name: identity"
+expect_lacks "build: niente git" "${d}" "app.kubernetes.io/name: git"
+expect_lacks "build: nessun ipBlock privato (10/8)" "${d}" "cidr: 10."
+expect_lacks "build: nessun ipBlock privato (172.16/12)" "${d}" "cidr: 172."
+expect_lacks "build: nessun ipBlock privato (192.168/16)" "${d}" "cidr: 192.168."
+expect_has "build: Internet resta chiusa alle reti private" "${d}" "- 192.168.0.0/16"
+expect_has "build: nessun ingresso" "${d}" "ingress: []"
+d="$(doc NetworkPolicy gitstack-core)"
+expect_has "core: ingresso dal namespace di build" "${d}" 'kubernetes.io/metadata.name: "gitstack-ci-build"'
+d="$(doc NetworkPolicy gitstack-gateway)"
+expect_has "gateway: ingresso dal namespace di build" "${d}" 'kubernetes.io/metadata.name: "gitstack-ci-build"'
+expect_has "gateway: solo i pod dei job" "${d}" 'gitstack.io/ci-job: "true"'
+expect_eq "Role del dispatcher nei due namespace" "$(count '^kind: Role$')" "2"
+expect_eq "nessun ClusterRole" "$(count '^kind: ClusterRole')" "0"
+expect_has "policy di ammissione del namespace di build" "$OUT" "kind: ValidatingAdmissionPolicy"
+if helm_rc --set ci.enabled=true --set ci.build.enabled=true --set git.registry.enabled=false; then bad "build senza registry: helm template doveva fermarsi"; else ok; fi
+if helm_rc --set ci.enabled=true --set ci.build.enabled=true --set gateway.enabled=false; then bad "build senza gateway: helm template doveva fermarsi"; else ok; fi
+
+echo "== GIT-383: core legge la CA interna (impronta per la guida dei tester)"
+OUT="$(render)" || { bad "helm template di default fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_lacks "CA: senza caConfigMap core non monta la CA" "${d}" "/etc/gitstack/ca"
+expect_lacks "CA: senza caConfigMap nessun GITSTACK_CORE_CA_DIR" "${d}" "GITSTACK_CORE_CA_DIR"
+expect_line_has "CA: senza HTTPS la modalita' e' none" "${d}" "value: none"
+OUT="$(render --set ingress.tls.enabled=true --set ingress.tls.certResolver=le)" || { bad "helm template con letsencrypt fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_lacks "CA: letsencrypt non monta la CA" "${d}" "name: ca"
+expect_line_has "CA: letsencrypt e' custom" "${d}" "value: custom"
+OUT="$(render --set ingress.tls.enabled=true --set ingress.tls.secretName=t --set ingress.tls.caConfigMap=gitstack-ca)" || { bad "helm template con caConfigMap fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_line_has "CA: core monta la cartella intera" "${d}" "mountPath: /etc/gitstack/ca"
+expect_line_has "CA: core legge GITSTACK_CORE_CA_DIR" "${d}" "value: /etc/gitstack/ca"
+expect_has "CA: il ConfigMap e' quello dell'installer" "${d}" "name: gitstack-ca"
+expect_line_has "CA: ConfigMap optional" "${d}" "optional: true"
+expect_lacks "CA: niente subPath (un rinnovo arriva senza riavvio)" "${d}" "subPath"
+expect_lacks "CA: con la CA interna nessun GITSTACK_CORE_CA_MODE" "${d}" "GITSTACK_CORE_CA_MODE"
 
 echo
 echo "Passati: ${PASS}  Falliti: ${FAILN}"

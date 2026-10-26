@@ -22,6 +22,7 @@ spec:
       labels:
         {{- include "gitstack.componentLabels" (dict "root" $ "component" "git") | nindent 8 }}
     spec:
+      priorityClassName: gitstack-services
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -83,7 +84,7 @@ spec:
             - name: GITSTACK_GIT_REGISTRY_CLEANUP_INTERVAL
               value: {{ . | quote }}
             {{- end }}
-            {{- with .Values.git.registry.ciGateway.url }}
+            {{- with (include "gitstack.registry.ciGatewayURL" .) }}
             - name: GITSTACK_GIT_CI_GATEWAY_URL
               value: {{ . | quote }}
             {{- end }}

@@ -324,21 +324,40 @@ func (s *Store) CreateApp(ctx context.Context, in NewApp, now time.Time) (App, A
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('app-quota:' || lower($1), 0))`, in.Owner); err != nil {
 		return App{}, AppVersion{}, err
 	}
+	// Anche owner distinti condividono la riserva dell'istanza: la stessa
+	// serratura usata da SetAppCapacity evita che due deploy la superino.
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('app-capacity', 0))`); err != nil {
+		return App{}, AppVersion{}, err
+	}
 	limits, used, _, err := ownerAppQuota(ctx, tx, in.Owner)
 	if err != nil {
 		return App{}, AppVersion{}, err
 	}
-	needCPU := int64(in.Config.Guaranteed.CPUMillis) * int64(in.Config.Copies)
-	needMem := in.Config.Guaranteed.MemoryBytes * int64(in.Config.Copies)
-	missing := map[string]int64{}
-	if int64(used.CPUMillis)+needCPU > int64(limits.CPUMillis) {
-		missing["cpuMillis"] = int64(used.CPUMillis) + needCPU - int64(limits.CPUMillis)
+	capacity, err := appCapacity(ctx, tx)
+	if err != nil {
+		return App{}, AppVersion{}, err
 	}
-	if used.MemoryBytes+needMem > limits.MemoryBytes {
-		missing["memoryBytes"] = used.MemoryBytes + needMem - limits.MemoryBytes
+	capacity.Used, err = guaranteedApps(ctx, tx)
+	if err != nil {
+		return App{}, AppVersion{}, err
 	}
-	if len(missing) > 0 {
-		return App{}, AppVersion{}, &CapacityError{Owner: in.Owner, Missing: missing, Limits: limits, Used: used}
+	// Il massimo e' configurazione d'istanza: applicarlo qui, nella stessa
+	// transazione della quota, evita che una modifica concorrente venga persa.
+	if in.Config.Guaranteed.CPUMillis > capacity.Max.CPUMillis {
+		in.Config.Guaranteed.CPUMillis = capacity.Max.CPUMillis
+	}
+	if in.Config.Guaranteed.MemoryBytes > capacity.Max.MemoryBytes {
+		in.Config.Guaranteed.MemoryBytes = capacity.Max.MemoryBytes
+	}
+	if in.Config.Limit.CPUMillis > capacity.Max.CPUMillis {
+		in.Config.Limit.CPUMillis = capacity.Max.CPUMillis
+	}
+	if in.Config.Limit.MemoryBytes > capacity.Max.MemoryBytes {
+		in.Config.Limit.MemoryBytes = capacity.Max.MemoryBytes
+	}
+	need := AppResourceAmount{CPUMillis: in.Config.Guaranteed.CPUMillis * in.Config.Copies, MemoryBytes: in.Config.Guaranteed.MemoryBytes * int64(in.Config.Copies)}
+	if err := appCapacityError(in.Owner, limits, used, need, capacity); err != nil {
+		return App{}, AppVersion{}, err
 	}
 	id := uuid.New()
 	c := in.Config
@@ -587,4 +606,17 @@ func (s *Store) GetAppVersion(ctx context.Context, appID uuid.UUID, number int) 
 		return AppVersion{}, ErrNotFound
 	}
 	return v, err
+}
+
+// SetAppAccess imposta il modo di accesso dell'app (H6): login, none o public. Non crea una
+// versione (non entra nel Deployment). ErrNotFound se l'app non c'è; ritorna l'app aggiornata.
+func (s *Store) SetAppAccess(ctx context.Context, repoID uuid.UUID, name, mode string, now time.Time) (App, error) {
+	tag, err := s.pool.Exec(ctx, `UPDATE core.apps SET access_mode = $3, updated_at = $4 WHERE repo_id = $1 AND name = $2`, repoID, name, mode, now)
+	if err != nil {
+		return App{}, err
+	}
+	if tag.RowsAffected() == 0 {
+		return App{}, ErrNotFound
+	}
+	return s.GetApp(ctx, repoID, name)
 }

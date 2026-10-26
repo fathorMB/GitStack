@@ -698,7 +698,7 @@ sudo ./deploy/install.sh --ci --ci-capacity 2  # explicit slots (1-3)
 |---|---|
 | `--ci` / `--no-ci` | switch the CI on / off. With neither, a re-run **keeps** the previous choice (the job namespace exists) and its slots; a first install has no CI |
 | `--ci-capacity N` | jobs in parallel, 1 to 3 (`ci.capacity`) |
-| `--ci-build` | also enables rootless BuildKit builds in the separate namespace `gitstack-ci-build` (`ci.build.enabled`) |
+| `--ci-build` | also enables rootless BuildKit builds in the separate namespace `gitstack-ci-build` (`ci.build.enabled`): a job with `runs-on: gitstack-build` runs there (gate, rootless BuildKit sidecar, runner) and publishes to the registry of the repo through the gateway inside the cluster, with the job token (GIT-371). Needs gateway, git and `git.registry` enabled; a mirror of the actions on a private network (`--ci-action-mirror`) is not reachable from these pods |
 | `--ci-action-mirror URL` | internal mirror of the `uses:` actions instead of github.com (N4, N9) |
 | `--ci-storage-size SIZE` | size of the volume with job logs (default `20Gi`) |
 | `--ci-s3-endpoint`, `--ci-s3-bucket`, `--ci-s3-region`, `--ci-s3-prefix` | S3 for artifacts and caches (N7); keys in `GITSTACK_CI_S3_ACCESS_KEY` and `GITSTACK_CI_S3_SECRET_KEY` |

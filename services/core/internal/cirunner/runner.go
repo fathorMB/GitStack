@@ -133,6 +133,11 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 		archiveURL = cfg.GatewayURL + archivePath
 	}
 	cfg.ActEnv = append(append([]string{}, cfg.ActEnv...), CacheEnv(archiveURL, token)...)
+	// act non conosce il repo (il workspace e' un archivio senza .git) e sceglie da solo
+	// GITHUB_REPOSITORY: i passi leggono owner/nome vero da qui (gitstack-build, GIT-371).
+	if repo, _ := cx["repository"].(string); repo != "" {
+		cfg.ActEnv = append(cfg.ActEnv, "GITSTACK_REPOSITORY="+repo)
+	}
 	prepare := func() error {
 		ws := filepath.Join(cfg.WorkDir, "workspace")
 		if err := downloadArchive(ctx, cfg.HTTP, archiveURL, token, ws); err != nil {
@@ -230,7 +235,9 @@ func NormalizeLabels(in []string) []string {
 	return out
 }
 
-var actPlatforms = []string{"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "ubuntu-20.04"}
+// gitstack-build (GIT-371) è la label dei job di build: stesso esecutore in modalità host, ma il pod
+// è quello del namespace di build. Senza il -P act salterebbe il job con uscita 0.
+var actPlatforms = []string{"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "ubuntu-20.04", "gitstack-build"}
 
 // runAct esegue `act <evento> -j <job>` in modalità host sul workspace e ne segue l'output.
 func runAct(ctx context.Context, cfg Config, rep *reporter, event, jobKey, token string) runnerv1.Result {

@@ -29,6 +29,11 @@ func (s *apiServer) writeDeployConflict(w http.ResponseWriter, err error) bool {
 		writeError(w, http.StatusConflict, "deploy_in_progress", "C'è già un deploy in corso per l'app: aspetta che finisca.")
 		return true
 	}
+	var missing *store.MissingAppSecretsError
+	if errors.As(err, &missing) {
+		writeErrorDetails(w, http.StatusConflict, "app_secrets_missing", "La versione richiede segreti dell'app che non esistono piu'.", map[string]any{"names": missing.Names})
+		return true
+	}
 	return s.writeAppConflict(w, err)
 }
 

@@ -26,8 +26,8 @@ import (
 const (
 	defaultAppCopies      = 1
 	maxAppCopies          = 50
-	defaultGuaranteedCPU  = 100
-	defaultGuaranteedMem  = 128 << 20
+	defaultGuaranteedCPU  = 500
+	defaultGuaranteedMem  = 512 << 20
 	defaultLimitCPU       = 500
 	defaultLimitMem       = 512 << 20
 	maxAppDNSLabel        = 63

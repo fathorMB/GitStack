@@ -85,7 +85,7 @@ func TestMigration0024_EsecuzioniECoda(t *testing.T) {
 		t.Fatalf("righe rimaste dopo l'eliminazione del repo: %d (%v)", left, err)
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 13); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 15); err != nil {
 		t.Fatalf("down 0024: %v", err)
 	}
 	if n := have(); n != 0 {

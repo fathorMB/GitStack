@@ -135,11 +135,17 @@ type Config struct {
 	// (GITSTACK_CORE_CI_RUNNER_SECRET, "nuova,vecchia" come i segreti di servizio).
 	CIRunnerSecrets []string
 	// CIEnabled abilita il dispatcher Kubernetes dei job interni.
-	CIEnabled      bool
-	CINamespace    string
-	CIImage        string
-	CIActionMirror string
-	CICapacity     int
+	CIEnabled   bool
+	CINamespace string
+	CIImage     string
+	// CIBuildNamespace, CIBuildImage e CIRegistryAddr (GITSTACK_CORE_CI_BUILD_NAMESPACE, _BUILD_IMAGE,
+	// _REGISTRY_ADDR): i job con la label gitstack-build girano nel namespace di build, con BuildKit
+	// rootless come sidecar e il registry nel cluster (host:porta del gateway). Vuoti: i job build falliscono.
+	CIBuildNamespace string
+	CIBuildImage     string
+	CIRegistryAddr   string
+	CIActionMirror   string
+	CICapacity       int
 	// CILogsDir è la cartella dei log dei job, nel volume di core e nel
 	// backup (GITSTACK_CORE_CI_LOGS_DIR, CI5). Vuoto: i log dei job rispondono 503.
 	CILogsDir string
@@ -151,6 +157,12 @@ type Config struct {
 	// SystemInfoFile è system.json, il ConfigMap system-info montato come
 	// volume (GITSTACK_SYSTEM_INFO_FILE, GIT-213): lo legge GET /admin/system.
 	SystemInfoFile string
+
+	// CADir è la cartella del ConfigMap della CA interna (GITSTACK_CORE_CA_DIR, GIT-383),
+	// con la chiave ca.crt; CAMode (GITSTACK_CORE_CA_MODE: custom|none) dice cosa risponde
+	// GET /instance/ca quando la CA interna non c è.
+	CADir  string
+	CAMode string
 
 	// AttachmentMaxBytes è il limite per allegato (GITSTACK_CORE_ATTACHMENTS_MAX_BYTES,
 	// default 10 MiB).
@@ -218,6 +230,9 @@ const (
 	envCIEnabled          = "GITSTACK_CORE_CI_ENABLED"
 	envCINamespace        = "GITSTACK_CORE_CI_NAMESPACE"
 	envCIImage            = "GITSTACK_CORE_CI_IMAGE"
+	envCIBuildNamespace   = "GITSTACK_CORE_CI_BUILD_NAMESPACE"
+	envCIBuildImage       = "GITSTACK_CORE_CI_BUILD_IMAGE"
+	envCIRegistryAddr     = "GITSTACK_CORE_CI_REGISTRY_ADDR"
 	envCIActionMirror     = "GITSTACK_CORE_CI_ACTION_MIRROR"
 	envCICapacity         = "GITSTACK_CORE_CI_CAPACITY"
 	envCILogsDir          = "GITSTACK_CORE_CI_LOGS_DIR"
@@ -230,6 +245,8 @@ const (
 	envCIS3SecretKey      = "GITSTACK_CORE_CI_S3_SECRET_KEY"
 	envReleaseAssetsDir   = "GITSTACK_CORE_RELEASE_ASSETS_DIR"
 	envSystemInfoFile     = "GITSTACK_SYSTEM_INFO_FILE"
+	envCADir              = "GITSTACK_CORE_CA_DIR"
+	envCAMode             = "GITSTACK_CORE_CA_MODE"
 	envAttachmentMax      = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
 	envAttachRepoQuota    = "GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES"
 	envAttachUserQuota    = "GITSTACK_CORE_ATTACHMENTS_USER_QUOTA_BYTES"
@@ -397,6 +414,15 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	if v, ok := lookup(envCIImage); ok {
 		cfg.CIImage = strings.TrimSpace(v)
 	}
+	if v, ok := lookup(envCIBuildNamespace); ok {
+		cfg.CIBuildNamespace = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCIBuildImage); ok {
+		cfg.CIBuildImage = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCIRegistryAddr); ok {
+		cfg.CIRegistryAddr = strings.TrimSpace(v)
+	}
 	if v, ok := lookup(envCIActionMirror); ok {
 		cfg.CIActionMirror = strings.TrimSpace(v)
 	}
@@ -416,6 +442,12 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	errs = loadCIS3(lookup, &cfg, errs)
 	if v, ok := lookup(envReleaseAssetsDir); ok {
 		cfg.ReleaseAssetsDir = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCADir); ok {
+		cfg.CADir = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCAMode); ok {
+		cfg.CAMode = strings.ToLower(strings.TrimSpace(v))
 	}
 	if v, ok := lookup(envSystemInfoFile); ok {
 		cfg.SystemInfoFile = strings.TrimSpace(v)

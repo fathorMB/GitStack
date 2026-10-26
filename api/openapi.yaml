@@ -175,6 +175,35 @@ paths:
                 server_version: "v0.1.0"
                 api_version: "0.1.0"
 
+  /instance/ca:
+    get:
+      operationId: getInstanceCa
+      tags: [system]
+      x-mcp:
+        expose: false
+        name: instance_ca_get
+        destructive: false
+      summary: CA interna dell'istanza e sua impronta
+      description: >
+        Senza autenticazione (H2, N5, guida CA per i tester): dice se l'istanza usa la CA interna e,
+        in quel caso, l'impronta SHA-256 del certificato `ca.crt`, nel formato di
+        `openssl x509 -fingerprint -sha256` (byte esadecimali maiuscoli separati da due punti), e l'indirizzo da cui
+        scaricarlo. E' l'unica fonte dell'impronta: la guida `/help/ca` e l'invito ai tester la leggono da qui.
+        `mode` e' `internal` con la CA interna, `custom` con un certificato del cliente o Let's Encrypt (niente da installare),
+        `none` senza HTTPS o se il certificato della CA non e' leggibile.
+      security: []
+      responses:
+        "200":
+          description: Stato della CA dell'istanza.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceCa"
+              example:
+                mode: internal
+                fingerprintSha256: "AB:CD:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB"
+                downloadUrl: /downloads/ca.crt
+
   /registry/signing-key:
     get:
       operationId: getRegistrySigningKey
@@ -7983,6 +8012,48 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
         "409": {$ref: "#/components/responses/Conflict"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
+  /repos/{owner}/{repo}/actions/pull-mirror:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}]
+    get:
+      operationId: getRepositoryActionsPullMirror
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repository_actions_pull_mirror_get
+        destructive: false
+      summary: Legge l'impostazione «Esegui i workflow sul mirror» del repository (CI3)
+      description: >
+        Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge). Sui repo in mirror in pull la CI e' spenta di
+        default. Se chi l'aveva accesa non ha piu' `admin` sul repo, la risposta la da' gia' spenta (`runOnPullMirror: false`).
+      responses:
+        "200": {description: Impostazione., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsPullMirrorSettings"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    put:
+      operationId: putRepositoryActionsPullMirror
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repository_actions_pull_mirror_put
+        destructive: false
+      summary: Accende o spegne i workflow sul mirror in pull del repository (CI3)
+      description: >
+        Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato, 409
+        `not_a_pull_mirror` se il repo non e' un mirror in pull attivo. Con la CI accesa ogni sincronizzazione che porta
+        commit o tag nuovi avvia i workflow `push` come un push normale, uno per ogni ref aggiornato; i ref `diverged`
+        (MP1) non avviano nulla. L'autore delle esecuzioni e' chi ha acceso la CI e il token del job non supera i suoi
+        permessi (CI4). Se quella persona perde `admin` sul repo, la CI sul mirror si spegne e riceve una notifica.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ActionsPullMirrorSettingsInput"}}}}
+      responses:
+        "200": {description: Impostazione salvata., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsPullMirrorSettings"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
   /admin/ci/runners:
     get:
       operationId: listCiRunners
@@ -8880,6 +8951,44 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /internal/users/profile:
+    post:
+      operationId: lookupUserProfile
+      tags: [internal]
+      x-mcp:
+        expose: false
+        name: user_profile_lookup
+        destructive: false
+      summary: Nome, email e team di un utente
+      description: >
+        Per il gateway (v3-a, GIT-347, H6): il login davanti alle app interne passa all'app nome,
+        email e team dell'utente in intestazioni firmate. `teams` elenca i team di cui l'utente e'
+        membro come `organizzazione/team`, ordinati. 404 se l'utente non esiste; un utente
+        disattivato torna con `active` falso (il gateway lo rifiuta).
+      security:
+        - serviceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserProfileInput"
+      responses:
+        "200":
+          description: Il profilo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfileResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /internal/credential-events:
     get:
       operationId: listCredentialEvents
@@ -9746,7 +9855,9 @@ paths:
       description: >
         Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato
         risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di
-        quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine
+        quella scelta (H8, H12): ripristina immagine, variabili e nomi dei segreti, mai i loro valori storici;
+        ogni nome riceve il valore corrente. 409 `app_secrets_missing` con i nomi mancanti se un segreto della
+        versione non esiste piu', senza modificare la versione attiva. 409 `image_unavailable` se l'immagine
         non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici
         dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppRollbackInput"}}}}
@@ -11039,6 +11150,21 @@ components:
         contents: {type: string, enum: [none, read, write]}
         packages: {type: string, enum: [none, read, write]}
         actions: {type: string, enum: [none, read, write]}
+    ActionsPullMirrorSettings:
+      type: object
+      additionalProperties: false
+      description: Impostazione CI3 di un repository in mirror in pull.
+      required: [pullMirror, runOnPullMirror]
+      properties:
+        pullMirror: {type: boolean, description: "Il repo e' un mirror in pull attivo: solo allora l'impostazione ha effetto."}
+        runOnPullMirror: {type: boolean, description: "I workflow girano sulle sincronizzazioni del mirror."}
+        enabledBy: {type: string, nullable: true, description: "Nome utente di chi ha acceso la CI (autore delle esecuzioni); null se spenta."}
+    ActionsPullMirrorSettingsInput:
+      type: object
+      additionalProperties: false
+      required: [runOnPullMirror]
+      properties:
+        runOnPullMirror: {type: boolean}
     ActionsSecretList:
       type: object
       additionalProperties: false
@@ -11223,6 +11349,24 @@ components:
         api_version:
           type: string
           description: Versione del contratto API (`info.version`).
+
+    InstanceCa:
+      type: object
+      additionalProperties: false
+      required: [mode, fingerprintSha256, downloadUrl]
+      properties:
+        mode:
+          type: string
+          enum: [internal, custom, none]
+          description: "`internal` = CA interna di GitStack (N5); `custom` = certificato del cliente o Let's Encrypt; `none` = nessuna CA da installare."
+        fingerprintSha256:
+          type: string
+          nullable: true
+          description: Impronta SHA-256 del DER di `ca.crt` (formato `openssl x509 -fingerprint -sha256`, senza il prefisso). Null se `mode` non e' `internal`.
+        downloadUrl:
+          type: string
+          nullable: true
+          description: Indirizzo del certificato, `/downloads/ca.crt`. Null se `mode` non e' `internal`.
 
     AdminSystem:
       type: object
@@ -13781,6 +13925,37 @@ components:
                 description: >
                   Email dell'utente, se ne ha una (M-06/F, C5: core la usa per le
                   notifiche email, mai per gli agenti). Assente senza email.
+    UserProfileInput:
+      type: object
+      additionalProperties: false
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          format: uuid
+    UserProfileResult:
+      type: object
+      additionalProperties: false
+      required: [id, username, kind, active, teams]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          $ref: "#/components/schemas/Name"
+        kind:
+          type: string
+          enum: [human, agent]
+        active:
+          type: boolean
+        email:
+          type: string
+          description: Email dell'utente, se ne ha una. Assente senza email.
+        teams:
+          type: array
+          items:
+            type: string
+            description: "`organizzazione/team`."
     ResolveMentionsInput:
       type: object
       additionalProperties: false
@@ -17030,7 +17205,7 @@ components:
         publicAppsEnabled: {type: boolean, description: "L'amministratore ha abilitato le app pubbliche (H1, doppio consenso)."}
         address: {type: string, format: uri, nullable: true}
         certificate: {type: string, enum: [instance_ca, lets_encrypt, uploaded], nullable: true, description: "Origine del certificato dell'indirizzo automatico (H2): CA interna per le interne."}
-        identityHeaders: {type: boolean, description: "Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6). I nomi delle intestazioni e la forma della firma non sono ancora fissati dal contratto."}
+        identityHeaders: {type: boolean, description: "Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6): X-GitStack-User, X-GitStack-Email, X-GitStack-Teams, X-GitStack-Auth-Time, X-GitStack-Key-Id e X-GitStack-Signature (Ed25519, chiave pubblica su /.well-known/gitstack-app-keys del gateway). Forma della firma e esempio in docs/apps-login.md."}
         changedAt: {type: string, format: date-time, nullable: true}
         changedBy: {allOf: [{$ref: "#/components/schemas/AppActor"}], nullable: true, type: object}
     AppAccessInput:

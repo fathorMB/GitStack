@@ -108,6 +108,19 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.gateway.containerPort }}
+    {{- if and .Values.ci.enabled .Values.ci.build.enabled .Values.git.enabled .Values.git.registry.enabled }}
+    # Pod di build (GIT-371): pubblicano nel registry (/v2/) dal gateway nel cluster, non
+    # dall'ingresso. Solo il namespace di build e solo la porta del gateway.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.ci.build.namespace | quote }}
+          podSelector:
+            matchLabels: {gitstack.io/ci-job: "true"}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.gateway.containerPort }}
+    {{- end }}
   egress:
     - to:
         - podSelector:
@@ -173,6 +186,28 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.ci.gateway.port }}
+    {{- if .Values.ci.build.enabled }}
+    # Gemella per i pod di build (GIT-371): stessa porta, solo dal namespace di build.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.ci.build.namespace | quote }}
+          podSelector:
+            matchLabels: {gitstack.io/ci-job: "true"}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.ci.gateway.port }}
+    {{- end }}
+    {{- if and .Values.git.enabled .Values.git.registry.enabled }}
+    # Il registry convalida il token del job nel ci-gateway (GIT-286): solo dal pod git.
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "git") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.ci.gateway.port }}
+    {{- end }}
     {{- if .Values.ci.externalGateway.enabled }}
     # Gateway per i runner esterni (GIT-329): solo dal controller di ingresso.
     - from:
@@ -347,7 +382,7 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.identity.containerPort }}
-    {{- if and .Values.git.registry.enabled .Values.git.registry.ciGateway.url .Values.git.registry.ciGateway.port }}
+    {{- if and .Values.git.registry.enabled (include "gitstack.registry.ciGatewayURL" .) (ne (include "gitstack.registry.ciGatewayPort" .) "0") }}
     # Token del job (GIT-286): il registry lo convalida nel ci-gateway di core.
     - to:
         - podSelector:
@@ -355,7 +390,7 @@ spec:
               {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "core") | nindent 14 }}
       ports:
         - protocol: TCP
-          port: {{ .Values.git.registry.ciGateway.port }}
+          port: {{ include "gitstack.registry.ciGatewayPort" . }}
     {{- end }}
     - to:
         - podSelector:

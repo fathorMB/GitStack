@@ -44,6 +44,7 @@ const (
 	NamePrefix     = "gitstack-app-"
 	WorkloadName   = "app"
 	pullSecretName = "registry-pull"
+	appSecretName  = "app-secrets"
 	containerName  = "app"
 	servicePort    = 80
 )
@@ -89,6 +90,8 @@ type BuildOptions struct {
 	ProgressDeadlineSeconds int32
 	// PullSecret: nome del Secret con le credenziali del registry del repo; vuoto per le immagini esterne.
 	PullSecret string
+	// AppSecret: nome del Secret con i valori correnti dei segreti dell'app.
+	AppSecret string
 	// RestartedAt: valore da portare avanti dal Deployment esistente.
 	RestartedAt string
 	// ProxyEnv è la configurazione N9 dell'istanza. Viene dal processo core e
@@ -133,6 +136,9 @@ func BuildDeployment(app store.App, v store.AppVersion, o BuildOptions) *appsv1.
 			Limits:   resourceList(cfg.Limit),
 		},
 	}
+	if o.AppSecret != "" {
+		c.EnvFrom = []corev1.EnvFromSource{{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: o.AppSecret}}}}
+	}
 	minReady := int32(0)
 	if cfg.Port != nil {
 		c.Ports = []corev1.ContainerPort{{Name: "http", ContainerPort: int32(*cfg.Port), Protocol: corev1.ProtocolTCP}}
@@ -146,6 +152,7 @@ func BuildDeployment(app store.App, v store.AppVersion, o BuildOptions) *appsv1.
 		minReady = 5
 	}
 	pod := corev1.PodSpec{
+		PriorityClassName:            "gitstack-apps",
 		AutomountServiceAccountToken: &f,
 		EnableServiceLinks:           &f,
 		Containers:                   []corev1.Container{c},
@@ -296,9 +303,14 @@ func BuildNetworkPolicy(app store.App) *networkingv1.NetworkPolicy {
 }
 
 // BuildRoute è l'IngressRoute Traefik `websecure` verso il Service (ADR 0002: tls {} e il
-// certificato wildcard è il TLSStore default). authMiddleware, se non vuoto, è il forward-auth
-// del login: `nome` (nel namespace dell'app) o `namespace/nome`.
-func BuildRoute(app store.App, host, authMiddleware string) *unstructured.Unstructured {
+// certificato wildcard è il TLSStore default). I Middleware sono quelli del namespace dell'app:
+// sempre gitstack-strip (le intestazioni X-GitStack-* del client non arrivano all'app) e, con
+// `login`, subito dopo gitstack-auth (il forward-auth del login GitStack, H6).
+func BuildRoute(app store.App, host string, login bool) *unstructured.Unstructured {
+	mws := []any{map[string]any{"name": MiddlewareStrip}}
+	if login {
+		mws = append(mws, map[string]any{"name": MiddlewareAuth})
+	}
 	route := map[string]any{
 		"kind":  "Rule",
 		"match": fmt.Sprintf("Host(`%s`)", host),
@@ -306,13 +318,7 @@ func BuildRoute(app store.App, host, authMiddleware string) *unstructured.Unstru
 			"name": WorkloadName,
 			"port": int64(servicePort),
 		}},
-	}
-	if authMiddleware != "" {
-		m := map[string]any{"name": authMiddleware}
-		if ns, name, ok := strings.Cut(authMiddleware, "/"); ok {
-			m = map[string]any{"name": name, "namespace": ns}
-		}
-		route["middlewares"] = []any{m}
+		"middlewares": mws,
 	}
 	labels := map[string]any{}
 	for k, v := range objectLabels(app.ID) {
