@@ -292,3 +292,57 @@ func TestAppLogs_SenzaSegretiNonSiRaccolgono(t *testing.T) {
 		t.Fatalf("senza segreti letti le righe delle copie non devono essere raccolte: %q", body)
 	}
 }
+
+// TestAppLogs_EventiDiPiattaforma: un riavvio per memoria (OOMKilled) diventa una riga della
+// piattaforma, una sola per riavvio; un riavvio per un altro motivo non produce nulla.
+func TestAppLogs_EventiDiPiattaforma(t *testing.T) {
+	e := newLogsEnv(t)
+	repoID := e.repo("handbook", true)
+	e.id.grantWrite(repoID, "bob")
+	base := "/repos/alice/handbook/apps"
+	e.want(e.do(http.MethodPost, base, "alice", createWeb), http.StatusAccepted, "")
+	app := e.appID(base + "/web")
+	ctx := context.Background()
+
+	// setStatus imposta il riavvio e il motivo dell'ultima terminazione di una copia.
+	setStatus := func(pod string, restarts int32, reason string) {
+		t.Helper()
+		p, err := e.kube.CoreV1().Pods(apps.Namespace(app)).Get(ctx, pod, metav1.GetOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		p.Status.ContainerStatuses = []corev1.ContainerStatus{{
+			Name: apps.WorkloadName, RestartCount: restarts,
+			LastTerminationState: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{Reason: reason, ExitCode: 137}},
+		}}
+		if _, err := e.kube.CoreV1().Pods(apps.Namespace(app)).UpdateStatus(ctx, p, metav1.UpdateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const oomPod, errPod = "web-oom-ccccc", "web-err-ddddd"
+	const oomLine = "terminata per memoria insufficiente (OOMKilled)"
+	e.podsOf(app, map[string][]string{oomPod: {e.ts(-time.Second) + " avvio"}, errPod: {e.ts(-time.Second) + " avvio"}})
+
+	platform := func() string {
+		return e.do(http.MethodGet, base+"/web/logs?source=platform", "bob", "").Body.String()
+	}
+
+	setStatus(oomPod, 1, "OOMKilled")
+	e.ctl.CollectLogs(ctx)
+	e.ctl.CollectLogs(ctx) // una seconda raccolta non ripete l'evento
+	if n := strings.Count(platform(), oomLine); n != 1 {
+		t.Fatalf("dopo un riavvio OOM e due raccolte: %d righe, voluta 1: %q", n, platform())
+	}
+
+	setStatus(oomPod, 2, "OOMKilled")
+	e.ctl.CollectLogs(ctx)
+	if n := strings.Count(platform(), oomLine); n != 2 {
+		t.Fatalf("il secondo riavvio OOM deve dare una riga in più: %d righe, voluta 2: %q", n, platform())
+	}
+
+	setStatus(errPod, 3, "Error")
+	e.ctl.CollectLogs(ctx)
+	if p := platform(); strings.Contains(p, errPod) || strings.Count(p, oomLine) != 2 {
+		t.Fatalf("un riavvio per errore non deve produrre righe di piattaforma: %q", p)
+	}
+}
