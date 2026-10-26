@@ -1,0 +1,152 @@
+{{- if .Values.apps.enabled }}
+{{- if not .Values.apps.domain }}{{ fail "apps.enabled richiede apps.domain (il dominio delle app, es. apps.azienda.it): usa install.sh --apps-domain o gitstack config set apps-domain" }}{{- end }}
+{{- if not .Values.core.enabled }}{{ fail "apps.enabled richiede core.enabled: il controller delle app vive in core" }}{{- end }}
+{{- $sa := include "gitstack.core.serviceAccountName" . }}
+{{- $workload := include "gitstack.apps.workloadRoleName" . }}
+{{- $controller := printf "%s-apps-controller" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-" }}
+# Hosting delle app (ADR 0002): RBAC minimo di core.
+#  - Niente ClusterRole con permessi sulle app e niente ClusterRoleBinding verso di esso.
+#  - ClusterRole del controller: solo i verbi che servono a creare, osservare e togliere i
+#    namespace delle app e a legarli al ruolo modello. `update` sui namespace serve ad
+#    allineare la label Pod Security di un namespace già creato (ensureNamespace): è una
+#    deviazione dall'ADR, ammessa solo dietro la ValidatingAdmissionPolicy in fondo.
+#    Anche create dei rolebindings e bind valgono cluster-wide per RBAC: li chiude la stessa policy.
+#  - ClusterRole modello (<release>-app-workload): i permessi sull'app. Nessun binding
+#    cluster-wide: il controller crea un RoleBinding in ogni namespace gitstack-app-<id>, e può
+#    farlo solo verso questo ruolo (`bind` con resourceNames).
+{{- if not .Values.ci.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $sa }}
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+automountServiceAccountToken: true
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $controller }}
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["create", "get", "list", "watch", "update", "delete"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["rolebindings"]
+    verbs: ["create", "get"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles"]
+    verbs: ["bind"]
+    resourceNames: [{{ $workload | quote }}]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $controller }}
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $sa }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $controller }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $workload }}
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+    gitstack.io/role-template: "true"
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["create", "get", "update"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["create", "get", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "get", "update"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list"]
+  # Rotta e Middleware del login (strip e forward-auth, GIT-347) che il controller crea per app.
+  - apiGroups: ["traefik.io"]
+    resources: ["ingressroutes", "middlewares"]
+    verbs: ["create", "get", "update", "delete"]
+---
+# Perimetro del controller (ADR 0002): i verbi del ClusterRole del controller valgono su TUTTO il
+# cluster (RBAC non filtra per nome), quindi senza questa policy core potrebbe legare il ruolo
+# modello in kube-system o cambiare le label di un namespace di sistema. La policy restringe SOLO
+# il ServiceAccount di core (matchCondition) ai namespace delle app: nome gitstack-app-* e label
+# gitstack.io/managed-app=true (sull'oggetto in CREATE/UPDATE, sul vecchio oggetto in UPDATE/DELETE).
+# I RoleBinding ammessi: solo nei namespace delle app, solo verso il ruolo modello, solo per il
+# ServiceAccount di core. Richiede Kubernetes >= 1.30 (ValidatingAdmissionPolicy GA, come ci-build).
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ $controller }}-scope
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["namespaces"]
+      - apiGroups: ["rbac.authorization.k8s.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["rolebindings"]
+  matchConditions:
+    - name: solo-il-serviceaccount-di-core
+      expression: >-
+        request.userInfo.username == {{ printf "system:serviceaccount:%s:%s" .Release.Namespace $sa | quote }}
+  validations:
+    - expression: >-
+        request.resource.resource != 'namespaces' || request.operation == 'DELETE' ||
+        (object.metadata.name.startsWith('gitstack-app-') && has(object.metadata.labels) &&
+         'gitstack.io/managed-app' in object.metadata.labels && object.metadata.labels['gitstack.io/managed-app'] == 'true')
+      message: "core può creare e modificare solo namespace gitstack-app-* con la label gitstack.io/managed-app=true"
+    - expression: >-
+        request.resource.resource != 'namespaces' || request.operation == 'CREATE' ||
+        (oldObject.metadata.name.startsWith('gitstack-app-') && has(oldObject.metadata.labels) &&
+         'gitstack.io/managed-app' in oldObject.metadata.labels && oldObject.metadata.labels['gitstack.io/managed-app'] == 'true')
+      message: "core può modificare ed eliminare solo namespace gitstack-app-* già marcati gitstack.io/managed-app=true"
+    - expression: >-
+        request.resource.resource != 'rolebindings' ||
+        (request.namespace.startsWith('gitstack-app-') && has(namespaceObject.metadata.labels) &&
+         'gitstack.io/managed-app' in namespaceObject.metadata.labels && namespaceObject.metadata.labels['gitstack.io/managed-app'] == 'true')
+      message: "core può creare RoleBinding solo nei namespace gitstack-app-* marcati gitstack.io/managed-app=true"
+    - expression: >-
+        request.resource.resource != 'rolebindings' ||
+        (object.roleRef.kind == 'ClusterRole' && object.roleRef.name == {{ $workload | quote }})
+      message: "core può legare solo il ClusterRole modello delle app"
+    - expression: >-
+        request.resource.resource != 'rolebindings' ||
+        (has(object.subjects) && object.subjects.all(s, s.kind == 'ServiceAccount' &&
+         s.name == {{ $sa | quote }} && s.namespace == {{ .Release.Namespace | quote }}))
+      message: "il RoleBinding delle app può avere come soggetto solo il ServiceAccount di core"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ $controller }}-scope
+spec:
+  policyName: {{ $controller }}-scope
+  validationActions: ["Deny"]
+{{- end }}

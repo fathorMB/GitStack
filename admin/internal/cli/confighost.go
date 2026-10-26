@@ -55,7 +55,7 @@ func notPublicName(h string) bool {
 
 func runConfig(ctx context.Context, a *App, args []string) int {
 	if len(args) < 2 || args[0] != "set" {
-		a.errorf("config: uso: gitstack config set host <nome> [--config PERCORSO] | gitstack config set apps-domain <dominio> | gitstack config set network [opzioni] | gitstack config set backup.s3 --endpoint E --bucket B --key-file F …")
+		a.errorf("config: uso: gitstack config set host <nome> [--config PERCORSO] | gitstack config set apps-domain <dominio> | gitstack config set apps on|off | gitstack config set network [opzioni] | gitstack config set backup.s3 --endpoint E --bucket B --key-file F …")
 		a.usage(a.Stderr)
 		return ExitUsage
 	}
@@ -64,12 +64,14 @@ func runConfig(ctx context.Context, a *App, args []string) int {
 		return runConfigSetHost(ctx, a, args[2:])
 	case "apps-domain":
 		return runConfigSetAppsDomain(ctx, a, args[2:])
+	case "apps":
+		return runConfigSetApps(ctx, a, args[2:])
 	case "network":
 		return runConfigSetNetwork(ctx, a, args[2:])
 	case "backup.s3":
 		return runConfigSetBackupS3(ctx, a, args[2:])
 	default:
-		a.errorf("config set: chiave sconosciuta %q (oggi: host, apps-domain, network, backup.s3)", args[1])
+		a.errorf("config set: chiave sconosciuta %q (oggi: host, apps-domain, apps, network, backup.s3)", args[1])
 		return ExitUsage
 	}
 }

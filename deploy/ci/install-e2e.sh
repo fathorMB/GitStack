@@ -41,6 +41,12 @@
 #                              (SNI <app>-<repo>-<owner>.<dominio>). Con install.log e warn|nowarn controlla
 #                              che l'avviso del dominio predefinito ci sia (warn) o manchi (nowarn). Con `unset` (v2 aggiornata): nessun apps_domain
 #                              in config.yaml e status lo dice. Una riga ok/ko per controllo.
+#   verify-apps-hosting on|off Core con/senza GITSTACK_CORE_APPS_ENABLED, `gitstack status`, config.yaml e RBAC
+#                              (auth can-i del ServiceAccount di core). Una riga ok/ko per controllo.
+#   apps-off-api               Hosting spento: POST app = 503 apps_unavailable, nessun namespace, nessuna app.
+#   apps-run <dominio>         Hosting acceso: un'app `login` creata da API passa dal forward-auth VERO del gateway:
+#                              senza credenziali redirect/401, con un token API valido (read:resource e read sul repo)
+#                              200 dall'app, con un token falso mai 200.
 #   latest-backup              Stampa il percorso dell'archivio più recente.
 #   diagnostics <cartella>     Log del cluster e dei servizi (non fallisce mai).
 #
@@ -526,6 +532,174 @@ verify_apps_domain() {
 ' "${want}"
 }
 
+# --- Hosting delle app (GIT-375, ADR 0002) -------------------------------------
+
+core_env() { # <NOME> -> valore dell'env di core (vuoto se manca)
+  "${KUBECTL[@]}" -n default get deployment gitstack-core -o jsonpath="{.spec.template.spec.containers[0].env[?(@.name==\"$1\")].value}"
+}
+gateway_env_name() { # <NOME> -> NOME se il gateway ha quella variabile (anche da Secret), vuoto se manca
+  "${KUBECTL[@]}" -n default get deployment gitstack-gateway -o jsonpath="{.spec.template.spec.containers[0].env[?(@.name==\"$1\")].name}"
+}
+
+can_i() { # <serviceaccount> <verbo> <risorsa> [opzioni...]: yes|no
+  local sa="$1"
+  shift
+  "${KUBECTL[@]}" auth can-i "$@" --as "${sa}" 2>/dev/null || true
+}
+
+no_workload_binding() {
+  ! "${KUBECTL[@]}" get clusterrolebinding -o jsonpath='{range .items[*]}{.roleRef.name}{"
+"}{end}' | grep -qx gitstack-app-workload
+}
+
+# Con l'hosting spento devono mancare TUTTI i ClusterRole delle app: uno per uno (con
+# `get A B` basta che ne manchi uno perché il comando fallisca).
+no_apps_clusterroles() {
+  local r
+  for r in gitstack-apps-controller gitstack-app-workload; do
+    if "${KUBECTL[@]}" get clusterrole "${r}" >/dev/null 2>&1; then
+      printf 'ClusterRole %s presente
+' "${r}" >&2
+      return 1
+    fi
+  done
+  return 0
+}
+
+# Prove negative con impersonazione: la ValidatingAdmissionPolicy deve rifiutare, al ServiceAccount
+# di core, ciò che il ClusterRole concede su tutto il cluster ma l'ADR 0002 non ammette.
+denied() { # <descrizione> <comando...>: ok se il comando FALLISCE (rifiutato)
+  local d="$1" out
+  shift
+  if out="$("$@" 2>&1)"; then
+    printf 'KO  %s: il comando è riuscito
+' "${d}" >&2
+    return 1
+  fi
+  case "${out}" in
+    *gitstack-apps-controller-scope*|*"core può"*|*"il RoleBinding delle app"*) return 0 ;;
+    *) printf 'KO  %s: rifiutato ma non dalla policy: %s
+' "${d}" "${out}" >&2; return 1 ;;
+  esac
+}
+deny_rolebinding_kube_system() { # <sa>
+  denied "rolebinding in kube-system" "${KUBECTL[@]}" create rolebinding x -n kube-system     --clusterrole=gitstack-app-workload "--serviceaccount=default:${1#system:serviceaccount:default:}" "--as=$1"
+}
+# Il controller aggiorna i namespace con un UPDATE (PUT), non con patch: la prova fa lo stesso,
+# con `replace` di un namespace letto da admin e modificato con jq.
+ns_update_as() { # <sa> <namespace> <label> <valore>
+  "${KUBECTL[@]}" get namespace "$2" -o json | jq --arg k "$3" --arg v "$4" '.metadata.labels[$k] = $v' |
+    "${KUBECTL[@]}" replace -f - "--as=$1"
+}
+deny_namespace_label() { # <sa>
+  denied "label su un namespace non gitstack-app-*" ns_update_as "$1" kube-system pod-security.kubernetes.io/enforce privileged
+}
+deny_namespace_managed_label() { # <sa>
+  denied "managed-app=true su un namespace di sistema" ns_update_as "$1" kube-system gitstack.io/managed-app true
+}
+# I namespace di sistema hanno già la loro protezione: si prova su uno creato apposta.
+deny_namespace_delete() { # <sa>
+  local rc=0
+  "${KUBECTL[@]}" create namespace e2e-not-an-app >/dev/null 2>&1 || true
+  denied "delete di un namespace non gitstack-app-*" "${KUBECTL[@]}" delete namespace e2e-not-an-app --dry-run=server "--as=$1" || rc=1
+  "${KUBECTL[@]}" delete namespace e2e-not-an-app --wait=false >/dev/null 2>&1 || true
+  return "${rc}"
+}
+
+# verify-apps-hosting on|off: una riga ok/ko per controllo; l'esito è il codice di uscita.
+verify_apps_hosting() {
+  local want="${1:-}" sa
+  APPS_KO=0
+  case "${want}" in on | off) ;; *) fail "uso: verify-apps-hosting on|off" ;; esac
+  sa="system:serviceaccount:default:$("${KUBECTL[@]}" -n default get deployment gitstack-core -o jsonpath='{.spec.template.spec.serviceAccountName}')"
+  if [ "${want}" = on ]; then
+    apps_check "core: GITSTACK_CORE_APPS_ENABLED=true" test "$(core_env GITSTACK_CORE_APPS_ENABLED)" = true
+    apps_check "core: GITSTACK_CORE_APPS_DOMAIN impostato" test -n "$(core_env GITSTACK_CORE_APPS_DOMAIN)"
+    apps_check "core: GITSTACK_CORE_APPS_AUTH_URL verso il gateway" test "$(core_env GITSTACK_CORE_APPS_AUTH_URL | grep -c '/_appauth/verify$')" = 1
+    apps_check "gateway: chiavi di firma del login (GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS)" test -n "$(gateway_env_name GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS)"
+    apps_check "gateway: dominio delle app (GITSTACK_GATEWAY_APPS_DOMAIN)" test -n "$(gateway_env_name GITSTACK_GATEWAY_APPS_DOMAIN)"
+    apps_check "gateway: indirizzo pubblico (GITSTACK_GATEWAY_PUBLIC_URL)" test -n "$(gateway_env_name GITSTACK_GATEWAY_PUBLIC_URL)"
+    apps_check "gitstack status: Hosting delle app: acceso" bash -c "sudo gitstack status | grep -q 'Hosting delle app: acceso'"
+    apps_check "config.yaml: apps_enabled: true" bash -c "sudo grep -qx 'apps_enabled: true' /etc/gitstack/config.yaml"
+    apps_check "RBAC: il ServiceAccount di core crea namespace" test "$(can_i "${sa}" create namespaces)" = yes
+    apps_check "RBAC: ... ma non legge i Secret del cluster" test "$(can_i "${sa}" get secrets -n kube-system)" = no
+    apps_check "RBAC: ... né crea Deployment fuori dalle app" test "$(can_i "${sa}" create deployments -n kube-system)" = no
+    apps_check "RBAC: ... né crea ClusterRoleBinding" test "$(can_i "${sa}" create clusterrolebindings)" = no
+    apps_check "RBAC: nessun ClusterRoleBinding verso il ruolo modello" no_workload_binding
+    apps_check "policy: la ValidatingAdmissionPolicy del controller esiste" "${KUBECTL[@]}" get validatingadmissionpolicybinding gitstack-apps-controller-scope
+    apps_check "policy: core non lega il ruolo modello in kube-system" deny_rolebinding_kube_system "${sa}"
+    apps_check "policy: core non cambia le label di kube-system" deny_namespace_label "${sa}"
+    apps_check "policy: core non marca kube-system managed-app" deny_namespace_managed_label "${sa}"
+    apps_check "policy: core non elimina namespace non suoi" deny_namespace_delete "${sa}"
+  else
+    apps_check "core: senza GITSTACK_CORE_APPS_ENABLED" test -z "$(core_env GITSTACK_CORE_APPS_ENABLED)"
+    apps_check "gitstack status: Hosting delle app: spento" bash -c "sudo gitstack status | grep -q 'Hosting delle app: spento'"
+    apps_check "RBAC: nessun ClusterRole delle app" no_apps_clusterroles
+  fi
+  [ "${APPS_KO}" -eq 0 ] || fail "verify-apps-hosting ${want}: ${APPS_KO} controlli ko"
+  printf 'ok  verify-apps-hosting %s\n' "${want}"
+}
+
+# apps-off-api: con l'hosting spento l'API risponde 503 apps_unavailable e nel cluster non nasce nulla.
+apps_off_api() {
+  need E2E_HOST
+  load_seed
+  local before after
+  before="$("${KUBECTL[@]}" get namespaces -l gitstack.io/managed-app=true -o name | wc -l)"
+  api POST "/api/v1/repos/${CI_USER}/${CI_REPO}/apps" '{"name":"web","image":"docker.io/library/nginx:1.27-alpine","port":80}' -H "Authorization: Bearer ${CI_TOKEN}"
+  expect 503 "${CODE}" "creazione app con l'hosting spento"
+  printf '%s' "${BODY}" | jq -e '.code == "apps_unavailable"' >/dev/null || fail "503 senza il codice apps_unavailable"
+  sleep 5
+  after="$("${KUBECTL[@]}" get namespaces -l gitstack.io/managed-app=true -o name | wc -l)"
+  [ "${before}" = "${after}" ] || fail "con l'hosting spento sono comparsi namespace delle app (${before} -> ${after})"
+  api GET "/api/v1/repos/${CI_USER}/${CI_REPO}/apps" '' -H "Authorization: Bearer ${CI_TOKEN}"
+  expect 200 "${CODE}" "elenco app"
+  printf '%s' "${BODY}" | jq -e '.items | length == 0' >/dev/null || fail "con l'hosting spento è stata creata un'app nel modello"
+  printf 'ok  apps-off-api: 503 apps_unavailable, nessun namespace, nessuna app nel modello\n'
+}
+
+# apps-run <dominio>: un'app di prova creata da API risponde al suo indirizzo automatico (HTTPS con la
+# CA interna, risoluzione forzata verso l'host: il DNS wildcard non c'è sul runner).
+apps_run() {
+  need E2E_HOST
+  load_seed
+  local domain="${1:?dominio delle app}" host deadline code="" ns loc
+  local resolve="${HOST}"
+  api POST "/api/v1/repos/${CI_USER}/${CI_REPO}/apps" '{"name":"web","image":"docker.io/library/nginx:1.27-alpine","port":80,"healthCheck":{"path":"/","intervalSeconds":5}}' -H "Authorization: Bearer ${CI_TOKEN}"
+  expect 202 "${CODE}" "creazione app"
+  host="$(printf '%s' "${BODY}" | jq -r '.app.address // empty' | sed -E 's#^https://##')"
+  [ -n "${host}" ] || fail "l'app creata non ha un indirizzo automatico: $(printf '%s' "${BODY}" | head -c 300)"
+  case "${host}" in *".${domain}") ;; *) fail "indirizzo ${host} fuori dal dominio ${domain}" ;; esac
+  ns="$("${KUBECTL[@]}" get namespaces -l gitstack.io/managed-app=true -o jsonpath='{.items[0].metadata.name}')"
+  # Con un token API valido (accesso `login`: read sul repo) il forward-auth del gateway ammette e
+  # l'app risponde. Il DNS wildcard non c'è sul runner: la risoluzione è forzata verso l'host.
+  deadline=$((SECONDS + 420))
+  while [ "${SECONDS}" -lt "${deadline}" ]; do
+    code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -H "Authorization: Bearer ${CI_TOKEN}" -o /dev/null -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
+    [ "${code}" = 200 ] && break
+    sleep 5
+  done
+  [ "${code}" = 200 ] || {
+    "${KUBECTL[@]}" -n "${ns:-default}" get all,ingressroute,middleware -o wide || true
+    "${KUBECTL[@]}" -n "${ns:-default}" describe pods | tail -40 || true
+    "${KUBECTL[@]}" -n default logs deployment/gitstack-gateway --tail=40 || true
+    fail "l'app non risponde con un token valido su https://${host}/ (ultimo codice '${code}')"
+  }
+  curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -H "Authorization: Bearer ${CI_TOKEN}" "https://${host}/" | grep -qi 'nginx' || fail "la risposta di ${host} non è quella dell'app di prova"
+  printf 'ok  apps-run: con un token valido https://%s/ risponde 200 (namespace %s)\n' "${host}" "${ns}"
+  # Senza credenziali: redirect al login (browser) o 401 (client API), mai 200.
+  code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -o /dev/null -D "${STATE_DIR}/apps-noauth.hdr" -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
+  loc="$(grep -i '^location:' "${STATE_DIR}/apps-noauth.hdr" | head -n1 | tr -d '\r' || true)"
+  case "${code}" in
+    301 | 302 | 303 | 307 | 308 | 401) printf 'ok  apps-run: senza credenziali %s %s\n' "${code}" "${loc}" ;;
+    *) fail "senza credenziali l'app doveva dare un redirect al login o 401, trovato '${code}'" ;;
+  esac
+  # Un token falso non passa.
+  code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -H "Authorization: Bearer gst_falso" -o /dev/null -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
+  if [ "${code}" = 200 ]; then fail "un token falso ha passato il forward-auth (200)"; fi
+  printf 'ok  apps-run: con un token falso %s (non 200)\n' "${code}"
+}
+
 latest_backup() {
   local f
   f="$(sudo find /var/backups/gitstack -maxdepth 1 -type f -name 'gitstack-backup-*' -not -name '*.sha256' -printf '%T@ %p\n' | sort -rn | head -n1 | cut -d' ' -f2-)"
@@ -572,6 +746,9 @@ main() {
     ci-run) ci_run ;;
     verify-ci) verify_ci ;;
     verify-apps-domain) verify_apps_domain "$@" ;;
+    verify-apps-hosting) verify_apps_hosting "$@" ;;
+    apps-off-api) apps_off_api ;;
+    apps-run) apps_run "$@" ;;
     latest-backup) latest_backup ;;
     diagnostics) diagnostics "$@" ;;
     *) fail "sottocomando sconosciuto: ${cmd}" ;;

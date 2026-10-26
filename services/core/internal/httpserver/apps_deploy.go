@@ -18,7 +18,7 @@ import (
 // appController dà il controller o risponde 503 se i deploy non sono abilitati.
 func (s *apiServer) appController(w http.ResponseWriter) (AppController, bool) {
 	if s.appCtl == nil {
-		writeError(w, http.StatusServiceUnavailable, "apps_unavailable", "I deploy delle app non sono abilitati su questa istanza.")
+		writeError(w, http.StatusServiceUnavailable, "apps_unavailable", "I deploy delle app non sono abilitati su questa istanza: l'amministratore li accende con «gitstack config set apps on».")
 		return nil, false
 	}
 	return s.appCtl, true

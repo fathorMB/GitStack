@@ -60,6 +60,8 @@ type apiServer struct {
 	appsDomain string
 	// appCtl è il controller dei deploy; nil = deploy non disponibili (503).
 	appCtl AppController
+	// appsOff: hosting spento di proposito (WithAppsHostingOff); la creazione di app risponde 503.
+	appsOff bool
 }
 
 var _ openapi.ServerInterface = (*apiServer)(nil)

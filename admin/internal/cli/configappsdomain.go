@@ -47,8 +47,23 @@ func runConfigSetAppsDomain(ctx context.Context, a *App, args []string) int {
 	if cfg == nil {
 		return code
 	}
+	code = a.applyAppsDomain(ctx, cfg, path, domain, "config set apps-domain")
+	if code != ExitOK || !cfg.AppsEnabled || cfg.AppsDomain == domain {
+		return code
+	}
+	// Hosting acceso: core riceve il dominio nuovo (GITSTACK_CORE_APPS_DOMAIN).
+	if c := a.helmApps(ctx, cfg, "config set apps-domain", "apps.domain="+domain); c != ExitOK {
+		return c
+	}
+	return ExitOK
+}
+
+// applyAppsDomain imposta il dominio delle app: controlli, certificato wildcard e config.yaml.
+// Non tocca il chart (lo fa chi chiama, se l'hosting è acceso). Dopo, cfg.AppsDomain è il dominio nuovo
+// solo se il chiamante lo aggiorna: qui resta il valore di prima, perché serve a capire se è cambiato.
+func (a *App) applyAppsDomain(ctx context.Context, cfg *config.Config, path, domain, cmd string) int {
 	if domain == strings.ToLower(cfg.Host) {
-		a.errorf("config set apps-domain: %q coincide con l'host di GitStack: scegli un dominio distinto (consigliato) o un suo sottodominio, per esempio apps.%s.", domain, cfg.Host)
+		a.errorf(cmd+": %q coincide con l'host di GitStack: scegli un dominio distinto (consigliato) o un suo sottodominio, per esempio apps.%s.", domain, cfg.Host)
 		return ExitUsage
 	}
 	if cfg.AppsDomain == domain {
@@ -80,7 +95,7 @@ func runConfigSetAppsDomain(ctx context.Context, a *App, args []string) int {
 		_, _ = fmt.Fprintf(a.Stdout, "==> Rigenero il certificato (SAN wildcard: *.%s)\n", domain)
 		out, err := a.Runner.Run(ctx, []string{"GITSTACK_TLS_DIR=" + tlsDir}, tlsBin, "ensure", "--apps-domain", domain)
 		if err != nil {
-			a.errorf("config set apps-domain: gitstack-tls: %v\n%s", err, strings.TrimSpace(string(out)))
+			a.errorf(cmd+": gitstack-tls: %v\n%s", err, strings.TrimSpace(string(out)))
 			return ExitUnexpected
 		}
 		if len(out) > 0 {
@@ -92,7 +107,7 @@ func runConfigSetAppsDomain(ctx context.Context, a *App, args []string) int {
 
 	// 2. Configurazione, per ultima: se il passo prima fallisce si può rilanciare.
 	if err := config.SetFields(path, map[string]string{"apps_domain": domain}); err != nil {
-		a.errorf("config set apps-domain: %v", err)
+		a.errorf(cmd+": %v", err)
 		return ExitUnexpected
 	}
 	updateInstallConfKey(tlsDir, "APPS_DOMAIN", domain)
