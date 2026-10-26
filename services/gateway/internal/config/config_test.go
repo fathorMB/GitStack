@@ -287,3 +287,21 @@ func TestLoad_RegistryURL(t *testing.T) {
 		}
 	}
 }
+
+func TestLoad_LoginDavantiAlleApp(t *testing.T) {
+	cfg, err := load(lookupFrom(map[string]string{
+		envCoreURL:            "http://core:8080",
+		envAppAuthSigningKeys: " c2VtZQ== ",
+		envPublicURL:          "https://git.example.com/",
+		envAppsDomain:         ".Apps.Example.com.",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AppAuthSigningKeys != "c2VtZQ==" || cfg.PublicURL != "https://git.example.com" || cfg.AppsDomain != "apps.example.com" {
+		t.Fatalf("login app: %q %q %q", cfg.AppAuthSigningKeys, cfg.PublicURL, cfg.AppsDomain)
+	}
+	if _, err := load(lookupFrom(map[string]string{envCoreURL: "http://core:8080", envPublicURL: "git.example.com/qualcosa"})); err == nil {
+		t.Fatal("PUBLIC_URL senza schema o con percorso va rifiutata")
+	}
+}

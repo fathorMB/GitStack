@@ -103,21 +103,28 @@ func TestBuildServiceEdRotta(t *testing.T) {
 	if svc.Spec.Ports[0].Port != 80 || svc.Spec.Ports[0].TargetPort.String() != "http" {
 		t.Fatalf("service: %+v", svc.Spec.Ports)
 	}
-	r := BuildRoute(app, "web-handbook-alice.apps.example.com", "gitstack/forward-auth")
+	r := BuildRoute(app, "web-handbook-alice.apps.example.com", true)
 	spec := r.Object["spec"].(map[string]any)
 	route := spec["routes"].([]any)[0].(map[string]any)
 	if route["match"] != "Host(`web-handbook-alice.apps.example.com`)" {
 		t.Fatalf("match: %v", route["match"])
 	}
-	mw := route["middlewares"].([]any)[0].(map[string]any)
-	if mw["name"] != "forward-auth" || mw["namespace"] != "gitstack" {
-		t.Fatalf("middleware: %v", mw)
+	names := func(r map[string]any) []string {
+		var out []string
+		for _, m := range r["middlewares"].([]any) {
+			out = append(out, m.(map[string]any)["name"].(string))
+		}
+		return out
+	}
+	if got := names(route); len(got) != 2 || got[0] != MiddlewareStrip || got[1] != MiddlewareAuth {
+		t.Fatalf("con login prima si svuotano le intestazioni, poi il forward-auth: %v", got)
 	}
 	if _, ok := spec["tls"]; !ok || spec["entryPoints"].([]any)[0] != "websecure" {
 		t.Fatalf("tls/entryPoints: %v", spec)
 	}
-	if _, ok := BuildRoute(app, "h", "").Object["spec"].(map[string]any)["routes"].([]any)[0].(map[string]any)["middlewares"]; ok {
-		t.Fatal("senza middleware non va dichiarato")
+	none := BuildRoute(app, "h", false).Object["spec"].(map[string]any)["routes"].([]any)[0].(map[string]any)
+	if got := names(none); len(got) != 1 || got[0] != MiddlewareStrip {
+		t.Fatalf("senza login resta solo la pulizia delle intestazioni: %v", got)
 	}
 }
 
@@ -132,7 +139,7 @@ func TestRouteHost_LoginSenzaMiddlewareNonHaRotta(t *testing.T) {
 	if h := c.routeHost(app, ver.Config); h != "" {
 		t.Fatalf("login senza forward-auth: nessuna rotta (mai esporre senza login), trovato %q", h)
 	}
-	c.cfg.AuthMiddleware = "fa"
+	c.cfg.AuthURL, c.cfg.AuthSecret = "http://gw/_appauth/verify", "s3"
 	if h := c.routeHost(app, ver.Config); h != "web-handbook-alice.apps.example.com" {
 		t.Fatalf("host: %q", h)
 	}
