@@ -96,9 +96,9 @@ func TestApps_VolumiSuK3d(t *testing.T) {
 	e := newDeployEnv(t)
 	e.repo("handbook", true)
 	base := "/repos/alice/handbook/apps"
-	const img1, img2 = "docker.io/library/nginx:1.27-alpine", "docker.io/library/nginx:1.27.5-alpine"
+	const img1, img2 = "docker.io/nginxinc/nginx-unprivileged:1.27-alpine", "docker.io/nginxinc/nginx-unprivileged:1.27.5-alpine"
 
-	rec := e.do(http.MethodPost, base, "alice", `{"name":"wiki","image":"`+img1+`","port":80,"healthCheck":{"path":"/","intervalSeconds":1}}`)
+	rec := e.do(http.MethodPost, base, "alice", `{"name":"wiki","image":"`+img1+`","port":8080,"healthCheck":{"path":"/","intervalSeconds":1}}`)
 	e.want(rec, http.StatusAccepted, "")
 	var created openapi.AppCreated
 	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
