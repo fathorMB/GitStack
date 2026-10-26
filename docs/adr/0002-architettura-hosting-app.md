@@ -80,6 +80,62 @@ Un proxy dedicato duplicherebbe sessioni e policy; header non firmati o token in
 spoofing/riuso: scartati. Rischi: TTL breve, rotazione con doppia chiave e verifica WebSocket/
 streaming sono necessari; un header già consegnato non è revocabile subito.
 
+### Nomi interni fra app dello stesso repo (H15, GIT-379)
+
+Aggiornamento del 2026-10-26 per il Pilota retail.it [c_ec914aebbbb8b274]: dentro lo stesso repo
+ogni app si raggiunge con il proprio nome, per esempio `http://api` dal sito, stabile tra
+deploy, rollback, riavvio e scala. Oggi ogni app ha il suo namespace e un Service `app` (`WorkloadName`):
+il nome `api` non risolve da un altro namespace.
+
+**Meccanismo scelto: un Service `ExternalName` per ogni app sorella, nel namespace di ciascuna app.**
+Per l'app A del repo R, il reconciler crea nel namespace di A, per ogni altra app B di R, un Service
+`<nome di B>` di tipo `ExternalName` con `externalName: app.gitstack-app-<id di B>.svc.cluster.local`
+(il Service `app` di B). Da A, `http://api` risolve con un CNAME verso il Service di B. Dettagli:
+
+- **Stabilità.** L'alias punta al Service `app` di B, che il controller non ricrea a ogni deploy:
+  cambia solo la revisione dietro il selector. Deploy, rollback automatico e manuale, riavvio e
+  scala non toccano né l'alias né il Service. Non ci sono IP da aggiornare (nessun Endpoints a mano).
+- **Porta.** `ExternalName` non rimappa le porte: il client usa la porta del Service di B, cioè la
+  costante `servicePort` (80), qualunque sia la porta del container. Si scrive `http://api` o `http://api:80`.
+  L'app con `Port` vuota non ha Service e non viene pubblicata.
+- **Perimetro.** Gli alias sono creati solo fra app con lo stesso `repo_id`, mai altrove: un'app di
+  un altro repo con lo stesso nome non ha alcun alias nel namespace e non risolve. Il nome inoltre è
+  una singola label nel namespace: non esiste un DNS globale. Anche con un nome indovinato
+  (`app.gitstack-app-<id>.svc`) la NetworkPolicy `app-isolation` di GIT-344 (ingress ed egress
+  solo verso namespace e pod con lo stesso `gitstack.io/repo-id`) blocca il traffico: l'alias è
+  comodità di nome, non un permesso. Le due barriere sono indipendenti.
+- **DNS.** La risoluzione richiede che il pod possa interrogare il DNS del cluster. L'egress di
+  `app-isolation` oggi è solo verso lo stesso repo: GIT-379 aggiunge alla stessa policy (l'unica per
+  namespace, come prevede GIT-344) la sola regola UDP/TCP 53 verso `kube-system` `k8s-app=kube-dns`,
+  senza aprire altro. Il nome interno non apre quindi nessuna uscita verso internet.
+- **Aggiornamento.** L'insieme degli alias è derivato dallo stato: a ogni `Sync`/deploy il reconciler
+  calcola le app del repo con Service e fa create/update degli alias mancanti o cambiati e
+  cancella gli alias con label `gitstack.io/sibling-alias=true` non più voluti. Creazione di B: alias
+  aggiunto a tutte le sorelle e alias delle sorelle in B; rinomina: vecchio alias tolto, nuovo creato;
+  eliminazione: alias tolto da tutte le sorelle (con il namespace di B). Un'app rimossa o in errore
+  lascia al massimo un alias che non risponde per un ciclo di Sync. Il reconciler tocca solo Service
+  con la sua label, e solo in namespace `managed-app` dello stesso repo.
+- **Collisioni.** Un alias non è creato per l'app stessa (A usa già `app`/localhost) né quando il nome
+  coincide con `app`, `kubernetes` o altro nome già occupato nel namespace (Service o altro): è
+  saltato con un evento di avviso, non è un errore del deploy. Il nome deve essere una label DNS-1035
+  valida dopo la normalizzazione di `pkg/names`; altrimenti l'app non è pubblicata (l'host esterno
+  resta). Un'app non raggiunge sé stessa per nome.
+- **Documentazione.** `docs/` per chi scrive l'app: nome, porta 80, solo stesso repo, caso `app`.
+
+Alternative scartate: (1) un Service con Endpoints a mano: IP dei pod che cambiano a ogni deploy,
+da riallineare; (2) un Service ExternalName verso l'host esterno `<app>-<repo>-<owner>.apps…`:
+passa dal forward-auth e dal TLS, non è «interno» e la NetworkPolicy lo bloccherebbe; (3) un
+namespace condiviso per repo con Service `<app>`: risolve il nome ma annulla l'isolamento per
+app (quota, policy, RBAC, rimozione) già scelto sopra; (4) CoreDNS con una zona per repo: modifica
+una risorsa di sistema condivisa e richiede un privilegio di cluster in più per `core`; (5) un
+proxy/mesh: componente nuovo, contro la regola «pochi servizi».
+Rischi: più Service per namespace (n·(n−1) per repo, con poche app per repo); un `ExternalName`
+è un CNAME, quindi il tempo di cambio è quello del TTL DNS del cluster; `ExternalName` richiede
+RBAC `create/update/delete services` che il Role del controller già ha per gli stessi Service; gli
+header `Host` verso l'app sono quelli scritti dal chiamante (`api`), l'app non deve dipenderne.
+Prova prevista: probe k3d con una riga ok/ko per controllo (`api` raggiunta dal pod `sito`
+anche dopo un nuovo deploy di `api`; app `api` di un altro repo né risolta né raggiunta).
+
 ### Salute, versione e rollback
 
 Ogni revisione è un Deployment con readiness/liveness probe, `progressDeadlineSeconds` e
