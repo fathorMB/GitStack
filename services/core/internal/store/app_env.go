@@ -83,7 +83,8 @@ func writeConfigVersion(ctx context.Context, tx pgx.Tx, appID uuid.UUID, number 
 	if err != nil {
 		return AppVersion{}, err
 	}
-	if err := insertAppVersion(ctx, tx, appID, number, "config", active.Image, cfg, &summary, nil, nil, actor, now); err != nil {
+	// Stessa immagine della versione attiva: ne eredita il commit (H14).
+	if err := insertAppVersion(ctx, tx, appID, number, "config", active.Image, cfg, &summary, nil, active.CommitSha, actor, now); err != nil {
 		return AppVersion{}, err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO core.app_deploys (id, app_id, version, started_at) VALUES ($1, $2, $3, $4)`, uuid.New(), appID, number, now); err != nil {

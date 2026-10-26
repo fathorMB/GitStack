@@ -29,6 +29,8 @@ type PackageTag struct {
 	HasSbom   bool           `json:"hasSbom"`
 	Protected bool           `json:"protected"`
 	PushedBy  *PackagePusher `json:"pushedBy,omitempty"`
+	// Revision è il commit dell'etichetta OCI revision (H14, GIT-386): assente se non c'è.
+	Revision string `json:"revision,omitempty"`
 }
 
 // RemovedPackageTag è un tag eliminato da una regola di pulizia.

@@ -222,6 +222,9 @@ const (
 	ReservedEnvPrefix = "GITSTACK_"
 	EnvAppVersion     = "GITSTACK_APP_VERSION"
 	EnvDeployedAt     = "GITSTACK_DEPLOYED_AT"
+	// EnvCommitSha è il commit dell'etichetta revision dell'immagine (GIT-386), letto da core al
+	// deploy e salvato nella versione: qui non si chiama nessuno.
+	EnvCommitSha = "GITSTACK_COMMIT_SHA"
 )
 
 // IsReservedEnvName dice se il nome di una variabile o di un segreto dell'app usa il prefisso
@@ -232,7 +235,8 @@ func IsReservedEnvName(name string) bool {
 
 // systemEnv sono le variabili di sistema di una versione: GITSTACK_APP_VERSION è il tag
 // dell'immagine (assente se l'immagine è solo per digest), GITSTACK_DEPLOYED_AT è l'istante della
-// versione in RFC 3339 UTC. Restano uguali a ogni riavvio della stessa versione.
+// versione in RFC 3339 UTC, GITSTACK_COMMIT_SHA il commit della versione (assente se nil, H14).
+// Restano uguali a ogni riavvio della stessa versione.
 func systemEnv(v store.AppVersion) map[string]string {
 	out := map[string]string{}
 	if tag := imageTag(v.Image.Reference); tag != "" {
@@ -240,6 +244,9 @@ func systemEnv(v store.AppVersion) map[string]string {
 	}
 	if !v.CreatedAt.IsZero() {
 		out[EnvDeployedAt] = v.CreatedAt.UTC().Format(time.RFC3339)
+	}
+	if v.CommitSha != nil && *v.CommitSha != "" {
+		out[EnvCommitSha] = *v.CommitSha
 	}
 	return out
 }

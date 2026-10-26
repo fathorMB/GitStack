@@ -59,7 +59,9 @@ func (s *apiServer) DeployApp(w http.ResponseWriter, r *http.Request, owner open
 		writeFieldError(w, "image", msg)
 		return
 	}
-	a, ver, err := s.resources.BeginAppDeploy(r.Context(), repo.ID, app, store.NewAppDeploy{Trigger: "manual", Image: img, Actor: actor.store()}, s.now())
+	a, ver, err := s.resources.BeginAppDeploy(r.Context(), repo.ID, app, store.NewAppDeploy{
+		Trigger: "manual", Image: img, Actor: actor.store(), CommitSha: s.imageCommit(r.Context(), repo, img),
+	}, s.now())
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "not_found", "App non trovata.")
@@ -125,6 +127,8 @@ func (s *apiServer) RollbackApp(w http.ResponseWriter, r *http.Request, owner op
 	_, ver, err := s.resources.BeginAppDeploy(r.Context(), repo.ID, app, store.NewAppDeploy{
 		Trigger: "rollback", Image: target.Image, RollbackOf: &target.Number, Summary: &summary,
 		ConfigFrom: target.Number, PauseAutoDeploy: pause, Actor: actor.store(),
+		// Stessa immagine della versione di destinazione: ne riprende il commit (H14).
+		CommitSha: target.CommitSha,
 	}, s.now())
 	if err != nil {
 		if !s.writeDeployConflict(w, err) {

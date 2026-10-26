@@ -389,7 +389,7 @@ func (s *apiServer) CreateApp(w http.ResponseWriter, r *http.Request, owner open
 	}
 	app, ver, err := s.resources.CreateApp(r.Context(), store.NewApp{
 		RepoID: repo.ID, Owner: repo.OwnerName, Name: in.Name, AddressLabel: label, Image: img, Config: cfg,
-		FollowBranch: follow, Actor: actor.store(),
+		FollowBranch: follow, Actor: actor.store(), CommitSha: s.imageCommit(r.Context(), repo, img),
 	}, s.now())
 	if err != nil {
 		if !s.writeAppConflict(w, err) {
