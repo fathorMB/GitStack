@@ -167,14 +167,15 @@ func TestApps_SegretiKubernetesERollback(t *testing.T) {
 	}
 
 	e.want(e.do(http.MethodDelete, appPath, "alice", ""), http.StatusNoContent, "")
-	deadline := time.Now().Add(30 * time.Second)
+	// Il namespace sparisce solo dopo il grace period del pod (30 s) e i finalizer.
+	deadline := time.Now().Add(150 * time.Second)
 	for {
 		_, err := e.kube.CoreV1().Namespaces().Get(context.Background(), e.ns, metav1.GetOptions{})
 		if err != nil {
 			break
 		}
 		if time.Now().After(deadline) {
-			t.Fatal("il Secret non e' stato eliminato con il namespace dell'app")
+			t.Fatalf("il namespace %s dell'app non e' sparito entro 150 s dal DELETE (pod in grace period o finalizer): il Secret Kubernetes non e' stato eliminato", e.ns)
 		}
 		time.Sleep(time.Second)
 	}
