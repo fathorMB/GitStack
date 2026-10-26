@@ -61,3 +61,8 @@ func (s *apiServer) UpdateResource(w http.ResponseWriter, r *http.Request, _ ope
 func (s *apiServer) DeleteResource(w http.ResponseWriter, r *http.Request, _ openapi.ResourceIdParam) {
 	s.proxy.ServeHTTP(w, r)
 }
+
+// GetInstanceCa (GIT-383): la CA interna la legge core dal ConfigMap montato.
+func (s *apiServer) GetInstanceCa(w http.ResponseWriter, r *http.Request) {
+	s.proxy.ServeHTTP(w, r)
+}
