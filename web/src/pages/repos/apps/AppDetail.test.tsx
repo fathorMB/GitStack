@@ -14,6 +14,10 @@ vi.mock('../../../lib/appsApi', () => ({
   fetchAppVersions: vi.fn(),
   fetchAppAccess: vi.fn(),
   saveAppAccess: vi.fn(),
+  fetchAppAccessMembers: vi.fn(),
+  addAppAccessMember: vi.fn(),
+  removeAppAccessMember: vi.fn(),
+  fetchAppAccessInvite: vi.fn(),
   restartApp: vi.fn(),
   deployApp: vi.fn(),
   scaleApp: vi.fn(),
@@ -172,6 +176,7 @@ describe('AppAccessPage (H7, interna)', () => {
   const access = { mode: 'login' as const, publicAppsEnabled: false, address: 'web-handbook-acme.apps.acme.it', certificate: 'instance_ca' as const };
   const mount = (role: AppRole) => {
     vi.mocked(api.fetchAppAccess).mockResolvedValue(access);
+    vi.mocked(api.fetchAppAccessMembers).mockResolvedValue([]);
     renderPage(<AppAccessPage repo={repo} app={makeApp()} perms={perms(role)} onChange={vi.fn()} />);
   };
 

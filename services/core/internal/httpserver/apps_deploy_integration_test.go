@@ -5,6 +5,8 @@ package httpserver_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -14,6 +16,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -46,6 +50,184 @@ func TestApps_DeployPermessiESenzaController(t *testing.T) {
 		e.want(e.do(c.method, c.path, "carol", c.body), http.StatusForbidden, "forbidden")
 		e.want(e.do(c.method, c.path, "bob", c.body), http.StatusServiceUnavailable, "apps_unavailable")
 	}
+}
+
+// H9: le policy generate dal controller sono applicate davvero dal CNI di k3d,
+// non solo confrontate come manifest. I probe usano IP dei pod, mentre il
+// proxy prova anche la risoluzione DNS che la policy apre verso kube-dns.
+func TestApps_IsolamentoSuK3d(t *testing.T) {
+	e := newDeployEnv(t)
+	ctx := context.Background()
+	repo := uuid.New()
+	newApp := func() store.App { return store.App{ID: uuid.New(), RepoID: repo} }
+	source, peer := newApp(), newApp()
+	other := store.App{ID: uuid.New(), RepoID: uuid.New()}
+	for _, a := range []store.App{source, peer, other} {
+		ns := apps.BuildNamespace(a, false)
+		if _, err := e.kube.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.kube.NetworkingV1().NetworkPolicies(ns.Name).Create(ctx, apps.BuildNetworkPolicy(a), metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), ns.Name, metav1.DeleteOptions{}) })
+	}
+	// I servizi GitStack e il proxy sono esterni agli spazi app e senza label GitStack.
+	systemNS := "gitstack-h9-system-" + strings.ToLower(uuid.NewString()[:8])
+	if _, err := e.kube.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: systemNS}}, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = e.kube.CoreV1().Namespaces().Delete(context.Background(), systemNS, metav1.DeleteOptions{})
+	})
+	server := func(ns, name, image string, labels map[string]string, command []string, ports []corev1.ContainerPort) string {
+		p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns, Labels: labels},
+			Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyAlways, Containers: []corev1.Container{{Name: "server", Image: image, Command: command, Ports: ports}}}}
+		p, err := e.kube.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return waitPodIP(t, e.kube, p.Namespace, p.Name)
+	}
+	appLabels := map[string]string{apps.LabelManaged: "true"}
+	peerIP := server(apps.Namespace(peer.ID), "peer", "busybox:1.36", appLabels, []string{"sh", "-c", "nc -lk -p 8080"}, []corev1.ContainerPort{{Name: "http", ContainerPort: 8080}})
+	postgresIP := server(systemNS, "postgres", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "postgres"}, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
+	natsIP := server(systemNS, "nats", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "nats"}, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
+	coreIP := server(systemNS, "core", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "core"}, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
+	httpIP := server(systemNS, "http-target", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "http-target"}, []string{"httpd", "-f", "-p", "8080"}, nil)
+	directIP := server(systemNS, "direct-target", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "direct-target"}, []string{"sh", "-c", "nc -lk -p 8081"}, nil)
+	otherIP := server(apps.Namespace(other.ID), "other", "busybox:1.36", appLabels, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
+	probe := func(ns, name, ip string, port int, allowed bool, labels map[string]string) {
+		check := fmt.Sprintf("if nc -z -w 2 %s %d; then ", ip, port)
+		if allowed {
+			check += "echo OK"
+		} else {
+			check += "echo KO; exit 1"
+		}
+		check += "; else "
+		if allowed {
+			check += "echo KO; exit 1"
+		} else {
+			check += "echo OK"
+		}
+		check += "; fi"
+		p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns, Labels: labels},
+			Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{Name: "probe", Image: "busybox:1.36", Command: []string{"sh", "-c", check}}}}}
+		if _, err := e.kube.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		if got := waitPodLog(t, e.kube, p.Namespace, p.Name); got != "OK" {
+			t.Fatalf("%s: %s", name, got)
+		}
+		t.Logf("OK: %s", name)
+	}
+	probe(apps.Namespace(source.ID), "same-repo", peerIP, 8080, true, appLabels)
+	probe(apps.Namespace(source.ID), "postgres", postgresIP, 8080, false, appLabels)
+	probe(apps.Namespace(source.ID), "nats", natsIP, 8080, false, appLabels)
+	probe(apps.Namespace(source.ID), "core", coreIP, 8080, false, appLabels)
+	probe(apps.Namespace(source.ID), "other-repo", otherIP, 8080, false, appLabels)
+	probe("kube-system", "traefik-ingress", peerIP, 8080, true, map[string]string{"app.kubernetes.io/name": "traefik"})
+	probe("kube-system", "non-traefik-ingress", peerIP, 8080, false, nil)
+
+	proxyIP := server(systemNS, "proxy", "vimagick/tinyproxy@sha256:72b441b95ee1e641af948f68f09492f9f795ead72b73954414e339168c98ad8c", map[string]string{"app.kubernetes.io/name": "tinyproxy"}, nil, nil)
+	policy := apps.BuildNetworkPolicy(source, apps.NetworkPolicyOptions{ProxyEnv: map[string]string{"HTTP_PROXY": "http://" + proxyIP + ":8888"}})
+	if _, err := e.kube.NetworkingV1().NetworkPolicies(policy.Namespace).Update(ctx, policy, metav1.UpdateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	proxyCheck := fmt.Sprintf("wget -qO- http://%s:8080 >/dev/null && echo OK || { echo KO; exit 1; }", httpIP)
+	p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "proxy-egress", Namespace: apps.Namespace(source.ID), Labels: appLabels}, Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{Name: "probe", Image: "busybox:1.36", Env: []corev1.EnvVar{{Name: "http_proxy", Value: "http://" + proxyIP + ":8888"}, {Name: "HTTP_PROXY", Value: "http://" + proxyIP + ":8888"}}, Command: []string{"sh", "-c", proxyCheck}}}}}
+	if _, err := e.kube.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if got := waitPodLog(t, e.kube, p.Namespace, p.Name); got != "OK" {
+		t.Fatalf("proxy-egress: %s", got)
+	}
+	logs, err := e.kube.CoreV1().Pods(systemNS).GetLogs("proxy", &corev1.PodLogOptions{}).DoRaw(ctx)
+	if err != nil || !strings.Contains(string(logs), httpIP) {
+		t.Fatalf("proxy senza richiesta verso %s: %v %s", httpIP, err, logs)
+	}
+	t.Logf("OK: proxy-egress")
+	probe(apps.Namespace(source.ID), "direct-external", directIP, 8081, false, appLabels)
+
+	// Pod Security è applicata dall'API server: baseline blocca privilegi e
+	// hostPath; restricted blocca anche l'immagine che tenta di girare come root.
+	rejected := func(ns, name string, spec corev1.PodSpec) {
+		t.Helper()
+		_, err := e.kube.CoreV1().Pods(ns).Create(ctx, &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns}, Spec: spec}, metav1.CreateOptions{})
+		if !apierrors.IsForbidden(err) || !strings.Contains(err.Error(), "violates PodSecurity") {
+			t.Fatalf("%s: atteso Forbidden violates PodSecurity, ricevuto %v", name, err)
+		}
+		t.Logf("OK: %s rifiutato da PodSecurity", name)
+	}
+	privileged := true
+	rejected(apps.Namespace(source.ID), "privileged", corev1.PodSpec{Containers: []corev1.Container{{Name: "x", Image: "busybox:1.36", SecurityContext: &corev1.SecurityContext{Privileged: &privileged}}}})
+	rejected(apps.Namespace(source.ID), "hostpath", corev1.PodSpec{Containers: []corev1.Container{{Name: "x", Image: "busybox:1.36", VolumeMounts: []corev1.VolumeMount{{Name: "host", MountPath: "/host"}}}}, Volumes: []corev1.Volume{{Name: "host", VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/"}}}}})
+	restricted := store.App{ID: uuid.New(), RepoID: repo}
+	rns := apps.BuildNamespace(restricted, true)
+	if _, err := e.kube.CoreV1().Namespaces().Create(ctx, rns, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = e.kube.CoreV1().Namespaces().Delete(context.Background(), rns.Name, metav1.DeleteOptions{})
+	})
+	f := false
+	rootSC := &corev1.SecurityContext{AllowPrivilegeEscalation: &f, Capabilities: &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}}, SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}, RunAsUser: ptr(int64(0)), RunAsNonRoot: &f}
+	rejected(rns.Name, "root", corev1.PodSpec{Containers: []corev1.Container{{Name: "x", Image: "busybox:1.36", SecurityContext: rootSC}}})
+	trueValue := true
+	nonRoot := rootSC.DeepCopy()
+	nonRoot.RunAsUser = ptr(int64(10001))
+	nonRoot.RunAsNonRoot = &trueValue
+	for _, tc := range []struct {
+		name, ns string
+		sc       *corev1.SecurityContext
+	}{{"restricted-nonroot", rns.Name, nonRoot}, {"baseline-root", apps.Namespace(source.ID), rootSC}} {
+		if _, err := e.kube.CoreV1().Pods(tc.ns).Create(ctx, &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: tc.name, Namespace: tc.ns}, Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "x", Image: "busybox:1.36", SecurityContext: tc.sc}}}}, metav1.CreateOptions{}); err != nil {
+			t.Fatalf("%s deve essere accettato: %v", tc.name, err)
+		}
+		t.Logf("OK: %s accettato", tc.name)
+	}
+}
+
+func ptr(v int64) *int64 { return &v }
+
+func waitPodIP(t *testing.T, kube kubernetes.Interface, ns, name string) string {
+	t.Helper()
+	deadline := time.Now().Add(90 * time.Second)
+	for time.Now().Before(deadline) {
+		p, err := kube.CoreV1().Pods(ns).Get(context.Background(), name, metav1.GetOptions{})
+		if err == nil && p.Status.PodIP != "" && p.Status.Phase == corev1.PodRunning {
+			return p.Status.PodIP
+		}
+		time.Sleep(time.Second)
+	}
+	t.Fatalf("pod %s/%s senza IP", ns, name)
+	return ""
+}
+
+func waitPodLog(t *testing.T, kube kubernetes.Interface, ns, name string) string {
+	t.Helper()
+	deadline := time.Now().Add(90 * time.Second)
+	for time.Now().Before(deadline) {
+		p, err := kube.CoreV1().Pods(ns).Get(context.Background(), name, metav1.GetOptions{})
+		if err == nil && (p.Status.Phase == corev1.PodSucceeded || p.Status.Phase == corev1.PodFailed) {
+			if p.Status.Phase != corev1.PodSucceeded {
+				t.Fatalf("probe %s/%s fallito: %+v", ns, name, p.Status)
+			}
+			r, err := kube.CoreV1().Pods(ns).GetLogs(name, &corev1.PodLogOptions{}).Stream(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Close()
+			b, err := io.ReadAll(r)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return strings.TrimSpace(string(b))
+		}
+		time.Sleep(time.Second)
+	}
+	t.Fatalf("probe %s/%s non concluso", ns, name)
+	return ""
 }
 
 type appsDeployEnv struct {

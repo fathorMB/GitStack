@@ -5,6 +5,10 @@ import {
   deployApp as sdkDeployApp,
   getApp as sdkGetApp,
   getAppAccess as sdkGetAppAccess,
+  addAppAccessMember as sdkAddAppAccessMember,
+  getAppAccessInvite as sdkGetAppAccessInvite,
+  listAppAccessMembers as sdkListAppAccessMembers,
+  removeAppAccessMember as sdkRemoveAppAccessMember,
   getAppMetrics as sdkGetAppMetrics,
   getAppLogs as sdkGetAppLogs,
   listAppSecrets as sdkListAppSecrets,
@@ -25,6 +29,8 @@ import {
 import type {
   App,
   AppAccess,
+  AppAccessInvite,
+  AppAccessMember,
   AppAccessMode,
   AppCreateInput,
   AppCreated,
@@ -39,7 +45,7 @@ import type {
 } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
-export type { App, AppAccess, AppAccessMode, AppCreateInput, AppCreated, AppList, AppMetrics, AppUpdateInput, AppVersion, AppVersionList, AppLogLine, AppSecretList, AppVariableList };
+export type { App, AppAccess, AppAccessInvite, AppAccessMember, AppAccessMode, AppCreateInput, AppCreated, AppList, AppMetrics, AppUpdateInput, AppVersion, AppVersionList, AppLogLine, AppSecretList, AppVariableList };
 
 const at = (owner: string, repo: string) => ({ baseUrl: API_BASE_URL, path: { owner, repo } });
 const atApp = (owner: string, repo: string, app: string) => ({ baseUrl: API_BASE_URL, path: { owner, repo, app } });
@@ -129,4 +135,23 @@ export async function fetchAppAccess(owner: string, repo: string, app: string): 
 
 export async function saveAppAccess(owner: string, repo: string, app: string, mode: AppAccessMode): Promise<AppAccess> {
   return unwrap(await sdkSetAppAccess({ ...atApp(owner, repo, app), body: { mode } }));
+}
+
+// ---- lista di accesso dell'app (H6, GIT-376) ----
+
+export async function fetchAppAccessMembers(owner: string, repo: string, app: string): Promise<AppAccessMember[]> {
+  return unwrap(await sdkListAppAccessMembers(atApp(owner, repo, app))).items;
+}
+
+export async function addAppAccessMember(owner: string, repo: string, app: string, kind: 'user' | 'team', name: string): Promise<AppAccessMember> {
+  return unwrap(await sdkAddAppAccessMember({ ...atApp(owner, repo, app), body: { kind, name } }));
+}
+
+export async function removeAppAccessMember(owner: string, repo: string, app: string, memberId: string): Promise<void> {
+  unwrapEmpty(await sdkRemoveAppAccessMember({ ...atApp(owner, repo, app), path: { ...atApp(owner, repo, app).path, memberId } }));
+}
+
+/** Invito ai tester: testo, link alla guida CA e impronta arrivano dall'API, il client non li compone. */
+export async function fetchAppAccessInvite(owner: string, repo: string, app: string): Promise<AppAccessInvite> {
+  return unwrap(await sdkGetAppAccessInvite(atApp(owner, repo, app)));
 }

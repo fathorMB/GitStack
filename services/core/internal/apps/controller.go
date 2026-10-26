@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"strconv"
 	"strings"
 	"sync"
@@ -71,14 +72,35 @@ type Config struct {
 	SyncEvery    time.Duration
 	// PullCredentials: credenziali del registry del repo (pull secret). Nil: nessun pull secret.
 	PullCredentials func(ctx context.Context, app store.App) (*PullCredential, error)
-	// Secrets decifra i valori correnti da iniettare nei pod. E' lo stesso keyring dei segreti
-	// dell'app; nil consente solo versioni senza segreti.
+	// ProxyEnv passa HTTP(S)_PROXY e NO_PROXY della configurazione N9 ai pod.
+	ProxyEnv map[string]string
+	// TraefikNamespace è il namespace dell'Ingress controller k3s.
+	TraefikNamespace string
+	// Secrets decifra i valori correnti dei segreti dell'app: si iniettano nei pod e si usano per
+	// mascherarli nei log (GIT-348, GIT-350). Nil: le righe delle copie non si raccolgono, e nei pod
+	// non entra nessun segreto.
 	Secrets store.AppSealer
-	Now     func() time.Time
-	Log     *slog.Logger
+	// PodLogs legge le righe di una copia; nil usa l'API di Kubernetes (i test la sostituiscono).
+	PodLogs PodLogReader
+	// LogsEvery: ogni quanto si raccolgono le righe delle copie (default 2 s, la «diretta»).
+	LogsEvery time.Duration
+	// LogRetention: per quanto si tengono le righe (default 7 giorni); LogMaxBytes: per app (default 1 GiB).
+	LogRetention time.Duration
+	LogMaxBytes  int64
+	Now          func() time.Time
+	Log          *slog.Logger
 }
 
 func (c *Config) defaults() {
+	if c.LogsEvery <= 0 {
+		c.LogsEvery = defaultLogsEvery
+	}
+	if c.LogRetention <= 0 {
+		c.LogRetention = defaultLogRetention
+	}
+	if c.LogMaxBytes <= 0 {
+		c.LogMaxBytes = defaultLogMaxBytes
+	}
 	if c.ProgressTimeout <= 0 {
 		c.ProgressTimeout = 120 * time.Second
 	}
@@ -112,12 +134,15 @@ type Controller struct {
 	kick    chan struct{}
 	mu      sync.Mutex
 	running map[uuid.UUID]bool
+	// oomSeen: ultimo riavvio per OOM già registrato, per app e copia (mu).
+	oomSeen map[uuid.UUID]map[string]int32
 }
 
 // New crea il controller. dyn può essere nil: allora non crea le rotte Traefik.
 func New(st *store.Store, kube kubernetes.Interface, dyn dynamic.Interface, cfg Config) *Controller {
 	cfg.defaults()
-	return &Controller{st: st, kube: kube, dyn: dyn, cfg: cfg, kick: make(chan struct{}, 1), running: map[uuid.UUID]bool{}}
+	return &Controller{st: st, kube: kube, dyn: dyn, cfg: cfg, kick: make(chan struct{}, 1),
+		running: map[uuid.UUID]bool{}, oomSeen: map[uuid.UUID]map[string]int32{}}
 }
 
 // Kick sveglia il ciclo: c'è un deploy nuovo o una scala da applicare.
@@ -133,7 +158,7 @@ func (c *Controller) Kick() {
 func (c *Controller) Run(ctx context.Context) {
 	tick := time.NewTicker(c.cfg.LoopInterval)
 	defer tick.Stop()
-	var lastSync, lastCollect time.Time
+	var lastSync, lastCollect, lastLogs, lastPrune time.Time
 	for {
 		c.processPending(ctx)
 		if now := time.Now(); now.Sub(lastSync) >= c.cfg.SyncEvery {
@@ -143,6 +168,14 @@ func (c *Controller) Run(ctx context.Context) {
 				lastCollect = now
 				c.Collect(ctx)
 			}
+		}
+		if now := time.Now(); now.Sub(lastLogs) >= c.cfg.LogsEvery {
+			lastLogs = now
+			c.CollectLogs(ctx)
+		}
+		if now := time.Now(); now.Sub(lastPrune) >= time.Minute {
+			lastPrune = now
+			c.PruneLogs(ctx)
 		}
 		select {
 		case <-ctx.Done():
@@ -213,6 +246,7 @@ func (c *Controller) RunDeploy(ctx context.Context, p store.PendingAppDeploy) {
 			return
 		}
 		log.Info("apps: versione partita")
+		c.platform(ctx, app.ID, fmt.Sprintf("deploy della versione %d: partita (controllo di salute superato)", v.Number))
 		c.Sync(ctx)
 		return
 	}
@@ -231,6 +265,7 @@ func (c *Controller) RunDeploy(ctx context.Context, p store.PendingAppDeploy) {
 		log.Warn("apps: esito del deploy non scritto", "err", err)
 		return
 	}
+	c.platform(ctx, app.ID, fmt.Sprintf("deploy della versione %d: fallito: %s", v.Number, reason))
 	c.Sync(ctx)
 }
 
@@ -263,6 +298,9 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 	}
 	if err := c.ensureRoleBinding(ctx, ns); err != nil {
 		return fmt.Errorf("permessi nel namespace: %w", err)
+	}
+	if err := c.ensureNetworkPolicy(ctx, app); err != nil {
+		return fmt.Errorf("policy di rete: %w", err)
 	}
 	pull := ""
 	if v.Image.Source == "registry" && c.cfg.PullCredentials != nil {
@@ -305,7 +343,7 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 		c.cfg.Log.Warn("apps: rotta non applicata", "app", app.ID, "err", err)
 	}
 	deps := c.kube.AppsV1().Deployments(ns)
-	opts := BuildOptions{Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret}
+	opts := BuildOptions{Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret, ProxyEnv: c.cfg.ProxyEnv}
 	cur, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})
 	switch {
 	case apierrors.IsNotFound(err):
@@ -318,6 +356,33 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 	want := BuildDeployment(app, v, opts)
 	want.ResourceVersion = cur.ResourceVersion
 	_, err = deps.Update(ctx, want, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Controller) ensureNetworkPolicy(ctx context.Context, app store.App) error {
+	proxyIPs := map[string][]net.IP{}
+	for _, endpoint := range proxyEndpoints(c.cfg.ProxyEnv) {
+		if !endpoint.named || proxyIPs[endpoint.host] != nil {
+			continue
+		}
+		ips, err := net.LookupIP(endpoint.host)
+		if err != nil {
+			return fmt.Errorf("risoluzione proxy %s: %w", endpoint.host, err)
+		}
+		proxyIPs[endpoint.host] = ips
+	}
+	want := BuildNetworkPolicy(app, NetworkPolicyOptions{TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs})
+	policies := c.kube.NetworkingV1().NetworkPolicies(want.Namespace)
+	cur, err := policies.Get(ctx, want.Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		_, err = policies.Create(ctx, want, metav1.CreateOptions{})
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	cur.Labels, cur.Spec = want.Labels, want.Spec
+	_, err = policies.Update(ctx, cur, metav1.UpdateOptions{})
 	return err
 }
 
@@ -361,13 +426,14 @@ func (c *Controller) ensureNamespace(ctx context.Context, app store.App, restric
 	if err != nil {
 		return err
 	}
-	if cur.Labels[LabelManaged] != "true" || cur.Labels[LabelAppID] != app.ID.String() {
+	if cur.Labels[LabelManaged] != "true" || cur.Labels[LabelAppID] != app.ID.String() || (cur.Labels[LabelRepoID] != "" && cur.Labels[LabelRepoID] != app.RepoID.String()) {
 		return fmt.Errorf("il namespace %s esiste ma non è di questa app", want.Name)
 	}
-	if cur.Labels["pod-security.kubernetes.io/enforce"] == want.Labels["pod-security.kubernetes.io/enforce"] {
+	if cur.Labels["pod-security.kubernetes.io/enforce"] == want.Labels["pod-security.kubernetes.io/enforce"] && cur.Labels[LabelRepoID] == app.RepoID.String() {
 		return nil
 	}
 	cur.Labels["pod-security.kubernetes.io/enforce"] = want.Labels["pod-security.kubernetes.io/enforce"]
+	cur.Labels[LabelRepoID] = app.RepoID.String()
 	_, err = c.kube.CoreV1().Namespaces().Update(ctx, cur, metav1.UpdateOptions{})
 	return err
 }
@@ -709,6 +775,7 @@ func (c *Controller) Restart(ctx context.Context, app store.App) error {
 		if err := c.st.SetAppObserved(ctx, app.ID, "restarting", app.ReadyCopies); err != nil {
 			return err
 		}
+		c.platform(ctx, app.ID, "riavvio delle copie richiesto")
 		c.Kick()
 		return nil
 	}
@@ -812,6 +879,8 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 	if status != app.Status || ready != app.ReadyCopies {
 		if err := c.st.SetAppObserved(ctx, app.ID, status, ready); err != nil {
 			c.cfg.Log.Warn("apps: stato osservato non scritto", "app", app.ID, "err", err)
+		} else if status != app.Status {
+			c.platform(ctx, app.ID, fmt.Sprintf("stato dell'app: %s (copie pronte %d di %d)", status, ready, want))
 		}
 	}
 }

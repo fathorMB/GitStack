@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"regexp"
 
+	"github.com/fathorMB/GitStack/services/core/internal/apps"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 	"github.com/fathorMB/GitStack/services/core/internal/webhooks"
@@ -19,9 +20,15 @@ const maxAppEnvValueBytes = 32 << 10
 
 var appEnvNameRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
+// appEnvNameOK valida il nome di una variabile o di un segreto dell'app. Il prefisso GITSTACK_ è
+// riservato alle variabili di sistema (H14): 422 anche in minuscolo.
 func appEnvNameOK(w http.ResponseWriter, name string) bool {
 	if len(name) > 100 || !appEnvNameRe.MatchString(name) {
 		writeFieldError(w, "name", "name: lettere, cifre e _, senza iniziare per cifra (al massimo 100 caratteri).")
+		return false
+	}
+	if apps.IsReservedEnvName(name) {
+		writeFieldError(w, "name", "name: il prefisso GITSTACK_ è riservato alle variabili di sistema di GitStack.")
 		return false
 	}
 	return true

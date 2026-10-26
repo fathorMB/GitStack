@@ -14,6 +14,8 @@ import { appsPath } from './appMode';
 import { Link, useNavigate } from 'react-router-dom';
 
 const KEY_PATTERN = /^[A-Z_][A-Z0-9_]*$/;
+// Prefisso riservato alle variabili di sistema di GitStack (H14), in qualunque caso.
+const RESERVED_PREFIX = /^GITSTACK_/i;
 
 export function AppConfigPage({ repo, app, perms }: { repo: Repository; app: App; perms: AppPermissions }) {
   const owner = repo.owner.name;
@@ -94,6 +96,7 @@ function EntryForm({ kind, save, onCancel, onSaved, initialName, initialValue = 
   const { toast } = useToast();
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (RESERVED_PREFIX.test(key)) { setError('The GITSTACK_ prefix is reserved for GitStack system variables.'); return; }
     if (!KEY_PATTERN.test(key)) { setError('Use an uppercase environment variable name, such as DATABASE_URL.'); return; }
     setBusy(true); setError(null);
     try {

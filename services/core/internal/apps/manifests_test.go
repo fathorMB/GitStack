@@ -1,11 +1,17 @@
 package apps
 
 import (
+	"context"
+	"net"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
@@ -20,8 +26,8 @@ func testApp() (store.App, store.AppVersion) {
 		Guaranteed: store.AppResourceAmount{CPUMillis: 100, MemoryBytes: 128 << 20},
 		Limit:      store.AppResourceAmount{CPUMillis: 500, MemoryBytes: 512 << 20}, Copies: 2,
 	}
-	app := store.App{ID: uuid.New(), Name: "web", AddressLabel: &label, Access: "none", Config: cfg}
-	ver := store.AppVersion{AppID: app.ID, Number: 7, Config: cfg, Image: store.AppImage{Reference: "registry.example.com/alice/handbook:sha-1", Digest: &digest, Source: "registry"}}
+	app := store.App{ID: uuid.New(), RepoID: uuid.New(), Name: "web", AddressLabel: &label, Access: "none", Config: cfg}
+	ver := store.AppVersion{AppID: app.ID, Number: 7, Config: cfg, CreatedAt: time.Date(2026, 10, 26, 9, 30, 15, 0, time.UTC), Image: store.AppImage{Reference: "registry.example.com/alice/handbook:sha-1", Digest: &digest, Source: "registry"}}
 	return app, ver
 }
 
@@ -55,8 +61,8 @@ func TestBuildDeployment_AggiornamentoSenzaInterruzioneESalute(t *testing.T) {
 	if c.LivenessProbe == nil || c.Lifecycle == nil || c.Lifecycle.PreStop.Sleep == nil {
 		t.Fatalf("liveness/preStop: %+v %+v", c.LivenessProbe, c.Lifecycle)
 	}
-	if got := c.Env[0].Name + c.Env[1].Name + c.Env[2].Name; got != "ABPORT" {
-		t.Fatalf("variabili ordinate e PORT: %s", got)
+	if got := envNames(c.Env); got != "A,B,GITSTACK_APP_VERSION,GITSTACK_DEPLOYED_AT,PORT" {
+		t.Fatalf("variabili ordinate, di sistema e PORT: %s", got)
 	}
 	if len(tpl.Spec.ImagePullSecrets) != 1 || tpl.Spec.ImagePullSecrets[0].Name != "registry-pull" {
 		t.Fatalf("pull secret: %+v", tpl.Spec.ImagePullSecrets)
@@ -78,6 +84,177 @@ func TestBuildDeployment_RestrictedNonGiraComeRoot(t *testing.T) {
 	c := BuildDeployment(app, ver, BuildOptions{Replicas: 1}).Spec.Template.Spec.Containers[0]
 	if c.SecurityContext.RunAsNonRoot == nil || !*c.SecurityContext.RunAsNonRoot {
 		t.Fatalf("restricted deve chiedere runAsNonRoot: %+v", c.SecurityContext)
+	}
+}
+
+func TestBuildDeployment_PassaProxyN9ESovrascriveQuelloDellApp(t *testing.T) {
+	app, ver := testApp()
+	ver.Config.Variables["HTTPS_PROXY"] = "http://non-valido:3128"
+	d := BuildDeployment(app, ver, BuildOptions{Replicas: 1, ProxyEnv: ProxyEnvFrom(func(k string) string {
+		return map[string]string{"HTTPS_PROXY": "http://proxy:3128", "NO_PROXY": ".svc"}[k]
+	})})
+	got := map[string]string{}
+	for _, v := range d.Spec.Template.Spec.Containers[0].Env {
+		got[v.Name] = v.Value
+	}
+	if got["HTTPS_PROXY"] != "http://proxy:3128" || got["NO_PROXY"] != ".svc" {
+		t.Fatalf("proxy N9: %v", got)
+	}
+}
+
+// envNames elenca i nomi delle variabili del container, nell'ordine in cui le passa il Deployment.
+func envNames(env []corev1.EnvVar) string {
+	names := make([]string, 0, len(env))
+	for _, e := range env {
+		names = append(names, e.Name)
+	}
+	return strings.Join(names, ",")
+}
+
+func envValues(env []corev1.EnvVar) map[string]string {
+	out := map[string]string{}
+	for _, e := range env {
+		out[e.Name] = e.Value
+	}
+	return out
+}
+
+func TestBuildDeployment_VariabiliDiSistema(t *testing.T) {
+	cases := []struct {
+		name    string
+		ref     string
+		digest  bool
+		vers    map[string]string
+		version string
+	}{
+		{name: "tag e digest: APP_VERSION è il tag", ref: "registry.example.com/alice/handbook:sha-1", digest: true, version: "sha-1"},
+		{name: "solo digest nel riferimento: APP_VERSION assente", ref: "registry.example.com/alice/handbook@sha256:" + strings.Repeat("b", 64)},
+		{name: "porta del registry senza tag: APP_VERSION assente", ref: "localhost:5000/app"},
+		{name: "tag con digest nel riferimento: il tag prima del digest", ref: "registry.example.com/alice/handbook:v2@sha256:" + strings.Repeat("c", 64), version: "v2"},
+		{name: "una variabile dell'app non sovrascrive quella di sistema", ref: "registry.example.com/alice/handbook:sha-1", digest: true, vers: map[string]string{"GITSTACK_APP_VERSION": "finta"}, version: "sha-1"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app, ver := testApp()
+			ver.Image.Reference = tc.ref
+			if !tc.digest {
+				ver.Image.Digest = nil
+			}
+			for k, v := range tc.vers {
+				ver.Config.Variables[k] = v
+			}
+			ver.CreatedAt = time.Date(2026, 10, 26, 9, 30, 15, 0, time.FixedZone("CEST", 2*3600))
+			env := envValues(BuildDeployment(app, ver, BuildOptions{Replicas: 1}).Spec.Template.Spec.Containers[0].Env)
+			if got, ok := env[EnvAppVersion]; tc.version == "" && ok || tc.version != "" && got != tc.version {
+				t.Fatalf("GITSTACK_APP_VERSION = %q (presente %v), atteso %q", got, ok, tc.version)
+			}
+			if got := env[EnvDeployedAt]; got != "2026-10-26T07:30:15Z" {
+				t.Fatalf("GITSTACK_DEPLOYED_AT = %q, atteso UTC RFC 3339", got)
+			}
+			if _, ok := env["GITSTACK_COMMIT_SHA"]; ok {
+				t.Fatal("GITSTACK_COMMIT_SHA senza etichetta revision non deve esserci (GIT-386)")
+			}
+			if env["PORT"] != "8080" {
+				t.Fatalf("PORT = %q", env["PORT"])
+			}
+		})
+	}
+}
+
+func TestIsReservedEnvName(t *testing.T) {
+	cases := map[string]bool{
+		"GITSTACK_X":           true,
+		"GITSTACK_APP_VERSION": true,
+		"gitstack_x":           true,
+		"GitStack_Token":       true,
+		"GITSTACK":             false,
+		"MY_GITSTACK_X":        false,
+		"DATABASE_URL":         false,
+		"":                     false,
+	}
+	for name, want := range cases {
+		if got := IsReservedEnvName(name); got != want {
+			t.Errorf("IsReservedEnvName(%q) = %v, atteso %v", name, got, want)
+		}
+	}
+}
+
+func TestBuildNetworkPolicy_IsolaAppEConsenteSoloStessoRepo(t *testing.T) {
+	app, _ := testApp()
+	p := BuildNetworkPolicy(app)
+	if p.Name != "app-isolation" || p.Namespace != Namespace(app.ID) || p.Labels[LabelRepoID] != app.RepoID.String() {
+		t.Fatalf("metadati policy: %+v", p.ObjectMeta)
+	}
+	if len(p.Spec.PolicyTypes) != 2 || len(p.Spec.Ingress) != 2 || len(p.Spec.Egress) != 1 {
+		t.Fatalf("serve deny ingress+egress con una sola apertura: %+v", p.Spec)
+	}
+	for _, peers := range [][]networkingv1.NetworkPolicyPeer{p.Spec.Ingress[0].From, p.Spec.Egress[0].To} {
+		if len(peers) != 1 || peers[0].NamespaceSelector == nil || peers[0].PodSelector == nil ||
+			peers[0].NamespaceSelector.MatchLabels[LabelRepoID] != app.RepoID.String() ||
+			peers[0].PodSelector.MatchLabels[LabelManaged] != "true" {
+			t.Fatalf("peer stesso repo: %+v", peers)
+		}
+	}
+	traefik := p.Spec.Ingress[1]
+	if traefik.From[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"] != "kube-system" || traefik.From[0].PodSelector.MatchLabels["app.kubernetes.io/name"] != "traefik" || traefik.Ports[0].Port.String() != "http" {
+		t.Fatalf("ingresso Traefik: %+v", traefik)
+	}
+}
+
+func TestBuildNetworkPolicy_ProxyIPApriSoloPortaProxy(t *testing.T) {
+	app, _ := testApp()
+	p := BuildNetworkPolicy(app, NetworkPolicyOptions{ProxyEnv: map[string]string{"HTTPS_PROXY": "http://10.0.0.5:3128"}})
+	if len(p.Spec.Egress) != 2 {
+		t.Fatalf("egress senza DNS per IP: %+v", p.Spec.Egress)
+	}
+	r := p.Spec.Egress[1]
+	if r.To[0].IPBlock == nil || r.To[0].IPBlock.CIDR != "10.0.0.5/32" || r.Ports[0].Port.IntValue() != 3128 {
+		t.Fatalf("proxy: %+v", r)
+	}
+}
+
+func TestBuildNetworkPolicy_ProxyMinuscoloApriSoloPortaProxy(t *testing.T) {
+	app, _ := testApp()
+	p := BuildNetworkPolicy(app, NetworkPolicyOptions{ProxyEnv: map[string]string{"http_proxy": "http://10.0.0.6:3128"}})
+	if len(p.Spec.Egress) != 2 {
+		t.Fatalf("egress proxy minuscolo: %+v", p.Spec.Egress)
+	}
+	r := p.Spec.Egress[1]
+	if r.To[0].IPBlock == nil || r.To[0].IPBlock.CIDR != "10.0.0.6/32" || r.Ports[0].Port.IntValue() != 3128 {
+		t.Fatalf("proxy minuscolo: %+v", r)
+	}
+}
+
+func TestBuildNetworkPolicy_ProxyNomeApreDNSEIP(t *testing.T) {
+	app, _ := testApp()
+	p := BuildNetworkPolicy(app, NetworkPolicyOptions{
+		ProxyEnv: map[string]string{"HTTPS_PROXY": "http://proxy.lan:3128"},
+		ProxyIPs: map[string][]net.IP{"proxy.lan": {net.ParseIP("10.0.0.7")}},
+	})
+	if len(p.Spec.Egress) != 3 {
+		t.Fatalf("egress proxy con DNS: %+v", p.Spec.Egress)
+	}
+	dns, proxy := p.Spec.Egress[1], p.Spec.Egress[2]
+	if len(dns.Ports) != 2 || dns.Ports[0].Port.IntValue() != 53 || dns.Ports[1].Port.IntValue() != 53 || dns.To[0].PodSelector.MatchLabels["k8s-app"] != "kube-dns" {
+		t.Fatalf("DNS proxy: %+v", dns)
+	}
+	if proxy.To[0].IPBlock == nil || proxy.To[0].IPBlock.CIDR != "10.0.0.7/32" || proxy.Ports[0].Port.IntValue() != 3128 {
+		t.Fatalf("proxy risolto: %+v", proxy)
+	}
+}
+
+func TestEnsureNamespace_AggiungeRepoIDMancante(t *testing.T) {
+	app, _ := testApp()
+	ns := BuildNamespace(app, false)
+	delete(ns.Labels, LabelRepoID)
+	kube := kubernetesfake.NewClientset(ns)
+	c := &Controller{kube: kube}
+	if err := c.ensureNamespace(context.Background(), app, false); err != nil {
+		t.Fatal(err)
+	}
+	got, err := kube.CoreV1().Namespaces().Get(context.Background(), ns.Name, metav1.GetOptions{})
+	if err != nil || got.Labels[LabelRepoID] != app.RepoID.String() {
+		t.Fatalf("repo-id: %v %+v", err, got.Labels)
 	}
 }
 
