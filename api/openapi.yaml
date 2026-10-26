@@ -10093,6 +10093,123 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
         "409": {$ref: "#/components/responses/Conflict"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
+  /repos/{owner}/{repo}/apps/{app}/access/members:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/AppParam"}]
+    get:
+      operationId: listAppAccessMembers
+      tags: [apps]
+      x-required-scopes: ["read:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: true
+        name: app_access_members_list
+        destructive: false
+      summary: "Elenca la lista di accesso dell'app"
+      description: >
+        Serve `admin` sull'app, cioe' sul repo (H5, H6): `write` e `read` ricevono 403, un repo che non si
+        legge 404. La lista (H6 del 2026-10-26, pilota retail.it) contiene utenti e team GitStack: chi
+        e' nella lista apre quest'app e nient'altro, non vede codice, issues, scheda Apps o altro del
+        repo e non riceve nessun ruolo sul repo. Nessun accesso anonimo (P2).
+      responses:
+        "200": {description: "La lista.", content: {application/json: {schema: {$ref: "#/components/schemas/AppAccessMemberList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    post:
+      operationId: addAppAccessMember
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: true
+        name: app_access_member_add
+        destructive: false
+      summary: "Aggiunge un utente o un team alla lista di accesso"
+      description: >
+        Serve `admin` sull'app (H5, H6): `write` riceve 403, un repo che non si legge 404. Su un repo
+        archiviato risponde 409 `archived`. `kind` e' `user` o `team`; `name` e' il nome utente oppure
+        `organizzazione/team`. Un utente disattivato o inesistente, un team inesistente: 422. Gia'
+        in lista: 409 `already_member`. Aggiungere non assegna nessun ruolo sul repo.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppAccessMemberInput"}}}}
+      responses:
+        "201": {description: "Aggiunto.", content: {application/json: {schema: {$ref: "#/components/schemas/AppAccessMember"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+  /repos/{owner}/{repo}/apps/{app}/access/members/{memberId}:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/AppParam"
+      - {name: memberId, in: path, required: true, schema: {type: string, format: uuid}, description: "Id del membro della lista di accesso."}
+    delete:
+      operationId: removeAppAccessMember
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: true
+        name: app_access_member_remove
+        destructive: true
+      summary: "Toglie un utente o un team dalla lista di accesso"
+      description: >
+        Serve `admin` sull'app (H5, H6): `write` riceve 403, un repo che non si legge 404. Su un repo
+        archiviato risponde 409 `archived`. Chi e' tolto viene rifiutato dalla richiesta successiva al
+        login davanti all'app (se non ha `read` sul repo); un membro che non c'e' e' 404.
+      responses:
+        "204": {description: "Tolto."}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /repos/{owner}/{repo}/apps/{app}/access/invite:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/AppParam"}]
+    get:
+      operationId: getAppAccessInvite
+      tags: [apps]
+      x-required-scopes: ["read:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: true
+        name: app_access_invite_get
+        destructive: false
+      summary: "Testo dell'invito ai tester"
+      description: >
+        Serve `admin` sull'app (H5, H6): `write` e `read` ricevono 403, un repo che non si legge 404.
+        Restituisce i campi dell'invito (link alla guida `/help/ca` con l'app come parametro,
+        impronta SHA-256 della CA interna, indirizzo dell'app) e il testo gia' composto, con il rimando a
+        «Report a problem» (mockup H13, data-screen="testers"). L'impronta e' quella di `GET /instance/ca`
+        (GIT-383): non e' calcolata una seconda volta. Con certificato del cliente o senza HTTPS non c'e'
+        niente da installare e il testo salta il passo della guida. L'app senza indirizzo (nessuna porta) e' 409
+        `no_address`. GitStack non manda email: l'admin spedisce il testo con i suoi strumenti.
+      responses:
+        "200": {description: "L'invito.", content: {application/json: {schema: {$ref: "#/components/schemas/AppAccessInvite"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /apps/{appId}/access-membership:
+    parameters: [{name: appId, in: path, required: true, schema: {type: string, format: uuid}, description: "Id dell'app."}]
+    get:
+      operationId: getAppAccessMembership
+      tags: [apps]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: app_access_membership_get
+        destructive: false
+      summary: "Chi chiede e' nella lista di accesso dell'app?"
+      description: >
+        Per il forward-auth del gateway (H6): dice se il chiamante e' nella lista di accesso dell'app,
+        direttamente o tramite un team di cui e' membro. Non assegna nessun permesso sul repo e non rivela
+        niente su altri utenti. Un'app che non c'e' risponde `member` falso.
+      responses:
+        "200": {description: "Esito.", content: {application/json: {schema: {$ref: "#/components/schemas/AppAccessMembership"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
   /repos/{owner}/{repo}/apps/{app}/resources:
     parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/AppParam"}]
     get:
@@ -17214,6 +17331,47 @@ components:
       required: [mode]
       properties:
         mode: {$ref: "#/components/schemas/AppAccessMode"}
+    AppAccessMember:
+      type: object
+      additionalProperties: false
+      required: [id, kind, name, addedAt]
+      properties:
+        id: {type: string, format: uuid}
+        kind: {type: string, enum: [user, team]}
+        name: {type: string, description: "Nome utente oppure `organizzazione/team`."}
+        email: {type: string, nullable: true, description: "Email dell'utente, se ne ha una."}
+        memberCount: {type: integer, nullable: true, description: "Persone del team (solo `team`)."}
+        addedBy: {allOf: [{$ref: "#/components/schemas/AppActor"}], nullable: true, type: object}
+        addedAt: {type: string, format: date-time}
+    AppAccessMemberList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/AppAccessMember"}}
+    AppAccessMemberInput:
+      type: object
+      additionalProperties: false
+      required: [kind, name]
+      properties:
+        kind: {type: string, enum: [user, team]}
+        name: {type: string, minLength: 1, maxLength: 200, description: "Nome utente oppure `organizzazione/team`."}
+    AppAccessInvite:
+      type: object
+      additionalProperties: false
+      required: [guideUrl, address, caMode, text]
+      properties:
+        guideUrl: {type: string, format: uri, description: "Guida CA di GIT-383 (`/help/ca`) con l'indirizzo dell'app come parametro `app`."}
+        fingerprintSha256: {type: string, nullable: true, description: "Impronta SHA-256 della CA interna, letta come `GET /instance/ca`; assente se non c'e' niente da installare."}
+        address: {type: string, format: uri, description: "Indirizzo dell'app."}
+        caMode: {type: string, enum: [internal, custom, none], description: "Come `InstanceCa.mode`."}
+        text: {type: string, description: "Invito gia' composto, da copiare e mandare con i propri strumenti."}
+    AppAccessMembership:
+      type: object
+      additionalProperties: false
+      required: [member]
+      properties:
+        member: {type: boolean}
     AppResources:
       type: object
       description: Parte garantita (sempre riservata) e tetto (usato se il server ha spazio), per copia (H11).

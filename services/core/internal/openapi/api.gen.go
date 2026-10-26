@@ -264,6 +264,63 @@ func (e AppAccessCertificate) Valid() bool {
 	}
 }
 
+// Defines values for AppAccessInviteCaMode.
+const (
+	AppAccessInviteCaModeCustom   AppAccessInviteCaMode = "custom"
+	AppAccessInviteCaModeInternal AppAccessInviteCaMode = "internal"
+	AppAccessInviteCaModeNone     AppAccessInviteCaMode = "none"
+)
+
+// Valid indicates whether the value is a known member of the AppAccessInviteCaMode enum.
+func (e AppAccessInviteCaMode) Valid() bool {
+	switch e {
+	case AppAccessInviteCaModeCustom:
+		return true
+	case AppAccessInviteCaModeInternal:
+		return true
+	case AppAccessInviteCaModeNone:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppAccessMemberKind.
+const (
+	AppAccessMemberKindTeam AppAccessMemberKind = "team"
+	AppAccessMemberKindUser AppAccessMemberKind = "user"
+)
+
+// Valid indicates whether the value is a known member of the AppAccessMemberKind enum.
+func (e AppAccessMemberKind) Valid() bool {
+	switch e {
+	case AppAccessMemberKindTeam:
+		return true
+	case AppAccessMemberKindUser:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppAccessMemberInputKind.
+const (
+	AppAccessMemberInputKindTeam AppAccessMemberInputKind = "team"
+	AppAccessMemberInputKindUser AppAccessMemberInputKind = "user"
+)
+
+// Valid indicates whether the value is a known member of the AppAccessMemberInputKind enum.
+func (e AppAccessMemberInputKind) Valid() bool {
+	switch e {
+	case AppAccessMemberInputKindTeam:
+		return true
+	case AppAccessMemberInputKindUser:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for AppAccessMode.
 const (
 	AppAccessModeLogin  AppAccessMode = "login"
@@ -3242,6 +3299,68 @@ type AppAccessCertificate string
 type AppAccessInput struct {
 	// Mode `login` (login GitStack, default, H6), `none` (senza login, scelta esplicita di admin), `public` (su internet, H1, solo con le app pubbliche abilitate).
 	Mode AppAccessMode `json:"mode"`
+}
+
+// AppAccessInvite defines model for AppAccessInvite.
+type AppAccessInvite struct {
+	// Address Indirizzo dell'app.
+	Address string `json:"address"`
+
+	// CaMode Come `InstanceCa.mode`.
+	CaMode AppAccessInviteCaMode `json:"caMode"`
+
+	// FingerprintSha256 Impronta SHA-256 della CA interna, letta come `GET /instance/ca`; assente se non c'e' niente da installare.
+	FingerprintSha256 *string `json:"fingerprintSha256,omitempty"`
+
+	// GuideUrl Guida CA di GIT-383 (`/help/ca`) con l'indirizzo dell'app come parametro `app`.
+	GuideUrl string `json:"guideUrl"`
+
+	// Text Invito gia' composto, da copiare e mandare con i propri strumenti.
+	Text string `json:"text"`
+}
+
+// AppAccessInviteCaMode Come `InstanceCa.mode`.
+type AppAccessInviteCaMode string
+
+// AppAccessMember defines model for AppAccessMember.
+type AppAccessMember struct {
+	AddedAt time.Time `json:"addedAt"`
+	AddedBy *AppActor `json:"addedBy,omitempty"`
+
+	// Email Email dell'utente, se ne ha una.
+	Email *string             `json:"email,omitempty"`
+	Id    openapi_types.UUID  `json:"id"`
+	Kind  AppAccessMemberKind `json:"kind"`
+
+	// MemberCount Persone del team (solo `team`).
+	MemberCount *int `json:"memberCount,omitempty"`
+
+	// Name Nome utente oppure `organizzazione/team`.
+	Name string `json:"name"`
+}
+
+// AppAccessMemberKind defines model for AppAccessMember.Kind.
+type AppAccessMemberKind string
+
+// AppAccessMemberInput defines model for AppAccessMemberInput.
+type AppAccessMemberInput struct {
+	Kind AppAccessMemberInputKind `json:"kind"`
+
+	// Name Nome utente oppure `organizzazione/team`.
+	Name string `json:"name"`
+}
+
+// AppAccessMemberInputKind defines model for AppAccessMemberInput.Kind.
+type AppAccessMemberInputKind string
+
+// AppAccessMemberList defines model for AppAccessMemberList.
+type AppAccessMemberList struct {
+	Items []AppAccessMember `json:"items"`
+}
+
+// AppAccessMembership defines model for AppAccessMembership.
+type AppAccessMembership struct {
+	Member bool `json:"member"`
 }
 
 // AppAccessMode `login` (login GitStack, default, H6), `none` (senza login, scelta esplicita di admin), `public` (su internet, H1, solo con le app pubbliche abilitate).
@@ -7194,6 +7313,9 @@ type UpdateAppJSONRequestBody = AppUpdateInput
 // SetAppAccessJSONRequestBody defines body for SetAppAccess for application/json ContentType.
 type SetAppAccessJSONRequestBody = AppAccessInput
 
+// AddAppAccessMemberJSONRequestBody defines body for AddAppAccessMember for application/json ContentType.
+type AddAppAccessMemberJSONRequestBody = AppAccessMemberInput
+
 // DeployAppJSONRequestBody defines body for DeployApp for application/json ContentType.
 type DeployAppJSONRequestBody = AppDeployInput
 
@@ -7409,6 +7531,9 @@ type ServerInterface interface {
 	// GetAdminSystem Stato dell'installazione (Admin · System)
 	// (GET /admin/system)
 	GetAdminSystem(w http.ResponseWriter, r *http.Request)
+	// GetAppAccessMembership Chi chiede e' nella lista di accesso dell'app?
+	// (GET /apps/{appId}/access-membership)
+	GetAppAccessMembership(w http.ResponseWriter, r *http.Request, appId openapi_types.UUID)
 	// GetHealth Stato del servizio
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
@@ -7592,6 +7717,18 @@ type ServerInterface interface {
 	// SetAppAccess Imposta chi puo' aprire l'app
 	// (PUT /repos/{owner}/{repo}/apps/{app}/access)
 	SetAppAccess(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// GetAppAccessInvite Testo dell'invito ai tester
+	// (GET /repos/{owner}/{repo}/apps/{app}/access/invite)
+	GetAppAccessInvite(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// ListAppAccessMembers Elenca la lista di accesso dell'app
+	// (GET /repos/{owner}/{repo}/apps/{app}/access/members)
+	ListAppAccessMembers(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// AddAppAccessMember Aggiunge un utente o un team alla lista di accesso
+	// (POST /repos/{owner}/{repo}/apps/{app}/access/members)
+	AddAppAccessMember(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// RemoveAppAccessMember Toglie un utente o un team dalla lista di accesso
+	// (DELETE /repos/{owner}/{repo}/apps/{app}/access/members/{memberId})
+	RemoveAppAccessMember(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, memberId openapi_types.UUID)
 	// DeployApp Mette in produzione un'immagine (nuova versione)
 	// (POST /repos/{owner}/{repo}/apps/{app}/deploys)
 	DeployApp(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
@@ -8370,6 +8507,32 @@ func (siw *ServerInterfaceWrapper) GetAdminSystem(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAdminSystem(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAppAccessMembership operation middleware
+func (siw *ServerInterfaceWrapper) GetAppAccessMembership(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "appId" -------------
+	var appId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "appId", r.PathValue("appId"), &appId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "appId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAppAccessMembership(w, r, appId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -10724,6 +10887,191 @@ func (siw *ServerInterfaceWrapper) SetAppAccess(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SetAppAccess(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAppAccessInvite operation middleware
+func (siw *ServerInterfaceWrapper) GetAppAccessInvite(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAppAccessInvite(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAppAccessMembers operation middleware
+func (siw *ServerInterfaceWrapper) ListAppAccessMembers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAppAccessMembers(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AddAppAccessMember operation middleware
+func (siw *ServerInterfaceWrapper) AddAppAccessMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddAppAccessMember(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemoveAppAccessMember operation middleware
+func (siw *ServerInterfaceWrapper) RemoveAppAccessMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "memberId" -------------
+	var memberId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "memberId", r.PathValue("memberId"), &memberId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "memberId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveAppAccessMember(w, r, owner, repo, app, memberId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -18553,6 +18901,11 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/secrets/{name}", wrapper.PutAppSecret)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/access", wrapper.GetAppAccess)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/access", wrapper.SetAppAccess)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/access/members", wrapper.ListAppAccessMembers)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/access/members", wrapper.AddAppAccessMember)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/access/members/{memberId}", wrapper.RemoveAppAccessMember)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/access/invite", wrapper.GetAppAccessInvite)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/apps/{appId}/access-membership", wrapper.GetAppAccessMembership)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/resources", wrapper.GetAppResources)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/resources", wrapper.SetAppResources)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/logs", wrapper.GetAppLogs)
