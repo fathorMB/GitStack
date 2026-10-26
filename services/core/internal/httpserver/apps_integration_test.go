@@ -43,17 +43,18 @@ type appsEnv struct {
 	git   *fakeGit
 }
 
-func newAppsEnv(t *testing.T) *appsEnv {
+func newAppsEnv(t *testing.T, extra ...httpserver.Option) *appsEnv {
 	t.Helper()
 	pool, _ := dbtest.NewPool(t)
 	id := &issuesIdentity{fakeIdentity: newFakeIdentity(), writers: map[uuid.UUID][]string{}}
 	e := &issuesEnv{t: t, pool: pool, id: id}
 	git := newFakeGit()
 	clock := &appClock{t: time.Now().UTC().Truncate(time.Second)}
-	e.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
+	opts := append([]httpserver.Option{
 		httpserver.WithRepoIdentity(id), httpserver.WithReadableLister(id), httpserver.WithGit(git),
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "https://git.example.com"}),
-		httpserver.WithAppsDomain("apps.example.com"), httpserver.WithClock(clock.Now))
+		httpserver.WithAppsDomain("apps.example.com"), httpserver.WithClock(clock.Now)}, extra...)
+	e.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret, opts...)
 	return &appsEnv{issuesEnv: e, clock: clock, git: git}
 }
 
@@ -86,6 +87,27 @@ func (e *appsEnv) versions(path, user string) openapi.AppVersionList {
 		e.t.Fatal(err)
 	}
 	return l
+}
+
+// GIT-375: con l'hosting spento la creazione risponde 503 chiaro e non scrive nulla nel modello.
+func TestApps_HostingSpentoErroreChiaroENienteCreato(t *testing.T) {
+	e := newAppsEnv(t, httpserver.WithAppsHostingOff())
+	e.repo("handbook", true)
+	base := "/repos/alice/handbook/apps"
+	rec := e.do(http.MethodPost, base, "alice", createWeb)
+	e.want(rec, http.StatusServiceUnavailable, "apps_unavailable")
+	if !strings.Contains(rec.Body.String(), "gitstack config set apps on") {
+		t.Fatalf("il messaggio deve dire come accendere l'hosting: %s", rec.Body.String())
+	}
+	rec = e.do(http.MethodGet, base, "alice", "")
+	e.want(rec, http.StatusOK, "")
+	var l openapi.AppList
+	if err := json.Unmarshal(rec.Body.Bytes(), &l); err != nil {
+		t.Fatal(err)
+	}
+	if len(l.Items) != 0 {
+		t.Fatalf("nessuna app doveva essere creata: %s", rec.Body.String())
+	}
 }
 
 const createWeb = `{"name":"web","image":"sha-7f3a91c","port":8080}`

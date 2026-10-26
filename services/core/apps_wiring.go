@@ -31,6 +31,10 @@ const (
 	envAppsAuthURL          = "GITSTACK_CORE_APPS_AUTH_URL"
 	envAppsTraefikNamespace = "GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE"
 	envAppsProgressTimeout  = "GITSTACK_CORE_APPS_PROGRESS_TIMEOUT"
+	// ServiceAccount di core (`namespace/nome`) e ClusterRole modello dei permessi sull'app: con
+	// entrambi il controller crea un RoleBinding in ogni namespace delle app (ADR 0002).
+	envAppsControllerSA = "GITSTACK_CORE_APPS_CONTROLLER_SA"
+	envAppsWorkloadRole = "GITSTACK_CORE_APPS_WORKLOAD_ROLE"
 )
 
 // startApps avvia il controller e ritorna le opzioni del router; senza abilitazione ritorna nil.
@@ -41,7 +45,8 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, lo
 		opts = append(opts, httpserver.WithAppsDomain(domain))
 	}
 	if on, _ := strconv.ParseBool(strings.TrimSpace(os.Getenv(envAppsEnabled))); !on {
-		return opts, nil
+		// Hosting spento: l'API delle app risponde 503 «apps_unavailable» e non tocca il cluster.
+		return append(opts, httpserver.WithAppsHostingOff()), nil
 	}
 	rc, err := rest.InClusterConfig()
 	if err != nil {
@@ -55,7 +60,9 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, lo
 	if err != nil {
 		return nil, fmt.Errorf("client Kubernetes dinamico: %w", err)
 	}
-	cfg := apps.Config{AppsDomain: domain, AuthURL: strings.TrimSpace(os.Getenv(envAppsAuthURL)), AuthSecret: trust.SigningKey(gatewaySecret), Secrets: secrets, ProxyEnv: apps.ProxyEnvFrom(os.Getenv), TraefikNamespace: strings.TrimSpace(os.Getenv(envAppsTraefikNamespace)), Log: logger}
+	cfg := apps.Config{AppsDomain: domain, AuthURL: strings.TrimSpace(os.Getenv(envAppsAuthURL)), AuthSecret: trust.SigningKey(gatewaySecret), Secrets: secrets, Log: logger,
+		ControllerServiceAccount: strings.TrimSpace(os.Getenv(envAppsControllerSA)), WorkloadRole: strings.TrimSpace(os.Getenv(envAppsWorkloadRole)),
+		ProxyEnv: apps.ProxyEnvFrom(os.Getenv), TraefikNamespace: strings.TrimSpace(os.Getenv(envAppsTraefikNamespace))}
 	if v, err := strconv.Atoi(strings.TrimSpace(os.Getenv(envAppsProgressTimeout))); err == nil && v > 0 {
 		cfg.ProgressTimeout = time.Duration(v) * time.Second
 	}

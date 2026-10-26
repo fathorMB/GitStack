@@ -94,6 +94,16 @@ func printReport(w io.Writer, binVersion string, r *status.Report) {
 	} else {
 		p("  Dominio delle app: non impostato (gitstack config set apps-domain <dominio>)")
 	}
+	switch {
+	case r.AppsLive == "on" && r.AppsEnabled, r.AppsLive == "" && r.AppsEnabled:
+		p("  Hosting delle app: acceso")
+	case r.AppsLive == "on":
+		p("  Hosting delle app: acceso (ma config.yaml dice spento: allinea con gitstack config set apps on)")
+	case r.AppsLive == "off" && r.AppsEnabled:
+		p("  Hosting delle app: spento (config.yaml dice acceso ma core non lo ha attivo: rilancia gitstack config set apps on)")
+	default:
+		p("  Hosting delle app: spento (gitstack config set apps on, oppure gitstack upgrade --enable-apps)")
+	}
 	p("  Release: %s (namespace %s)", r.Release, r.Namespace)
 	switch {
 	case r.K3sVersion == "":

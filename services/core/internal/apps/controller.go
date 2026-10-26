@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -52,6 +53,13 @@ type Config struct {
 	// non ricevono una rotta: mai esporle senza il login.
 	AuthURL    string
 	AuthSecret string
+	// ControllerServiceAccount è il ServiceAccount di core come `namespace/nome`; WorkloadRole il
+	// ClusterRole «modello» con i permessi sull'app (ADR 0002). Con entrambi, dopo il namespace il
+	// controller crea in esso un RoleBinding verso WorkloadRole: i permessi su Deployment, Service,
+	// Secret, rotte e pod esistono solo nei namespace delle app (mai un ClusterRoleBinding).
+	// Vuoti: nessun RoleBinding (core ha già i permessi da altrove).
+	ControllerServiceAccount string
+	WorkloadRole             string
 	// ProgressTimeout: tempo massimo perché una versione superi la salute (default 120 s).
 	ProgressTimeout time.Duration
 	// FailureGrace: da quanto tempo un errore dei pod (pull, crash) deve durare per dichiarare
@@ -258,6 +266,9 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 	if err := c.ensureNamespace(ctx, app, v.Config.Restricted); err != nil {
 		return fmt.Errorf("namespace: %w", err)
 	}
+	if err := c.ensureRoleBinding(ctx, ns); err != nil {
+		return fmt.Errorf("permessi nel namespace: %w", err)
+	}
 	if err := c.ensureNetworkPolicy(ctx, app); err != nil {
 		return fmt.Errorf("policy di rete: %w", err)
 	}
@@ -394,6 +405,32 @@ func (c *Controller) ensureNamespace(ctx context.Context, app store.App, restric
 	cur.Labels["pod-security.kubernetes.io/enforce"] = want.Labels["pod-security.kubernetes.io/enforce"]
 	cur.Labels[LabelRepoID] = app.RepoID.String()
 	_, err = c.kube.CoreV1().Namespaces().Update(ctx, cur, metav1.UpdateOptions{})
+	return err
+}
+
+// RoleBindingName è il RoleBinding che dà a core i permessi sull'app dentro il suo namespace.
+const RoleBindingName = "gitstack-app-controller"
+
+// ensureRoleBinding lega il ServiceAccount di core al ClusterRole modello nel solo namespace
+// dell'app (ADR 0002). Idempotente; il RoleBinding sparisce col namespace.
+func (c *Controller) ensureRoleBinding(ctx context.Context, ns string) error {
+	saNS, saName, ok := strings.Cut(c.cfg.ControllerServiceAccount, "/")
+	if !ok || saNS == "" || saName == "" || c.cfg.WorkloadRole == "" {
+		return nil
+	}
+	want := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{Name: RoleBindingName, Namespace: ns, Labels: map[string]string{LabelManaged: "true"}},
+		Subjects:   []rbacv1.Subject{{Kind: rbacv1.ServiceAccountKind, Name: saName, Namespace: saNS}},
+		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: c.cfg.WorkloadRole},
+	}
+	bindings := c.kube.RbacV1().RoleBindings(ns)
+	_, err := bindings.Get(ctx, RoleBindingName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		_, err = bindings.Create(ctx, want, metav1.CreateOptions{})
+		if apierrors.IsAlreadyExists(err) {
+			return nil
+		}
+	}
 	return err
 }
 
