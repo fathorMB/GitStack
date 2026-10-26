@@ -14,6 +14,7 @@ package apps
 import (
 	"fmt"
 	"net"
+	"net/netip"
 	"net/url"
 	"sort"
 	"strconv"
@@ -29,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/fathorMB/GitStack/pkg/egress"
 	"github.com/fathorMB/GitStack/pkg/names"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
@@ -114,6 +116,10 @@ type NetworkPolicyOptions struct {
 	ProxyEnv         map[string]string
 	// ProxyIPs è la risoluzione fatta da core per un proxy nominato.
 	ProxyIPs map[string][]net.IP
+	// ClusterCIDRs e NodeAddresses sono quelli di pkg/egress (installazione): sempre bloccati
+	// anche in uscita dalle app (H16). Vuoti: default di pkg/egress, senza indirizzi del nodo.
+	ClusterCIDRs  []string
+	NodeAddresses []string
 }
 
 // BuildDeployment traduce una versione nel Deployment dell'app.
@@ -405,8 +411,9 @@ func BuildNamespace(app store.App, restricted bool) *corev1.Namespace {
 }
 
 // BuildNetworkPolicy crea l'unica policy dell'app. L'egress permette i peer
-// dello stesso repo e, se configurato, proxy e DNS necessario a risolverlo;
-// GIT-380 aggiungerà qui internet e i relativi blocchi.
+// dello stesso repo, il DNS, il proxy se configurato e internet aperto (H16) con le barriere
+// di pkg/egress: rete privata (RFC 1918, ULA, CGNAT), loopback, link-local, cluster e nodo
+// restano chiusi. Le porte di Kubernetes sono su indirizzi privati, quindi già coperte.
 func BuildNetworkPolicy(app store.App, options ...NetworkPolicyOptions) *networkingv1.NetworkPolicy {
 	o := NetworkPolicyOptions{TraefikNamespace: "kube-system"}
 	if len(options) > 0 {
@@ -443,6 +450,7 @@ func BuildNetworkPolicy(app store.App, options ...NetworkPolicyOptions) *network
 		}
 		egress = append(egress, proxyRule(endpoint.host, ports))
 	}
+	egress = append(egress, internetRule(o))
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{Name: "app-isolation", Namespace: Namespace(app.ID), Labels: labels},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -456,7 +464,35 @@ func BuildNetworkPolicy(app store.App, options ...NetworkPolicyOptions) *network
 
 func proto(p corev1.Protocol) *corev1.Protocol { return &p }
 func proxyRule(ip string, ports []networkingv1.NetworkPolicyPort) networkingv1.NetworkPolicyEgressRule {
-	return networkingv1.NetworkPolicyEgressRule{To: []networkingv1.NetworkPolicyPeer{{IPBlock: &networkingv1.IPBlock{CIDR: ip + "/32"}}}, Ports: ports}
+	return networkingv1.NetworkPolicyEgressRule{To: []networkingv1.NetworkPolicyPeer{{IPBlock: &networkingv1.IPBlock{CIDR: hostCIDR(ip)}}}, Ports: ports}
+}
+
+// hostCIDR dà /32 per un IPv4 e /128 per un IPv6; un testo che non è un IP resta com'era con /32.
+func hostCIDR(ip string) string {
+	if a, err := netip.ParseAddr(ip); err == nil {
+		return netip.PrefixFrom(a.Unmap().WithZone(""), a.Unmap().BitLen()).String()
+	}
+	return ip + "/32"
+}
+
+// internetRule apre tutto internet (IPv4 e IPv6) meno le eccezioni di pkg/egress (H16).
+func internetRule(o NetworkPolicyOptions) networkingv1.NetworkPolicyEgressRule {
+	policy, err := egress.NewPolicy(egress.Config{ClusterCIDRs: o.ClusterCIDRs, NodeAddresses: o.NodeAddresses})
+	if err != nil { // configurazione non valida: restano i default, mai meno barriere
+		policy, _ = egress.NewPolicy(egress.Config{})
+	}
+	v4, v6 := policy.NetworkExceptions()
+	strs := func(l []netip.Prefix) []string {
+		out := make([]string, len(l))
+		for i, p := range l {
+			out[i] = p.String()
+		}
+		return out
+	}
+	return networkingv1.NetworkPolicyEgressRule{To: []networkingv1.NetworkPolicyPeer{
+		{IPBlock: &networkingv1.IPBlock{CIDR: "0.0.0.0/0", Except: strs(v4)}},
+		{IPBlock: &networkingv1.IPBlock{CIDR: "::/0", Except: strs(v6)}},
+	}}
 }
 
 type proxyEndpoint struct {
