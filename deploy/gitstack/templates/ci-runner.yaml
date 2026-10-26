@@ -10,18 +10,6 @@ metadata:
 ---
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
-metadata: {name: gitstack-services}
-value: 1000000
-description: Servizi GitStack
----
-apiVersion: scheduling.k8s.io/v1
-kind: PriorityClass
-metadata: {name: gitstack-apps}
-value: 100000
-description: App ospitate
----
-apiVersion: scheduling.k8s.io/v1
-kind: PriorityClass
 metadata: {name: gitstack-ci-job}
 value: 1000
 preemptionPolicy: Never

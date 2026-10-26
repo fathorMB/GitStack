@@ -56,3 +56,28 @@ func (s *Service) LookupByEmails(ctx context.Context, emails []string) ([]EmailM
 	}
 	return out, rows.Err()
 }
+
+// TeamsOf elenca i team di cui l'utente è membro come «organizzazione/team», in ordine
+// alfabetico (v3-a, GIT-347: il login davanti alle app li passa all'app).
+func (s *Service) TeamsOf(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT o.name || '/' || t.name
+		FROM identity.team_members m
+		JOIN identity.teams t ON t.id = m.team_id
+		JOIN identity.organizations o ON o.id = m.org_id
+		WHERE m.user_id = $1
+		ORDER BY 1`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []string{}
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err != nil {
+			return nil, err
+		}
+		out = append(out, n)
+	}
+	return out, rows.Err()
+}

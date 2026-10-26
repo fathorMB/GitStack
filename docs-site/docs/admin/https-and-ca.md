@@ -81,6 +81,31 @@ On Windows, `curl.exe` may fail with a revocation error because the internal
 CA publishes no CRL: add `--ssl-no-revoke`. Git for Windows with schannel needs
 `http.schannelCheckRevoke false`.
 
+## Guide for testers (`/help/ca`)
+
+Testers who open an internal app for the first time need the CA too. Send them
+the link `https://HOST/help/ca`: it is a public page (no sign-in, no sidebar)
+that recognises Windows, macOS, iPhone/iPad or Android from the browser,
+offers the certificate from `/downloads/ca.crt`, shows the SHA-256 fingerprint
+to compare with the one in the invitation and lists the steps for the device.
+The browser may warn on that first page; this is accepted, because safety comes
+from comparing the fingerprint.
+
+Internal apps use the **same** CA as GitStack (the wildcard certificate under
+the apps domain is signed by it), so a tester installs it once and trusts
+GitStack and every app. Add `?app=<address>` (repeatable) to the link, for
+example `https://HOST/help/ca?app=sito-retail-it-retail.apps.example.lan`, and
+the page shows a **Try** button: it opens a secure connection to the app and
+says whether the certificate is now trusted.
+
+The fingerprint comes from `GET /v1/instance/ca` (public). Core reads
+`ca.crt` from the same ConfigMap as `/downloads/ca.crt` (`ingress.tls.caConfigMap`,
+mounted as a whole folder, so a renewal needs no restart) and answers with
+`mode`, `fingerprintSha256` (the format of `openssl x509 -fingerprint -sha256`)
+and `downloadUrl`. With a custom certificate or Let's Encrypt `mode` is
+`custom`, without HTTPS it is `none`: there is nothing to install and the guide
+says so.
+
 More detail, including the TLS store used for access by IP address, is in
 [docs/tls.md](https://github.com/fathorMB/GitStack/blob/main/docs/tls.md) and
 in [Operations: HTTPS modes](./operations.md#https-modes).

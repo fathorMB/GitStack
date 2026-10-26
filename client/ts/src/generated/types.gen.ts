@@ -385,6 +385,21 @@ export type Meta = {
     api_version: string;
 };
 
+export type InstanceCa = {
+    /**
+     * `internal` = CA interna di GitStack (N5); `custom` = certificato del cliente o Let's Encrypt; `none` = nessuna CA da installare.
+     */
+    mode: 'internal' | 'custom' | 'none';
+    /**
+     * Impronta SHA-256 del DER di `ca.crt` (formato `openssl x509 -fingerprint -sha256`, senza il prefisso). Null se `mode` non e' `internal`.
+     */
+    fingerprintSha256: string | null;
+    /**
+     * Indirizzo del certificato, `/downloads/ca.crt`. Null se `mode` non e' `internal`.
+     */
+    downloadUrl: string | null;
+};
+
 /**
  * Stato dell'installazione per Admin · System (mockup 16). Nessun segreto. `published` dice se l'host ha pubblicato le sue informazioni: se no, le sezioni dell'host hanno `configured: false` o stati `none`.
  *
@@ -1814,6 +1829,22 @@ export type LookupIdsResult = {
          */
         email?: string;
     }>;
+};
+
+export type UserProfileInput = {
+    userId: string;
+};
+
+export type UserProfileResult = {
+    id: string;
+    username: Name;
+    kind: 'human' | 'agent';
+    active: boolean;
+    /**
+     * Email dell'utente, se ne ha una. Assente senza email.
+     */
+    email?: string;
+    teams: Array<string>;
 };
 
 export type ResolveMentionsInput = {
@@ -3842,7 +3873,7 @@ export type AppAccess = {
      */
     certificate?: 'instance_ca' | 'lets_encrypt' | 'uploaded';
     /**
-     * Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6). I nomi delle intestazioni e la forma della firma non sono ancora fissati dal contratto.
+     * Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6): X-GitStack-User, X-GitStack-Email, X-GitStack-Teams, X-GitStack-Auth-Time, X-GitStack-Key-Id e X-GitStack-Signature (Ed25519, chiave pubblica su /.well-known/gitstack-app-keys del gateway). Forma della firma e esempio in docs/apps-login.md.
      */
     identityHeaders?: boolean;
     changedAt?: string | null;
@@ -4852,6 +4883,22 @@ export type GetMetaResponses = {
 };
 
 export type GetMetaResponse = GetMetaResponses[keyof GetMetaResponses];
+
+export type GetInstanceCaData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/instance/ca';
+};
+
+export type GetInstanceCaResponses = {
+    /**
+     * Stato della CA dell'istanza.
+     */
+    200: InstanceCa;
+};
+
+export type GetInstanceCaResponse = GetInstanceCaResponses[keyof GetInstanceCaResponses];
 
 export type GetRegistrySigningKeyData = {
     body?: never;
@@ -17806,6 +17853,43 @@ export type LookupUsersByIdsResponses = {
 };
 
 export type LookupUsersByIdsResponse = LookupUsersByIdsResponses[keyof LookupUsersByIdsResponses];
+
+export type LookupUserProfileData = {
+    body: UserProfileInput;
+    path?: never;
+    query?: never;
+    url: '/internal/users/profile';
+};
+
+export type LookupUserProfileErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type LookupUserProfileError = LookupUserProfileErrors[keyof LookupUserProfileErrors];
+
+export type LookupUserProfileResponses = {
+    /**
+     * Il profilo.
+     */
+    200: UserProfileResult;
+};
+
+export type LookupUserProfileResponse = LookupUserProfileResponses[keyof LookupUserProfileResponses];
 
 export type ListCredentialEventsData = {
     body?: never;

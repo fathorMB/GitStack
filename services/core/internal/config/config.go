@@ -158,6 +158,12 @@ type Config struct {
 	// volume (GITSTACK_SYSTEM_INFO_FILE, GIT-213): lo legge GET /admin/system.
 	SystemInfoFile string
 
+	// CADir è la cartella del ConfigMap della CA interna (GITSTACK_CORE_CA_DIR, GIT-383),
+	// con la chiave ca.crt; CAMode (GITSTACK_CORE_CA_MODE: custom|none) dice cosa risponde
+	// GET /instance/ca quando la CA interna non c è.
+	CADir  string
+	CAMode string
+
 	// AttachmentMaxBytes è il limite per allegato (GITSTACK_CORE_ATTACHMENTS_MAX_BYTES,
 	// default 10 MiB).
 	AttachmentMaxBytes int64
@@ -239,6 +245,8 @@ const (
 	envCIS3SecretKey      = "GITSTACK_CORE_CI_S3_SECRET_KEY"
 	envReleaseAssetsDir   = "GITSTACK_CORE_RELEASE_ASSETS_DIR"
 	envSystemInfoFile     = "GITSTACK_SYSTEM_INFO_FILE"
+	envCADir              = "GITSTACK_CORE_CA_DIR"
+	envCAMode             = "GITSTACK_CORE_CA_MODE"
 	envAttachmentMax      = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
 	envAttachRepoQuota    = "GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES"
 	envAttachUserQuota    = "GITSTACK_CORE_ATTACHMENTS_USER_QUOTA_BYTES"
@@ -434,6 +442,12 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	errs = loadCIS3(lookup, &cfg, errs)
 	if v, ok := lookup(envReleaseAssetsDir); ok {
 		cfg.ReleaseAssetsDir = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCADir); ok {
+		cfg.CADir = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCAMode); ok {
+		cfg.CAMode = strings.ToLower(strings.TrimSpace(v))
 	}
 	if v, ok := lookup(envSystemInfoFile); ok {
 		cfg.SystemInfoFile = strings.TrimSpace(v)

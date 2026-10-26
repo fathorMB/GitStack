@@ -86,6 +86,7 @@ func newAPIServerWithOptions(pool *pgxpool.Pool, publisher events.Publisher, opt
 		mirrors:      o.mirrors,
 		emailEnabled: o.emailEnabled,
 		systemInfo:   o.systemInfo,
+		instanceCA:   o.instanceCA,
 		ciLogs:       o.ciLogs,
 		ciBlobs:      o.ciBlobs,
 		ciCapacity:   o.ciCapacity,
@@ -152,6 +153,7 @@ type routerOptions struct {
 	mirrors      MirrorConfig
 	emailEnabled bool
 	systemInfo   SystemInfoConfig
+	instanceCA   CAConfig
 	ciLogs       *ci.LogStore
 	ciBlobs      ci.Blobs
 	ciCapacity   int

@@ -83,6 +83,17 @@ type Config struct {
 	// quello di core (GITSTACK_CORE_ATTACHMENTS_MAX_BYTES).
 	MaxAttachmentBytes int64
 
+	// AppAuthSigningKeys sono i semi Ed25519 (32 byte in base64, elenco «nuova,vecchia») con cui il
+	// login davanti alle app firma le intestazioni X-GitStack-* (GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS,
+	// v3-a GIT-347, H6). Vuoto: /_appauth/verify risponde 503 e nessuna app con login passa.
+	AppAuthSigningKeys string
+
+	// PublicURL è l'indirizzo pubblico di GitStack (GITSTACK_GATEWAY_PUBLIC_URL, es.
+	// https://git.acme.it) e AppsDomain il dominio delle app (GITSTACK_GATEWAY_APPS_DOMAIN, H2): con
+	// entrambi il browser senza sessione è mandato al login GitStack e torna all'app.
+	PublicURL  string
+	AppsDomain string
+
 	// RateLimit sono le soglie del limitatore token-bucket (F6): richieste al
 	// secondo e burst per credenziale e per IP client. Rate 0 = disattivato.
 	RateLimit RateLimitConfig
@@ -108,6 +119,10 @@ const (
 
 	envMaxBody       = "GITSTACK_GATEWAY_MAX_BODY_BYTES"
 	envMaxAttachment = "GITSTACK_GATEWAY_ATTACHMENTS_MAX_BYTES"
+
+	envAppAuthSigningKeys = "GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS"
+	envPublicURL          = "GITSTACK_GATEWAY_PUBLIC_URL"
+	envAppsDomain         = "GITSTACK_GATEWAY_APPS_DOMAIN"
 
 	envIdentityURL     = "GITSTACK_IDENTITY_URL"
 	envRegistryURL     = "GITSTACK_REGISTRY_URL"
@@ -324,6 +339,21 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 				*d.dst = dur
 			}
 		}
+	}
+
+	if v, ok := lookup(envAppAuthSigningKeys); ok && strings.TrimSpace(v) != "" {
+		cfg.AppAuthSigningKeys = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envPublicURL); ok && strings.TrimSpace(v) != "" {
+		u, err := url.Parse(strings.TrimSpace(v))
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || (u.Path != "" && u.Path != "/") {
+			errs = append(errs, fmt.Sprintf("%s non è una URL http(s) senza percorso: %q", envPublicURL, v))
+		} else {
+			cfg.PublicURL = strings.TrimRight(u.String(), "/")
+		}
+	}
+	if v, ok := lookup(envAppsDomain); ok {
+		cfg.AppsDomain = strings.ToLower(strings.Trim(strings.TrimSpace(v), "."))
 	}
 
 	if v, ok := lookup(envLogLevel); ok && strings.TrimSpace(v) != "" {
