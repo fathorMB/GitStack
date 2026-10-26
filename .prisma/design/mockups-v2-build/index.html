@@ -241,7 +241,7 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
 <template id="rh"></template>
 
 <!-- ============ B1 ACTIONS ============ -->
-<section class="screen" data-screen="actions" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>GitStack</a><span class='sep'>/</span><b>Actions</b>" data-desc="CI1, CI3, CI6, CI7: scheda Actions. Workflow letti da .gitstack/workflows e .github/workflows; esecuzioni con evento, branch, chi le ha avviate (anche agenti), stato; run in coda annullato da un push più recente; avvio a mano (workflow_dispatch) solo con write.">
+<section class="screen" data-screen="actions" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>GitStack</a><span class='sep'>/</span><b>Actions</b>" data-desc="CI1, CI3, CI6, CI7: scheda Actions, con un run partito da una sincronizzazione del mirror a nome di chi ha acceso la CI. Workflow letti da .gitstack/workflows e .github/workflows; esecuzioni con evento, branch, chi le ha avviate (anche agenti), stato; run in coda annullato da un push più recente; avvio a mano (workflow_dispatch) solo con write.">
   <div class="mvar"><span class="mvar-note">Variante:</span><button data-var="list">Elenco</button><button data-var="dispatch">Avvio a mano</button></div>
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / GitStack</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
@@ -267,6 +267,7 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
           <div class="list-row hover"><span class="st err"><svg class="icon"><use href="#i-x"/></svg></span><div style="flex:1"><a data-go="run" style="font-weight:600;color:var(--text)">core: retry webhook deliveries with backoff</a><div class="small muted"><b>ci</b> #1283 · <span class="mono">push</span> · <span class="mono">fix/webhook-retry</span> · by <b>build-agent</b> <span class="badge badge-agent">agent</span></div></div><span class="badge badge-err">Failed · 6m 12s</span></div>
           <div class="list-row hover"><span class="st ok"><svg class="icon"><use href="#i-check"/></svg></span><div style="flex:1"><a data-go="run" style="font-weight:600;color:var(--text)">Merge PR #229: mirror badge on repo header</a><div class="small muted"><b>ci</b> #1282 · <span class="mono">push</span> · <span class="mono">main</span> · by <b>lbianchi</b></div></div><span class="badge badge-ok">Success · 8m 40s</span></div>
           <div class="list-row hover"><span class="st skip"><svg class="icon"><use href="#i-x"/></svg></span><div style="flex:1"><span style="font-weight:600">web: settings layout</span><div class="small muted"><b>ci</b> #1281 · <span class="mono">push</span> · <span class="mono">feat/settings</span> · cancelled: a newer push on the same branch</div></div><span class="badge">Cancelled</span></div>
+          <div class="list-row hover"><span class="st ok"><svg class="icon"><use href="#i-check"/></svg></span><div style="flex:1"><span style="font-weight:600">docs: update install guide</span><div class="small muted"><b>ci</b> #1280 · <span class="mono">push</span> · <span class="mono">main</span> · from mirror sync of github.com/acme/gitstack · as <b>mrossi</b> (turned on CI on the mirror)</div></div><span class="badge badge-ok">Success · 7m 55s</span></div>
           <div class="list-row hover"><span class="st ok"><svg class="icon"><use href="#i-check"/></svg></span><div style="flex:1"><span style="font-weight:600">nightly-e2e</span><div class="small muted"><b>nightly-e2e</b> #87 · <span class="mono">schedule</span> · <span class="mono">main</span> · 02:30</div></div><span class="badge badge-ok">Success · 41m</span></div>
           <div class="list-row hover"><span class="st ok"><svg class="icon"><use href="#i-check"/></svg></span><div style="flex:1"><span style="font-weight:600">v1.0.0-rc.3</span><div class="small muted"><b>release</b> #12 · <span class="mono">push</span> · tag <span class="mono">v1.0.0-rc.3</span> · by <b>mrossi</b></div></div><span class="badge badge-ok">Success · 22m</span></div>
         </div>
@@ -331,7 +332,7 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
 </section>
 
 <!-- ============ B3 SECRETS ============ -->
-<section class="screen" data-screen="secrets" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>GitStack</a><span class='sep'>/</span><b>Settings</b>" data-desc="CI4: segreti e variabili del repo (solo admin), più quelli ereditati dall'organizzazione. I segreti non si rileggono mai e sono mascherati nei log; permessi di default del token del job, sempre limitati da quelli di chi avvia.">
+<section class="screen" data-screen="secrets" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>GitStack</a><span class='sep'>/</span><b>Settings</b>" data-desc="CI4, CI3, RG2: interruttore della CI sul mirror (spento di default, autore chi l'ha acceso); nessuna chiave di firma per repo (firma con la chiave dell'istanza). Segreti e variabili del repo (solo admin), più quelli ereditati dall'organizzazione. I segreti non si rileggono mai e sono mascherati nei log; permessi di default del token del job, sempre limitati da quelli di chi avvia.">
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / GitStack</h1></div>
     <div class="tabs"><a class="tab"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="actions"><svg class="icon"><use href="#i-actions"/></svg>Actions</a><a class="tab" data-go="packages"><svg class="icon"><use href="#i-pkg"/></svg>Packages</a><a class="tab" data-go="releases"><svg class="icon"><use href="#i-tag"/></svg>Releases</a><a class="tab active"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
@@ -342,9 +343,15 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
       <div><div class="sec-h"><h2>Repository secrets</h2><span class="sp"></span><button class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>New secret</button></div>
         <div class="list">
           <div class="list-row"><svg class="icon muted"><use href="#i-lock"/></svg><span class="mono" style="flex:1">GITHUB_MIRROR_TOKEN</span><span class="small muted">updated 3 days ago by mrossi</span><button class="btn btn-sm">Update</button><button class="btn btn-sm btn-ghost">Delete</button></div>
-          <div class="list-row"><svg class="icon muted"><use href="#i-lock"/></svg><span class="mono" style="flex:1">COSIGN_KEY</span><span class="small muted">updated 2 weeks ago by mrossi</span><button class="btn btn-sm">Update</button><button class="btn btn-sm btn-ghost">Delete</button></div>
+          <div class="list-row"><svg class="icon muted"><use href="#i-lock"/></svg><span class="mono" style="flex:1">NPM_TOKEN</span><span class="small muted">updated 2 weeks ago by mrossi</span><button class="btn btn-sm">Update</button><button class="btn btn-sm btn-ghost">Delete</button></div>
         </div>
-        <p class="hint" style="margin-top:8px">Values can't be read back. They are masked as <span class="mono">***</span> in logs.</p></div>
+        <p class="hint" style="margin-top:8px">Values can't be read back. They are masked as <span class="mono">***</span> in logs. No signing key needed: the CI signs the images it publishes with the instance key.</p></div>
+      <div><div class="sec-h"><h2>CI on this mirror</h2><span class="badge">admin only</span></div>
+        <div class="card card-b stack" style="gap:10px;font-size:13px">
+          <div class="row"><span class="sw on"></span><b>Run workflows on mirror syncs</b><span class="muted">— turned on by <b>mrossi</b> on 26 Oct</span></div>
+          <p class="muted">Off by default on pull mirrors. Each sync that brings new commits or tags starts <span class="mono">push</span> and tag events like a normal push, one per updated ref; refs marked <span class="badge badge-run" style="height:18px">diverged</span> start nothing.</p>
+          <div class="alert alert-info"><svg class="icon"><use href="#i-shield"/></svg><div>These runs are started as <b>mrossi</b>: the job token gets at most mrossi's permissions. If mrossi loses admin on this repository, CI on the mirror turns off.</div></div>
+        </div></div>
       <div><div class="sec-h"><h2>Organization secrets</h2><span class="badge">inherited · managed by Acme owners</span></div>
         <div class="list"><div class="list-row"><svg class="icon muted"><use href="#i-lock"/></svg><span class="mono" style="flex:1">S3_ARTIFACTS_KEY</span><span class="small muted">available to all Acme repositories</span></div></div></div>
       <div><div class="sec-h"><h2>Variables</h2><span class="sp"></span><button class="btn"><svg class="icon"><use href="#i-plus"/></svg>New variable</button></div>
@@ -360,7 +367,7 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
 </section>
 
 <!-- ============ B4 ADMIN CI ============ -->
-<section class="screen" data-screen="admin-ci" data-nav="admin" data-crumb="<a>Administration</a><span class='sep'>/</span><b>CI &amp; runners</b>" data-desc="CI2, CI5, CI7: console amministratore. Posti del runner integrato calcolati dal profilo hardware, limiti per job, coda, runner esterni con token, spazio di log/artefatti/cache/registry, provenienza delle action (GitHub o mirror interno).">
+<section class="screen" data-screen="admin-ci" data-nav="admin" data-crumb="<a>Administration</a><span class='sep'>/</span><b>CI &amp; runners</b>" data-desc="CI2, CI5, CI7: console amministratore. Build delle immagini nel runner integrato con BuildKit senza privilegi come strada standard (2026-10-26). Posti del runner integrato calcolati dal profilo hardware, limiti per job, coda, runner esterni con token, spazio di log/artefatti/cache/registry, provenienza delle action (GitHub o mirror interno).">
   <div class="page">
     <div class="row" style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:600">CI &amp; runners</h1><span class="sp"></span><button class="btn"><svg class="icon"><use href="#i-plus"/></svg>Register external runner</button></div>
     <div class="grid4" style="margin-bottom:20px">
@@ -376,6 +383,7 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
           <dt>Per job</dt><dd>2 vCPU · 4 GB RAM · 20 GB disk · 2 h <a class="small">Edit</a></dd>
           <dt>Priority</dt><dd class="muted">Lower than GitStack services — jobs can never stop them</dd>
           <dt>Network</dt><dd class="muted">Internet or proxy only · cluster network blocked</dd>
+          <dt>Image builds</dt><dd>BuildKit without privileges, inside the job pod <span class="badge badge-ok">standard</span> <span class="hint">· same network barriers as jobs; external runners only for tools the pod doesn't offer</span></dd>
           <dt>Actions source</dt><dd class="row"><button class="btn btn-sm">github.com <svg class="icon"><use href="#i-chev"/></svg></button><span class="hint">or an internal mirror</span></dd>
         </dl>
         <div class="alert alert-warning" style="margin-top:14px"><svg class="icon"><use href="#i-alert"/></svg><div>Average wait is high. Consider an external runner or the recommended hardware profile.</div></div>
@@ -490,7 +498,7 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
 </section>
 
 <!-- ============ B8 CLI ============ -->
-<section class="screen" data-screen="cli" data-nav="cli" data-crumb="<b>Terminal</b>" data-desc="CI6, REL1: un agente segue la CI della sua PR, legge solo i log falliti, rilancia; scarica gli asset di una release. Output --json stabile come il resto di gs.">
+<section class="screen" data-screen="cli" data-nav="cli" data-crumb="<b>Terminal</b>" data-desc="CI6, REL1, H7: un workflow fa il deploy di un tag preciso su un'app v3 con il token del job; un agente segue la CI della sua PR, legge solo i log falliti, rilancia; scarica gli asset di una release. Output --json stabile come il resto di gs.">
   <div class="page page-narrow stack" style="gap:18px">
     <div><h3 style="margin-bottom:8px">An agent waits for CI and reads only what failed</h3>
 <div class="cmdblock"><span class="p">$ </span>gs run watch --exit-status
@@ -513,6 +521,12 @@ ci #1285 · fix/webhook-retry · push   <span class="o">✓ success</span></div>
 <div class="cmdblock"><span class="p">$ </span>gs workflow run nightly-e2e --ref main -f target=ubuntu-24.04
 <span class="p">$ </span>gs run list --workflow ci --status failure --json number,headBranch,actor --jq '.[0]'
 {"number":1283,"headBranch":"fix/webhook-retry","actor":"build-agent"}</div></div>
+    <div><h3 style="margin-bottom:8px">A workflow deploys a precise tag to a v3 app</h3>
+<div class="cmdblock"><span class="p"># .gitstack/workflows/release.yml · step after the image is pushed and signed</span>
+- run: gs app deploy web --image v1.0.0-rc.3 --wait
+  env:
+    GS_TOKEN: ${{ github.token }}   <span class="p"># job token: this repository only, never more than who started the run</span>
+<span class="o">✓ web v1.0.0-rc.3 healthy · image signed by this repository's CI</span></div></div>
     <div><h3 style="margin-bottom:8px">Releases</h3>
 <div class="cmdblock"><span class="p">$ </span>gs release create v1.0.0-rc.3 --prerelease --generate-notes dist/*
 <span class="p">$ </span>gs release download v1.0.0-rc.3 --pattern 'gs-linux-*'
