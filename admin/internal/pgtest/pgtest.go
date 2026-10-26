@@ -28,6 +28,53 @@ import (
 	"time"
 )
 
+// Label è l'etichetta dei container avviati da pgtest: serve a ritrovarli e
+// rimuoverli se il processo di test è stato ucciso prima dei t.Cleanup (vedi
+// scripts/cleanup-test-containers.sh e .ps1).
+const Label = "gitstack.test=pgtest"
+
+// staleAfter è l'età oltre cui un container con Label è considerato orfano.
+const staleAfter = time.Hour
+
+func pidLabel() string { return fmt.Sprintf("gitstack.test.pid=%d", os.Getpid()) }
+
+// removeStale rimuove i container con Label creati più di staleAfter fa
+// (rimasti da processi uccisi). Gli errori sono ignorati: è solo pulizia.
+func removeStale() {
+	out, err := exec.Command("docker", "ps", "-a", "--filter", "label="+Label,
+		"--format", "{{.ID}} {{.CreatedAt}}").Output()
+	if err != nil {
+		return
+	}
+	for _, id := range staleIDs(string(out), time.Now()) {
+		_ = exec.Command("docker", "rm", "-f", id).Run()
+	}
+}
+
+// staleIDs estrae dall'output "<id> <CreatedAt>" di docker ps gli id più
+// vecchi di staleAfter. CreatedAt ha la forma "2006-01-02 15:04:05 -0700 MST".
+func staleIDs(out string, now time.Time) []string {
+	var ids []string
+	for _, line := range strings.Split(out, "\n") {
+		id, rest, ok := strings.Cut(strings.TrimSpace(line), " ")
+		if !ok {
+			continue
+		}
+		fields := strings.Fields(rest)
+		if len(fields) < 3 {
+			continue
+		}
+		created, err := time.Parse("2006-01-02 15:04:05 -0700", strings.Join(fields[:3], " "))
+		if err != nil {
+			continue
+		}
+		if now.Sub(created) > staleAfter {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
 // SuperPassword è la password dell'utente postgres del container.
 const SuperPassword = "super-secret-test"
 
@@ -48,7 +95,7 @@ type Server struct {
 func (s *Server) WithClient(t testing.TB, major int) {
 	t.Helper()
 	image := fmt.Sprintf("postgres:%d-alpine", major)
-	out, err := exec.Command("docker", "run", "-d", "--rm", "--network", "container:"+s.Container,
+	out, err := exec.Command("docker", "run", "-d", "--rm", "--label", Label, "--label", pidLabel(), "--network", "container:"+s.Container,
 		"--entrypoint", "sleep", image, "3600").CombinedOutput()
 	if err != nil {
 		t.Fatalf("docker run client %s: %v: %s", image, err, out)
@@ -118,7 +165,8 @@ func start(t testing.TB, major int, tlsEnv []string) *Server {
 		skipOrFail(t, "il demone docker non risponde")
 	}
 	image := fmt.Sprintf("postgres:%d-alpine", major)
-	args := []string{"run", "-d", "--rm", "-p", "127.0.0.1::5432", "-e", "POSTGRES_PASSWORD=" + SuperPassword}
+	removeStale()
+	args := []string{"run", "-d", "--rm", "--label", Label, "--label", pidLabel(), "-p", "127.0.0.1::5432", "-e", "POSTGRES_PASSWORD=" + SuperPassword}
 	if tlsEnv != nil {
 		for _, e := range tlsEnv {
 			args = append(args, "-e", e)
