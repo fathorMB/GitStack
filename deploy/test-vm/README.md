@@ -502,7 +502,7 @@ Cosa controlla ciascun passo:
   backup: se la chiave host non fosse ripristinata fallirebbe («host key
   changed»). Se l'IP della VM cambia con il reset, il `known_hosts` si
   riscrive sul nuovo IP tenendo la stessa chiave. Infine `gitstack status`:
-  versione `sha-<Ref>` e «Stato: sano». Log in `backup-restore\app\push.log`.
+  versione `sha-<Ref>` e «Stato: sano». Log in `backup-restore\restore.log`.
 - **h-app / i-app.** (GIT-388, criterio 2 di GIT-351, H4) con l'hosting acceso
   dall'installer (`--enable-apps --apps-domain`, prima installazione e
   reinstallazione del restore). Prima del backup (`New-E2eAppFixture`):
