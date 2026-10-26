@@ -28,6 +28,9 @@ func testApp() (store.App, store.AppVersion) {
 func TestBuildDeployment_AggiornamentoSenzaInterruzioneESalute(t *testing.T) {
 	app, ver := testApp()
 	d := BuildDeployment(app, ver, BuildOptions{Replicas: 2, ProgressDeadlineSeconds: 90, PullSecret: "registry-pull", RestartedAt: "ieri"})
+	if d.Spec.Template.Spec.PriorityClassName != "gitstack-apps" {
+		t.Fatalf("priorityClassName: %q", d.Spec.Template.Spec.PriorityClassName)
+	}
 	if d.Namespace != "gitstack-app-"+app.ID.String() || d.Labels[LabelManaged] != "true" {
 		t.Fatalf("namespace/label: %s %v", d.Namespace, d.Labels)
 	}

@@ -133,6 +133,7 @@ func BuildDeployment(app store.App, v store.AppVersion, o BuildOptions) *appsv1.
 		minReady = 5
 	}
 	pod := corev1.PodSpec{
+		PriorityClassName:            "gitstack-apps",
 		AutomountServiceAccountToken: &f,
 		EnableServiceLinks:           &f,
 		Containers:                   []corev1.Container{c},
