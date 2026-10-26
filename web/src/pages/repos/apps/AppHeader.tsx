@@ -13,7 +13,7 @@ export function AppHeader({ repo, app, mode, actions }: { repo: Repository; app:
   const name = repo.name;
   const badge = statusBadge(app.status, app.runningPreviousVersion);
   const tab = ({ isActive }: { isActive: boolean }) => (isActive ? 'tab active' : 'tab');
-  const settings = mode === 'app-config' || mode === 'app-access';
+  const settings = mode === 'app-config' || mode === 'app-access' || mode === 'app-volumes';
   return (
     <div className="repo-h">
       <div className="inner">

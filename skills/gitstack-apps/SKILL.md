@@ -62,19 +62,23 @@ gs app restart web
 gs app scale web --copies 3
 gs app env list web
 gs app secret list web
+gs app volume list wiki
+gs app volume add wiki data --mount /wiki/data --size 10GB
+gs app volume remove wiki data
 printf %s "$VALORE" | gs app secret set web DB_PASSWORD
 ```
 
 - `scale` è entro la quota dell'owner: con `insufficient_capacity` (409) il messaggio dice quanto manca. Non si scala in automatico.
+- I volumi (H3) hanno dimensione fissa, contano nella quota disco dell'owner (409 `insufficient_capacity` se non ci stanno) e fanno girare l'app in una sola copia. Entrano nei backup; per un database pianifica un dump dentro un volume, perché la copia dei file a database acceso può essere incoerente. `volume remove` elimina anche i dati.
 - I segreti non si rileggono: `secret list` mostra solo i nomi. Passa il valore dallo standard input, mai in un argomento che resta nella cronologia.
 - Con `--json` ogni comando stampa JSON e gli errori escono su stderr in JSON. Codici di uscita: 0 ok, 1 errore o deploy fallito, 2 uso errato, 4 non autenticato, 5 permesso negato, 6 non trovato.
 
 ## Con MCP
 
-Gli strumenti sono gli stessi dell'API: `app_list`, `app_get`, `app_logs`, `app_deploy`, `app_rollback`, `app_restart`, `app_scale`, `app_version_list` (lettura o `write`), mentre `app_create`, `app_delete`, `app_set_access`, `app_access_member_add` e `app_access_member_remove` richiedono `admin` e sono annotati come **distruttivi**: il client può chiedere conferma. Il server non chiede conferme da solo. `app_deploy` risponde 202: leggi l'esito con `app_version_list` o `app_get` finché lo stato non è `serving` o `failed`.
+Gli strumenti sono gli stessi dell'API: `app_list`, `app_get`, `app_logs`, `app_deploy`, `app_rollback`, `app_restart`, `app_scale`, `app_version_list`, `app_volume_list` (lettura o `write`), mentre `app_create`, `app_delete`, `app_set_access`, `app_access_member_add` e `app_access_member_remove`, `app_volume_create` e `app_volume_delete` richiedono `admin` e sono annotati come **distruttivi**: il client può chiedere conferma. Il server non chiede conferme da solo. `app_deploy` risponde 202: leggi l'esito con `app_version_list` o `app_get` finché lo stato non è `serving` o `failed`.
 
 ## Divieto di `--yes` (G8)
 
-`gs app scale --copies 0`, `gs app env unset` e `gs app secret rm` chiedono conferma. **Un agente non usa mai `--yes` su queste operazioni senza un'istruzione esplicita di una persona** che nomina quell'app, in questa conversazione. Senza terminale e senza `--yes` il comando esce con 2 e non fa nulla: è la richiesta di una conferma umana, non un errore da aggirare.
+`gs app scale --copies 0`, `gs app env unset`, `gs app secret rm` e `gs app volume remove` chiedono conferma. **Un agente non usa mai `--yes` su queste operazioni senza un'istruzione esplicita di una persona** che nomina quell'app, in questa conversazione. Senza terminale e senza `--yes` il comando esce con 2 e non fa nulla: è la richiesta di una conferma umana, non un errore da aggirare.
 
 Per avere una persona nel giro dei deploy, chi amministra il repo attiva «Richiedi una Pull Request» su `main`: i deploy automatici partono solo dopo un merge approvato. Se un deploy dell'agente fallisce, gli amministratori ricevono una notifica.
