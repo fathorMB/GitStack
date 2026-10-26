@@ -101,8 +101,8 @@ type Options struct {
 	// SystemdDir è la cartella delle unità systemd (default /etc/systemd/system):
 	// serve a togliere le variabili *_PROXY che lo script di k3s ricopia in
 	// k3s.service.env, perché il drop-in resti l'unica fonte.
-	SystemdDir  string
-	Timeout     time.Duration
+	SystemdDir string
+	Timeout    time.Duration
 	// ExtraConfig sono chiavi di primo livello di config.yaml scritte insieme a image_tag quando
 	// l'aggiornamento riesce (es. apps_enabled con --enable-apps).
 	ExtraConfig map[string]string

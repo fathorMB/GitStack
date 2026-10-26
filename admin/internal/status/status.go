@@ -71,9 +71,9 @@ func (s Service) Healthy() bool { return s.Desired > 0 && s.Ready >= s.Desired }
 
 // Report è il risultato di Collect.
 type Report struct {
-	Host          string    `json:"host"`
-	SSHPort       int       `json:"ssh_port"`
-	AppsDomain    string    `json:"apps_domain,omitempty"`
+	Host       string `json:"host"`
+	SSHPort    int    `json:"ssh_port"`
+	AppsDomain string `json:"apps_domain,omitempty"`
 	// AppsEnabled è l'hosting delle app come scritto in config.yaml; AppsLive quello che il cluster
 	// fa davvero ("on", "off", "" se non leggibile): core ha GITSTACK_CORE_APPS_ENABLED=true o no.
 	AppsEnabled   bool      `json:"apps_enabled"`
@@ -163,12 +163,12 @@ type Collector struct {
 // perché lo stato (API ok, cluster no) resti visibile.
 func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir string) *Report {
 	r := &Report{
-		Host:       cfg.Host,
-		SSHPort:    cfg.SSHPort,
-		AppsDomain: cfg.AppsDomain,
+		Host:        cfg.Host,
+		SSHPort:     cfg.SSHPort,
+		AppsDomain:  cfg.AppsDomain,
 		AppsEnabled: cfg.AppsEnabled,
-		Release:    cfg.Release,
-		Namespace:  cfg.Namespace,
+		Release:     cfg.Release,
+		Namespace:   cfg.Namespace,
 	}
 	r.K3sVersion = c.k3sVersion(ctx)
 	svcs, err := c.services(ctx, cfg)

@@ -11,7 +11,7 @@ import (
 // ADR 0002: i permessi sull'app esistono solo nel namespace dell'app, con un RoleBinding verso il
 // ClusterRole modello; mai un ClusterRoleBinding.
 func TestEnsureRoleBinding_NelNamespaceDellApp(t *testing.T) {
-	kube := fake.NewSimpleClientset()
+	kube := fake.NewClientset()
 	c := New(nil, kube, nil, Config{ControllerServiceAccount: "gitstack/gitstack-core", WorkloadRole: "gitstack-app-workload"})
 	for i := 0; i < 2; i++ { // idempotente
 		if err := c.ensureRoleBinding(context.Background(), "gitstack-app-x"); err != nil {
@@ -35,7 +35,7 @@ func TestEnsureRoleBinding_NelNamespaceDellApp(t *testing.T) {
 }
 
 func TestEnsureRoleBinding_SenzaConfigurazioneNonFaNiente(t *testing.T) {
-	kube := fake.NewSimpleClientset()
+	kube := fake.NewClientset()
 	c := New(nil, kube, nil, Config{})
 	if err := c.ensureRoleBinding(context.Background(), "gitstack-app-x"); err != nil {
 		t.Fatal(err)
