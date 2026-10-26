@@ -76,9 +76,7 @@ func newLogsEnv(t *testing.T) *logsEnv {
 	pods := &fakePodLogs{lines: map[string][]string{}}
 	ctl := apps.New(st, kube, nil, apps.Config{
 		Now: clock.Now, PodLogs: pods.read,
-		Secrets: func(ctx context.Context, appID uuid.UUID) (map[string]string, error) {
-			return st.AppSecretValues(ctx, keys, appID)
-		},
+		Secrets: keys,
 	})
 	base.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
 		httpserver.WithRepoIdentity(id), httpserver.WithReadableLister(id), httpserver.WithGit(git),
