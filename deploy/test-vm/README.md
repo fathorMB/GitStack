@@ -394,6 +394,7 @@ Parametri principali (tutti con un default sensato):
 | `-MirrorAliasIp` | `192.168.250.10` | Passi e9/e10 (GIT-309): alias /32 su `lo` della VM, tolto a fine passo, su cui ascolta la destinazione/origine dei mirror. La policy di uscita (F7) blocca gli indirizzi del nodo, quindi non si usa l'IP della VM; il certificato e' autofirmato con SAN = alias. |
 | `-PreviousRef` | primo genitore di `-Ref` (API GitHub) | Passo j (GIT-148): commit da installare prima dell'upgrade. Deve avere gia `gitstack upgrade` (GIT-147) e immagini e binario pubblicati dalla CI. |
 | `-SkipBackupRestore` / `-SkipUpgrade` | (assenti) | Saltano i passi h-i e j. Solo per il debug: una prova valida li esegue tutti. |
+| `-AppsDomain` | `apps.e2e.test` | Passi h-app/i-app (GIT-388): dominio delle app con cui l'installer parte con `--enable-apps --apps-domain`. Non serve DNS. Stringa vuota: hosting spento e passi dell'app non eseguiti; ignorato con `-SkipBackupRestore`. |
 | `-SkipReset` | (assente) | Salta il passo (a): riusa la VM nello stato attuale. Solo per il debug di questo script, mai per una prova valida. |
 | `-JetStreamPollAttempts` / `-JetStreamPollIntervalSeconds` | `6` / `5` | Passo (e): letture del conteggio JetStream dopo la create, ogni N secondi, finché supera la baseline (fino a 30s in totale di default). |
 
@@ -416,6 +417,8 @@ esecuzione verde sono **8 righe `[PASS]`** (7 nell'output reale di Atlas del 28/
 [PASS] e10. mirror in pull (GIT-201): origine HTTPS sulla VM con la CA della VM, push sul mirror rifiutato (sola lettura), Sincronizza ora e main con lo stesso SHA dell origine
 [PASS] h. dati di prova ... e gitstack backup cifrato ...
 [PASS] i. reset, reinstallazione della stessa versione, gitstack restore ...
+[PASS] i-app 1/7 ... 7/7 (sette righe, una per controllo, vedi sotto)
+[PASS] i-app. esito complessivo: 7/7 controlli dell'app ok
 [PASS] j. upgrade: installazione del commit precedente, dati, ... gitstack upgrade ...
 RISULTATO: VERDE
 ```
@@ -500,6 +503,30 @@ Cosa controlla ciascun passo:
   changed»). Se l'IP della VM cambia con il reset, il `known_hosts` si
   riscrive sul nuovo IP tenendo la stessa chiave. Infine `gitstack status`:
   versione `sha-<Ref>` e «Stato: sano». Log in `backup-restore\restore.log`.
+- **h-app / i-app.** (GIT-388, criterio 2 di GIT-351, H4) con l'hosting acceso
+  dall'installer (`--enable-apps --apps-domain`, prima installazione e
+  reinstallazione del restore). Prima del backup (`New-E2eAppFixture`):
+  `e2e/gs-app-restore.sh push` pubblica nel registry del repo di prova
+  `<utente>/<repo>/e2eimg` con tre tag, ognuno con il suo manifest (rootfs
+  busybox dell'immagine gia scaricata dal chart, `sleep` come entrypoint;
+  `v1`, `v2` e `v3`); l'app `e2eapp` si crea da API con `v1`, poi la
+  variabile `E2E_VAR`, il segreto `E2E_SECRET` (valore casuale, mai
+  stampato) e il deploy di `v2` (`v2` attiva, `v1` precedente, entrambe
+  `inBackup`), ogni volta attendendo che la versione piu recente sia
+  `serving`. Dopo `gitstack restore`, una riga `[PASS]`/`[FAIL]` per
+  controllo (`Test-E2eAppAfterRestore`) e poi l'esito complessivo: 1 il
+  Deployment `app` esiste nel namespace `gitstack-app-<id>`; 2 la sua
+  immagine e quella della versione attiva (confronto dal primo `/`, perche
+  l'host del registry puo cambiare con l'IP della VM); 3 `status` dell'app via
+  API `running` (attesa fino a 420 s); 4 la variabile e nell'env del
+  container (`kubectl exec ... printenv`); 5 il segreto ha lo stesso valore
+  (dal pod, altrimenti dal Secret `app-secrets`); 6 `GET /v2/.../manifests/v1`
+  e `v2` danno 200; 7 `v3` da 404 (RG2: il tag non usato da nessuna app non
+  e nel backup). Log in `backup-restoreapppush.log` e
+  `backup-restoreapp-dopo-restoreinspect.log`. Se la preparazione fallisce
+  il passo h e rosso e i controlli dell'app non partono. Non provato senza
+  VM: i pezzi puri (`Test-E2eAppAfterRestore` con HTTP e VM finti, il comando
+  d'installazione) sono in `tests/phases.Tests.ps1`.
 - **j.** (GIT-148, DF/F) reset, installazione del **commit precedente**
   (`installer-precedente.log`), admin e dati di prova su quella versione,
   poi: `gitstack restore` dell'archivio della fase h (versione diversa) deve

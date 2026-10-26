@@ -63,6 +63,38 @@ $prev = Get-E2ePreviousCommit -Repo 'owner/GitStack' -Sha 'abc123'
 Assert-That 'precedente: primo genitore' ($prev -eq 'p1')
 Assert-That 'precedente: URL dell''API del commit' ($script:LastUri -eq 'https://api.github.com/repos/owner/GitStack/commits/abc123')
 
+# Install con hosting acceso (GIT-388): solo se c'e' un dominio.
+$cmdApps = Get-E2eInstallCommand -InstallRef 'abc123' -AppsDomain 'apps.e2e.test'
+Assert-That 'install: con dominio accende l''hosting' ($cmdApps -like '*bash -s -- --enable-apps --apps-domain apps.e2e.test')
+
+# Test-E2eAppAfterRestore: sette righe sempre, con HTTP e VM finti.
+$script:OutDir = Join-Path ([IO.Path]::GetTempPath()) 'gs-phases-tests'
+$script:SshCommandTimeoutSeconds = 5
+$script:Mock = @{ Status = 'running'; V1 = 200; V2 = 200; V3 = 404; Inspect = "deploy=yes`nimage=10.0.0.9/u1/r1/e2eimg:v2`nvar=match`nsecret=match`n" }
+function Start-Sleep { param([int]$Seconds) }
+function Copy-ToVm { param($LocalPath, $RemotePath, $TimeoutSeconds) return [pscustomobject]@{ ExitCode = 0; StdOut = ''; StdErr = '' } }
+function Invoke-VmSsh { param($Command, $TimeoutSeconds) return [pscustomobject]@{ ExitCode = 0; StdOut = $script:Mock.Inspect; StdErr = '' } }
+function Invoke-HttpRaw {
+    param([string]$Uri, [string]$Method = 'GET', [string]$Body, [hashtable]$Headers, [string]$Cookie, [int]$TimeoutSec = 20)
+    if ($Uri -like '*/manifests/v1') { return [pscustomobject]@{ StatusCode = $script:Mock.V1; Body = '' } }
+    if ($Uri -like '*/manifests/v2') { return [pscustomobject]@{ StatusCode = $script:Mock.V2; Body = '' } }
+    if ($Uri -like '*/manifests/v3') { return [pscustomobject]@{ StatusCode = $script:Mock.V3; Body = '' } }
+    return [pscustomobject]@{ StatusCode = 200; Body = (@{ status = $script:Mock.Status } | ConvertTo-Json) }
+}
+$ctx = [pscustomobject]@{ Namespace = 'gitstack-app-x'; ActiveVersion = 4; ActiveRef = '10.0.0.5/u1/r1/e2eimg:v2'; VarValue = 'a'; SecretValue = 'b'; ImagePath = 'u1/r1/e2eimg' }
+$rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'a')
+Assert-That 'app dopo il restore: sette righe' (@($rows).Count -eq 7)
+Assert-That 'app dopo il restore: tutte ok (host del registry diverso ammesso)' (@($rows | Where-Object { -not $_.Ok }).Count -eq 0)
+$script:Mock.V3 = 200; $script:Mock.V1 = 404; $script:Mock.Status = 'starting'
+$script:Mock.Inspect = "deploy=yes`nimage=10.0.0.9/u1/r1/e2eimg:v1`nvar=missing`nsecret=mismatch`n"
+$rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'b')
+$ko = @($rows | Where-Object { -not $_.Ok } | ForEach-Object { $_.Name.Substring(0, 10) })
+Assert-That 'app dopo il restore: ko su 2, 3, 4, 5, 6 e 7, ok su 1' (@($rows).Count -eq 7 -and $rows[0].Ok -and $ko.Count -eq 6)
+$script:Mock.Inspect = "deploy=no`nimage=`nvar=missing`nsecret=missing`n"
+$rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'c')
+Assert-That 'app dopo il restore: senza Deployment la riga 1 e ko' (-not $rows[0].Ok -and -not $rows[1].Ok)
+Remove-Item -LiteralPath $script:OutDir -Recurse -Force -ErrorAction SilentlyContinue
+
 if ($failures.Count -gt 0) {
     Write-Host "FALLITE: $($failures.Count)"
     exit 1
