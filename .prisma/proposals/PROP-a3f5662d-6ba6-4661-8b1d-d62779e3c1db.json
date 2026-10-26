@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "id": "PROP-a3f5662d-6ba6-4661-8b1d-d62779e3c1db",
+  "state": "applied",
+  "created": "2026-10-26T00:32:53.398298600+00:00",
+  "input": {
+    "kind": "product_roadmap",
+    "summary": "Pilota retail.it: chiuse il 2026-10-26 le due domande aperte (account bot coi soli grant P4; PostgreSQL di test come app con volume dentro GitStack, nessuna eccezione a H9, H16 invariata). Le voci passano in «Decisioni»; i volumi della v3-b (H3) entrano nella prima parte del pilota. Corretta la frase sul PostgreSQL di test in v3-b; allineata v3-hosting (il pilota tocca anche la v3-b). Sostituisce PROP-35aab81b-4bee-436f-8d6b-a366ae58eb5e.",
+    "operations": [
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-20366828-5e70-4aba-9c46-1575a1bb7b18",
+          "knowledge": [
+            "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363",
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e",
+            "DOC-3595cb24-e019-4230-a412-009769bae527",
+            "DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d",
+            "DOC-d1718775-770d-4065-8b27-3dc7a400dad6"
+          ],
+          "reopen_reason": "Domande aperte chiuse dall'operatore il 2026-10-26; volumi (H3) nella prima parte.",
+          "schema_version": 1,
+          "sources": [
+            {
+              "source_id": "SRC-380ef9a9-8ee9-4334-bd62-3af9cb80cda0"
+            }
+          ],
+          "title": "Pilota retail.it — ambiente di test su GitStack",
+          "updated": "2026-10-26T00:33:46.516324400+00:00"
+        },
+        "body": "\n# Pilota retail.it — ambiente di test su GitStack\n\n## Outcome\n\nIl progetto retail.it (primo repo ospitato ufficialmente) ha su GitStack un ambiente di test: il repo è un mirror in pull da GitHub, la CI di GitStack costruisce le immagini di API, sito e backoffice e le pubblica nel registry del repo, le immagini girano come app GitStack interne accessibili solo ai tester, e i tester aprono issue con screenshot sul repo.\n\n## Rationale\n\nScelta dell'operatore del 2026-10-26: il pilota corre **in parallelo alla v1.0**, che resta il primo rilascio pubblico con i criteri V1. È il primo cliente reale della v3-a: collaudarla su un caso vero vale più di un collaudo interno. Nessuna data: i tempi li gestisce l'operatore, nel quadro della scelta di chiudere in parallelo tutti gli obiettivi decisi.\n\n## Scope\n\n**Prima parte (P1 della richiesta, serve per il primo rilascio in test)** — tutte coperte da regole decise, manca il codice:\n\n1. CI su un repo in mirror in pull, accesa per repo da chi ha `admin`; ogni sincronizzazione con ref nuovi genera eventi push e tag come un push normale (CI3).\n2. Build delle immagini nel runner integrato con BuildKit senza privilegi (CI2).\n3. Hosting delle app attivabile dall'installer e da `gitstack upgrade`, con il dominio delle app (H2).\n4. Immagini private del registry dello stesso repo usate dalle app senza credenziali a mano (H7, RG1).\n5. Segreti delle app passati ai container, mai mostrati, nuova versione a ogni modifica (H8).\n6. Login GitStack davanti alle app interne per chi ha `read` sul repo e per chi è nella lista di accesso dell'app, utente in intestazioni firmate (H6).\n7. Volumi persistenti delle app e loro backup (v3-b, H3, H4): il PostgreSQL di test di retail.it gira come app con volume nello stesso repo.\n\n**Seconda parte (P2, subito dopo):** deploy automatico da branch o da regola sui tag e deploy di un tag preciso dalla CI (H7); variabili `GITSTACK_APP_VERSION`, `GITSTACK_COMMIT_SHA`, `GITSTACK_DEPLOYED_AT` (H14); nome interno stabile tra app dello stesso repo (H15); uscita verso internet e rete privata con guida (H16); log, stato e webhook `deployment` (H12); `gs app` (H13).\n\n**Fuori dal pilota:** del P3 restano fuori la guida CA per i tester e Let's Encrypt della v3-c, nei rispettivi obiettivi o da decidere dopo. L'account bot non richiede lavoro nuovo (vedi Decisioni); i volumi della v3-b sono entrati nella prima parte.\n\n## Decisioni\n\nChiuse dall'operatore il **2026-10-26**:\n\n- **Account bot (P3): bastano i grant (P4).** L'amministratore crea un utente `agent` con grant sul solo repo di retail.it e un token con scadenza; nessuna regola nuova. Nota: con `read` su un repo privato il bot legge anche il codice, perché i grant sono per repo e non per azione.\n- **PostgreSQL di test: nasce dentro GitStack come app con volume** (v3-b, H3), non sull'host e non su una destinazione privata. Oggi non esiste ancora. Nessuna eccezione a H9; H16 invariata. Per questo la v3-b (volumi e loro backup) entra nella prima parte del pilota.\n\n## Source references\n\n- Richiesta retail.it del 2026-10-26 (SRC-380ef9a9-8ee9-4334-bd62-3af9cb80cda0)\n- [[knowledge/topics/hosting-app]], [[knowledge/topics/ci-registry-release]], [[knowledge/topics/mirror-in-pull]], [[knowledge/topics/rilascio-v1]], [[knowledge/topics/identita-e-sicurezza]]\n- [[roadmap/product/v3-b-dati]]\n",
+        "expected_digest": "801483200542b589655d2208e2baa6b88ca67c26901eadeda5c1ddea39f06598",
+        "slug": null,
+        "reason": "Domande aperte chiuse dall'operatore il 2026-10-26; volumi (H3) nella prima parte."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-990d3f4a-a762-48d5-a0a1-4147fca8b7d1",
+          "knowledge": [
+            "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363",
+            "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e"
+          ],
+          "reopen_reason": "Il PostgreSQL di test di retail.it nasce come app con volume (scelta del 2026-10-26).",
+          "schema_version": 1,
+          "title": "v3-b — Dati persistenti delle app",
+          "updated": "2026-10-26T00:33:46.518009700+00:00"
+        },
+        "body": "\n# v3-b — Dati persistenti delle app\n\n## Outcome\n\nUn'app può conservare dati su volumi persistenti che entrano nei backup di GitStack e tornano con il ripristino, così wiki, CMS e piccoli strumenti interni girano su GitStack.\n\n## Rationale\n\nH3: alla maggior parte delle aziende on-prem i dati servono prima dell'esposizione su internet; i database gestiti restano in «Oltre». Orizzonte now dal 2026-10-26. Il PostgreSQL di test di retail.it, che oggi non esiste, nasce qui come app con volume: per questo volumi e backup entrano nella prima parte del [[roadmap/product/pilota-retail-it]] (scelta dell'operatore del 2026-10-26).\n\n## Scope\n\nVolumi di dimensione fissa nella quota dell'owner; app con volume a una sola copia; volumi inclusi di default nei backup ed escludibili per app; avviso e guida al dump per i database dentro un container (H3, D19).\n\nSecondo dei tre passi della v3, in parallelo agli altri.\n\n## Source references\n\n- Tema di analisi \"v3 — Hosting di app e container: regole di prodotto\" (H3)\n- [[roadmap/product/pilota-retail-it]]\n",
+        "expected_digest": "d9b64fecef8ae86b3bf58ccfe24ab88521d8a7781355c1b393250cbd0269440d",
+        "slug": null,
+        "reason": "Il PostgreSQL di test di retail.it nasce come app con volume (scelta del 2026-10-26)."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-ece89711-7a10-4f38-9aad-9106ddeeeeb1",
+          "knowledge": [
+            "DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7",
+            "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363",
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e"
+          ],
+          "reopen_reason": "Il Pilota retail.it tocca anche la v3-b (volumi e backup), scelta del 2026-10-26.",
+          "schema_version": 1,
+          "title": "v3 — Hosting di app e container",
+          "updated": "2026-10-26T00:33:46.519790100+00:00"
+        },
+        "body": "\n# v3 — Hosting di app e container\n\n## Outcome\n\nDeploy di app e container su k3s da web UI, API, `gs` e MCP: app interne o pubbliche, domini e certificati automatici, variabili e segreti, volumi persistenti, log, metriche, rollback e scala a mano, tutto con i permessi del repo e utilizzabile da persone e agenti.\n\n## Rationale\n\nCompleta la visione \"piccolo Azure\" sfruttando k3s già incluso (D2) e chiude ciò che la v2 rimandava: verifica delle firme al deploy e ripartenza delle app dopo un ripristino.\n\n## Scope\n\nRegole H1–H16 in [[knowledge/topics/hosting-app]] (analisi del 2026-10-18; H6 e H7 allargate e H14–H16 aggiunte il 2026-10-26 dal [[roadmap/product/pilota-retail-it]]). **Dal 2026-10-26** (scelta dell'operatore) la v3 non aspetta più la v2: i tre passi si chiudono in parallelo, ciascuno utilizzabile da solo, e la v3 esce appena è completa:\n\n1. **v3-a App interne** (H2 indirizzo automatico, H4–H16), di cui il Pilota retail.it è la prima parte;\n2. **v3-b Dati** (H3), i cui volumi e backup entrano anch'essi nella prima parte del Pilota retail.it per il suo PostgreSQL di test (scelta del 2026-10-26);\n3. **v3-c App pubbliche** (H1, H2 domini propri e Let's Encrypt).\n\nFuori dalla v3: database gestiti e multi-nodo («Oltre»), anteprime per ogni PR, definizione dell'app in un file del repo, scala automatica.\n\n## Source references\n\n- `.lmbrain-lite/knowledge/vision.md`\n- Tema di analisi \"v3 — Hosting di app e container: regole di prodotto\" (H1–H13)\n- Richiesta retail.it del 2026-10-26 (H6, H7, H14–H16; PostgreSQL di test come app con volume)\n",
+        "expected_digest": "b4eb2b48d8e9ab5e8780d4ddcfb55ca217960c6da8ad46c9a969af0ae7ff6419",
+        "slug": null,
+        "reason": "Il Pilota retail.it tocca anche la v3-b (volumi e backup), scelta del 2026-10-26."
+      }
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "Sì, applica tutte e due"
+  }
+}

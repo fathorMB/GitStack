@@ -4,11 +4,12 @@
     "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e",
     "DOC-3d5a5862-5bff-4e92-821c-c5caa78ca358",
     "DOC-ef8572eb-11a9-4ab0-ac04-ff006b41bdc4",
-    "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363"
+    "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363",
+    "DOC-3595cb24-e019-4230-a412-009769bae527"
   ],
   "schema_version": 1,
   "status": "ready",
   "title": "GitStack Mockups · v2 Build (CI, registry, release)",
-  "update_reason": "B4, B5, B6 allineate a RG2 rivista il 2026-10-18 (H4, H10): immagini in uso dalle app sempre nei backup, firma automatica della CI, immagini caricate a mano «non verificate».",
-  "updated": "2026-10-18T17:08:39.503629400+00:00"
+  "update_reason": "Riallineato alle regole del 2026-10-26: B1 run da sincronizzazione del mirror (CI3); B3 interruttore «CI on this mirror» e tolto COSIGN_KEY, la CI firma con la chiave dell'istanza (CI3, RG2); B4 build con BuildKit senza privilegi come strada standard (CI2); B8 deploy di un tag preciso da workflow con il token del job (H7).",
+  "updated": "2026-10-26T00:54:52.485956500+00:00"
 }
