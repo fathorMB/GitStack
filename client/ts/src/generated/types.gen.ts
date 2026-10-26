@@ -248,7 +248,7 @@ export type Package = {
      */
     tagDetails?: Array<PackageTag>;
     /**
-     * Tag tolti di recente dalle regole di pulizia del registry (RG2).
+     * Al massimo 20 tag rimossi più recenti per immagine dalle regole di pulizia del registry (RG2).
      */
     removedTags?: Array<RemovedPackageTag>;
 };
@@ -291,7 +291,7 @@ export type RemovedPackageTag = {
      */
     digest: string;
     /**
-     * Regola di pulizia che ha eliminato il tag, per esempio `after 14 days`.
+     * Frammento della regola di pulizia che ha eliminato il tag, per esempio `after 14 days` o `beyond last 5 tags`; la UI lo mostra come `removed {rule} by rule`.
      */
     rule: string;
     removedAt: string;
