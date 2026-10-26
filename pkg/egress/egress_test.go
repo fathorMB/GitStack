@@ -452,3 +452,48 @@ func TestNodeAddressesAreBlockedByDefault(t *testing.T) {
 		t.Error("a blocked destination was dialed")
 	}
 }
+
+func TestNetworkExceptions_ListeDellaPolicy(t *testing.T) {
+	p, err := NewPolicy(Config{ClusterCIDRs: []string{"10.50.0.0/16", "fd00:1::/48"}, NodeAddresses: []string{"192.168.1.10", "2001:db8::5"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	v4, v6 := p.NetworkExceptions()
+	has := func(list []netip.Prefix, s string) bool {
+		for _, x := range list {
+			if x == netip.MustParsePrefix(s) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, s := range []string{"127.0.0.0/8", "169.254.0.0/16", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "10.50.0.0/16", "192.168.1.10/32"} {
+		if !has(v4, s) {
+			t.Errorf("manca %s in v4", s)
+		}
+	}
+	for _, s := range []string{"fc00::/7", "fe80::/10", "::/96", "fd00:1::/48", "2001:db8::5/128"} {
+		if !has(v6, s) {
+			t.Errorf("manca %s in v6", s)
+		}
+	}
+	for _, x := range v4 {
+		if !x.Addr().Is4() {
+			t.Errorf("v6 in v4: %s", x)
+		}
+	}
+	for _, x := range v6 {
+		if x.Addr().Is4() {
+			t.Errorf("v4 in v6: %s", x)
+		}
+	}
+	// Ogni eccezione è davvero vietata dalla policy (stessa lista, niente deriva).
+	for _, x := range append(append([]netip.Prefix{}, v4...), v6...) {
+		if x.Addr().Is4In6() || isPrivate(x.Addr()) { // le reti private la policy dei webhook le ammette: qui sono chiuse
+			continue
+		}
+		if p.CheckIP(x.Addr()) == nil && p.CheckReserved(x.Addr(), 0) == nil {
+			t.Errorf("%s è un'eccezione ma la policy lo ammette", x)
+		}
+	}
+}
