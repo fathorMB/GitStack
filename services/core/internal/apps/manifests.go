@@ -20,6 +20,7 @@ import (
 	"github.com/google/uuid"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -32,6 +33,9 @@ const (
 	// LabelManaged marca i namespace del controller: è l'unico perimetro in cui agisce.
 	LabelManaged = "gitstack.io/managed-app"
 	LabelAppID   = "gitstack.io/app-id"
+	// LabelRepoID lega il namespace e i pod al repository: la policy H9 lo usa
+	// per permettere traffico solo fra le app dello stesso repository.
+	LabelRepoID = "gitstack.io/repo-id"
 	// AnnotationVersion è il numero di versione nel template del pod.
 	AnnotationVersion = "gitstack.io/version"
 	// AnnotationRestartedAt cambia a ogni riavvio e viene portata avanti dai deploy successivi.
@@ -58,6 +62,12 @@ func objectLabels(id uuid.UUID) map[string]string {
 	return l
 }
 
+func appLabels(app store.App) map[string]string {
+	l := objectLabels(app.ID)
+	l[LabelRepoID] = app.RepoID.String()
+	return l
+}
+
 // ImageRef è il riferimento da scaricare: se la versione ha il digest, lo si fissa (ADR: immagine
 // per digest), altrimenti resta il tag.
 func ImageRef(v store.AppVersion) string {
@@ -81,6 +91,9 @@ type BuildOptions struct {
 	PullSecret string
 	// RestartedAt: valore da portare avanti dal Deployment esistente.
 	RestartedAt string
+	// ProxyEnv è la configurazione N9 dell'istanza. Viene dal processo core e
+	// non può essere sostituita dalle variabili dichiarate dall'app.
+	ProxyEnv map[string]string
 }
 
 // BuildDeployment traduce una versione nel Deployment dell'app.
@@ -90,7 +103,7 @@ func BuildDeployment(app store.App, v store.AppVersion, o BuildOptions) *appsv1.
 	if o.RestartedAt != "" {
 		ann[AnnotationRestartedAt] = o.RestartedAt
 	}
-	labels := objectLabels(app.ID)
+	labels := appLabels(app)
 	zero := intstr.FromInt32(0)
 	one := intstr.FromInt32(1)
 	replicas := o.Replicas
@@ -113,7 +126,7 @@ func BuildDeployment(app store.App, v store.AppVersion, o BuildOptions) *appsv1.
 		Name:            containerName,
 		Image:           ImageRef(v),
 		ImagePullPolicy: corev1.PullIfNotPresent,
-		Env:             envVars(cfg.Variables, app.Config.Port),
+		Env:             envVars(cfg.Variables, app.Config.Port, o.ProxyEnv),
 		SecurityContext: sc,
 		Resources: corev1.ResourceRequirements{
 			Requests: resourceList(cfg.Guaranteed),
@@ -185,15 +198,22 @@ func probes(cfg store.AppConfig) (ready, live *corev1.Probe) {
 	return ready, live
 }
 
-func envVars(vars map[string]string, port *int) []corev1.EnvVar {
-	keys := make([]string, 0, len(vars))
-	for k := range vars {
+func envVars(vars map[string]string, port *int, proxy map[string]string) []corev1.EnvVar {
+	values := make(map[string]string, len(vars)+len(proxy)+1)
+	for k, v := range vars {
+		values[k] = v
+	}
+	for k, v := range proxy {
+		values[k] = v
+	}
+	keys := make([]string, 0, len(values))
+	for k := range values {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	out := make([]corev1.EnvVar, 0, len(keys)+1)
 	for _, k := range keys {
-		out = append(out, corev1.EnvVar{Name: k, Value: vars[k]})
+		out = append(out, corev1.EnvVar{Name: k, Value: values[k]})
 	}
 	if port != nil {
 		has := false
@@ -202,6 +222,18 @@ func envVars(vars map[string]string, port *int) []corev1.EnvVar {
 		}
 		if !has {
 			out = append(out, corev1.EnvVar{Name: "PORT", Value: strconv.Itoa(*port)})
+		}
+	}
+	return out
+}
+
+// ProxyEnvFrom prende solo le variabili N9 del processo core. Il controller non
+// propaga altro ambiente nei pod delle app.
+func ProxyEnvFrom(lookup func(string) string) map[string]string {
+	out := map[string]string{}
+	for _, k := range []string{"HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "NO_PROXY", "no_proxy"} {
+		if v := lookup(k); v != "" {
+			out[k] = v
 		}
 	}
 	return out
@@ -223,7 +255,7 @@ func BuildService(app store.App, cfg store.AppConfig) *corev1.Service {
 		return nil
 	}
 	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: WorkloadName, Namespace: Namespace(app.ID), Labels: objectLabels(app.ID)},
+		ObjectMeta: metav1.ObjectMeta{Name: WorkloadName, Namespace: Namespace(app.ID), Labels: appLabels(app)},
 		Spec: corev1.ServiceSpec{
 			Selector: selectorLabels(app.ID),
 			Ports:    []corev1.ServicePort{{Name: "http", Port: servicePort, TargetPort: intstr.FromString("http"), Protocol: corev1.ProtocolTCP}},
@@ -238,9 +270,29 @@ func BuildNamespace(app store.App, restricted bool) *corev1.Namespace {
 	if restricted {
 		level = "restricted"
 	}
-	l := objectLabels(app.ID)
+	l := appLabels(app)
 	l["pod-security.kubernetes.io/enforce"] = level
 	return &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: Namespace(app.ID), Labels: l}}
+}
+
+// BuildNetworkPolicy crea l'unica policy dell'app. La lista Egress resta qui,
+// vuota per ora: GIT-380 aggiungerà in questo punto le aperture verso internet
+// e il proxy senza introdurre una seconda policy in conflitto con il deny.
+func BuildNetworkPolicy(app store.App) *networkingv1.NetworkPolicy {
+	labels := appLabels(app)
+	peer := networkingv1.NetworkPolicyPeer{
+		NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{LabelRepoID: app.RepoID.String()}},
+		PodSelector:       &metav1.LabelSelector{MatchLabels: map[string]string{LabelManaged: "true"}},
+	}
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{Name: "app-isolation", Namespace: Namespace(app.ID), Labels: labels},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{LabelManaged: "true"}},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
+			Ingress:     []networkingv1.NetworkPolicyIngressRule{{From: []networkingv1.NetworkPolicyPeer{peer}}},
+			Egress:      []networkingv1.NetworkPolicyEgressRule{{To: []networkingv1.NetworkPolicyPeer{peer}}},
+		},
+	}
 }
 
 // BuildRoute è l'IngressRoute Traefik `websecure` verso il Service (ADR 0002: tls {} e il

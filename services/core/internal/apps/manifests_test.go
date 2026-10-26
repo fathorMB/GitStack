@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	networkingv1 "k8s.io/api/networking/v1"
 
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
@@ -20,7 +21,7 @@ func testApp() (store.App, store.AppVersion) {
 		Guaranteed: store.AppResourceAmount{CPUMillis: 100, MemoryBytes: 128 << 20},
 		Limit:      store.AppResourceAmount{CPUMillis: 500, MemoryBytes: 512 << 20}, Copies: 2,
 	}
-	app := store.App{ID: uuid.New(), Name: "web", AddressLabel: &label, Access: "none", Config: cfg}
+	app := store.App{ID: uuid.New(), RepoID: uuid.New(), Name: "web", AddressLabel: &label, Access: "none", Config: cfg}
 	ver := store.AppVersion{AppID: app.ID, Number: 7, Config: cfg, Image: store.AppImage{Reference: "registry.example.com/alice/handbook:sha-1", Digest: &digest, Source: "registry"}}
 	return app, ver
 }
@@ -72,6 +73,39 @@ func TestBuildDeployment_RestrictedNonGiraComeRoot(t *testing.T) {
 	c := BuildDeployment(app, ver, BuildOptions{Replicas: 1}).Spec.Template.Spec.Containers[0]
 	if c.SecurityContext.RunAsNonRoot == nil || !*c.SecurityContext.RunAsNonRoot {
 		t.Fatalf("restricted deve chiedere runAsNonRoot: %+v", c.SecurityContext)
+	}
+}
+
+func TestBuildDeployment_PassaProxyN9ESovrascriveQuelloDellApp(t *testing.T) {
+	app, ver := testApp()
+	ver.Config.Variables["HTTPS_PROXY"] = "http://non-valido:3128"
+	d := BuildDeployment(app, ver, BuildOptions{Replicas: 1, ProxyEnv: ProxyEnvFrom(func(k string) string {
+		return map[string]string{"HTTPS_PROXY": "http://proxy:3128", "NO_PROXY": ".svc"}[k]
+	})})
+	got := map[string]string{}
+	for _, v := range d.Spec.Template.Spec.Containers[0].Env {
+		got[v.Name] = v.Value
+	}
+	if got["HTTPS_PROXY"] != "http://proxy:3128" || got["NO_PROXY"] != ".svc" {
+		t.Fatalf("proxy N9: %v", got)
+	}
+}
+
+func TestBuildNetworkPolicy_IsolaAppEConsenteSoloStessoRepo(t *testing.T) {
+	app, _ := testApp()
+	p := BuildNetworkPolicy(app)
+	if p.Name != "app-isolation" || p.Namespace != Namespace(app.ID) || p.Labels[LabelRepoID] != app.RepoID.String() {
+		t.Fatalf("metadati policy: %+v", p.ObjectMeta)
+	}
+	if len(p.Spec.PolicyTypes) != 2 || len(p.Spec.Ingress) != 1 || len(p.Spec.Egress) != 1 {
+		t.Fatalf("serve deny ingress+egress con una sola apertura: %+v", p.Spec)
+	}
+	for _, peers := range [][]networkingv1.NetworkPolicyPeer{p.Spec.Ingress[0].From, p.Spec.Egress[0].To} {
+		if len(peers) != 1 || peers[0].NamespaceSelector == nil || peers[0].PodSelector == nil ||
+			peers[0].NamespaceSelector.MatchLabels[LabelRepoID] != app.RepoID.String() ||
+			peers[0].PodSelector.MatchLabels[LabelManaged] != "true" {
+			t.Fatalf("peer stesso repo: %+v", peers)
+		}
 	}
 }
 

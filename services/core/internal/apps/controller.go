@@ -53,8 +53,10 @@ type Config struct {
 	SyncEvery    time.Duration
 	// PullCredentials: credenziali del registry del repo (pull secret). Nil: nessun pull secret.
 	PullCredentials func(ctx context.Context, app store.App) (*PullCredential, error)
-	Now             func() time.Time
-	Log             *slog.Logger
+	// ProxyEnv passa HTTP(S)_PROXY e NO_PROXY della configurazione N9 ai pod.
+	ProxyEnv map[string]string
+	Now      func() time.Time
+	Log      *slog.Logger
 }
 
 func (c *Config) defaults() {
@@ -240,6 +242,9 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 	if err := c.ensureNamespace(ctx, app, v.Config.Restricted); err != nil {
 		return fmt.Errorf("namespace: %w", err)
 	}
+	if err := c.ensureNetworkPolicy(ctx, app); err != nil {
+		return fmt.Errorf("policy di rete: %w", err)
+	}
 	pull := ""
 	if v.Image.Source == "registry" && c.cfg.PullCredentials != nil {
 		cred, err := c.cfg.PullCredentials(ctx, app)
@@ -262,7 +267,7 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 		c.cfg.Log.Warn("apps: rotta non applicata", "app", app.ID, "err", err)
 	}
 	deps := c.kube.AppsV1().Deployments(ns)
-	opts := BuildOptions{Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull}
+	opts := BuildOptions{Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, ProxyEnv: c.cfg.ProxyEnv}
 	cur, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})
 	switch {
 	case apierrors.IsNotFound(err):
@@ -275,6 +280,22 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 	want := BuildDeployment(app, v, opts)
 	want.ResourceVersion = cur.ResourceVersion
 	_, err = deps.Update(ctx, want, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Controller) ensureNetworkPolicy(ctx context.Context, app store.App) error {
+	want := BuildNetworkPolicy(app)
+	policies := c.kube.NetworkingV1().NetworkPolicies(want.Namespace)
+	cur, err := policies.Get(ctx, want.Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		_, err = policies.Create(ctx, want, metav1.CreateOptions{})
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	cur.Labels, cur.Spec = want.Labels, want.Spec
+	_, err = policies.Update(ctx, cur, metav1.UpdateOptions{})
 	return err
 }
 

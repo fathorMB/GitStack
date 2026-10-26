@@ -5,6 +5,8 @@ package httpserver_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -14,6 +16,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -45,6 +48,135 @@ func TestApps_DeployPermessiESenzaController(t *testing.T) {
 		e.want(e.do(c.method, c.path, "carol", c.body), http.StatusForbidden, "forbidden")
 		e.want(e.do(c.method, c.path, "bob", c.body), http.StatusServiceUnavailable, "apps_unavailable")
 	}
+}
+
+// H9: le policy generate dal controller sono applicate davvero dal CNI di k3d,
+// non solo confrontate come manifest. I probe usano IP dei pod: DNS è fuori
+// dal perimetro di questa prova e GIT-380 aggiungerà le aperture di egress.
+func TestApps_IsolamentoSuK3d(t *testing.T) {
+	e := newDeployEnv(t)
+	ctx := context.Background()
+	repo := uuid.New()
+	newApp := func() store.App { return store.App{ID: uuid.New(), RepoID: repo} }
+	source, peer := newApp(), newApp()
+	other := store.App{ID: uuid.New(), RepoID: uuid.New()}
+	system := store.App{ID: uuid.New(), RepoID: uuid.New()}
+	appsUnderTest := []store.App{source, peer, other, system}
+	for _, a := range appsUnderTest {
+		ns := apps.BuildNamespace(a, false)
+		if _, err := e.kube.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.kube.NetworkingV1().NetworkPolicies(ns.Name).Create(ctx, apps.BuildNetworkPolicy(a), metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), ns.Name, metav1.DeleteOptions{}) })
+	}
+	server := func(a store.App, name string) string {
+		p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: apps.Namespace(a.ID), Labels: map[string]string{apps.LabelManaged: "true"}},
+			Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyAlways, Containers: []corev1.Container{{Name: "server", Image: "busybox:1.36", Command: []string{"sh", "-c", "nc -lk -p 8080"}}}}}
+		p, err := e.kube.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return waitPodIP(t, e.kube, p.Namespace, p.Name)
+	}
+	peerIP := server(peer, "peer")
+	postgresIP := server(system, "postgres")
+	natsIP := server(system, "nats")
+	coreIP := server(system, "core")
+	otherIP := server(other, "other")
+	probe := func(name, ip string, allowed bool) {
+		check := fmt.Sprintf("if nc -z -w 2 %s 8080; then ", ip)
+		if allowed {
+			check += "echo OK"
+		} else {
+			check += "echo KO; exit 1"
+		}
+		check += "; else "
+		if allowed {
+			check += "echo KO; exit 1"
+		} else {
+			check += "echo OK"
+		}
+		check += "; fi"
+		p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: apps.Namespace(source.ID), Labels: map[string]string{apps.LabelManaged: "true"}},
+			Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{Name: "probe", Image: "busybox:1.36", Command: []string{"sh", "-c", check}}}}}
+		if _, err := e.kube.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		if got := waitPodLog(t, e.kube, p.Namespace, p.Name); got != "OK" {
+			t.Fatalf("%s: %s", name, got)
+		}
+	}
+	probe("same-repo", peerIP, true)
+	probe("postgres", postgresIP, false)
+	probe("nats", natsIP, false)
+	probe("core", coreIP, false)
+	probe("other-repo", otherIP, false)
+
+	// Pod Security è applicata dall'API server: baseline blocca privilegi e
+	// hostPath; restricted blocca anche l'immagine che tenta di girare come root.
+	rejected := func(ns, name string, spec corev1.PodSpec) {
+		t.Helper()
+		_, err := e.kube.CoreV1().Pods(ns).Create(ctx, &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns}, Spec: spec}, metav1.CreateOptions{})
+		if err == nil {
+			t.Fatalf("%s deve essere rifiutato da Pod Security", name)
+		}
+		t.Logf("%s: rifiutato (%v)", name, err)
+	}
+	privileged := true
+	rejected(apps.Namespace(source.ID), "privileged", corev1.PodSpec{Containers: []corev1.Container{{Name: "x", Image: "busybox:1.36", SecurityContext: &corev1.SecurityContext{Privileged: &privileged}}}})
+	rejected(apps.Namespace(source.ID), "hostpath", corev1.PodSpec{Containers: []corev1.Container{{Name: "x", Image: "busybox:1.36", VolumeMounts: []corev1.VolumeMount{{Name: "host", MountPath: "/host"}}}}, Volumes: []corev1.Volume{{Name: "host", VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/"}}}}})
+	restricted := store.App{ID: uuid.New(), RepoID: repo}
+	rns := apps.BuildNamespace(restricted, true)
+	if _, err := e.kube.CoreV1().Namespaces().Create(ctx, rns, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = e.kube.CoreV1().Namespaces().Delete(context.Background(), rns.Name, metav1.DeleteOptions{})
+	})
+	rejected(rns.Name, "root", corev1.PodSpec{Containers: []corev1.Container{{Name: "x", Image: "busybox:1.36"}}})
+}
+
+func waitPodIP(t *testing.T, kube kubernetes.Interface, ns, name string) string {
+	t.Helper()
+	deadline := time.Now().Add(90 * time.Second)
+	for time.Now().Before(deadline) {
+		p, err := kube.CoreV1().Pods(ns).Get(context.Background(), name, metav1.GetOptions{})
+		if err == nil && p.Status.PodIP != "" && p.Status.Phase == corev1.PodRunning {
+			return p.Status.PodIP
+		}
+		time.Sleep(time.Second)
+	}
+	t.Fatalf("pod %s/%s senza IP", ns, name)
+	return ""
+}
+
+func waitPodLog(t *testing.T, kube kubernetes.Interface, ns, name string) string {
+	t.Helper()
+	deadline := time.Now().Add(90 * time.Second)
+	for time.Now().Before(deadline) {
+		p, err := kube.CoreV1().Pods(ns).Get(context.Background(), name, metav1.GetOptions{})
+		if err == nil && (p.Status.Phase == corev1.PodSucceeded || p.Status.Phase == corev1.PodFailed) {
+			if p.Status.Phase != corev1.PodSucceeded {
+				t.Fatalf("probe %s/%s fallito: %+v", ns, name, p.Status)
+			}
+			r, err := kube.CoreV1().Pods(ns).GetLogs(name, &corev1.PodLogOptions{}).Stream(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Close()
+			b, err := io.ReadAll(r)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return strings.TrimSpace(string(b))
+		}
+		time.Sleep(time.Second)
+	}
+	t.Fatalf("probe %s/%s non concluso", ns, name)
+	return ""
 }
 
 type appsDeployEnv struct {

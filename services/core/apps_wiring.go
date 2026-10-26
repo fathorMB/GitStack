@@ -53,7 +53,7 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger) ([]
 	if err != nil {
 		return nil, fmt.Errorf("client Kubernetes dinamico: %w", err)
 	}
-	cfg := apps.Config{AppsDomain: domain, AuthMiddleware: strings.TrimSpace(os.Getenv(envAppsAuthMiddleware)), Log: logger}
+	cfg := apps.Config{AppsDomain: domain, AuthMiddleware: strings.TrimSpace(os.Getenv(envAppsAuthMiddleware)), ProxyEnv: apps.ProxyEnvFrom(os.Getenv), Log: logger}
 	if v, err := strconv.Atoi(strings.TrimSpace(os.Getenv(envAppsProgressTimeout))); err == nil && v > 0 {
 		cfg.ProgressTimeout = time.Duration(v) * time.Second
 	}
