@@ -45,7 +45,7 @@ func TestShouldReapply(t *testing.T) {
 func TestApply_RicreaIlDeploymentDellaVersioneAttiva(t *testing.T) {
 	app := store.App{ID: uuid.New(), Name: "web", ActiveVersion: 2, Config: store.AppConfig{Copies: 1}}
 	v := store.AppVersion{AppID: app.ID, Number: 2, State: "serving", Image: store.AppImage{Reference: "registry.gitstack.test/alice/web:v2", Source: "registry"}}
-	kube := fake.NewSimpleClientset()
+	kube := fake.NewClientset()
 	c := New(nil, kube, nil, Config{})
 	if err := c.apply(context.Background(), app, v); err != nil {
 		t.Fatal(err)

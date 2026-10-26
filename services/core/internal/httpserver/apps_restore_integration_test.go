@@ -37,7 +37,7 @@ func TestApps_DopoIlRestoreLaVersioneAttivaRiparte(t *testing.T) {
 	if err := st.FinishAppDeploy(ctx, ids[0], 1, "serving", "", time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
-	kube := fake.NewSimpleClientset()
+	kube := fake.NewClientset()
 	ctl := apps.New(st, kube, nil, apps.Config{AppsDomain: "apps.example.com", ProgressTimeout: 75 * time.Second})
 
 	ctl.Sync(ctx)

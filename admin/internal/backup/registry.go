@@ -350,7 +350,7 @@ func registrySkip(volume string, repoIDs []string, inUse []InUseImage) (func(rel
 		if tenuto(rel, keep) {
 			return false
 		}
-		return !(isDir && anc[rel])
+		return !isDir || !anc[rel]
 	}, nil
 }
 
