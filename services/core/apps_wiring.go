@@ -40,7 +40,7 @@ const (
 // startApps avvia il controller e ritorna le opzioni del router; senza abilitazione ritorna nil.
 // secrets è il portachiavi dei segreti (GITSTACK_WEBHOOK_SECRET_KEY): serve a iniettare i segreti nei
 // pod e a mascherarli nei log delle app (GIT-350). Senza, le righe delle copie non si raccolgono.
-func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, logger *slog.Logger, secrets store.AppSealer, onDeployFailed func(context.Context, store.App, store.AppVersion, string)) ([]httpserver.Option, error) {
+func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, egressCluster, egressNode []string, logger *slog.Logger, secrets store.AppSealer, onDeployFailed func(context.Context, store.App, store.AppVersion, string)) ([]httpserver.Option, error) {
 	domain := strings.TrimSpace(os.Getenv(envAppsDomain))
 	opts := []httpserver.Option{}
 	if domain != "" {
@@ -65,7 +65,7 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, lo
 	st := store.New(pool)
 	cfg := apps.Config{AppsDomain: domain, AuthURL: strings.TrimSpace(os.Getenv(envAppsAuthURL)), AuthSecret: trust.SigningKey(gatewaySecret), Secrets: secrets, Log: logger,
 		ControllerServiceAccount: strings.TrimSpace(os.Getenv(envAppsControllerSA)), WorkloadRole: strings.TrimSpace(os.Getenv(envAppsWorkloadRole)),
-		ProxyEnv: apps.ProxyEnvFrom(os.Getenv), TraefikNamespace: strings.TrimSpace(os.Getenv(envAppsTraefikNamespace))}
+		EgressClusterCIDRs: egressCluster, EgressNodeAddresses: egressNode, ProxyEnv: apps.ProxyEnvFrom(os.Getenv), TraefikNamespace: strings.TrimSpace(os.Getenv(envAppsTraefikNamespace))}
 	if v, err := strconv.Atoi(strings.TrimSpace(os.Getenv(envAppsProgressTimeout))); err == nil && v > 0 {
 		cfg.ProgressTimeout = time.Duration(v) * time.Second
 	}

@@ -397,7 +397,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		}
 	}
 
-	appOpts, err := startApps(ctx, pool, cfg.GatewaySecret, logger, keys, newDeployFailedNotifier(pool, notifyEng, repoLookup, logger))
+	appOpts, err := startApps(ctx, pool, cfg.GatewaySecret, cfg.EgressClusterCIDRs, cfg.EgressNodeAddresses, logger, keys, newDeployFailedNotifier(pool, notifyEng, repoLookup, logger))
 	if err != nil {
 		logger.Error("controller delle app non avviato", "err", err)
 		return 1

@@ -186,7 +186,7 @@ func TestBuildNetworkPolicy_IsolaAppEConsenteSoloStessoRepo(t *testing.T) {
 	if p.Name != "app-isolation" || p.Namespace != Namespace(app.ID) || p.Labels[LabelRepoID] != app.RepoID.String() {
 		t.Fatalf("metadati policy: %+v", p.ObjectMeta)
 	}
-	if len(p.Spec.PolicyTypes) != 2 || len(p.Spec.Ingress) != 2 || len(p.Spec.Egress) != 2 {
+	if len(p.Spec.PolicyTypes) != 2 || len(p.Spec.Ingress) != 2 || len(p.Spec.Egress) != 3 {
 		t.Fatalf("serve deny ingress+egress con stesso repo e solo DNS: %+v", p.Spec)
 	}
 	for _, peers := range [][]networkingv1.NetworkPolicyPeer{p.Spec.Ingress[0].From, p.Spec.Egress[0].To} {
@@ -209,7 +209,7 @@ func TestBuildNetworkPolicy_IsolaAppEConsenteSoloStessoRepo(t *testing.T) {
 func TestBuildNetworkPolicy_ProxyIPApriSoloPortaProxy(t *testing.T) {
 	app, _ := testApp()
 	p := BuildNetworkPolicy(app, NetworkPolicyOptions{ProxyEnv: map[string]string{"HTTPS_PROXY": "http://10.0.0.5:3128"}})
-	if len(p.Spec.Egress) != 3 {
+	if len(p.Spec.Egress) != 4 {
 		t.Fatalf("egress: stesso repo, DNS e proxy: %+v", p.Spec.Egress)
 	}
 	r := p.Spec.Egress[2]
@@ -221,7 +221,7 @@ func TestBuildNetworkPolicy_ProxyIPApriSoloPortaProxy(t *testing.T) {
 func TestBuildNetworkPolicy_ProxyMinuscoloApriSoloPortaProxy(t *testing.T) {
 	app, _ := testApp()
 	p := BuildNetworkPolicy(app, NetworkPolicyOptions{ProxyEnv: map[string]string{"http_proxy": "http://10.0.0.6:3128"}})
-	if len(p.Spec.Egress) != 3 {
+	if len(p.Spec.Egress) != 4 {
 		t.Fatalf("egress proxy minuscolo: %+v", p.Spec.Egress)
 	}
 	r := p.Spec.Egress[2]
@@ -236,7 +236,7 @@ func TestBuildNetworkPolicy_ProxyNomeApreDNSEIP(t *testing.T) {
 		ProxyEnv: map[string]string{"HTTPS_PROXY": "http://proxy.lan:3128"},
 		ProxyIPs: map[string][]net.IP{"proxy.lan": {net.ParseIP("10.0.0.7")}},
 	})
-	if len(p.Spec.Egress) != 3 {
+	if len(p.Spec.Egress) != 4 {
 		t.Fatalf("egress proxy con DNS: %+v", p.Spec.Egress)
 	}
 	dns, proxy := p.Spec.Egress[1], p.Spec.Egress[2]
@@ -485,5 +485,60 @@ func TestReconcileSiblingAliases_CreaRinominaEliminaESaltaLeCollisioni(t *testin
 	got = svcNames(t, kube, ns)
 	if len(got) != 2 || got["app"].Name == "" || got["cache"].Name == "" {
 		t.Fatalf("eliminazione: %+v", got)
+	}
+}
+
+func TestBuildNetworkPolicy_ProxyIPv6Usa128EIPv4Usa32(t *testing.T) {
+	app, _ := testApp()
+	for url, want := range map[string]string{
+		"http://[fd00::5]:3128": "fd00::5/128",
+		"http://10.0.0.5:3128":  "10.0.0.5/32",
+	} {
+		p := BuildNetworkPolicy(app, NetworkPolicyOptions{ProxyEnv: map[string]string{"HTTPS_PROXY": url}})
+		r := p.Spec.Egress[2]
+		if r.To[0].IPBlock == nil || r.To[0].IPBlock.CIDR != want {
+			t.Errorf("%s: CIDR %+v, voluto %s", url, r.To[0].IPBlock, want)
+		}
+	}
+	p := BuildNetworkPolicy(app, NetworkPolicyOptions{
+		ProxyEnv: map[string]string{"HTTPS_PROXY": "http://proxy.lan:3128"},
+		ProxyIPs: map[string][]net.IP{"proxy.lan": {net.ParseIP("fd00::7"), net.ParseIP("10.0.0.7")}},
+	})
+	if got := p.Spec.Egress[2].To[0].IPBlock.CIDR; got != "fd00::7/128" {
+		t.Errorf("proxy con nome IPv6: %s", got)
+	}
+	if got := p.Spec.Egress[3].To[0].IPBlock.CIDR; got != "10.0.0.7/32" {
+		t.Errorf("proxy con nome IPv4: %s", got)
+	}
+}
+
+func TestBuildNetworkPolicy_InternetApertoConBarriere(t *testing.T) {
+	app, _ := testApp()
+	p := BuildNetworkPolicy(app, NetworkPolicyOptions{ClusterCIDRs: []string{"10.50.0.0/16"}, NodeAddresses: []string{"192.168.1.10"}})
+	r := p.Spec.Egress[len(p.Spec.Egress)-1]
+	if len(r.Ports) != 0 || len(r.To) != 2 || r.To[0].IPBlock.CIDR != "0.0.0.0/0" || r.To[1].IPBlock.CIDR != "::/0" {
+		t.Fatalf("regola internet: %+v", r)
+	}
+	has := func(l []string, s string) bool {
+		for _, x := range l {
+			if x == s {
+				return true
+			}
+		}
+		return false
+	}
+	for _, s := range []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16", "10.50.0.0/16", "192.168.1.10/32"} {
+		if !has(r.To[0].IPBlock.Except, s) {
+			t.Errorf("manca %s tra le eccezioni IPv4", s)
+		}
+	}
+	for _, s := range []string{"fc00::/7", "fe80::/10", "::/96"} {
+		if !has(r.To[1].IPBlock.Except, s) {
+			t.Errorf("manca %s tra le eccezioni IPv6", s)
+		}
+	}
+	// Una sola policy, e nessun'altra regola apre indirizzi fuori dal proxy.
+	if p.Name != "app-isolation" {
+		t.Fatal(p.Name)
 	}
 }

@@ -76,6 +76,10 @@ type Config struct {
 	ProxyEnv map[string]string
 	// TraefikNamespace è il namespace dell'Ingress controller k3s.
 	TraefikNamespace string
+	// EgressClusterCIDRs e EgressNodeAddresses sono gli stessi di webhook e mirror (pkg/egress):
+	// le barriere in uscita delle app (H16) li escludono da internet.
+	EgressClusterCIDRs  []string
+	EgressNodeAddresses []string
 	// Secrets decifra i valori correnti dei segreti dell'app: si iniettano nei pod e si usano per
 	// mascherarli nei log (GIT-348, GIT-350). Nil: le righe delle copie non si raccolgono, e nei pod
 	// non entra nessun segreto.
@@ -400,7 +404,7 @@ func (c *Controller) ensureNetworkPolicy(ctx context.Context, app store.App) err
 		}
 		proxyIPs[endpoint.host] = ips
 	}
-	want := BuildNetworkPolicy(app, NetworkPolicyOptions{TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs})
+	want := BuildNetworkPolicy(app, NetworkPolicyOptions{TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs, ClusterCIDRs: c.cfg.EgressClusterCIDRs, NodeAddresses: c.cfg.EgressNodeAddresses})
 	policies := c.kube.NetworkingV1().NetworkPolicies(want.Namespace)
 	cur, err := policies.Get(ctx, want.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
