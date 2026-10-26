@@ -3,11 +3,56 @@ package store
 import (
 	"context"
 	"errors"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
+
+// MissingAppSecretsError dice che una configurazione storica nomina segreti che non esistono piu'.
+// I nomi sono ordinati per poterli restituire al chiamante senza ambiguita'.
+type MissingAppSecretsError struct{ Names []string }
+
+func (e *MissingAppSecretsError) Error() string {
+	return "segreti mancanti: " + strings.Join(e.Names, ", ")
+}
+
+// missingAppSecrets controlla nella stessa transazione che tutti i nomi della versione esistano.
+func missingAppSecrets(ctx context.Context, tx pgx.Tx, appID uuid.UUID, names []string) error {
+	if len(names) == 0 {
+		return nil
+	}
+	want := make(map[string]bool, len(names))
+	for _, name := range names {
+		want[name] = true
+	}
+	rows, err := tx.Query(ctx, `SELECT name FROM core.app_secrets WHERE app_id = $1 AND name = ANY($2)`, appID, names)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return err
+		}
+		delete(want, name)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if len(want) == 0 {
+		return nil
+	}
+	missing := make([]string, 0, len(want))
+	for name := range want {
+		missing = append(missing, name)
+	}
+	sort.Strings(missing)
+	return &MissingAppSecretsError{Names: missing}
+}
 
 // AppSealer cifra e decifra i segreti delle app (webhooks.Keyring lo implementa: stessa chiave e
 // stesso formato dei segreti dei webhook e della CI, ma righe in tabelle proprie). L'id della riga
@@ -105,6 +150,34 @@ func (s *Store) DeleteAppSecret(ctx context.Context, appID uuid.UUID, name strin
 // pod (deploy) e al mascheramento dei log dell'app. Un segreto che non si decifra è un errore.
 func (s *Store) AppSecretValues(ctx context.Context, keys AppSealer, appID uuid.UUID) (map[string]string, error) {
 	rows, err := s.pool.Query(ctx, `SELECT id, name, ciphertext, nonce, secret_key_id FROM core.app_secrets WHERE app_id = $1`, appID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var id uuid.UUID
+		var name, keyID string
+		var ct, nonce []byte
+		if err := rows.Scan(&id, &name, &ct, &nonce, &keyID); err != nil {
+			return nil, err
+		}
+		v, err := keys.Open(id, ct, nonce, keyID)
+		if err != nil {
+			return nil, errors.New("segreto " + name + " non decifrabile: " + err.Error())
+		}
+		out[name] = v
+	}
+	return out, rows.Err()
+}
+
+// AppSecretValuesForNames decifra solo i valori correnti richiesti dalla versione da applicare.
+// Non esiste uno storico di ciphertext per versione: un rollback usa quindi i valori ruotati oggi.
+func (s *Store) AppSecretValuesForNames(ctx context.Context, keys AppSealer, appID uuid.UUID, names []string) (map[string]string, error) {
+	if len(names) == 0 {
+		return map[string]string{}, nil
+	}
+	rows, err := s.pool.Query(ctx, `SELECT id, name, ciphertext, nonce, secret_key_id FROM core.app_secrets WHERE app_id = $1 AND name = ANY($2)`, appID, names)
 	if err != nil {
 		return nil, err
 	}

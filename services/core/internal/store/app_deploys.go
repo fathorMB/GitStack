@@ -79,6 +79,11 @@ func (s *Store) BeginAppDeploy(ctx context.Context, repoID uuid.UUID, name strin
 	if in.ConfigFrom == 0 {
 		cfg.Port, cfg.HealthCheck, cfg.Restricted = cur.Config.Port, cur.Config.HealthCheck, cur.Config.Restricted
 	}
+	// Il rollback ripristina i nomi della versione, ma non un vecchio ciphertext: i valori sono
+	// sempre quelli correnti. Se un nome e' stato eliminato, rifiuta prima di scrivere il deploy.
+	if err := missingAppSecrets(ctx, tx, cur.ID, cfg.SecretNames); err != nil {
+		return App{}, AppVersion{}, err
+	}
 	var number int
 	if err := tx.QueryRow(ctx, `UPDATE core.apps SET next_version = next_version + 1, updated_at = $2 WHERE id = $1 RETURNING next_version - 1`, cur.ID, now).Scan(&number); err != nil {
 		return App{}, AppVersion{}, err

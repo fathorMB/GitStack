@@ -9,6 +9,12 @@ Tabella di copertura richiesta dal criterio V1 di `.prisma/knowledge/topics/rila
   - Go: `file_test.go#TestNome` oppure `file_test.go#TestNome/sottotest` (sottotest scritto come nel nome Go, con i trattini bassi). Se i casi sono righe di una tabella e non sottotest, si cita il solo `TestNome`.
   - Web: `file.test.tsx#titolo del test` (il titolo, o un suo pezzo senza apostrofi, backtick e `|`).
 - **Stato**: `coperta`, `parziale`, `non coperta`, `n/a, motivata` (solo per esclusioni di prodotto) oppure `da compilare` (famiglia non ancora riempita).
+
+## H — Hosting applicazioni (`hosting-app.md`; v3-a, GIT-342...GIT-373)
+
+| Id | Regola | Test | Stato | Cosa manca |
+|---|---|---|---|---|
+| H8 | Configurazione dell'app in GitStack con versioni; segreti cifrati, mai riletti dalle API e separati dalla CI. I pod ricevono i valori correnti solo tramite un Secret Kubernetes; rollback e redeploy ripristinano i nomi, non valori storici, e rifiutano prima del cluster i nomi rimossi. | `services/core/internal/httpserver/app_env_integration_test.go#TestAppEnv_WriteLeggeVariabiliNonSegreti`<br>`services/core/internal/httpserver/app_env_integration_test.go#TestAppEnv_SegretiCIESegretiAppSeparati`<br>`services/core/internal/httpserver/app_env_integration_test.go#TestAppEnv_VersioniCopianoVariabiliESegreti`<br>`services/core/internal/httpserver/apps_secrets_integration_test.go#TestApps_SegretiKubernetesERollback` | coperta | |
 - **Cosa manca**: obbligatorio per `parziale` e `non coperta`. Lo colma chi chiude la milestone o un item di correzione aperto dal CTO.
 - Chi aggiunge un test per una regola aggiorna la riga nello stesso item. Chi chiude una milestone riempie la famiglia (M-05: GIT-113).
 - Il controllo `go run scripts/check-rules-coverage.go` (CI, job Go, e check `rules-coverage` del motore) verifica che ogni test citato esista ancora nel file indicato e che ogni riga `coperta` o `parziale` ne citi almeno uno.
