@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { InsecureHttpBanner, ToastProvider } from './components';
 import { AppShell } from './layout/AppShell';
 import { AgentsPage } from './pages/admin/AgentsPage';
+import { AppsResourcesPage } from './pages/admin/AppsResourcesPage';
 import { CiRunnersPage } from './pages/admin/CiRunnersPage';
 import { SystemPage } from './pages/admin/SystemPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
@@ -85,6 +86,16 @@ export function AppRoutes() {
           <RequireAuth>
             <AppShell crumb="System">
               <SystemPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/apps"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Apps & resources">
+              <AppsResourcesPage />
             </AppShell>
           </RequireAuth>
         }
