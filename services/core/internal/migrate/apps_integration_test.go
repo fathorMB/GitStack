@@ -128,7 +128,7 @@ func TestMigration0036_App(t *testing.T) {
 	}
 
 	// Due passi: con la 0037 (GIT-348, variabili e segreti) sopra, il down di 0036 ne toglie due.
-	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
 		t.Fatalf("down 0037 e 0036: %v", err)
 	}
 	var n int

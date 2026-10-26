@@ -65,7 +65,7 @@ func TestMigrate0029_SegretiVariabiliEPermessiDelToken(t *testing.T) {
 		t.Fatalf("righe rimaste: %d %v", left, err)
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 9); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 10); err != nil {
 		t.Fatalf("down 0029: %v", err)
 	}
 	var n int

@@ -7,14 +7,16 @@ import {
   deleteRepoSecret,
   deleteRepoVariable,
   fetchOrgSecrets,
+  fetchRepoPullMirrorCI,
   fetchRepoSecrets,
   fetchRepoTokenPermissions,
   fetchRepoVariables,
+  putRepoPullMirrorCI,
   putRepoSecret,
   putRepoTokenPermissions,
   putRepoVariable,
 } from '../../lib/ciApi';
-import type { ActionsJobTokenDefaults } from '../../lib/ciApi';
+import type { ActionsJobTokenDefaults, ActionsPullMirrorSettings } from '../../lib/ciApi';
 import { timeAgo } from '../../lib/format';
 import { describeError } from '../../lib/http';
 import { fetchRepo } from '../../lib/reposApi';
@@ -88,13 +90,14 @@ function SecretsSections({ repo }: { repo: Repository }) {
   const owner = repo.owner.name;
   const name = repo.name;
   const { data, loading, error, reload } = useLoad(async () => {
-    const [secrets, variables, orgSecrets, tokenPermissions] = await Promise.all([
+    const [secrets, variables, orgSecrets, tokenPermissions, pullMirrorCI] = await Promise.all([
       fetchRepoSecrets(owner, name),
       fetchRepoVariables(owner, name),
       fetchOrgSecrets(owner),
       fetchRepoTokenPermissions(owner, name),
+      fetchRepoPullMirrorCI(owner, name),
     ]);
-    return { secrets, variables, orgSecrets, tokenPermissions };
+    return { secrets, variables, orgSecrets, tokenPermissions, pullMirrorCI };
   });
   const { toast } = useToast();
   const [toDelete, setToDelete] = useState<{ kind: 'secret' | 'variable'; name: string } | null>(null);
@@ -212,6 +215,8 @@ function SecretsSections({ repo }: { repo: Repository }) {
 
       <TokenPermissions owner={owner} repo={name} initial={data.tokenPermissions} />
 
+      {data.pullMirrorCI.pullMirror ? <PullMirrorCI owner={owner} repo={name} initial={data.pullMirrorCI} /> : null}
+
       <ConfirmDialog
         open={toDelete !== null}
         onOpenChange={(open) => {
@@ -224,6 +229,59 @@ function SecretsSections({ repo }: { repo: Repository }) {
         onConfirm={() => void handleDelete()}
       />
     </>
+  );
+}
+
+// CI3 sui repo in mirror in pull: spenta di default. La accende chi ha admin sul repo e
+// diventa l'autore delle esecuzioni avviate dalle sincronizzazioni; se perde admin si spegne.
+function PullMirrorCI({ owner, repo, initial }: { owner: string; repo: string; initial: ActionsPullMirrorSettings }) {
+  const [saved, setSaved] = useState<ActionsPullMirrorSettings>(initial);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  async function toggle(next: boolean) {
+    setBusy(true);
+    setError(null);
+    try {
+      setSaved(await putRepoPullMirrorCI(owner, repo, next));
+      toast(next ? 'Workflows will run on mirror syncs.' : 'Workflows on the mirror are off.', 'success');
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section>
+      <div className="sec-h">
+        <h2>Workflows on the mirror</h2>
+      </div>
+      <div className="card card-b stack" style={{ gap: 10, fontSize: 13 }}>
+        <p className="hint">
+          This repository is a pull mirror: workflows are off by default. When on, every sync that brings new commits or tags
+          starts the <span className="mono">push</span> workflows, one run per updated ref. Diverged refs start nothing.
+        </p>
+        <div className="row">
+          <input
+            id="run-on-pull-mirror"
+            type="checkbox"
+            checked={saved.runOnPullMirror}
+            disabled={busy}
+            onChange={(e) => void toggle(e.target.checked)}
+          />
+          <label htmlFor="run-on-pull-mirror">Run workflows on the mirror</label>
+        </div>
+        {saved.runOnPullMirror && saved.enabledBy ? (
+          <p className="hint">
+            Runs are attributed to <span className="mono">{saved.enabledBy}</span>, and the job token never has more
+            permissions than they do. If they lose admin on this repository, this switches off.
+          </p>
+        ) : null}
+        {error ? <ErrorAlert message={error} /> : null}
+      </div>
+    </section>
   );
 }
 

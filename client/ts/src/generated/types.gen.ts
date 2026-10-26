@@ -134,6 +134,28 @@ export type ActionsJobTokenDefaults = {
     actions: 'none' | 'read' | 'write';
 };
 
+/**
+ * Impostazione CI3 di un repository in mirror in pull.
+ */
+export type ActionsPullMirrorSettings = {
+    /**
+     * Il repo e' un mirror in pull attivo: solo allora l'impostazione ha effetto.
+     */
+    pullMirror: boolean;
+    /**
+     * I workflow girano sulle sincronizzazioni del mirror.
+     */
+    runOnPullMirror: boolean;
+    /**
+     * Nome utente di chi ha acceso la CI (autore delle esecuzioni); null se spenta.
+     */
+    enabledBy?: string | null;
+};
+
+export type ActionsPullMirrorSettingsInput = {
+    runOnPullMirror: boolean;
+};
+
 export type ActionsSecretList = {
     items: Array<ActionsSecret>;
 };
@@ -16456,6 +16478,101 @@ export type PutRepositoryActionsPermissionsResponses = {
 };
 
 export type PutRepositoryActionsPermissionsResponse = PutRepositoryActionsPermissionsResponses[keyof PutRepositoryActionsPermissionsResponses];
+
+export type GetRepositoryActionsPullMirrorData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/pull-mirror';
+};
+
+export type GetRepositoryActionsPullMirrorErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetRepositoryActionsPullMirrorError = GetRepositoryActionsPullMirrorErrors[keyof GetRepositoryActionsPullMirrorErrors];
+
+export type GetRepositoryActionsPullMirrorResponses = {
+    /**
+     * Impostazione.
+     */
+    200: ActionsPullMirrorSettings;
+};
+
+export type GetRepositoryActionsPullMirrorResponse = GetRepositoryActionsPullMirrorResponses[keyof GetRepositoryActionsPullMirrorResponses];
+
+export type PutRepositoryActionsPullMirrorData = {
+    body: ActionsPullMirrorSettingsInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/actions/pull-mirror';
+};
+
+export type PutRepositoryActionsPullMirrorErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type PutRepositoryActionsPullMirrorError = PutRepositoryActionsPullMirrorErrors[keyof PutRepositoryActionsPullMirrorErrors];
+
+export type PutRepositoryActionsPullMirrorResponses = {
+    /**
+     * Impostazione salvata.
+     */
+    200: ActionsPullMirrorSettings;
+};
+
+export type PutRepositoryActionsPullMirrorResponse = PutRepositoryActionsPullMirrorResponses[keyof PutRepositoryActionsPullMirrorResponses];
 
 export type ListCiRunnersData = {
     body?: never;
