@@ -10342,7 +10342,7 @@ type ClientInterface interface {
 
 	// RollbackAppWithBody Torna a una versione precedente
 	//
-	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12): ripristina immagine, variabili e nomi dei segreti, mai i loro valori storici; ogni nome riceve il valore corrente. 409 `app_secrets_missing` con i nomi mancanti se un segreto della versione non esiste piu', senza modificare la versione attiva. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -10351,7 +10351,7 @@ type ClientInterface interface {
 
 	// RollbackApp Torna a una versione precedente
 	//
-	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12): ripristina immagine, variabili e nomi dei segreti, mai i loro valori storici; ogni nome riceve il valore corrente. 409 `app_secrets_missing` con i nomi mancanti se un segreto della versione non esiste piu', senza modificare la versione attiva. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -15390,7 +15390,7 @@ func (c *Client) RestartApp(ctx context.Context, owner RepoOwnerParam, repo Repo
 
 // RollbackAppWithBody Torna a una versione precedente
 //
-// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12): ripristina immagine, variabili e nomi dei segreti, mai i loro valori storici; ogni nome riceve il valore corrente. 409 `app_secrets_missing` con i nomi mancanti se un segreto della versione non esiste piu', senza modificare la versione attiva. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
 //
 // Takes any type of body and a specified content type.
 //
@@ -15409,7 +15409,7 @@ func (c *Client) RollbackAppWithBody(ctx context.Context, owner RepoOwnerParam, 
 
 // RollbackApp Torna a una versione precedente
 //
-// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12): ripristina immagine, variabili e nomi dei segreti, mai i loro valori storici; ogni nome riceve il valore corrente. 409 `app_secrets_missing` con i nomi mancanti se un segreto della versione non esiste piu', senza modificare la versione attiva. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
 //
 // Takes a body of the `application/json` content type.
 //
@@ -37921,7 +37921,7 @@ type ClientWithResponsesInterface interface {
 
 	// RollbackAppWithBodyWithResponse Torna a una versione precedente
 	//
-	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12): ripristina immagine, variabili e nomi dei segreti, mai i loro valori storici; ogni nome riceve il valore corrente. 409 `app_secrets_missing` con i nomi mancanti se un segreto della versione non esiste piu', senza modificare la versione attiva. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -37930,7 +37930,7 @@ type ClientWithResponsesInterface interface {
 
 	// RollbackAppWithResponse Torna a una versione precedente
 	//
-	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12): ripristina immagine, variabili e nomi dei segreti, mai i loro valori storici; ogni nome riceve il valore corrente. 409 `app_secrets_missing` con i nomi mancanti se un segreto della versione non esiste piu', senza modificare la versione attiva. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -65531,7 +65531,7 @@ func (c *ClientWithResponses) RestartAppWithResponse(ctx context.Context, owner 
 
 // RollbackAppWithBodyWithResponse Torna a una versione precedente
 //
-// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12): ripristina immagine, variabili e nomi dei segreti, mai i loro valori storici; ogni nome riceve il valore corrente. 409 `app_secrets_missing` con i nomi mancanti se un segreto della versione non esiste piu', senza modificare la versione attiva. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -65546,7 +65546,7 @@ func (c *ClientWithResponses) RollbackAppWithBodyWithResponse(ctx context.Contex
 
 // RollbackAppWithResponse Torna a una versione precedente
 //
-// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12): ripristina immagine, variabili e nomi dei segreti, mai i loro valori storici; ogni nome riceve il valore corrente. 409 `app_secrets_missing` con i nomi mancanti se un segreto della versione non esiste piu', senza modificare la versione attiva. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
