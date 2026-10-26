@@ -244,9 +244,14 @@ func BuildNamespace(app store.App, restricted bool) *corev1.Namespace {
 }
 
 // BuildRoute è l'IngressRoute Traefik `websecure` verso il Service (ADR 0002: tls {} e il
-// certificato wildcard è il TLSStore default). authMiddleware, se non vuoto, è il forward-auth
-// del login: `nome` (nel namespace dell'app) o `namespace/nome`.
-func BuildRoute(app store.App, host, authMiddleware string) *unstructured.Unstructured {
+// certificato wildcard è il TLSStore default). I Middleware sono quelli del namespace dell'app:
+// sempre gitstack-strip (le intestazioni X-GitStack-* del client non arrivano all'app) e, con
+// `login`, subito dopo gitstack-auth (il forward-auth del login GitStack, H6).
+func BuildRoute(app store.App, host string, login bool) *unstructured.Unstructured {
+	mws := []any{map[string]any{"name": MiddlewareStrip}}
+	if login {
+		mws = append(mws, map[string]any{"name": MiddlewareAuth})
+	}
 	route := map[string]any{
 		"kind":  "Rule",
 		"match": fmt.Sprintf("Host(`%s`)", host),
@@ -254,13 +259,7 @@ func BuildRoute(app store.App, host, authMiddleware string) *unstructured.Unstru
 			"name": WorkloadName,
 			"port": int64(servicePort),
 		}},
-	}
-	if authMiddleware != "" {
-		m := map[string]any{"name": authMiddleware}
-		if ns, name, ok := strings.Cut(authMiddleware, "/"); ok {
-			m = map[string]any{"name": name, "namespace": ns}
-		}
-		route["middlewares"] = []any{m}
+		"middlewares": mws,
 	}
 	labels := map[string]any{}
 	for k, v := range objectLabels(app.ID) {

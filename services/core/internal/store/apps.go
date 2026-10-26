@@ -588,3 +588,16 @@ func (s *Store) GetAppVersion(ctx context.Context, appID uuid.UUID, number int) 
 	}
 	return v, err
 }
+
+// SetAppAccess imposta il modo di accesso dell'app (H6): login, none o public. Non crea una
+// versione (non entra nel Deployment). ErrNotFound se l'app non c'è; ritorna l'app aggiornata.
+func (s *Store) SetAppAccess(ctx context.Context, repoID uuid.UUID, name, mode string, now time.Time) (App, error) {
+	tag, err := s.pool.Exec(ctx, `UPDATE core.apps SET access_mode = $3, updated_at = $4 WHERE repo_id = $1 AND name = $2`, repoID, name, mode, now)
+	if err != nil {
+		return App{}, err
+	}
+	if tag.RowsAffected() == 0 {
+		return App{}, ErrNotFound
+	}
+	return s.GetApp(ctx, repoID, name)
+}

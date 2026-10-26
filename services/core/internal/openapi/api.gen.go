@@ -3208,7 +3208,7 @@ type AppAccess struct {
 	ChangedAt   *time.Time            `json:"changedAt,omitempty"`
 	ChangedBy   *AppActor             `json:"changedBy,omitempty"`
 
-	// IdentityHeaders Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6). I nomi delle intestazioni e la forma della firma non sono ancora fissati dal contratto.
+	// IdentityHeaders Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6): X-GitStack-User, X-GitStack-Email, X-GitStack-Teams, X-GitStack-Auth-Time, X-GitStack-Key-Id e X-GitStack-Signature (Ed25519, chiave pubblica su /.well-known/gitstack-app-keys del gateway). Forma della firma e esempio in docs/apps-login.md.
 	IdentityHeaders *bool `json:"identityHeaders,omitempty"`
 
 	// Mode `login` (login GitStack, default, H6), `none` (senza login, scelta esplicita di admin), `public` (su internet, H1, solo con le app pubbliche abilitate).

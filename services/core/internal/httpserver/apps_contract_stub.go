@@ -13,14 +13,6 @@ func notImplemented(w http.ResponseWriter) {
 	http.Error(w, "not implemented", http.StatusNotImplemented)
 }
 
-func (s *apiServer) GetAppAccess(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) SetAppAccess(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
-	notImplemented(w)
-}
-
 func (s *apiServer) GetAppResources(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
 	notImplemented(w)
 }
