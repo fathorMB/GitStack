@@ -6,6 +6,7 @@ import (
 
 	"time"
 
+	"github.com/fathorMB/GitStack/services/gateway/internal/appauth"
 	"github.com/fathorMB/GitStack/services/gateway/internal/config"
 	"github.com/fathorMB/GitStack/services/gateway/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/gateway/internal/middleware"
@@ -50,6 +51,9 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 		if o.permissions == nil {
 			o.permissions = client
 		}
+		if o.profiles == nil {
+			o.profiles = client
+		}
 	}
 
 	mux := http.NewServeMux()
@@ -72,6 +76,8 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 	if cfg.RegistryURL != nil {
 		server.registryKey = proxy.ToRegistrySigningKey(cfg.RegistryURL, logger, proxy.WithTrustedProxies(cfg.TrustedProxies), proxy.WithClock(o.now))
 	}
+
+	mountAppAuth(mux, cfg, logger, base, verifier, o)
 
 	// Middlewares è applicato per ogni operazione generata, dal primo
 	// (interno, più vicino al gestore) all'ultimo (esterno): auth e
@@ -176,7 +182,20 @@ type Option func(*routerOptions)
 type routerOptions struct {
 	verifier    identityclient.Verifier
 	permissions identityclient.PermissionChecker
+	profiles    identityclient.ProfileLookup
+	appAccess   appauth.AccessPolicy
 	now         func() time.Time
+}
+
+// WithProfileLookup sostituisce la lettura del profilo utente via identity (test).
+func WithProfileLookup(p identityclient.ProfileLookup) Option {
+	return func(o *routerOptions) { o.profiles = p }
+}
+
+// WithAppAccess sostituisce la regola di accesso alle app (test; la lista di accesso dei tester,
+// GIT-376, si innesta qui).
+func WithAppAccess(a appauth.AccessPolicy) Option {
+	return func(o *routerOptions) { o.appAccess = a }
 }
 
 // WithVerifier sostituisce la verifica via identity (test).

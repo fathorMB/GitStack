@@ -1831,6 +1831,22 @@ export type LookupIdsResult = {
     }>;
 };
 
+export type UserProfileInput = {
+    userId: string;
+};
+
+export type UserProfileResult = {
+    id: string;
+    username: Name;
+    kind: 'human' | 'agent';
+    active: boolean;
+    /**
+     * Email dell'utente, se ne ha una. Assente senza email.
+     */
+    email?: string;
+    teams: Array<string>;
+};
+
 export type ResolveMentionsInput = {
     names: Array<string>;
 };
@@ -3857,7 +3873,7 @@ export type AppAccess = {
      */
     certificate?: 'instance_ca' | 'lets_encrypt' | 'uploaded';
     /**
-     * Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6). I nomi delle intestazioni e la forma della firma non sono ancora fissati dal contratto.
+     * Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6): X-GitStack-User, X-GitStack-Email, X-GitStack-Teams, X-GitStack-Auth-Time, X-GitStack-Key-Id e X-GitStack-Signature (Ed25519, chiave pubblica su /.well-known/gitstack-app-keys del gateway). Forma della firma e esempio in docs/apps-login.md.
      */
     identityHeaders?: boolean;
     changedAt?: string | null;
@@ -17837,6 +17853,43 @@ export type LookupUsersByIdsResponses = {
 };
 
 export type LookupUsersByIdsResponse = LookupUsersByIdsResponses[keyof LookupUsersByIdsResponses];
+
+export type LookupUserProfileData = {
+    body: UserProfileInput;
+    path?: never;
+    query?: never;
+    url: '/internal/users/profile';
+};
+
+export type LookupUserProfileErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type LookupUserProfileError = LookupUserProfileErrors[keyof LookupUserProfileErrors];
+
+export type LookupUserProfileResponses = {
+    /**
+     * Il profilo.
+     */
+    200: UserProfileResult;
+};
+
+export type LookupUserProfileResponse = LookupUserProfileResponses[keyof LookupUserProfileResponses];
 
 export type ListCredentialEventsData = {
     body?: never;

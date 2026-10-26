@@ -8909,6 +8909,44 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /internal/users/profile:
+    post:
+      operationId: lookupUserProfile
+      tags: [internal]
+      x-mcp:
+        expose: false
+        name: user_profile_lookup
+        destructive: false
+      summary: Nome, email e team di un utente
+      description: >
+        Per il gateway (v3-a, GIT-347, H6): il login davanti alle app interne passa all'app nome,
+        email e team dell'utente in intestazioni firmate. `teams` elenca i team di cui l'utente e'
+        membro come `organizzazione/team`, ordinati. 404 se l'utente non esiste; un utente
+        disattivato torna con `active` falso (il gateway lo rifiuta).
+      security:
+        - serviceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserProfileInput"
+      responses:
+        "200":
+          description: Il profilo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfileResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /internal/credential-events:
     get:
       operationId: listCredentialEvents
@@ -13830,6 +13868,37 @@ components:
                 description: >
                   Email dell'utente, se ne ha una (M-06/F, C5: core la usa per le
                   notifiche email, mai per gli agenti). Assente senza email.
+    UserProfileInput:
+      type: object
+      additionalProperties: false
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          format: uuid
+    UserProfileResult:
+      type: object
+      additionalProperties: false
+      required: [id, username, kind, active, teams]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          $ref: "#/components/schemas/Name"
+        kind:
+          type: string
+          enum: [human, agent]
+        active:
+          type: boolean
+        email:
+          type: string
+          description: Email dell'utente, se ne ha una. Assente senza email.
+        teams:
+          type: array
+          items:
+            type: string
+            description: "`organizzazione/team`."
     ResolveMentionsInput:
       type: object
       additionalProperties: false
@@ -17079,7 +17148,7 @@ components:
         publicAppsEnabled: {type: boolean, description: "L'amministratore ha abilitato le app pubbliche (H1, doppio consenso)."}
         address: {type: string, format: uri, nullable: true}
         certificate: {type: string, enum: [instance_ca, lets_encrypt, uploaded], nullable: true, description: "Origine del certificato dell'indirizzo automatico (H2): CA interna per le interne."}
-        identityHeaders: {type: boolean, description: "Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6). I nomi delle intestazioni e la forma della firma non sono ancora fissati dal contratto."}
+        identityHeaders: {type: boolean, description: "Con `login` l'app riceve nome, email e team dell'utente in intestazioni firmate (H6): X-GitStack-User, X-GitStack-Email, X-GitStack-Teams, X-GitStack-Auth-Time, X-GitStack-Key-Id e X-GitStack-Signature (Ed25519, chiave pubblica su /.well-known/gitstack-app-keys del gateway). Forma della firma e esempio in docs/apps-login.md."}
         changedAt: {type: string, format: date-time, nullable: true}
         changedBy: {allOf: [{$ref: "#/components/schemas/AppActor"}], nullable: true, type: object}
     AppAccessInput:
