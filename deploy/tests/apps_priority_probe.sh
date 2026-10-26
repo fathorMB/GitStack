@@ -11,7 +11,7 @@ if printf '%s\n' "$services" | grep -vx 'gitstack-services' >/dev/null; then
   echo "KO: un servizio GitStack non usa gitstack-services"; exit 1
 fi
 echo "OK: servizi con gitstack-services"
-cpu() { awk 'BEGIN { v="'$1'"; if (v ~ /m$/) { sub(/m$/, "", v); print v } else print v*1000 }'; }
+cpu() { awk -v v="$1" 'BEGIN { if (v ~ /m$/) { sub(/m$/, "", v); print v } else print v*1000 }'; }
 alloc="$(cpu "$(kubectl get node "$node" -o jsonpath='{.status.allocatable.cpu}')")"
 used="$(kubectl get pods -A --field-selector "spec.nodeName=$node,status.phase!=Succeeded,status.phase!=Failed" -o jsonpath='{range .items[*].spec.containers[*]}{.resources.requests.cpu}{"\n"}{end}' | awk 'NF { if ($0 ~ /m$/) { sub(/m$/, ""); sum += $0 } else sum += $0*1000 } END { print sum+0 }')"
 free=$((alloc-used)); echo "free=${free}m"
