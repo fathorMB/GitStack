@@ -25,7 +25,7 @@ import (
 // un namespace senza policy). I negativi sono `if nc -z ...; then echo KO; exit 1; fi`, una riga
 // ok/ko per controllo.
 func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
-	e := newDeployEnv(t)
+	e := newDeployEnvOpt(t, false)
 	ctx := context.Background()
 	repo := uuid.New()
 	source := store.App{ID: uuid.New(), RepoID: repo}
