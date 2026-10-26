@@ -121,6 +121,7 @@ func TestMirrorActionsAnteponeIlCheckoutSeServe(t *testing.T) {
 	env := append(os.Environ(), "GIT_CONFIG_GLOBAL="+os.DevNull)
 	workflow := []byte("jobs:\n  senza:\n    steps:\n      - uses: actions/cache@v4\n      - run: echo ciao\n" +
 		"  con:\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/cache@v4\n" +
+		"  dopo:\n    steps:\n      - uses: actions/cache@v4\n      - uses: actions/checkout@v4\n" +
 		"  solorun:\n    steps:\n      - run: echo ciao\n")
 	got, err := cirunner.MirrorActions(context.Background(), workflow, mirror, "git", dest, env)
 	if err != nil {
@@ -142,6 +143,9 @@ func TestMirrorActionsAnteponeIlCheckoutSeServe(t *testing.T) {
 	}
 	if s := wf.Jobs["con"].Steps; len(s) != 2 || s[0].Uses != "actions/checkout@v4" {
 		t.Errorf("job con checkout modificato: %+v", s)
+	}
+	if s := wf.Jobs["dopo"].Steps; len(s) != 3 || s[0].Uses != "actions/checkout@v4" || s[1].Uses != "./.gitstack-actions/actions__cache__v4" || s[2].Uses != "actions/checkout@v4" {
+		t.Errorf("job con checkout dopo la prima action riscritta: %+v", s)
 	}
 	if s := wf.Jobs["solorun"].Steps; len(s) != 1 {
 		t.Errorf("job senza action riscritte modificato: %+v", s)

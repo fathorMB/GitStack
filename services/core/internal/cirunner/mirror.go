@@ -86,8 +86,8 @@ func MirrorActions(ctx context.Context, workflow []byte, base, gitBin, dest stri
 // lavoro solo nel passo actions/checkout (step_action_remote.go): senza, ./.gitstack-actions/...
 // non esiste e il job cade con «failed to read 'Dockerfile' from action» (GIT-393). Su GitHub
 // actions/cache o upload-artifact funzionano senza checkout, quindi il runner antepone lui il
-// passo (che act salta copiando il codice) ai job che usano un'action riscritta e non ne hanno
-// uno. I job senza action riscritte restano com'erano.
+// passo (che act salta copiando il codice) ai job in cui una action riscritta non e' preceduta
+// da un checkout. I job senza action riscritte restano com'erano.
 func ensureWorkspace(workflow []byte, mirrorDir string) ([]byte, error) {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(workflow, &doc); err != nil || len(doc.Content) == 0 {
@@ -103,20 +103,23 @@ func ensureWorkspace(workflow []byte, mirrorDir string) ([]byte, error) {
 		if steps == nil || steps.Kind != yaml.SequenceNode {
 			continue
 		}
-		mirrored, checkout := false, false
+		// Serve un checkout PRIMA della prima action riscritta: uno che viene dopo (ordine valido
+		// su GitHub) non copia il workspace in tempo.
+		needs := false
 		for _, st := range steps.Content {
 			u := mapValue(st, "uses")
 			if u == nil {
 				continue
 			}
-			switch {
-			case strings.HasPrefix(u.Value, "./"+mirrorDir+"/"):
-				mirrored = true
-			case strings.HasPrefix(u.Value, "actions/checkout@"):
-				checkout = true
+			if strings.HasPrefix(u.Value, "actions/checkout@") {
+				break
+			}
+			if strings.HasPrefix(u.Value, "./"+mirrorDir+"/") {
+				needs = true
+				break
 			}
 		}
-		if !mirrored || checkout {
+		if !needs {
 			continue
 		}
 		step := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{
