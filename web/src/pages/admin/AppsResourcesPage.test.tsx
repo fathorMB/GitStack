@@ -21,9 +21,9 @@ const data = {
   apps: [{ owner: 'acme', repo: 'handbook', name: 'web', status: 'running', copies: 2, guaranteed: { cpuMillis: 1000, memoryBytes: 1024 ** 3 }, limit: { cpuMillis: 2000, memoryBytes: 2 * 1024 ** 3 }, usage: { cpuMillis: 1240, memoryBytes: 820 * 1024 ** 2 }, verified: true, runsAsRoot: false, aboveGuaranteed: true }],
 };
 
-function setup(isAdmin = true) {
+function setup(isAdmin = true, resources = data) {
   vi.mocked(fetchSession).mockResolvedValue({ user: { username: 'root', isAdmin } } as never);
-  vi.mocked(api.fetchAdminAppsData).mockResolvedValue(data as never);
+  vi.mocked(api.fetchAdminAppsData).mockResolvedValue(resources as never);
   return render(<ToastProvider><AppsResourcesPage /></ToastProvider>);
 }
 
@@ -72,11 +72,11 @@ describe('AppsResourcesPage', { timeout: 30000 }, () => {
 
   it('removes a non-instance trusted key and keeps the instance key non-removable', async () => {
     const user = userEvent.setup();
-    vi.mocked(api.fetchAdminAppsData).mockResolvedValue({ ...data, keys: [
+    const resources = { ...data, keys: [
       ...data.keys,
       { id: 'k2', name: 'repo CI', fingerprint: 'SHA256:def', instanceKey: false, createdAt: '2026-10-26T00:00:00Z' },
-    ] } as never);
-    setup();
+    ] };
+    setup(true, resources);
     expect(await screen.findByText('Instance CI key')).toBeInTheDocument();
     const keys = screen.getByText('Trusted keys').parentElement!;
     expect(within(keys).getAllByRole('button', { name: 'Remove' })).toHaveLength(1);
