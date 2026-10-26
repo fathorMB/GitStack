@@ -68,7 +68,7 @@ func TestMigration0019_EventiEUnicitaDelleAperte(t *testing.T) {
 	}
 
 	// Giù: via tabella, colonne e indice; le PR restano.
-	if err := migrate.Down(ctx, pool, dsn, 16); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 18); err != nil {
 		t.Fatalf("down 0019: %v", err)
 	}
 	if tableExists(t, pool, "pull_request_events") {

@@ -4836,7 +4836,7 @@ type Package struct {
 	// PushedBy Chi ha pubblicato, come autenticato dal registry al momento del push. Assente per i push anteriori alla registrazione.
 	PushedBy *PackagePusher `json:"pushedBy,omitempty"`
 
-	// RemovedTags Tag tolti di recente dalle regole di pulizia del registry (RG2).
+	// RemovedTags Al massimo 20 tag rimossi più recenti per immagine dalle regole di pulizia del registry (RG2).
 	RemovedTags *[]RemovedPackageTag `json:"removedTags,omitempty"`
 
 	// Signature Firma cosign dell'immagine: verificata con la chiave del registry oppure no.
@@ -5389,7 +5389,7 @@ type RemovedPackageTag struct {
 	Name      string    `json:"name"`
 	RemovedAt time.Time `json:"removedAt"`
 
-	// Rule Regola di pulizia che ha eliminato il tag, per esempio `after 14 days`.
+	// Rule Frammento della regola di pulizia che ha eliminato il tag, per esempio `after 14 days` o `beyond last 5 tags`; la UI lo mostra come `removed {rule} by rule`.
 	Rule string `json:"rule"`
 }
 
