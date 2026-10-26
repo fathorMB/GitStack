@@ -16,6 +16,7 @@ spec:
       labels:
         {{- include "gitstack.componentLabels" (dict "root" $ "component" "nats") | nindent 8 }}
     spec:
+      priorityClassName: gitstack-services
       securityContext:
         {{- include "gitstack.podSecurityContext" (dict) | nindent 8 }}
       containers:

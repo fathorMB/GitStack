@@ -26,5 +26,5 @@ created=true
 
 cd "$root/services/core"
 GITSTACK_TEST_KUBECONFIG="$work/kubeconfig" go test -tags integration -count=1 -timeout 25m \
-  -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d' -v ./internal/httpserver/
+  -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d|TestApps_SegretiKubernetesERollback' -v ./internal/httpserver/
 echo "OK: controller dei deploy provato su k3d"

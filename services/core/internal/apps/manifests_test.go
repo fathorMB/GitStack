@@ -27,7 +27,10 @@ func testApp() (store.App, store.AppVersion) {
 
 func TestBuildDeployment_AggiornamentoSenzaInterruzioneESalute(t *testing.T) {
 	app, ver := testApp()
-	d := BuildDeployment(app, ver, BuildOptions{Replicas: 2, ProgressDeadlineSeconds: 90, PullSecret: "registry-pull", RestartedAt: "ieri"})
+	d := BuildDeployment(app, ver, BuildOptions{Replicas: 2, ProgressDeadlineSeconds: 90, PullSecret: "registry-pull", AppSecret: "app-secrets", RestartedAt: "ieri"})
+	if d.Spec.Template.Spec.PriorityClassName != "gitstack-apps" {
+		t.Fatalf("priorityClassName: %q", d.Spec.Template.Spec.PriorityClassName)
+	}
 	if d.Namespace != "gitstack-app-"+app.ID.String() || d.Labels[LabelManaged] != "true" {
 		t.Fatalf("namespace/label: %s %v", d.Namespace, d.Labels)
 	}
@@ -57,6 +60,9 @@ func TestBuildDeployment_AggiornamentoSenzaInterruzioneESalute(t *testing.T) {
 	}
 	if len(tpl.Spec.ImagePullSecrets) != 1 || tpl.Spec.ImagePullSecrets[0].Name != "registry-pull" {
 		t.Fatalf("pull secret: %+v", tpl.Spec.ImagePullSecrets)
+	}
+	if len(c.EnvFrom) != 1 || c.EnvFrom[0].SecretRef == nil || c.EnvFrom[0].SecretRef.Name != "app-secrets" {
+		t.Fatalf("secret dell'app: %+v", c.EnvFrom)
 	}
 	if *tpl.Spec.AutomountServiceAccountToken || *c.SecurityContext.AllowPrivilegeEscalation || c.SecurityContext.RunAsNonRoot != nil {
 		t.Fatalf("sicurezza: %+v", c.SecurityContext)

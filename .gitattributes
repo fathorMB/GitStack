@@ -7,6 +7,9 @@
 Makefile text eol=lf
 *.sh text eol=lf
 
+# Script del runner CI senza estensione (GIT-371): LF, o lo shebang si rompe nel pod.
+deploy/ci-runner/gitstack-build text eol=lf
+
 # tokens.css e' generato da web/scripts/sync-tokens.mjs, che scrive sempre LF: con
 # core.autocrlf=true il worktree Windows lo avrebbe CRLF e dopo
 # "pnpm run check-tokens" git lo vedrebbe modificato (GIT-46).

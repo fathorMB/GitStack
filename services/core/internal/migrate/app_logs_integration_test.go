@@ -13,10 +13,10 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
 )
 
-// TestMigration0039_AppLogs (GIT-350, H12): righe di log delle app. La sorgente è app o platform, il
+// TestMigration0040_AppLogs (GIT-350, H12): righe di log delle app. La sorgente è app o platform, il
 // nome della copia è facoltativo, i byte sono la lunghezza del testo, la cascata dall'app le toglie
 // e il down toglie la sola tabella.
-func TestMigration0039_AppLogs(t *testing.T) {
+func TestMigration0040_AppLogs(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 	exec := func(q string, args ...any) error {
@@ -63,10 +63,10 @@ func TestMigration0039_AppLogs(t *testing.T) {
 	}
 
 	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("down 0039: %v", err)
+		t.Fatalf("down 0040: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.tables WHERE table_schema = 'core' AND table_name = 'app_log_lines'`).Scan(&n); err != nil || n != 0 {
-		t.Fatalf("la tabella dei log deve sparire con il down 0039: %d %v", n, err)
+		t.Fatalf("la tabella dei log deve sparire con il down 0040: %d %v", n, err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.tables WHERE table_schema = 'core' AND table_name = 'apps'`).Scan(&n); err != nil || n != 1 {
 		t.Fatalf("la tabella apps deve restare: %d %v", n, err)

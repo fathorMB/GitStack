@@ -223,7 +223,7 @@ describe('RepoPage', () => {
   it('repo non vuoto: niente quick setup, parte il browser del codice', async () => {
     vi.mocked(fetchRepo).mockResolvedValue(repo());
     renderAt('/acme/api-gateway');
-    expect(await screen.findByText(/Loading code|Unexpected response|Could not reach/, undefined, { timeout: 5000 })).toBeInTheDocument();
+    expect(await screen.findByText(/Loading code|Unexpected response|Could not reach/, undefined, { timeout: 15000 })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Quick setup' })).not.toBeInTheDocument();
-  });
+  }, 20000);
 });

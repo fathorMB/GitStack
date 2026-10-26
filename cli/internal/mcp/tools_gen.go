@@ -106,7 +106,7 @@ var Tools = []Tool{
 		Operation:   "rollbackApp",
 		Method:      "POST",
 		Path:        "/repos/{owner}/{repo}/apps/{app}/rollback",
-		Description: "Torna a una versione precedente. Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12); i segreti tengono i valori correnti. 409 `image_unavailable` se l'immagine non c'e' piu' nel registry; 409 `deploy_in_progress`. `pauseAutoDeploy` sospende i deploy automatici dal branch seguito (altrimenti la prossima immagine della CI sostituisce il ritorno).",
+		Description: "Torna a una versione precedente. Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Crea una nuova versione con l'immagine e la configurazione di quella scelta (H8, H12): ripristina immagine, variabili e nomi dei segreti, mai i loro valori storici; ogni nome riceve il valore corrente. 409 `app_secrets_missing` con i nomi mancanti se un segreto della versione non esiste piu', senza modificare la versione attiva. 409 `image_unavailable` se l'imma…",
 		Destructive: false,
 		PathParams:  []string{"app", "owner", "repo"},
 		QueryParams: nil,

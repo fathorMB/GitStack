@@ -13,6 +13,7 @@ altre guide utente dedicate, il riferimento è
 `.lmbrain-lite/knowledge/vision.md`.
 
 `repos.md` (M-03/A) documenta scope, owner/visibilità e API interna dei repo.
+`apps.md` (v3-a/H8) documenta le applicazioni ospitate, inclusi segreti e rollback.
 `issue-templates.md` (M-05/H, GIT-108) documenta i modelli di issue in
 `.gitstack/ISSUE_TEMPLATE/`: formato, front matter, comportamento e
 contratto API.

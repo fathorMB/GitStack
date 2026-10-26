@@ -925,3 +925,48 @@ func TestReconcile_RiprendePodVivoEOmetteAssente(t *testing.T) {
 		waitJobConclusion(t, e, jobID, ci.ConclusionSuccess)
 	})
 }
+
+// GIT-371: runs-on con la label gitstack-build resta un job interno e il dispatcher crea il pod
+// nel namespace di build (con il sidecar di BuildKit); senza la build configurata il job fallisce.
+func TestDispatchPods_GitstackBuild(t *testing.T) {
+	run := func(t *testing.T, cfg ci.RunnerConfig) (*fakePods, uuid.UUID, *env) {
+		e := newEnv(t)
+		repo := e.repo(uuid.New(), "builder")
+		e.src.files[sha("a")] = []ci.File{{Path: ".github/workflows/img.yml", Content: []byte("on: push\njobs:\n  img:\n    runs-on: [ubuntu-latest, gitstack-build]\n")}}
+		ids, err := e.eng.OnPush(context.Background(), pushOf(repo, uuid.New(), "refs/heads/main", sha("9"), sha("a"), "x"))
+		if err != nil || len(ids) != 1 {
+			t.Fatalf("accodamento: %v %v", ids, err)
+		}
+		var jobID uuid.UUID
+		var typ string
+		var runsOn []string
+		if err := e.pool.QueryRow(context.Background(), `SELECT id, runner_type, runs_on FROM core.ci_jobs WHERE run_id = $1`, ids[0]).Scan(&jobID, &typ, &runsOn); err != nil {
+			t.Fatal(err)
+		}
+		if typ != "internal_pod" || !ci.IsBuildJob(runsOn) {
+			t.Fatalf("runner_type %q runs_on %v", typ, runsOn)
+		}
+		pods := &fakePods{conclusion: ci.ConclusionSuccess}
+		_, err = ci.DispatchPods(context.Background(), e.pool, pods, cfg, *e.clock, &captureReporter{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return pods, jobID, e
+	}
+	t.Run("pod di build", func(t *testing.T) {
+		pods, jobID, e := run(t, ci.RunnerConfig{Image: "runner:test", GatewayURL: "http://core:8081", Capacity: 1,
+			BuildNamespace: "gitstack-ci-build", BuildImage: "moby/buildkit:rootless", RegistryAddr: "gw.ns.svc:8080"})
+		waitJobConclusion(t, e, jobID, ci.ConclusionSuccess)
+		if len(pods.created) != 1 || pods.created[0].Namespace != "gitstack-ci-build" || pods.created[0].BuildKit == nil ||
+			pods.created[0].Env["GITSTACK_REGISTRY"] != "gw.ns.svc:8080" {
+			t.Fatalf("pod creati: %+v", pods.created)
+		}
+	})
+	t.Run("build non configurata", func(t *testing.T) {
+		pods, jobID, e := run(t, ci.RunnerConfig{Image: "runner:test", GatewayURL: "http://core:8081", Capacity: 1})
+		waitJobConclusion(t, e, jobID, ci.ConclusionFailure)
+		if len(pods.created) != 0 {
+			t.Fatalf("nessun pod senza build configurata: %+v", pods.created)
+		}
+	})
+}

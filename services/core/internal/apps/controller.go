@@ -63,9 +63,10 @@ type Config struct {
 	SyncEvery    time.Duration
 	// PullCredentials: credenziali del registry del repo (pull secret). Nil: nessun pull secret.
 	PullCredentials func(ctx context.Context, app store.App) (*PullCredential, error)
-	// Secrets dà i valori dei segreti dell'app per mascherarli nei log (GIT-348). Nil, o un errore:
-	// le righe delle copie non si raccolgono (mai in chiaro); gli eventi della piattaforma sì.
-	Secrets func(ctx context.Context, appID uuid.UUID) (map[string]string, error)
+	// Secrets decifra i valori correnti dei segreti dell'app: si iniettano nei pod e si usano per
+	// mascherarli nei log (GIT-348, GIT-350). Nil: le righe delle copie non si raccolgono, e nei pod
+	// non entra nessun segreto.
+	Secrets store.AppSealer
 	// PodLogs legge le righe di una copia; nil usa l'API di Kubernetes (i test la sostituiscono).
 	PodLogs PodLogReader
 	// LogsEvery: ogni quanto si raccolgono le righe delle copie (default 2 s, la «diretta»).
@@ -295,6 +296,25 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 			pull = pullSecretName
 		}
 	}
+	appSecret := ""
+	if len(v.Config.SecretNames) > 0 {
+		if c.cfg.Secrets == nil {
+			return errors.New("chiave dei segreti dell'app non configurata")
+		}
+		values, err := c.st.AppSecretValuesForNames(ctx, c.cfg.Secrets, app.ID, v.Config.SecretNames)
+		if err != nil {
+			return fmt.Errorf("lettura dei segreti dell'app: %w", err)
+		}
+		if len(values) != len(v.Config.SecretNames) {
+			return errors.New("uno o piu' segreti dell'app non esistono piu'")
+		}
+		if err := c.ensureAppSecret(ctx, ns, app.ID, values); err != nil {
+			return fmt.Errorf("secret dell'app: %w", err)
+		}
+		appSecret = appSecretName
+	} else if err := c.deleteAppSecret(ctx, ns); err != nil {
+		return fmt.Errorf("rimozione secret dell'app: %w", err)
+	}
 	if err := c.ensureService(ctx, app, v.Config); err != nil {
 		return fmt.Errorf("service: %w", err)
 	}
@@ -304,7 +324,7 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 		c.cfg.Log.Warn("apps: rotta non applicata", "app", app.ID, "err", err)
 	}
 	deps := c.kube.AppsV1().Deployments(ns)
-	opts := BuildOptions{Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull}
+	opts := BuildOptions{Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret}
 	cur, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})
 	switch {
 	case apierrors.IsNotFound(err):
@@ -317,6 +337,36 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 	want := BuildDeployment(app, v, opts)
 	want.ResourceVersion = cur.ResourceVersion
 	_, err = deps.Update(ctx, want, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Controller) ensureAppSecret(ctx context.Context, ns string, id uuid.UUID, values map[string]string) error {
+	data := make(map[string][]byte, len(values))
+	for name, value := range values {
+		data[name] = []byte(value)
+	}
+	want := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appSecretName, Namespace: ns, Labels: objectLabels(id)}, Type: corev1.SecretTypeOpaque, Data: data}
+	secrets := c.kube.CoreV1().Secrets(ns)
+	cur, err := secrets.Get(ctx, appSecretName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		_, err = secrets.Create(ctx, want, metav1.CreateOptions{})
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	cur.Labels = want.Labels
+	cur.Type = want.Type
+	cur.Data = want.Data
+	_, err = secrets.Update(ctx, cur, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Controller) deleteAppSecret(ctx context.Context, ns string) error {
+	err := c.kube.CoreV1().Secrets(ns).Delete(ctx, appSecretName, metav1.DeleteOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
 	return err
 }
 
@@ -710,6 +760,9 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 	ns := Namespace(app.ID)
 	d, err := c.kube.AppsV1().Deployments(ns).Get(ctx, WorkloadName, metav1.GetOptions{})
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			c.reapply(ctx, app)
+		}
 		return
 	}
 	// Il modo di accesso può cambiare a deploy fermo (PUT .../access): la rotta e i suoi middleware
@@ -757,6 +810,28 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 			c.platform(ctx, app.ID, fmt.Sprintf("stato dell'app: %s (copie pronte %d di %d)", status, ready, want))
 		}
 	}
+}
+
+// reapply riporta la versione attiva di un'app il cui Deployment non c'è più: succede dopo un
+// restore su un cluster pulito (H4), dove le app tornano dal database (versione, configurazione,
+// immagini nel registry ripristinato).
+func (c *Controller) reapply(ctx context.Context, app store.App) {
+	v, err := c.st.GetAppVersion(ctx, app.ID, app.ActiveVersion)
+	if !shouldReapply(app, v, err) {
+		return
+	}
+	if err := c.apply(ctx, app, v); err != nil {
+		c.cfg.Log.Warn("apps: riapplicazione della versione attiva non riuscita", "app", app.ID, "version", v.Number, "err", err)
+		return
+	}
+	c.cfg.Log.Info("apps: versione attiva riapplicata (Deployment assente)", "app", app.ID, "version", v.Number)
+}
+
+// shouldReapply dice se la versione attiva va riapplicata: l'app deve avere copie volute (repo
+// non archiviato né eliminato), non essere «fallita» al primo deploy e la versione attiva deve
+// essere quella in servizio.
+func shouldReapply(app store.App, v store.AppVersion, verr error) bool {
+	return verr == nil && desiredReplicas(app) > 0 && app.Status != "failed" && v.State == "serving"
 }
 
 // Collect toglie i namespace del controller di app che non esistono più nel modello (app o repo

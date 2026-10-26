@@ -40,6 +40,7 @@ const (
 	NamePrefix     = "gitstack-app-"
 	WorkloadName   = "app"
 	pullSecretName = "registry-pull"
+	appSecretName  = "app-secrets"
 	containerName  = "app"
 	servicePort    = 80
 )
@@ -79,6 +80,8 @@ type BuildOptions struct {
 	ProgressDeadlineSeconds int32
 	// PullSecret: nome del Secret con le credenziali del registry del repo; vuoto per le immagini esterne.
 	PullSecret string
+	// AppSecret: nome del Secret con i valori correnti dei segreti dell'app.
+	AppSecret string
 	// RestartedAt: valore da portare avanti dal Deployment esistente.
 	RestartedAt string
 }
@@ -120,6 +123,9 @@ func BuildDeployment(app store.App, v store.AppVersion, o BuildOptions) *appsv1.
 			Limits:   resourceList(cfg.Limit),
 		},
 	}
+	if o.AppSecret != "" {
+		c.EnvFrom = []corev1.EnvFromSource{{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: o.AppSecret}}}}
+	}
 	minReady := int32(0)
 	if cfg.Port != nil {
 		c.Ports = []corev1.ContainerPort{{Name: "http", ContainerPort: int32(*cfg.Port), Protocol: corev1.ProtocolTCP}}
@@ -133,6 +139,7 @@ func BuildDeployment(app store.App, v store.AppVersion, o BuildOptions) *appsv1.
 		minReady = 5
 	}
 	pod := corev1.PodSpec{
+		PriorityClassName:            "gitstack-apps",
 		AutomountServiceAccountToken: &f,
 		EnableServiceLinks:           &f,
 		Containers:                   []corev1.Container{c},

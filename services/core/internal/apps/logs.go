@@ -84,7 +84,7 @@ func (c *Controller) collectApp(ctx context.Context, app store.App) {
 		c.collectOOM(ctx, app, pods.Items)
 		return
 	}
-	secrets, err := c.cfg.Secrets(ctx, app.ID)
+	secrets, err := c.st.AppSecretValues(ctx, c.cfg.Secrets, app.ID)
 	if err != nil {
 		c.cfg.Log.Warn("apps: segreti non letti, righe delle copie non raccolte", "app", app.ID, "err", err)
 		c.collectOOM(ctx, app, pods.Items)

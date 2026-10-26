@@ -55,7 +55,7 @@ func fakeAct(args []string) int {
 	}
 	if f := os.Getenv("CIRUNNER_FAKE_ACT_ENV"); f != "" {
 		var kv []string
-		for _, k := range []string{"ACTIONS_CACHE_URL", "ACTIONS_RESULTS_URL", "ACTIONS_RUNTIME_TOKEN", "GITHUB_TOKEN"} {
+		for _, k := range []string{"ACTIONS_CACHE_URL", "ACTIONS_RESULTS_URL", "ACTIONS_RUNTIME_TOKEN", "GITHUB_TOKEN", "GITSTACK_REPOSITORY"} {
 			kv = append(kv, k+"="+os.Getenv(k))
 		}
 		_ = os.WriteFile(f, []byte(strings.Join(kv, "\n")), 0o600)
@@ -116,7 +116,7 @@ func (g *fakeGateway) FetchTask(_ context.Context, req *connect.Request[runnerv1
 		return connect.NewResponse(&runnerv1.FetchTaskResponse{}), nil
 	}
 	g.taken = true
-	cx, _ := structpb.NewStruct(map[string]any{"job": "build", "event_name": "push", "sha": strings.Repeat("a", 40)})
+	cx, _ := structpb.NewStruct(map[string]any{"job": "build", "event_name": "push", "sha": strings.Repeat("a", 40), "repository": "alice/app"})
 	return connect.NewResponse(&runnerv1.FetchTaskResponse{Task: &runnerv1.Task{
 		Id: 42, WorkflowPayload: []byte(g.workflow), Context: cx, Secrets: map[string]string{"GITHUB_TOKEN": jobToken},
 	}}), nil
