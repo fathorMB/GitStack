@@ -483,6 +483,9 @@ jobs:
   image:
     runs-on: gitstack-build
     steps:
+      # Come su GitHub, il codice nel workspace c'e' solo dopo actions/checkout: senza, il
+      # Dockerfile non esiste (GIT-393). Il runner integrato lo salta e copia il workspace.
+      - uses: actions/checkout@v4
       - run: gitstack-build --tag e2e-1 .
 EOF
 printf 'FROM scratch\nCOPY hello /hello\n' >"${src}/Dockerfile"
