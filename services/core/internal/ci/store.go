@@ -160,21 +160,25 @@ func LoadRepoState(ctx context.Context, q interface {
 		archived, deleted   *time.Time
 		pullMirror, runMirr bool
 		lastPush            *time.Time
+		mirrorBy            *uuid.UUID
 	)
 	err := q.QueryRow(ctx, `
 		SELECT r.resource_id, r.owner_type, r.owner_id, r.archived_at, r.deleted_at, r.created_at,
-		       COALESCE(m.state <> 'stopped', false), COALESCE(s.run_on_pull_mirror, false), s.last_push_at
+		       COALESCE(m.state <> 'stopped', false), COALESCE(s.run_on_pull_mirror, false), s.last_push_at, s.run_on_pull_mirror_by
 		FROM core.repositories r
 		LEFT JOIN core.repo_pull_mirrors m ON m.repo_id = r.resource_id
 		LEFT JOIN core.ci_repo_state s ON s.repo_id = r.resource_id
 		WHERE r.resource_id = $1`, repoID).
-		Scan(&id, &st.OwnerType, &ownerID, &archived, &deleted, &st.CreatedAt, &pullMirror, &runMirr, &lastPush)
+		Scan(&id, &st.OwnerType, &ownerID, &archived, &deleted, &st.CreatedAt, &pullMirror, &runMirr, &lastPush, &mirrorBy)
 	if err != nil {
 		return RepoState{}, err
 	}
 	st.ID, st.OwnerID = id.String(), ownerID.String()
 	st.Archived, st.Deleted = archived != nil, deleted != nil
 	st.PullMirror, st.RunOnPullMirror = pullMirror, runMirr
+	if mirrorBy != nil {
+		st.MirrorCIBy = mirrorBy.String()
+	}
 	if lastPush != nil {
 		st.LastPushAt = *lastPush
 	}

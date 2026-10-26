@@ -20,6 +20,8 @@ contratto API.
 
 `ci-runner-esterno.md` (GIT-278) spiega come registrare, avviare e revocare un runner esterno della CI (download da `/downloads`, token monouso, `runs-on`).
 
+`ci-mirror-in-pull.md` (GIT-374) spiega come accendere la CI su un repo in mirror in pull, chi è l'autore delle esecuzioni e quando si spegne da sola.
+
 `registry.md` (v2-b) è la guida del registry OCI; la CI, il runner e il dogfooding su homehub (GIT-291) sono in `operations.md` («Built-in CI» e «Dogfooding della CI di GitStack su homehub»), la guida utente pubblica in `docs-site/docs/user/ci.md` e `registry-and-releases.md`.
 
 `webhooks.md` (M-06/A, GIT-129) è il formato dei payload webhook GitStack v1 (push, issues, issue_comment, repository), con intestazioni, firma HMAC-SHA256, tentativi ed esempi; gli eventi di dominio `issue.*`, `issue_comment.*` e `repository.*` che li alimentano sono in `events.md`.

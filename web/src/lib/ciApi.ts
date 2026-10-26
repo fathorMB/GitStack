@@ -9,6 +9,8 @@ import {
   deleteRepositoryActionsSecret as sdkDeleteRepositoryActionsSecret,
   deleteRepositoryActionsVariable as sdkDeleteRepositoryActionsVariable,
   getRepositoryActionsPermissions as sdkGetRepositoryActionsPermissions,
+  getRepositoryActionsPullMirror as sdkGetRepositoryActionsPullMirror,
+  putRepositoryActionsPullMirror as sdkPutRepositoryActionsPullMirror,
   getCiQueue as sdkGetCiQueue,
   listCiRunners as sdkListCiRunners,
   listOrganizationActionsSecrets as sdkListOrganizationActionsSecrets,
@@ -20,6 +22,7 @@ import {
 } from '@gitstack/api-client';
 import type {
   ActionsJobTokenDefaults,
+  ActionsPullMirrorSettings,
   ActionsSecret,
   ActionsSecretInputWritable,
   ActionsSecretList,
@@ -35,6 +38,7 @@ import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
 export type {
   ActionsJobTokenDefaults,
+  ActionsPullMirrorSettings,
   ActionsSecret,
   ActionsSecretList,
   ActionsVariable,
@@ -114,6 +118,16 @@ export async function putRepoTokenPermissions(
   input: ActionsJobTokenDefaults,
 ): Promise<ActionsJobTokenDefaults> {
   return unwrap(await sdkPutRepositoryActionsPermissions({ baseUrl: API_BASE_URL, path: { owner, repo }, body: input }));
+}
+
+/* ===== CI sul mirror in pull (CI3, solo admin) ===== */
+
+export async function fetchRepoPullMirrorCI(owner: string, repo: string): Promise<ActionsPullMirrorSettings> {
+  return unwrap(await sdkGetRepositoryActionsPullMirror({ baseUrl: API_BASE_URL, path: { owner, repo } }));
+}
+
+export async function putRepoPullMirrorCI(owner: string, repo: string, runOnPullMirror: boolean): Promise<ActionsPullMirrorSettings> {
+  return unwrap(await sdkPutRepositoryActionsPullMirror({ baseUrl: API_BASE_URL, path: { owner, repo }, body: { runOnPullMirror } }));
 }
 
 /* ===== Segreti ereditati dall'organizzazione ===== */

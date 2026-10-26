@@ -391,6 +391,8 @@ func notificationSummary(reason, event, actor, repo string, number *int64, title
 			return "Il mirror in pull di " + repo + " ha ref divergenti: GitStack ha tenuto la propria versione"
 		case "pull_mirror.stale":
 			return "Il mirror in pull di " + repo + " non si aggiorna da più di 24 ore"
+		case "pull_mirror.ci_disabled":
+			return "La CI sul mirror in pull di " + repo + " è stata spenta: non hai più admin sul repo"
 		}
 		return "Un mirror di " + repo + " si è fermato: la destinazione ha una storia diversa"
 	}

@@ -36,6 +36,8 @@ type RepoState struct {
 	// non se interrotto). RunOnPullMirror è l'interruttore che lo consente.
 	PullMirror      bool
 	RunOnPullMirror bool
+	// MirrorCIBy: chi ha acceso la CI sul mirror (autore degli eventi, tetto del token); vuoto se nessuno.
+	MirrorCIBy string
 	// LastPushAt è l'ultimo push; zero se non ce n'è mai stato dopo la creazione.
 	LastPushAt time.Time
 	CreatedAt  time.Time
