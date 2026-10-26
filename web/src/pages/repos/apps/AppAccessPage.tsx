@@ -8,6 +8,7 @@ import type { AppPermissions } from '../../../lib/appsPermissions';
 import { describeError } from '../../../lib/http';
 import type { Repository } from '../../../lib/reposApi';
 import { useLoad } from '../../../lib/useLoad';
+import { AppAccessList } from './AppAccessList';
 import { AppHeader } from './AppHeader';
 import { appsPath } from './appMode';
 
@@ -106,6 +107,7 @@ export function AppAccessPage({ repo, app, perms, onChange }: Props) {
                   </div>
                   {!perms.canChangeAccess ? <p className="hint">Only admins of the repository can change who opens the app.</p> : null}
                 </div>
+                {data.mode !== 'public' ? <AppAccessList repo={repo} app={app} canEdit={perms.canChangeAccess} /> : null}
                 <div>
                   <div className="sec-h">
                     <h2>Domains</h2>
