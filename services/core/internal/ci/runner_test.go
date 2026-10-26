@@ -68,3 +68,47 @@ func TestPodForJob_ProxyECAAziendale(t *testing.T) {
 		t.Fatalf("senza proxy né CA non deve aggiungere nulla: %v", plain.Env)
 	}
 }
+
+func TestPodForJob_BuildGitstackBuild(t *testing.T) {
+	cfg := RunnerConfig{Image: "runner:1", GatewayURL: "http://core:8081", GateInternalAddr: "core:8080",
+		BuildNamespace: "gitstack-ci-build", BuildImage: "moby/buildkit:rootless", RegistryAddr: "gitstack-gateway.ns.svc:8080"}
+	job := JobRow{ID: uuid.New(), RunsOn: []string{"ubuntu-latest", BuildLabel}}
+	p, err := PodForJob(cfg, job, RunRow{ID: uuid.New()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Namespace != "gitstack-ci-build" || p.RunAsUser != BuildUser || p.BuildKit == nil || p.BuildKit.Image != "moby/buildkit:rootless" || !p.InitGate {
+		t.Fatalf("pod di build: %+v", p)
+	}
+	if p.Env["BUILDKIT_HOST"] != BuildKitAddr || p.Env["GITSTACK_REGISTRY"] != "gitstack-gateway.ns.svc:8080" {
+		t.Fatalf("env: %v", p.Env)
+	}
+	// Il biglietto monouso c'e' anche qui, e il pod resta senza token Kubernetes.
+	pt, err := PodForJobTicket(cfg, job, RunRow{ID: uuid.New()}, "gjt_x")
+	if err != nil || pt.Env["GITSTACK_CI_RUNNER_SECRET"] != "gjt_x" || pt.AutomountServiceAccountToken {
+		t.Fatalf("biglietto: %v %+v", err, pt)
+	}
+	// Senza label il pod resta quello di sempre, anche con la build configurata.
+	plain, err := PodForJob(cfg, JobRow{ID: uuid.New(), RunsOn: []string{"ubuntu-latest"}}, RunRow{ID: uuid.New()})
+	if err != nil || plain.Namespace != "gitstack-ci-jobs" && plain.Namespace != "" || plain.BuildKit != nil || plain.Env["BUILDKIT_HOST"] != "" {
+		t.Fatalf("pod normale: %v %+v", err, plain)
+	}
+	// Build non configurata: nessun pod (il dispatcher chiude il job in failure).
+	if _, err := PodForJob(RunnerConfig{Image: "runner:1"}, job, RunRow{ID: uuid.New()}); err == nil {
+		t.Fatal("job di build senza namespace, immagine e registry doveva fallire")
+	}
+}
+
+func TestRunnerTypeOf_GitstackBuild(t *testing.T) {
+	for _, in := range [][]string{{BuildLabel}, {"ubuntu-latest", "GitStack-Build"}} {
+		if runnerTypeOf(in) != "internal_pod" || !IsBuildJob(in) {
+			t.Errorf("%v: atteso pod interno di build", in)
+		}
+	}
+	if runnerTypeOf([]string{BuildLabel, "self-hosted"}) != "external" {
+		t.Error("self-hosted resta esterno anche con la label di build")
+	}
+	if IsBuildJob([]string{"ubuntu-latest"}) {
+		t.Error("ubuntu-latest non e' un job di build")
+	}
+}

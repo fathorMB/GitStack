@@ -11,7 +11,11 @@
 #   2b. la cache dei job (actions/cache: salva nel primo run, ripristina nel secondo) e il 501
 #      di upload-artifact@v4 (GIT-291);
 #   3. una build rootless (BuildKit senza demone) nel namespace gitstack-ci-build e un pod
-#      privilegiato nello stesso namespace, rifiutato dalla ValidatingAdmissionPolicy.
+#      privilegiato nello stesso namespace, rifiutato dalla ValidatingAdmissionPolicy;
+#   4. (GIT-371) un workflow con `runs-on: gitstack-build` che costruisce un'immagine con BuildKit
+#      rootless e la pubblica nel registry del repo col token del job; poi, dal namespace di build,
+#      le prove di rete (ci-gateway e registry si', core su altre porte, postgres, nats, identity,
+#      git, API Kubernetes e IP privati no) e gli altri rifiuti della policy (hostPort, capability).
 #
 # Richiede kubectl, helm, git, curl, jq. La password di admin viene cambiata per la durata
 # della prova e rimessa quella iniziale all'uscita (come lo smoke del repo con maiuscole).
@@ -74,6 +78,7 @@ change_password() { # corrente, nuova
 cleanup() {
   local rc=$?
   kill "${watcher}" 2>/dev/null || true
+  [ -z "${bwatcher:-}" ] || kill "${bwatcher}" 2>/dev/null || true
   if [ -n "${tmp_pw}" ] && [ -n "${initial_pw}" ]; then
     change_password "${tmp_pw}" "${initial_pw}" || echo "attenzione: password iniziale non ripristinata" >&2
   fi
@@ -444,6 +449,187 @@ else
   ko "ephemeral: pod bersaglio non pronto"
 fi
 kubectl -n "${BUILD_NS}" delete pod ci-ephemeral-target --ignore-not-found --wait=false >/dev/null
+
+# --- 4. workflow `runs-on: gitstack-build` (GIT-371, ADR 0001 §6, CI2) -------------------------
+# Un workflow vero chiede la label documentata: il dispatcher crea il pod nel namespace di build
+# (gate + BuildKit rootless come sidecar + runner), il job costruisce l'immagine e la pubblica nel
+# registry del repo col token del job, dal gateway nel cluster. Poi le prove negative di rete,
+# dal namespace di build, e altre due violazioni della policy di ammissione.
+build_pods_json="${work}/buildpod.json"
+watch_build_pods() {
+  local seen=" " p j
+  while true; do
+    for p in $(kubectl -n "${BUILD_NS}" get pods -l 'gitstack.io/ci-job=true' -o name 2>/dev/null | sed 's#^pod/##'); do
+      case "${p}" in ci-????????????????????????????????) ;; *) continue ;; esac
+      j=$(kubectl -n "${BUILD_NS}" get pod "${p}" -o json 2>/dev/null || true)
+      [ -n "${j}" ] && printf '%s' "${j}" >"${build_pods_json}"
+      case "${seen}" in *" ${p} "*) continue ;; esac
+      seen="${seen}${p} "
+      (kubectl -n "${BUILD_NS}" logs -f "${p}" --all-containers --prefix >"${work}/buildpod-${p}.log" 2>&1 || true) &
+    done
+    sleep 1
+  done
+}
+watch_build_pods &
+bwatcher=$!
+
+cat >"${src}/.gitstack/workflows/build.yml" <<'EOF'
+name: build
+on: workflow_dispatch
+permissions:
+  contents: read
+  packages: write
+jobs:
+  image:
+    runs-on: gitstack-build
+    steps:
+      - run: gitstack-build --tag e2e-1 .
+EOF
+printf 'FROM scratch\nCOPY hello /hello\n' >"${src}/Dockerfile"
+echo "ciao dal job di build" >"${src}/hello"
+push "workflow gitstack-build" >/dev/null
+# Il token del job pubblica solo se il repo gli concede packages: write (di default e' read, CI4).
+code=$(curl -s -o "${work}/perm.body" -w '%{http_code}' -H "Authorization: Bearer ${tok}" -X PUT -H 'content-type: application/json'   -d '{"contents":"read","packages":"write","actions":"read"}' "${api}/repos/${OWNER}/${REPO}/actions/permissions" || true)
+if [ "${code}" = 200 ]; then ok "build: il repo concede packages: write al token del job"; else ko "build: permessi del token del job, status ${code}, corpo '$(head -c 200 "${work}/perm.body")'"; fi
+
+code=$(curl -s -o "${work}/bdisp.json" -w '%{http_code}' -H "Authorization: Bearer ${tok}" -X POST -H 'content-type: application/json' \
+  -d '{"ref":"main"}' "${api}/repos/${OWNER}/${REPO}/workflows/build.yml/dispatches" || true)
+if [ "${code}" != 202 ]; then
+  ko "build: avvio del workflow, status ${code}, corpo '$(head -c 200 "${work}/bdisp.json")'"
+else
+  bid=$(jq -r .id "${work}/bdisp.json")
+  bst=""
+  for ((i = 0; i < RUN_TIMEOUT / 3; i++)); do
+    curl -s -H "Authorization: Bearer ${tok}" "${api}/repos/${OWNER}/${REPO}/actions/runs/${bid}" >"${work}/build-run.json" || true
+    bst=$(jq -r '.status // ""' "${work}/build-run.json" 2>/dev/null || true)
+    [ "${bst}" = completed ] || [ "${bst}" = cancelled ] && break
+    sleep 3
+  done
+  bjob=$(jq -r '.jobs[0].id // ""' "${work}/build-run.json" 2>/dev/null || true)
+  [ -z "${bjob}" ] || curl -s -H "Authorization: Bearer ${tok}" "${api}/repos/${OWNER}/${REPO}/actions/jobs/${bjob}/logs" >"${work}/build-job.log" || true
+  bconcl=$(jq -r '.jobs[0].conclusion // "-"' "${work}/build-run.json" 2>/dev/null || echo "-")
+  if [ "${bst}" = completed ] && [ "${bconcl}" = success ]; then ok "build: run ${bid} completed/success"; else
+    ko "build: run ${bid} ${bst}/${bconcl}"; tail -n 40 "${work}/build-job.log" >&2 || true; fi
+  if grep -q 'gitstack-build: pubblicata' "${work}/build-job.log" 2>/dev/null; then ok "build: il log del job conferma la pubblicazione"; else ko "build: nel log manca «gitstack-build: pubblicata»"; fi
+
+  # Il pod del job: nel namespace di build, con gate e sidecar BuildKit, senza hostPath, non nel namespace dei job.
+  if [ -s "${build_pods_json}" ]; then
+    pod_name=$(jq -r .metadata.name "${build_pods_json}")
+    expected="ci-$(printf '%s' "${bjob}" | tr -d '-')"
+    if [ "${pod_name}" = "${expected}" ]; then ok "build: il pod del job (${pod_name:0:11}...) e' stato creato in ${BUILD_NS}"; else ko "build: pod '${pod_name}' diverso dal pod del job '${expected}'"; fi
+    if jq -e '([.spec.initContainers[].name] == ["gate", "buildkitd"]) and ([.spec.containers[].name] == ["job"])' "${build_pods_json}" >/dev/null; then
+      ok "build: gate fail-closed prima del sidecar buildkitd, poi il runner"; else ko "build: container del pod inattesi: $(jq -c '[.spec.initContainers[].name, .spec.containers[].name]' "${build_pods_json}")"; fi
+    if jq -e '[.spec.volumes[]? | select(.hostPath)] | length == 0' "${build_pods_json}" >/dev/null; then ok "build: il pod del job non ha volumi hostPath"; else ko "build: il pod del job ha un hostPath"; fi
+    if jq -e '.spec.automountServiceAccountToken == false' "${build_pods_json}" >/dev/null; then ok "build: il pod del job non monta il token del ServiceAccount"; else ko "build: token del ServiceAccount montato"; fi
+    if kubectl -n gitstack-ci-jobs get pod "${expected}" >/dev/null 2>&1; then ko "build: il job e' comparso anche nel namespace dei job"; else ok "build: nessun pod del job in gitstack-ci-jobs"; fi
+  else
+    ko "build: nessun pod visto in ${BUILD_NS} durante il run"
+  fi
+
+  # L'immagine e' nel registry del repo, pubblicata dal token del job (pushedBy.kind = job).
+  code=$(curl -s -o "${work}/pkgs.json" -w '%{http_code}' -H "Authorization: Bearer ${tok}" "${api}/repos/${OWNER}/${REPO}/packages" || true)
+  if [ "${code}" = 200 ] && jq -e '[.. | objects | select((.tags? // []) | index("e2e-1")) | select(.pushedBy.kind == "job")] | length >= 1' "${work}/pkgs.json" >/dev/null 2>&1; then
+    ok "build: l'immagine ${OWNER}/${REPO}:e2e-1 e' nel registry, pubblicata col token del job"
+  else
+    ko "build: immagine e2e-1 non trovata fra i pacchetti del repo (status ${code}): $(head -c 300 "${work}/pkgs.json")"
+  fi
+fi
+
+# Prove negative dal namespace di build: un pod conforme alla policy di ammissione e con l'etichetta dei
+# job (come quelli veri) prova la NetworkPolicy ci-build-egress su indirizzi IP, non su nomi: un nome che
+# non si risolve farebbe passare ogni «irraggiungibile». Le prime due righe (ci-gateway, gateway) provano il metodo. k3s applica le
+# NetworkPolicy a un pod dopo l'avvio: come fa il gate dei pod veri, la sonda aspetta che l'API Kubernetes sia chiusa prima di controllare.
+svc() { kubectl get svc "${RELEASE}-$1" -o jsonpath='{.spec.clusterIP}'; }
+core_ip=$(svc core); gw_ip=$(svc gateway); id_ip=$(svc identity); git_ip=$(svc git); nats_ip=$(svc nats); pg_ip=$(svc postgres)
+kube_ip=$(kubectl get svc kubernetes -o jsonpath='{.spec.clusterIP}')
+probe_cmd="w=0; while nc -z -w2 ${kube_ip} 443; do w=\$((w + 1)); if [ \$w -ge 45 ]; then echo 'KO: la NetworkPolicy non e stata applicata al pod entro 90s'; echo fine-prove; exit 0; fi; sleep 2; done; echo \"attesa: NetworkPolicy applicata al pod dopo \$((w * 2))s (le regole arrivano dopo l avvio: per questo i pod veri hanno il gate)\"; check() { if nc -z -w3 \"\$2\" \"\$3\"; then r=raggiungibile; else r=bloccato; fi; if [ \"\$r\" = \"\$4\" ]; then echo \"ok: \$1 \$r\"; else echo \"KO: \$1 \$r (atteso \$4)\"; fi; }; \
+check 'ci-gateway di core' ${core_ip} 8081 raggiungibile; \
+check 'gateway del registry' ${gw_ip} 8080 raggiungibile; \
+check 'core su un altra porta (8080)' ${core_ip} 8080 bloccato; \
+check 'postgres' ${pg_ip} 5432 bloccato; \
+check 'nats' ${nats_ip} 4222 bloccato; \
+check 'identity' ${id_ip} 8080 bloccato; \
+check 'git' ${git_ip} 8080 bloccato; \
+check 'API Kubernetes' ${kube_ip} 443 bloccato; \
+check 'IP della LAN 192.168.255.254' 192.168.255.254 80 bloccato; \
+check 'IP privato 10.255.255.254' 10.255.255.254 80 bloccato; \
+echo fine-prove"
+probe_b64=$(printf '%s' "${probe_cmd}" | base64 -w0)
+kubectl -n "${BUILD_NS}" delete pod ci-build-probe --ignore-not-found --wait=true >/dev/null
+kubectl apply -f - >/dev/null <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ci-build-probe
+  namespace: ${BUILD_NS}
+  labels: {gitstack.io/ci-job: "true"}
+spec:
+  restartPolicy: Never
+  activeDeadlineSeconds: 120
+  automountServiceAccountToken: false
+  enableServiceLinks: false
+  securityContext: {runAsNonRoot: true, runAsUser: 1000, seccompProfile: {type: RuntimeDefault}}
+  containers:
+    - name: probe
+      image: docker.io/busybox:1.36
+      env: [{name: PROBE_B64, value: "${probe_b64}"}]
+      command: [sh, -c, 'eval "\$(echo \$PROBE_B64 | base64 -d)"']
+      resources:
+        requests: {cpu: 50m, memory: 32Mi, ephemeral-storage: 64Mi}
+        limits: {cpu: 200m, memory: 64Mi, ephemeral-storage: 64Mi}
+      securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+EOF
+pphase=""
+for _ in $(seq 1 60); do
+  pphase=$(kubectl -n "${BUILD_NS}" get pod ci-build-probe -o jsonpath='{.status.phase}' 2>/dev/null || true)
+  [ "${pphase}" = Succeeded ] || [ "${pphase}" = Failed ] && break
+  sleep 2
+done
+kubectl -n "${BUILD_NS}" logs ci-build-probe >"${work}/probe.log" 2>&1 || true
+if [ "${pphase}" = Succeeded ] && grep -q '^fine-prove' "${work}/probe.log"; then
+  nprobe=0
+  while IFS= read -r line; do
+    case "${line}" in
+      ok:*) ok "build rete: ${line#ok: }"; nprobe=$((nprobe + 1)) ;;
+      KO:*) ko "build rete: ${line#KO: }"; nprobe=$((nprobe + 1)) ;;
+    esac
+  done <"${work}/probe.log"
+  [ "${nprobe}" -eq 10 ] || ko "build rete: ${nprobe} controlli stampati, attesi 10"
+else
+  ko "build rete: pod di prova in fase '${pphase}'"; cat "${work}/probe.log" >&2 || true
+fi
+kubectl -n "${BUILD_NS}" delete pod ci-build-probe --ignore-not-found --wait=false >/dev/null
+
+# La policy di ammissione rifiuta ancora un hostPort e una capability oltre SETUID/SETGID.
+for variant in hostport capability; do
+  case "${variant}" in
+    hostport) extra='ports: [{containerPort: 8080, hostPort: 8089}]'; sc='{allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}'; want='non aprono hostPort' ;;
+    capability) extra=''; sc='{allowPrivilegeEscalation: false, capabilities: {drop: [ALL], add: [NET_ADMIN]}}'; want='possono aggiungere solo SETUID e SETGID' ;;
+  esac
+  if kubectl apply -f - >/dev/null 2>"${work}/${variant}.err" <<EOF
+apiVersion: v1
+kind: Pod
+metadata: {name: ci-${variant}, namespace: ${BUILD_NS}, labels: {gitstack.io/ci-job: "true"}}
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext: {runAsNonRoot: true, runAsUser: 1000}
+  containers:
+    - name: p
+      image: ${build_image}
+      command: [sleep, "60"]
+      ${extra}
+      securityContext: ${sc}
+EOF
+  then
+    ko "pod con ${variant} accettato nel namespace di build"
+    kubectl -n "${BUILD_NS}" delete pod "ci-${variant}" --ignore-not-found --wait=false >/dev/null
+  elif grep -q "${want}" "${work}/${variant}.err"; then
+    ok "policy di ammissione: pod con ${variant} rifiutato («${want}»)"
+  else
+    ko "pod con ${variant} rifiutato per un altro motivo: $(head -c 300 "${work}/${variant}.err")"
+  fi
+done
 
 if [ "${fail}" -ne 0 ]; then echo "ESITO: KO" >&2; exit 1; fi
 echo "ESITO: ok"

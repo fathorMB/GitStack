@@ -59,3 +59,71 @@ func TestPodConclusion_DeadlineExceeded(t *testing.T) {
 		t.Fatalf("conclusione deadline: %q, done=%v", got, done)
 	}
 }
+
+// Il pod di build deve passare la ValidatingAdmissionPolicy del namespace di build
+// (deploy/gitstack/templates/ci-build.yaml): le stesse regole, controllate qui sul pod vero.
+func TestCorePod_BuildRispettaLaPolicyDiAmmissione(t *testing.T) {
+	pod, err := corePod(Pod{Name: "ci-b", Namespace: "gitstack-ci-build", Image: "runner:test", PriorityClass: "gitstack-ci-job", ActiveDeadlineSeconds: 60,
+		RunAsUser: BuildUser, ReadOnlyRootFilesystem: true, CPU: BuildRunnerCPU, Memory: BuildRunnerMemory, EphemeralStorage: BuildRunnerEphemeral, InitGate: true,
+		BuildKit: &BuildKit{Image: "moby/buildkit:rootless", CPU: BuildKitCPU, Memory: BuildKitMemory, EphemeralStorage: BuildKitEphemeral},
+		Env:      map[string]string{"BUILDKIT_HOST": BuildKitAddr}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := pod.Spec
+	if s.HostNetwork || s.HostPID || s.HostIPC || s.AutomountServiceAccountToken == nil || *s.AutomountServiceAccountToken {
+		t.Fatal("rete/PID/IPC dell'host o token del ServiceAccount")
+	}
+	for _, v := range s.Volumes {
+		if v.HostPath != nil {
+			t.Fatalf("hostPath %s: nessun socket del runtime", v.Name)
+		}
+	}
+	all := append(append([]corev1.Container{}, s.InitContainers...), s.Containers...)
+	if len(s.InitContainers) != 2 || s.InitContainers[0].Name != "gate" || s.InitContainers[1].Name != "buildkitd" ||
+		s.InitContainers[1].RestartPolicy == nil || *s.InitContainers[1].RestartPolicy != corev1.ContainerRestartPolicyAlways {
+		t.Fatalf("ordine: il gate prima, poi il sidecar nativo di BuildKit: %+v", s.InitContainers)
+	}
+	for _, c := range all {
+		sc := c.SecurityContext
+		if sc == nil || (sc.Privileged != nil && *sc.Privileged) || sc.Capabilities == nil || len(sc.Capabilities.Drop) != 1 || sc.Capabilities.Drop[0] != "ALL" {
+			t.Fatalf("%s: privileged o capability non scartate", c.Name)
+		}
+		for _, add := range sc.Capabilities.Add {
+			if add != "SETUID" && add != "SETGID" {
+				t.Fatalf("%s: capability %s non ammessa", c.Name, add)
+			}
+		}
+		if sc.RunAsNonRoot == nil || !*sc.RunAsNonRoot {
+			t.Fatalf("%s: runAsNonRoot", c.Name)
+		}
+		for _, port := range c.Ports {
+			if port.HostPort != 0 {
+				t.Fatalf("%s: hostPort", c.Name)
+			}
+		}
+	}
+	// Il runner e il gate non guadagnano nulla: solo BuildKit ha seccomp e AppArmor Unconfined.
+	for _, c := range []corev1.Container{s.InitContainers[0], s.Containers[0]} {
+		if *c.SecurityContext.AllowPrivilegeEscalation || c.SecurityContext.SeccompProfile.Type != corev1.SeccompProfileTypeRuntimeDefault {
+			t.Fatalf("%s: il runner non deve avere i permessi del sidecar", c.Name)
+		}
+	}
+	// La somma delle richieste sta nella quota del namespace per un posto: 2 CPU, 4 GiB, 20 GiB.
+	var cpu, mem, disk int64
+	for _, c := range append([]corev1.Container{s.Containers[0]}, s.InitContainers[1]) {
+		cpu += c.Resources.Requests.Cpu().MilliValue()
+		mem += c.Resources.Requests.Memory().Value()
+		disk += c.Resources.Requests.StorageEphemeral().Value()
+	}
+	if cpu > 2000 || mem > 4<<30 || disk > 20<<30 {
+		t.Fatalf("runner + BuildKit oltre la quota di un posto: %dm %d %d", cpu, mem, disk)
+	}
+	mounted := false
+	for _, m := range s.Containers[0].VolumeMounts {
+		mounted = mounted || (m.Name == "buildkit-sock" && m.MountPath == BuildKitSocketDir)
+	}
+	if !mounted {
+		t.Fatal("il runner non vede il socket di buildkitd")
+	}
+}

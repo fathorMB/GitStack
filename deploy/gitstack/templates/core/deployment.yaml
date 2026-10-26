@@ -106,6 +106,15 @@ spec:
               value: {{ .Values.ci.namespace | quote }}
             - name: GITSTACK_CORE_CI_IMAGE
               value: {{ include "gitstack.ci.runnerImage" . | quote }}
+            {{- if .Values.ci.build.enabled }}
+            # Job gitstack-build (GIT-371): namespace di build, BuildKit rootless e registry nel cluster.
+            - name: GITSTACK_CORE_CI_BUILD_NAMESPACE
+              value: {{ .Values.ci.build.namespace | quote }}
+            - name: GITSTACK_CORE_CI_BUILD_IMAGE
+              value: {{ .Values.ci.build.image | quote }}
+            - name: GITSTACK_CORE_CI_REGISTRY_ADDR
+              value: {{ printf "%s-gateway.%s.svc:%d" (include "gitstack.fullname" .) .Release.Namespace (.Values.gateway.service.port | int) | quote }}
+            {{- end }}
             {{- if .Values.corporateCA.configMap }}
             # Proxy (stesse variabili di core) e CA aziendale passano ai pod dei job (N4, N9):
             # la CA e' copiata da ci-runner.yaml nel namespace dei job con questo nome.
