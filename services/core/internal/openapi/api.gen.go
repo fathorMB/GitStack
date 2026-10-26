@@ -2832,6 +2832,23 @@ type ActionsJobTokenDefaultsContents string
 // ActionsJobTokenDefaultsPackages defines model for ActionsJobTokenDefaults.Packages.
 type ActionsJobTokenDefaultsPackages string
 
+// ActionsPullMirrorSettings Impostazione CI3 di un repository in mirror in pull.
+type ActionsPullMirrorSettings struct {
+	// EnabledBy Nome utente di chi ha acceso la CI (autore delle esecuzioni); null se spenta.
+	EnabledBy *string `json:"enabledBy,omitempty"`
+
+	// PullMirror Il repo e' un mirror in pull attivo: solo allora l'impostazione ha effetto.
+	PullMirror bool `json:"pullMirror"`
+
+	// RunOnPullMirror I workflow girano sulle sincronizzazioni del mirror.
+	RunOnPullMirror bool `json:"runOnPullMirror"`
+}
+
+// ActionsPullMirrorSettingsInput defines model for ActionsPullMirrorSettingsInput.
+type ActionsPullMirrorSettingsInput struct {
+	RunOnPullMirror bool `json:"runOnPullMirror"`
+}
+
 // ActionsSecret defines model for ActionsSecret.
 type ActionsSecret struct {
 	Name      string    `json:"name"`
@@ -7123,6 +7140,9 @@ type UpdateRepositoryJSONRequestBody = UpdateRepositoryInput
 // PutRepositoryActionsPermissionsJSONRequestBody defines body for PutRepositoryActionsPermissions for application/json ContentType.
 type PutRepositoryActionsPermissionsJSONRequestBody = ActionsJobTokenDefaults
 
+// PutRepositoryActionsPullMirrorJSONRequestBody defines body for PutRepositoryActionsPullMirror for application/json ContentType.
+type PutRepositoryActionsPullMirrorJSONRequestBody = ActionsPullMirrorSettingsInput
+
 // PutRepositoryActionsSecretJSONRequestBody defines body for PutRepositoryActionsSecret for application/json ContentType.
 type PutRepositoryActionsSecretJSONRequestBody = ActionsSecretInput
 
@@ -7473,6 +7493,12 @@ type ServerInterface interface {
 	// PutRepositoryActionsPermissions Cambia i permessi di default del token del job del repository
 	// (PUT /repos/{owner}/{repo}/actions/permissions)
 	PutRepositoryActionsPermissions(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// GetRepositoryActionsPullMirror Legge l'impostazione «Esegui i workflow sul mirror» del repository (CI3)
+	// (GET /repos/{owner}/{repo}/actions/pull-mirror)
+	GetRepositoryActionsPullMirror(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// PutRepositoryActionsPullMirror Accende o spegne i workflow sul mirror in pull del repository (CI3)
+	// (PUT /repos/{owner}/{repo}/actions/pull-mirror)
+	PutRepositoryActionsPullMirror(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
 	// ListWorkflowRuns Elenca le esecuzioni dei workflow
 	// (GET /repos/{owner}/{repo}/actions/runs)
 	ListWorkflowRuns(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
@@ -9846,6 +9872,76 @@ func (siw *ServerInterfaceWrapper) PutRepositoryActionsPermissions(w http.Respon
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PutRepositoryActionsPermissions(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepositoryActionsPullMirror operation middleware
+func (siw *ServerInterfaceWrapper) GetRepositoryActionsPullMirror(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepositoryActionsPullMirror(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PutRepositoryActionsPullMirror operation middleware
+func (siw *ServerInterfaceWrapper) PutRepositoryActionsPullMirror(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutRepositoryActionsPullMirror(w, r, owner, repo)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -18365,6 +18461,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/orgs/{org}/actions/variables/{name}", wrapper.DeleteOrganizationActionsVariable)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/permissions", wrapper.GetRepositoryActionsPermissions)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/permissions", wrapper.PutRepositoryActionsPermissions)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/pull-mirror", wrapper.GetRepositoryActionsPullMirror)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/actions/pull-mirror", wrapper.PutRepositoryActionsPullMirror)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/ci/runners", wrapper.ListCiRunners)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/admin/ci/runners/registration-token", wrapper.CreateCiRunnerRegistrationToken)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/admin/ci/runners/{runnerId}", wrapper.DeleteCiRunner)

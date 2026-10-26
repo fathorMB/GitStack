@@ -18,6 +18,8 @@ vi.mock('../../lib/ciApi', () => ({
   deleteRepoVariable: vi.fn(),
   fetchRepoTokenPermissions: vi.fn(),
   putRepoTokenPermissions: vi.fn(),
+  fetchRepoPullMirrorCI: vi.fn(),
+  putRepoPullMirrorCI: vi.fn(),
 }));
 vi.mock('../../lib/reposApi', async (orig) => ({ ...(await orig<typeof import('../../lib/reposApi')>()), fetchRepo: vi.fn() }));
 vi.mock('../../lib/authApi', () => ({ fetchSession: vi.fn() }));
@@ -32,6 +34,8 @@ import {
   fetchRepoVariables,
   putRepoSecret,
   putRepoTokenPermissions,
+  fetchRepoPullMirrorCI,
+  putRepoPullMirrorCI,
 } from '../../lib/ciApi';
 import { fetchSession } from '../../lib/authApi';
 import { fetchRepo } from '../../lib/reposApi';
@@ -84,6 +88,7 @@ describe('Settings · Secrets & variables (mockup B3)', { timeout: 30000 }, () =
     vi.mocked(fetchRepoVariables).mockResolvedValue({ items: [{ name: 'GO_VERSION', value: '1.23', updatedAt: '2026-10-16T00:00:00Z' }] });
     vi.mocked(fetchOrgSecrets).mockResolvedValue({ items: [{ name: 'S3_ARTIFACTS_KEY', updatedAt: '2026-10-01T00:00:00Z' }] });
     vi.mocked(fetchRepoTokenPermissions).mockResolvedValue({ contents: 'read', packages: 'read', actions: 'read' });
+    vi.mocked(fetchRepoPullMirrorCI).mockResolvedValue({ pullMirror: false, runOnPullMirror: false, enabledBy: null });
   });
 
   it('mostra i segreti del repo con nome e data, mai il valore', async () => {
@@ -181,6 +186,30 @@ describe('Settings · Secrets & variables (mockup B3)', { timeout: 30000 }, () =
     );
     await waitFor(() => expect(within(card).getByRole('button', { name: 'Save permissions' })).toBeDisabled());
     expect(within(card).getByText(/never gets more than the person or agent who started the run/)).toBeInTheDocument();
+  });
+
+  it('repo non mirror: nessuna sezione sulla CI del mirror', async () => {
+    renderPage();
+    await section('Job token default permissions');
+    expect(screen.queryByText('Workflows on the mirror')).not.toBeInTheDocument();
+  });
+
+  it('mirror in pull: la CI si accende e si spegne con la PUT', async () => {
+    vi.mocked(fetchRepoPullMirrorCI).mockResolvedValue({ pullMirror: true, runOnPullMirror: false, enabledBy: null });
+    vi.mocked(putRepoPullMirrorCI)
+      .mockResolvedValueOnce({ pullMirror: true, runOnPullMirror: true, enabledBy: 'mrossi' })
+      .mockResolvedValueOnce({ pullMirror: true, runOnPullMirror: false, enabledBy: null });
+    renderPage();
+    const card = await section('Workflows on the mirror');
+    const box = within(card).getByLabelText('Run workflows on the mirror') as HTMLInputElement;
+    expect(box.checked).toBe(false);
+    await userEvent.click(box);
+    await waitFor(() => expect(putRepoPullMirrorCI).toHaveBeenLastCalledWith('acme', 'GitStack', true));
+    expect(await within(card).findByText('mrossi')).toBeInTheDocument();
+    expect((within(card).getByLabelText('Run workflows on the mirror') as HTMLInputElement).checked).toBe(true);
+    await userEvent.click(within(card).getByLabelText('Run workflows on the mirror'));
+    await waitFor(() => expect(putRepoPullMirrorCI).toHaveBeenLastCalledWith('acme', 'GitStack', false));
+    await waitFor(() => expect((within(card).getByLabelText('Run workflows on the mirror') as HTMLInputElement).checked).toBe(false));
   });
 
   it('un errore del salvataggio dei permessi si vede e il tetto non cambia', async () => {

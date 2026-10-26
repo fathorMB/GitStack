@@ -134,7 +134,7 @@ func (s *apiServer) ciEngine() *ci.Engine {
 	if !ok {
 		return nil
 	}
-	return &ci.Engine{Pool: s.pool, Source: gitCISource{rd: rd}, Now: s.now, ActorLevel: s.ciActorLevel, Reporter: ciReporter{s: s}}
+	return &ci.Engine{Pool: s.pool, Source: gitCISource{rd: rd}, Now: s.now, ActorLevel: s.ciActorLevel, IsRepoAdmin: s.ciIsRepoAdmin, Reporter: ciReporter{s: s}}
 }
 
 // NewCIPushHandler è il gitpush.Handler delle esecuzioni dei workflow (durable
@@ -567,4 +567,12 @@ func (s *apiServer) ciActorLevel(ctx context.Context, actor, repoID uuid.UUID) (
 	}
 	read, err := s.repoIdentity.HasRole(ctx, actor, repoID, "read")
 	return read, false, err
+}
+
+// ciIsRepoAdmin dice se l'utente ha admin sul repo (CI3: la CI del mirror in pull si spegne se chi l'ha accesa lo perde).
+func (s *apiServer) ciIsRepoAdmin(ctx context.Context, user, repoID uuid.UUID) (bool, error) {
+	if s.repoIdentity == nil {
+		return false, errors.New("identity non configurata")
+	}
+	return s.repoIdentity.HasRole(ctx, user, repoID, "admin")
 }

@@ -7983,6 +7983,48 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
         "409": {$ref: "#/components/responses/Conflict"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
+  /repos/{owner}/{repo}/actions/pull-mirror:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}]
+    get:
+      operationId: getRepositoryActionsPullMirror
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repository_actions_pull_mirror_get
+        destructive: false
+      summary: Legge l'impostazione «Esegui i workflow sul mirror» del repository (CI3)
+      description: >
+        Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge). Sui repo in mirror in pull la CI e' spenta di
+        default. Se chi l'aveva accesa non ha piu' `admin` sul repo, la risposta la da' gia' spenta (`runOnPullMirror: false`).
+      responses:
+        "200": {description: Impostazione., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsPullMirrorSettings"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    put:
+      operationId: putRepositoryActionsPullMirror
+      tags: [ci]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repository_actions_pull_mirror_put
+        destructive: false
+      summary: Accende o spegne i workflow sul mirror in pull del repository (CI3)
+      description: >
+        Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato, 409
+        `not_a_pull_mirror` se il repo non e' un mirror in pull attivo. Con la CI accesa ogni sincronizzazione che porta
+        commit o tag nuovi avvia i workflow `push` come un push normale, uno per ogni ref aggiornato; i ref `diverged`
+        (MP1) non avviano nulla. L'autore delle esecuzioni e' chi ha acceso la CI e il token del job non supera i suoi
+        permessi (CI4). Se quella persona perde `admin` sul repo, la CI sul mirror si spegne e riceve una notifica.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ActionsPullMirrorSettingsInput"}}}}
+      responses:
+        "200": {description: Impostazione salvata., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsPullMirrorSettings"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
   /admin/ci/runners:
     get:
       operationId: listCiRunners
@@ -11039,6 +11081,21 @@ components:
         contents: {type: string, enum: [none, read, write]}
         packages: {type: string, enum: [none, read, write]}
         actions: {type: string, enum: [none, read, write]}
+    ActionsPullMirrorSettings:
+      type: object
+      additionalProperties: false
+      description: Impostazione CI3 di un repository in mirror in pull.
+      required: [pullMirror, runOnPullMirror]
+      properties:
+        pullMirror: {type: boolean, description: "Il repo e' un mirror in pull attivo: solo allora l'impostazione ha effetto."}
+        runOnPullMirror: {type: boolean, description: "I workflow girano sulle sincronizzazioni del mirror."}
+        enabledBy: {type: string, nullable: true, description: "Nome utente di chi ha acceso la CI (autore delle esecuzioni); null se spenta."}
+    ActionsPullMirrorSettingsInput:
+      type: object
+      additionalProperties: false
+      required: [runOnPullMirror]
+      properties:
+        runOnPullMirror: {type: boolean}
     ActionsSecretList:
       type: object
       additionalProperties: false

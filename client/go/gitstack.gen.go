@@ -3198,6 +3198,23 @@ type ActionsJobTokenDefaultsContents string
 // ActionsJobTokenDefaultsPackages defines model for ActionsJobTokenDefaults.Packages.
 type ActionsJobTokenDefaultsPackages string
 
+// ActionsPullMirrorSettings Impostazione CI3 di un repository in mirror in pull.
+type ActionsPullMirrorSettings struct {
+	// EnabledBy Nome utente di chi ha acceso la CI (autore delle esecuzioni); null se spenta.
+	EnabledBy *string `json:"enabledBy,omitempty"`
+
+	// PullMirror Il repo e' un mirror in pull attivo: solo allora l'impostazione ha effetto.
+	PullMirror bool `json:"pullMirror"`
+
+	// RunOnPullMirror I workflow girano sulle sincronizzazioni del mirror.
+	RunOnPullMirror bool `json:"runOnPullMirror"`
+}
+
+// ActionsPullMirrorSettingsInput defines model for ActionsPullMirrorSettingsInput.
+type ActionsPullMirrorSettingsInput struct {
+	RunOnPullMirror bool `json:"runOnPullMirror"`
+}
+
 // ActionsSecret defines model for ActionsSecret.
 type ActionsSecret struct {
 	Name      string    `json:"name"`
@@ -8515,6 +8532,9 @@ type UpdateRepositoryJSONRequestBody = UpdateRepositoryInput
 // PutRepositoryActionsPermissionsJSONRequestBody defines body for PutRepositoryActionsPermissions for application/json ContentType.
 type PutRepositoryActionsPermissionsJSONRequestBody = ActionsJobTokenDefaults
 
+// PutRepositoryActionsPullMirrorJSONRequestBody defines body for PutRepositoryActionsPullMirror for application/json ContentType.
+type PutRepositoryActionsPullMirrorJSONRequestBody = ActionsPullMirrorSettingsInput
+
 // PutRepositoryActionsSecretJSONRequestBody defines body for PutRepositoryActionsSecret for application/json ContentType.
 type PutRepositoryActionsSecretJSONRequestBody = ActionsSecretInput
 
@@ -9962,6 +9982,31 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /repos/{owner}/{repo}/actions/permissions (the `PutRepositoryActionsPermissions` operationId).
 	PutRepositoryActionsPermissions(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsPermissionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepositoryActionsPullMirror Legge l'impostazione «Esegui i workflow sul mirror» del repository (CI3)
+	//
+	// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge). Sui repo in mirror in pull la CI e' spenta di default. Se chi l'aveva accesa non ha piu' `admin` sul repo, la risposta la da' gia' spenta (`runOnPullMirror: false`).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/pull-mirror (the `GetRepositoryActionsPullMirror` operationId).
+	GetRepositoryActionsPullMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutRepositoryActionsPullMirrorWithBody Accende o spegne i workflow sul mirror in pull del repository (CI3)
+	//
+	// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato, 409 `not_a_pull_mirror` se il repo non e' un mirror in pull attivo. Con la CI accesa ogni sincronizzazione che porta commit o tag nuovi avvia i workflow `push` come un push normale, uno per ogni ref aggiornato; i ref `diverged` (MP1) non avviano nulla. L'autore delle esecuzioni e' chi ha acceso la CI e il token del job non supera i suoi permessi (CI4). Se quella persona perde `admin` sul repo, la CI sul mirror si spegne e riceve una notifica.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/actions/pull-mirror (the `PutRepositoryActionsPullMirror` operationId).
+	PutRepositoryActionsPullMirrorWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutRepositoryActionsPullMirror Accende o spegne i workflow sul mirror in pull del repository (CI3)
+	//
+	// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato, 409 `not_a_pull_mirror` se il repo non e' un mirror in pull attivo. Con la CI accesa ogni sincronizzazione che porta commit o tag nuovi avvia i workflow `push` come un push normale, uno per ogni ref aggiornato; i ref `diverged` (MP1) non avviano nulla. L'autore delle esecuzioni e' chi ha acceso la CI e il token del job non supera i suoi permessi (CI4). Se quella persona perde `admin` sul repo, la CI sul mirror si spegne e riceve una notifica.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/actions/pull-mirror (the `PutRepositoryActionsPullMirror` operationId).
+	PutRepositoryActionsPullMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsPullMirrorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListWorkflowRuns Elenca le esecuzioni dei workflow
 	//
@@ -14581,6 +14626,61 @@ func (c *Client) PutRepositoryActionsPermissionsWithBody(ctx context.Context, ow
 // Corresponds with PUT /repos/{owner}/{repo}/actions/permissions (the `PutRepositoryActionsPermissions` operationId).
 func (c *Client) PutRepositoryActionsPermissions(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsPermissionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutRepositoryActionsPermissionsRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepositoryActionsPullMirror Legge l'impostazione «Esegui i workflow sul mirror» del repository (CI3)
+//
+// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge). Sui repo in mirror in pull la CI e' spenta di default. Se chi l'aveva accesa non ha piu' `admin` sul repo, la risposta la da' gia' spenta (`runOnPullMirror: false`).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/pull-mirror (the `GetRepositoryActionsPullMirror` operationId).
+func (c *Client) GetRepositoryActionsPullMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryActionsPullMirrorRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutRepositoryActionsPullMirrorWithBody Accende o spegne i workflow sul mirror in pull del repository (CI3)
+//
+// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato, 409 `not_a_pull_mirror` se il repo non e' un mirror in pull attivo. Con la CI accesa ogni sincronizzazione che porta commit o tag nuovi avvia i workflow `push` come un push normale, uno per ogni ref aggiornato; i ref `diverged` (MP1) non avviano nulla. L'autore delle esecuzioni e' chi ha acceso la CI e il token del job non supera i suoi permessi (CI4). Se quella persona perde `admin` sul repo, la CI sul mirror si spegne e riceve una notifica.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/actions/pull-mirror (the `PutRepositoryActionsPullMirror` operationId).
+func (c *Client) PutRepositoryActionsPullMirrorWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutRepositoryActionsPullMirrorRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutRepositoryActionsPullMirror Accende o spegne i workflow sul mirror in pull del repository (CI3)
+//
+// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato, 409 `not_a_pull_mirror` se il repo non e' un mirror in pull attivo. Con la CI accesa ogni sincronizzazione che porta commit o tag nuovi avvia i workflow `push` come un push normale, uno per ogni ref aggiornato; i ref `diverged` (MP1) non avviano nulla. L'autore delle esecuzioni e' chi ha acceso la CI e il token del job non supera i suoi permessi (CI4). Se quella persona perde `admin` sul repo, la CI sul mirror si spegne e riceve una notifica.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/actions/pull-mirror (the `PutRepositoryActionsPullMirror` operationId).
+func (c *Client) PutRepositoryActionsPullMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsPullMirrorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutRepositoryActionsPullMirrorRequest(c.Server, owner, repo, body)
 	if err != nil {
 		return nil, err
 	}
@@ -24623,6 +24723,101 @@ func NewPutRepositoryActionsPermissionsRequestWithBody(server string, owner Repo
 	}
 
 	operationPath := fmt.Sprintf("/repos/%s/%s/actions/permissions", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetRepositoryActionsPullMirrorRequest constructs an http.Request for the GetRepositoryActionsPullMirror method
+func NewGetRepositoryActionsPullMirrorRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/pull-mirror", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutRepositoryActionsPullMirrorRequest calls the generic PutRepositoryActionsPullMirror builder with application/json body
+func NewPutRepositoryActionsPullMirrorRequest(server string, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsPullMirrorJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutRepositoryActionsPullMirrorRequestWithBody(server, owner, repo, "application/json", bodyReader)
+}
+
+// NewPutRepositoryActionsPullMirrorRequestWithBody constructs an http.Request for the PutRepositoryActionsPullMirror method, with any body, and a specified content type
+func NewPutRepositoryActionsPullMirrorRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/actions/pull-mirror", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -37182,6 +37377,33 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /repos/{owner}/{repo}/actions/permissions (the `PutRepositoryActionsPermissions` operationId).
 	PutRepositoryActionsPermissionsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsPermissionsJSONRequestBody, reqEditors ...RequestEditorFn) (*PutRepositoryActionsPermissionsResponse, error)
 
+	// GetRepositoryActionsPullMirrorWithResponse Legge l'impostazione «Esegui i workflow sul mirror» del repository (CI3)
+	//
+	// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge). Sui repo in mirror in pull la CI e' spenta di default. Se chi l'aveva accesa non ha piu' `admin` sul repo, la risposta la da' gia' spenta (`runOnPullMirror: false`).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/actions/pull-mirror (the `GetRepositoryActionsPullMirror` operationId).
+	GetRepositoryActionsPullMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*GetRepositoryActionsPullMirrorResponse, error)
+
+	// PutRepositoryActionsPullMirrorWithBodyWithResponse Accende o spegne i workflow sul mirror in pull del repository (CI3)
+	//
+	// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato, 409 `not_a_pull_mirror` se il repo non e' un mirror in pull attivo. Con la CI accesa ogni sincronizzazione che porta commit o tag nuovi avvia i workflow `push` come un push normale, uno per ogni ref aggiornato; i ref `diverged` (MP1) non avviano nulla. L'autore delle esecuzioni e' chi ha acceso la CI e il token del job non supera i suoi permessi (CI4). Se quella persona perde `admin` sul repo, la CI sul mirror si spegne e riceve una notifica.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/actions/pull-mirror (the `PutRepositoryActionsPullMirror` operationId).
+	PutRepositoryActionsPullMirrorWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRepositoryActionsPullMirrorResponse, error)
+
+	// PutRepositoryActionsPullMirrorWithResponse Accende o spegne i workflow sul mirror in pull del repository (CI3)
+	//
+	// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato, 409 `not_a_pull_mirror` se il repo non e' un mirror in pull attivo. Con la CI accesa ogni sincronizzazione che porta commit o tag nuovi avvia i workflow `push` come un push normale, uno per ogni ref aggiornato; i ref `diverged` (MP1) non avviano nulla. L'autore delle esecuzioni e' chi ha acceso la CI e il token del job non supera i suoi permessi (CI4). Se quella persona perde `admin` sul repo, la CI sul mirror si spegne e riceve una notifica.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/actions/pull-mirror (the `PutRepositoryActionsPullMirror` operationId).
+	PutRepositoryActionsPullMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsPullMirrorJSONRequestBody, reqEditors ...RequestEditorFn) (*PutRepositoryActionsPullMirrorResponse, error)
+
 	// ListWorkflowRunsWithResponse Elenca le esecuzioni dei workflow
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -47415,6 +47637,144 @@ func (r PutRepositoryActionsPermissionsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PutRepositoryActionsPermissionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepositoryActionsPullMirrorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActionsPullMirrorSettings
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepositoryActionsPullMirrorResponse) GetJSON200() *ActionsPullMirrorSettings {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryActionsPullMirrorResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryActionsPullMirrorResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryActionsPullMirrorResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryActionsPullMirrorResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryActionsPullMirrorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryActionsPullMirrorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryActionsPullMirrorResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PutRepositoryActionsPullMirrorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActionsPullMirrorSettings
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PutRepositoryActionsPullMirrorResponse) GetJSON200() *ActionsPullMirrorSettings {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r PutRepositoryActionsPullMirrorResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r PutRepositoryActionsPullMirrorResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r PutRepositoryActionsPullMirrorResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r PutRepositoryActionsPullMirrorResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r PutRepositoryActionsPullMirrorResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r PutRepositoryActionsPullMirrorResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PutRepositoryActionsPullMirrorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutRepositoryActionsPullMirrorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PutRepositoryActionsPullMirrorResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -64268,6 +64628,51 @@ func (c *ClientWithResponses) PutRepositoryActionsPermissionsWithResponse(ctx co
 	return ParsePutRepositoryActionsPermissionsResponse(rsp)
 }
 
+// GetRepositoryActionsPullMirrorWithResponse Legge l'impostazione «Esegui i workflow sul mirror» del repository (CI3)
+//
+// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge). Sui repo in mirror in pull la CI e' spenta di default. Se chi l'aveva accesa non ha piu' `admin` sul repo, la risposta la da' gia' spenta (`runOnPullMirror: false`).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/actions/pull-mirror (the `GetRepositoryActionsPullMirror` operationId).
+func (c *ClientWithResponses) GetRepositoryActionsPullMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*GetRepositoryActionsPullMirrorResponse, error) {
+	rsp, err := c.GetRepositoryActionsPullMirror(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryActionsPullMirrorResponse(rsp)
+}
+
+// PutRepositoryActionsPullMirrorWithBodyWithResponse Accende o spegne i workflow sul mirror in pull del repository (CI3)
+//
+// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato, 409 `not_a_pull_mirror` se il repo non e' un mirror in pull attivo. Con la CI accesa ogni sincronizzazione che porta commit o tag nuovi avvia i workflow `push` come un push normale, uno per ogni ref aggiornato; i ref `diverged` (MP1) non avviano nulla. L'autore delle esecuzioni e' chi ha acceso la CI e il token del job non supera i suoi permessi (CI4). Se quella persona perde `admin` sul repo, la CI sul mirror si spegne e riceve una notifica.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/actions/pull-mirror (the `PutRepositoryActionsPullMirror` operationId).
+func (c *ClientWithResponses) PutRepositoryActionsPullMirrorWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRepositoryActionsPullMirrorResponse, error) {
+	rsp, err := c.PutRepositoryActionsPullMirrorWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutRepositoryActionsPullMirrorResponse(rsp)
+}
+
+// PutRepositoryActionsPullMirrorWithResponse Accende o spegne i workflow sul mirror in pull del repository (CI3)
+//
+// Serve `admin` sul repo (403 altrimenti, 404 se non lo si legge); 409 `archived` su repo archiviato, 409 `not_a_pull_mirror` se il repo non e' un mirror in pull attivo. Con la CI accesa ogni sincronizzazione che porta commit o tag nuovi avvia i workflow `push` come un push normale, uno per ogni ref aggiornato; i ref `diverged` (MP1) non avviano nulla. L'autore delle esecuzioni e' chi ha acceso la CI e il token del job non supera i suoi permessi (CI4). Se quella persona perde `admin` sul repo, la CI sul mirror si spegne e riceve una notifica.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/actions/pull-mirror (the `PutRepositoryActionsPullMirror` operationId).
+func (c *ClientWithResponses) PutRepositoryActionsPullMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body PutRepositoryActionsPullMirrorJSONRequestBody, reqEditors ...RequestEditorFn) (*PutRepositoryActionsPullMirrorResponse, error) {
+	rsp, err := c.PutRepositoryActionsPullMirror(ctx, owner, repo, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutRepositoryActionsPullMirrorResponse(rsp)
+}
+
 // ListWorkflowRunsWithResponse Elenca le esecuzioni dei workflow
 //
 // Returns a wrapper object for the known response body format(s).
@@ -74318,6 +74723,114 @@ func ParsePutRepositoryActionsPermissionsResponse(rsp *http.Response) (*PutRepos
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest ActionsJobTokenDefaults
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepositoryActionsPullMirrorResponse parses an HTTP response from a GetRepositoryActionsPullMirrorWithResponse call
+func ParseGetRepositoryActionsPullMirrorResponse(rsp *http.Response) (*GetRepositoryActionsPullMirrorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryActionsPullMirrorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActionsPullMirrorSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutRepositoryActionsPullMirrorResponse parses an HTTP response from a PutRepositoryActionsPullMirrorWithResponse call
+func ParsePutRepositoryActionsPullMirrorResponse(rsp *http.Response) (*PutRepositoryActionsPullMirrorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutRepositoryActionsPullMirrorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActionsPullMirrorSettings
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

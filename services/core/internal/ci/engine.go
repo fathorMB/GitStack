@@ -41,6 +41,9 @@ type Engine struct {
 	// ActorLevel dice se chi ha avviato l'esecuzione legge e scrive sul repo: il token del
 	// job non eccede mai quel livello (CI4). nil: l'attore vale read, mai di più.
 	ActorLevel func(ctx context.Context, actor, repoID uuid.UUID) (canRead, canWrite bool, err error)
+	// IsRepoAdmin dice se l'utente ha admin sul repo: serve a spegnere la CI di un mirror in pull
+	// quando chi l'ha accesa perde admin (CI3). nil: nessuna verifica.
+	IsRepoAdmin func(ctx context.Context, user, repoID uuid.UUID) (bool, error)
 }
 
 // actorCap è il tetto di permessi dell'attore dell'esecuzione ("" se non c'è).
@@ -114,7 +117,7 @@ func (e *Engine) OnPush(ctx context.Context, p Push) ([]uuid.UUID, error) {
 		ON CONFLICT (repo_id) DO UPDATE SET last_push_at = EXCLUDED.last_push_at`, p.RepoID, now); err != nil {
 		return nil, err
 	}
-	st, err := LoadRepoState(ctx, e.Pool, p.RepoID)
+	st, err := e.loadState(ctx, p.RepoID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -159,7 +162,13 @@ func (e *Engine) OnPush(ctx context.Context, p Push) ([]uuid.UUID, error) {
 		ev := Event{Kind: EventPush, Ref: ref.Ref, SHA: ref.After, Message: msg}
 		var changed []string
 		changedLoaded := false
+		// Sul mirror in pull l'autore è chi ha acceso la CI, non chi ha creato il mirror (CI3).
 		actor := p.Pusher
+		if st.PullMirror && st.MirrorCIBy != "" {
+			if by, perr := uuid.Parse(st.MirrorCIBy); perr == nil {
+				actor = by
+			}
+		}
 		for _, wf := range wfs {
 			if wf.Push == nil {
 				continue
@@ -204,7 +213,7 @@ type Pull struct {
 
 // OnPull crea le esecuzioni dei workflow `pull_request`.
 func (e *Engine) OnPull(ctx context.Context, p Pull) ([]uuid.UUID, error) {
-	st, err := LoadRepoState(ctx, e.Pool, p.RepoID)
+	st, err := e.loadState(ctx, p.RepoID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -285,7 +294,7 @@ type Dispatch struct {
 
 // Dispatch avvia un workflow a mano. [skip ci] non vale: l'avvio è esplicito.
 func (e *Engine) Dispatch(ctx context.Context, d Dispatch) (uuid.UUID, error) {
-	st, err := LoadRepoState(ctx, e.Pool, d.RepoID)
+	st, err := e.loadState(ctx, d.RepoID)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -341,7 +350,7 @@ func (e *Engine) Rerun(ctx context.Context, repoID, runID, actor uuid.UUID) (uui
 	if old.Status != StatusCompleted && old.Status != StatusCancelled {
 		return uuid.Nil, ErrRunNotConcluded
 	}
-	st, err := LoadRepoState(ctx, e.Pool, repoID)
+	st, err := e.loadState(ctx, repoID)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -626,6 +635,9 @@ func (e *Engine) Tick(ctx context.Context) ([]uuid.UUID, error) {
 		cr, err := ParseCron(d.cron)
 		if err != nil {
 			continue
+		}
+		if err := e.guardMirror(ctx, d.repoID); err != nil {
+			return nil, err
 		}
 		st, err := LoadRepoState(ctx, tx, d.repoID)
 		if err != nil {
