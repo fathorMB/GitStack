@@ -166,6 +166,8 @@ type NewApp struct {
 	Config       AppConfig
 	FollowBranch *string
 	Actor        *AppActor
+	// CommitSha è il commit dell'etichetta revision dell'immagine (H14); nil se non si legge.
+	CommitSha *string
 }
 
 const appCols = `a.id, a.repo_id, a.name, a.address_label, a.status, a.access_mode, a.copies, a.ready_copies, a.port,
@@ -377,7 +379,7 @@ func (s *Store) CreateApp(ctx context.Context, in NewApp, now time.Time) (App, A
 		}
 		return App{}, AppVersion{}, err
 	}
-	if err := insertAppVersion(ctx, tx, id, 1, "create", in.Image, in.Config, nil, nil, nil, in.Actor, now); err != nil {
+	if err := insertAppVersion(ctx, tx, id, 1, "create", in.Image, in.Config, nil, nil, in.CommitSha, in.Actor, now); err != nil {
 		return App{}, AppVersion{}, err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO core.app_deploys (id, app_id, version, started_at) VALUES ($1, $2, 1, $3)`, uuid.New(), id, now); err != nil {
@@ -531,7 +533,8 @@ func (s *Store) UpdateApp(ctx context.Context, repoID uuid.UUID, name string, p 
 			return App{}, nil, err
 		}
 		summary := strings.Join(changes, ", ")
-		if err := insertAppVersion(ctx, tx, cur.ID, number, "config", last.Image, cfg, &summary, nil, nil, actor, now); err != nil {
+		// La configurazione ha la stessa immagine della versione attiva: ne eredita il commit (H14).
+		if err := insertAppVersion(ctx, tx, cur.ID, number, "config", last.Image, cfg, &summary, nil, last.CommitSha, actor, now); err != nil {
 			return App{}, nil, err
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO core.app_deploys (id, app_id, version, started_at) VALUES ($1, $2, $3, $4)`, uuid.New(), cur.ID, number, now); err != nil {

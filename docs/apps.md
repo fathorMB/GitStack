@@ -21,3 +21,18 @@ Dentro lo stesso repo ogni app si raggiunge con il proprio nome, come indirizzo 
 - **Per chi scrive l'app.** Usare il nome come host (`http://api:8080/…`): niente indirizzi IP né l'indirizzo `*.apps.<dominio>`, che passa dal login e dal TLS. Il nome non è un permesso: l'autenticazione tra app, se serve, la fa l'app.
 
 Meccanismo e alternative scartate: ADR 0002, sezione «Nomi interni fra app dello stesso repo (H15)».
+
+## Variabili di sistema GITSTACK_
+
+A ogni deploy GitStack passa al container alcune variabili di sistema, che l'app può leggere per sapere che cosa sta girando:
+
+| Variabile | Valore |
+|---|---|
+| `GITSTACK_APP_VERSION` | il tag dell'immagine, per esempio `sha-1a2b3c` o `v2`. Assente se l'immagine è indicata solo per digest, senza tag. |
+| `GITSTACK_DEPLOYED_AT` | data e ora della versione, in RFC 3339 UTC, per esempio `2026-10-26T07:30:15Z`. Resta la stessa a ogni riavvio della versione. |
+| `GITSTACK_COMMIT_SHA` | il commit dell'immagine, dall'etichetta OCI `org.opencontainers.image.revision` (se c'è). Viene letta dal registry del repo al deploy e salvata nella versione, quindi resta la stessa a ogni riavvio; una modifica di configurazione la eredita dalla versione attiva. **Assente** se l'immagine è esterna, se non ha l'etichetta o se l'etichetta non è un commit esadecimale (da 7 a 64 caratteri). |
+| `PORT` | la porta dell'app, come prima. |
+
+Il commit di ogni versione è leggibile nell'API delle versioni dell'app, nel campo `commitSha` (`null` se la versione non ne ha uno).
+
+Il prefisso `GITSTACK_` è riservato: non si può creare una variabile o un segreto dell'app con quel prefisso (anche in minuscolo). L'API risponde 422 con l'errore sul campo `name`, e la pagina **Variables & secrets** mostra lo stesso messaggio prima di inviare. Un nome come `MY_GITSTACK_X` è ammesso, perché il prefisso conta solo all'inizio.

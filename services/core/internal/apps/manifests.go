@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	appsv1 "k8s.io/api/apps/v1"
@@ -145,7 +146,7 @@ func BuildDeployment(app store.App, v store.AppVersion, o BuildOptions) *appsv1.
 		Name:            containerName,
 		Image:           ImageRef(v),
 		ImagePullPolicy: corev1.PullIfNotPresent,
-		Env:             envVars(cfg.Variables, app.Config.Port, o.ProxyEnv),
+		Env:             envVars(cfg.Variables, app.Config.Port, systemEnv(v), o.ProxyEnv),
 		SecurityContext: sc,
 		Resources: corev1.ResourceRequirements{
 			Requests: resourceList(cfg.Guaranteed),
@@ -221,9 +222,61 @@ func probes(cfg store.AppConfig) (ready, live *corev1.Probe) {
 	return ready, live
 }
 
-func envVars(vars map[string]string, port *int, proxy map[string]string) []corev1.EnvVar {
-	values := make(map[string]string, len(vars)+len(proxy)+1)
+// Variabili di sistema (H14): GitStack le passa a ogni deploy e il prefisso GITSTACK_ è riservato,
+// quindi variabili e segreti dell'app non possono usarlo (API e UI, vedi IsReservedEnvName).
+const (
+	ReservedEnvPrefix = "GITSTACK_"
+	EnvAppVersion     = "GITSTACK_APP_VERSION"
+	EnvDeployedAt     = "GITSTACK_DEPLOYED_AT"
+	// EnvCommitSha è il commit dell'etichetta revision dell'immagine (GIT-386), letto da core al
+	// deploy e salvato nella versione: qui non si chiama nessuno.
+	EnvCommitSha = "GITSTACK_COMMIT_SHA"
+)
+
+// IsReservedEnvName dice se il nome di una variabile o di un segreto dell'app usa il prefisso
+// riservato. Il confronto non distingue maiuscole e minuscole.
+func IsReservedEnvName(name string) bool {
+	return len(name) >= len(ReservedEnvPrefix) && strings.EqualFold(name[:len(ReservedEnvPrefix)], ReservedEnvPrefix)
+}
+
+// systemEnv sono le variabili di sistema di una versione: GITSTACK_APP_VERSION è il tag
+// dell'immagine (assente se l'immagine è solo per digest), GITSTACK_DEPLOYED_AT è l'istante della
+// versione in RFC 3339 UTC, GITSTACK_COMMIT_SHA il commit della versione (assente se nil, H14).
+// Restano uguali a ogni riavvio della stessa versione.
+func systemEnv(v store.AppVersion) map[string]string {
+	out := map[string]string{}
+	if tag := imageTag(v.Image.Reference); tag != "" {
+		out[EnvAppVersion] = tag
+	}
+	if !v.CreatedAt.IsZero() {
+		out[EnvDeployedAt] = v.CreatedAt.UTC().Format(time.RFC3339)
+	}
+	if v.CommitSha != nil && *v.CommitSha != "" {
+		out[EnvCommitSha] = *v.CommitSha
+	}
+	return out
+}
+
+// imageTag è il tag di un riferimento (il digest dopo @ non conta); "" se il riferimento non ne ha.
+func imageTag(ref string) string {
+	if i := strings.Index(ref, "@"); i >= 0 {
+		ref = ref[:i]
+	}
+	i := strings.LastIndex(ref, ":")
+	if i < 0 || i < strings.LastIndex(ref, "/") {
+		return ""
+	}
+	return ref[i+1:]
+}
+
+// envVars compone l'ambiente del container: variabili dell'app, poi quelle di sistema (che non si
+// sovrascrivono), poi la configurazione N9 del processo core, infine PORT.
+func envVars(vars map[string]string, port *int, system, proxy map[string]string) []corev1.EnvVar {
+	values := make(map[string]string, len(vars)+len(system)+len(proxy)+1)
 	for k, v := range vars {
+		values[k] = v
+	}
+	for k, v := range system {
 		values[k] = v
 	}
 	for k, v := range proxy {
