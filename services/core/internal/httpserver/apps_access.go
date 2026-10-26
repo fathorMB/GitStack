@@ -22,7 +22,7 @@ func (s *apiServer) appAccessToAPI(a store.App) openapi.AppAccess {
 	mode := openapi.AppAccessMode(a.Access)
 	out := openapi.AppAccess{Mode: mode, PublicAppsEnabled: false, Address: s.appAddress(a.AddressLabel)}
 	if out.Address != nil && mode != openapi.AppAccessModePublic {
-		c := openapi.InstanceCa
+		c := openapi.AppAccessCertificateInstanceCa
 		out.Certificate = &c
 	}
 	headers := mode == openapi.AppAccessModeLogin
