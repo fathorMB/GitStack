@@ -117,7 +117,8 @@ jobs:
         working-directory: services/core
         env:
           GITSTACK_REQUIRE_UI_SMOKE: "1"
-        run: go test -tags=integration ./... -race
+        # -timeout 30m: httpserver (circa 196 test, un Postgres ciascuno) sotto -race supera i 10 min di default (GIT-387).
+        run: go test -tags=integration -race -count=1 -timeout 30m ./...
 
       # Compatibilita' con il runner di Gitea (ex act_runner, GIT-329, ADR 0001 §4): il binario
       # pinnato per versione e sha256 (gitea.com/gitea/runner, release v5.2.2) si registra col
@@ -272,7 +273,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: shellcheck
-        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/apps_domain_test.sh deploy/tests/ci_install_test.sh deploy/tests/v5_verify_test.sh deploy/tests/release_changelog_test.sh deploy/tests/network_test.sh deploy/tests/k3s_script_test.sh deploy/tests/chart_hardening_test.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh deploy/ci/install-e2e.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh scripts/ci/retry.sh deploy/ci/runner-e2e.sh
+        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/apps_domain_test.sh deploy/tests/ci_install_test.sh deploy/tests/v5_verify_test.sh deploy/tests/release_changelog_test.sh deploy/tests/network_test.sh deploy/tests/k3s_script_test.sh deploy/tests/chart_hardening_test.sh deploy/tests/apps_priority_probe.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh deploy/ci/install-e2e.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh scripts/ci/retry.sh deploy/ci/runner-e2e.sh
 
       # Preflight di install.sh (GIT-144): profili minimo e consigliato di N1,
       # sistema non supportato, verifica del nome host. Senza root né VM.
@@ -1390,6 +1391,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
+      - name: Setup Go (probe isolamento app)
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: |
+            **/go.sum
+
       - name: Setup Helm
         uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
         with:
@@ -1465,6 +1473,9 @@ jobs:
           # dell'immagine usa '-' al posto del '+' della versione.
           K3S_IMAGE="rancher/k3s:$(tr -d '[:space:]' < deploy/k3s-version | tr '+' '-')"
           k3d cluster create gitstack-ci --image "${K3S_IMAGE}" --port "8080:80@loadbalancer" --port "2222:2222@loadbalancer" --wait --timeout 120s
+
+      - name: Isolamento delle app H9 (k3d)
+        run: services/core/internal/apps/k3d-test.sh
 
       # GIT-21: "k3d cluster create --wait" sopra attende solo che il nodo
       # k3s riporti Ready, non che l'API server accetti già in modo stabile
@@ -1557,6 +1568,9 @@ jobs:
             --set ci.enabled=true \
             --set ci.runner.image=gitstack-ci-runner:test \
             --wait --timeout 3m
+
+      - name: H11 app priority pressure
+        run: bash deploy/tests/apps_priority_probe.sh
 
       - name: CI — pod restricted, rete isolata e limiti
         run: |

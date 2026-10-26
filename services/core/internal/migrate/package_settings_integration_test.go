@@ -59,7 +59,7 @@ func TestMigration0032_ImpostazioniDeiPacchetti(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.repo_package_settings`).Scan(&n); err != nil || n != 0 {
 		t.Fatalf("righe dopo l'eliminazione del repo: %d %v", n, err)
 	}
-	if err := migrate.Down(ctx, pool, dsn, 6); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 10); err != nil {
 		t.Fatalf("down 0032: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.tables WHERE table_schema = 'core' AND table_name = 'repo_package_settings'`).Scan(&n); err != nil || n != 0 {

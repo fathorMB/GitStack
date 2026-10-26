@@ -46,6 +46,8 @@ type apiServer struct {
 	emailEnabled bool
 	// systemInfo: file delle informazioni dell host (GIT-213).
 	systemInfo SystemInfoConfig
+	// instanceCA: CA interna dell istanza per GET /instance/ca (GIT-383).
+	instanceCA CAConfig
 	// ciLogs: i log dei job su disco (GIT-316); nil = 503.
 	ciLogs *ci.LogStore
 	// ciBlobs: artefatti e cache dei job su disco o S3 (GIT-280); nil = 503.
@@ -58,6 +60,8 @@ type apiServer struct {
 	appsDomain string
 	// appCtl è il controller dei deploy; nil = deploy non disponibili (503).
 	appCtl AppController
+	// appsOff: hosting spento di proposito (WithAppsHostingOff); la creazione di app risponde 503.
+	appsOff bool
 }
 
 var _ openapi.ServerInterface = (*apiServer)(nil)

@@ -325,9 +325,169 @@ expect_has "job: core conosce il ConfigMap della CA nel namespace dei job" "${d}
 expect_has "job: core ha il proxy da passare ai pod" "${d}" "name: HTTPS_PROXY"
 OUT="$(helm template gitstack "${CHART}" --namespace prova-ns | tr -d '')" || { bad "helm template di default fallito"; exit 1; }
 expect_eq "CI spenta: nessuna PriorityClass gitstack-ci-job" "$(count 'metadata: {name: gitstack-ci-job}')" "0"
+expect_eq "H11: PriorityClass dei servizi" "$(count 'metadata: {name: gitstack-services}')" "1"
+expect_eq "H11: PriorityClass delle app" "$(count 'metadata: {name: gitstack-apps}')" "1"
+expect_has "H11: core ha priorita servizi" "$(doc Deployment gitstack-core)" "priorityClassName: gitstack-services"
 OUT="$(helm template gitstack "${CHART}" --namespace prova-ns --set ci.enabled=true | tr -d '')" || { bad "helm template con ci.enabled fallito"; exit 1; }
 expect_eq "CI accesa: PriorityClass gitstack-ci-job" "$(count 'metadata: {name: gitstack-ci-job}')" "1"
 expect_has "CI accesa: ResourceQuota dei posti" "$OUT" "name: ci-jobs"
+
+echo "== GIT-375: hosting delle app, RBAC minimo di core (ADR 0002)"
+# docs KIND: tutti i documenti di quel kind (separati da una riga ---).
+docs() {
+  printf '%s\n' "${OUT}" | awk -v kind="$1" 'BEGIN { RS = "\n---\n" } $0 ~ "(^|\n)kind: " kind "\n" { print; print "---" }'
+}
+# rules_of DOC: una riga "gruppo|risorsa|verbi|resourceNames" per regola del ClusterRole.
+rules_of() {
+  printf '%s\n' "$1" | awk '
+    /^  - apiGroups:/ { if (r != "") print g "|" r "|" v "|" n; g = $0; sub(/.*apiGroups: \[/, "", g); sub(/\].*/, "", g); r = ""; v = ""; n = "" }
+    /^    resources:/ { r = $0; sub(/.*resources: \[/, "", r); sub(/\].*/, "", r) }
+    /^    verbs:/ { v = $0; sub(/.*verbs: \[/, "", v); sub(/\].*/, "", v) }
+    /^    resourceNames:/ { n = $0; sub(/.*resourceNames: \[/, "", n); sub(/\].*/, "", n) }
+    END { if (r != "") print g "|" r "|" v "|" n }'
+}
+OUT="$(render --namespace prova-ns)" || { bad "helm template di default fallito"; exit 1; }
+expect_eq "hosting spento: nessun ClusterRole delle app" "$(count 'name: gitstack-(apps-controller|app-workload)')" "0"
+expect_lacks "hosting spento: core senza GITSTACK_CORE_APPS_ENABLED" "$(doc Deployment gitstack-core)" "GITSTACK_CORE_APPS_ENABLED"
+expect_lacks "hosting spento: core senza ServiceAccount dedicato" "$(doc Deployment gitstack-core)" "serviceAccountName"
+expect_eq "hosting spento: nessun ClusterRoleBinding" "$(docs ClusterRoleBinding | grep -c '^kind: ClusterRoleBinding$')" "0"
+if helm_rc --set apps.enabled=true; then bad "apps.enabled senza apps.domain: helm template doveva fermarsi"; else ok; fi
+
+OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test --set core.env.publicUrl=https://git.acme.test)" || { bad "helm template con apps.enabled fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_has "hosting acceso: core riceve ENABLED" "${d}" "GITSTACK_CORE_APPS_ENABLED"
+expect_has "hosting acceso: core riceve il dominio" "${d}" 'value: "apps.acme.test"'
+expect_lacks "hosting acceso: niente più AUTH_MIDDLEWARE (GIT-347)" "${d}" "GITSTACK_CORE_APPS_AUTH_MIDDLEWARE"
+expect_has "hosting acceso: core riceve l'indirizzo del forward-auth del gateway" "${d}" 'value: "http://gitstack-gateway.prova-ns.svc.cluster.local:8080/_appauth/verify"'
+g="$(doc Deployment gitstack-gateway)"
+expect_has "hosting acceso: il gateway ha le chiavi di firma da Secret" "${g}" "GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS"
+expect_has "hosting acceso: le chiavi vengono dal Secret del chart" "${g}" "name: gitstack-gateway-appauth-keys"
+expect_has "hosting acceso: il gateway conosce il dominio delle app" "${g}" 'value: "apps.acme.test"'
+expect_has "hosting acceso: il gateway conosce l'indirizzo pubblico" "${g}" 'value: "https://git.acme.test"'
+sk="$(doc Secret gitstack-gateway-appauth-keys)"
+expect_has "hosting acceso: Secret delle chiavi di firma" "${sk}" "signing-keys:"
+expect_has "hosting acceso: il Secret sopravvive a helm uninstall" "${sk}" "helm.sh/resource-policy: keep"
+if printf '%s\n' "${sk}" | grep -Eq 'signing-keys: "[A-Za-z0-9+/]{43}="'; then ok; else bad "hosting acceso: le chiavi sono un seme di 32 byte in base64"; fi
+expect_has "hosting acceso: ServiceAccount di core" "${d}" "serviceAccountName: gitstack-core"
+expect_has "hosting acceso: core sa chi è (ServiceAccount del RoleBinding)" "${d}" 'value: "prova-ns/gitstack-core"'
+expect_has "hosting acceso: core sa quale ClusterRole modello usare" "${d}" 'value: "gitstack-app-workload"'
+
+# Due ClusterRole (controller e modello), nessun carattere jolly e nessun Role; un solo
+# ClusterRoleBinding, del controller: i permessi sulle app esistono solo nei namespace delle app,
+# via RoleBinding creati dal controller.
+cr="$(docs ClusterRole)"
+expect_eq "RBAC: due ClusterRole (controller e modello)" "$(printf '%s\n' "${cr}" | grep -c '^kind: ClusterRole$')" "2"
+expect_lacks "RBAC: niente caratteri jolly" "${cr}" '"*"'
+expect_eq "RBAC: nessun Role nel namespace del release" "$(docs Role | grep -c '^kind: Role$')" "0"
+crb="$(docs ClusterRoleBinding)"
+expect_eq "RBAC: un solo ClusterRoleBinding" "$(printf '%s\n' "${crb}" | grep -c '^kind: ClusterRoleBinding$')" "1"
+expect_has "RBAC: il ClusterRoleBinding è del controller" "${crb}" "name: gitstack-apps-controller"
+expect_lacks "RBAC: nessun ClusterRoleBinding verso il ruolo modello" "${crb}" "gitstack-app-workload"
+expect_has "RBAC: il ClusterRoleBinding è per il ServiceAccount di core" "${crb}" "name: gitstack-core"
+# Permessi del controller: quelli dell'ADR 0002 e nient'altro (una riga per regola).
+ctl="$(doc ClusterRole gitstack-apps-controller)"
+expect_eq "controller: namespace" "$(rules_of "${ctl}" | grep '"namespaces"')" '""|"namespaces"|"create", "get", "list", "watch", "update", "delete"|'
+expect_eq "controller: rolebindings" "$(rules_of "${ctl}" | grep '"rolebindings"')" '"rbac.authorization.k8s.io"|"rolebindings"|"create", "get"|'
+expect_eq "controller: bind solo sul ruolo modello" "$(rules_of "${ctl}" | grep '"clusterroles"')" '"rbac.authorization.k8s.io"|"clusterroles"|"bind"|"gitstack-app-workload"'
+expect_eq "controller: tre regole in tutto" "$(rules_of "${ctl}" | grep -c .)" "3"
+wl="$(doc ClusterRole gitstack-app-workload)"
+expect_eq "modello: risorse ammesse (ADR 0002, NetworkPolicy H9 e Middleware del login GIT-347)" "$(rules_of "${wl}" | cut -d'|' -f2 | sort | tr '\n' ' ')" '"deployments" "events" "ingressroutes", "middlewares" "networkpolicies" "pods" "pods/log" "secrets" "services" '
+expect_eq "modello: NetworkPolicy H9" "$(rules_of "${wl}" | grep '"networkpolicies"')" '"networking.k8s.io"|"networkpolicies"|"get", "create", "update"|'
+expect_eq "modello: middlewares e ingressroutes con i soli verbi del controller" "$(rules_of "${wl}" | grep '"middlewares"')" '"traefik.io"|"ingressroutes", "middlewares"|"create", "get", "update", "delete"|'
+expect_lacks "modello: mai delete su deployments, pods, secrets" "$(rules_of "${wl}" | grep -E '"(deployments|pods|secrets)"')" "delete"
+expect_lacks "modello: nessun permesso su namespaces" "${wl}" "namespaces"
+expect_lacks "modello: nessun permesso su rolebindings" "${wl}" "rolebindings"
+
+# Con la CI accesa il ServiceAccount è lo stesso della CI (un solo token): non se ne crea un secondo.
+OUT="$(render --namespace prova-ns --set ci.enabled=true --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template con CI e apps fallito"; exit 1; }
+expect_has "CI e apps: core usa ci-dispatcher" "$(doc Deployment gitstack-core)" "serviceAccountName: ci-dispatcher"
+expect_has "CI e apps: il ClusterRoleBinding è per ci-dispatcher" "$(docs ClusterRoleBinding)" "name: ci-dispatcher"
+# Policy di ammissione che chiude il dove (RBAC non filtra per nome): esiste solo con apps.enabled e
+# vale solo per il ServiceAccount di core (con CI accesa ci-dispatcher, altrimenti gitstack-core).
+pol="$(doc ValidatingAdmissionPolicy gitstack-apps-controller-scope)"
+expect_has "policy (CI accesa): matchCondition sul ServiceAccount di core" "${pol}" 'request.userInfo.username == "system:serviceaccount:prova-ns:ci-dispatcher"'
+expect_has "policy (CI accesa): soggetto ammesso" "${pol}" 's.name == "ci-dispatcher" && s.namespace == "prova-ns"'
+expect_eq "policy (CI accesa): binding presente" "$(doc ValidatingAdmissionPolicyBinding gitstack-apps-controller-scope | grep -c 'policyName: gitstack-apps-controller-scope')" "1"
+expect_has "policy: azione Deny" "$(doc ValidatingAdmissionPolicyBinding gitstack-apps-controller-scope)" 'validationActions: ["Deny"]'
+expect_has "policy: namespace solo gitstack-app-* con label" "${pol}" "object.metadata.name.startsWith('gitstack-app-')"
+expect_has "policy: namespace UPDATE/DELETE controllano oldObject" "${pol}" "oldObject.metadata.labels['gitstack.io/managed-app'] == 'true'"
+expect_has "policy: namespace CREATE UPDATE DELETE" "${pol}" 'operations: ["CREATE", "UPDATE", "DELETE"]'
+expect_has "policy: rolebindings solo in namespace marcati" "${pol}" "namespaceObject.metadata.labels['gitstack.io/managed-app'] == 'true'"
+expect_has "policy: NetworkPolicy solo in namespace marcati" "${pol}" "request.resource.resource != 'networkpolicies'"
+expect_has "policy: rolebindings solo verso il ruolo modello" "${pol}" "object.roleRef.name == \"gitstack-app-workload\""
+expect_has "policy: failurePolicy Fail" "${pol}" "failurePolicy: Fail"
+OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template apps senza CI fallito"; exit 1; }
+pol="$(doc ValidatingAdmissionPolicy gitstack-apps-controller-scope)"
+expect_has "policy (CI spenta): matchCondition sul ServiceAccount di core" "${pol}" 'request.userInfo.username == "system:serviceaccount:prova-ns:gitstack-core"'
+expect_has "policy (CI spenta): soggetto ammesso" "${pol}" 's.name == "gitstack-core" && s.namespace == "prova-ns"'
+OUT="$(render --namespace prova-ns --set ci.enabled=true --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template con CI e apps fallito"; exit 1; }
+OUT="$(render --namespace prova-ns)" || { bad "helm template di default fallito"; exit 1; }
+expect_eq "apps spento: nessuna policy del controller" "$(count 'gitstack-apps-controller-scope')" "0"
+expect_lacks "apps spento: il gateway senza chiavi di firma" "$(doc Deployment gitstack-gateway)" "GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS"
+expect_eq "apps spento: nessun Secret delle chiavi di firma" "$(count 'gitstack-gateway-appauth-keys')" "0"
+OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test --set apps.signingKeys.existingSecret=mio --set apps.authUrl=http://x:1/_appauth/verify)" || { bad "helm template con signingKeys.existingSecret fallito"; exit 1; }
+expect_has "apps: Secret delle chiavi indicato dall'utente" "$(doc Deployment gitstack-gateway)" "name: mio"
+expect_eq "apps: con un Secret dell'utente il chart non ne crea uno" "$(count 'gitstack-gateway-appauth-keys')" "0"
+expect_has "apps: authUrl sovrascrivibile" "$(doc Deployment gitstack-core)" 'value: "http://x:1/_appauth/verify"'
+OUT="$(render --namespace prova-ns --set ci.enabled=true --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template con CI e apps fallito"; exit 1; }
+expect_eq "CI e apps: nessun ServiceAccount gitstack-core" "$(docs ServiceAccount | grep -c '^  name: gitstack-core$')" "0"
+echo "== GIT-371: job gitstack-build (BuildKit rootless nel namespace di build, registry dal gateway)"
+OUT="$(render --set ci.enabled=true)" || { bad "helm template con ci.enabled fallito"; exit 1; }
+expect_lacks "build spenta: core senza GITSTACK_CORE_CI_BUILD_NAMESPACE" "$(doc Deployment gitstack-core)" "GITSTACK_CORE_CI_BUILD_NAMESPACE"
+expect_lacks "build spenta: core non accetta il namespace di build" "$(doc NetworkPolicy gitstack-core)" "gitstack-ci-build"
+expect_lacks "build spenta: il gateway non accetta il namespace di build" "$(doc NetworkPolicy gitstack-gateway)" "gitstack-ci-build"
+expect_eq "build spenta: nessuna policy di build" "$(count 'name: ci-build-egress$')" "0"
+expect_has "CI accesa: git convalida il token del job nel ci-gateway di core" "$(doc Deployment gitstack-git)" 'value: "http://gitstack-core.default.svc:8081"'
+expect_has "CI accesa: git raggiunge il ci-gateway" "$(doc NetworkPolicy gitstack-git)" "port: 8081"
+expect_has "CI accesa: core accetta il pod git sulla porta del ci-gateway" "$(doc NetworkPolicy gitstack-core)" "app.kubernetes.io/name: git"
+OUT="$(render --set ci.enabled=true --set ci.build.enabled=true)" || { bad "helm template con ci.build.enabled fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_has "build: core conosce il namespace di build" "${d}" 'value: "gitstack-ci-build"'
+expect_has "build: core conosce l'immagine di BuildKit" "${d}" "moby/buildkit"
+expect_has "build: registry nel cluster = gateway, mai l'ingress" "${d}" 'value: "gitstack-gateway.default.svc:8080"'
+d="$(doc NetworkPolicy ci-build-egress)"
+expect_has "build: uscita verso core" "${d}" "app.kubernetes.io/name: core"
+expect_has "build: solo la porta del ci-gateway di core" "${d}" "port: 8081"
+expect_has "build: uscita verso il gateway (registry)" "${d}" "app.kubernetes.io/name: gateway"
+expect_has "build: porta del gateway" "${d}" "port: 8080"
+expect_lacks "build: niente postgres" "${d}" "app.kubernetes.io/name: postgres"
+expect_lacks "build: niente nats" "${d}" "app.kubernetes.io/name: nats"
+expect_lacks "build: niente identity" "${d}" "app.kubernetes.io/name: identity"
+expect_lacks "build: niente git" "${d}" "app.kubernetes.io/name: git"
+expect_lacks "build: nessun ipBlock privato (10/8)" "${d}" "cidr: 10."
+expect_lacks "build: nessun ipBlock privato (172.16/12)" "${d}" "cidr: 172."
+expect_lacks "build: nessun ipBlock privato (192.168/16)" "${d}" "cidr: 192.168."
+expect_has "build: Internet resta chiusa alle reti private" "${d}" "- 192.168.0.0/16"
+expect_has "build: nessun ingresso" "${d}" "ingress: []"
+d="$(doc NetworkPolicy gitstack-core)"
+expect_has "core: ingresso dal namespace di build" "${d}" 'kubernetes.io/metadata.name: "gitstack-ci-build"'
+d="$(doc NetworkPolicy gitstack-gateway)"
+expect_has "gateway: ingresso dal namespace di build" "${d}" 'kubernetes.io/metadata.name: "gitstack-ci-build"'
+expect_has "gateway: solo i pod dei job" "${d}" 'gitstack.io/ci-job: "true"'
+expect_eq "Role del dispatcher nei due namespace" "$(count '^kind: Role$')" "2"
+expect_eq "nessun ClusterRole" "$(count '^kind: ClusterRole')" "0"
+expect_has "policy di ammissione del namespace di build" "$OUT" "kind: ValidatingAdmissionPolicy"
+if helm_rc --set ci.enabled=true --set ci.build.enabled=true --set git.registry.enabled=false; then bad "build senza registry: helm template doveva fermarsi"; else ok; fi
+if helm_rc --set ci.enabled=true --set ci.build.enabled=true --set gateway.enabled=false; then bad "build senza gateway: helm template doveva fermarsi"; else ok; fi
+
+echo "== GIT-383: core legge la CA interna (impronta per la guida dei tester)"
+OUT="$(render)" || { bad "helm template di default fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_lacks "CA: senza caConfigMap core non monta la CA" "${d}" "/etc/gitstack/ca"
+expect_lacks "CA: senza caConfigMap nessun GITSTACK_CORE_CA_DIR" "${d}" "GITSTACK_CORE_CA_DIR"
+expect_line_has "CA: senza HTTPS la modalita' e' none" "${d}" "value: none"
+OUT="$(render --set ingress.tls.enabled=true --set ingress.tls.certResolver=le)" || { bad "helm template con letsencrypt fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_lacks "CA: letsencrypt non monta la CA" "${d}" "name: ca"
+expect_line_has "CA: letsencrypt e' custom" "${d}" "value: custom"
+OUT="$(render --set ingress.tls.enabled=true --set ingress.tls.secretName=t --set ingress.tls.caConfigMap=gitstack-ca)" || { bad "helm template con caConfigMap fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_line_has "CA: core monta la cartella intera" "${d}" "mountPath: /etc/gitstack/ca"
+expect_line_has "CA: core legge GITSTACK_CORE_CA_DIR" "${d}" "value: /etc/gitstack/ca"
+expect_has "CA: il ConfigMap e' quello dell'installer" "${d}" "name: gitstack-ca"
+expect_line_has "CA: ConfigMap optional" "${d}" "optional: true"
+expect_lacks "CA: niente subPath (un rinnovo arriva senza riavvio)" "${d}" "subPath"
+expect_lacks "CA: con la CA interna nessun GITSTACK_CORE_CA_MODE" "${d}" "GITSTACK_CORE_CA_MODE"
 
 echo
 echo "Passati: ${PASS}  Falliti: ${FAILN}"

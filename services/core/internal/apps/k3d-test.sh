@@ -8,6 +8,7 @@ set -euo pipefail
 cluster=${GITSTACK_K3D_CLUSTER:-gs-apps-test}
 k3d_bin=${K3D_BIN:-k3d}
 root=$(cd "$(dirname "$0")/../../../.." && pwd)
+k3s_image=${K3S_IMAGE:-"rancher/k3s:$(tr -d '[:space:]' < "$root/deploy/k3s-version" | tr '+' '-')"}
 work=$(mktemp -d)
 created=false
 
@@ -19,12 +20,12 @@ trap cleanup EXIT
 
 "$k3d_bin" version >/dev/null 2>&1 || { echo "KO: manca k3d"; exit 1; }
 if "$k3d_bin" cluster list -o json | grep -q "\"$cluster\""; then echo "KO: cluster $cluster gia esistente"; exit 1; fi
-"$k3d_bin" cluster create "$cluster" --image rancher/k3s:v1.32.5-k3s1 --wait --timeout 300s \
+"$k3d_bin" cluster create "$cluster" --image "$k3s_image" --wait --timeout 300s \
   --kubeconfig-update-default=false --kubeconfig-switch-context=false >/dev/null
 created=true
 "$k3d_bin" kubeconfig get "$cluster" >"$work/kubeconfig"
 
 cd "$root/services/core"
 GITSTACK_TEST_KUBECONFIG="$work/kubeconfig" go test -tags integration -count=1 -timeout 25m \
-  -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d' -v ./internal/httpserver/
-echo "OK: controller dei deploy provato su k3d"
+  -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d|TestApps_SegretiKubernetesERollback|TestApps_IsolamentoSuK3d' -v ./internal/httpserver/
+echo "OK: controller, segreti e isolamento delle app provati su k3d"

@@ -1,11 +1,16 @@
 package apps
 
 import (
+	"context"
+	"net"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
@@ -20,14 +25,17 @@ func testApp() (store.App, store.AppVersion) {
 		Guaranteed: store.AppResourceAmount{CPUMillis: 100, MemoryBytes: 128 << 20},
 		Limit:      store.AppResourceAmount{CPUMillis: 500, MemoryBytes: 512 << 20}, Copies: 2,
 	}
-	app := store.App{ID: uuid.New(), Name: "web", AddressLabel: &label, Access: "none", Config: cfg}
+	app := store.App{ID: uuid.New(), RepoID: uuid.New(), Name: "web", AddressLabel: &label, Access: "none", Config: cfg}
 	ver := store.AppVersion{AppID: app.ID, Number: 7, Config: cfg, Image: store.AppImage{Reference: "registry.example.com/alice/handbook:sha-1", Digest: &digest, Source: "registry"}}
 	return app, ver
 }
 
 func TestBuildDeployment_AggiornamentoSenzaInterruzioneESalute(t *testing.T) {
 	app, ver := testApp()
-	d := BuildDeployment(app, ver, BuildOptions{Replicas: 2, ProgressDeadlineSeconds: 90, PullSecret: "registry-pull", RestartedAt: "ieri"})
+	d := BuildDeployment(app, ver, BuildOptions{Replicas: 2, ProgressDeadlineSeconds: 90, PullSecret: "registry-pull", AppSecret: "app-secrets", RestartedAt: "ieri"})
+	if d.Spec.Template.Spec.PriorityClassName != "gitstack-apps" {
+		t.Fatalf("priorityClassName: %q", d.Spec.Template.Spec.PriorityClassName)
+	}
 	if d.Namespace != "gitstack-app-"+app.ID.String() || d.Labels[LabelManaged] != "true" {
 		t.Fatalf("namespace/label: %s %v", d.Namespace, d.Labels)
 	}
@@ -58,6 +66,9 @@ func TestBuildDeployment_AggiornamentoSenzaInterruzioneESalute(t *testing.T) {
 	if len(tpl.Spec.ImagePullSecrets) != 1 || tpl.Spec.ImagePullSecrets[0].Name != "registry-pull" {
 		t.Fatalf("pull secret: %+v", tpl.Spec.ImagePullSecrets)
 	}
+	if len(c.EnvFrom) != 1 || c.EnvFrom[0].SecretRef == nil || c.EnvFrom[0].SecretRef.Name != "app-secrets" {
+		t.Fatalf("secret dell'app: %+v", c.EnvFrom)
+	}
 	if *tpl.Spec.AutomountServiceAccountToken || *c.SecurityContext.AllowPrivilegeEscalation || c.SecurityContext.RunAsNonRoot != nil {
 		t.Fatalf("sicurezza: %+v", c.SecurityContext)
 	}
@@ -72,6 +83,100 @@ func TestBuildDeployment_RestrictedNonGiraComeRoot(t *testing.T) {
 	c := BuildDeployment(app, ver, BuildOptions{Replicas: 1}).Spec.Template.Spec.Containers[0]
 	if c.SecurityContext.RunAsNonRoot == nil || !*c.SecurityContext.RunAsNonRoot {
 		t.Fatalf("restricted deve chiedere runAsNonRoot: %+v", c.SecurityContext)
+	}
+}
+
+func TestBuildDeployment_PassaProxyN9ESovrascriveQuelloDellApp(t *testing.T) {
+	app, ver := testApp()
+	ver.Config.Variables["HTTPS_PROXY"] = "http://non-valido:3128"
+	d := BuildDeployment(app, ver, BuildOptions{Replicas: 1, ProxyEnv: ProxyEnvFrom(func(k string) string {
+		return map[string]string{"HTTPS_PROXY": "http://proxy:3128", "NO_PROXY": ".svc"}[k]
+	})})
+	got := map[string]string{}
+	for _, v := range d.Spec.Template.Spec.Containers[0].Env {
+		got[v.Name] = v.Value
+	}
+	if got["HTTPS_PROXY"] != "http://proxy:3128" || got["NO_PROXY"] != ".svc" {
+		t.Fatalf("proxy N9: %v", got)
+	}
+}
+
+func TestBuildNetworkPolicy_IsolaAppEConsenteSoloStessoRepo(t *testing.T) {
+	app, _ := testApp()
+	p := BuildNetworkPolicy(app)
+	if p.Name != "app-isolation" || p.Namespace != Namespace(app.ID) || p.Labels[LabelRepoID] != app.RepoID.String() {
+		t.Fatalf("metadati policy: %+v", p.ObjectMeta)
+	}
+	if len(p.Spec.PolicyTypes) != 2 || len(p.Spec.Ingress) != 2 || len(p.Spec.Egress) != 1 {
+		t.Fatalf("serve deny ingress+egress con una sola apertura: %+v", p.Spec)
+	}
+	for _, peers := range [][]networkingv1.NetworkPolicyPeer{p.Spec.Ingress[0].From, p.Spec.Egress[0].To} {
+		if len(peers) != 1 || peers[0].NamespaceSelector == nil || peers[0].PodSelector == nil ||
+			peers[0].NamespaceSelector.MatchLabels[LabelRepoID] != app.RepoID.String() ||
+			peers[0].PodSelector.MatchLabels[LabelManaged] != "true" {
+			t.Fatalf("peer stesso repo: %+v", peers)
+		}
+	}
+	traefik := p.Spec.Ingress[1]
+	if traefik.From[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"] != "kube-system" || traefik.From[0].PodSelector.MatchLabels["app.kubernetes.io/name"] != "traefik" || traefik.Ports[0].Port.String() != "http" {
+		t.Fatalf("ingresso Traefik: %+v", traefik)
+	}
+}
+
+func TestBuildNetworkPolicy_ProxyIPApriSoloPortaProxy(t *testing.T) {
+	app, _ := testApp()
+	p := BuildNetworkPolicy(app, NetworkPolicyOptions{ProxyEnv: map[string]string{"HTTPS_PROXY": "http://10.0.0.5:3128"}})
+	if len(p.Spec.Egress) != 2 {
+		t.Fatalf("egress senza DNS per IP: %+v", p.Spec.Egress)
+	}
+	r := p.Spec.Egress[1]
+	if r.To[0].IPBlock == nil || r.To[0].IPBlock.CIDR != "10.0.0.5/32" || r.Ports[0].Port.IntValue() != 3128 {
+		t.Fatalf("proxy: %+v", r)
+	}
+}
+
+func TestBuildNetworkPolicy_ProxyMinuscoloApriSoloPortaProxy(t *testing.T) {
+	app, _ := testApp()
+	p := BuildNetworkPolicy(app, NetworkPolicyOptions{ProxyEnv: map[string]string{"http_proxy": "http://10.0.0.6:3128"}})
+	if len(p.Spec.Egress) != 2 {
+		t.Fatalf("egress proxy minuscolo: %+v", p.Spec.Egress)
+	}
+	r := p.Spec.Egress[1]
+	if r.To[0].IPBlock == nil || r.To[0].IPBlock.CIDR != "10.0.0.6/32" || r.Ports[0].Port.IntValue() != 3128 {
+		t.Fatalf("proxy minuscolo: %+v", r)
+	}
+}
+
+func TestBuildNetworkPolicy_ProxyNomeApreDNSEIP(t *testing.T) {
+	app, _ := testApp()
+	p := BuildNetworkPolicy(app, NetworkPolicyOptions{
+		ProxyEnv: map[string]string{"HTTPS_PROXY": "http://proxy.lan:3128"},
+		ProxyIPs: map[string][]net.IP{"proxy.lan": {net.ParseIP("10.0.0.7")}},
+	})
+	if len(p.Spec.Egress) != 3 {
+		t.Fatalf("egress proxy con DNS: %+v", p.Spec.Egress)
+	}
+	dns, proxy := p.Spec.Egress[1], p.Spec.Egress[2]
+	if len(dns.Ports) != 2 || dns.Ports[0].Port.IntValue() != 53 || dns.Ports[1].Port.IntValue() != 53 || dns.To[0].PodSelector.MatchLabels["k8s-app"] != "kube-dns" {
+		t.Fatalf("DNS proxy: %+v", dns)
+	}
+	if proxy.To[0].IPBlock == nil || proxy.To[0].IPBlock.CIDR != "10.0.0.7/32" || proxy.Ports[0].Port.IntValue() != 3128 {
+		t.Fatalf("proxy risolto: %+v", proxy)
+	}
+}
+
+func TestEnsureNamespace_AggiungeRepoIDMancante(t *testing.T) {
+	app, _ := testApp()
+	ns := BuildNamespace(app, false)
+	delete(ns.Labels, LabelRepoID)
+	kube := kubernetesfake.NewClientset(ns)
+	c := &Controller{kube: kube}
+	if err := c.ensureNamespace(context.Background(), app, false); err != nil {
+		t.Fatal(err)
+	}
+	got, err := kube.CoreV1().Namespaces().Get(context.Background(), ns.Name, metav1.GetOptions{})
+	if err != nil || got.Labels[LabelRepoID] != app.RepoID.String() {
+		t.Fatalf("repo-id: %v %+v", err, got.Labels)
 	}
 }
 
@@ -103,21 +208,28 @@ func TestBuildServiceEdRotta(t *testing.T) {
 	if svc.Spec.Ports[0].Port != 80 || svc.Spec.Ports[0].TargetPort.String() != "http" {
 		t.Fatalf("service: %+v", svc.Spec.Ports)
 	}
-	r := BuildRoute(app, "web-handbook-alice.apps.example.com", "gitstack/forward-auth")
+	r := BuildRoute(app, "web-handbook-alice.apps.example.com", true)
 	spec := r.Object["spec"].(map[string]any)
 	route := spec["routes"].([]any)[0].(map[string]any)
 	if route["match"] != "Host(`web-handbook-alice.apps.example.com`)" {
 		t.Fatalf("match: %v", route["match"])
 	}
-	mw := route["middlewares"].([]any)[0].(map[string]any)
-	if mw["name"] != "forward-auth" || mw["namespace"] != "gitstack" {
-		t.Fatalf("middleware: %v", mw)
+	names := func(r map[string]any) []string {
+		var out []string
+		for _, m := range r["middlewares"].([]any) {
+			out = append(out, m.(map[string]any)["name"].(string))
+		}
+		return out
+	}
+	if got := names(route); len(got) != 2 || got[0] != MiddlewareStrip || got[1] != MiddlewareAuth {
+		t.Fatalf("con login prima si svuotano le intestazioni, poi il forward-auth: %v", got)
 	}
 	if _, ok := spec["tls"]; !ok || spec["entryPoints"].([]any)[0] != "websecure" {
 		t.Fatalf("tls/entryPoints: %v", spec)
 	}
-	if _, ok := BuildRoute(app, "h", "").Object["spec"].(map[string]any)["routes"].([]any)[0].(map[string]any)["middlewares"]; ok {
-		t.Fatal("senza middleware non va dichiarato")
+	none := BuildRoute(app, "h", false).Object["spec"].(map[string]any)["routes"].([]any)[0].(map[string]any)
+	if got := names(none); len(got) != 1 || got[0] != MiddlewareStrip {
+		t.Fatalf("senza login resta solo la pulizia delle intestazioni: %v", got)
 	}
 }
 
@@ -132,7 +244,7 @@ func TestRouteHost_LoginSenzaMiddlewareNonHaRotta(t *testing.T) {
 	if h := c.routeHost(app, ver.Config); h != "" {
 		t.Fatalf("login senza forward-auth: nessuna rotta (mai esporre senza login), trovato %q", h)
 	}
-	c.cfg.AuthMiddleware = "fa"
+	c.cfg.AuthURL, c.cfg.AuthSecret = "http://gw/_appauth/verify", "s3"
 	if h := c.routeHost(app, ver.Config); h != "web-handbook-alice.apps.example.com" {
 		t.Fatalf("host: %q", h)
 	}

@@ -518,6 +518,17 @@ ul.list{margin:0;padding:0;list-style:none}
 .meter{height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden;margin-top:6px;position:relative}
 .meter i{display:block;height:100%;background:var(--accent)}
 .meter b{position:absolute;top:0;bottom:0;width:2px;background:var(--text);opacity:.55}
+.admin-apps-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.admin-app-list{grid-column:1/-1;min-width:0}
+.admin-app-list .list-row{display:grid;grid-template-columns:minmax(220px,1fr) repeat(4,minmax(120px,170px));gap:12px;align-items:center}
+.admin-app-list .list-row>span:first-child{overflow-wrap:anywhere}
+.admin-apps-kv{grid-template-columns:150px minmax(0,1fr);padding:16px}
+.admin-apps-kv dd>.row{justify-content:flex-start}
+.admin-apps-kv input[type=checkbox]{accent-color:var(--accent)}
+.admin-apps-grid input[type=number]{width:90px}
+.modal textarea.input{width:100%;resize:vertical;font-family:var(--font-mono)}
+@media (max-width:1000px){.admin-apps-grid{grid-template-columns:1fr}.admin-app-list{grid-column:auto}.admin-app-list .list{overflow-x:auto}.admin-app-list .list-row{min-width:850px}}
+@media (max-width:700px){.admin-apps-kv{grid-template-columns:1fr}.admin-apps-kv dt{font-weight:600}.admin-apps-kv dd{margin-bottom:10px}}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 @media (max-width:860px){.grid3{grid-template-columns:1fr}}
 .opt{display:flex;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r);cursor:pointer;font-size:13px}
@@ -531,3 +542,21 @@ ul.list{margin:0;padding:0;list-style:none}
 .stepper button{width:28px;height:30px;border:0;background:var(--surface-2);color:var(--text);cursor:pointer;font-size:15px}
 .stepper button:disabled{cursor:not-allowed;opacity:.5}
 .stepper span{min-width:36px;text-align:center;font-weight:600}
+
+/* Guida CA per i tester (/help/ca, mockup H12) */
+.guide{max-width:640px;margin:0 auto;padding:36px 20px 64px}
+.guide h1{font-size:24px;font-weight:600;margin-bottom:6px}
+.guide-brand{margin-bottom:22px;font-size:16px}
+.guide-lead{margin-bottom:18px}
+.guide .alert,.guide .card{margin-bottom:18px}
+.guide-fp{margin-top:6px;word-break:break-all}
+.guide-seg{margin-bottom:14px}
+.guide-download{height:40px;font-size:14px;margin-bottom:14px}
+.guide-step{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--border);font-size:14px}
+.guide-step:first-of-type{border-top:0}
+.guide-n{width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent-text);font-weight:600;font-size:12px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.guide-try{margin-bottom:18px}
+.guide-result{margin-bottom:12px}
+.guide-list{margin-bottom:12px}
+.guide .hint{font-size:12px;color:var(--text-muted)}
+.guide-foot{margin-top:14px}

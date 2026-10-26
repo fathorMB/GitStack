@@ -344,6 +344,9 @@ jobs:
             echo "APPS_EXPECT=apps.gitstack.internal" >> "$GITHUB_ENV"
             echo "APPS_WARN=warn" >> "$GITHUB_ENV"
           fi
+          # GIT-375: hosting delle app acceso dall'installer; il login davanti alle app è il
+          # forward-auth vero del gateway (GIT-347), con le chiavi generate dal chart.
+          extra+=(--enable-apps)
           sudo env GITSTACK_REPO="${GITSTACK_REPO}" GITSTACK_ADMIN_REQUIRED=1 \
             ./deploy/install.sh --skip-preflight --ci --host "${E2E_HOST}" --image-tag "sha-${GITHUB_SHA}" "${extra[@]}" 2>&1 | tee "${RUNNER_TEMP}/install.log"
 
@@ -356,6 +359,12 @@ jobs:
 
       - name: Salute
         run: ./deploy/ci/install-e2e.sh wait-healthy 900
+
+      # GIT-375: installazione nuova con l'hosting delle app acceso dall'installer: core, gateway
+      # (chiavi del login), RBAC e `gitstack status` coerenti.
+      - name: Hosting delle app acceso dall'installer (installazione nuova)
+        if: matrix.scenario == 'fresh'
+        run: ./deploy/ci/install-e2e.sh verify-apps-hosting on
 
       # H2 (GIT-346): dominio delle app e certificato wildcard della CA interna.
       # Il default (senza --apps-domain) deve avvisare; con l'opzione no.
@@ -460,8 +469,25 @@ jobs:
         run: |
           set -euo pipefail
           ./deploy/ci/install-e2e.sh verify-apps-domain unset
-          sudo gitstack config set apps-domain "${APPS_DOMAIN}"
+          # GIT-375: dopo l'upgrade (senza opzioni) l'hosting delle app è spento: lo status lo dice,
+          # l'API risponde 503 apps_unavailable e nel cluster non nasce niente.
+          ./deploy/ci/install-e2e.sh verify-apps-hosting off
+          ./deploy/ci/install-e2e.sh apps-off-api
+          if [ "${{ matrix.os }}" = "ubuntu-24.04" ]; then
+            # Un secondo `gitstack upgrade` alla stessa versione, ora col binario nuovo, con l'opzione:
+            # accende l'hosting, imposta il dominio (la v2 non ne ha) e non tocca i dati. (Il primo
+            # upgrade parte dal binario del commit precedente, che l'opzione non la conosce.)
+            sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --timeout 20m \
+              --enable-apps --apps-domain "${APPS_DOMAIN}" ${UPGRADE_UNSIGNED_FLAG:-}
+          else
+            sudo gitstack config set apps-domain "${APPS_DOMAIN}"
+            sudo gitstack config set apps on
+          fi
+          ./deploy/ci/install-e2e.sh wait-healthy 600
           ./deploy/ci/install-e2e.sh verify-apps-domain "${APPS_DOMAIN}"
+          ./deploy/ci/install-e2e.sh verify-apps-hosting on
+          ./deploy/ci/install-e2e.sh apps-run "${APPS_DOMAIN}"
+          ./deploy/ci/install-e2e.sh verify-seed --push
 
       - name: CI attiva dopo l'upgrade e workflow di prova
         if: matrix.scenario == 'upgrade'
@@ -469,6 +495,11 @@ jobs:
           set -euo pipefail
           ./deploy/ci/install-e2e.sh ci-config 1
           ./deploy/ci/install-e2e.sh ci-run
+
+      # GIT-375: l'hosting delle app acceso dall'installer: un'app creata da API risponde al suo indirizzo.
+      - name: App di prova con l'hosting acceso (installazione nuova)
+        if: matrix.scenario == 'fresh'
+        run: ./deploy/ci/install-e2e.sh apps-run "${APPS_EXPECT}"
 
       - name: gitstack backup (cifrato)
         run: |

@@ -2,11 +2,14 @@ package apps
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"strconv"
 	"strings"
 	"sync"
@@ -14,8 +17,10 @@ import (
 
 	"github.com/google/uuid"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
@@ -23,6 +28,10 @@ import (
 
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
+
+const annotationSpecHash = "gitstack.io/spec-hash"
+
+var middlewareGVR = schema.GroupVersionResource{Group: "traefik.io", Version: "v1alpha1", Resource: "middlewares"}
 
 var routeGVR = schema.GroupVersionResource{Group: "traefik.io", Version: "v1alpha1", Resource: "ingressroutes"}
 
@@ -38,9 +47,19 @@ type PullCredential struct {
 type Config struct {
 	// AppsDomain: dominio delle app (H2). Vuoto: nessuna rotta.
 	AppsDomain string
-	// AuthMiddleware: Middleware Traefik forward-auth del login (H6). Senza, le app con accesso
-	// `login` non ricevono una rotta: mai esporle senza il login.
-	AuthMiddleware string
+	// AuthURL: indirizzo del forward-auth del gateway (es. http://gitstack-gateway.gitstack:8080/_appauth/verify)
+	// e AuthSecret il segreto con cui il gateway firma l'identità verso core (GITSTACK_SERVICE_SECRET_GATEWAY,
+	// la prima chiave): firma l'indirizzo per app (H6). Senza uno dei due le app con accesso `login`
+	// non ricevono una rotta: mai esporle senza il login.
+	AuthURL    string
+	AuthSecret string
+	// ControllerServiceAccount è il ServiceAccount di core come `namespace/nome`; WorkloadRole il
+	// ClusterRole «modello» con i permessi sull'app (ADR 0002). Con entrambi, dopo il namespace il
+	// controller crea in esso un RoleBinding verso WorkloadRole: i permessi su Deployment, Service,
+	// Secret, rotte e pod esistono solo nei namespace delle app (mai un ClusterRoleBinding).
+	// Vuoti: nessun RoleBinding (core ha già i permessi da altrove).
+	ControllerServiceAccount string
+	WorkloadRole             string
 	// ProgressTimeout: tempo massimo perché una versione superi la salute (default 120 s).
 	ProgressTimeout time.Duration
 	// FailureGrace: da quanto tempo un errore dei pod (pull, crash) deve durare per dichiarare
@@ -53,11 +72,35 @@ type Config struct {
 	SyncEvery    time.Duration
 	// PullCredentials: credenziali del registry del repo (pull secret). Nil: nessun pull secret.
 	PullCredentials func(ctx context.Context, app store.App) (*PullCredential, error)
-	Now             func() time.Time
-	Log             *slog.Logger
+	// ProxyEnv passa HTTP(S)_PROXY e NO_PROXY della configurazione N9 ai pod.
+	ProxyEnv map[string]string
+	// TraefikNamespace è il namespace dell'Ingress controller k3s.
+	TraefikNamespace string
+	// Secrets decifra i valori correnti dei segreti dell'app: si iniettano nei pod e si usano per
+	// mascherarli nei log (GIT-348, GIT-350). Nil: le righe delle copie non si raccolgono, e nei pod
+	// non entra nessun segreto.
+	Secrets store.AppSealer
+	// PodLogs legge le righe di una copia; nil usa l'API di Kubernetes (i test la sostituiscono).
+	PodLogs PodLogReader
+	// LogsEvery: ogni quanto si raccolgono le righe delle copie (default 2 s, la «diretta»).
+	LogsEvery time.Duration
+	// LogRetention: per quanto si tengono le righe (default 7 giorni); LogMaxBytes: per app (default 1 GiB).
+	LogRetention time.Duration
+	LogMaxBytes  int64
+	Now          func() time.Time
+	Log          *slog.Logger
 }
 
 func (c *Config) defaults() {
+	if c.LogsEvery <= 0 {
+		c.LogsEvery = defaultLogsEvery
+	}
+	if c.LogRetention <= 0 {
+		c.LogRetention = defaultLogRetention
+	}
+	if c.LogMaxBytes <= 0 {
+		c.LogMaxBytes = defaultLogMaxBytes
+	}
 	if c.ProgressTimeout <= 0 {
 		c.ProgressTimeout = 120 * time.Second
 	}
@@ -91,12 +134,15 @@ type Controller struct {
 	kick    chan struct{}
 	mu      sync.Mutex
 	running map[uuid.UUID]bool
+	// oomSeen: ultimo riavvio per OOM già registrato, per app e copia (mu).
+	oomSeen map[uuid.UUID]map[string]int32
 }
 
 // New crea il controller. dyn può essere nil: allora non crea le rotte Traefik.
 func New(st *store.Store, kube kubernetes.Interface, dyn dynamic.Interface, cfg Config) *Controller {
 	cfg.defaults()
-	return &Controller{st: st, kube: kube, dyn: dyn, cfg: cfg, kick: make(chan struct{}, 1), running: map[uuid.UUID]bool{}}
+	return &Controller{st: st, kube: kube, dyn: dyn, cfg: cfg, kick: make(chan struct{}, 1),
+		running: map[uuid.UUID]bool{}, oomSeen: map[uuid.UUID]map[string]int32{}}
 }
 
 // Kick sveglia il ciclo: c'è un deploy nuovo o una scala da applicare.
@@ -112,7 +158,7 @@ func (c *Controller) Kick() {
 func (c *Controller) Run(ctx context.Context) {
 	tick := time.NewTicker(c.cfg.LoopInterval)
 	defer tick.Stop()
-	var lastSync, lastCollect time.Time
+	var lastSync, lastCollect, lastLogs, lastPrune time.Time
 	for {
 		c.processPending(ctx)
 		if now := time.Now(); now.Sub(lastSync) >= c.cfg.SyncEvery {
@@ -122,6 +168,14 @@ func (c *Controller) Run(ctx context.Context) {
 				lastCollect = now
 				c.Collect(ctx)
 			}
+		}
+		if now := time.Now(); now.Sub(lastLogs) >= c.cfg.LogsEvery {
+			lastLogs = now
+			c.CollectLogs(ctx)
+		}
+		if now := time.Now(); now.Sub(lastPrune) >= time.Minute {
+			lastPrune = now
+			c.PruneLogs(ctx)
 		}
 		select {
 		case <-ctx.Done():
@@ -192,6 +246,7 @@ func (c *Controller) RunDeploy(ctx context.Context, p store.PendingAppDeploy) {
 			return
 		}
 		log.Info("apps: versione partita")
+		c.platform(ctx, app.ID, fmt.Sprintf("deploy della versione %d: partita (controllo di salute superato)", v.Number))
 		c.Sync(ctx)
 		return
 	}
@@ -210,6 +265,7 @@ func (c *Controller) RunDeploy(ctx context.Context, p store.PendingAppDeploy) {
 		log.Warn("apps: esito del deploy non scritto", "err", err)
 		return
 	}
+	c.platform(ctx, app.ID, fmt.Sprintf("deploy della versione %d: fallito: %s", v.Number, reason))
 	c.Sync(ctx)
 }
 
@@ -240,6 +296,12 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 	if err := c.ensureNamespace(ctx, app, v.Config.Restricted); err != nil {
 		return fmt.Errorf("namespace: %w", err)
 	}
+	if err := c.ensureRoleBinding(ctx, ns); err != nil {
+		return fmt.Errorf("permessi nel namespace: %w", err)
+	}
+	if err := c.ensureNetworkPolicy(ctx, app); err != nil {
+		return fmt.Errorf("policy di rete: %w", err)
+	}
 	pull := ""
 	if v.Image.Source == "registry" && c.cfg.PullCredentials != nil {
 		cred, err := c.cfg.PullCredentials(ctx, app)
@@ -253,6 +315,25 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 			pull = pullSecretName
 		}
 	}
+	appSecret := ""
+	if len(v.Config.SecretNames) > 0 {
+		if c.cfg.Secrets == nil {
+			return errors.New("chiave dei segreti dell'app non configurata")
+		}
+		values, err := c.st.AppSecretValuesForNames(ctx, c.cfg.Secrets, app.ID, v.Config.SecretNames)
+		if err != nil {
+			return fmt.Errorf("lettura dei segreti dell'app: %w", err)
+		}
+		if len(values) != len(v.Config.SecretNames) {
+			return errors.New("uno o piu' segreti dell'app non esistono piu'")
+		}
+		if err := c.ensureAppSecret(ctx, ns, app.ID, values); err != nil {
+			return fmt.Errorf("secret dell'app: %w", err)
+		}
+		appSecret = appSecretName
+	} else if err := c.deleteAppSecret(ctx, ns); err != nil {
+		return fmt.Errorf("rimozione secret dell'app: %w", err)
+	}
 	if err := c.ensureService(ctx, app, v.Config); err != nil {
 		return fmt.Errorf("service: %w", err)
 	}
@@ -262,7 +343,7 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 		c.cfg.Log.Warn("apps: rotta non applicata", "app", app.ID, "err", err)
 	}
 	deps := c.kube.AppsV1().Deployments(ns)
-	opts := BuildOptions{Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull}
+	opts := BuildOptions{Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret, ProxyEnv: c.cfg.ProxyEnv}
 	cur, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})
 	switch {
 	case apierrors.IsNotFound(err):
@@ -278,6 +359,63 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 	return err
 }
 
+func (c *Controller) ensureNetworkPolicy(ctx context.Context, app store.App) error {
+	proxyIPs := map[string][]net.IP{}
+	for _, endpoint := range proxyEndpoints(c.cfg.ProxyEnv) {
+		if !endpoint.named || proxyIPs[endpoint.host] != nil {
+			continue
+		}
+		ips, err := net.LookupIP(endpoint.host)
+		if err != nil {
+			return fmt.Errorf("risoluzione proxy %s: %w", endpoint.host, err)
+		}
+		proxyIPs[endpoint.host] = ips
+	}
+	want := BuildNetworkPolicy(app, NetworkPolicyOptions{TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs})
+	policies := c.kube.NetworkingV1().NetworkPolicies(want.Namespace)
+	cur, err := policies.Get(ctx, want.Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		_, err = policies.Create(ctx, want, metav1.CreateOptions{})
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	cur.Labels, cur.Spec = want.Labels, want.Spec
+	_, err = policies.Update(ctx, cur, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Controller) ensureAppSecret(ctx context.Context, ns string, id uuid.UUID, values map[string]string) error {
+	data := make(map[string][]byte, len(values))
+	for name, value := range values {
+		data[name] = []byte(value)
+	}
+	want := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appSecretName, Namespace: ns, Labels: objectLabels(id)}, Type: corev1.SecretTypeOpaque, Data: data}
+	secrets := c.kube.CoreV1().Secrets(ns)
+	cur, err := secrets.Get(ctx, appSecretName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		_, err = secrets.Create(ctx, want, metav1.CreateOptions{})
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	cur.Labels = want.Labels
+	cur.Type = want.Type
+	cur.Data = want.Data
+	_, err = secrets.Update(ctx, cur, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Controller) deleteAppSecret(ctx context.Context, ns string) error {
+	err := c.kube.CoreV1().Secrets(ns).Delete(ctx, appSecretName, metav1.DeleteOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	return err
+}
+
 func (c *Controller) ensureNamespace(ctx context.Context, app store.App, restricted bool) error {
 	want := BuildNamespace(app, restricted)
 	cur, err := c.kube.CoreV1().Namespaces().Get(ctx, want.Name, metav1.GetOptions{})
@@ -288,14 +426,41 @@ func (c *Controller) ensureNamespace(ctx context.Context, app store.App, restric
 	if err != nil {
 		return err
 	}
-	if cur.Labels[LabelManaged] != "true" || cur.Labels[LabelAppID] != app.ID.String() {
+	if cur.Labels[LabelManaged] != "true" || cur.Labels[LabelAppID] != app.ID.String() || (cur.Labels[LabelRepoID] != "" && cur.Labels[LabelRepoID] != app.RepoID.String()) {
 		return fmt.Errorf("il namespace %s esiste ma non è di questa app", want.Name)
 	}
-	if cur.Labels["pod-security.kubernetes.io/enforce"] == want.Labels["pod-security.kubernetes.io/enforce"] {
+	if cur.Labels["pod-security.kubernetes.io/enforce"] == want.Labels["pod-security.kubernetes.io/enforce"] && cur.Labels[LabelRepoID] == app.RepoID.String() {
 		return nil
 	}
 	cur.Labels["pod-security.kubernetes.io/enforce"] = want.Labels["pod-security.kubernetes.io/enforce"]
+	cur.Labels[LabelRepoID] = app.RepoID.String()
 	_, err = c.kube.CoreV1().Namespaces().Update(ctx, cur, metav1.UpdateOptions{})
+	return err
+}
+
+// RoleBindingName è il RoleBinding che dà a core i permessi sull'app dentro il suo namespace.
+const RoleBindingName = "gitstack-app-controller"
+
+// ensureRoleBinding lega il ServiceAccount di core al ClusterRole modello nel solo namespace
+// dell'app (ADR 0002). Idempotente; il RoleBinding sparisce col namespace.
+func (c *Controller) ensureRoleBinding(ctx context.Context, ns string) error {
+	saNS, saName, ok := strings.Cut(c.cfg.ControllerServiceAccount, "/")
+	if !ok || saNS == "" || saName == "" || c.cfg.WorkloadRole == "" {
+		return nil
+	}
+	want := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{Name: RoleBindingName, Namespace: ns, Labels: map[string]string{LabelManaged: "true"}},
+		Subjects:   []rbacv1.Subject{{Kind: rbacv1.ServiceAccountKind, Name: saName, Namespace: saNS}},
+		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: c.cfg.WorkloadRole},
+	}
+	bindings := c.kube.RbacV1().RoleBindings(ns)
+	_, err := bindings.Get(ctx, RoleBindingName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		_, err = bindings.Create(ctx, want, metav1.CreateOptions{})
+		if apierrors.IsAlreadyExists(err) {
+			return nil
+		}
+	}
 	return err
 }
 
@@ -350,10 +515,15 @@ func (c *Controller) routeHost(app store.App, cfg store.AppConfig) string {
 	if c.dyn == nil || c.cfg.AppsDomain == "" || app.AddressLabel == nil || cfg.Port == nil {
 		return ""
 	}
-	if app.Access == "login" && c.cfg.AuthMiddleware == "" {
+	if app.Access == "login" && !c.authConfigured() {
 		return ""
 	}
 	return *app.AddressLabel + "." + c.cfg.AppsDomain
+}
+
+// authConfigured: il forward-auth del login (H6) ha indirizzo e segreto.
+func (c *Controller) authConfigured() bool {
+	return c.cfg.AuthURL != "" && c.cfg.AuthSecret != ""
 }
 
 func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.AppConfig) error {
@@ -369,21 +539,46 @@ func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.A
 		}
 		return err
 	}
-	auth := ""
-	if app.Access == "login" {
-		auth = c.cfg.AuthMiddleware
+	login := app.Access == "login"
+	// I Middleware prima della rotta: la rotta che li cita non deve mai esistere senza.
+	ns := c.dyn.Resource(middlewareGVR).Namespace(Namespace(app.ID))
+	if err := upsert(ctx, ns, BuildStripMiddleware(app.ID)); err != nil {
+		return fmt.Errorf("middleware %s: %w", MiddlewareStrip, err)
 	}
-	want := BuildRoute(app, host, auth)
-	cur, err := routes.Get(ctx, WorkloadName, metav1.GetOptions{})
+	if login {
+		if err := upsert(ctx, ns, BuildAuthMiddleware(app.ID, app.RepoID, c.cfg.AuthURL, c.cfg.AuthSecret)); err != nil {
+			return fmt.Errorf("middleware %s: %w", MiddlewareAuth, err)
+		}
+	} else if err := ns.Delete(ctx, MiddlewareAuth, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("middleware %s: %w", MiddlewareAuth, err)
+	}
+	return upsert(ctx, routes, BuildRoute(app, host, login))
+}
+
+// upsert crea l'oggetto o ne aggiorna lo spec e le label, solo se cambiano (il ciclo di sync lo
+// chiama ogni pochi secondi).
+func upsert(ctx context.Context, ri dynamic.ResourceInterface, want *unstructured.Unstructured) error {
+	// Il server può aggiungere valori di default allo spec: si confronta l'impronta di quello voluto.
+	raw, err := json.Marshal(want.Object["spec"])
+	if err != nil {
+		return err
+	}
+	sum := sha256.Sum256(raw)
+	hash := hex.EncodeToString(sum[:])
+	want.SetAnnotations(map[string]string{annotationSpecHash: hash})
+	cur, err := ri.Get(ctx, want.GetName(), metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		_, err = routes.Create(ctx, want, metav1.CreateOptions{})
+		_, err = ri.Create(ctx, want, metav1.CreateOptions{})
 		return err
 	}
 	if err != nil {
 		return err
 	}
+	if cur.GetAnnotations()[annotationSpecHash] == hash {
+		return nil
+	}
 	want.SetResourceVersion(cur.GetResourceVersion())
-	_, err = routes.Update(ctx, want, metav1.UpdateOptions{})
+	_, err = ri.Update(ctx, want, metav1.UpdateOptions{})
 	return err
 }
 
@@ -580,6 +775,7 @@ func (c *Controller) Restart(ctx context.Context, app store.App) error {
 		if err := c.st.SetAppObserved(ctx, app.ID, "restarting", app.ReadyCopies); err != nil {
 			return err
 		}
+		c.platform(ctx, app.ID, "riavvio delle copie richiesto")
 		c.Kick()
 		return nil
 	}
@@ -637,7 +833,15 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 	ns := Namespace(app.ID)
 	d, err := c.kube.AppsV1().Deployments(ns).Get(ctx, WorkloadName, metav1.GetOptions{})
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			c.reapply(ctx, app)
+		}
 		return
+	}
+	// Il modo di accesso può cambiare a deploy fermo (PUT .../access): la rotta e i suoi middleware
+	// si riallineano qui, senza rifare il rollout.
+	if err := c.ensureRoute(ctx, app, app.Config); err != nil {
+		c.cfg.Log.Warn("apps: rotta non riallineata", "app", app.ID, "err", err)
 	}
 	if app.Status == "failed" {
 		if v, err := c.st.GetAppVersion(ctx, app.ID, app.ActiveVersion); err == nil && v.State == "failed" {
@@ -675,8 +879,32 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 	if status != app.Status || ready != app.ReadyCopies {
 		if err := c.st.SetAppObserved(ctx, app.ID, status, ready); err != nil {
 			c.cfg.Log.Warn("apps: stato osservato non scritto", "app", app.ID, "err", err)
+		} else if status != app.Status {
+			c.platform(ctx, app.ID, fmt.Sprintf("stato dell'app: %s (copie pronte %d di %d)", status, ready, want))
 		}
 	}
+}
+
+// reapply riporta la versione attiva di un'app il cui Deployment non c'è più: succede dopo un
+// restore su un cluster pulito (H4), dove le app tornano dal database (versione, configurazione,
+// immagini nel registry ripristinato).
+func (c *Controller) reapply(ctx context.Context, app store.App) {
+	v, err := c.st.GetAppVersion(ctx, app.ID, app.ActiveVersion)
+	if !shouldReapply(app, v, err) {
+		return
+	}
+	if err := c.apply(ctx, app, v); err != nil {
+		c.cfg.Log.Warn("apps: riapplicazione della versione attiva non riuscita", "app", app.ID, "version", v.Number, "err", err)
+		return
+	}
+	c.cfg.Log.Info("apps: versione attiva riapplicata (Deployment assente)", "app", app.ID, "version", v.Number)
+}
+
+// shouldReapply dice se la versione attiva va riapplicata: l'app deve avere copie volute (repo
+// non archiviato né eliminato), non essere «fallita» al primo deploy e la versione attiva deve
+// essere quella in servizio.
+func shouldReapply(app store.App, v store.AppVersion, verr error) bool {
+	return verr == nil && desiredReplicas(app) > 0 && app.Status != "failed" && v.State == "serving"
 }
 
 // Collect toglie i namespace del controller di app che non esistono più nel modello (app o repo

@@ -265,6 +265,11 @@ HOST_ARGS=()
 # della volta prima o un default con avviso (resolve_apps_domain).
 GITSTACK_APPS_DOMAIN="${GITSTACK_APPS_DOMAIN:-}"
 APPS_DOMAIN=""
+# Hosting delle app (GIT-375, ADR 0002): 1 = acceso, 0 = spento, vuoto = la scelta della volta
+# prima (install.conf, config.yaml apps_enabled) o spento. Valorizzati da resolve_apps_domain.
+GITSTACK_ENABLE_APPS="${GITSTACK_ENABLE_APPS:-}"
+APPS_ENABLED="0"
+APPS_HELM_SETS=()
 TLS_DIR="/etc/gitstack/tls"
 TLS_BIN_PATH="/usr/local/sbin/gitstack-tls"
 TLS_SYSTEMD_DIR="/etc/systemd/system"
@@ -332,6 +337,14 @@ Opzioni:
                              GitStack; ammesso anche un suo sottodominio.
                              Senza, un default (apps.<host>) con avviso.
                              Si cambia dopo con 'gitstack config set apps-domain'.
+  --enable-apps             Accende l'hosting delle app (chart apps.enabled): core
+                             riceve i permessi Kubernetes minimi dell'ADR 0002 e il
+                             dominio delle app (--apps-domain). Senza, l'API delle
+                             app risponde 503 e nel cluster non si crea niente.
+                             Una riesecuzione conserva la scelta; --disable-apps
+                             lo spegne. Su un'installazione esistente:
+                             'gitstack config set apps on' o 'gitstack upgrade --enable-apps'.
+  --disable-apps            Spegne l'hosting delle app (il default).
   --tls internal|letsencrypt
                             HTTPS (default: internal): CA interna generata qui,
                              con chiave solo sull'host; letsencrypt: certificato
@@ -500,6 +513,14 @@ while [ "$#" -gt 0 ]; do
     --apps-domain)
       GITSTACK_APPS_DOMAIN="$2"
       shift 2
+      ;;
+    --enable-apps)
+      GITSTACK_ENABLE_APPS=1
+      shift
+      ;;
+    --disable-apps)
+      GITSTACK_ENABLE_APPS=0
+      shift
       ;;
     --tls)
       GITSTACK_TLS_MODE="$2"
@@ -1591,6 +1612,11 @@ helm_value_args() {
   for tls_set in "${TLS_HELM_SETS[@]}"; do
     helm_args+=(--set "${tls_set}")
   done
+  # Hosting delle app (resolve_apps_enabled): dominio ed eventuale accensione.
+  local apps_set
+  for apps_set in "${APPS_HELM_SETS[@]:-}"; do
+    [ -n "${apps_set}" ] && helm_args+=(--set "${apps_set}")
+  done
   postgres_helm_sets
   local pg_set
   for pg_set in "${POSTGRES_HELM_SETS[@]:-}"; do
@@ -1905,6 +1931,7 @@ write_config() {
 version: 1
 host: ${PUBLIC_HOST}
 apps_domain: ${APPS_DOMAIN}
+apps_enabled: $([ "${APPS_ENABLED}" = "1" ] && echo true || echo false)
 ssh_port: $(git_ssh_port)
 chart_dir: ${GITSTACK_CHART_COPY}
 tls: ${GITSTACK_TLS_MODE}
@@ -1999,6 +2026,33 @@ resolve_apps_domain() {
     custom) log "Certificato del cliente: deve coprire anche *.${d} (SAN), altrimenti i browser rifiuteranno le app." ;;
   esac
   log "Dominio delle app: ${d} (${src})"
+  resolve_apps_enabled
+}
+
+# Imposta APPS_ENABLED e APPS_HELM_SETS: --enable-apps/--disable-apps, altrimenti la scelta salvata
+# (install.conf, poi apps_enabled di config.yaml), altrimenti spento. Il dominio va al chart
+# sempre (l'API mostra l'indirizzo anche a hosting spento); apps.enabled solo se acceso.
+resolve_apps_enabled() {
+  local v="${GITSTACK_ENABLE_APPS}" src="--enable-apps/--disable-apps"
+  if [ -z "${v}" ]; then
+    case "$(read_kv "${TLS_DIR}/install.conf" APPS_ENABLED)" in true|1) v=1 ;; false|0) v=0 ;; esac
+    src="scelta salvata"
+  fi
+  if [ -z "${v}" ]; then
+    case "$(existing_config_value "" apps_enabled)" in true) v=1 ;; false) v=0 ;; esac
+  fi
+  case "${v}" in
+    1|true) APPS_ENABLED=1 ;;
+    *) APPS_ENABLED=0; src="predefinito" ;;
+  esac
+  APPS_HELM_SETS=("apps.domain=${APPS_DOMAIN}")
+  if [ "${APPS_ENABLED}" = "1" ]; then
+    APPS_HELM_SETS+=("apps.enabled=true")
+    log "Hosting delle app: acceso (${src})"
+  else
+    APPS_HELM_SETS+=("apps.enabled=false")
+    log "Hosting delle app: spento (${src}); si accende con 'gitstack config set apps on'."
+  fi
 }
 
 # Imposta GITSTACK_TLS_MODE, TLS_NAMES, TLS_IPS, PUBLIC_HOST, PUBLIC_SCHEME e
@@ -2141,6 +2195,7 @@ MODE=${GITSTACK_TLS_MODE}
 HOSTS=${hosts}
 EMAIL=${GITSTACK_TLS_EMAIL}
 APPS_DOMAIN=${APPS_DOMAIN}
+APPS_ENABLED=$([ "${APPS_ENABLED}" = "1" ] && echo true || echo false)
 EOF
   chmod 0600 "${tmp}"
   mv -f "${tmp}" "${TLS_DIR}/install.conf"

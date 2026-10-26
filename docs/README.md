@@ -13,11 +13,14 @@ altre guide utente dedicate, il riferimento è
 `.lmbrain-lite/knowledge/vision.md`.
 
 `repos.md` (M-03/A) documenta scope, owner/visibilità e API interna dei repo.
+`apps.md` (v3-a/H8) documenta le applicazioni ospitate, inclusi segreti e rollback.
 `issue-templates.md` (M-05/H, GIT-108) documenta i modelli di issue in
 `.gitstack/ISSUE_TEMPLATE/`: formato, front matter, comportamento e
 contratto API.
 
 `ci-runner-esterno.md` (GIT-278) spiega come registrare, avviare e revocare un runner esterno della CI (download da `/downloads`, token monouso, `runs-on`).
+
+`ci-mirror-in-pull.md` (GIT-374) spiega come accendere la CI su un repo in mirror in pull, chi è l'autore delle esecuzioni e quando si spegne da sola.
 
 `registry.md` (v2-b) è la guida del registry OCI; la CI, il runner e il dogfooding su homehub (GIT-291) sono in `operations.md` («Built-in CI» e «Dogfooding della CI di GitStack su homehub»), la guida utente pubblica in `docs-site/docs/user/ci.md` e `registry-and-releases.md`.
 

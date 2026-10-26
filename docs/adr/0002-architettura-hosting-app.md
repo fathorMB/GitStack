@@ -76,6 +76,16 @@ con versione e key id, chiave per app in Secret. Un Middleware Traefik `headers`
 `customRequestHeaders` vuoti rimuove tutti gli `X-GitStack-*` dal client ed è ordinato prima del
 forward-auth; soltanto le intestazioni restituite dal gateway arrivano all'app.
 
+Realizzazione (GIT-347, [`../apps-login.md`](../apps-login.md)). Scostamenti dal testo sopra: la firma è
+**Ed25519** con chiave pubblica pubblicata dal gateway (`/.well-known/gitstack-app-keys`), non HMAC: un
+HMAC obbligherebbe a dare all'app il segreto che permette di fabbricare le intestazioni. Le chiavi sono
+del gateway (elenco "nuova,vecchia" per la rotazione), non per app. Il forward-auth è per app: core crea
+`gitstack-strip` e `gitstack-auth` nel namespace dell'app, e l'indirizzo del secondo porta app, repo e una
+firma HMAC con il segreto del gateway. Il cookie di sessione non arriva all'app perché il gateway
+restituisce `Cookie`/`Authorization` ripuliti in `authResponseHeaders`. Il cookie GitStack è dell'host
+di GitStack e non viaggia verso l'host dell'app: il passaggio dal browser usa un codice di un minuto e un
+cookie d'app (`gst_app_session`). La regola di accesso sta in una sola funzione (`AccessPolicy`).
+
 Un proxy dedicato duplicherebbe sessioni e policy; header non firmati o token inoltrato lasciano
 spoofing/riuso: scartati. Rischi: TTL breve, rotazione con doppia chiave e verifica WebSocket/
 streaming sono necessari; un header già consegnato non è revocabile subito.

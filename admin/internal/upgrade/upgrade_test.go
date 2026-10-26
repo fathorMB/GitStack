@@ -65,6 +65,8 @@ func (f *fakeCluster) PGExec(_ context.Context, stdin io.Reader, stdout io.Write
 		return err
 	case strings.Contains(cmd, "repo_package_settings"):
 		return nil // elenco dei repo con le immagini nel backup (GIT-325): nessuno
+	case strings.Contains(cmd, "core.app_versions"):
+		return nil // immagini in uso dalle app (H4): nessuna app
 	case strings.Contains(cmd, "schema_migrations"):
 		if f.noSchema {
 			return errors.New("relation does not exist")

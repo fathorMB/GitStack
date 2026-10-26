@@ -35,6 +35,7 @@ type fakeCluster struct {
 	failSTSRestart bool
 	ctxAtDump      context.Context
 	registryRepos  string // output della query dei repo con includeInBackup
+	inUse          string // output della query delle immagini in uso dalle app (repo|owner|repo|rif|digest)
 	dumpArgs       string // comando di pg_dump
 }
 
@@ -75,6 +76,11 @@ func (f *fakeCluster) PGExec(ctx context.Context, stdin io.Reader, stdout io.Wri
 	if strings.Contains(strings.Join(args, " "), "repo_package_settings") {
 		// Elenco dei repo con le immagini nel backup (GIT-325): una lettura, non entra nelle chiamate.
 		_, err := io.WriteString(stdout, f.registryRepos)
+		return err
+	}
+	if strings.Contains(strings.Join(args, " "), "core.app_versions") {
+		// Immagini in uso dalle app (H4): una riga per immagine.
+		_, err := io.WriteString(stdout, f.inUse)
 		return err
 	}
 	if strings.Contains(strings.Join(args, " "), "pg_dump") {

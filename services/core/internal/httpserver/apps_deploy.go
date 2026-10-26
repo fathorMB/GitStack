@@ -18,7 +18,7 @@ import (
 // appController dà il controller o risponde 503 se i deploy non sono abilitati.
 func (s *apiServer) appController(w http.ResponseWriter) (AppController, bool) {
 	if s.appCtl == nil {
-		writeError(w, http.StatusServiceUnavailable, "apps_unavailable", "I deploy delle app non sono abilitati su questa istanza.")
+		writeError(w, http.StatusServiceUnavailable, "apps_unavailable", "I deploy delle app non sono abilitati su questa istanza: l'amministratore li accende con «gitstack config set apps on».")
 		return nil, false
 	}
 	return s.appCtl, true
@@ -27,6 +27,11 @@ func (s *apiServer) appController(w http.ResponseWriter) (AppController, bool) {
 func (s *apiServer) writeDeployConflict(w http.ResponseWriter, err error) bool {
 	if errors.Is(err, store.ErrAppDeployInProgress) {
 		writeError(w, http.StatusConflict, "deploy_in_progress", "C'è già un deploy in corso per l'app: aspetta che finisca.")
+		return true
+	}
+	var missing *store.MissingAppSecretsError
+	if errors.As(err, &missing) {
+		writeErrorDetails(w, http.StatusConflict, "app_secrets_missing", "La versione richiede segreti dell'app che non esistono piu'.", map[string]any{"names": missing.Names})
 		return true
 	}
 	return s.writeAppConflict(w, err)

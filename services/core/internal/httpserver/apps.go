@@ -26,8 +26,8 @@ import (
 const (
 	defaultAppCopies      = 1
 	maxAppCopies          = 50
-	defaultGuaranteedCPU  = 100
-	defaultGuaranteedMem  = 128 << 20
+	defaultGuaranteedCPU  = 500
+	defaultGuaranteedMem  = 512 << 20
 	defaultLimitCPU       = 500
 	defaultLimitMem       = 512 << 20
 	maxAppDNSLabel        = 63
@@ -312,6 +312,11 @@ func (s *apiServer) CreateApp(w http.ResponseWriter, r *http.Request, owner open
 	repo, actor, ok := s.appRepo(w, r, owner, name, "admin", true)
 	if !ok {
 		return
+	}
+	if s.appsOff {
+		if _, ok := s.appController(w); !ok {
+			return
+		}
 	}
 	var in openapi.AppCreateInput
 	if !decodeIssueJSON(w, r, &in, false) {

@@ -1,4 +1,5 @@
 {{- if and .Values.ci.enabled .Values.ci.build.enabled }}
+{{- if not (and .Values.gateway.enabled .Values.git.enabled .Values.git.registry.enabled) }}{{ fail "ci.build.enabled vuole gateway, git e git.registry abilitati: i job gitstack-build pubblicano nel registry dal gateway nel cluster" }}{{- end }}
 # Namespace dei job di build (ADR 0001 §6): BuildKit rootless, senza demone ne' socket.
 # BuildKit rootless chiede seccomp e AppArmor Unconfined, rifiutati da Pod Security
 # `restricted` e `baseline`: il namespace e' `privileged` per Pod Security e l'unica
@@ -103,8 +104,38 @@ spec:
       default: {cpu: "2", memory: 4Gi, ephemeral-storage: 20Gi}
       defaultRequest: {cpu: "2", memory: 4Gi, ephemeral-storage: 20Gi}
 ---
-# Stessa barriera di rete dei job: nessun ingresso, uscita solo verso Internet (e il
-# ci-gateway), mai verso pod, Service, nodi o LAN.
+# Il dispatcher di core crea i pod dei job gitstack-build qui (GIT-371): stessi verbi del Role
+# di ci.namespace, solo in questo namespace, nessun ClusterRole.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ci-dispatcher
+  namespace: {{ .Values.ci.build.namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ci-dispatcher
+  namespace: {{ .Values.ci.build.namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: ci-dispatcher
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ci-dispatcher
+---
+# Stessa barriera di rete dei job: nessun ingresso, uscita verso DNS, ci-gateway di core (solo
+# la sua porta), gateway (solo la sua porta, per il registry /v2/) e Internet; mai verso gli
+# altri pod, Service, nodi o LAN.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -128,6 +159,30 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
+    # ci-gateway: core verifica il biglietto del job (come ci-job-egress).
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace | quote }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: core
+              app.kubernetes.io/instance: {{ .Release.Name | quote }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.ci.gateway.port }}
+    # Registry: l'immagine si pubblica sul gateway nel cluster (/v2/) col token del job.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace | quote }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway
+              app.kubernetes.io/instance: {{ .Release.Name | quote }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.gateway.containerPort }}
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0

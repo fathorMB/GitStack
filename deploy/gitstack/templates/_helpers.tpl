@@ -60,6 +60,28 @@ con i servizi (stesso registry e stesso tag, quindi stessa firma).
 {{- end -}}
 
 {{/*
+ci-gateway con cui il registry convalida il token del job (GIT-286, GIT-371): quello scelto da
+git.registry.ciGateway, altrimenti con ci.enabled il ci-gateway di core. Vuoto = solo token personali.
+*/}}
+{{- define "gitstack.registry.ciGatewayURL" -}}
+{{- if .Values.git.registry.ciGateway.url -}}
+{{- .Values.git.registry.ciGateway.url -}}
+{{- else if .Values.ci.enabled -}}
+{{- printf "http://%s-core.%s.svc:%d" (include "gitstack.fullname" .) .Release.Namespace (.Values.ci.gateway.port | int) -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "gitstack.registry.ciGatewayPort" -}}
+{{- if .Values.git.registry.ciGateway.url -}}
+{{- .Values.git.registry.ciGateway.port | int -}}
+{{- else if .Values.ci.enabled -}}
+{{- .Values.ci.gateway.port | int -}}
+{{- else -}}
+0
+{{- end -}}
+{{- end -}}
+
+{{/*
 Tag effettivo di un componente (stessa risoluzione di gitstack.image): quello
 che legge `gitstack status` e che il gateway riporta in GET /v1/meta.
 */}}
@@ -357,4 +379,29 @@ lifecycle:
   preStop:
     sleep:
       seconds: {{ .Values.global.shutdown.preStopSeconds | int }}
+{{- end -}}
+
+{{/*
+ServiceAccount di core: ci-dispatcher se la CI è accesa (stesso account, un solo token), altrimenti
+<release>-core se l'hosting delle app è acceso; vuoto = nessun ServiceAccount dedicato.
+*/}}
+{{- define "gitstack.core.serviceAccountName" -}}
+{{- if .Values.ci.enabled -}}ci-dispatcher
+{{- else if .Values.apps.enabled -}}{{ include "gitstack.componentName" (dict "root" . "component" "core") }}
+{{- end -}}
+{{- end -}}
+
+{{/* Indirizzo interno del forward-auth del gateway (GITSTACK_CORE_APPS_AUTH_URL). */}}
+{{- define "gitstack.apps.authUrl" -}}
+{{- default (printf "%s/_appauth/verify" (include "gitstack.gateway.url" .)) .Values.apps.authUrl -}}
+{{- end -}}
+
+{{/* Secret con le chiavi di firma del login delle app (del chart, o apps.signingKeys.existingSecret). */}}
+{{- define "gitstack.apps.signingKeysSecret" -}}
+{{- default (printf "%s-gateway-appauth-keys" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-") .Values.apps.signingKeys.existingSecret -}}
+{{- end -}}
+
+{{/* ClusterRole «modello» con i permessi sull'app: lo usano solo i RoleBinding dei namespace delle app. */}}
+{{- define "gitstack.apps.workloadRoleName" -}}
+{{- printf "%s-app-workload" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}

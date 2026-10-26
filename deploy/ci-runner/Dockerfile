@@ -49,6 +49,13 @@ RUN apt-get update \
 COPY --from=build /out/ci-runner /usr/local/bin/ci-runner
 COPY --from=build /out/gitstack-ci-gate /usr/local/bin/gitstack-ci-gate
 
+# buildctl (BuildKit, Apache-2.0, GIT-371): solo il client, per i job `runs-on: gitstack-build`.
+# Il demone rootless e' il sidecar del pod di build (ci.build.image), non sta in quest'immagine;
+# il digest e' lo stesso di ci.build.image in values.yaml (check-internal-versions non lo guarda:
+# si aggiornano insieme). Nei pod normali buildctl non ha nessun demone con cui parlare.
+COPY --from=docker.io/moby/buildkit:v0.23.2-rootless@sha256:cab936745de5d673465948f1e93ff4d6e372bbe33f218afd3314eba45a6f85a9 /usr/bin/buildctl /usr/local/bin/buildctl
+COPY deploy/ci-runner/gitstack-build /usr/local/bin/gitstack-build
+
 ENV GITSTACK_CI_ACT=/usr/local/bin/act \
     GITSTACK_CI_WORKDIR=/work \
     HOME=/work

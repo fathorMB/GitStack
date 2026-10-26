@@ -43,17 +43,18 @@ type appsEnv struct {
 	git   *fakeGit
 }
 
-func newAppsEnv(t *testing.T) *appsEnv {
+func newAppsEnv(t *testing.T, extra ...httpserver.Option) *appsEnv {
 	t.Helper()
 	pool, _ := dbtest.NewPool(t)
 	id := &issuesIdentity{fakeIdentity: newFakeIdentity(), writers: map[uuid.UUID][]string{}}
 	e := &issuesEnv{t: t, pool: pool, id: id}
 	git := newFakeGit()
 	clock := &appClock{t: time.Now().UTC().Truncate(time.Second)}
-	e.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
+	opts := append([]httpserver.Option{
 		httpserver.WithRepoIdentity(id), httpserver.WithReadableLister(id), httpserver.WithGit(git),
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "https://git.example.com"}),
-		httpserver.WithAppsDomain("apps.example.com"), httpserver.WithClock(clock.Now))
+		httpserver.WithAppsDomain("apps.example.com"), httpserver.WithClock(clock.Now)}, extra...)
+	e.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret, opts...)
 	return &appsEnv{issuesEnv: e, clock: clock, git: git}
 }
 
@@ -86,6 +87,27 @@ func (e *appsEnv) versions(path, user string) openapi.AppVersionList {
 		e.t.Fatal(err)
 	}
 	return l
+}
+
+// GIT-375: con l'hosting spento la creazione risponde 503 chiaro e non scrive nulla nel modello.
+func TestApps_HostingSpentoErroreChiaroENienteCreato(t *testing.T) {
+	e := newAppsEnv(t, httpserver.WithAppsHostingOff())
+	e.repo("handbook", true)
+	base := "/repos/alice/handbook/apps"
+	rec := e.do(http.MethodPost, base, "alice", createWeb)
+	e.want(rec, http.StatusServiceUnavailable, "apps_unavailable")
+	if !strings.Contains(rec.Body.String(), "gitstack config set apps on") {
+		t.Fatalf("il messaggio deve dire come accendere l'hosting: %s", rec.Body.String())
+	}
+	rec = e.do(http.MethodGet, base, "alice", "")
+	e.want(rec, http.StatusOK, "")
+	var l openapi.AppList
+	if err := json.Unmarshal(rec.Body.Bytes(), &l); err != nil {
+		t.Fatal(err)
+	}
+	if len(l.Items) != 0 {
+		t.Fatalf("nessuna app doveva essere creata: %s", rec.Body.String())
+	}
 }
 
 const createWeb = `{"name":"web","image":"sha-7f3a91c","port":8080}`
@@ -129,7 +151,7 @@ func TestApps_Permessi(t *testing.T) {
 		rec = e.do(http.MethodGet, base, user, "")
 		e.want(rec, http.StatusOK, "")
 		var l openapi.AppList
-		if err := json.Unmarshal(rec.Body.Bytes(), &l); err != nil || len(l.Items) != 1 || l.Quota == nil || l.Quota.Used.CpuMillis != 100 {
+		if err := json.Unmarshal(rec.Body.Bytes(), &l); err != nil || len(l.Items) != 1 || l.Quota == nil || l.Quota.Used.CpuMillis != 500 {
 			t.Fatalf("elenco di %s: %v %s", user, err, rec.Body.String())
 		}
 		e.want(e.do(http.MethodGet, base+"/web", user, ""), http.StatusOK, "")
@@ -205,7 +227,7 @@ func TestApps_QuotaContataSuOwner(t *testing.T) {
 		t.Fatalf("details senza quanto manca: %s", rec.Body.String())
 	}
 	// Una piccola ci sta (800 + 100 = 900) e l'elenco mostra l'uso dell'owner.
-	e.want(e.do(http.MethodPost, "/repos/alice/due/apps", "alice", `{"name":"small","image":"x"}`), http.StatusAccepted, "")
+	e.want(e.do(http.MethodPost, "/repos/alice/due/apps", "alice", `{"name":"small","image":"x","resources":{"guaranteed":{"cpuMillis":100,"memoryBytes":134217728},"limit":{"cpuMillis":100,"memoryBytes":134217728}}}`), http.StatusAccepted, "")
 	rec = e.do(http.MethodGet, "/repos/alice/uno/apps", "alice", "")
 	var l openapi.AppList
 	if err := json.Unmarshal(rec.Body.Bytes(), &l); err != nil || l.Quota == nil || l.Quota.Used.CpuMillis != 900 || l.Quota.Limits.CpuMillis != 1000 || !l.Quota.Warning {
@@ -214,6 +236,57 @@ func TestApps_QuotaContataSuOwner(t *testing.T) {
 	// Eliminare un'app libera la quota.
 	e.want(e.do(http.MethodDelete, "/repos/alice/uno/apps/big", "alice", ""), http.StatusNoContent, "")
 	e.want(e.do(http.MethodPost, "/repos/alice/due/apps", "alice", strings.Replace(big, `"copies":2`, `"copies":1`, 1)), http.StatusAccepted, "")
+}
+
+// H11: la riserva dell'istanza e la quota dell'owner sono entrambe controllate
+// al punto di ingresso del deploy (creazione), mentre un tetto troppo alto si
+// normalizza al massimo dell'istanza.
+func TestApps_RiservaQuotaETetto(t *testing.T) {
+	e := newAppsEnv(t)
+	e.id.sysAdmin[users["carol"]] = true
+	e.repo("uno", true)
+	e.repo("due", true)
+	// Il massimo per copia e' una scelta persistita dall'amministratore.
+	e.want(e.do(http.MethodPut, "/admin/apps/settings", "carol", `{"publicAppsEnabled":false,"signedImagesOnly":false,"restricted":false,"maxPerApp":{"cpuMillis":700,"memoryBytes":536870912},"logRetention":{"days":7,"maxBytes":1073741824}}`), http.StatusOK, "")
+	// L'admin porta la riserva a 600 mCPU / 1 GiB; e' la capacita' globale,
+	// quindi due owner diversi non possono aggirarla.
+	e.want(e.do(http.MethodPut, "/admin/apps/reserve", "carol", `{"cpuMillis":600,"memoryBytes":1073741824}`), http.StatusOK, "")
+	e.want(e.do(http.MethodPut, "/admin/apps/quotas/alice", "carol", `{"cpuMillis":500,"memoryBytes":2147483648,"diskBytes":0}`), http.StatusOK, "")
+	// Con disco senza limite, lo 0% non deve attivare falsamente l'avviso.
+	var quotas openapi.AppOwnerQuotaList
+	rec := e.do(http.MethodGet, "/admin/apps/quotas", "carol", "")
+	e.want(rec, http.StatusOK, "")
+	if err := json.Unmarshal(rec.Body.Bytes(), &quotas); err != nil || len(quotas.Items) != 1 || quotas.Items[0].Warning {
+		t.Fatalf("avviso quota prima dell'80%%: %v %s", err, rec.Body.String())
+	}
+	first := `{"name":"first","image":"x","resources":{"guaranteed":{"cpuMillis":395,"memoryBytes":268435456},"limit":{"cpuMillis":9000,"memoryBytes":17179869184}}}`
+	e.want(e.do(http.MethodPost, "/repos/alice/uno/apps", "alice", first), http.StatusAccepted, "")
+	a := e.app(e.do(http.MethodGet, "/repos/alice/uno/apps/first", "alice", ""))
+	if a.Resources.Limit.CpuMillis != 700 || a.Resources.Limit.MemoryBytes != 536870912 {
+		t.Fatalf("tetto non applicato: %+v", a.Resources.Limit)
+	}
+	// Il 79% non avvisa, anche con diskBytes:0.
+	rec = e.do(http.MethodGet, "/admin/apps/quotas", "carol", "")
+	e.want(rec, http.StatusOK, "")
+	if err := json.Unmarshal(rec.Body.Bytes(), &quotas); err != nil || quotas.Items[0].Warning {
+		t.Fatalf("79%% non deve avvisare: %v %s", err, rec.Body.String())
+	}
+	// Arriva all'80% esatto senza cambiare la memoria in modo significativo.
+	e.want(e.do(http.MethodPost, "/repos/alice/due/apps", "alice", `{"name":"eighty","image":"x","resources":{"guaranteed":{"cpuMillis":5,"memoryBytes":1},"limit":{"cpuMillis":5,"memoryBytes":1}}}`), http.StatusAccepted, "")
+	// 400 + 300 supera la riserva (anche se la quota dell'owner basterebbe).
+	rec = e.do(http.MethodPost, "/repos/alice/due/apps", "alice", `{"name":"second","image":"x","resources":{"guaranteed":{"cpuMillis":300,"memoryBytes":268435456},"limit":{"cpuMillis":300,"memoryBytes":268435456}}}`)
+	e.want(rec, http.StatusConflict, "insufficient_capacity")
+	if !strings.Contains(rec.Body.String(), "reserveCpuMillis") {
+		t.Fatalf("rifiuto della riserva senza dettaglio: %s", rec.Body.String())
+	}
+	// A 80% esatto compare l'avviso nell'API di quota dell'admin, anche se il
+	// disco non ha un limite (0 non e' una soglia raggiunta).
+	rec = e.do(http.MethodGet, "/admin/apps/quotas", "carol", "")
+	e.want(rec, http.StatusOK, "")
+	if err := json.Unmarshal(rec.Body.Bytes(), &quotas); err != nil || len(quotas.Items) != 1 || !quotas.Items[0].Warning {
+		t.Fatalf("avviso quota: %v %s", err, rec.Body.String())
+	}
+	e.want(e.do(http.MethodPut, "/admin/apps/quotas/sconosciuto", "carol", `{"cpuMillis":1,"memoryBytes":1,"diskBytes":0}`), http.StatusNotFound, "not_found")
 }
 
 // Ogni modifica di configurazione produce una versione numerata e consultabile (H8).
