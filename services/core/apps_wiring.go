@@ -40,7 +40,7 @@ const (
 // startApps avvia il controller e ritorna le opzioni del router; senza abilitazione ritorna nil.
 // secrets è il portachiavi dei segreti (GITSTACK_WEBHOOK_SECRET_KEY): serve a iniettare i segreti nei
 // pod e a mascherarli nei log delle app (GIT-350). Senza, le righe delle copie non si raccolgono.
-func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, egressCluster, egressNode []string, logger *slog.Logger, secrets store.AppSealer, onDeployFailed func(context.Context, store.App, store.AppVersion, string)) ([]httpserver.Option, error) {
+func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, egressCluster, egressNode []string, logger *slog.Logger, secrets store.AppSealer, onDeployFailed func(context.Context, store.App, store.AppVersion, string)) ([]httpserver.Option, *apps.Controller, error) {
 	domain := strings.TrimSpace(os.Getenv(envAppsDomain))
 	opts := []httpserver.Option{}
 	if domain != "" {
@@ -48,19 +48,19 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, eg
 	}
 	if on, _ := strconv.ParseBool(strings.TrimSpace(os.Getenv(envAppsEnabled))); !on {
 		// Hosting spento: l'API delle app risponde 503 «apps_unavailable» e non tocca il cluster.
-		return append(opts, httpserver.WithAppsHostingOff()), nil
+		return append(opts, httpserver.WithAppsHostingOff()), nil, nil
 	}
 	rc, err := rest.InClusterConfig()
 	if err != nil {
-		return nil, fmt.Errorf("configurazione Kubernetes in-cluster: %w", err)
+		return nil, nil, fmt.Errorf("configurazione Kubernetes in-cluster: %w", err)
 	}
 	kube, err := kubernetes.NewForConfig(rc)
 	if err != nil {
-		return nil, fmt.Errorf("client Kubernetes: %w", err)
+		return nil, nil, fmt.Errorf("client Kubernetes: %w", err)
 	}
 	dyn, err := dynamic.NewForConfig(rc)
 	if err != nil {
-		return nil, fmt.Errorf("client Kubernetes dinamico: %w", err)
+		return nil, nil, fmt.Errorf("client Kubernetes dinamico: %w", err)
 	}
 	st := store.New(pool)
 	cfg := apps.Config{AppsDomain: domain, AuthURL: strings.TrimSpace(os.Getenv(envAppsAuthURL)), AuthSecret: trust.SigningKey(gatewaySecret), Secrets: secrets, Log: logger,
@@ -72,5 +72,5 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, eg
 	cfg.OnDeployFailed = onDeployFailed
 	ctl := apps.New(st, kube, dyn, cfg)
 	go ctl.Run(ctx)
-	return append(opts, httpserver.WithAppController(ctl)), nil
+	return append(opts, httpserver.WithAppController(ctl)), ctl, nil
 }

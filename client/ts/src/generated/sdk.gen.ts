@@ -5616,7 +5616,7 @@ export const createApp = <ThrowOnError extends boolean = false>(options: Options
 /**
  * Elimina l'app
  *
- * Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ferma l'app e ne elimina versioni, variabili, segreti e indirizzi; i volumi (v3-b) seguono la regola H5. Non si annulla.
+ * Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ferma l'app e ne elimina versioni, variabili, segreti e indirizzi. Se l'app ha volumi (v3-b, H5) l'operazione elimina anche i dati: serve la conferma esplicita `confirm`, il nome dell'app riscritto; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch` e non si tocca nulla. Senza volumi `confirm` non serve. I PVC si eliminano con l'app e lo spazio torna libero nella quota dell'owner. Non si annulla.
  *
  */
 export const deleteApp = <ThrowOnError extends boolean = false>(options: Options<DeleteAppData, ThrowOnError>): RequestResult<DeleteAppResponses, DeleteAppErrors, ThrowOnError> => (options.client ?? client).delete<DeleteAppResponses, DeleteAppErrors, ThrowOnError>({

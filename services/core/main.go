@@ -397,7 +397,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		}
 	}
 
-	appOpts, err := startApps(ctx, pool, cfg.GatewaySecret, cfg.EgressClusterCIDRs, cfg.EgressNodeAddresses, logger, keys, newDeployFailedNotifier(pool, notifyEng, repoLookup, logger))
+	appOpts, appCtl, err := startApps(ctx, pool, cfg.GatewaySecret, cfg.EgressClusterCIDRs, cfg.EgressNodeAddresses, logger, keys, newDeployFailedNotifier(pool, notifyEng, repoLookup, logger))
 	if err != nil {
 		logger.Error("controller delle app non avviato", "err", err)
 		return 1
@@ -452,6 +452,9 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		job := &repopurge.Job{Store: store.New(pool), Git: gitAPI, Identity: identityPurger, Log: logger}
 		if disk != nil {
 			job.Attachments = disk
+		}
+		if appCtl != nil {
+			job.Apps = appCtl // H5: allo scadere dei 7 giorni app e volumi spariscono dal cluster
 		}
 		go job.Run(ctx, repoPurgeInterval)
 	} else {

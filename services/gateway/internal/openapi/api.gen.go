@@ -6940,6 +6940,12 @@ type GetWorkflowJobLogParams struct {
 	Follow *bool `form:"follow,omitempty" json:"follow,omitempty"`
 }
 
+// DeleteAppParams defines parameters for DeleteApp.
+type DeleteAppParams struct {
+	// Confirm Il nome dell'app riscritto; obbligatorio se l'app ha volumi.
+	Confirm *string `form:"confirm,omitempty" json:"confirm,omitempty"`
+}
+
 // GetAppLogsParams defines parameters for GetAppLogs.
 type GetAppLogsParams struct {
 	Follow *bool `form:"follow,omitempty" json:"follow,omitempty"`
@@ -7780,7 +7786,7 @@ type ServerInterface interface {
 	CreateApp(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
 	// DeleteApp Elimina l'app
 	// (DELETE /repos/{owner}/{repo}/apps/{app})
-	DeleteApp(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	DeleteApp(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params DeleteAppParams)
 	// GetApp Legge un'app
 	// (GET /repos/{owner}/{repo}/apps/{app})
 	GetApp(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
@@ -10808,8 +10814,24 @@ func (siw *ServerInterfaceWrapper) DeleteApp(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteAppParams
+
+	// ------------- Optional query parameter "confirm" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "confirm", r.URL.Query(), &params.Confirm, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "confirm"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "confirm", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteApp(w, r, owner, repo, app)
+		siw.Handler.DeleteApp(w, r, owner, repo, app, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {

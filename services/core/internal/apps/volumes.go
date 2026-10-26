@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -81,4 +83,44 @@ func (c *Controller) keptVolumes(ctx context.Context, app store.App) (map[string
 		return nil, fmt.Errorf("ultimo deploy %s", app.LastDeploy.State)
 	}
 	return keep, nil
+}
+
+// Forget toglie dal cluster il namespace dell'app, e con lui Deployment, rotta e PVC: i dati dei
+// volumi vanno via insieme all'app (H5, v3-b). Idempotente: un namespace già assente non è un
+// errore. Si chiama dopo l'eliminazione dell'app dal modello (la conferma sui volumi è già stata
+// verificata dall'API) o allo scadere dei 7 giorni di un repo eliminato.
+func (c *Controller) Forget(ctx context.Context, id uuid.UUID) error {
+	// I PVC si eliminano per nome prima del namespace: i dati vanno via anche se il namespace
+	// resta un po' in Terminating, e l'intento è esplicito (solo PVC con la label del controller).
+	pvcs := c.kube.CoreV1().PersistentVolumeClaims(Namespace(id))
+	if list, err := pvcs.List(ctx, metav1.ListOptions{LabelSelector: LabelVolume + "," + LabelManaged + "=true"}); err == nil {
+		for _, p := range list.Items {
+			if err := pvcs.Delete(ctx, p.Name, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+				return fmt.Errorf("volume %s dell'app %s: %w", p.Name, id, err)
+			}
+		}
+	}
+	err := c.kube.CoreV1().Namespaces().Delete(ctx, Namespace(id), metav1.DeleteOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("namespace dell'app %s: %w", id, err)
+	}
+	return nil
+}
+
+// PurgeRepoApps elimina dal cluster le app (e i volumi) di un repo che sta per essere cancellato
+// definitivamente. Se il cluster non risponde ritorna l'errore: il repo resta nel cestino e il
+// purge riprova alla corsa dopo, così i dati non restano orfani. Il modello cade in cascata con
+// la riga del repo e lo spazio dei volumi torna libero nella quota dell'owner.
+func (c *Controller) PurgeRepoApps(ctx context.Context, repoID uuid.UUID) error {
+	list, err := c.st.ListApps(ctx, repoID)
+	if err != nil {
+		return fmt.Errorf("app del repo %s: %w", repoID, err)
+	}
+	for _, a := range list {
+		if err := c.Forget(ctx, a.ID); err != nil {
+			return err
+		}
+		c.cfg.Log.Info("apps: app e volumi eliminati con il repo", "app", a.ID, "repo", repoID)
+	}
+	return nil
 }

@@ -8283,6 +8283,12 @@ type GetWorkflowJobLogParams struct {
 	Follow *bool `form:"follow,omitempty" json:"follow,omitempty"`
 }
 
+// DeleteAppParams defines parameters for DeleteApp.
+type DeleteAppParams struct {
+	// Confirm Il nome dell'app riscritto; obbligatorio se l'app ha volumi.
+	Confirm *string `form:"confirm,omitempty" json:"confirm,omitempty"`
+}
+
 // GetAppLogsParams defines parameters for GetAppLogs.
 type GetAppLogsParams struct {
 	Follow *bool `form:"follow,omitempty" json:"follow,omitempty"`
@@ -10423,10 +10429,10 @@ type ClientInterface interface {
 
 	// DeleteApp Elimina l'app
 	//
-	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ferma l'app e ne elimina versioni, variabili, segreti e indirizzi; i volumi (v3-b) seguono la regola H5. Non si annulla.
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ferma l'app e ne elimina versioni, variabili, segreti e indirizzi. Se l'app ha volumi (v3-b, H5) l'operazione elimina anche i dati: serve la conferma esplicita `confirm`, il nome dell'app riscritto; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch` e non si tocca nulla. Senza volumi `confirm` non serve. I PVC si eliminano con l'app e lo spazio torna libero nella quota dell'owner. Non si annulla.
 	//
 	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app} (the `DeleteApp` operationId).
-	DeleteApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *DeleteAppParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetApp Legge un'app
 	//
@@ -15409,11 +15415,11 @@ func (c *Client) CreateApp(ctx context.Context, owner RepoOwnerParam, repo RepoN
 
 // DeleteApp Elimina l'app
 //
-// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ferma l'app e ne elimina versioni, variabili, segreti e indirizzi; i volumi (v3-b) seguono la regola H5. Non si annulla.
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ferma l'app e ne elimina versioni, variabili, segreti e indirizzi. Se l'app ha volumi (v3-b, H5) l'operazione elimina anche i dati: serve la conferma esplicita `confirm`, il nome dell'app riscritto; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch` e non si tocca nulla. Senza volumi `confirm` non serve. I PVC si eliminano con l'app e lo spazio torna libero nella quota dell'owner. Non si annulla.
 //
 // Corresponds with DELETE /repos/{owner}/{repo}/apps/{app} (the `DeleteApp` operationId).
-func (c *Client) DeleteApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteAppRequest(c.Server, owner, repo, app)
+func (c *Client) DeleteApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *DeleteAppParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteAppRequest(c.Server, owner, repo, app, params)
 	if err != nil {
 		return nil, err
 	}
@@ -26166,7 +26172,7 @@ func NewCreateAppRequestWithBody(server string, owner RepoOwnerParam, repo RepoN
 }
 
 // NewDeleteAppRequest constructs an http.Request for the DeleteApp method
-func NewDeleteAppRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam) (*http.Request, error) {
+func NewDeleteAppRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *DeleteAppParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -26203,6 +26209,33 @@ func NewDeleteAppRequest(server string, owner RepoOwnerParam, repo RepoNameParam
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Confirm != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "confirm", *params.Confirm, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
@@ -38656,12 +38689,12 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteAppWithResponse Elimina l'app
 	//
-	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ferma l'app e ne elimina versioni, variabili, segreti e indirizzi; i volumi (v3-b) seguono la regola H5. Non si annulla.
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ferma l'app e ne elimina versioni, variabili, segreti e indirizzi. Se l'app ha volumi (v3-b, H5) l'operazione elimina anche i dati: serve la conferma esplicita `confirm`, il nome dell'app riscritto; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch` e non si tocca nulla. Senza volumi `confirm` non serve. I PVC si eliminano con l'app e lo spazio torna libero nella quota dell'owner. Non si annulla.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app} (the `DeleteApp` operationId).
-	DeleteAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*DeleteAppResponse, error)
+	DeleteAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *DeleteAppParams, reqEditors ...RequestEditorFn) (*DeleteAppResponse, error)
 
 	// GetAppWithResponse Legge un'app
 	//
@@ -50005,6 +50038,8 @@ type DeleteAppResponse struct {
 	JSON404 *NotFound
 	// JSON409 the response for an HTTP 409 `application/json` response
 	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
@@ -50025,6 +50060,11 @@ func (r DeleteAppResponse) GetJSON404() *NotFound {
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
 func (r DeleteAppResponse) GetJSON409() *Conflict {
 	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteAppResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
 }
 
 // GetBody returns the raw response body bytes
@@ -66817,13 +66857,13 @@ func (c *ClientWithResponses) CreateAppWithResponse(ctx context.Context, owner R
 
 // DeleteAppWithResponse Elimina l'app
 //
-// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ferma l'app e ne elimina versioni, variabili, segreti e indirizzi; i volumi (v3-b) seguono la regola H5. Non si annulla.
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ferma l'app e ne elimina versioni, variabili, segreti e indirizzi. Se l'app ha volumi (v3-b, H5) l'operazione elimina anche i dati: serve la conferma esplicita `confirm`, il nome dell'app riscritto; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch` e non si tocca nulla. Senza volumi `confirm` non serve. I PVC si eliminano con l'app e lo spazio torna libero nella quota dell'owner. Non si annulla.
 //
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with DELETE /repos/{owner}/{repo}/apps/{app} (the `DeleteApp` operationId).
-func (c *ClientWithResponses) DeleteAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*DeleteAppResponse, error) {
-	rsp, err := c.DeleteApp(ctx, owner, repo, app, reqEditors...)
+func (c *ClientWithResponses) DeleteAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *DeleteAppParams, reqEditors ...RequestEditorFn) (*DeleteAppResponse, error) {
+	rsp, err := c.DeleteApp(ctx, owner, repo, app, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -77749,6 +77789,13 @@ func ParseDeleteAppResponse(rsp *http.Response) (*DeleteAppResponse, error) {
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 

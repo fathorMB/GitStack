@@ -62,7 +62,7 @@ func newSeqFake(t *testing.T, fn func(method, path string, n int) reply) *fake {
 		n := counts[key]
 		mu.Unlock()
 		fk.mu.Lock()
-		fk.calls = append(fk.calls, call{r.Method, path, body})
+		fk.calls = append(fk.calls, call{r.Method, path, r.URL.RawQuery, body})
 		fk.mu.Unlock()
 		rep := fn(r.Method, path, n)
 		if r.Header.Get("Authorization") != "Bearer tok" {
@@ -410,4 +410,30 @@ func api(fk *fake) []call {
 		}
 	}
 	return out
+}
+
+func TestAppDelete_ConfermaEsplicita(t *testing.T) {
+	fk := newFake(t, map[string]reply{"DELETE " + appsBase + "/web": {204, ""}})
+	// Senza terminale e senza --yes non parte nessuna richiesta.
+	if r := run(t, fk, "app", "delete", "web"); r.code != 2 || len(fk.find("DELETE", appsBase+"/web")) != 0 {
+		t.Fatalf("senza conferma deve uscire 2 senza rete: %+v", r)
+	}
+	// Con il terminale, un nome sbagliato annulla.
+	if r := runWith(t, fk, true, "altra\n", "app", "delete", "web"); r.code == 0 || len(fk.find("DELETE", appsBase+"/web")) != 0 {
+		t.Fatalf("nome sbagliato deve annullare: %+v", r)
+	}
+	// Nome riscritto: la richiesta porta confirm=<app>.
+	if r := runWith(t, fk, true, "web\n", "app", "delete", "web"); r.code != 0 || r.out != "deleted web\n" {
+		t.Fatalf("conferma col nome: %+v", r)
+	}
+	if c := fk.find("DELETE", appsBase+"/web"); len(c) != 1 || c[0].Query != "confirm=web" {
+		t.Fatalf("query: %+v", c)
+	}
+	if r := run(t, fk, "app", "delete", "web", "--yes"); r.code != 0 {
+		t.Fatalf("--yes: %+v", r)
+	}
+	fk = newFake(t, map[string]reply{"DELETE " + appsBase + "/web": {403, forbidden}})
+	if r := run(t, fk, "app", "delete", "web", "--yes"); r.code != 5 {
+		t.Fatalf("write non elimina: %+v", r)
+	}
 }

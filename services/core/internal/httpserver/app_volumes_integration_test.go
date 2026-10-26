@@ -4,6 +4,7 @@ package httpserver_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -214,4 +215,41 @@ func mustBody(t *testing.T, rec *httptest.ResponseRecorder, status int, e *appsE
 	t.Helper()
 	e.want(rec, status, "")
 	return rec.Body
+}
+
+// GIT-358 (H5, v3-b): eliminare un'app con volumi elimina anche i dati e richiede la conferma
+// esplicita col nome dell'app; senza volumi la conferma non serve.
+func TestAppDelete_ConVolumiRichiedeConferma(t *testing.T) {
+	e := newAppsEnv(t, httpserver.WithAppController(commitNoopController{}))
+	repoID := e.repo("handbook", true)
+	e.id.grantWrite(repoID, "bob")
+	base := "/repos/alice/handbook/apps/web"
+	// Senza volumi basta la richiesta.
+	e.want(e.do(http.MethodPost, "/repos/alice/handbook/apps", "alice", strings.Replace(createWeb, `"web"`, `"light"`, 1)), http.StatusAccepted, "")
+	e.finishDeploys()
+	e.want(e.do(http.MethodDelete, "/repos/alice/handbook/apps/light", "alice", ""), http.StatusNoContent, "")
+
+	e.want(e.do(http.MethodPost, "/repos/alice/handbook/apps", "alice", createWeb), http.StatusAccepted, "")
+	e.finishDeploys()
+
+	e.want(e.do(http.MethodPost, base+"/volumes", "alice", volumeBody("data", "/var/lib/data", gib)), http.StatusAccepted, "")
+	e.finishDeploys()
+
+	// Permesso: write non elimina, con o senza conferma.
+	e.want(e.do(http.MethodDelete, base+"?confirm=web", "bob", ""), http.StatusForbidden, "forbidden")
+	// Conferma mancante, vuota o sbagliata: 422 e non si tocca niente.
+	e.want(e.do(http.MethodDelete, base, "alice", ""), http.StatusUnprocessableEntity, "confirmation_required")
+	e.want(e.do(http.MethodDelete, base+"?confirm=", "alice", ""), http.StatusUnprocessableEntity, "confirmation_required")
+	e.want(e.do(http.MethodDelete, base+"?confirm=altra", "alice", ""), http.StatusUnprocessableEntity, "confirmation_mismatch")
+	e.want(e.do(http.MethodGet, base+"/volumes", "alice", ""), http.StatusOK, "")
+	if rec := e.do(http.MethodGet, base+"/volumes", "alice", ""); !strings.Contains(rec.Body.String(), `"data"`) {
+		t.Fatalf("il volume deve esserci ancora: %s", rec.Body.String())
+	}
+	// Conferma col nome: l'app e i volumi spariscono, la quota disco torna a zero.
+	e.want(e.do(http.MethodDelete, base+"?confirm=web", "alice", ""), http.StatusNoContent, "")
+	e.want(e.do(http.MethodGet, base, "alice", ""), http.StatusNotFound, "")
+	var n int
+	if err := e.pool.QueryRow(context.Background(), `SELECT count(*) FROM core.app_volumes`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("volumi rimasti: %d (%v)", n, err)
+	}
 }
