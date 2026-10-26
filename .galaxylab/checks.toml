@@ -46,6 +46,9 @@ name = "go-build"
 # il motore lancia la shell.
 run = "go build ./admin/... ./api/... ./cli/... ./client/go/... ./pkg/egress/... ./pkg/events/... ./pkg/issuequery/... ./pkg/names/... ./pkg/scopes/... ./services/core/... ./services/gateway/... ./services/git/... ./services/identity/..."
 timeout_s = 600
+# Solo se cambia Go o la configurazione dei moduli (GIT-408): un item di sola
+# documentazione o web non ricompila. La CI di main fa girare tutto.
+paths = ["**/*.go", "**/go.mod", "**/go.sum", "go.work", "go.work.sum"]
 
 [[check]]
 name = "go-test"
@@ -76,24 +79,30 @@ name = "web-install"
 run = "corepack pnpm install --frozen-lockfile"
 cwd = "web"
 timeout_s = 900
+# I check web girano solo se cambia web/ o il client TS generato dal contratto,
+# che sta in client/ts (GIT-408).
+paths = ["web/**", "client/ts/**"]
 
 [[check]]
 name = "web-lint"
 run = "corepack pnpm run lint"
 cwd = "web"
 timeout_s = 600
+paths = ["web/**", "client/ts/**"]
 
 [[check]]
 name = "web-typecheck"
 run = "corepack pnpm run typecheck"
 cwd = "web"
 timeout_s = 600
+paths = ["web/**", "client/ts/**"]
 
 [[check]]
 name = "web-test"
 run = "corepack pnpm run test"
 cwd = "web"
 timeout_s = 900
+paths = ["web/**", "client/ts/**"]
 
 [[check]]
 name = "web-check-tokens"
@@ -101,90 +110,120 @@ name = "web-check-tokens"
 run = "corepack pnpm run check-tokens"
 cwd = "web"
 timeout_s = 300
+paths = ["web/**", "client/ts/**"]
+
+[[check]]
+name = "go-test-core-migrate"
+# Le migrazioni di core: sul ramo integrato si accorge di due item che aggiungono
+# ognuno una migrazione, con i migrate.Down fuori allineamento (GIT-370, MR-313).
+# Usa Docker (testcontainers, Ryuk attivo dopo GIT-399).
+run = "go test -tags integration -count=1 ./internal/migrate/"
+cwd = "services/core"
+timeout_s = 900
+paths = ["services/core/internal/migrate/**"]
+
+[[check]]
+name = "go-work-sync"
+# Equivalente Go di scripts/check-go-work-sync.sh: confronta con
+# `git diff --ignore-cr-at-eol`, perche' su Windows git status segna sporchi
+# go.work e services/git/go.sum solo per il CRLF (GIT-408, dopo GIT-406).
+run = "go run scripts/check-go-work-sync.go"
+timeout_s = 300
+paths = ["**/go.mod", "**/go.sum", "go.work*"]
+
+[[check]]
+name = "check-api-generated"
+# Rigenera il codice dal contratto (generate-api.sh: bash, Node e pnpm) e
+# fallisce se i file generati differiscono dai committati (CRLF ignorato).
+run = "go run scripts/check-api-generated.go"
+timeout_s = 900
+paths = ["api/openapi.yaml", "client/**"]
 
 # Lint per modulo (golangci-lint, config .golangci.yml in radice). Uno per
 # ogni modulo di go.work: aggiornare insieme a go-build/go-test.
+# --allow-serial-runners: golangci-lint 2.14 prende un lock unico per tutto
+# l'host e senza il flag fallisce se un altro lint lo tiene (GIT-408).
 
 [[check]]
 name = "go-lint-cli"
-run = "golangci-lint run ./... --timeout=5m"
+run = "golangci-lint run ./... --timeout=5m --allow-serial-runners"
 cwd = "cli"
 timeout_s = 600
 paths = ["cli/**", ".golangci.yml", "go.work", "go.work.sum"]
 
 [[check]]
 name = "go-lint-client-go"
-run = "golangci-lint run ./... --timeout=5m"
+run = "golangci-lint run ./... --timeout=5m --allow-serial-runners"
 cwd = "client/go"
 timeout_s = 600
 paths = ["client/go/**", ".golangci.yml", "go.work", "go.work.sum"]
 
 [[check]]
 name = "go-lint-pkg-events"
-run = "golangci-lint run ./... --timeout=5m"
+run = "golangci-lint run ./... --timeout=5m --allow-serial-runners"
 cwd = "pkg/events"
 timeout_s = 600
 paths = ["pkg/events/**", ".golangci.yml", "go.work", "go.work.sum"]
 
 [[check]]
 name = "go-lint-pkg-issuequery"
-run = "golangci-lint run ./... --timeout=5m"
+run = "golangci-lint run ./... --timeout=5m --allow-serial-runners"
 cwd = "pkg/issuequery"
 timeout_s = 600
 paths = ["pkg/issuequery/**", ".golangci.yml", "go.work", "go.work.sum"]
 
 [[check]]
 name = "go-lint-admin"
-run = "golangci-lint run ./... --timeout=5m"
+run = "golangci-lint run ./... --timeout=5m --allow-serial-runners"
 cwd = "admin"
 timeout_s = 600
 paths = ["admin/**", ".golangci.yml", "go.work", "go.work.sum"]
 
 [[check]]
 name = "go-lint-pkg-egress"
-run = "golangci-lint run ./... --timeout=5m"
+run = "golangci-lint run ./... --timeout=5m --allow-serial-runners"
 cwd = "pkg/egress"
 timeout_s = 600
 paths = ["pkg/egress/**", ".golangci.yml", "go.work", "go.work.sum"]
 
 [[check]]
 name = "go-lint-pkg-names"
-run = "golangci-lint run ./... --timeout=5m"
+run = "golangci-lint run ./... --timeout=5m --allow-serial-runners"
 cwd = "pkg/names"
 timeout_s = 600
 paths = ["pkg/names/**", ".golangci.yml", "go.work", "go.work.sum"]
 
 [[check]]
 name = "go-lint-core"
-run = "golangci-lint run ./... --timeout=5m"
+run = "golangci-lint run ./... --timeout=5m --allow-serial-runners"
 cwd = "services/core"
 timeout_s = 600
 paths = ["services/core/**", ".golangci.yml", "go.work", "go.work.sum"]
 
 [[check]]
 name = "go-lint-gateway"
-run = "golangci-lint run ./... --timeout=5m"
+run = "golangci-lint run ./... --timeout=5m --allow-serial-runners"
 cwd = "services/gateway"
 timeout_s = 600
 paths = ["services/gateway/**", ".golangci.yml", "go.work", "go.work.sum"]
 
 [[check]]
 name = "go-lint-git"
-run = "golangci-lint run ./... --timeout=5m"
+run = "golangci-lint run ./... --timeout=5m --allow-serial-runners"
 cwd = "services/git"
 timeout_s = 600
 paths = ["services/git/**", ".golangci.yml", "go.work", "go.work.sum"]
 
 [[check]]
 name = "go-lint-identity"
-run = "golangci-lint run ./... --timeout=5m"
+run = "golangci-lint run ./... --timeout=5m --allow-serial-runners"
 cwd = "services/identity"
 timeout_s = 600
 paths = ["services/identity/**", ".golangci.yml", "go.work", "go.work.sum"]
 
 [[check]]
 name = "go-lint-api"
-run = "golangci-lint run ./... --timeout=5m"
+run = "golangci-lint run ./... --timeout=5m --allow-serial-runners"
 cwd = "api"
 timeout_s = 600
 paths = ["api/**", ".golangci.yml", "go.work", "go.work.sum"]
