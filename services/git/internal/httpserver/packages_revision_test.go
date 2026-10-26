@@ -21,6 +21,10 @@ func (revPackages) ListPackages(_ context.Context, _ string) ([]registry.Package
 	}}}, nil
 }
 
+func (revPackages) ImageRevision(_ context.Context, _, _, _, _ string) (string, error) {
+	return "", nil
+}
+
 func (revPackages) DeletePackage(_ context.Context, _, _, _ string) error { return nil }
 
 // GIT-386 (H14): la rotta interna dei pacchetti porta l'etichetta revision del tag, e il campo
