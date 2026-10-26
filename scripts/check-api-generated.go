@@ -14,6 +14,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -36,8 +38,26 @@ func run(args ...string) (string, error) {
 	return string(out), err
 }
 
+// bashPath sceglie la bash di Git for Windows quando c'e': nel PATH di un host
+// Windows `bash` puo' essere quella di WSL (C:\Windows\system32\bash.exe), che
+// non vede il Go e il Node dell'host ("go: command not found").
+func bashPath() string {
+	if runtime.GOOS == "windows" {
+		// <Git>\mingw64\libexec\git-core -> <Git>\bin\bash.exe (indipendente da
+		// eventuali shim di git nel PATH).
+		if out, err := run("git", "--exec-path"); err == nil {
+			root := filepath.Join(filepath.FromSlash(strings.TrimSpace(out)), "..", "..", "..")
+			b := filepath.Join(root, "bin", "bash.exe")
+			if _, err := os.Stat(b); err == nil {
+				return b
+			}
+		}
+	}
+	return "bash"
+}
+
 func main() {
-	gen := exec.Command("bash", "./scripts/generate-api.sh")
+	gen := exec.Command(bashPath(), "./scripts/generate-api.sh")
 	gen.Stdout, gen.Stderr = os.Stdout, os.Stderr
 	if err := gen.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "check-api-generated: generate-api.sh:", err)
