@@ -8,6 +8,8 @@ package cirunner
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -463,8 +465,19 @@ func CacheEnv(archiveURL, jobToken string) []string {
 	return []string{
 		"ACTIONS_CACHE_URL=" + base + "/ci/v1/cache/",
 		"ACTIONS_RESULTS_URL=" + base + "/",
-		"ACTIONS_RUNTIME_TOKEN=" + jobToken,
+		"ACTIONS_RUNTIME_TOKEN=" + RuntimeToken(jobToken),
 	}
+}
+
+// RuntimeToken avvolge il token del job in un JWT senza firma, perche' upload-artifact@v4 lo
+// decodifica prima di chiamare il servizio (`token.split('.')[1]`, claim scp «Actions.Results:
+// <run>:<job>»): con un token opaco cade con «Invalid token specified» e il messaggio di
+// GitStack sugli artefatti v4 non si vede mai (GIT-393). Il segreto resta il token del job,
+// nel claim gsj: il ci-gateway lo estrae e lo verifica come sempre, la «firma» non vale nulla.
+func RuntimeToken(jobToken string) string {
+	enc := base64.RawURLEncoding.EncodeToString
+	payload, _ := json.Marshal(map[string]string{"scp": "Actions.Results:gitstack:gitstack", "gsj": jobToken})
+	return enc([]byte(`{"alg":"none","typ":"JWT"}`)) + "." + enc(payload) + ".x"
 }
 
 // withoutCIEnv toglie dall'ambiente ogni variabile GITSTACK_CI_*: act non ne ha bisogno.
