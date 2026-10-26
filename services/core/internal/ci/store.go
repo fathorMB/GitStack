@@ -83,13 +83,15 @@ type JobRow struct {
 	// CancelRequestedAt: annullamento richiesto mentre il job era in corso; il
 	// job resta in_progress finché il runner non lo chiude (CompleteJob, cancelled).
 	CancelRequestedAt *time.Time
+	// RunsOn sono le etichette di runs-on normalizzate (la label gitstack-build sceglie il pod di build).
+	RunsOn []string
 }
 
 const runColumns = `id, repo_id, workflow_path, workflow_name, event, ref, sha, pull_number, group_key, actor_id, inputs,
 	status, conclusion, schedule_slot, created_at, started_at, completed_at`
 
 const jobColumns = `id, run_id, seq, job_key, name, needs, runner_type, runner_name, permissions, status, conclusion,
-	queued_at, started_at, completed_at, task_id, cancel_requested_at`
+	queued_at, started_at, completed_at, task_id, cancel_requested_at, runs_on`
 
 func scanRun(row pgx.Row) (RunRow, error) {
 	var r RunRow
@@ -107,7 +109,7 @@ func scanJob(row pgx.Row) (JobRow, error) {
 	var j JobRow
 	var perm []byte
 	err := row.Scan(&j.ID, &j.RunID, &j.Seq, &j.Key, &j.Name, &j.Needs, &j.RunnerType, &j.RunnerName, &perm, &j.Status,
-		&j.Conclusion, &j.QueuedAt, &j.StartedAt, &j.CompletedAt, &j.TaskID, &j.CancelRequestedAt)
+		&j.Conclusion, &j.QueuedAt, &j.StartedAt, &j.CompletedAt, &j.TaskID, &j.CancelRequestedAt, &j.RunsOn)
 	if err != nil {
 		return j, err
 	}
@@ -297,10 +299,11 @@ func nonNilStrings(s []string) []string {
 
 // runnerTypeOf: i job con etichette di un host vero (self-hosted, Windows, macOS)
 // o con un'etichetta che il pod interno non offre (tutto ciò che non è ubuntu-*)
-// vanno ai runner esterni (ADR 0001, GIT-278); gli altri a un pod interno.
+// vanno ai runner esterni (ADR 0001, GIT-278); gli altri a un pod interno. La label
+// gitstack-build (BuildLabel) resta interna: sceglie il pod di build (ADR 0001 §6, GIT-371).
 func runnerTypeOf(runsOn []string) string {
 	for _, l := range NormalizeLabels(runsOn) {
-		if !strings.HasPrefix(l, "ubuntu-") && !strings.Contains(l, "${{") {
+		if !strings.HasPrefix(l, "ubuntu-") && !strings.Contains(l, "${{") && l != BuildLabel {
 			return "external"
 		}
 	}

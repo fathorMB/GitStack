@@ -172,6 +172,9 @@ func corePod(p Pod) (*corev1.Pod, error) {
 			Env:          podEnv(p.Env),
 			VolumeMounts: []corev1.VolumeMount{{Name: "tmp", MountPath: "/tmp"}}}}
 	}
+	if p.BuildKit != nil {
+		addBuildKit(pod, p)
+	}
 	if p.CAConfigMap != "" {
 		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{Name: "corporate-ca", VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: p.CAConfigMap}}}})
@@ -179,6 +182,46 @@ func corePod(p Pod) (*corev1.Pod, error) {
 		pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, mount)
 	}
 	return pod, nil
+}
+
+// addBuildKit aggiunge a un pod di build il sidecar buildkitd rootless (ADR 0001 §6, GIT-371).
+// E' un init container con restartPolicy Always (sidecar nativo): parte dopo il gate, vive finche'
+// gira il runner e non tiene aperto il pod a job finito. Resta dentro la ValidatingAdmissionPolicy
+// del namespace di build: non privileged, drop ALL con solo SETUID e SETGID (newuidmap), nessun
+// hostPath. seccomp e AppArmor Unconfined e allowPrivilegeEscalation servono a rootlesskit.
+func addBuildKit(pod *corev1.Pod, p Pod) {
+	limits := corev1.ResourceList{}
+	for name, value := range map[corev1.ResourceName]string{corev1.ResourceCPU: p.BuildKit.CPU,
+		corev1.ResourceMemory: p.BuildKit.Memory, corev1.ResourceEphemeralStorage: p.BuildKit.EphemeralStorage} {
+		limits[name] = resource.MustParse(value)
+	}
+	escalate := true
+	nonRoot := true
+	user := int64(BuildUser)
+	sidecar := corev1.Container{Name: "buildkitd", Image: p.BuildKit.Image,
+		Args: []string{"--addr", BuildKitAddr, "--oci-worker-no-process-sandbox"},
+		Env: []corev1.EnvVar{{Name: "HOME", Value: "/home/user"}, {Name: "XDG_RUNTIME_DIR", Value: "/run/user/1000"}},
+		RestartPolicy: ptr(corev1.ContainerRestartPolicyAlways),
+		Resources:     corev1.ResourceRequirements{Requests: limits, Limits: limits},
+		SecurityContext: &corev1.SecurityContext{AllowPrivilegeEscalation: &escalate, RunAsNonRoot: &nonRoot, RunAsUser: &user,
+			Capabilities:   &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}, Add: []corev1.Capability{"SETUID", "SETGID"}},
+			SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeUnconfined},
+			AppArmorProfile: &corev1.AppArmorProfile{Type: corev1.AppArmorProfileTypeUnconfined}},
+		VolumeMounts: []corev1.VolumeMount{{Name: "buildkit-sock", MountPath: BuildKitSocketDir},
+			{Name: "buildkit-state", MountPath: "/home/user/.local/share/buildkit"}, {Name: "buildkit-tmp", MountPath: "/home/user/.local/tmp"},
+			{Name: "buildkit-run", MountPath: "/run/user/1000"}}}
+	pod.Spec.InitContainers = append(pod.Spec.InitContainers, sidecar)
+	// Finito il runner il sidecar riceve SIGTERM: senza un tetto buildkitd impiega ~2 minuti a uscire (provato
+	// su k3s) e il pod, quindi il job nel dispatcher, resterebbe aperto per tutto quel tempo.
+	pod.Spec.TerminationGracePeriodSeconds = ptr(int64(5))
+	size := quantityPtr(limits[corev1.ResourceEphemeralStorage])
+	pod.Spec.Volumes = append(pod.Spec.Volumes,
+		corev1.Volume{Name: "buildkit-sock", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+		corev1.Volume{Name: "buildkit-run", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+		corev1.Volume{Name: "buildkit-tmp", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+		corev1.Volume{Name: "buildkit-state", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: size}}})
+	pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts,
+		corev1.VolumeMount{Name: "buildkit-sock", MountPath: BuildKitSocketDir})
 }
 
 func ptr[T any](v T) *T { return &v }

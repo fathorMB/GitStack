@@ -138,6 +138,12 @@ type Config struct {
 	CIEnabled      bool
 	CINamespace    string
 	CIImage        string
+	// CIBuildNamespace, CIBuildImage e CIRegistryAddr (GITSTACK_CORE_CI_BUILD_NAMESPACE, _BUILD_IMAGE,
+	// _REGISTRY_ADDR): i job con la label gitstack-build girano nel namespace di build, con BuildKit
+	// rootless come sidecar e il registry nel cluster (host:porta del gateway). Vuoti: i job build falliscono.
+	CIBuildNamespace string
+	CIBuildImage     string
+	CIRegistryAddr   string
 	CIActionMirror string
 	CICapacity     int
 	// CILogsDir è la cartella dei log dei job, nel volume di core e nel
@@ -218,6 +224,9 @@ const (
 	envCIEnabled          = "GITSTACK_CORE_CI_ENABLED"
 	envCINamespace        = "GITSTACK_CORE_CI_NAMESPACE"
 	envCIImage            = "GITSTACK_CORE_CI_IMAGE"
+	envCIBuildNamespace   = "GITSTACK_CORE_CI_BUILD_NAMESPACE"
+	envCIBuildImage       = "GITSTACK_CORE_CI_BUILD_IMAGE"
+	envCIRegistryAddr     = "GITSTACK_CORE_CI_REGISTRY_ADDR"
 	envCIActionMirror     = "GITSTACK_CORE_CI_ACTION_MIRROR"
 	envCICapacity         = "GITSTACK_CORE_CI_CAPACITY"
 	envCILogsDir          = "GITSTACK_CORE_CI_LOGS_DIR"
@@ -396,6 +405,15 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	}
 	if v, ok := lookup(envCIImage); ok {
 		cfg.CIImage = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCIBuildNamespace); ok {
+		cfg.CIBuildNamespace = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCIBuildImage); ok {
+		cfg.CIBuildImage = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCIRegistryAddr); ok {
+		cfg.CIRegistryAddr = strings.TrimSpace(v)
 	}
 	if v, ok := lookup(envCIActionMirror); ok {
 		cfg.CIActionMirror = strings.TrimSpace(v)
