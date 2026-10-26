@@ -137,8 +137,8 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 	if _, err := e.kube.NetworkingV1().NetworkPolicies(policy.Namespace).Update(ctx, policy, metav1.UpdateOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	// La policy aggiornata e tinyproxy possono arrivare dopo l'avvio del pod: si ritenta fino a 30 volte.
-	proxyCheck := fmt.Sprintf("i=0; while [ $i -lt 30 ]; do i=$((i+1)); if wget -q -T 5 -O- http://%s:8080 >/dev/null; then echo OK; exit 0; fi; sleep 1; done; echo KO; exit 1", httpIP)
+	// La policy aggiornata e tinyproxy possono arrivare dopo l'avvio del pod: si ritenta fino a 20 volte (~120 s, sotto i 180 s di waitPodLog); lo stderr dei tentativi intermedi va in /tmp/err, cosi' il log resta «OK».
+	proxyCheck := fmt.Sprintf("i=0; while [ $i -lt 20 ]; do i=$((i+1)); if wget -q -T 5 -O /dev/null http://%s:8080 2>/tmp/err; then echo OK; exit 0; fi; sleep 1; done; echo \"KO $(cat /tmp/err)\"; exit 1", httpIP)
 	p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "proxy-egress", Namespace: apps.Namespace(source.ID), Labels: appLabels}, Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{Name: "probe", Image: "busybox:1.36", Env: []corev1.EnvVar{{Name: "http_proxy", Value: "http://" + proxyIP + ":8888"}, {Name: "HTTP_PROXY", Value: "http://" + proxyIP + ":8888"}}, Command: []string{"sh", "-c", proxyCheck}}}}}
 	if _, err := e.kube.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
