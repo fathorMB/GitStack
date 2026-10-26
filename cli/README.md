@@ -2,7 +2,7 @@
 
 `gs`, la CLI Go di GitStack per persone e agenti (stile `gh`), su client generato dall'OpenAPI del gateway. Dettagli: [[M-07]] in `.lmbrain-lite/milestones/M-07.md`.
 
-Stato: CLI Go con i gruppi `gs run` e `gs workflow` per seguire la CI (GIT-284), oltre ai comandi `version`, `issue`, `repo`, `label`, `milestone`, `notification`, `api`, `search`, `browse`, `blame` e `skills`.
+Stato: CLI Go con i gruppi `gs run` e `gs workflow` per seguire la CI (GIT-284), oltre ai comandi `version`, `issue`, `repo`, `label`, `app`, `milestone`, `notification`, `api`, `search`, `browse`, `blame` e `skills`.
 
 ## Licenza
 
@@ -30,7 +30,7 @@ Decise dal CTO (GIT-162), tutte con licenza compatibile con Apache-2.0 (D17). Gl
 cmd/gs/main.go            var version = "dev" (-ldflags "-X main.version=<tag>"), chiama root.Run
 internal/cmd/root         comando radice, flag globali, registra TUTTI i gruppi, Run (exit code, errori)
 internal/cmd/<gruppo>     un pacchetto per gruppo, con NewCmd(f *cmdutil.Factory) *cobra.Command:
-                          auth repo issue pr run workflow label milestone search browse blame notification api skills version
+                          auth repo issue pr run workflow label app milestone search browse blame notification api skills version
 internal/cmdutil          Factory, IOStreams, errori e codici di uscita, ConfirmOrYes (G8)
 internal/config           configurazione multi-istanza, TokenSource, permessi solo-utente
 internal/gsrepo           istanza e owner/repo dal remote origin
@@ -266,6 +266,33 @@ Sono quelli dello schema `Label` dell'API (camelCase), più `url` (pagina web). 
 ### Test
 
 `cli/internal/cmd/label/label_test.go`: gateway finto, richieste e corpi verificati, conferme G8 con e senza TTY. `services/core/internal/stackitest/gs_label_milestone_integration_test.go` (`TestGsLabel`, tag `integration`): il binario `gs` vero contro lo stack completo. Prova list, create (con validazione colore e nome), edit, delete (conferma G8: senza TTY exit 2, `--yes`).
+
+## `gs app access` (GIT-376, H6)
+
+Sottocomandi di `gs app access`: `list` (`ls`), `add`, `remove` (`rm`), `invite`. Il repo è quello del remote `origin` o `-R owner/repo`; l'app è il primo argomento. Serve il permesso `admin` sul repo: `write` e `read` ricevono 403 (exit 5), un repo che non si legge 404 (exit 6). La lista di accesso dice chi, oltre a chi ha `read` sul repo, può aprire l'app: utenti e team GitStack, mai accesso anonimo. Chi entra solo dalla lista non riceve nessun ruolo sul repo.
+
+| Comando | Cosa fa | Flag principali |
+|---|---|---|
+| `list <app>` | elenca utenti e team in lista; senza terminale una riga a tab per membro (tipo, nome, email o numero di persone, chi l'ha aggiunto, data) | `--json` |
+| `add <app> <utente o organizzazione/team>` | aggiunge un utente o un team (un nome con `/` è un team); non assegna ruoli sul repo | `--json` |
+| `remove <app> <utente o organizzazione/team>` | toglie dalla lista | `-y/--yes` (senza terminale obbligatorio) |
+| `invite <app>` | stampa su stdout il testo dell'invito, già composto (link alla guida `/help/ca?app=`, impronta SHA-256, indirizzo dell'app, «Report a problem»): lo stesso del pulsante «Invita i tester». GitStack non manda email | `--json` |
+
+- **Conferma G8.** `remove` toglie un accesso: chiede di riscrivere il nome. Con `--yes`/`-y` procede senza chiedere; senza terminale in ingresso e senza `--yes` esce con 2 senza leggere stdin e senza chiamare l'API; con terminale, un testo diverso annulla (exit 1).
+- **Codici di uscita.** Quelli di G3: 401 → 4, 403 → 5, 404 → 6; utente o team inesistente (422), già in lista (409) o app senza indirizzo per `invite` (409 `no_address`) → 1; argomenti sbagliati → 2.
+- **Impronta.** `invite` non la calcola: è quella di `GET /instance/ca` (GIT-383), la stessa del certificato su `/downloads/ca.crt`.
+
+### Campi di `--json` (app access)
+
+| Comando | Forma | Campi |
+|---|---|---|
+| `app access list` | lista | `id`, `kind` (`user`\|`team`), `name`, `email`, `memberCount`, `addedBy` (`{id, username, type}`), `addedAt` |
+| `app access add` | oggetto | gli stessi |
+| `app access invite` | oggetto | `guideUrl`, `fingerprintSha256`, `address`, `caMode` (`internal`\|`custom`\|`none`), `text` |
+
+### Test
+
+`cli/internal/cmd/app/access_test.go`: gateway finto, richieste e corpi verificati, conferma G8 con e senza TTY, 403 per chi non ha `admin`, testo dell'invito identico a quello dell'API.
 
 ## `gs milestone` (GIT-167, G4)
 

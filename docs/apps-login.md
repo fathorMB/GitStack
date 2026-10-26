@@ -4,7 +4,7 @@ Una app interna ha tre modi di accesso (`PUT /repos/{owner}/{repo}/apps/{app}/ac
 
 | modo | chi passa |
 | --- | --- |
-| `login` (default) | chi ha `read` sul repo: repo interno → tutti gli utenti attivi, repo privato → chi ha un ruolo. Gli agenti passano con un token che ha `read:resource` e `read` sul repo. |
+| `login` (default) | chi ha `read` sul repo: repo interno → tutti gli utenti attivi, repo privato → chi ha un ruolo; **oppure** chi è nella [lista di accesso](#lista-di-accesso-dei-tester) dell'app. Gli agenti passano con un token che ha `read:resource` e `read` sul repo. |
 | `none` | tutti, senza login. Lo imposta solo un admin del repo, per scelta esplicita: una app nuova parte sempre da `login`. |
 | `public` | su internet; solo con le app pubbliche abilitate dall'amministratore (H1). Oggi risponde 422 `public_apps_disabled`. |
 
@@ -24,8 +24,10 @@ browser/agente ──> Traefik ──(1) gitstack-strip: svuota X-GitStack-* del
   una firma HMAC calcolata da `core` con il segreto del gateway: chi chiama il gateway da fuori non può
   farsi firmare le intestazioni per un repo che sceglie lui.
 - Il gateway risponde 2xx solo se la richiesta ha un'identità valida e `AccessPolicy` dice sì
-  (`services/gateway/internal/appauth`: **un solo punto** dove si decide l'accesso; altre fonti,
-  come una lista di accesso, si aggiungono lì: «`read` sul repo OPPURE membro della lista»).
+  (`services/gateway/internal/appauth`: **un solo punto** dove si decide l'accesso: «`read` sul repo OPPURE
+  membro della lista di accesso»). La lista vive in core: il gateway la chiede con
+  `GET /apps/{appId}/access-membership`, firmando l'identità dell'utente come fa il proxy. Se core non
+  risponde il gateway risponde 503: un «non so» non apre mai l'app.
 - Il gateway restituisce a Traefik le intestazioni firmate **e** `Cookie`/`Authorization` ripuliti:
   `authResponseHeaders` li sostituisce a quelli del client. Il cookie di sessione GitStack
   (`gst_session`, `__Host-gst_session`), il cookie d'app (`gst_app_session`) e un token `gst_…` non
@@ -36,6 +38,50 @@ browser/agente ──> Traefik ──(1) gitstack-strip: svuota X-GitStack-* del
   d'app (otto ore, `HttpOnly`, `Secure`, valido solo su quell'host) e rimanda alla pagina richiesta.
   A ogni richiesta il gateway ricontrolla `read`: togliere il permesso vale subito. Senza una sessione
   GitStack il login web porta alla home: riaprire l'app completa il passaggio.
+
+## Lista di accesso dei tester
+
+Per far provare un'app a persone che non devono vedere il repo (per esempio il business, o un'agenzia
+esterna) chi ha `admin` sull'app le mette nella **lista di accesso** (H6, decisione del 26/10/2026):
+
+- la lista contiene **utenti e team GitStack** (`organizzazione/team`): nessun accesso anonimo (P2). Chi non
+  ha un account ne ha bisogno prima, creato da un amministratore o tramite il SSO aziendale;
+- chi entra **solo** dalla lista apre l'app e nient'altro: non vede codice, issues, scheda Apps né altro
+  del repo (404 su tutte le API del repo) e **non riceve nessun ruolo** sul repo (H5 invariata);
+- l'app riceve comunque nome, email e team dell'utente nelle intestazioni firmate, come per chi ha `read`;
+- un team vale per tutti i suoi membri attivi al momento della richiesta: chi esce dal team perde l'accesso;
+  togliere un utente o un team dalla lista vale dalla richiesta successiva (se non ha `read` sul repo);
+- solo `admin` sull'app legge e modifica la lista e chiede l'invito: `write` e `read` ricevono 403.
+
+| operazione | API | `gs` |
+| --- | --- | --- |
+| elenca | `GET /repos/{owner}/{repo}/apps/{app}/access/members` | `gs app access list <app>` |
+| aggiungi | `POST /repos/{owner}/{repo}/apps/{app}/access/members` con `kind` (`user` o `team`) e `name` | `gs app access add <app> <utente o org/team>` |
+| togli | `DELETE /repos/{owner}/{repo}/apps/{app}/access/members/{memberId}` | `gs app access remove <app> <utente o org/team>` (conferma G8, `-y`) |
+| invito | `GET /repos/{owner}/{repo}/apps/{app}/access/invite` | `gs app access invite <app>` |
+
+### Invito ai tester
+
+L'invito è un testo già composto che l'admin copia e manda **con i suoi strumenti**: GitStack non manda
+email. Contiene il link alla guida del certificato (`/help/ca?app=<indirizzo dell'app>`, GIT-383),
+l'**impronta SHA-256** da controllare su quella pagina, l'indirizzo dell'app e il rimando a «Report a
+problem». Con la CA interna ha questa forma (mockup H13):
+
+```
+Hi, you can now test sito (retail/retail-it).
+
+1. Open https://git.acme.it/help/ca?app=sito-retail-it-retail.apps.acme.it and follow the steps for your device.
+   Your browser may warn you on that page: continue only if the page shows this fingerprint:
+   SHA-256 4F:9A:21:…:8E:03:B2
+2. Open https://sito-retail-it-retail.apps.acme.it and sign in with your GitStack account.
+3. Found a problem? Use "Report a problem" inside the app.
+```
+
+L'impronta non è calcolata una seconda volta: è quella di `GET /instance/ca` (lo SHA-256 del certificato
+`ca.crt`, lo stesso che si scarica da `/downloads/ca.crt`). Con un certificato del cliente o Let's Encrypt
+(`caMode` `custom`) o senza HTTPS (`none`) non c'è niente da installare e il passo 1 non compare. Un'app
+senza indirizzo (nessuna porta) risponde 409 `no_address`. L'operazione restituisce anche i campi
+(`guideUrl`, `fingerprintSha256`, `address`, `caMode`, `text`): `gs app access invite --json …`.
 
 ## Intestazioni ricevute dall'app
 

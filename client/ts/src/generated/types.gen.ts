@@ -3906,6 +3906,64 @@ export type AppAccessInput = {
     mode: AppAccessMode;
 };
 
+export type AppAccessMember = {
+    id: string;
+    kind: 'user' | 'team';
+    /**
+     * Nome utente oppure `organizzazione/team`.
+     */
+    name: string;
+    /**
+     * Email dell'utente, se ne ha una.
+     */
+    email?: string | null;
+    /**
+     * Persone del team (solo `team`).
+     */
+    memberCount?: number | null;
+    addedBy?: AppActor | null;
+    addedAt: string;
+};
+
+export type AppAccessMemberList = {
+    items: Array<AppAccessMember>;
+};
+
+export type AppAccessMemberInput = {
+    kind: 'user' | 'team';
+    /**
+     * Nome utente oppure `organizzazione/team`.
+     */
+    name: string;
+};
+
+export type AppAccessInvite = {
+    /**
+     * Guida CA di GIT-383 (`/help/ca`) con l'indirizzo dell'app come parametro `app`.
+     */
+    guideUrl: string;
+    /**
+     * Impronta SHA-256 della CA interna, letta come `GET /instance/ca`; assente se non c'e' niente da installare.
+     */
+    fingerprintSha256?: string | null;
+    /**
+     * Indirizzo dell'app.
+     */
+    address: string;
+    /**
+     * Come `InstanceCa.mode`.
+     */
+    caMode: 'internal' | 'custom' | 'none';
+    /**
+     * Invito gia' composto, da copiare e mandare con i propri strumenti.
+     */
+    text: string;
+};
+
+export type AppAccessMembership = {
+    member: boolean;
+};
+
 /**
  * Parte garantita (sempre riservata) e tetto (usato se il server ha spazio), per copia (H11).
  */
@@ -19894,6 +19952,254 @@ export type SetAppAccessResponses = {
 };
 
 export type SetAppAccessResponse = SetAppAccessResponses[keyof SetAppAccessResponses];
+
+export type ListAppAccessMembersData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/access/members';
+};
+
+export type ListAppAccessMembersErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListAppAccessMembersError = ListAppAccessMembersErrors[keyof ListAppAccessMembersErrors];
+
+export type ListAppAccessMembersResponses = {
+    /**
+     * La lista.
+     */
+    200: AppAccessMemberList;
+};
+
+export type ListAppAccessMembersResponse = ListAppAccessMembersResponses[keyof ListAppAccessMembersResponses];
+
+export type AddAppAccessMemberData = {
+    body: AppAccessMemberInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/access/members';
+};
+
+export type AddAppAccessMemberErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type AddAppAccessMemberError = AddAppAccessMemberErrors[keyof AddAppAccessMemberErrors];
+
+export type AddAppAccessMemberResponses = {
+    /**
+     * Aggiunto.
+     */
+    201: AppAccessMember;
+};
+
+export type AddAppAccessMemberResponse = AddAppAccessMemberResponses[keyof AddAppAccessMemberResponses];
+
+export type RemoveAppAccessMemberData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+        /**
+         * Id del membro della lista di accesso.
+         */
+        memberId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/access/members/{memberId}';
+};
+
+export type RemoveAppAccessMemberErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type RemoveAppAccessMemberError = RemoveAppAccessMemberErrors[keyof RemoveAppAccessMemberErrors];
+
+export type RemoveAppAccessMemberResponses = {
+    /**
+     * Tolto.
+     */
+    204: void;
+};
+
+export type RemoveAppAccessMemberResponse = RemoveAppAccessMemberResponses[keyof RemoveAppAccessMemberResponses];
+
+export type GetAppAccessInviteData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/access/invite';
+};
+
+export type GetAppAccessInviteErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type GetAppAccessInviteError = GetAppAccessInviteErrors[keyof GetAppAccessInviteErrors];
+
+export type GetAppAccessInviteResponses = {
+    /**
+     * L'invito.
+     */
+    200: AppAccessInvite;
+};
+
+export type GetAppAccessInviteResponse = GetAppAccessInviteResponses[keyof GetAppAccessInviteResponses];
+
+export type GetAppAccessMembershipData = {
+    body?: never;
+    path: {
+        /**
+         * Id dell'app.
+         */
+        appId: string;
+    };
+    query?: never;
+    url: '/apps/{appId}/access-membership';
+};
+
+export type GetAppAccessMembershipErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+};
+
+export type GetAppAccessMembershipError = GetAppAccessMembershipErrors[keyof GetAppAccessMembershipErrors];
+
+export type GetAppAccessMembershipResponses = {
+    /**
+     * Esito.
+     */
+    200: AppAccessMembership;
+};
+
+export type GetAppAccessMembershipResponse = GetAppAccessMembershipResponses[keyof GetAppAccessMembershipResponses];
 
 export type GetAppResourcesData = {
     body?: never;

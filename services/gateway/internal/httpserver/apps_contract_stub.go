@@ -3,6 +3,8 @@ package httpserver
 import (
 	"net/http"
 
+	openapi_types "github.com/oapi-codegen/runtime/types"
+
 	"github.com/fathorMB/GitStack/services/gateway/internal/openapi"
 )
 
@@ -144,5 +146,26 @@ func (s *apiServer) AddAdminAppTrustedKey(w http.ResponseWriter, r *http.Request
 }
 
 func (s *apiServer) DeleteAdminAppTrustedKey(w http.ResponseWriter, r *http.Request, keyId openapi.AppTrustedKeyIdParam) {
+	s.appsProxy(w, r)
+}
+
+// Lista di accesso dell'app e invito ai tester (GIT-376, H6).
+func (s *apiServer) ListAppAccessMembers(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
+	s.appsProxy(w, r)
+}
+
+func (s *apiServer) AddAppAccessMember(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
+	s.appsProxy(w, r)
+}
+
+func (s *apiServer) RemoveAppAccessMember(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, memberId openapi_types.UUID) {
+	s.appsProxy(w, r)
+}
+
+func (s *apiServer) GetAppAccessInvite(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
+	s.appsProxy(w, r)
+}
+
+func (s *apiServer) GetAppAccessMembership(w http.ResponseWriter, r *http.Request, appId openapi_types.UUID) {
 	s.appsProxy(w, r)
 }

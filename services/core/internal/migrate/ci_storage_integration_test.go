@@ -125,7 +125,7 @@ func TestMigration0034_ArtefattiCacheEImpostazioni(t *testing.T) {
 		t.Fatalf("cache dopo l'eliminazione del repo: %d", n)
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 6); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 7); err != nil {
 		t.Fatalf("down 0034: %v", err)
 	}
 	var n int

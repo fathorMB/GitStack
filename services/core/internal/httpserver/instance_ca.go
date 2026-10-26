@@ -55,6 +55,12 @@ func CAFingerprint(dir string) (string, error) {
 // leggibile: mode internal, impronta e indirizzo del download. Altrimenti il
 // modo dichiarato dal chart (custom o none): non c'è niente da installare.
 func (s *apiServer) GetInstanceCa(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, http.StatusOK, s.instanceCa())
+}
+
+// instanceCa è la fonte unica dell impronta: la usano GET /instance/ca e l invito ai tester (GIT-376).
+func (s *apiServer) instanceCa() openapi.InstanceCa {
 	out := openapi.InstanceCa{Mode: openapi.InstanceCaModeNone}
 	if s.instanceCA.Dir != "" {
 		if fp, err := CAFingerprint(s.instanceCA.Dir); err == nil {
@@ -65,6 +71,5 @@ func (s *apiServer) GetInstanceCa(w http.ResponseWriter, _ *http.Request) {
 	if out.Mode == openapi.InstanceCaModeNone && s.instanceCA.Mode == string(openapi.InstanceCaModeCustom) {
 		out.Mode = openapi.InstanceCaModeCustom
 	}
-	w.Header().Set("Cache-Control", "no-store")
-	writeJSON(w, http.StatusOK, out)
+	return out
 }

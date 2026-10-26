@@ -267,6 +267,63 @@ func (e AppAccessCertificate) Valid() bool {
 	}
 }
 
+// Defines values for AppAccessInviteCaMode.
+const (
+	AppAccessInviteCaModeCustom   AppAccessInviteCaMode = "custom"
+	AppAccessInviteCaModeInternal AppAccessInviteCaMode = "internal"
+	AppAccessInviteCaModeNone     AppAccessInviteCaMode = "none"
+)
+
+// Valid indicates whether the value is a known member of the AppAccessInviteCaMode enum.
+func (e AppAccessInviteCaMode) Valid() bool {
+	switch e {
+	case AppAccessInviteCaModeCustom:
+		return true
+	case AppAccessInviteCaModeInternal:
+		return true
+	case AppAccessInviteCaModeNone:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppAccessMemberKind.
+const (
+	AppAccessMemberKindTeam AppAccessMemberKind = "team"
+	AppAccessMemberKindUser AppAccessMemberKind = "user"
+)
+
+// Valid indicates whether the value is a known member of the AppAccessMemberKind enum.
+func (e AppAccessMemberKind) Valid() bool {
+	switch e {
+	case AppAccessMemberKindTeam:
+		return true
+	case AppAccessMemberKindUser:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppAccessMemberInputKind.
+const (
+	AppAccessMemberInputKindTeam AppAccessMemberInputKind = "team"
+	AppAccessMemberInputKindUser AppAccessMemberInputKind = "user"
+)
+
+// Valid indicates whether the value is a known member of the AppAccessMemberInputKind enum.
+func (e AppAccessMemberInputKind) Valid() bool {
+	switch e {
+	case AppAccessMemberInputKindTeam:
+		return true
+	case AppAccessMemberInputKindUser:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for AppAccessMode.
 const (
 	AppAccessModeLogin  AppAccessMode = "login"
@@ -3635,6 +3692,68 @@ type AppAccessCertificate string
 type AppAccessInput struct {
 	// Mode `login` (login GitStack, default, H6), `none` (senza login, scelta esplicita di admin), `public` (su internet, H1, solo con le app pubbliche abilitate).
 	Mode AppAccessMode `json:"mode"`
+}
+
+// AppAccessInvite defines model for AppAccessInvite.
+type AppAccessInvite struct {
+	// Address Indirizzo dell'app.
+	Address string `json:"address"`
+
+	// CaMode Come `InstanceCa.mode`.
+	CaMode AppAccessInviteCaMode `json:"caMode"`
+
+	// FingerprintSha256 Impronta SHA-256 della CA interna, letta come `GET /instance/ca`; assente se non c'e' niente da installare.
+	FingerprintSha256 *string `json:"fingerprintSha256,omitempty"`
+
+	// GuideUrl Guida CA di GIT-383 (`/help/ca`) con l'indirizzo dell'app come parametro `app`.
+	GuideUrl string `json:"guideUrl"`
+
+	// Text Invito gia' composto, da copiare e mandare con i propri strumenti.
+	Text string `json:"text"`
+}
+
+// AppAccessInviteCaMode Come `InstanceCa.mode`.
+type AppAccessInviteCaMode string
+
+// AppAccessMember defines model for AppAccessMember.
+type AppAccessMember struct {
+	AddedAt time.Time `json:"addedAt"`
+	AddedBy *AppActor `json:"addedBy,omitempty"`
+
+	// Email Email dell'utente, se ne ha una.
+	Email *string             `json:"email,omitempty"`
+	Id    openapi_types.UUID  `json:"id"`
+	Kind  AppAccessMemberKind `json:"kind"`
+
+	// MemberCount Persone del team (solo `team`).
+	MemberCount *int `json:"memberCount,omitempty"`
+
+	// Name Nome utente oppure `organizzazione/team`.
+	Name string `json:"name"`
+}
+
+// AppAccessMemberKind defines model for AppAccessMember.Kind.
+type AppAccessMemberKind string
+
+// AppAccessMemberInput defines model for AppAccessMemberInput.
+type AppAccessMemberInput struct {
+	Kind AppAccessMemberInputKind `json:"kind"`
+
+	// Name Nome utente oppure `organizzazione/team`.
+	Name string `json:"name"`
+}
+
+// AppAccessMemberInputKind defines model for AppAccessMemberInput.Kind.
+type AppAccessMemberInputKind string
+
+// AppAccessMemberList defines model for AppAccessMemberList.
+type AppAccessMemberList struct {
+	Items []AppAccessMember `json:"items"`
+}
+
+// AppAccessMembership defines model for AppAccessMembership.
+type AppAccessMembership struct {
+	Member bool `json:"member"`
 }
 
 // AppAccessMode `login` (login GitStack, default, H6), `none` (senza login, scelta esplicita di admin), `public` (su internet, H1, solo con le app pubbliche abilitate).
@@ -8632,6 +8751,9 @@ type UpdateAppJSONRequestBody = AppUpdateInput
 // SetAppAccessJSONRequestBody defines body for SetAppAccess for application/json ContentType.
 type SetAppAccessJSONRequestBody = AppAccessInput
 
+// AddAppAccessMemberJSONRequestBody defines body for AddAppAccessMember for application/json ContentType.
+type AddAppAccessMemberJSONRequestBody = AppAccessMemberInput
+
 // DeployAppJSONRequestBody defines body for DeployApp for application/json ContentType.
 type DeployAppJSONRequestBody = AppDeployInput
 
@@ -9069,6 +9191,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /admin/system (the `GetAdminSystem` operationId).
 	GetAdminSystem(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAppAccessMembership Chi chiede e' nella lista di accesso dell'app?
+	//
+	// Per il forward-auth del gateway (H6): dice se il chiamante e' nella lista di accesso dell'app, direttamente o tramite un team di cui e' membro. Non assegna nessun permesso sul repo e non rivela niente su altri utenti. Un'app che non c'e' risponde `member` falso.
+	//
+	// Corresponds with GET /apps/{appId}/access-membership (the `GetAppAccessMembership` operationId).
+	GetAppAccessMembership(ctx context.Context, appId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// LoginWithBody Accede con username e password
 	//
@@ -10275,6 +10404,45 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/access (the `SetAppAccess` operationId).
 	SetAppAccess(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAppAccessInvite Testo dell'invito ai tester
+	//
+	// Serve `admin` sull'app (H5, H6): `write` e `read` ricevono 403, un repo che non si legge 404. Restituisce i campi dell'invito (link alla guida `/help/ca` con l'app come parametro, impronta SHA-256 della CA interna, indirizzo dell'app) e il testo gia' composto, con il rimando a «Report a problem» (mockup H13, data-screen="testers"). L'impronta e' quella di `GET /instance/ca` (GIT-383): non e' calcolata una seconda volta. Con certificato del cliente o senza HTTPS non c'e' niente da installare e il testo salta il passo della guida. L'app senza indirizzo (nessuna porta) e' 409 `no_address`. GitStack non manda email: l'admin spedisce il testo con i suoi strumenti.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/access/invite (the `GetAppAccessInvite` operationId).
+	GetAppAccessInvite(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListAppAccessMembers Elenca la lista di accesso dell'app
+	//
+	// Serve `admin` sull'app, cioe' sul repo (H5, H6): `write` e `read` ricevono 403, un repo che non si legge 404. La lista (H6 del 2026-10-26, pilota retail.it) contiene utenti e team GitStack: chi e' nella lista apre quest'app e nient'altro, non vede codice, issues, scheda Apps o altro del repo e non riceve nessun ruolo sul repo. Nessun accesso anonimo (P2).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/access/members (the `ListAppAccessMembers` operationId).
+	ListAppAccessMembers(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddAppAccessMemberWithBody Aggiunge un utente o un team alla lista di accesso
+	//
+	// Serve `admin` sull'app (H5, H6): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. `kind` e' `user` o `team`; `name` e' il nome utente oppure `organizzazione/team`. Un utente disattivato o inesistente, un team inesistente: 422. Gia' in lista: 409 `already_member`. Aggiungere non assegna nessun ruolo sul repo.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/access/members (the `AddAppAccessMember` operationId).
+	AddAppAccessMemberWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddAppAccessMember Aggiunge un utente o un team alla lista di accesso
+	//
+	// Serve `admin` sull'app (H5, H6): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. `kind` e' `user` o `team`; `name` e' il nome utente oppure `organizzazione/team`. Un utente disattivato o inesistente, un team inesistente: 422. Gia' in lista: 409 `already_member`. Aggiungere non assegna nessun ruolo sul repo.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/access/members (the `AddAppAccessMember` operationId).
+	AddAppAccessMember(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body AddAppAccessMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemoveAppAccessMember Toglie un utente o un team dalla lista di accesso
+	//
+	// Serve `admin` sull'app (H5, H6): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. Chi e' tolto viene rifiutato dalla richiesta successiva al login davanti all'app (se non ha `read` sul repo); un membro che non c'e' e' 404.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/access/members/{memberId} (the `RemoveAppAccessMember` operationId).
+	RemoveAppAccessMember(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, memberId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeployAppWithBody Mette in produzione un'immagine (nuova versione)
 	//
@@ -12428,6 +12596,23 @@ func (c *Client) UpdateCiStorageSettings(ctx context.Context, body UpdateCiStora
 // Corresponds with GET /admin/system (the `GetAdminSystem` operationId).
 func (c *Client) GetAdminSystem(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetAdminSystemRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAppAccessMembership Chi chiede e' nella lista di accesso dell'app?
+//
+// Per il forward-auth del gateway (H6): dice se il chiamante e' nella lista di accesso dell'app, direttamente o tramite un team di cui e' membro. Non assegna nessun permesso sul repo e non rivela niente su altri utenti. Un'app che non c'e' risponde `member` falso.
+//
+// Corresponds with GET /apps/{appId}/access-membership (the `GetAppAccessMembership` operationId).
+func (c *Client) GetAppAccessMembership(ctx context.Context, appId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAppAccessMembershipRequest(c.Server, appId)
 	if err != nil {
 		return nil, err
 	}
@@ -15234,6 +15419,95 @@ func (c *Client) SetAppAccessWithBody(ctx context.Context, owner RepoOwnerParam,
 // Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/access (the `SetAppAccess` operationId).
 func (c *Client) SetAppAccess(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSetAppAccessRequest(c.Server, owner, repo, app, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAppAccessInvite Testo dell'invito ai tester
+//
+// Serve `admin` sull'app (H5, H6): `write` e `read` ricevono 403, un repo che non si legge 404. Restituisce i campi dell'invito (link alla guida `/help/ca` con l'app come parametro, impronta SHA-256 della CA interna, indirizzo dell'app) e il testo gia' composto, con il rimando a «Report a problem» (mockup H13, data-screen="testers"). L'impronta e' quella di `GET /instance/ca` (GIT-383): non e' calcolata una seconda volta. Con certificato del cliente o senza HTTPS non c'e' niente da installare e il testo salta il passo della guida. L'app senza indirizzo (nessuna porta) e' 409 `no_address`. GitStack non manda email: l'admin spedisce il testo con i suoi strumenti.
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/access/invite (the `GetAppAccessInvite` operationId).
+func (c *Client) GetAppAccessInvite(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAppAccessInviteRequest(c.Server, owner, repo, app)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListAppAccessMembers Elenca la lista di accesso dell'app
+//
+// Serve `admin` sull'app, cioe' sul repo (H5, H6): `write` e `read` ricevono 403, un repo che non si legge 404. La lista (H6 del 2026-10-26, pilota retail.it) contiene utenti e team GitStack: chi e' nella lista apre quest'app e nient'altro, non vede codice, issues, scheda Apps o altro del repo e non riceve nessun ruolo sul repo. Nessun accesso anonimo (P2).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/access/members (the `ListAppAccessMembers` operationId).
+func (c *Client) ListAppAccessMembers(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAppAccessMembersRequest(c.Server, owner, repo, app)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddAppAccessMemberWithBody Aggiunge un utente o un team alla lista di accesso
+//
+// Serve `admin` sull'app (H5, H6): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. `kind` e' `user` o `team`; `name` e' il nome utente oppure `organizzazione/team`. Un utente disattivato o inesistente, un team inesistente: 422. Gia' in lista: 409 `already_member`. Aggiungere non assegna nessun ruolo sul repo.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/access/members (the `AddAppAccessMember` operationId).
+func (c *Client) AddAppAccessMemberWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddAppAccessMemberRequestWithBody(c.Server, owner, repo, app, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddAppAccessMember Aggiunge un utente o un team alla lista di accesso
+//
+// Serve `admin` sull'app (H5, H6): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. `kind` e' `user` o `team`; `name` e' il nome utente oppure `organizzazione/team`. Un utente disattivato o inesistente, un team inesistente: 422. Gia' in lista: 409 `already_member`. Aggiungere non assegna nessun ruolo sul repo.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/access/members (the `AddAppAccessMember` operationId).
+func (c *Client) AddAppAccessMember(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body AddAppAccessMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddAppAccessMemberRequest(c.Server, owner, repo, app, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemoveAppAccessMember Toglie un utente o un team dalla lista di accesso
+//
+// Serve `admin` sull'app (H5, H6): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. Chi e' tolto viene rifiutato dalla richiesta successiva al login davanti all'app (se non ha `read` sul repo); un membro che non c'e' e' 404.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/access/members/{memberId} (the `RemoveAppAccessMember` operationId).
+func (c *Client) RemoveAppAccessMember(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, memberId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveAppAccessMemberRequest(c.Server, owner, repo, app, memberId)
 	if err != nil {
 		return nil, err
 	}
@@ -19855,6 +20129,40 @@ func NewGetAdminSystemRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/admin/system")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAppAccessMembershipRequest constructs an http.Request for the GetAppAccessMembership method
+func NewGetAppAccessMembershipRequest(server string, appId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/apps/%s/access-membership", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -25942,6 +26250,218 @@ func NewSetAppAccessRequestWithBody(server string, owner RepoOwnerParam, repo Re
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetAppAccessInviteRequest constructs an http.Request for the GetAppAccessInvite method
+func NewGetAppAccessInviteRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/access/invite", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListAppAccessMembersRequest constructs an http.Request for the ListAppAccessMembers method
+func NewListAppAccessMembersRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/access/members", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAddAppAccessMemberRequest calls the generic AddAppAccessMember builder with application/json body
+func NewAddAppAccessMemberRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body AddAppAccessMemberJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAddAppAccessMemberRequestWithBody(server, owner, repo, app, "application/json", bodyReader)
+}
+
+// NewAddAppAccessMemberRequestWithBody constructs an http.Request for the AddAppAccessMember method, with any body, and a specified content type
+func NewAddAppAccessMemberRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/access/members", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRemoveAppAccessMemberRequest constructs an http.Request for the RemoveAppAccessMember method
+func NewRemoveAppAccessMemberRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, memberId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "memberId", memberId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/access/members/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -36465,6 +36985,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /admin/system (the `GetAdminSystem` operationId).
 	GetAdminSystemWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAdminSystemResponse, error)
 
+	// GetAppAccessMembershipWithResponse Chi chiede e' nella lista di accesso dell'app?
+	//
+	// Per il forward-auth del gateway (H6): dice se il chiamante e' nella lista di accesso dell'app, direttamente o tramite un team di cui e' membro. Non assegna nessun permesso sul repo e non rivela niente su altri utenti. Un'app che non c'e' risponde `member` falso.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /apps/{appId}/access-membership (the `GetAppAccessMembership` operationId).
+	GetAppAccessMembershipWithResponse(ctx context.Context, appId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetAppAccessMembershipResponse, error)
+
 	// LoginWithBodyWithResponse Accede con username e password
 	//
 	// Crea una sessione. La risposta imposta il cookie `gst_session` (con prefisso `__Host-`, quindi `__Host-gst_session`, quando e' servita in HTTPS; i due nomi sono equivalenti per i client) (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
@@ -37846,6 +38375,51 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/access (the `SetAppAccess` operationId).
 	SetAppAccessWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*SetAppAccessResponse, error)
+
+	// GetAppAccessInviteWithResponse Testo dell'invito ai tester
+	//
+	// Serve `admin` sull'app (H5, H6): `write` e `read` ricevono 403, un repo che non si legge 404. Restituisce i campi dell'invito (link alla guida `/help/ca` con l'app come parametro, impronta SHA-256 della CA interna, indirizzo dell'app) e il testo gia' composto, con il rimando a «Report a problem» (mockup H13, data-screen="testers"). L'impronta e' quella di `GET /instance/ca` (GIT-383): non e' calcolata una seconda volta. Con certificato del cliente o senza HTTPS non c'e' niente da installare e il testo salta il passo della guida. L'app senza indirizzo (nessuna porta) e' 409 `no_address`. GitStack non manda email: l'admin spedisce il testo con i suoi strumenti.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/access/invite (the `GetAppAccessInvite` operationId).
+	GetAppAccessInviteWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*GetAppAccessInviteResponse, error)
+
+	// ListAppAccessMembersWithResponse Elenca la lista di accesso dell'app
+	//
+	// Serve `admin` sull'app, cioe' sul repo (H5, H6): `write` e `read` ricevono 403, un repo che non si legge 404. La lista (H6 del 2026-10-26, pilota retail.it) contiene utenti e team GitStack: chi e' nella lista apre quest'app e nient'altro, non vede codice, issues, scheda Apps o altro del repo e non riceve nessun ruolo sul repo. Nessun accesso anonimo (P2).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/access/members (the `ListAppAccessMembers` operationId).
+	ListAppAccessMembersWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*ListAppAccessMembersResponse, error)
+
+	// AddAppAccessMemberWithBodyWithResponse Aggiunge un utente o un team alla lista di accesso
+	//
+	// Serve `admin` sull'app (H5, H6): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. `kind` e' `user` o `team`; `name` e' il nome utente oppure `organizzazione/team`. Un utente disattivato o inesistente, un team inesistente: 422. Gia' in lista: 409 `already_member`. Aggiungere non assegna nessun ruolo sul repo.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/access/members (the `AddAppAccessMember` operationId).
+	AddAppAccessMemberWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddAppAccessMemberResponse, error)
+
+	// AddAppAccessMemberWithResponse Aggiunge un utente o un team alla lista di accesso
+	//
+	// Serve `admin` sull'app (H5, H6): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. `kind` e' `user` o `team`; `name` e' il nome utente oppure `organizzazione/team`. Un utente disattivato o inesistente, un team inesistente: 422. Gia' in lista: 409 `already_member`. Aggiungere non assegna nessun ruolo sul repo.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/access/members (the `AddAppAccessMember` operationId).
+	AddAppAccessMemberWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body AddAppAccessMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*AddAppAccessMemberResponse, error)
+
+	// RemoveAppAccessMemberWithResponse Toglie un utente o un team dalla lista di accesso
+	//
+	// Serve `admin` sull'app (H5, H6): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. Chi e' tolto viene rifiutato dalla richiesta successiva al login davanti all'app (se non ha `read` sul repo); un membro che non c'e' e' 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/access/members/{memberId} (the `RemoveAppAccessMember` operationId).
+	RemoveAppAccessMemberWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, memberId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RemoveAppAccessMemberResponse, error)
 
 	// DeployAppWithBodyWithResponse Mette in produzione un'immagine (nuova versione)
 	//
@@ -40930,6 +41504,61 @@ func (r GetAdminSystemResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetAdminSystemResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAppAccessMembershipResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppAccessMembership
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAppAccessMembershipResponse) GetJSON200() *AppAccessMembership {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAppAccessMembershipResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAppAccessMembershipResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAppAccessMembershipResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAppAccessMembershipResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAppAccessMembershipResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAppAccessMembershipResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -49334,6 +49963,282 @@ func (r SetAppAccessResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SetAppAccessResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAppAccessInviteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppAccessInvite
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAppAccessInviteResponse) GetJSON200() *AppAccessInvite {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAppAccessInviteResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAppAccessInviteResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetAppAccessInviteResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r GetAppAccessInviteResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAppAccessInviteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAppAccessInviteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAppAccessInviteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAppAccessInviteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListAppAccessMembersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppAccessMemberList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAppAccessMembersResponse) GetJSON200() *AppAccessMemberList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListAppAccessMembersResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListAppAccessMembersResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListAppAccessMembersResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAppAccessMembersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAppAccessMembersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAppAccessMembersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAppAccessMembersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AddAppAccessMemberResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *AppAccessMember
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AddAppAccessMemberResponse) GetJSON201() *AppAccessMember {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r AddAppAccessMemberResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r AddAppAccessMemberResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r AddAppAccessMemberResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r AddAppAccessMemberResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r AddAppAccessMemberResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r AddAppAccessMemberResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AddAppAccessMemberResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AddAppAccessMemberResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AddAppAccessMemberResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AddAppAccessMemberResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemoveAppAccessMemberResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RemoveAppAccessMemberResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RemoveAppAccessMemberResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RemoveAppAccessMemberResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r RemoveAppAccessMemberResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r RemoveAppAccessMemberResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveAppAccessMemberResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveAppAccessMemberResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveAppAccessMemberResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -63067,6 +63972,21 @@ func (c *ClientWithResponses) GetAdminSystemWithResponse(ctx context.Context, re
 	return ParseGetAdminSystemResponse(rsp)
 }
 
+// GetAppAccessMembershipWithResponse Chi chiede e' nella lista di accesso dell'app?
+//
+// Per il forward-auth del gateway (H6): dice se il chiamante e' nella lista di accesso dell'app, direttamente o tramite un team di cui e' membro. Non assegna nessun permesso sul repo e non rivela niente su altri utenti. Un'app che non c'e' risponde `member` falso.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /apps/{appId}/access-membership (the `GetAppAccessMembership` operationId).
+func (c *ClientWithResponses) GetAppAccessMembershipWithResponse(ctx context.Context, appId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetAppAccessMembershipResponse, error) {
+	rsp, err := c.GetAppAccessMembership(ctx, appId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAppAccessMembershipResponse(rsp)
+}
+
 // LoginWithBodyWithResponse Accede con username e password
 //
 // Crea una sessione. La risposta imposta il cookie `gst_session` (con prefisso `__Host-`, quindi `__Host-gst_session`, quando e' servita in HTTPS; i due nomi sono equivalenti per i client) (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
@@ -65407,6 +66327,81 @@ func (c *ClientWithResponses) SetAppAccessWithResponse(ctx context.Context, owne
 		return nil, err
 	}
 	return ParseSetAppAccessResponse(rsp)
+}
+
+// GetAppAccessInviteWithResponse Testo dell'invito ai tester
+//
+// Serve `admin` sull'app (H5, H6): `write` e `read` ricevono 403, un repo che non si legge 404. Restituisce i campi dell'invito (link alla guida `/help/ca` con l'app come parametro, impronta SHA-256 della CA interna, indirizzo dell'app) e il testo gia' composto, con il rimando a «Report a problem» (mockup H13, data-screen="testers"). L'impronta e' quella di `GET /instance/ca` (GIT-383): non e' calcolata una seconda volta. Con certificato del cliente o senza HTTPS non c'e' niente da installare e il testo salta il passo della guida. L'app senza indirizzo (nessuna porta) e' 409 `no_address`. GitStack non manda email: l'admin spedisce il testo con i suoi strumenti.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/access/invite (the `GetAppAccessInvite` operationId).
+func (c *ClientWithResponses) GetAppAccessInviteWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*GetAppAccessInviteResponse, error) {
+	rsp, err := c.GetAppAccessInvite(ctx, owner, repo, app, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAppAccessInviteResponse(rsp)
+}
+
+// ListAppAccessMembersWithResponse Elenca la lista di accesso dell'app
+//
+// Serve `admin` sull'app, cioe' sul repo (H5, H6): `write` e `read` ricevono 403, un repo che non si legge 404. La lista (H6 del 2026-10-26, pilota retail.it) contiene utenti e team GitStack: chi e' nella lista apre quest'app e nient'altro, non vede codice, issues, scheda Apps o altro del repo e non riceve nessun ruolo sul repo. Nessun accesso anonimo (P2).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/access/members (the `ListAppAccessMembers` operationId).
+func (c *ClientWithResponses) ListAppAccessMembersWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*ListAppAccessMembersResponse, error) {
+	rsp, err := c.ListAppAccessMembers(ctx, owner, repo, app, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAppAccessMembersResponse(rsp)
+}
+
+// AddAppAccessMemberWithBodyWithResponse Aggiunge un utente o un team alla lista di accesso
+//
+// Serve `admin` sull'app (H5, H6): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. `kind` e' `user` o `team`; `name` e' il nome utente oppure `organizzazione/team`. Un utente disattivato o inesistente, un team inesistente: 422. Gia' in lista: 409 `already_member`. Aggiungere non assegna nessun ruolo sul repo.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/access/members (the `AddAppAccessMember` operationId).
+func (c *ClientWithResponses) AddAppAccessMemberWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddAppAccessMemberResponse, error) {
+	rsp, err := c.AddAppAccessMemberWithBody(ctx, owner, repo, app, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddAppAccessMemberResponse(rsp)
+}
+
+// AddAppAccessMemberWithResponse Aggiunge un utente o un team alla lista di accesso
+//
+// Serve `admin` sull'app (H5, H6): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. `kind` e' `user` o `team`; `name` e' il nome utente oppure `organizzazione/team`. Un utente disattivato o inesistente, un team inesistente: 422. Gia' in lista: 409 `already_member`. Aggiungere non assegna nessun ruolo sul repo.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/access/members (the `AddAppAccessMember` operationId).
+func (c *ClientWithResponses) AddAppAccessMemberWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body AddAppAccessMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*AddAppAccessMemberResponse, error) {
+	rsp, err := c.AddAppAccessMember(ctx, owner, repo, app, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddAppAccessMemberResponse(rsp)
+}
+
+// RemoveAppAccessMemberWithResponse Toglie un utente o un team dalla lista di accesso
+//
+// Serve `admin` sull'app (H5, H6): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. Chi e' tolto viene rifiutato dalla richiesta successiva al login davanti all'app (se non ha `read` sul repo); un membro che non c'e' e' 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/access/members/{memberId} (the `RemoveAppAccessMember` operationId).
+func (c *ClientWithResponses) RemoveAppAccessMemberWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, memberId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RemoveAppAccessMemberResponse, error) {
+	rsp, err := c.RemoveAppAccessMember(ctx, owner, repo, app, memberId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveAppAccessMemberResponse(rsp)
 }
 
 // DeployAppWithBodyWithResponse Mette in produzione un'immagine (nuova versione)
@@ -69586,6 +70581,46 @@ func ParseGetAdminSystemResponse(rsp *http.Response) (*GetAdminSystemResponse, e
 			return nil, err
 		}
 		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAppAccessMembershipResponse parses an HTTP response from a GetAppAccessMembershipWithResponse call
+func ParseGetAppAccessMembershipResponse(rsp *http.Response) (*GetAppAccessMembershipResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAppAccessMembershipResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppAccessMembership
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
 	}
 
@@ -76293,6 +77328,225 @@ func ParseSetAppAccessResponse(rsp *http.Response) (*SetAppAccessResponse, error
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAppAccessInviteResponse parses an HTTP response from a GetAppAccessInviteWithResponse call
+func ParseGetAppAccessInviteResponse(rsp *http.Response) (*GetAppAccessInviteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAppAccessInviteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppAccessInvite
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAppAccessMembersResponse parses an HTTP response from a ListAppAccessMembersWithResponse call
+func ParseListAppAccessMembersResponse(rsp *http.Response) (*ListAppAccessMembersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAppAccessMembersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppAccessMemberList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAddAppAccessMemberResponse parses an HTTP response from a AddAppAccessMemberWithResponse call
+func ParseAddAppAccessMemberResponse(rsp *http.Response) (*AddAppAccessMemberResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AddAppAccessMemberResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest AppAccessMember
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRemoveAppAccessMemberResponse parses an HTTP response from a RemoveAppAccessMemberWithResponse call
+func ParseRemoveAppAccessMemberResponse(rsp *http.Response) (*RemoveAppAccessMemberResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveAppAccessMemberResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 
