@@ -71,7 +71,7 @@ printf %s "$VALORE" | gs app secret set web DB_PASSWORD
 
 ## Con MCP
 
-Gli strumenti sono gli stessi dell'API: `app_list`, `app_get`, `app_logs`, `app_deploy`, `app_rollback`, `app_restart`, `app_scale`, `app_version_list` (lettura o `write`), mentre `app_create`, `app_delete` e `app_set_access` richiedono `admin` e sono annotati come **distruttivi**: il client può chiedere conferma. Il server non chiede conferme da solo. `app_deploy` risponde 202: leggi l'esito con `app_version_list` o `app_get` finché lo stato non è `serving` o `failed`.
+Gli strumenti sono gli stessi dell'API: `app_list`, `app_get`, `app_logs`, `app_deploy`, `app_rollback`, `app_restart`, `app_scale`, `app_version_list` (lettura o `write`), mentre `app_create`, `app_delete`, `app_set_access`, `app_access_member_add` e `app_access_member_remove` richiedono `admin` e sono annotati come **distruttivi**: il client può chiedere conferma. Il server non chiede conferme da solo. `app_deploy` risponde 202: leggi l'esito con `app_version_list` o `app_get` finché lo stato non è `serving` o `failed`.
 
 ## Divieto di `--yes` (G8)
 
