@@ -70,16 +70,25 @@ func (s *apiServer) appRepo(w http.ResponseWriter, r *http.Request, owner, name,
 		writeError(w, http.StatusConflict, "archived", "Il repo è archiviato: le app non accettano modifiche.")
 		return store.Repo{}, openapiActor{}, false
 	}
-	return repo, openapiActor{id: userID, username: caller.Username}, true
+	actor := openapiActor{id: userID, username: caller.Username, kind: "human"}
+	if mutate {
+		// H13: il deploy di un agente compare nello storico con la sua identita' e il tipo `agent`. Se identity non
+		// risponde l'azione non si blocca: resta `human`, come prima.
+		if isAgent, err := s.callerIsAgent(r.Context(), userID); err == nil && isAgent {
+			actor.kind = "agent"
+		}
+	}
+	return repo, actor, true
 }
 
 type openapiActor struct {
 	id       uuid.UUID
 	username string
+	kind     string // human | agent
 }
 
 func (a openapiActor) store() *store.AppActor {
-	return &store.AppActor{ID: a.id, Username: a.username, Type: "human"}
+	return &store.AppActor{ID: a.id, Username: a.username, Type: a.kind}
 }
 
 func actorToAPI(a *store.AppActor) *openapi.AppActor {

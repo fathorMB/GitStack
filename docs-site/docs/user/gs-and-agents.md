@@ -64,6 +64,7 @@ Agent Skills format and are served by the instance (`/downloads/gs-skills.zip`):
 | `gitstack-issue-triage` | search, classify, assign and close issues |
 | `gitstack-repo-admin` | create, edit, archive, delete and recover repositories |
 | `gitstack-notifications` | notifications, then work, then reply |
+| `gitstack-apps` | put an app in production: deploy, wait for the health check, read logs, roll back |
 
 ```sh
 gs skills install                  # agents found, in the project

@@ -23,7 +23,7 @@ var Tools = []Tool{
 		Method:      "POST",
 		Path:        "/repos/{owner}/{repo}/apps/{app}/access/members",
 		Description: "Aggiunge un utente o un team alla lista di accesso. Serve `admin` sull'app (H5, H6): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. `kind` e' `user` o `team`; `name` e' il nome utente oppure `organizzazione/team`. Un utente disattivato o inesistente, un team inesistente: 422. Gia' in lista: 409 `already_member`. Aggiungere non assegna nessun ruolo sul repo.",
-		Destructive: false,
+		Destructive: true,
 		PathParams:  []string{"app", "owner", "repo"},
 		QueryParams: nil,
 		Body:        true,

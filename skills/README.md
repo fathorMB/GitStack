@@ -2,7 +2,7 @@
 
 Pacchetto di skills per agenti di coding nel formato aperto Agent Skills: una cartella per skill con un `SKILL.md` (frontmatter `name` e `description`, poi le istruzioni). Descrivono i flussi tipici su GitStack e si usano insieme alla CLI `gs`. Dettagli: [[M-07]] in `.lmbrain-lite/milestones/M-07.md`.
 
-Stato: 7 skills (v1: M-07/I, GIT-170; `gitstack-pr-review` dalla v1.1; `gitstack-ci` per CI6).
+Stato: 8 skills (v1: M-07/I, GIT-170; `gitstack-pr-review` dalla v1.1; `gitstack-ci` per CI6; `gitstack-apps` per H13, v3-a).
 
 | Skill | Quando serve |
 | --- | --- |
@@ -13,6 +13,7 @@ Stato: 7 skills (v1: M-07/I, GIT-170; `gitstack-pr-review` dalla v1.1; `gitstack
 | `gitstack-notifications` | ciclo notifiche → lavoro → risposta (C4) |
 | `gitstack-pr-review` | rivedere una Pull Request: diff, stato di unione, review con commenti sulle righe |
 | `gitstack-ci` | attendere la CI, leggere i log dei job falliti e correggere |
+| `gitstack-apps` | mettere in produzione un'app: deploy, attesa del controllo di salute, log e rollback (`gs app`, strumenti MCP `app_*`) |
 
 Ogni skill vieta agli agenti `--yes` su eliminazioni e archiviazioni senza un'istruzione esplicita di una persona (G8). I comandi `gs` citati nei blocchi di codice li verifica un test (`cli/internal/cmd/skills`): devono esistere, con i loro flag.
 
