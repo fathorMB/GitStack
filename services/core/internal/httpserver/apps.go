@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -575,10 +576,34 @@ func (s *apiServer) UpdateApp(w http.ResponseWriter, r *http.Request, owner open
 	writeJSON(w, http.StatusOK, s.appToAPI(updated))
 }
 
-// DeleteApp implementa DELETE /repos/{owner}/{repo}/apps/{app}.
-func (s *apiServer) DeleteApp(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, app openapi.AppParam) {
+// DeleteApp implementa DELETE /repos/{owner}/{repo}/apps/{app}. Se l'app ha volumi elimina anche i
+// dati (H5, v3-b): serve la conferma esplicita `confirm` col nome dell'app, altrimenti 422 e nulla
+// cambia. Il namespace (con i PVC) lo toglie il controller subito; se non ci riesce lo fa Collect.
+func (s *apiServer) DeleteApp(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, app openapi.AppParam, params openapi.DeleteAppParams) {
 	repo, _, ok := s.appRepo(w, r, owner, name, "admin", true)
 	if !ok {
+		return
+	}
+	a, ok := s.appFor(w, r, repo, app)
+	if !ok {
+		return
+	}
+	vols, err := s.resources.ListAppVolumes(r.Context(), a.ID)
+	if err != nil {
+		appInternalError(w, "elenco dei volumi dell'app", err)
+		return
+	}
+	if len(vols) > 0 && (params.Confirm == nil || *params.Confirm != a.Name) {
+		code, msg := "confirmation_required", "L'app ha volumi: eliminarla elimina anche i dati. Conferma col nome dell'app (confirm)."
+		if params.Confirm != nil && *params.Confirm != "" {
+			code, msg = "confirmation_mismatch", "La conferma deve essere il nome dell'app."
+		}
+		var body openapi.Error
+		body.Error.Code = code
+		body.Error.Message = msg
+		d := map[string]interface{}{"fields": map[string]interface{}{"confirm": "confirm: deve essere il nome dell'app."}}
+		body.Error.Details = &d
+		writeJSON(w, http.StatusUnprocessableEntity, body)
 		return
 	}
 	if err := s.resources.DeleteApp(r.Context(), repo.ID, app); err != nil {
@@ -588,6 +613,13 @@ func (s *apiServer) DeleteApp(w http.ResponseWriter, r *http.Request, owner open
 		}
 		appInternalError(w, "eliminazione dell'app", err)
 		return
+	}
+	if f, ok := s.appCtl.(interface {
+		Forget(ctx context.Context, id uuid.UUID) error
+	}); ok {
+		if err := f.Forget(context.WithoutCancel(r.Context()), a.ID); err != nil {
+			slog.Warn("apps: namespace dell'app eliminata non rimosso, lo toglie Collect", "app", a.ID, "err", err)
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

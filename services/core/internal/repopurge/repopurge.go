@@ -40,6 +40,11 @@ type Job struct {
 	Identity Access
 	// Attachments, se presente, toglie i file degli allegati del repo (I9).
 	Attachments interface{ RemoveRepo(repoID uuid.UUID) error }
+	// Apps, se presente, toglie dal cluster app e volumi del repo (H5, v3-b): i PVC vanno via
+	// con i 7 giorni, e la riga in core li libera dalla quota dell'owner.
+	Apps interface {
+		PurgeRepoApps(ctx context.Context, repoID uuid.UUID) error
+	}
 	// Now è l'orologio (iniettabile nei test); nil = time.Now.
 	Now func() time.Time
 	// Log; nil = slog.Default().
@@ -85,6 +90,11 @@ func (j *Job) cleanup(ctx context.Context, r store.Repo) error {
 	}
 	if err := j.Git.Delete(ctx, systemCaller, r.ID); err != nil && !errors.Is(err, gitclient.ErrNotFound) {
 		return fmt.Errorf("repo %s: cancellazione su disco: %w", r.ID, err)
+	}
+	if j.Apps != nil {
+		if err := j.Apps.PurgeRepoApps(ctx, r.ID); err != nil {
+			return fmt.Errorf("repo %s: app e volumi: %w", r.ID, err)
+		}
 	}
 	if j.Attachments != nil {
 		if err := j.Attachments.RemoveRepo(r.ID); err != nil {

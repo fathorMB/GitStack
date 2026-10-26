@@ -25,6 +25,7 @@ func (noGit) RemoteURL(context.Context, string) (string, error) { return "", gsr
 
 type call struct {
 	Method, Path string
+	Query        string
 	Body         map[string]any
 }
 
@@ -49,7 +50,7 @@ func newFake(t *testing.T, routes map[string]reply) *fake {
 		_ = json.Unmarshal(b, &body)
 		path := strings.TrimPrefix(r.URL.Path, "/api/v1")
 		fk.mu.Lock()
-		fk.calls = append(fk.calls, call{r.Method, path, body})
+		fk.calls = append(fk.calls, call{r.Method, path, r.URL.RawQuery, body})
 		fk.mu.Unlock()
 		rep, ok := fk.routes[r.Method+" "+path]
 		if !ok {

@@ -19125,7 +19125,12 @@ export type DeleteAppData = {
          */
         app: AppName;
     };
-    query?: never;
+    query?: {
+        /**
+         * Il nome dell'app riscritto; obbligatorio se l'app ha volumi.
+         */
+        confirm?: string;
+    };
     url: '/repos/{owner}/{repo}/apps/{app}';
 };
 
@@ -19147,6 +19152,11 @@ export type DeleteAppErrors = {
      * Conflitto con lo stato attuale della risorsa.
      */
     409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
 };
 
 export type DeleteAppError = DeleteAppErrors[keyof DeleteAppErrors];

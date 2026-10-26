@@ -75,6 +75,6 @@ Gli strumenti sono gli stessi dell'API: `app_list`, `app_get`, `app_logs`, `app_
 
 ## Divieto di `--yes` (G8)
 
-`gs app scale --copies 0`, `gs app env unset` e `gs app secret rm` chiedono conferma. **Un agente non usa mai `--yes` su queste operazioni senza un'istruzione esplicita di una persona** che nomina quell'app, in questa conversazione. Senza terminale e senza `--yes` il comando esce con 2 e non fa nulla: è la richiesta di una conferma umana, non un errore da aggirare.
+`gs app scale --copies 0`, `gs app delete` (elimina anche i volumi e i dati), `gs app env unset` e `gs app secret rm` chiedono conferma. **Un agente non usa mai `--yes` su queste operazioni senza un'istruzione esplicita di una persona** che nomina quell'app, in questa conversazione. Senza terminale e senza `--yes` il comando esce con 2 e non fa nulla: è la richiesta di una conferma umana, non un errore da aggirare.
 
 Per avere una persona nel giro dei deploy, chi amministra il repo attiva «Richiedi una Pull Request» su `main`: i deploy automatici partono solo dopo un merge approvato. Se un deploy dell'agente fallisce, gli amministratori ricevono una notifica.
