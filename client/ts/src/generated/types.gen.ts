@@ -385,6 +385,21 @@ export type Meta = {
     api_version: string;
 };
 
+export type InstanceCa = {
+    /**
+     * `internal` = CA interna di GitStack (N5); `custom` = certificato del cliente o Let's Encrypt; `none` = nessuna CA da installare.
+     */
+    mode: 'internal' | 'custom' | 'none';
+    /**
+     * Impronta SHA-256 del DER di `ca.crt` (formato `openssl x509 -fingerprint -sha256`, senza il prefisso). Null se `mode` non e' `internal`.
+     */
+    fingerprintSha256: string | null;
+    /**
+     * Indirizzo del certificato, `/downloads/ca.crt`. Null se `mode` non e' `internal`.
+     */
+    downloadUrl: string | null;
+};
+
 /**
  * Stato dell'installazione per Admin · System (mockup 16). Nessun segreto. `published` dice se l'host ha pubblicato le sue informazioni: se no, le sezioni dell'host hanno `configured: false` o stati `none`.
  *
@@ -4868,6 +4883,22 @@ export type GetMetaResponses = {
 };
 
 export type GetMetaResponse = GetMetaResponses[keyof GetMetaResponses];
+
+export type GetInstanceCaData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/instance/ca';
+};
+
+export type GetInstanceCaResponses = {
+    /**
+     * Stato della CA dell'istanza.
+     */
+    200: InstanceCa;
+};
+
+export type GetInstanceCaResponse = GetInstanceCaResponses[keyof GetInstanceCaResponses];
 
 export type GetRegistrySigningKeyData = {
     body?: never;

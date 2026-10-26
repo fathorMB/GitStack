@@ -329,6 +329,25 @@ OUT="$(helm template gitstack "${CHART}" --namespace prova-ns --set ci.enabled=t
 expect_eq "CI accesa: PriorityClass gitstack-ci-job" "$(count 'metadata: {name: gitstack-ci-job}')" "1"
 expect_has "CI accesa: ResourceQuota dei posti" "$OUT" "name: ci-jobs"
 
+echo "== GIT-383: core legge la CA interna (impronta per la guida dei tester)"
+OUT="$(render)" || { bad "helm template di default fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_lacks "CA: senza caConfigMap core non monta la CA" "${d}" "/etc/gitstack/ca"
+expect_lacks "CA: senza caConfigMap nessun GITSTACK_CORE_CA_DIR" "${d}" "GITSTACK_CORE_CA_DIR"
+expect_line_has "CA: senza HTTPS la modalita' e' none" "${d}" "value: none"
+OUT="$(render --set ingress.tls.enabled=true --set ingress.tls.certResolver=le)" || { bad "helm template con letsencrypt fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_lacks "CA: letsencrypt non monta la CA" "${d}" "name: ca"
+expect_line_has "CA: letsencrypt e' custom" "${d}" "value: custom"
+OUT="$(render --set ingress.tls.enabled=true --set ingress.tls.secretName=t --set ingress.tls.caConfigMap=gitstack-ca)" || { bad "helm template con caConfigMap fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_line_has "CA: core monta la cartella intera" "${d}" "mountPath: /etc/gitstack/ca"
+expect_line_has "CA: core legge GITSTACK_CORE_CA_DIR" "${d}" "value: /etc/gitstack/ca"
+expect_has "CA: il ConfigMap e' quello dell'installer" "${d}" "name: gitstack-ca"
+expect_line_has "CA: ConfigMap optional" "${d}" "optional: true"
+expect_lacks "CA: niente subPath (un rinnovo arriva senza riavvio)" "${d}" "subPath"
+expect_lacks "CA: con la CA interna nessun GITSTACK_CORE_CA_MODE" "${d}" "GITSTACK_CORE_CA_MODE"
+
 echo
 echo "Passati: ${PASS}  Falliti: ${FAILN}"
 [ "${FAILN}" -eq 0 ]

@@ -245,19 +245,19 @@ func (e AdminSystemVersionsK3sUpdate) Valid() bool {
 
 // Defines values for AppAccessCertificate.
 const (
-	InstanceCa  AppAccessCertificate = "instance_ca"
-	LetsEncrypt AppAccessCertificate = "lets_encrypt"
-	Uploaded    AppAccessCertificate = "uploaded"
+	AppAccessCertificateInstanceCa  AppAccessCertificate = "instance_ca"
+	AppAccessCertificateLetsEncrypt AppAccessCertificate = "lets_encrypt"
+	AppAccessCertificateUploaded    AppAccessCertificate = "uploaded"
 )
 
 // Valid indicates whether the value is a known member of the AppAccessCertificate enum.
 func (e AppAccessCertificate) Valid() bool {
 	switch e {
-	case InstanceCa:
+	case AppAccessCertificateInstanceCa:
 		return true
-	case LetsEncrypt:
+	case AppAccessCertificateLetsEncrypt:
 		return true
-	case Uploaded:
+	case AppAccessCertificateUploaded:
 		return true
 	default:
 		return false
@@ -768,6 +768,27 @@ func (e HealthStatus) Valid() bool {
 	case Degraded:
 		return true
 	case Ok:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InstanceCaMode.
+const (
+	InstanceCaModeCustom   InstanceCaMode = "custom"
+	InstanceCaModeInternal InstanceCaMode = "internal"
+	InstanceCaModeNone     InstanceCaMode = "none"
+)
+
+// Valid indicates whether the value is a known member of the InstanceCaMode enum.
+func (e InstanceCaMode) Valid() bool {
+	switch e {
+	case InstanceCaModeCustom:
+		return true
+	case InstanceCaModeInternal:
+		return true
+	case InstanceCaModeNone:
 		return true
 	default:
 		return false
@@ -4352,6 +4373,21 @@ type ImportRepositoryInput struct {
 	Visibility *RepoVisibility `json:"visibility,omitempty"`
 }
 
+// InstanceCa defines model for InstanceCa.
+type InstanceCa struct {
+	// DownloadUrl Indirizzo del certificato, `/downloads/ca.crt`. Null se `mode` non e' `internal`.
+	DownloadUrl *string `json:"downloadUrl"`
+
+	// FingerprintSha256 Impronta SHA-256 del DER di `ca.crt` (formato `openssl x509 -fingerprint -sha256`, senza il prefisso). Null se `mode` non e' `internal`.
+	FingerprintSha256 *string `json:"fingerprintSha256"`
+
+	// Mode `internal` = CA interna di GitStack (N5); `custom` = certificato del cliente o Let's Encrypt; `none` = nessuna CA da installare.
+	Mode InstanceCaMode `json:"mode"`
+}
+
+// InstanceCaMode `internal` = CA interna di GitStack (N5); `custom` = certificato del cliente o Let's Encrypt; `none` = nessuna CA da installare.
+type InstanceCaMode string
+
 // Issue defines model for Issue.
 type Issue struct {
 	Assignees   []IssueUser        `json:"assignees"`
@@ -7356,6 +7392,9 @@ type ServerInterface interface {
 	// GetHealth Stato del servizio
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
+	// GetInstanceCa CA interna dell'istanza e sua impronta
+	// (GET /instance/ca)
+	GetInstanceCa(w http.ResponseWriter, r *http.Request)
 	// GetMeta Versione del server
 	// (GET /meta)
 	GetMeta(w http.ResponseWriter, r *http.Request)
@@ -8319,6 +8358,20 @@ func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetHealth(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetInstanceCa operation middleware
+func (siw *ServerInterfaceWrapper) GetInstanceCa(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetInstanceCa(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -18194,6 +18247,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/meta", wrapper.GetMeta)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/instance/ca", wrapper.GetInstanceCa)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/system", wrapper.GetAdminSystem)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/resources", wrapper.ListResources)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/resources", wrapper.CreateResource)
