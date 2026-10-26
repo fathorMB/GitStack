@@ -13,10 +13,10 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
 )
 
-// TestMigration0042_AppMetrics (GIT-384, H12): campioni delle metriche per copia. Riavvii e pronto
+// TestMigration0043_AppMetrics (GIT-384, H12): campioni delle metriche per copia. Riavvii e pronto
 // sono obbligatori; CPU e memoria possono mancare (sorgente non risposta) ma non essere negative; il
 // nome della copia non è vuoto; la cascata dall'app li toglie; il down toglie la tabella.
-func TestMigration0042_AppMetrics(t *testing.T) {
+func TestMigration0043_AppMetrics(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 	exec := func(q string, args ...any) error {
@@ -65,11 +65,11 @@ func TestMigration0042_AppMetrics(t *testing.T) {
 		t.Fatalf("i campioni devono uscire con l'app: %d %v", n, err)
 	}
 
-	// Il down della 0042 e della 0043 (sopra di essa) toglie la tabella.
+	// Il down della 0043 e della 0044 (sopra di essa) toglie la tabella.
 	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
-		t.Fatalf("down 0042: %v", err)
+		t.Fatalf("down 0043: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.app_metric_samples`).Scan(&n); err == nil {
-		t.Fatal("la tabella dei campioni deve sparire con il down 0042")
+		t.Fatal("la tabella dei campioni deve sparire con il down 0043")
 	}
 }

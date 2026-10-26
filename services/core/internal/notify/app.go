@@ -14,7 +14,8 @@ import (
 // copie non più pronte («fermata»). Il motivo è state_change, come per la CI; come le altre notifiche,
 // niente a chi non legge il repo (insert). Il sistema non è mai il destinatario: senza attore
 // (deploy automatico senza chi l'ha avviato) nessuno viene avvisato.
-// Non ancora: gli admin del repo (il contratto li prevede per il deploy fallito).
+// Non ancora: gli admin del repo (il contratto li prevede per il deploy fallito). Rimandato a GIT-404:
+// core non sa elencare gli admin di un repo, serve un'operazione interna di identity.
 
 // isAppNotice dice se l'evento è uno di quelli che avvisano chi ha fatto il deploy.
 func isAppNotice(name string) bool {

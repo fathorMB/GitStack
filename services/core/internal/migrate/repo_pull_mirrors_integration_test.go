@@ -120,7 +120,7 @@ func TestMigration0015_SaleEScende(t *testing.T) {
 	}
 
 	// Down: via le tre tabelle, non il mirror in push; poi un nuovo up.
-	if err := migrate.Down(ctx, pool, dsn, 28); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 29); err != nil {
 		t.Fatalf("down 0015: %v", err)
 	}
 	for _, tbl := range tables {

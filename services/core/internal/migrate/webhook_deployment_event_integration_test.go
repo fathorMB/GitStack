@@ -12,10 +12,10 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
 )
 
-// TestMigration0043_WebhookDeploymentEvent (GIT-384, H12): il webhook deployment è un evento
+// TestMigration0044_WebhookDeploymentEvent (GIT-384, H12): il webhook deployment è un evento
 // selezionabile dei webhook del repo; un evento sconosciuto resta rifiutato; il down riporta
 // l'elenco della 0030 e toglie il nuovo evento dai webhook che lo avevano.
-func TestMigration0043_WebhookDeploymentEvent(t *testing.T) {
+func TestMigration0044_WebhookDeploymentEvent(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 	repo, owner := uuid.New(), uuid.New()
@@ -38,10 +38,10 @@ func TestMigration0043_WebhookDeploymentEvent(t *testing.T) {
 	}
 
 	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("down 0043: %v", err)
+		t.Fatalf("down 0044: %v", err)
 	}
 	if err := insert("deployment"); err == nil {
-		t.Error("dopo il down 0043 il webhook deployment non è più ammesso")
+		t.Error("dopo il down 0044 il webhook deployment non è più ammesso")
 	}
 	var n int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.webhooks WHERE 'deployment' = ANY(events)`).Scan(&n); err != nil || n != 0 {

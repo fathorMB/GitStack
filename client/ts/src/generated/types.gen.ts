@@ -3710,6 +3710,10 @@ export type App = {
     readyCopies: number;
     resources: AppResources;
     /**
+     * Volumi persistenti (H3, v3-b); con almeno un volume l'app gira in una sola copia.
+     */
+    volumes?: Array<AppVolume>;
+    /**
      * Uso corrente; null vuol dire metriche non disponibili.
      */
     usage?: AppUsage | null;
@@ -3789,7 +3793,7 @@ export type AppScaleInput = {
 };
 
 /**
- * `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta), `rollback`, `create`.
+ * `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`.
  */
 export type AppVersionTrigger = 'create' | 'manual' | 'branch_push' | 'config' | 'rollback';
 
@@ -3806,6 +3810,10 @@ export type AppVersionConfig = {
     resources: AppResources;
     copies: number;
     restricted?: boolean;
+    /**
+     * Volumi dell'app quando la versione e' stata creata (H3). Un rollback non li cambia: i volumi sono dati.
+     */
+    volumes?: Array<AppVolumeSpec>;
 };
 
 export type AppVersion = {
@@ -3974,6 +3982,70 @@ export type AppResources = {
      * Massimo consentito dall'istanza per app.
      */
     maxPerApp?: AppResourceAmount | null;
+};
+
+/**
+ * Nome del volume dentro l'app: lettere minuscole, cifre e trattini, 1-30 caratteri. Il PVC si chiama `vol-<nome>`.
+ */
+export type AppVolumeName = string;
+
+/**
+ * Un volume come lo congela una versione (H3, H8).
+ */
+export type AppVolumeSpec = {
+    name: AppVolumeName;
+    /**
+     * Percorso assoluto nel container.
+     */
+    mountPath: string;
+    sizeBytes: number;
+};
+
+/**
+ * Volume persistente dell'app (PVC su local-path, dimensione fissa, H3).
+ */
+export type AppVolume = {
+    name: AppVolumeName;
+    /**
+     * Percorso di mount nel container.
+     */
+    mountPath: string;
+    /**
+     * Dimensione fissa; conta nella quota disco dell'owner. local-path non la applica come limite fisico del disco.
+     */
+    sizeBytes: number;
+    /**
+     * Versione creata dall'aggiunta del volume.
+     */
+    version: number;
+    createdAt: string;
+    createdBy?: AppActor | null;
+};
+
+export type AppVolumeInput = {
+    name: AppVolumeName;
+    /**
+     * Percorso assoluto e normalizzato; non la radice e non sotto /proc, /sys, /dev.
+     */
+    mountPath: string;
+    /**
+     * Almeno 1 MiB.
+     */
+    sizeBytes: number;
+};
+
+export type AppVolumeList = {
+    items: Array<AppVolume>;
+    quota: AppOwnerQuota;
+};
+
+/**
+ * Esito di un'aggiunta o di una rimozione di volume.
+ */
+export type AppVolumeChange = {
+    volume: AppVolume;
+    version: AppVersion;
+    quota: AppOwnerQuota;
 };
 
 export type AppResourcesInput = {
@@ -4923,6 +4995,11 @@ export type AppParam = AppName;
 export type AppVersionParam = number;
 
 export type AppEnvNameParam = AppEnvName;
+
+/**
+ * Nome del volume dell'app (H3).
+ */
+export type AppVolumeParam = AppVolumeName;
 
 export type AppTrustedKeyIdParam = string;
 
@@ -20307,6 +20384,168 @@ export type SetAppResourcesResponses = {
 };
 
 export type SetAppResourcesResponse = SetAppResourcesResponses[keyof SetAppResourcesResponses];
+
+export type ListAppVolumesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/volumes';
+};
+
+export type ListAppVolumesErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListAppVolumesError = ListAppVolumesErrors[keyof ListAppVolumesErrors];
+
+export type ListAppVolumesResponses = {
+    /**
+     * Volumi.
+     */
+    200: AppVolumeList;
+};
+
+export type ListAppVolumesResponse = ListAppVolumesResponses[keyof ListAppVolumesResponses];
+
+export type CreateAppVolumeData = {
+    body: AppVolumeInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/volumes';
+};
+
+export type CreateAppVolumeErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type CreateAppVolumeError = CreateAppVolumeErrors[keyof CreateAppVolumeErrors];
+
+export type CreateAppVolumeResponses = {
+    /**
+     * Volume aggiunto, deploy della nuova versione in corso.
+     */
+    202: AppVolumeChange;
+};
+
+export type CreateAppVolumeResponse = CreateAppVolumeResponses[keyof CreateAppVolumeResponses];
+
+export type DeleteAppVolumeData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+        /**
+         * Nome del volume dell'app (H3).
+         */
+        volume: AppVolumeName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/volumes/{volume}';
+};
+
+export type DeleteAppVolumeErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type DeleteAppVolumeError = DeleteAppVolumeErrors[keyof DeleteAppVolumeErrors];
+
+export type DeleteAppVolumeResponses = {
+    /**
+     * Volume tolto, deploy della nuova versione in corso.
+     */
+    202: AppVolumeChange;
+};
+
+export type DeleteAppVolumeResponse = DeleteAppVolumeResponses[keyof DeleteAppVolumeResponses];
 
 export type GetAppLogsData = {
     body?: never;

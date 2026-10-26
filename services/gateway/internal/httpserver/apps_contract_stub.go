@@ -81,6 +81,18 @@ func (s *apiServer) DeleteAppSecret(w http.ResponseWriter, r *http.Request, owne
 	s.appsProxy(w, r)
 }
 
+func (s *apiServer) ListAppVolumes(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
+	s.appsProxy(w, r)
+}
+
+func (s *apiServer) CreateAppVolume(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
+	s.appsProxy(w, r)
+}
+
+func (s *apiServer) DeleteAppVolume(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, volume openapi.AppVolumeParam) {
+	s.appsProxy(w, r)
+}
+
 func (s *apiServer) GetAppAccess(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
 	s.appsProxy(w, r)
 }

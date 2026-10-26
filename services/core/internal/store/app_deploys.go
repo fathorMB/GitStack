@@ -80,6 +80,11 @@ func (s *Store) BeginAppDeploy(ctx context.Context, repoID uuid.UUID, name strin
 	if in.ConfigFrom == 0 {
 		cfg.Port, cfg.HealthCheck, cfg.Restricted = cur.Config.Port, cur.Config.HealthCheck, cur.Config.Restricted
 	}
+	// I volumi sono dati: un rollback non li toglie né li rimette, restano quelli attuali (H3).
+	var err2 error
+	if cfg.Volumes, err2 = volumeSpecs(ctx, tx, cur.ID); err2 != nil {
+		return App{}, AppVersion{}, err2
+	}
 	// Il rollback ripristina i nomi della versione, ma non un vecchio ciphertext: i valori sono
 	// sempre quelli correnti. Se un nome e' stato eliminato, rifiuta prima di scrivere il deploy.
 	if err := missingAppSecrets(ctx, tx, cur.ID, cfg.SecretNames); err != nil {
@@ -334,6 +339,16 @@ func (s *Store) SetAppCopies(ctx context.Context, repoID uuid.UUID, name string,
 	}
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('app-quota:' || lower($1), 0))`, cur.Owner); err != nil {
 		return App{}, err
+	}
+	if copies > 1 {
+		// H3: un'app con volumi gira in una sola copia (PVC ReadWriteOnce, un solo scrittore).
+		var n int
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM core.app_volumes WHERE app_id = $1`, cur.ID).Scan(&n); err != nil {
+			return App{}, err
+		}
+		if n > 0 {
+			return App{}, ErrAppSingleCopy
+		}
 	}
 	if copies > cur.Config.Copies {
 		limits, used, _, err := ownerAppQuota(ctx, tx, cur.Owner)
