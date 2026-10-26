@@ -92,6 +92,7 @@ func newAPIServerWithOptions(pool *pgxpool.Pool, publisher events.Publisher, opt
 		now:          now,
 		appsDomain:   o.appsDomain,
 		appCtl:       o.appCtl,
+		appsOff:      o.appsOff,
 	}, o
 }
 
@@ -141,6 +142,7 @@ type routerOptions struct {
 	now          func() time.Time
 	appsDomain   string
 	appCtl       AppController
+	appsOff      bool
 	grants       identityclient.CreatorGranter
 	readable     identityclient.ReadableLister
 	repoIdentity identityclient.RepoIdentity
@@ -247,6 +249,13 @@ type AppController interface {
 	Kick()
 	Restart(ctx context.Context, app store.App) error
 	Scale(ctx context.Context, app store.App) error
+}
+
+// WithAppsHostingOff dichiara l'hosting delle app spento di proposito (GITSTACK_CORE_APPS_ENABLED
+// non è true): la creazione di un'app risponde 503 `apps_unavailable` e non scrive nulla, così non
+// restano app nel modello che nessun controller porterà mai in cluster.
+func WithAppsHostingOff() Option {
+	return func(o *routerOptions) { o.appsOff = true }
 }
 
 // WithAppController abilita deploy, rollback, riavvio e scala delle app (H7, H12). Senza, rispondono 503.

@@ -751,3 +751,22 @@ ingress:
     # ConfigMap con la chiave ca.crt (la CA interna): web lo serve su
     # /downloads/ca.crt, anche in HTTP, per fidarsi di HTTPS. Vuoto = nessun download.
     caConfigMap: ""
+
+# --- Hosting delle app (v3-a, ADR 0002) ---------------------------------------
+# Il controller delle app dentro core crea un namespace per app con Deployment, Service,
+# Secret e IngressRoute. SPENTO per default: senza `apps.enabled=true` core non ha nessun
+# permesso Kubernetes sulle app e l'API delle app risponde 503 `apps_unavailable`.
+# Acceso: core riceve GITSTACK_CORE_APPS_ENABLED/DOMAIN/AUTH_MIDDLEWARE e l'RBAC minimo
+# dell'ADR 0002 (templates/apps-rbac.yaml): un ClusterRole del controller (namespace e
+# RoleBinding, `bind` solo sul ruolo modello) e un ClusterRole modello con i permessi sull'app,
+# legato SOLO da RoleBinding creati nei namespace delle app (mai un ClusterRoleBinding).
+# Si accende con install.sh --enable-apps, `gitstack upgrade --enable-apps` o
+# `gitstack config set apps on`, che passano anche il dominio.
+apps:
+  enabled: false
+  # Dominio delle app (H2, lo stesso di --apps-domain e di config.yaml apps_domain): l'indirizzo
+  # di un'app è <app>-<repo>-<owner>.<dominio>. Obbligatorio con apps.enabled=true.
+  domain: ""
+  # Middleware Traefik forward-auth del login (`nome` o `namespace/nome`, GITSTACK_CORE_APPS_AUTH_MIDDLEWARE).
+  # Vuoto: le app con accesso `login` non ricevono una rotta (mai esposte senza login).
+  authMiddleware: ""

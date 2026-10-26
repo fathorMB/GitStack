@@ -313,6 +313,11 @@ func (s *apiServer) CreateApp(w http.ResponseWriter, r *http.Request, owner open
 	if !ok {
 		return
 	}
+	if s.appsOff {
+		if _, ok := s.appController(w); !ok {
+			return
+		}
+	}
 	var in openapi.AppCreateInput
 	if !decodeIssueJSON(w, r, &in, false) {
 		return

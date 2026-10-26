@@ -358,3 +358,18 @@ lifecycle:
     sleep:
       seconds: {{ .Values.global.shutdown.preStopSeconds | int }}
 {{- end -}}
+
+{{/*
+ServiceAccount di core: ci-dispatcher se la CI è accesa (stesso account, un solo token), altrimenti
+<release>-core se l'hosting delle app è acceso; vuoto = nessun ServiceAccount dedicato.
+*/}}
+{{- define "gitstack.core.serviceAccountName" -}}
+{{- if .Values.ci.enabled -}}ci-dispatcher
+{{- else if .Values.apps.enabled -}}{{ include "gitstack.componentName" (dict "root" . "component" "core") }}
+{{- end -}}
+{{- end -}}
+
+{{/* ClusterRole «modello» con i permessi sull'app: lo usano solo i RoleBinding dei namespace delle app. */}}
+{{- define "gitstack.apps.workloadRoleName" -}}
+{{- printf "%s-app-workload" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}

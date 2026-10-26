@@ -1,0 +1,88 @@
+{{- if .Values.apps.enabled }}
+{{- if not .Values.apps.domain }}{{ fail "apps.enabled richiede apps.domain (il dominio delle app, es. apps.azienda.it): usa install.sh --apps-domain o gitstack config set apps-domain" }}{{- end }}
+{{- if not .Values.core.enabled }}{{ fail "apps.enabled richiede core.enabled: il controller delle app vive in core" }}{{- end }}
+{{- $sa := include "gitstack.core.serviceAccountName" . }}
+{{- $workload := include "gitstack.apps.workloadRoleName" . }}
+{{- $controller := printf "%s-apps-controller" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-" }}
+# Hosting delle app (ADR 0002): RBAC minimo di core.
+#  - Niente ClusterRole con permessi sulle app e niente ClusterRoleBinding verso di esso.
+#  - ClusterRole del controller: solo i verbi che servono a creare, osservare e togliere i
+#    namespace delle app e a legarli al ruolo modello. `update` sui namespace serve ad
+#    allineare la label Pod Security di un namespace già creato (ensureNamespace).
+#  - ClusterRole modello (<release>-app-workload): i permessi sull'app. Nessun binding
+#    cluster-wide: il controller crea un RoleBinding in ogni namespace gitstack-app-<id>, e può
+#    farlo solo verso questo ruolo (`bind` con resourceNames).
+{{- if not .Values.ci.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $sa }}
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+automountServiceAccountToken: true
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $controller }}
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["create", "get", "list", "watch", "update", "delete"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["rolebindings"]
+    verbs: ["create", "get"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles"]
+    verbs: ["bind"]
+    resourceNames: [{{ $workload | quote }}]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $controller }}
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $sa }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $controller }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $workload }}
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+    gitstack.io/role-template: "true"
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["create", "get", "update"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["create", "get", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "get", "update"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list"]
+  - apiGroups: ["traefik.io"]
+    resources: ["ingressroutes"]
+    verbs: ["create", "get", "update", "delete"]
+{{- end }}

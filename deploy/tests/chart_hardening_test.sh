@@ -329,6 +329,66 @@ OUT="$(helm template gitstack "${CHART}" --namespace prova-ns --set ci.enabled=t
 expect_eq "CI accesa: PriorityClass gitstack-ci-job" "$(count 'metadata: {name: gitstack-ci-job}')" "1"
 expect_has "CI accesa: ResourceQuota dei posti" "$OUT" "name: ci-jobs"
 
+echo "== GIT-375: hosting delle app, RBAC minimo di core (ADR 0002)"
+# docs KIND: tutti i documenti di quel kind (separati da una riga ---).
+docs() {
+  printf '%s\n' "${OUT}" | awk -v kind="$1" 'BEGIN { RS = "\n---\n" } $0 ~ "(^|\n)kind: " kind "\n" { print; print "---" }'
+}
+# rules_of DOC: una riga "gruppo|risorsa|verbi|resourceNames" per regola del ClusterRole.
+rules_of() {
+  printf '%s\n' "$1" | awk '
+    /^  - apiGroups:/ { if (r != "") print g "|" r "|" v "|" n; g = $0; sub(/.*apiGroups: \[/, "", g); sub(/\].*/, "", g); r = ""; v = ""; n = "" }
+    /^    resources:/ { r = $0; sub(/.*resources: \[/, "", r); sub(/\].*/, "", r) }
+    /^    verbs:/ { v = $0; sub(/.*verbs: \[/, "", v); sub(/\].*/, "", v) }
+    /^    resourceNames:/ { n = $0; sub(/.*resourceNames: \[/, "", n); sub(/\].*/, "", n) }
+    END { if (r != "") print g "|" r "|" v "|" n }'
+}
+OUT="$(render --namespace prova-ns)" || { bad "helm template di default fallito"; exit 1; }
+expect_eq "hosting spento: nessun ClusterRole delle app" "$(count 'name: gitstack-(apps-controller|app-workload)')" "0"
+expect_lacks "hosting spento: core senza GITSTACK_CORE_APPS_ENABLED" "$(doc Deployment gitstack-core)" "GITSTACK_CORE_APPS_ENABLED"
+expect_lacks "hosting spento: core senza ServiceAccount dedicato" "$(doc Deployment gitstack-core)" "serviceAccountName"
+expect_eq "hosting spento: nessun ClusterRoleBinding" "$(docs ClusterRoleBinding | grep -c '^kind: ClusterRoleBinding$')" "0"
+if helm_rc --set apps.enabled=true; then bad "apps.enabled senza apps.domain: helm template doveva fermarsi"; else ok; fi
+
+OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test --set apps.authMiddleware=gitstack/app-login)" || { bad "helm template con apps.enabled fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_has "hosting acceso: core riceve ENABLED" "${d}" "GITSTACK_CORE_APPS_ENABLED"
+expect_has "hosting acceso: core riceve il dominio" "${d}" 'value: "apps.acme.test"'
+expect_has "hosting acceso: core riceve il middleware" "${d}" 'value: "gitstack/app-login"'
+expect_has "hosting acceso: ServiceAccount di core" "${d}" "serviceAccountName: gitstack-core"
+expect_has "hosting acceso: core sa chi è (ServiceAccount del RoleBinding)" "${d}" 'value: "prova-ns/gitstack-core"'
+expect_has "hosting acceso: core sa quale ClusterRole modello usare" "${d}" 'value: "gitstack-app-workload"'
+
+# Due ClusterRole (controller e modello), nessun carattere jolly e nessun Role; un solo
+# ClusterRoleBinding, del controller: i permessi sulle app esistono solo nei namespace delle app,
+# via RoleBinding creati dal controller.
+cr="$(docs ClusterRole)"
+expect_eq "RBAC: due ClusterRole (controller e modello)" "$(printf '%s\n' "${cr}" | grep -c '^kind: ClusterRole$')" "2"
+expect_lacks "RBAC: niente caratteri jolly" "${cr}" '"*"'
+expect_eq "RBAC: nessun Role nel namespace del release" "$(docs Role | grep -c '^kind: Role$')" "0"
+crb="$(docs ClusterRoleBinding)"
+expect_eq "RBAC: un solo ClusterRoleBinding" "$(printf '%s\n' "${crb}" | grep -c '^kind: ClusterRoleBinding$')" "1"
+expect_has "RBAC: il ClusterRoleBinding è del controller" "${crb}" "name: gitstack-apps-controller"
+expect_lacks "RBAC: nessun ClusterRoleBinding verso il ruolo modello" "${crb}" "gitstack-app-workload"
+expect_has "RBAC: il ClusterRoleBinding è per il ServiceAccount di core" "${crb}" "name: gitstack-core"
+# Permessi del controller: quelli dell'ADR 0002 e nient'altro (una riga per regola).
+ctl="$(doc ClusterRole gitstack-apps-controller)"
+expect_eq "controller: namespace" "$(rules_of "${ctl}" | grep '"namespaces"')" '""|"namespaces"|"create", "get", "list", "watch", "update", "delete"|'
+expect_eq "controller: rolebindings" "$(rules_of "${ctl}" | grep '"rolebindings"')" '"rbac.authorization.k8s.io"|"rolebindings"|"create", "get"|'
+expect_eq "controller: bind solo sul ruolo modello" "$(rules_of "${ctl}" | grep '"clusterroles"')" '"rbac.authorization.k8s.io"|"clusterroles"|"bind"|"gitstack-app-workload"'
+expect_eq "controller: tre regole in tutto" "$(rules_of "${ctl}" | grep -c .)" "3"
+wl="$(doc ClusterRole gitstack-app-workload)"
+expect_eq "modello: risorse ammesse dall'ADR" "$(rules_of "${wl}" | cut -d'|' -f2 | sort | tr '\n' ' ')" '"deployments" "events" "ingressroutes" "pods" "pods/log" "secrets" "services" '
+expect_lacks "modello: mai delete su deployments, pods, secrets" "$(rules_of "${wl}" | grep -E '"(deployments|pods|secrets)"')" "delete"
+expect_lacks "modello: nessun permesso su namespaces" "${wl}" "namespaces"
+expect_lacks "modello: nessun permesso su rolebindings" "${wl}" "rolebindings"
+
+# Con la CI accesa il ServiceAccount è lo stesso della CI (un solo token): non se ne crea un secondo.
+OUT="$(render --namespace prova-ns --set ci.enabled=true --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template con CI e apps fallito"; exit 1; }
+expect_has "CI e apps: core usa ci-dispatcher" "$(doc Deployment gitstack-core)" "serviceAccountName: ci-dispatcher"
+expect_has "CI e apps: il ClusterRoleBinding è per ci-dispatcher" "$(docs ClusterRoleBinding)" "name: ci-dispatcher"
+expect_eq "CI e apps: nessun ServiceAccount gitstack-core" "$(docs ServiceAccount | grep -c '^  name: gitstack-core$')" "0"
+
 echo
 echo "Passati: ${PASS}  Falliti: ${FAILN}"
 [ "${FAILN}" -eq 0 ]

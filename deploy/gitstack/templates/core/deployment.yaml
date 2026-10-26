@@ -42,8 +42,8 @@ spec:
         checksum/smtp: {{ toJson .Values.smtp | sha256sum }}
       {{- end }}
     spec:
-      {{- if .Values.ci.enabled }}
-      serviceAccountName: ci-dispatcher
+      {{- with include "gitstack.core.serviceAccountName" . }}
+      serviceAccountName: {{ . }}
       {{- end }}
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
@@ -98,6 +98,22 @@ spec:
             {{- include "gitstack.nats.authEnv" . | nindent 12 }}
             - name: GITSTACK_CORE_ADDR
               value: {{ printf ":%d" (.Values.core.containerPort | int) | quote }}
+            {{- if .Values.apps.domain }}
+            - name: GITSTACK_CORE_APPS_DOMAIN
+              value: {{ .Values.apps.domain | quote }}
+            {{- end }}
+            {{- if .Values.apps.enabled }}
+            - name: GITSTACK_CORE_APPS_ENABLED
+              value: "true"
+            - name: GITSTACK_CORE_APPS_CONTROLLER_SA
+              value: {{ printf "%s/%s" .Release.Namespace (include "gitstack.core.serviceAccountName" .) | quote }}
+            - name: GITSTACK_CORE_APPS_WORKLOAD_ROLE
+              value: {{ include "gitstack.apps.workloadRoleName" . | quote }}
+            {{- if .Values.apps.authMiddleware }}
+            - name: GITSTACK_CORE_APPS_AUTH_MIDDLEWARE
+              value: {{ .Values.apps.authMiddleware | quote }}
+            {{- end }}
+            {{- end }}
             {{- if .Values.ci.enabled }}
             - name: GITSTACK_CORE_CI_ENABLED
               value: "true"
