@@ -57,7 +57,9 @@ func TestApps_DeployPermessiESenzaController(t *testing.T) {
 // non solo confrontate come manifest. I probe usano IP dei pod, mentre il
 // proxy prova anche la risoluzione DNS che la policy apre verso kube-dns.
 func TestApps_IsolamentoSuK3d(t *testing.T) {
-	e := newDeployEnv(t)
+	// Niente controller.Run: Collect tratterebbe come orfani (e cancellerebbe) i
+	// namespace creati qui con BuildNamespace per app che non stanno nel DB.
+	e := newDeployEnvOpt(t, false)
 	ctx := context.Background()
 	repo := uuid.New()
 	newApp := func() store.App { return store.App{ID: uuid.New(), RepoID: repo} }
@@ -238,7 +240,11 @@ type appsDeployEnv struct {
 	ns   string
 }
 
-func newDeployEnv(t *testing.T) *appsDeployEnv {
+func newDeployEnv(t *testing.T) *appsDeployEnv { return newDeployEnvOpt(t, true) }
+
+// newDeployEnvOpt: runController=false non avvia ctl.Run, per i test che creano
+// namespace gestiti fuori dal DB.
+func newDeployEnvOpt(t *testing.T, runController bool) *appsDeployEnv {
 	t.Helper()
 	kc := os.Getenv("GITSTACK_TEST_KUBECONFIG")
 	if kc == "" {
@@ -282,7 +288,9 @@ func newDeployEnv(t *testing.T) *appsDeployEnv {
 	env := &appsDeployEnv{appsEnv: &appsEnv{issuesEnv: base, clock: clock, git: git}, kube: kube, dyn: dyn}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	go ctl.Run(ctx)
+	if runController {
+		go ctl.Run(ctx)
+	}
 	return env
 }
 
