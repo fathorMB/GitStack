@@ -42,6 +42,7 @@ spec:
         checksum/smtp: {{ toJson .Values.smtp | sha256sum }}
       {{- end }}
     spec:
+      priorityClassName: gitstack-services
       {{- with include "gitstack.core.serviceAccountName" . }}
       serviceAccountName: {{ . }}
       {{- end }}
@@ -207,6 +208,15 @@ spec:
             - name: GITSTACK_CORE_RELEASE_ASSETS_DIR
               value: {{ .Values.core.releaseAssets.mountPath | quote }}
             {{- end }}
+            {{- if .Values.ingress.tls.caConfigMap }}
+            # CA interna (N5): core ne calcola l'impronta SHA-256 per GET /instance/ca
+            # (guida CA dei tester). Cartella intera, come in web.
+            - name: GITSTACK_CORE_CA_DIR
+              value: /etc/gitstack/ca
+            {{- else }}
+            - name: GITSTACK_CORE_CA_MODE
+              value: {{ if .Values.ingress.tls.enabled }}custom{{ else }}none{{ end }}
+            {{- end }}
             {{- if .Values.git.enabled }}
             - name: GITSTACK_GIT_URL
               value: {{ include "gitstack.git.url" . | quote }}
@@ -348,6 +358,11 @@ spec:
             - name: release-assets
               mountPath: {{ .Values.core.releaseAssets.mountPath | quote }}
             {{- end }}
+            {{- if .Values.ingress.tls.caConfigMap }}
+            - name: ca
+              mountPath: /etc/gitstack/ca
+              readOnly: true
+            {{- end }}
             {{- if $pgCA }}
             - name: postgres-ca
               mountPath: {{ include "gitstack.postgres.caMountPath" . }}
@@ -381,6 +396,14 @@ spec:
         - name: release-assets
           persistentVolumeClaim:
             claimName: {{ include "gitstack.fullname" . }}-release-assets-data
+        {{- end }}
+        {{- if .Values.ingress.tls.caConfigMap }}
+        # Come in web: cartella intera (un rinnovo arriva senza riavvio) e optional,
+        # perché il ConfigMap lo crea l'installer e core parte anche senza.
+        - name: ca
+          configMap:
+            name: {{ .Values.ingress.tls.caConfigMap }}
+            optional: true
         {{- end }}
         {{- if $pgCA }}
         - name: postgres-ca

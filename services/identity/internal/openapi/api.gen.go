@@ -426,6 +426,24 @@ func (e UserKind) Valid() bool {
 	}
 }
 
+// Defines values for UserProfileResultKind.
+const (
+	UserProfileResultKindAgent UserProfileResultKind = "agent"
+	UserProfileResultKindHuman UserProfileResultKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the UserProfileResultKind enum.
+func (e UserProfileResultKind) Valid() bool {
+	switch e {
+	case UserProfileResultKindAgent:
+		return true
+	case UserProfileResultKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for VerifyCredentialInputKind.
 const (
 	VerifyCredentialInputKindSession VerifyCredentialInputKind = "session"
@@ -1212,6 +1230,31 @@ type UserList struct {
 	Total   int    `json:"total"`
 }
 
+// UserProfileInput defines model for UserProfileInput.
+type UserProfileInput struct {
+	UserId openapi_types.UUID `json:"userId"`
+}
+
+// UserProfileResult defines model for UserProfileResult.
+type UserProfileResult struct {
+	Active bool `json:"active"`
+
+	// Email Email dell'utente, se ne ha una. Assente senza email.
+	Email *string               `json:"email,omitempty"`
+	Id    openapi_types.UUID    `json:"id"`
+	Kind  UserProfileResultKind `json:"kind"`
+	Teams []string              `json:"teams"`
+
+	// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Username Name `json:"username"`
+}
+
+// UserProfileResultKind defines model for UserProfileResult.Kind.
+type UserProfileResultKind string
+
 // VerifyCredentialInput defines model for VerifyCredentialInput.
 type VerifyCredentialInput struct {
 	// Credential Valore grezzo della credenziale (cookie `gst_session` o token `gst_...`).
@@ -1502,6 +1545,9 @@ type LookupUsersByEmailJSONRequestBody = LookupEmailsInput
 // LookupUsersByIdsJSONRequestBody defines body for LookupUsersByIds for application/json ContentType.
 type LookupUsersByIdsJSONRequestBody = LookupIdsInput
 
+// LookupUserProfileJSONRequestBody defines body for LookupUserProfile for application/json ContentType.
+type LookupUserProfileJSONRequestBody = UserProfileInput
+
 // VerifyCredentialJSONRequestBody defines body for VerifyCredential for application/json ContentType.
 type VerifyCredentialJSONRequestBody = VerifyCredentialInput
 
@@ -1621,6 +1667,9 @@ type ServerInterface interface {
 	// LookupUsersByIds Risolve gli id utente in nome e tipo
 	// (POST /internal/users/lookup-ids)
 	LookupUsersByIds(w http.ResponseWriter, r *http.Request)
+	// LookupUserProfile Nome, email e team di un utente
+	// (POST /internal/users/profile)
+	LookupUserProfile(w http.ResponseWriter, r *http.Request)
 	// VerifyCredential Verifica una credenziale (per il gateway)
 	// (POST /internal/verify)
 	VerifyCredential(w http.ResponseWriter, r *http.Request)
@@ -2245,6 +2294,20 @@ func (siw *ServerInterfaceWrapper) LookupUsersByIds(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.LookupUsersByIds(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// LookupUserProfile operation middleware
+func (siw *ServerInterfaceWrapper) LookupUserProfile(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.LookupUserProfile(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3800,6 +3863,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/orgs/{orgId}/owners", wrapper.ListOrgOwners)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/users/lookup-emails", wrapper.LookupUsersByEmail)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/users/lookup-ids", wrapper.LookupUsersByIds)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/users/profile", wrapper.LookupUserProfile)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/credential-events", wrapper.ListCredentialEvents)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/credential-events/ack", wrapper.AckCredentialEvents)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/mentions/resolve", wrapper.ResolveMentions)

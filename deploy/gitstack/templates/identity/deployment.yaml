@@ -57,6 +57,7 @@ spec:
         checksum/oidc: {{ .Values.identity.oidc.providers | toJson | sha256sum }}
         {{- end }}
     spec:
+      priorityClassName: gitstack-services
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}

@@ -2,7 +2,9 @@ package apps
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +19,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
@@ -24,6 +27,10 @@ import (
 
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
+
+const annotationSpecHash = "gitstack.io/spec-hash"
+
+var middlewareGVR = schema.GroupVersionResource{Group: "traefik.io", Version: "v1alpha1", Resource: "middlewares"}
 
 var routeGVR = schema.GroupVersionResource{Group: "traefik.io", Version: "v1alpha1", Resource: "ingressroutes"}
 
@@ -39,9 +46,12 @@ type PullCredential struct {
 type Config struct {
 	// AppsDomain: dominio delle app (H2). Vuoto: nessuna rotta.
 	AppsDomain string
-	// AuthMiddleware: Middleware Traefik forward-auth del login (H6). Senza, le app con accesso
-	// `login` non ricevono una rotta: mai esporle senza il login.
-	AuthMiddleware string
+	// AuthURL: indirizzo del forward-auth del gateway (es. http://gitstack-gateway.gitstack:8080/_appauth/verify)
+	// e AuthSecret il segreto con cui il gateway firma l'identità verso core (GITSTACK_SERVICE_SECRET_GATEWAY,
+	// la prima chiave): firma l'indirizzo per app (H6). Senza uno dei due le app con accesso `login`
+	// non ricevono una rotta: mai esporle senza il login.
+	AuthURL    string
+	AuthSecret string
 	// ControllerServiceAccount è il ServiceAccount di core come `namespace/nome`; WorkloadRole il
 	// ClusterRole «modello» con i permessi sull'app (ADR 0002). Con entrambi, dopo il namespace il
 	// controller crea in esso un RoleBinding verso WorkloadRole: i permessi su Deployment, Service,
@@ -387,10 +397,15 @@ func (c *Controller) routeHost(app store.App, cfg store.AppConfig) string {
 	if c.dyn == nil || c.cfg.AppsDomain == "" || app.AddressLabel == nil || cfg.Port == nil {
 		return ""
 	}
-	if app.Access == "login" && c.cfg.AuthMiddleware == "" {
+	if app.Access == "login" && !c.authConfigured() {
 		return ""
 	}
 	return *app.AddressLabel + "." + c.cfg.AppsDomain
+}
+
+// authConfigured: il forward-auth del login (H6) ha indirizzo e segreto.
+func (c *Controller) authConfigured() bool {
+	return c.cfg.AuthURL != "" && c.cfg.AuthSecret != ""
 }
 
 func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.AppConfig) error {
@@ -406,21 +421,46 @@ func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.A
 		}
 		return err
 	}
-	auth := ""
-	if app.Access == "login" {
-		auth = c.cfg.AuthMiddleware
+	login := app.Access == "login"
+	// I Middleware prima della rotta: la rotta che li cita non deve mai esistere senza.
+	ns := c.dyn.Resource(middlewareGVR).Namespace(Namespace(app.ID))
+	if err := upsert(ctx, ns, BuildStripMiddleware(app.ID)); err != nil {
+		return fmt.Errorf("middleware %s: %w", MiddlewareStrip, err)
 	}
-	want := BuildRoute(app, host, auth)
-	cur, err := routes.Get(ctx, WorkloadName, metav1.GetOptions{})
+	if login {
+		if err := upsert(ctx, ns, BuildAuthMiddleware(app.ID, app.RepoID, c.cfg.AuthURL, c.cfg.AuthSecret)); err != nil {
+			return fmt.Errorf("middleware %s: %w", MiddlewareAuth, err)
+		}
+	} else if err := ns.Delete(ctx, MiddlewareAuth, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("middleware %s: %w", MiddlewareAuth, err)
+	}
+	return upsert(ctx, routes, BuildRoute(app, host, login))
+}
+
+// upsert crea l'oggetto o ne aggiorna lo spec e le label, solo se cambiano (il ciclo di sync lo
+// chiama ogni pochi secondi).
+func upsert(ctx context.Context, ri dynamic.ResourceInterface, want *unstructured.Unstructured) error {
+	// Il server può aggiungere valori di default allo spec: si confronta l'impronta di quello voluto.
+	raw, err := json.Marshal(want.Object["spec"])
+	if err != nil {
+		return err
+	}
+	sum := sha256.Sum256(raw)
+	hash := hex.EncodeToString(sum[:])
+	want.SetAnnotations(map[string]string{annotationSpecHash: hash})
+	cur, err := ri.Get(ctx, want.GetName(), metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		_, err = routes.Create(ctx, want, metav1.CreateOptions{})
+		_, err = ri.Create(ctx, want, metav1.CreateOptions{})
 		return err
 	}
 	if err != nil {
 		return err
 	}
+	if cur.GetAnnotations()[annotationSpecHash] == hash {
+		return nil
+	}
 	want.SetResourceVersion(cur.GetResourceVersion())
-	_, err = routes.Update(ctx, want, metav1.UpdateOptions{})
+	_, err = ri.Update(ctx, want, metav1.UpdateOptions{})
 	return err
 }
 
@@ -674,7 +714,15 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 	ns := Namespace(app.ID)
 	d, err := c.kube.AppsV1().Deployments(ns).Get(ctx, WorkloadName, metav1.GetOptions{})
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			c.reapply(ctx, app)
+		}
 		return
+	}
+	// Il modo di accesso può cambiare a deploy fermo (PUT .../access): la rotta e i suoi middleware
+	// si riallineano qui, senza rifare il rollout.
+	if err := c.ensureRoute(ctx, app, app.Config); err != nil {
+		c.cfg.Log.Warn("apps: rotta non riallineata", "app", app.ID, "err", err)
 	}
 	if app.Status == "failed" {
 		if v, err := c.st.GetAppVersion(ctx, app.ID, app.ActiveVersion); err == nil && v.State == "failed" {
@@ -714,6 +762,28 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 			c.cfg.Log.Warn("apps: stato osservato non scritto", "app", app.ID, "err", err)
 		}
 	}
+}
+
+// reapply riporta la versione attiva di un'app il cui Deployment non c'è più: succede dopo un
+// restore su un cluster pulito (H4), dove le app tornano dal database (versione, configurazione,
+// immagini nel registry ripristinato).
+func (c *Controller) reapply(ctx context.Context, app store.App) {
+	v, err := c.st.GetAppVersion(ctx, app.ID, app.ActiveVersion)
+	if !shouldReapply(app, v, err) {
+		return
+	}
+	if err := c.apply(ctx, app, v); err != nil {
+		c.cfg.Log.Warn("apps: riapplicazione della versione attiva non riuscita", "app", app.ID, "version", v.Number, "err", err)
+		return
+	}
+	c.cfg.Log.Info("apps: versione attiva riapplicata (Deployment assente)", "app", app.ID, "version", v.Number)
+}
+
+// shouldReapply dice se la versione attiva va riapplicata: l'app deve avere copie volute (repo
+// non archiviato né eliminato), non essere «fallita» al primo deploy e la versione attiva deve
+// essere quella in servizio.
+func shouldReapply(app store.App, v store.AppVersion, verr error) bool {
+	return verr == nil && desiredReplicas(app) > 0 && app.Status != "failed" && v.State == "serving"
 }
 
 // Collect toglie i namespace del controller di app che non esistono più nel modello (app o repo
