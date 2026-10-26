@@ -360,6 +360,21 @@ function Wait-E2eAppServing {
     throw "la versione piu' recente dell'app non e' serving dopo ${TimeoutSeconds}s (ultimo: $last)"
 }
 
+# Il token del dataset ha solo read/write:resource: il registry vuole read:registry e
+# write:registry (services/git/internal/registry, pkg/scopes: *:resource non li implica).
+# Token dedicato, con il login dell'utente del dataset; sta nel DB e torna col restore.
+function New-E2eRegistryToken {
+    param([Parameter(Mandatory)][string]$BaseUrl, [Parameter(Mandatory)]$Data)
+    $l = Invoke-HttpRaw -Uri "$BaseUrl/api/v1/auth/login" -Method 'POST' -Body (@{ username = $Data.User; password = $Data.Password } | ConvertTo-Json)
+    if ($l.StatusCode -ne 200 -or -not $l.Cookie) { throw "login dell'utente $($Data.User) per il token del registry: status $($l.StatusCode)" }
+    $expires = (Get-Date).ToUniversalTime().AddHours(6).ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $t = Invoke-HttpRaw -Uri "$BaseUrl/api/v1/user/tokens" -Method 'POST' -Cookie $l.Cookie -Body (@{ name = 'e2e-registry'; scopes = @('read:registry', 'write:registry'); expiresAt = $expires } | ConvertTo-Json)
+    if ($t.StatusCode -ne 201) { throw "creazione del token del registry: status $($t.StatusCode) $($t.Body)" }
+    $tok = ($t.Body | ConvertFrom-Json).token
+    if (-not $tok) { throw "creazione del token del registry: risposta senza 'token'" }
+    return [string]$tok
+}
+
 # Prepara l'app prima del backup. Ritorna il contesto per i controlli dopo il restore.
 function New-E2eAppFixture {
     param(
@@ -381,8 +396,11 @@ function New-E2eAppFixture {
         $cc = Copy-ToVm -LocalPath $CaPath -RemotePath '/tmp/gitstack-e2e/app-ca.crt' -TimeoutSeconds $script:SshCommandTimeoutSeconds
         if ($cc.ExitCode -ne 0) { throw "scp della CA: exit $($cc.ExitCode) $($cc.StdErr)" }
 
+        $stage = 'token del registry'
+        $regToken = New-E2eRegistryToken -BaseUrl $BaseUrl -Data $Data
+
         $stage = 'immagine di prova con tre tag nel registry'
-        $push = Invoke-VmSsh -Command "GS_VM_IP='$script:VmIp' GS_CA=/tmp/gitstack-e2e/app-ca.crt GS_USER_TOKEN='$($Data.Token)' GS_IMAGE='$imagePath' bash /tmp/gitstack-e2e/gs-app-restore.sh push" -TimeoutSeconds 600
+        $push = Invoke-VmSsh -Command "GS_VM_IP='$script:VmIp' GS_CA=/tmp/gitstack-e2e/app-ca.crt GS_USER_TOKEN='$regToken' GS_IMAGE='$imagePath' bash /tmp/gitstack-e2e/gs-app-restore.sh push" -TimeoutSeconds 600
         Write-E2eText -Path (Join-Path $WorkDir 'push.log') -Stdout $push.StdOut -Stderr $push.StdErr
         if ($push.ExitCode -ne 0 -or $push.StdOut -notmatch 'STEP ok push') { throw "push dell'immagine: exit $($push.ExitCode) $($push.StdOut) $($push.StdErr)" }
 
@@ -420,7 +438,7 @@ function New-E2eAppFixture {
         return [pscustomobject]@{
             AppId = [string]$appId; Namespace = "gitstack-app-$appId"; ActiveVersion = [int]$app.activeVersion
             ActiveRef = [string]$app.image.reference; VarValue = $varValue; SecretValue = $secValue
-            ImagePath = $imagePath; Number = $activeNumber
+            ImagePath = $imagePath; Number = $activeNumber; RegistryToken = $regToken
         }
     } catch {
         throw "[app di prova: $stage] $($_.Exception.Message)"
@@ -494,7 +512,7 @@ function Test-E2eAppAfterRestore {
         }
 
         # registry ripristinato: v1 e v2 si scaricano, v3 no
-        $basic = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("token:$($Data.Token)"))
+        $basic = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("token:$($Ctx.RegistryToken)"))
         $rh = @{ Authorization = "Basic $basic"; Accept = 'application/vnd.oci.image.manifest.v1+json' }
         $st = @{}
         foreach ($t in 'v1', 'v2', 'v3') {
@@ -502,9 +520,10 @@ function Test-E2eAppAfterRestore {
             $st[$t] = $m.StatusCode
         }
         $rows[5].Ok = ($st['v1'] -eq 200 -and $st['v2'] -eq 200)
-        $rows[5].Detail = if ($rows[5].Ok) { '' } else { "manifest v1: $($st['v1']), v2: $($st['v2']) (attesi 200)" }
+        $rows[5].Detail = if ($rows[5].Ok) { '' } else { "manifest v1: $($st['v1']), v2: $($st['v2']) (attesi 200)$(if ($st.Values -contains 401 -or $st.Values -contains 403) { ': permessi, il token del registry non e accettato' })" }
+        # solo 404 vale come «tag assente»: 401/403 sono un problema di permessi, non un esito di RG2
         $rows[6].Ok = ($st['v3'] -eq 404)
-        $rows[6].Detail = if ($rows[6].Ok) { '' } else { "manifest v3: $($st['v3']) (atteso 404: il tag non usato da nessuna app resta fuori dal backup)" }
+        $rows[6].Detail = if ($rows[6].Ok) { '' } elseif ($st['v3'] -eq 401 -or $st['v3'] -eq 403) { "manifest v3: status $($st['v3']), permessi: il token del registry non e accettato, l'assenza del tag non e verificata" } elseif ($st['v3'] -eq 200) { 'manifest v3: status 200, il tag non usato da nessuna app e presente (atteso 404, RG2)' } else { "manifest v3: status $($st['v3']) (atteso 404)" }
     } catch {
         $msg = $_.Exception.Message
         foreach ($r in $rows) { if (-not $r.Ok -and $r.Detail -eq 'non verificato') { $r.Detail = "non verificato: $msg" } }

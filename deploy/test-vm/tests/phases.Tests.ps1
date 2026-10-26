@@ -76,12 +76,13 @@ function Copy-ToVm { param($LocalPath, $RemotePath, $TimeoutSeconds) return [psc
 function Invoke-VmSsh { param($Command, $TimeoutSeconds) return [pscustomobject]@{ ExitCode = 0; StdOut = $script:Mock.Inspect; StdErr = '' } }
 function Invoke-HttpRaw {
     param([string]$Uri, [string]$Method = 'GET', [string]$Body, [hashtable]$Headers, [string]$Cookie, [int]$TimeoutSec = 20)
+    if ($Uri -like '*/manifests/*') { $script:LastAuth = $Headers.Authorization }
     if ($Uri -like '*/manifests/v1') { return [pscustomobject]@{ StatusCode = $script:Mock.V1; Body = '' } }
     if ($Uri -like '*/manifests/v2') { return [pscustomobject]@{ StatusCode = $script:Mock.V2; Body = '' } }
     if ($Uri -like '*/manifests/v3') { return [pscustomobject]@{ StatusCode = $script:Mock.V3; Body = '' } }
     return [pscustomobject]@{ StatusCode = 200; Body = (@{ status = $script:Mock.Status } | ConvertTo-Json) }
 }
-$ctx = [pscustomobject]@{ Namespace = 'gitstack-app-x'; ActiveVersion = 4; ActiveRef = '10.0.0.5/u1/r1/e2eimg:v2'; VarValue = 'a'; SecretValue = 'b'; ImagePath = 'u1/r1/e2eimg' }
+$ctx = [pscustomobject]@{ Namespace = 'gitstack-app-x'; ActiveVersion = 4; ActiveRef = '10.0.0.5/u1/r1/e2eimg:v2'; VarValue = 'a'; SecretValue = 'b'; ImagePath = 'u1/r1/e2eimg'; RegistryToken = 'regtok' }
 $rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'a')
 Assert-That 'app dopo il restore: sette righe' (@($rows).Count -eq 7)
 Assert-That 'app dopo il restore: tutte ok (host del registry diverso ammesso)' (@($rows | Where-Object { -not $_.Ok }).Count -eq 0)
@@ -93,6 +94,11 @@ Assert-That 'app dopo il restore: ko su 2, 3, 4, 5, 6 e 7, ok su 1' (@($rows).Co
 $script:Mock.Inspect = "deploy=no`nimage=`nvar=missing`nsecret=missing`n"
 $rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'c')
 Assert-That 'app dopo il restore: senza Deployment la riga 1 e ko' (-not $rows[0].Ok -and -not $rows[1].Ok)
+$script:Mock.Inspect = "deploy=yes`nimage=10.0.0.9/u1/r1/e2eimg:v2`nvar=match`nsecret=match`n"
+$script:Mock.V1 = 401; $script:Mock.V2 = 401; $script:Mock.V3 = 401
+$rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'd')
+Assert-That 'app dopo il restore: 401 sui manifest, 6 e 7 ko con lo status e i permessi' ((-not $rows[5].Ok) -and (-not $rows[6].Ok) -and $rows[5].Detail -like '*401*' -and $rows[6].Detail -like '*401*' -and $rows[6].Detail -like '*permessi*')
+Assert-That 'app dopo il restore: il token del registry e quello del contesto' ($script:LastAuth -eq ('Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes('token:regtok'))))
 Remove-Item -LiteralPath $script:OutDir -Recurse -Force -ErrorAction SilentlyContinue
 
 if ($failures.Count -gt 0) {

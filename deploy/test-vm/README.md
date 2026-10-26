@@ -502,7 +502,7 @@ Cosa controlla ciascun passo:
   backup: se la chiave host non fosse ripristinata fallirebbe («host key
   changed»). Se l'IP della VM cambia con il reset, il `known_hosts` si
   riscrive sul nuovo IP tenendo la stessa chiave. Infine `gitstack status`:
-  versione `sha-<Ref>` e «Stato: sano». Log in `backup-restore\restore.log`.
+  versione `sha-<Ref>` e «Stato: sano». Log in `backup-restore\app\push.log`.
 - **h-app / i-app.** (GIT-388, criterio 2 di GIT-351, H4) con l'hosting acceso
   dall'installer (`--enable-apps --apps-domain`, prima installazione e
   reinstallazione del restore). Prima del backup (`New-E2eAppFixture`):
@@ -522,10 +522,10 @@ Cosa controlla ciascun passo:
   container (`kubectl exec ... printenv`); 5 il segreto ha lo stesso valore
   (dal pod, altrimenti dal Secret `app-secrets`); 6 `GET /v2/.../manifests/v1`
   e `v2` danno 200; 7 `v3` da 404 (RG2: il tag non usato da nessuna app non
-  e nel backup). Log in `backup-restoreapppush.log` e
-  `backup-restoreapp-dopo-restoreinspect.log`. Se la preparazione fallisce
+  e nel backup). Log in `backup-restore\app\push.log` e
+  `backup-restore\app-dopo-restore\inspect.log`. Se la preparazione fallisce
   il passo h e rosso e i controlli dell'app non partono. Non provato senza
-  VM: i pezzi puri (`Test-E2eAppAfterRestore` con HTTP e VM finti, il comando
+  VM: i pezzi puri (`Test-E2eAppAfterRestore` con HTTP e VM finti, anche 401 sul registry, il comando
   d'installazione) sono in `tests/phases.Tests.ps1`.
 - **j.** (GIT-148, DF/F) reset, installazione del **commit precedente**
   (`installer-precedente.log`), admin e dati di prova su quella versione,
