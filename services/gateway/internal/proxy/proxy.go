@@ -99,6 +99,11 @@ func ToService(name string, coreURL *url.URL, timeout time.Duration, logger *slo
 			}
 			if id, ok := trust.FromContext(pr.In.Context()); ok && o.serviceSecret != "" {
 				trust.Sign(pr.Out.Header, o.serviceSecret, id, o.now())
+				// Il token del job (GIT-372) non è coperto dalla firma: core lo verifica
+				// da sé, e solo per l'identità firmata come job.
+				if jt := trust.JobTokenFromContext(pr.In.Context()); jt != "" && id.Username == trust.JobUsername {
+					pr.Out.Header.Set(trust.HeaderJobToken, jt)
+				}
 			}
 			// L'IP del client viene da X-Forwarded-For solo se la connessione
 			// arriva da un proxy fidato (es. Traefik), altrimenti da RemoteAddr.

@@ -34,6 +34,7 @@ type operation struct {
 	PasswordChangeExempt string                 `yaml:"x-password-change-exempt"`
 	TotpEnrollExempt     string                 `yaml:"x-totp-enroll-exempt"`
 	RequiredPermission   string                 `yaml:"x-required-permission"`
+	JobToken             bool                   `yaml:"x-job-token"`
 	RequestBody          *struct {
 		Content map[string]yaml.Node `yaml:"content"`
 	} `yaml:"requestBody"`
@@ -62,6 +63,7 @@ type route struct {
 	TotpExempt                         bool
 	Permission                         string
 	JSONBody                           bool
+	JobToken                           bool
 }
 
 func main() {
@@ -121,9 +123,9 @@ func run(contractPath, outPath string) error {
 	b.WriteString("// Routes è la dichiarazione di sicurezza di ogni operazione pubblica del\n// contratto, con il percorso senza prefisso di versione.\n")
 	b.WriteString("var Routes = []Route{\n")
 	for _, r := range routes {
-		fmt.Fprintf(&b, "\t{Method: %q, Path: %q, OperationID: %q, Service: %s, Public: %t, Credentials: %s, Scopes: %s, Permission: %s, PasswordChangeExempt: %s, TotpEnrollExempt: %t, JSONBody: %t},\n",
+		fmt.Fprintf(&b, "\t{Method: %q, Path: %q, OperationID: %q, Service: %s, Public: %t, Credentials: %s, Scopes: %s, Permission: %s, PasswordChangeExempt: %s, TotpEnrollExempt: %t, JSONBody: %t, JobToken: %t},\n",
 			r.Method, r.Path, r.OperationID, "Service"+strings.ToUpper(r.Service[:1])+r.Service[1:], r.Public,
-			creds(r.Credentials), strs(r.Scopes), permission(r.Permission), exempt(r.Exempt), r.TotpExempt, r.JSONBody)
+			creds(r.Credentials), strs(r.Scopes), permission(r.Permission), exempt(r.Exempt), r.TotpExempt, r.JSONBody, r.JobToken)
 	}
 	b.WriteString("}\n")
 	src, err := format.Source(b.Bytes())
@@ -160,7 +162,7 @@ func build(doc document, method, path string, op operation) (route, bool, error)
 		reqs = *op.Security
 	}
 	r := route{Method: method, Path: path, OperationID: op.OperationID, Service: service, Scopes: op.RequiredScopes, Exempt: op.PasswordChangeExempt, TotpExempt: op.TotpEnrollExempt == "always", Permission: op.RequiredPermission,
-		JSONBody: jsonOnlyBody(op)}
+		JSONBody: jsonOnlyBody(op), JobToken: op.JobToken}
 	if len(reqs) == 0 {
 		if len(op.RequiredScopes) > 0 {
 			return route{}, false, fmt.Errorf("%s: rotta pubblica con x-required-scopes", where)

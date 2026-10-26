@@ -94,6 +94,21 @@ func Auth(cfg AuthConfig) Middleware {
 				return
 			}
 
+			// Token del job (gsj_, GIT-372): vale solo sulle rotte con x-job-token. Non lo
+			// verifica il gateway ma core (ha il database dei job); qui si decide solo che
+			// la rotta lo ammette, e ogni altra rotta lo rifiuta.
+			if jt := jobTokenFrom(r); jt != "" {
+				if len(jt) > maxCredentialLen || !route.JobToken {
+					setLogReason(r.Context(), "job_token_not_allowed")
+					writeAuthError(w, http.StatusForbidden, "forbidden", "Il token del job non vale per questa operazione.", nil)
+					return
+				}
+				id := trust.Identity{UserID: "00000000-0000-0000-0000-000000000000", Username: trust.JobUsername, Scopes: []string{trust.JobScope}}
+				ctx := trust.WithJobToken(trust.WithIdentity(r.Context(), id), jt)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+
 			cred, kind := credentialFrom(r)
 			if len(cred) > maxCredentialLen {
 				// identity risponderebbe 400 e il client lo tradurrebbe in 503:
@@ -258,6 +273,19 @@ func (c AuthConfig) logger() *slog.Logger {
 		return c.Logger
 	}
 	return slog.Default()
+}
+
+// jobTokenPrefix è il prefisso del token del job (core, ci.JobTokenPrefix).
+const jobTokenPrefix = "gsj_"
+
+// jobTokenFrom ritorna il token del job di Authorization: Bearer gsj_..., se c'è.
+func jobTokenFrom(r *http.Request) string {
+	scheme, value, ok := strings.Cut(r.Header.Get("Authorization"), " ")
+	value = strings.TrimSpace(value)
+	if ok && strings.EqualFold(scheme, "Bearer") && strings.HasPrefix(value, jobTokenPrefix) {
+		return value
+	}
+	return ""
 }
 
 // credentialFrom estrae la credenziale: prima Authorization: Bearer gst_...,

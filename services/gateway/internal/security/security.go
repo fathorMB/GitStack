@@ -82,6 +82,10 @@ type Route struct {
 	// JSONBody: il corpo dichiarato è solo application/json; una richiesta
 	// con un corpo di altro tipo è rifiutata con 415 (F15).
 	JSONBody bool
+	// JobToken (x-job-token): la rotta ammette anche il token del job `gsj_`
+	// (GIT-372, REL1): il gateway lo inoltra a core, che lo verifica e lo limita
+	// al repo del job e al livello `contents`. Solo create/upload delle release.
+	JobToken bool
 }
 
 // Accepts dice se la rotta ammette il tipo di credenziale.

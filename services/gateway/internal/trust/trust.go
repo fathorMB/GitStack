@@ -125,3 +125,28 @@ func FromContext(ctx context.Context) (Identity, bool) {
 	id, ok := ctx.Value(ctxKey{}).(Identity)
 	return id, ok
 }
+
+// JobUsername è lo username con cui il gateway firma una richiesta autenticata
+// dal token del job (gsj_, GIT-372): UserID è l'UUID nullo. Nessun utente vero
+// può chiamarsi così (gli username non ammettono i due punti).
+const JobUsername = "system:ci-job"
+
+// JobScope è l'unico scope dell'identità del job.
+const JobScope = "ci-job"
+
+// HeaderJobToken porta a core il token del job: core lo verifica da sé, il
+// gateway non lo conosce (non è coperto dalla firma, che dice solo «job»).
+const HeaderJobToken = "X-Gitstack-Job-Token"
+
+type jobTokenKey struct{}
+
+// WithJobToken mette nel contesto il token del job con cui il client si è presentato.
+func WithJobToken(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, jobTokenKey{}, token)
+}
+
+// JobTokenFromContext ritorna il token del job della richiesta, se c'è.
+func JobTokenFromContext(ctx context.Context) string {
+	t, _ := ctx.Value(jobTokenKey{}).(string)
+	return t
+}

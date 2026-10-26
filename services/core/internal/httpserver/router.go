@@ -52,7 +52,7 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 	// Un segreto per chiamante (F9): il gateway può fare tutto, il servizio git
 	// solo risolvere owner/repo. Il Keyring del solo gateway è il caso senza git.
 	ring := trust.NewKeyring(map[string]string{trust.CallerGateway: serviceSecret, trust.CallerGit: o.gitSecret})
-	return trust.RequireRing(ring, callerAllowed, publicPath, o.now)(limitBody(mux))
+	return trust.RequireRing(ring, callerAllowed, publicPath, o.now)(jobGuard(limitBody(mux)))
 }
 
 // newAPIServer costruisce il server con le opzioni del router; serve anche ai
