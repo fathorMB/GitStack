@@ -175,6 +175,35 @@ paths:
                 server_version: "v0.1.0"
                 api_version: "0.1.0"
 
+  /instance/ca:
+    get:
+      operationId: getInstanceCa
+      tags: [system]
+      x-mcp:
+        expose: false
+        name: instance_ca_get
+        destructive: false
+      summary: CA interna dell'istanza e sua impronta
+      description: >
+        Senza autenticazione (H2, N5, guida CA per i tester): dice se l'istanza usa la CA interna e,
+        in quel caso, l'impronta SHA-256 del certificato `ca.crt`, nel formato di
+        `openssl x509 -fingerprint -sha256` (byte esadecimali maiuscoli separati da due punti), e l'indirizzo da cui
+        scaricarlo. E' l'unica fonte dell'impronta: la guida `/help/ca` e l'invito ai tester la leggono da qui.
+        `mode` e' `internal` con la CA interna, `custom` con un certificato del cliente o Let's Encrypt (niente da installare),
+        `none` senza HTTPS o se il certificato della CA non e' leggibile.
+      security: []
+      responses:
+        "200":
+          description: Stato della CA dell'istanza.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceCa"
+              example:
+                mode: internal
+                fingerprintSha256: "AB:CD:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB"
+                downloadUrl: /downloads/ca.crt
+
   /registry/signing-key:
     get:
       operationId: getRegistrySigningKey
@@ -11280,6 +11309,24 @@ components:
         api_version:
           type: string
           description: Versione del contratto API (`info.version`).
+
+    InstanceCa:
+      type: object
+      additionalProperties: false
+      required: [mode, fingerprintSha256, downloadUrl]
+      properties:
+        mode:
+          type: string
+          enum: [internal, custom, none]
+          description: "`internal` = CA interna di GitStack (N5); `custom` = certificato del cliente o Let's Encrypt; `none` = nessuna CA da installare."
+        fingerprintSha256:
+          type: string
+          nullable: true
+          description: Impronta SHA-256 del DER di `ca.crt` (formato `openssl x509 -fingerprint -sha256`, senza il prefisso). Null se `mode` non e' `internal`.
+        downloadUrl:
+          type: string
+          nullable: true
+          description: Indirizzo del certificato, `/downloads/ca.crt`. Null se `mode` non e' `internal`.
 
     AdminSystem:
       type: object
