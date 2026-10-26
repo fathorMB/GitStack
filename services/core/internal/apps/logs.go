@@ -174,6 +174,10 @@ func (c *Controller) PruneLogs(ctx context.Context) {
 	if _, err := c.st.PruneAppLogs(ctx, now.Add(-c.cfg.LogRetention), c.cfg.LogMaxBytes); err != nil && ctx.Err() == nil {
 		c.cfg.Log.Warn("apps: pulizia dei log non riuscita", "err", err)
 	}
+	// I campioni delle metriche hanno la stessa scadenza dei log (GIT-384).
+	if _, err := c.st.PruneAppMetrics(ctx, now.Add(-c.cfg.LogRetention)); err != nil && ctx.Err() == nil {
+		c.cfg.Log.Warn("apps: pulizia delle metriche non riuscita", "err", err)
+	}
 }
 
 // parseLogLine separa il timestamp RFC 3339 che Kubernetes mette in testa a ogni riga. Senza, la

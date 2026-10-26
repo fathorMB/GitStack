@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -119,6 +120,9 @@ func (s *Store) BeginAppDeploy(ctx context.Context, repoID uuid.UUID, name strin
 	}
 	ver, err := scanVersion(tx.QueryRow(ctx, `SELECT `+versionCols+` FROM core.app_versions v WHERE v.app_id = $1 AND v.number = $2`, cur.ID, number))
 	if err != nil {
+		return App{}, AppVersion{}, err
+	}
+	if err := enqueueAppDeployment(ctx, tx, app, ver, domainevents.AppDeploymentStarted, ""); err != nil {
 		return App{}, AppVersion{}, err
 	}
 	return app, ver, tx.Commit(ctx)
@@ -238,13 +242,79 @@ func (s *Store) FinishAppDeploy(ctx context.Context, appID uuid.UUID, version in
 	if err != nil {
 		return err
 	}
+	if err := s.enqueueDeployOutcome(ctx, tx, appID, version, state, reason); err != nil {
+		return err
+	}
 	return tx.Commit(ctx)
 }
 
-// SetAppObserved aggiorna stato osservato e copie pronte (controller). Non tocca updated_at.
+// enqueueDeployOutcome scrive l'esito del deploy (GIT-384): fallito, riuscito o rollback riuscito.
+// Lo stato è quello dopo la modifica, nella stessa transazione.
+func (s *Store) enqueueDeployOutcome(ctx context.Context, tx pgx.Tx, appID uuid.UUID, version int, state, reason string) error {
+	a, err := s.loadAppForEvent(ctx, tx, appID)
+	if err != nil {
+		return err
+	}
+	v, err := scanVersion(tx.QueryRow(ctx, `SELECT `+versionCols+` FROM core.app_versions v WHERE v.app_id = $1 AND v.number = $2`, appID, version))
+	if err != nil {
+		return err
+	}
+	action := domainevents.AppDeploymentSucceeded
+	switch {
+	case state == "failed":
+		action = domainevents.AppDeploymentFailed
+	case v.Trigger == "rollback":
+		action = domainevents.AppDeploymentRolledBack
+	}
+	return enqueueAppDeployment(ctx, tx, a, v, action, reason)
+}
+
+// loadAppForEvent legge l'app con l'immagine e il deploy correnti, dentro la transazione.
+func (s *Store) loadAppForEvent(ctx context.Context, tx pgx.Tx, appID uuid.UUID) (App, error) {
+	a, err := scanApp(tx.QueryRow(ctx, `SELECT `+appCols+appFrom+` WHERE a.id = $1`, appID))
+	if err != nil {
+		return App{}, err
+	}
+	return a, s.fillApp(ctx, tx, &a)
+}
+
+// SetAppObserved aggiorna stato osservato e copie pronte (controller). Non tocca updated_at. Il
+// passaggio da «running» a «unhealthy» (copie non più pronte) scrive app_status.unhealthy (GIT-384):
+// l'avviso va a chi ha fatto il deploy della versione attiva.
 func (s *Store) SetAppObserved(ctx context.Context, appID uuid.UUID, status string, ready int) error {
-	_, err := s.pool.Exec(ctx, `UPDATE core.apps SET status = $2, ready_copies = $3 WHERE id = $1`, appID, status, ready)
-	return err
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	var prev string
+	if err := tx.QueryRow(ctx, `SELECT status FROM core.apps WHERE id = $1 FOR UPDATE`, appID).Scan(&prev); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE core.apps SET status = $2, ready_copies = $3 WHERE id = $1`, appID, status, ready); err != nil {
+		return err
+	}
+	if prev == "running" && status == "unhealthy" {
+		a, err := s.loadAppForEvent(ctx, tx, appID)
+		if err != nil {
+			return err
+		}
+		v, err := scanVersion(tx.QueryRow(ctx, `SELECT `+versionCols+` FROM core.app_versions v WHERE v.app_id = $1 AND v.number = $2`, appID, a.ActiveVersion))
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		var actor *AppActor
+		if err == nil {
+			actor = v.CreatedBy
+		}
+		if err := enqueueAppUnhealthy(ctx, tx, a, actor); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
 }
 
 // SetAppCopies imposta le copie a mano (H12), entro la quota dell'owner (H11): CapacityError con

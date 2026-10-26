@@ -29,12 +29,16 @@ const (
 	// v2-a (GIT-281, CI6): esecuzioni e job dei workflow.
 	DomainWorkflowRun = "workflow_run"
 	DomainWorkflowJob = "workflow_job"
+
+	// v3-a (GIT-384, H12): deploy delle app e stato «fermata» (copie non pronte dopo una partenza).
+	DomainAppDeployment = "app_deployment"
+	DomainAppStatus     = "app_status"
 )
 
 // Domains elenca i domini di core, da assicurare con events.EnsureStream.
 var Domains = []string{DomainIssue, DomainIssueComment, DomainRepository,
 	DomainPullRequest, DomainPullRequestReview, DomainPullRequestComment, DomainCommitStatus,
-	DomainWorkflowRun, DomainWorkflowJob}
+	DomainWorkflowRun, DomainWorkflowJob, DomainAppDeployment, DomainAppStatus}
 
 // Nomi degli eventi (anche subject NATS).
 const (

@@ -30,7 +30,7 @@ func TestMigration0040_AppAccessMembers(t *testing.T) {
 		VALUES (gen_random_uuid(), gen_random_uuid(), 'user', gen_random_uuid(), now())`); err == nil {
 		t.Fatal("una riga con app inesistente deve essere rifiutata")
 	}
-	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 4); err != nil {
 		t.Fatalf("down 0040: %v", err)
 	}
 	if has() {
