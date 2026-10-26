@@ -391,7 +391,8 @@ expect_eq "controller: rolebindings" "$(rules_of "${ctl}" | grep '"rolebindings"
 expect_eq "controller: bind solo sul ruolo modello" "$(rules_of "${ctl}" | grep '"clusterroles"')" '"rbac.authorization.k8s.io"|"clusterroles"|"bind"|"gitstack-app-workload"'
 expect_eq "controller: tre regole in tutto" "$(rules_of "${ctl}" | grep -c .)" "3"
 wl="$(doc ClusterRole gitstack-app-workload)"
-expect_eq "modello: risorse ammesse (ADR 0002 + Middleware del login GIT-347)" "$(rules_of "${wl}" | cut -d'|' -f2 | sort | tr '\n' ' ')" '"deployments" "events" "ingressroutes", "middlewares" "pods" "pods/log" "secrets" "services" '
+expect_eq "modello: risorse ammesse (ADR 0002, NetworkPolicy H9 e Middleware del login GIT-347)" "$(rules_of "${wl}" | cut -d'|' -f2 | sort | tr '\n' ' ')" '"deployments" "events" "ingressroutes", "middlewares" "networkpolicies" "pods" "pods/log" "secrets" "services" '
+expect_eq "modello: NetworkPolicy H9" "$(rules_of "${wl}" | grep '"networkpolicies"')" '"networking.k8s.io"|"networkpolicies"|"get", "create", "update"|'
 expect_eq "modello: middlewares e ingressroutes con i soli verbi del controller" "$(rules_of "${wl}" | grep '"middlewares"')" '"traefik.io"|"ingressroutes", "middlewares"|"create", "get", "update", "delete"|'
 expect_lacks "modello: mai delete su deployments, pods, secrets" "$(rules_of "${wl}" | grep -E '"(deployments|pods|secrets)"')" "delete"
 expect_lacks "modello: nessun permesso su namespaces" "${wl}" "namespaces"
@@ -412,6 +413,7 @@ expect_has "policy: namespace solo gitstack-app-* con label" "${pol}" "object.me
 expect_has "policy: namespace UPDATE/DELETE controllano oldObject" "${pol}" "oldObject.metadata.labels['gitstack.io/managed-app'] == 'true'"
 expect_has "policy: namespace CREATE UPDATE DELETE" "${pol}" 'operations: ["CREATE", "UPDATE", "DELETE"]'
 expect_has "policy: rolebindings solo in namespace marcati" "${pol}" "namespaceObject.metadata.labels['gitstack.io/managed-app'] == 'true'"
+expect_has "policy: NetworkPolicy solo in namespace marcati" "${pol}" "request.resource.resource != 'networkpolicies'"
 expect_has "policy: rolebindings solo verso il ruolo modello" "${pol}" "object.roleRef.name == \"gitstack-app-workload\""
 expect_has "policy: failurePolicy Fail" "${pol}" "failurePolicy: Fail"
 OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template apps senza CI fallito"; exit 1; }

@@ -1391,6 +1391,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
+      - name: Setup Go (probe isolamento app)
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: |
+            **/go.sum
+
       - name: Setup Helm
         uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
         with:
@@ -1466,6 +1473,9 @@ jobs:
           # dell'immagine usa '-' al posto del '+' della versione.
           K3S_IMAGE="rancher/k3s:$(tr -d '[:space:]' < deploy/k3s-version | tr '+' '-')"
           k3d cluster create gitstack-ci --image "${K3S_IMAGE}" --port "8080:80@loadbalancer" --port "2222:2222@loadbalancer" --wait --timeout 120s
+
+      - name: Isolamento delle app H9 (k3d)
+        run: services/core/internal/apps/k3d-test.sh
 
       # GIT-21: "k3d cluster create --wait" sopra attende solo che il nodo
       # k3s riporti Ready, non che l'API server accetti già in modo stabile
