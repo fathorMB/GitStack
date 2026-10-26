@@ -44,6 +44,7 @@ describe('rotte del browser del codice', () => {
     ['/acme/api/apps/web/versions', 'app-versions'],
     ['/acme/api/apps/web/settings', 'app-config'],
     ['/acme/api/apps/web/settings/access', 'app-access'],
+    ['/acme/api/apps/web/settings/volumes', 'app-volumes'],
     ['/acme/api/issues', 'issues'],
     ['/acme/api/issues/41', 'issue'],
     ['/acme/api/issues/new', 'newissue'],

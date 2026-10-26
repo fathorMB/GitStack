@@ -1717,9 +1717,11 @@ seconds per read, and only then fail.
 **The capacity figures for N1 (hardware profiles) are indicative, not
 measured.** This test does not establish how many users a machine supports.
 
-Run it locally (needs Docker, `git`, `ssh` and `ssh-keygen`; on Windows set
-`DOCKER_HOST=npipe:////./pipe/dockerDesktopLinuxEngine` and
-`TESTCONTAINERS_RYUK_DISABLED=true`):
+Run it locally (needs Docker, `git`, `ssh` and `ssh-keygen`; on Windows with
+Docker Desktop it works without extra variables, `DOCKER_HOST=npipe:////./pipe/dockerDesktopLinuxEngine`
+is only needed if the default pipe is not found). Leave Ryuk (the testcontainers
+reaper) enabled: it removes the test Postgres even when the test process is killed
+(see "Cleaning up test containers" below):
 
 ```bash
 cd services/core
@@ -1730,6 +1732,28 @@ Without `GITSTACK_SMOKE_DURATION` the test is skipped, so the `go` job of
 `ci.yml` does not run it. In CI it is the separate workflow
 `.github/workflows/smoke.yml`: on every push to `main`, every night
 (04:11 UTC) and on demand, with `-race` and a default of 3 minutes.
+
+### Cleaning up test containers
+
+`services/core/internal/dbtest` starts **one** Postgres container per test
+process (a migrated template database, then `CREATE DATABASE ... TEMPLATE` per
+test). The container is not stopped by test code: Ryuk removes it when the
+process exits or is killed, so never disable Ryuk. Do not
+wrap `go test` in `timeout` nor give it a `-timeout` shorter than the run, and
+run the full package suite in CI rather than locally.
+
+`admin/internal/pgtest` labels its containers `gitstack.test=pgtest` (plus
+`gitstack.test.pid`); `Start` removes the ones older than one hour left by killed
+runs. To clean the host by hand (containers labelled `org.testcontainers=true` or
+`gitstack.test`):
+
+```powershell
+powershell -File scripts/cleanup-test-containers.ps1 -DryRun   # list only
+powershell -File scripts/cleanup-test-containers.ps1           # stopped + running for more than 60 min
+powershell -File scripts/cleanup-test-containers.ps1 -All      # everything (no test running!)
+```
+
+On Linux/macOS/Git Bash: `scripts/cleanup-test-containers.sh [--dry-run] [--all]`.
 
 ## Quick reference
 

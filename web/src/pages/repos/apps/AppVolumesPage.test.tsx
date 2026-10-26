@@ -1,0 +1,173 @@
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ToastProvider } from '../../../components';
+import type { App, AppVolumeList } from '../../../lib/appsApi';
+import { appPermissions } from '../../../lib/appsPermissions';
+import { AppVolumesPage } from './AppVolumesPage';
+import { makeApp, makeVersion, repo } from './fixtures';
+
+vi.mock('../../../lib/appsApi', () => ({
+  fetchAppVolumes: vi.fn(),
+  fetchAppVersions: vi.fn(),
+  addAppVolume: vi.fn(),
+  removeAppVolume: vi.fn(),
+  saveAppResources: vi.fn(),
+  updateApp: vi.fn(),
+}));
+
+import * as api from '../../../lib/appsApi';
+
+const T = 20000;
+const GB = 1024 ** 3;
+const quota = {
+  owner: 'acme',
+  limits: { cpuMillis: 4000, memoryBytes: 8 * GB, diskBytes: 50 * GB },
+  used: { cpuMillis: 500, memoryBytes: GB, diskBytes: 15 * GB },
+  warning: false,
+};
+const vol = (name: string, mountPath: string, size: number) => ({ name, mountPath, sizeBytes: size * GB, version: 3, createdAt: '2026-10-26T10:00:00Z' });
+const list = (...items: ReturnType<typeof vol>[]): AppVolumeList => ({ items, quota });
+const withVersion = (restricted: boolean) => ({ items: [makeVersion({ number: 42, state: 'serving', config: { variables: {}, secretNames: [], resources: makeApp().resources, copies: 1, restricted } })], total: 1 });
+
+function mount(app: App = makeApp({ copies: 1, resources: { guaranteed: { cpuMillis: 500, memoryBytes: 768 * 1024 ** 2 }, limit: { cpuMillis: 1000, memoryBytes: 1.5 * GB }, maxPerApp: { cpuMillis: 4000, memoryBytes: 8 * GB } } }), role: 'admin' | 'write' = 'admin') {
+  const onChange = vi.fn();
+  render(
+    <MemoryRouter>
+      <ToastProvider>
+        <AppVolumesPage repo={repo} app={app} perms={appPermissions(role)} onChange={onChange} />
+      </ToastProvider>
+    </MemoryRouter>,
+  );
+  return onChange;
+}
+
+beforeEach(() => {
+  vi.resetAllMocks();
+  vi.mocked(api.fetchAppVersions).mockResolvedValue(withVersion(false));
+});
+
+// Mockup .prisma/design/mockups-v3-hosting/index.html, data-screen="volumes".
+describe('AppVolumesPage (H3, H9, H11)', () => {
+  it('elenca i volumi con mount, dimensione, quota e interruttore dei backup', async () => {
+    vi.mocked(api.fetchAppVolumes).mockResolvedValue(list(vol('data', '/wiki/data', 10)));
+    mount();
+    const rows = within(await screen.findByRole('list', { name: 'Volumes' }));
+    expect(rows.getByText('data')).toBeInTheDocument();
+    expect(rows.getByText('/wiki/data')).toBeInTheDocument();
+    expect(rows.getByText(/10 GB · counts toward the acme disk quota/)).toBeInTheDocument();
+    expect(rows.getByRole('switch', { name: 'data in backups' })).toBeChecked();
+    expect(screen.getByText(/Apps with volumes run as a single copy/)).toBeInTheDocument();
+    expect(screen.getByText(/acme disk quota: 15 GB of 50 GB/)).toBeInTheDocument();
+    expect(screen.queryByText(/Looks like a database/)).not.toBeInTheDocument();
+  }, T);
+
+  it('avvisa per un database e indica il volume dove fare il dump', async () => {
+    vi.mocked(api.fetchAppVolumes).mockResolvedValue(list(vol('data', '/wiki/data', 10), vol('db', '/var/lib/postgresql/data', 5)));
+    mount();
+    expect(await screen.findByText(/Looks like a database/)).toBeInTheDocument();
+    expect(screen.getByText(/Schedule a dump into the/)).toHaveTextContent('data');
+  }, T);
+
+  it('copia unica: le copie sono fisse a 1 quando ci sono volumi', async () => {
+    vi.mocked(api.fetchAppVolumes).mockResolvedValue(list(vol('data', '/wiki/data', 10)));
+    mount();
+    expect(await screen.findByText('Fixed at 1 because the app has volumes')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'More copies' })).toBeDisabled();
+  }, T);
+
+  it('aggiunge un volume con dimensione in GB e ricarica la lista', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchAppVolumes).mockResolvedValueOnce(list()).mockResolvedValue(list(vol('data', '/wiki/data', 10)));
+    vi.mocked(api.addAppVolume).mockResolvedValue({} as never);
+    mount();
+    await user.click(await screen.findByRole('button', { name: 'Add volume' }));
+    const form = within(screen.getByRole('form', { name: 'Add volume' }));
+    await user.type(form.getByLabelText('Volume name'), 'data');
+    await user.type(form.getByLabelText('Mount path'), '/wiki/data');
+    await user.type(form.getByLabelText('Size'), '10');
+    await user.click(form.getByRole('button', { name: 'Add volume' }));
+    await waitFor(() => expect(api.addAppVolume).toHaveBeenCalledWith('acme', 'handbook', 'web', { name: 'data', mountPath: '/wiki/data', sizeBytes: 10 * GB }));
+    expect(await screen.findByText('/wiki/data')).toBeInTheDocument();
+  }, T);
+
+  it('mostra in linea il rifiuto per quota piena (409)', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchAppVolumes).mockResolvedValue(list());
+    const { ApiError } = await vi.importActual<typeof import('../../../lib/http')>('../../../lib/http');
+    vi.mocked(api.addAppVolume).mockRejectedValue(new ApiError({ error: { code: 'insufficient_capacity', message: 'Not enough disk in the acme quota.' } }, 409));
+    mount();
+    await user.click(await screen.findByRole('button', { name: 'Add volume' }));
+    const form = within(screen.getByRole('form', { name: 'Add volume' }));
+    await user.type(form.getByLabelText('Volume name'), 'big');
+    await user.type(form.getByLabelText('Mount path'), '/big');
+    await user.type(form.getByLabelText('Size'), '100 GB');
+    await user.click(form.getByRole('button', { name: 'Add volume' }));
+    expect(await screen.findByText(/Not enough disk/)).toBeInTheDocument();
+  }, T);
+
+  it('toglie un volume solo riscrivendone il nome (G8)', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchAppVolumes).mockResolvedValueOnce(list(vol('data', '/wiki/data', 10))).mockResolvedValue(list());
+    vi.mocked(api.removeAppVolume).mockResolvedValue({} as never);
+    mount();
+    await user.click(await screen.findByRole('button', { name: 'Remove volume data' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    const confirm = dialog.getByRole('button', { name: 'Remove volume' });
+    expect(confirm).toBeDisabled();
+    await user.type(dialog.getByRole('textbox'), 'data');
+    await user.click(confirm);
+    await waitFor(() => expect(api.removeAppVolume).toHaveBeenCalledWith('acme', 'handbook', 'web', 'data'));
+    expect(await screen.findByText('No volumes')).toBeInTheDocument();
+  }, T);
+
+  it('salva risorse garantite e tetto, rifiutando oltre il massimo dell’istanza', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchAppVolumes).mockResolvedValue(list());
+    vi.mocked(api.saveAppResources).mockImplementation(async (_o, _r, _a, input) => ({ ...input, maxPerApp: null }));
+    mount();
+    const cpu = await screen.findByLabelText('Limit CPU');
+    expect(screen.getByLabelText('Guaranteed CPU')).toHaveValue('0.5 vCPU');
+    expect(screen.getByLabelText('Guaranteed memory')).toHaveValue('768 MB');
+    expect(screen.getByText(/Max per app on this instance: 4 vCPU · 8 GB/)).toBeInTheDocument();
+    await user.clear(cpu);
+    await user.type(cpu, '9');
+    await user.click(screen.getByRole('button', { name: 'Save resources' }));
+    expect(await screen.findByText(/above the maximum per app/)).toBeInTheDocument();
+    expect(api.saveAppResources).not.toHaveBeenCalled();
+    await user.clear(cpu);
+    await user.type(cpu, '2');
+    await user.click(screen.getByRole('button', { name: 'Save resources' }));
+    await waitFor(() =>
+      expect(api.saveAppResources).toHaveBeenCalledWith('acme', 'handbook', 'web', {
+        guaranteed: { cpuMillis: 500, memoryBytes: 768 * 1024 ** 2 },
+        limit: { cpuMillis: 2000, memoryBytes: 1.5 * GB },
+      }),
+    );
+  }, T);
+
+  it('restricted: legge lo stato dalla versione attiva e lo cambia; avviso se gira come root', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchAppVolumes).mockResolvedValue(list());
+    vi.mocked(api.updateApp).mockResolvedValue(makeApp());
+    const root = makeApp({ copies: 1, image: { reference: 'docker.io/requarks/wiki:2.5', source: 'external', verified: false, runsAsRoot: true } });
+    mount(root);
+    const sw = await screen.findByRole('switch', { name: 'Restricted mode' });
+    expect(sw).not.toBeChecked();
+    expect(screen.getByText(/runs as/)).toHaveTextContent('root');
+    await user.click(sw);
+    await waitFor(() => expect(api.updateApp).toHaveBeenCalledWith('acme', 'handbook', 'web', { restricted: true }));
+    await waitFor(() => expect(screen.getByRole('switch', { name: 'Restricted mode' })).toBeChecked());
+  }, T);
+
+  it('con solo write tutto è in sola lettura', async () => {
+    vi.mocked(api.fetchAppVolumes).mockResolvedValue(list(vol('data', '/wiki/data', 10)));
+    mount(makeApp({ copies: 1 }), 'write');
+    await screen.findByText('/wiki/data');
+    expect(screen.queryByRole('button', { name: 'Add volume' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remove volume data' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save resources' })).not.toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Restricted mode' })).toBeDisabled();
+  }, T);
+});

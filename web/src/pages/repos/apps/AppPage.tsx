@@ -11,6 +11,7 @@ import { AppLogsPage } from './AppLogsPage';
 import { AppOverviewPage } from './AppOverviewPage';
 import { AppPlaceholderPage } from './AppPlaceholderPage';
 import { AppVersionsPage } from './AppVersionsPage';
+import { AppVolumesPage } from './AppVolumesPage';
 import type { AppMode } from './appMode';
 
 /** Pagine di un'app: carica l'app una volta e la passa alla scheda scelta dalla route. */
@@ -33,6 +34,8 @@ function AppLoaded({ repo, appName, mode }: { repo: Repository; appName: string;
         <AppVersionsPage repo={repo} app={data} perms={perms} onChange={onChange} />
       ) : mode === 'app-access' ? (
         <AppAccessPage repo={repo} app={data} perms={perms} onChange={onChange} />
+      ) : mode === 'app-volumes' ? (
+        <AppVolumesPage repo={repo} app={data} perms={perms} onChange={onChange} />
       ) : mode === 'app-logs' ? (
         <AppLogsPage repo={repo} app={data} perms={perms} />
       ) : mode === 'app-config' ? (

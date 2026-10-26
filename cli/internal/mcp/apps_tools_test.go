@@ -58,6 +58,8 @@ func TestStrumentiMCPDelleAppConLeAnnotazioniGiuste(t *testing.T) {
 		"app_deploy": "write", "app_rollback": "write", "app_restart": "write", "app_scale": "write",
 		"app_create": "destructive", "app_delete": "destructive", "app_set_access": "destructive",
 		"app_access_member_add": "destructive", "app_access_member_remove": "destructive",
+		// GIT-359 (H3): volumi persistenti, dal contratto di GIT-356.
+		"app_volume_list": "read", "app_volume_create": "destructive", "app_volume_delete": "destructive",
 	}
 	for name, kind := range want {
 		i, ok := by[name]

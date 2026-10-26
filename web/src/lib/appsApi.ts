@@ -25,6 +25,10 @@ import {
   deleteAppSecret as sdkDeleteAppSecret,
   deleteAppVariable as sdkDeleteAppVariable,
   deleteApp as sdkDeleteApp,
+  listAppVolumes as sdkListAppVolumes,
+  createAppVolume as sdkCreateAppVolume,
+  deleteAppVolume as sdkDeleteAppVolume,
+  setAppResources as sdkSetAppResources,
 } from '@gitstack/api-client';
 import type {
   App,
@@ -42,10 +46,15 @@ import type {
   AppLogLine,
   AppSecretList,
   AppVariableList,
+  AppVolume,
+  AppVolumeChange,
+  AppVolumeList,
+  AppResources,
+  AppResourcesInput,
 } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
-export type { App, AppAccess, AppAccessInvite, AppAccessMember, AppAccessMode, AppCreateInput, AppCreated, AppList, AppMetrics, AppUpdateInput, AppVersion, AppVersionList, AppLogLine, AppSecretList, AppVariableList };
+export type { App, AppAccess, AppAccessInvite, AppAccessMember, AppAccessMode, AppCreateInput, AppCreated, AppList, AppMetrics, AppUpdateInput, AppVersion, AppVersionList, AppLogLine, AppSecretList, AppVariableList, AppVolume, AppVolumeChange, AppVolumeList, AppResources, AppResourcesInput };
 
 const at = (owner: string, repo: string) => ({ baseUrl: API_BASE_URL, path: { owner, repo } });
 const atApp = (owner: string, repo: string, app: string) => ({ baseUrl: API_BASE_URL, path: { owner, repo, app } });
@@ -154,4 +163,22 @@ export async function removeAppAccessMember(owner: string, repo: string, app: st
 /** Invito ai tester: testo, link alla guida CA e impronta arrivano dall'API, il client non li compone. */
 export async function fetchAppAccessInvite(owner: string, repo: string, app: string): Promise<AppAccessInvite> {
   return unwrap(await sdkGetAppAccessInvite(atApp(owner, repo, app)));
+}
+
+// ---- volumi e risorse (H3, H11, GIT-359) ----
+
+export async function fetchAppVolumes(owner: string, repo: string, app: string): Promise<AppVolumeList> {
+  return unwrap(await sdkListAppVolumes(atApp(owner, repo, app)));
+}
+
+export async function addAppVolume(owner: string, repo: string, app: string, input: { name: string; mountPath: string; sizeBytes: number }): Promise<AppVolumeChange> {
+  return unwrap(await sdkCreateAppVolume({ ...atApp(owner, repo, app), body: input }));
+}
+
+export async function removeAppVolume(owner: string, repo: string, app: string, volume: string): Promise<AppVolumeChange> {
+  return unwrap(await sdkDeleteAppVolume({ ...atApp(owner, repo, app), path: { ...atApp(owner, repo, app).path, volume } }));
+}
+
+export async function saveAppResources(owner: string, repo: string, app: string, input: AppResourcesInput): Promise<AppResources> {
+  return unwrap(await sdkSetAppResources({ ...atApp(owner, repo, app), body: input }));
 }
