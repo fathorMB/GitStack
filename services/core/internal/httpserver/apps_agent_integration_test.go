@@ -61,6 +61,7 @@ func TestApps_AgenteLimitatoDaiGrantP4(t *testing.T) {
 		t.Fatalf("v1 deve restare di alice (human): %+v", v)
 	}
 	e.finishCommitDeploy(t, "web")
+	e.sql(`UPDATE core.apps SET active_version = 2 WHERE name = 'web'`) // come farebbe il controller a deploy riuscito
 
 	// Le altre mutazioni con write rispondono 2xx.
 	e.want(e.do(rollback.method, rollback.path, "bot", rollback.body), http.StatusAccepted, "")
