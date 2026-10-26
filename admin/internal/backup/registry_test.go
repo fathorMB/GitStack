@@ -337,17 +337,79 @@ func TestRestoreImmaginiInUsoTornanoConITag(t *testing.T) {
 	}
 }
 
-// Un'immagine in uso che manca dal registry ferma il backup: un'app che non riparte non deve
-// passare inosservata.
-func TestBackupImmagineInUsoMancanteFermaIlBackup(t *testing.T) {
+// (a) Versione precedente con il tag mancante (per esempio sbagliato o cancellato dalla scheda
+// Packages): il backup riesce, l'avviso nomina app e riferimento, il tag attivo è nel tar e il
+// manifest non riporta l'immagine saltata (D19: un'app non ferma il backup della piattaforma).
+func TestBackupImmaginePrecedenteMancanteSaltata(t *testing.T) {
 	e := newEnv(t)
 	seedAppRegistry(t, e.git)
 	e.o.InUseImages = func(context.Context) ([]InUseImage, error) {
-		return []InUseImage{{RepoID: regRepoIn, Owner: "alice", Repo: "web", Reference: "registry.gitstack.test/alice/web:v9"}}, nil
+		return []InUseImage{
+			{RepoID: regRepoIn, Owner: "alice", Repo: "web", App: "web", Reference: "registry.gitstack.test/alice/web:v2", Active: true},
+			{RepoID: regRepoIn, Owner: "alice", Repo: "web", App: "web", Reference: "registry.gitstack.test/alice/web:v9", Active: false},
+		}, nil
+	}
+	res, err := Backup(context.Background(), e.o)
+	if err != nil {
+		t.Fatalf("il backup non deve fermarsi per la precedente: %v", err)
+	}
+	if w := e.log.String(); !strings.Contains(w, `"web"`) || !strings.Contains(w, "registry.gitstack.test/alice/web:v9") {
+		t.Errorf("manca l'avviso con app e riferimento: %q", w)
+	}
+	names := tarNames(t, res.Path, GitDataName)
+	if !hasSuffixAny(names, "repositories/"+regRepoIn+"/_manifests/tags/v2/current/link") {
+		t.Errorf("il tag attivo deve essere nel tar: %v", names)
+	}
+	if len(res.Manifest.AppImages) != 1 || res.Manifest.AppImages[0] != "registry.gitstack.test/alice/web:v2" {
+		t.Errorf("app_images = %v, atteso solo il riferimento attivo", res.Manifest.AppImages)
+	}
+}
+
+// (b) Versione attiva con il tag mancante: il backup si ferma, e il messaggio nomina app e
+// riferimento da correggere.
+func TestBackupImmagineAttivaMancanteFermaIlBackup(t *testing.T) {
+	e := newEnv(t)
+	seedAppRegistry(t, e.git)
+	e.o.InUseImages = func(context.Context) ([]InUseImage, error) {
+		return []InUseImage{{RepoID: regRepoIn, Owner: "alice", Repo: "web", App: "web", Reference: "registry.gitstack.test/alice/web:v9", Active: true}}, nil
 	}
 	_, err := Backup(context.Background(), e.o)
-	if err == nil || !strings.Contains(err.Error(), "v9") {
-		t.Fatalf("atteso errore sul tag v9 mancante, ottenuto %v", err)
+	if err == nil {
+		t.Fatal("atteso errore per la versione attiva mancante")
+	}
+	for _, want := range []string{`"web"`, "registry.gitstack.test/alice/web:v9", "tag v9 non trovato"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("messaggio %q senza %q", err.Error(), want)
+		}
+	}
+}
+
+// Una riga del database: i sette campi, con il flag di versione attiva t/f; campo attiva
+// sconosciuto o riga corta → errore.
+func TestParseInUseRow(t *testing.T) {
+	d := "sha256:" + appM1
+	cases := []struct {
+		name   string
+		line   string
+		ok     bool
+		active bool
+	}{
+		{"attiva", regRepoIn + "|alice|web|web|registry.gitstack.test/alice/web:v2||t", true, true},
+		{"precedente con digest", regRepoIn + "|alice|web|web|registry.gitstack.test/alice/web:v1|" + d + "|f", true, false},
+		{"campo attiva sconosciuto", regRepoIn + "|alice|web|web|registry.gitstack.test/alice/web:v1||x", false, false},
+		{"senza il nome dell'app", regRepoIn + "|alice|web|registry.gitstack.test/alice/web:v1||t", false, false},
+		{"campi in più", regRepoIn + "|alice|web|web|registry.gitstack.test/alice/web:v1|||t", false, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := parseInUseRow(c.line)
+			if c.ok != (err == nil) {
+				t.Fatalf("errore = %v, atteso ok=%v", err, c.ok)
+			}
+			if c.ok && (got.Active != c.active || got.App != "web") {
+				t.Errorf("= %+v, atteso attiva=%v app=web", got, c.active)
+			}
+		})
 	}
 }
 
@@ -356,8 +418,8 @@ func TestBackupImmagineInUsoMancanteFermaIlBackup(t *testing.T) {
 func TestInUseDalDatabase(t *testing.T) {
 	e := newEnv(t)
 	seedAppRegistry(t, e.git)
-	e.f.inUse = regRepoIn + "|alice|web|registry.gitstack.test/alice/web:v2|\n" +
-		regRepoIn + "|alice|web|registry.gitstack.test/alice/web:v1|\n"
+	e.f.inUse = regRepoIn + "|alice|web|web|registry.gitstack.test/alice/web:v2||t\n" +
+		regRepoIn + "|alice|web|web|registry.gitstack.test/alice/web:v1||f\n"
 	res, err := Backup(context.Background(), e.o)
 	if err != nil {
 		t.Fatal(err)

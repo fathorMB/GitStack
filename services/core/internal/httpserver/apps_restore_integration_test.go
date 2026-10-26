@@ -46,7 +46,29 @@ func TestApps_DopoIlRestoreLaVersioneAttivaRiparte(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dopo la riapplicazione il Deployment deve esserci: %v", err)
 	}
-	if img := d.Spec.Template.Spec.Containers[0].Image; img == "" {
-		t.Errorf("il Deployment non ha un'immagine")
+	// La versione 1 (createWeb) è quella che il restore riporta: il Deployment deve averne
+	// l'immagine e la configurazione (porta 8080, da cui PORT nell'env del container).
+	v1, err := st.GetAppVersion(ctx, ids[0], 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(d.Spec.Template.Spec.Containers) != 1 {
+		t.Fatalf("il Deployment deve avere un solo container: %d", len(d.Spec.Template.Spec.Containers))
+	}
+	c := d.Spec.Template.Spec.Containers[0]
+	if want := apps.ImageRef(v1); c.Image != want {
+		t.Errorf("immagine del Deployment = %q, attesa quella della versione 1 %q", c.Image, want)
+	}
+	if v1.Config.Port == nil || *v1.Config.Port != 8080 {
+		t.Fatalf("configurazione della versione 1 senza porta 8080: %+v", v1.Config.Port)
+	}
+	port := ""
+	for _, e := range c.Env {
+		if e.Name == "PORT" {
+			port = e.Value
+		}
+	}
+	if port != "8080" {
+		t.Errorf("PORT nell'env del container = %q, atteso 8080 dalla configurazione della versione 1", port)
 	}
 }

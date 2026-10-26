@@ -372,11 +372,11 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 	if e != nil {
 		return nil, e
 	}
-	regSkip, e := registrySkip(gitPath, regRepos, inUse)
+	regSkip, appImages, e := registrySkip(gitPath, regRepos, inUse, o.logf)
 	if e != nil {
 		return nil, fmt.Errorf("immagini del registry: %w", e)
 	}
-	o.logf("copia dei repo (git-data); immagini del registry incluse per %d repo e %d immagini in uso dalle app", len(regRepos), len(inUse))
+	o.logf("copia dei repo (git-data); immagini del registry incluse per %d repo e %d immagini in uso dalle app", len(regRepos), len(appImages))
 	if e := st.write(GitDataName, func(w io.Writer) error { return tarDirSkip(w, gitPath, regSkip) }); e != nil {
 		return nil, fmt.Errorf("copia di git-data: %w", e)
 	}
@@ -428,7 +428,7 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 		Namespace:     o.Cfg.Namespace,
 		Files:         st.files,
 		RegistryRepos: regRepos,
-		AppImages:     inUseRefs(inUse),
+		AppImages:     appImages,
 	}
 	path, sum, err := writeArchive(dest, o.archiveName(m), st, m, o.Key)
 	if err != nil {

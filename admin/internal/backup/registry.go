@@ -46,10 +46,12 @@ if [ "$(exec_psql "SELECT to_regclass('core.repo_package_settings') IS NOT NULL"
 fi`
 
 // inUseCmd legge le immagini del registry in uso dalle app: la versione attiva e la precedente
-// (H4). Una riga per immagine: repo_id|owner|repo|riferimento|digest (digest vuoto se per tag).
+// (H4), escluse le versioni «failed» (mai andate in servizio: non servono a ripartire). Una riga
+// per immagine: repo_id|owner|repo|app|riferimento|digest|attiva (digest vuoto se per tag;
+// attiva t/f). Le immagini della versione precedente mancanti non fermano il backup (D19).
 const inUseCmd = `exec_psql() { psql -q -At -F '|' -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "$1"; }
 if [ "$(exec_psql "SELECT to_regclass('core.app_versions') IS NOT NULL")" = t ]; then
-  exec_psql "SELECT a.repo_id, r.owner_name, r.name, v.image_reference, COALESCE(v.image_digest, '') FROM core.apps a JOIN core.repositories r ON r.resource_id = a.repo_id JOIN core.app_versions v ON v.app_id = a.id AND v.number IN (a.active_version, a.active_version - 1) WHERE v.image_source = 'registry' ORDER BY a.repo_id, v.image_reference"
+  exec_psql "SELECT a.repo_id, r.owner_name, r.name, a.name, v.image_reference, COALESCE(v.image_digest, ''), (v.number = a.active_version) FROM core.apps a JOIN core.repositories r ON r.resource_id = a.repo_id JOIN core.app_versions v ON v.app_id = a.id AND v.number IN (a.active_version, a.active_version - 1) WHERE v.image_source = 'registry' AND v.state <> 'failed' ORDER BY a.repo_id, a.name, v.image_reference"
 fi`
 
 // InUseImage è un'immagine del registry in uso da un'app (versione attiva o precedente).
@@ -57,8 +59,10 @@ type InUseImage struct {
 	RepoID    string // resource_id del repo
 	Owner     string // owner del repo, come nel riferimento
 	Repo      string // nome del repo
+	App       string // nome dell'app, per i messaggi
 	Reference string // riferimento salvato: host/owner/repo[/nome]:tag oppure ...@sha256:...
 	Digest    string // digest salvato (vuoto se la versione è per tag)
+	Active    bool   // true se è l'immagine della versione attiva; false se della precedente
 }
 
 // registryRepos ritorna gli id dei repo con includeInBackup: di questi entra tutto il repo.
@@ -97,22 +101,25 @@ func (o *Options) inUseImages(ctx context.Context) ([]InUseImage, error) {
 		if line == "" {
 			continue
 		}
-		f := strings.Split(line, "|")
-		if len(f) != 5 {
-			return nil, fmt.Errorf("riga delle immagini in uso non valida (%d campi)", len(f))
+		img, err := parseInUseRow(line)
+		if err != nil {
+			return nil, err
 		}
-		imgs = append(imgs, InUseImage{RepoID: strings.ToLower(f[0]), Owner: f[1], Repo: f[2], Reference: f[3], Digest: f[4]})
+		imgs = append(imgs, img)
 	}
 	return imgs, nil
 }
 
-// inUseRefs dà i riferimenti delle immagini in uso, per il manifest.
-func inUseRefs(imgs []InUseImage) []string {
-	var out []string
-	for _, img := range imgs {
-		out = append(out, img.Reference)
+// parseInUseRow legge una riga di inUseCmd: repo_id|owner|repo|app|riferimento|digest|attiva.
+func parseInUseRow(line string) (InUseImage, error) {
+	f := strings.Split(line, "|")
+	if len(f) != 7 {
+		return InUseImage{}, fmt.Errorf("riga delle immagini in uso non valida (%d campi)", len(f))
 	}
-	return out
+	if f[6] != "t" && f[6] != "f" {
+		return InUseImage{}, fmt.Errorf("riga delle immagini in uso non valida: campo attiva %q", f[6])
+	}
+	return InUseImage{RepoID: strings.ToLower(f[0]), Owner: f[1], Repo: f[2], App: f[3], Reference: f[4], Digest: f[5], Active: f[6] == "t"}, nil
 }
 
 // imageSel è un'immagine in uso letta nel registry: repo, nome nel repo, tag o digest.
@@ -223,37 +230,57 @@ type manifestDoc struct {
 // inUseKeep aggiunge a keep i percorsi (relativi al volume git-data, con /) delle immagini in
 // uso: il tag (solo il current), la revisione del manifest, i link dei layer e i blob. Per un
 // manifest index segue i manifest figli, fino a due livelli.
-func inUseKeep(volume string, imgs []InUseImage, keep map[string]bool) error {
+//
+// Un'immagine che non si può includere (riferimento malformato, tag o blob mancanti) è un errore
+// per la versione attiva, che il messaggio nomina con app e riferimento da correggere; per la
+// precedente è un avviso e si salta, senza lasciare percorsi a metà in keep (D19: un'app non
+// ferma il backup della piattaforma). Ritorna i riferimenti inclusi.
+func inUseKeep(volume string, imgs []InUseImage, keep map[string]bool, warnf func(format string, a ...any)) ([]string, error) {
+	var included []string
 	for _, img := range imgs {
-		sel, err := parseInUse(img)
-		if err != nil {
-			return err
-		}
-		base := registryV2 + "/repositories/" + sel.repoID
-		if sel.name != "" {
-			base += "/" + sel.name
-		}
-		hex := sel.digest
-		if sel.tag != "" {
-			link, err := os.ReadFile(filepath.Join(volume, filepath.FromSlash(base+"/_manifests/tags/"+sel.tag+"/current/link")))
-			if err != nil {
-				return fmt.Errorf("immagine in uso %q: tag %s non trovato nel registry: %w", img.Reference, sel.tag, err)
+		part := map[string]bool{}
+		if err := keepImage(volume, img, part); err != nil {
+			if img.Active {
+				return nil, fmt.Errorf("backup fermo: l'immagine della versione attiva di %q (repo %s) non si può includere: %s. Correggi il riferimento %q o ripubblica il tag: %w", img.App, img.RepoID, img.Reference, img.Reference, err)
 			}
-			h, ok := strings.CutPrefix(strings.TrimSpace(string(link)), "sha256:")
-			if !ok || !hexDigest.MatchString(h) {
-				return fmt.Errorf("immagine in uso %q: link del tag non valido", img.Reference)
-			}
-			if hex != "" && hex != h {
-				return fmt.Errorf("immagine in uso %q: il tag punta a un altro digest di quello salvato", img.Reference)
-			}
-			hex = h
-			keep[base+"/_manifests/tags/"+sel.tag+"/current"] = true
+			warnf("backup: immagine della versione precedente di %q saltata (%s): %v", img.App, img.Reference, err)
+			continue
 		}
-		if err := keepManifest(volume, base, hex, keep, 0); err != nil {
-			return fmt.Errorf("immagine in uso %q: %w", img.Reference, err)
+		for k := range part {
+			keep[k] = true
 		}
+		included = append(included, img.Reference)
 	}
-	return nil
+	return included, nil
+}
+
+// keepImage aggiunge a keep i percorsi di una sola immagine in uso.
+func keepImage(volume string, img InUseImage, keep map[string]bool) error {
+	sel, err := parseInUse(img)
+	if err != nil {
+		return err
+	}
+	base := registryV2 + "/repositories/" + sel.repoID
+	if sel.name != "" {
+		base += "/" + sel.name
+	}
+	hex := sel.digest
+	if sel.tag != "" {
+		link, err := os.ReadFile(filepath.Join(volume, filepath.FromSlash(base+"/_manifests/tags/"+sel.tag+"/current/link")))
+		if err != nil {
+			return fmt.Errorf("tag %s non trovato nel registry", sel.tag)
+		}
+		h, ok := strings.CutPrefix(strings.TrimSpace(string(link)), "sha256:")
+		if !ok || !hexDigest.MatchString(h) {
+			return errors.New("link del tag non valido")
+		}
+		if hex != "" && hex != h {
+			return errors.New("il tag punta a un altro digest di quello salvato")
+		}
+		hex = h
+		keep[base+"/_manifests/tags/"+sel.tag+"/current"] = true
+	}
+	return keepManifest(volume, base, hex, keep, 0)
 }
 
 // keepManifest segue un manifest: la sua revisione, il blob, config e layer (con i link nel repo).
@@ -309,10 +336,10 @@ func keepManifest(volume, base, hex string, keep map[string]bool, depth int) err
 // registrySkip ritorna il filtro di tarDirSkip. Dentro il registry si tengono le cartelle di
 // struttura, i repo con includeInBackup (con i loro blob) e le immagini in uso (solo i loro
 // percorsi); il resto, e gli upload in corso, no.
-func registrySkip(volume string, repoIDs []string, inUse []InUseImage) (func(rel string, isDir bool) bool, error) {
+func registrySkip(volume string, repoIDs []string, inUse []InUseImage, warnf func(format string, a ...any)) (func(rel string, isDir bool) bool, []string, error) {
 	digests, err := registryDigests(volume, repoIDs)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	keep := map[string]bool{}
 	for _, id := range repoIDs {
@@ -323,8 +350,9 @@ func registrySkip(volume string, repoIDs []string, inUse []InUseImage) (func(rel
 			keep[registryV2+"/blobs/sha256/"+d[:2]+"/"+d] = true
 		}
 	}
-	if err := inUseKeep(volume, inUse, keep); err != nil {
-		return nil, err
+	included, err := inUseKeep(volume, inUse, keep, warnf)
+	if err != nil {
+		return nil, nil, err
 	}
 	// Le cartelle che portano a un percorso tenuto sono strutturali: si tengono anche loro.
 	anc := map[string]bool{}
@@ -351,7 +379,7 @@ func registrySkip(volume string, repoIDs []string, inUse []InUseImage) (func(rel
 			return false
 		}
 		return !isDir || !anc[rel]
-	}, nil
+	}, included, nil
 }
 
 // tenuto dice se rel è un percorso tenuto o sta dentro uno di loro.
