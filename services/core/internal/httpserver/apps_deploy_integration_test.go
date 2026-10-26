@@ -53,8 +53,8 @@ func TestApps_DeployPermessiESenzaController(t *testing.T) {
 }
 
 // H9: le policy generate dal controller sono applicate davvero dal CNI di k3d,
-// non solo confrontate come manifest. I probe usano IP dei pod: DNS è fuori
-// dal perimetro di questa prova e GIT-380 aggiungerà le aperture di egress.
+// non solo confrontate come manifest. I probe usano IP dei pod, mentre il
+// proxy prova anche la risoluzione DNS che la policy apre verso kube-dns.
 func TestApps_IsolamentoSuK3d(t *testing.T) {
 	e := newDeployEnv(t)
 	ctx := context.Background()
@@ -80,9 +80,9 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 	t.Cleanup(func() {
 		_ = e.kube.CoreV1().Namespaces().Delete(context.Background(), systemNS, metav1.DeleteOptions{})
 	})
-	server := func(ns, name, image string, labels map[string]string, command []string) string {
+	server := func(ns, name, image string, labels map[string]string, command []string, ports []corev1.ContainerPort) string {
 		p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns, Labels: labels},
-			Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyAlways, Containers: []corev1.Container{{Name: "server", Image: image, Command: command}}}}
+			Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyAlways, Containers: []corev1.Container{{Name: "server", Image: image, Command: command, Ports: ports}}}}
 		p, err := e.kube.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{})
 		if err != nil {
 			t.Fatal(err)
@@ -90,13 +90,13 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 		return waitPodIP(t, e.kube, p.Namespace, p.Name)
 	}
 	appLabels := map[string]string{apps.LabelManaged: "true"}
-	peerIP := server(apps.Namespace(peer.ID), "peer", "busybox:1.36", appLabels, []string{"sh", "-c", "nc -lk -p 8080"})
-	postgresIP := server(systemNS, "postgres", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "postgres"}, []string{"sh", "-c", "nc -lk -p 8080"})
-	natsIP := server(systemNS, "nats", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "nats"}, []string{"sh", "-c", "nc -lk -p 8080"})
-	coreIP := server(systemNS, "core", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "core"}, []string{"sh", "-c", "nc -lk -p 8080"})
-	httpIP := server(systemNS, "http-target", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "http-target"}, []string{"httpd", "-f", "-p", "8080"})
-	directIP := server(systemNS, "direct-target", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "direct-target"}, []string{"sh", "-c", "nc -lk -p 8081"})
-	otherIP := server(apps.Namespace(other.ID), "other", "busybox:1.36", appLabels, []string{"sh", "-c", "nc -lk -p 8080"})
+	peerIP := server(apps.Namespace(peer.ID), "peer", "busybox:1.36", appLabels, []string{"sh", "-c", "nc -lk -p 8080"}, []corev1.ContainerPort{{Name: "http", ContainerPort: 8080}})
+	postgresIP := server(systemNS, "postgres", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "postgres"}, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
+	natsIP := server(systemNS, "nats", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "nats"}, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
+	coreIP := server(systemNS, "core", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "core"}, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
+	httpIP := server(systemNS, "http-target", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "http-target"}, []string{"httpd", "-f", "-p", "8080"}, nil)
+	directIP := server(systemNS, "direct-target", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "direct-target"}, []string{"sh", "-c", "nc -lk -p 8081"}, nil)
+	otherIP := server(apps.Namespace(other.ID), "other", "busybox:1.36", appLabels, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
 	probe := func(ns, name, ip string, port int, allowed bool, labels map[string]string) {
 		check := fmt.Sprintf("if nc -z -w 2 %s %d; then ", ip, port)
 		if allowed {
@@ -129,7 +129,7 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 	probe("kube-system", "traefik-ingress", peerIP, 8080, true, map[string]string{"app.kubernetes.io/name": "traefik"})
 	probe("kube-system", "non-traefik-ingress", peerIP, 8080, false, nil)
 
-	proxyIP := server(systemNS, "proxy", "vimagick/tinyproxy:latest", map[string]string{"app.kubernetes.io/name": "tinyproxy"}, nil)
+	proxyIP := server(systemNS, "proxy", "vimagick/tinyproxy@sha256:72b441b95ee1e641af948f68f09492f9f795ead72b73954414e339168c98ad8c", map[string]string{"app.kubernetes.io/name": "tinyproxy"}, nil, nil)
 	policy := apps.BuildNetworkPolicy(source, apps.NetworkPolicyOptions{ProxyEnv: map[string]string{"HTTP_PROXY": "http://" + proxyIP + ":8888"}})
 	if _, err := e.kube.NetworkingV1().NetworkPolicies(policy.Namespace).Update(ctx, policy, metav1.UpdateOptions{}); err != nil {
 		t.Fatal(err)

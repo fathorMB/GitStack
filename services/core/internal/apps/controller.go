@@ -320,12 +320,15 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 
 func (c *Controller) ensureNetworkPolicy(ctx context.Context, app store.App) error {
 	proxyIPs := map[string][]net.IP{}
-	if host, _, named := proxyEndpoint(c.cfg.ProxyEnv); host != "" && named {
-		ips, err := net.LookupIP(host)
-		if err != nil {
-			return fmt.Errorf("risoluzione proxy %s: %w", host, err)
+	for _, endpoint := range proxyEndpoints(c.cfg.ProxyEnv) {
+		if !endpoint.named || proxyIPs[endpoint.host] != nil {
+			continue
 		}
-		proxyIPs[host] = ips
+		ips, err := net.LookupIP(endpoint.host)
+		if err != nil {
+			return fmt.Errorf("risoluzione proxy %s: %w", endpoint.host, err)
+		}
+		proxyIPs[endpoint.host] = ips
 	}
 	want := BuildNetworkPolicy(app, NetworkPolicyOptions{TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs})
 	policies := c.kube.NetworkingV1().NetworkPolicies(want.Namespace)

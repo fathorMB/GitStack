@@ -292,9 +292,9 @@ func BuildNamespace(app store.App, restricted bool) *corev1.Namespace {
 	return &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: Namespace(app.ID), Labels: l}}
 }
 
-// BuildNetworkPolicy crea l'unica policy dell'app. La lista Egress resta qui,
-// vuota per ora: GIT-380 aggiungerà in questo punto le aperture verso internet
-// e il proxy senza introdurre una seconda policy in conflitto con il deny.
+// BuildNetworkPolicy crea l'unica policy dell'app. L'egress permette i peer
+// dello stesso repo e, se configurato, proxy e DNS necessario a risolverlo;
+// GIT-380 aggiungerà qui internet e i relativi blocchi.
 func BuildNetworkPolicy(app store.App, options ...NetworkPolicyOptions) *networkingv1.NetworkPolicy {
 	o := NetworkPolicyOptions{TraefikNamespace: "kube-system"}
 	if len(options) > 0 {
@@ -314,18 +314,25 @@ func BuildNetworkPolicy(app store.App, options ...NetworkPolicyOptions) *network
 		{From: []networkingv1.NetworkPolicyPeer{{NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": o.TraefikNamespace}}, PodSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/name": "traefik"}}}}, Ports: []networkingv1.NetworkPolicyPort{{Port: &http}}},
 	}
 	egress := []networkingv1.NetworkPolicyEgressRule{{To: []networkingv1.NetworkPolicyPeer{peer}}}
-	if host, port, named := proxyEndpoint(o.ProxyEnv); host != "" {
-		ports := []networkingv1.NetworkPolicyPort{{Port: &port}}
-		if named {
-			dnsPort := intstr.FromInt(53)
-			dns := networkingv1.NetworkPolicyPeer{NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": "kube-system"}}, PodSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"k8s-app": "kube-dns"}}}
-			egress = append(egress, networkingv1.NetworkPolicyEgressRule{To: []networkingv1.NetworkPolicyPeer{dns}, Ports: []networkingv1.NetworkPolicyPort{{Protocol: proto(corev1.ProtocolUDP), Port: &dnsPort}, {Protocol: proto(corev1.ProtocolTCP), Port: &dnsPort}}})
-			for _, ip := range o.ProxyIPs[host] {
+	endpoints := proxyEndpoints(o.ProxyEnv)
+	needsDNS := false
+	for _, endpoint := range endpoints {
+		needsDNS = needsDNS || endpoint.named
+	}
+	if needsDNS {
+		dnsPort := intstr.FromInt(53)
+		dns := networkingv1.NetworkPolicyPeer{NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": "kube-system"}}, PodSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"k8s-app": "kube-dns"}}}
+		egress = append(egress, networkingv1.NetworkPolicyEgressRule{To: []networkingv1.NetworkPolicyPeer{dns}, Ports: []networkingv1.NetworkPolicyPort{{Protocol: proto(corev1.ProtocolUDP), Port: &dnsPort}, {Protocol: proto(corev1.ProtocolTCP), Port: &dnsPort}}})
+	}
+	for _, endpoint := range endpoints {
+		ports := []networkingv1.NetworkPolicyPort{{Port: &endpoint.port}}
+		if endpoint.named {
+			for _, ip := range o.ProxyIPs[endpoint.host] {
 				egress = append(egress, proxyRule(ip.String(), ports))
 			}
-		} else {
-			egress = append(egress, proxyRule(host, ports))
+			continue
 		}
+		egress = append(egress, proxyRule(endpoint.host, ports))
 	}
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{Name: "app-isolation", Namespace: Namespace(app.ID), Labels: labels},
@@ -342,29 +349,39 @@ func proto(p corev1.Protocol) *corev1.Protocol { return &p }
 func proxyRule(ip string, ports []networkingv1.NetworkPolicyPort) networkingv1.NetworkPolicyEgressRule {
 	return networkingv1.NetworkPolicyEgressRule{To: []networkingv1.NetworkPolicyPeer{{IPBlock: &networkingv1.IPBlock{CIDR: ip + "/32"}}}, Ports: ports}
 }
-func proxyEndpoint(env map[string]string) (string, intstr.IntOrString, bool) {
-	v := env["HTTPS_PROXY"]
-	if v == "" {
-		v = env["HTTP_PROXY"]
-	}
-	if v == "" {
-		return "", intstr.IntOrString{}, false
-	}
-	u, err := url.Parse(v)
-	if err != nil || u.Hostname() == "" {
-		return "", intstr.IntOrString{}, false
-	}
-	p := 80
-	if u.Scheme == "https" {
-		p = 443
-	}
-	if x := u.Port(); x != "" {
-		if n, err := strconv.Atoi(x); err == nil {
-			p = n
+
+type proxyEndpoint struct {
+	host  string
+	port  intstr.IntOrString
+	named bool
+}
+
+func proxyEndpoints(env map[string]string) []proxyEndpoint {
+	seen := map[string]bool{}
+	var endpoints []proxyEndpoint
+	for _, key := range []string{"HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"} {
+		u, err := url.Parse(env[key])
+		if env[key] == "" || err != nil || u.Hostname() == "" {
+			continue
 		}
+		p := 80
+		if u.Scheme == "https" {
+			p = 443
+		}
+		if x := u.Port(); x != "" {
+			if n, err := strconv.Atoi(x); err == nil {
+				p = n
+			}
+		}
+		host := u.Hostname()
+		identity := host + ":" + strconv.Itoa(p)
+		if seen[identity] {
+			continue
+		}
+		seen[identity] = true
+		endpoints = append(endpoints, proxyEndpoint{host: host, port: intstr.FromInt(p), named: net.ParseIP(host) == nil})
 	}
-	host := u.Hostname()
-	return host, intstr.FromInt(p), net.ParseIP(host) == nil
+	return endpoints
 }
 
 // BuildRoute è l'IngressRoute Traefik `websecure` verso il Service (ADR 0002: tls {} e il

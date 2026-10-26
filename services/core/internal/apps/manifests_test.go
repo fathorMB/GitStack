@@ -2,6 +2,7 @@ package apps
 
 import (
 	"context"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -131,6 +132,36 @@ func TestBuildNetworkPolicy_ProxyIPApriSoloPortaProxy(t *testing.T) {
 	r := p.Spec.Egress[1]
 	if r.To[0].IPBlock == nil || r.To[0].IPBlock.CIDR != "10.0.0.5/32" || r.Ports[0].Port.IntValue() != 3128 {
 		t.Fatalf("proxy: %+v", r)
+	}
+}
+
+func TestBuildNetworkPolicy_ProxyMinuscoloApriSoloPortaProxy(t *testing.T) {
+	app, _ := testApp()
+	p := BuildNetworkPolicy(app, NetworkPolicyOptions{ProxyEnv: map[string]string{"http_proxy": "http://10.0.0.6:3128"}})
+	if len(p.Spec.Egress) != 2 {
+		t.Fatalf("egress proxy minuscolo: %+v", p.Spec.Egress)
+	}
+	r := p.Spec.Egress[1]
+	if r.To[0].IPBlock == nil || r.To[0].IPBlock.CIDR != "10.0.0.6/32" || r.Ports[0].Port.IntValue() != 3128 {
+		t.Fatalf("proxy minuscolo: %+v", r)
+	}
+}
+
+func TestBuildNetworkPolicy_ProxyNomeApreDNSEIP(t *testing.T) {
+	app, _ := testApp()
+	p := BuildNetworkPolicy(app, NetworkPolicyOptions{
+		ProxyEnv: map[string]string{"HTTPS_PROXY": "http://proxy.lan:3128"},
+		ProxyIPs: map[string][]net.IP{"proxy.lan": {net.ParseIP("10.0.0.7")}},
+	})
+	if len(p.Spec.Egress) != 3 {
+		t.Fatalf("egress proxy con DNS: %+v", p.Spec.Egress)
+	}
+	dns, proxy := p.Spec.Egress[1], p.Spec.Egress[2]
+	if len(dns.Ports) != 2 || dns.Ports[0].Port.IntValue() != 53 || dns.Ports[1].Port.IntValue() != 53 || dns.To[0].PodSelector.MatchLabels["k8s-app"] != "kube-dns" {
+		t.Fatalf("DNS proxy: %+v", dns)
+	}
+	if proxy.To[0].IPBlock == nil || proxy.To[0].IPBlock.CIDR != "10.0.0.7/32" || proxy.Ports[0].Port.IntValue() != 3128 {
+		t.Fatalf("proxy risolto: %+v", proxy)
 	}
 }
 
