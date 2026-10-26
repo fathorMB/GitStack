@@ -277,7 +277,13 @@ with `create/get/list/watch/update/delete` on `namespaces`, `create/get` on
 `rolebindings` and `bind` on the one app role template; the template
 ClusterRole (Deployments, Services, Secrets, Pods, `pods/log`, events,
 IngressRoutes) is never bound cluster-wide — `core` creates a RoleBinding in
-each `gitstack-app-<id>` namespace. Check with `kubectl auth can-i get secrets
+each `gitstack-app-<id>` namespace. Because RBAC cannot filter by name, a
+ValidatingAdmissionPolicy (`<release>-apps-controller-scope`, Kubernetes
+>= 1.30) restricts the `core` ServiceAccount to namespaces named
+`gitstack-app-*` carrying the label `gitstack.io/managed-app=true`, and to
+RoleBindings in those namespaces bound only to the template role for the `core`
+ServiceAccount (`update` on namespaces is a deviation from the ADR, allowed only
+behind this policy). Check with `kubectl auth can-i get secrets
 -n kube-system --as system:serviceaccount:default:gitstack-core` (`no`).
 
 **Collisions.** `<app>-<repo>-<owner>` is a single DNS label (at most 63

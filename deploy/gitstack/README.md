@@ -297,5 +297,8 @@ e `GITSTACK_CORE_APPS_WORKLOAD_ROLE`. `templates/apps-rbac.yaml` crea il Cluster
 (`namespaces`, `rolebindings` create/get, `bind` sul solo ruolo modello) e il ClusterRole modello
 `<release>-app-workload`, che **non ha ClusterRoleBinding**: lo lega solo il RoleBinding che core crea in
 ogni namespace `gitstack-app-<id>`. Con `ci.enabled` core usa `ci-dispatcher`, altrimenti `<release>-core`.
+Una `ValidatingAdmissionPolicy` + Binding (`<release>-apps-controller-scope`) restringe il solo ServiceAccount
+di core ai namespace `gitstack-app-*` con label `gitstack.io/managed-app=true` e ai RoleBinding verso il ruolo
+modello per core stesso (`update` su namespaces è una deviazione dall'ADR, ammessa solo dietro la policy).
 Con `apps.enabled=false` (e `apps.domain` vuoto) non si rende nessuna risorsa delle app. Il test è in
 `deploy/tests/chart_hardening_test.sh`. Come accenderlo: [deploy/README.md](../README.md#hosting-delle-app-accenderlo-git-375-adr-0002).

@@ -576,8 +576,58 @@ no_workload_binding() {
 "}{end}' | grep -qx gitstack-app-workload
 }
 
+# Con l'hosting spento devono mancare TUTTI i ClusterRole delle app: uno per uno (con
+# `get A B` basta che ne manchi uno perché il comando fallisca).
 no_apps_clusterroles() {
-  ! "${KUBECTL[@]}" get clusterrole gitstack-apps-controller gitstack-app-workload >/dev/null 2>&1
+  local r
+  for r in gitstack-apps-controller gitstack-app-workload; do
+    if "${KUBECTL[@]}" get clusterrole "${r}" >/dev/null 2>&1; then
+      printf 'ClusterRole %s presente
+' "${r}" >&2
+      return 1
+    fi
+  done
+  return 0
+}
+
+# Prove negative con impersonazione: la ValidatingAdmissionPolicy deve rifiutare, al ServiceAccount
+# di core, ciò che il ClusterRole concede su tutto il cluster ma l'ADR 0002 non ammette.
+denied() { # <descrizione> <comando...>: ok se il comando FALLISCE (rifiutato)
+  local d="$1" out
+  shift
+  if out="$("$@" 2>&1)"; then
+    printf 'KO  %s: il comando è riuscito
+' "${d}" >&2
+    return 1
+  fi
+  case "${out}" in
+    *gitstack-apps-controller-scope*|*"core può"*|*"il RoleBinding delle app"*) return 0 ;;
+    *) printf 'KO  %s: rifiutato ma non dalla policy: %s
+' "${d}" "${out}" >&2; return 1 ;;
+  esac
+}
+deny_rolebinding_kube_system() { # <sa>
+  denied "rolebinding in kube-system" "${KUBECTL[@]}" create rolebinding x -n kube-system     --clusterrole=gitstack-app-workload "--serviceaccount=default:${1#system:serviceaccount:default:}" "--as=$1"
+}
+# Il controller aggiorna i namespace con un UPDATE (PUT), non con patch: la prova fa lo stesso,
+# con `replace` di un namespace letto da admin e modificato con jq.
+ns_update_as() { # <sa> <namespace> <label> <valore>
+  "${KUBECTL[@]}" get namespace "$2" -o json | jq --arg k "$3" --arg v "$4" '.metadata.labels[$k] = $v' |
+    "${KUBECTL[@]}" replace -f - "--as=$1"
+}
+deny_namespace_label() { # <sa>
+  denied "label su un namespace non gitstack-app-*" ns_update_as "$1" kube-system pod-security.kubernetes.io/enforce privileged
+}
+deny_namespace_managed_label() { # <sa>
+  denied "managed-app=true su un namespace di sistema" ns_update_as "$1" kube-system gitstack.io/managed-app true
+}
+# I namespace di sistema hanno già la loro protezione: si prova su uno creato apposta.
+deny_namespace_delete() { # <sa>
+  local rc=0
+  "${KUBECTL[@]}" create namespace e2e-not-an-app >/dev/null 2>&1 || true
+  denied "delete di un namespace non gitstack-app-*" "${KUBECTL[@]}" delete namespace e2e-not-an-app --dry-run=server "--as=$1" || rc=1
+  "${KUBECTL[@]}" delete namespace e2e-not-an-app --wait=false >/dev/null 2>&1 || true
+  return "${rc}"
 }
 
 # verify-apps-hosting on|off: una riga ok/ko per controllo; l'esito è il codice di uscita.
@@ -596,6 +646,11 @@ verify_apps_hosting() {
     apps_check "RBAC: ... né crea Deployment fuori dalle app" test "$(can_i "${sa}" create deployments -n kube-system)" = no
     apps_check "RBAC: ... né crea ClusterRoleBinding" test "$(can_i "${sa}" create clusterrolebindings)" = no
     apps_check "RBAC: nessun ClusterRoleBinding verso il ruolo modello" no_workload_binding
+    apps_check "policy: la ValidatingAdmissionPolicy del controller esiste" "${KUBECTL[@]}" get validatingadmissionpolicybinding gitstack-apps-controller-scope
+    apps_check "policy: core non lega il ruolo modello in kube-system" deny_rolebinding_kube_system "${sa}"
+    apps_check "policy: core non cambia le label di kube-system" deny_namespace_label "${sa}"
+    apps_check "policy: core non marca kube-system managed-app" deny_namespace_managed_label "${sa}"
+    apps_check "policy: core non elimina namespace non suoi" deny_namespace_delete "${sa}"
   else
     apps_check "core: senza GITSTACK_CORE_APPS_ENABLED" test -z "$(core_env GITSTACK_CORE_APPS_ENABLED)"
     apps_check "gitstack status: Hosting delle app: spento" bash -c "sudo gitstack status | grep -q 'Hosting delle app: spento'"

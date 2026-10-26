@@ -387,6 +387,27 @@ expect_lacks "modello: nessun permesso su rolebindings" "${wl}" "rolebindings"
 OUT="$(render --namespace prova-ns --set ci.enabled=true --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template con CI e apps fallito"; exit 1; }
 expect_has "CI e apps: core usa ci-dispatcher" "$(doc Deployment gitstack-core)" "serviceAccountName: ci-dispatcher"
 expect_has "CI e apps: il ClusterRoleBinding è per ci-dispatcher" "$(docs ClusterRoleBinding)" "name: ci-dispatcher"
+# Policy di ammissione che chiude il dove (RBAC non filtra per nome): esiste solo con apps.enabled e
+# vale solo per il ServiceAccount di core (con CI accesa ci-dispatcher, altrimenti gitstack-core).
+pol="$(doc ValidatingAdmissionPolicy gitstack-apps-controller-scope)"
+expect_has "policy (CI accesa): matchCondition sul ServiceAccount di core" "${pol}" 'request.userInfo.username == "system:serviceaccount:prova-ns:ci-dispatcher"'
+expect_has "policy (CI accesa): soggetto ammesso" "${pol}" 's.name == "ci-dispatcher" && s.namespace == "prova-ns"'
+expect_eq "policy (CI accesa): binding presente" "$(doc ValidatingAdmissionPolicyBinding gitstack-apps-controller-scope | grep -c 'policyName: gitstack-apps-controller-scope')" "1"
+expect_has "policy: azione Deny" "$(doc ValidatingAdmissionPolicyBinding gitstack-apps-controller-scope)" 'validationActions: ["Deny"]'
+expect_has "policy: namespace solo gitstack-app-* con label" "${pol}" "object.metadata.name.startsWith('gitstack-app-')"
+expect_has "policy: namespace UPDATE/DELETE controllano oldObject" "${pol}" "oldObject.metadata.labels['gitstack.io/managed-app'] == 'true'"
+expect_has "policy: namespace CREATE UPDATE DELETE" "${pol}" 'operations: ["CREATE", "UPDATE", "DELETE"]'
+expect_has "policy: rolebindings solo in namespace marcati" "${pol}" "namespaceObject.metadata.labels['gitstack.io/managed-app'] == 'true'"
+expect_has "policy: rolebindings solo verso il ruolo modello" "${pol}" "object.roleRef.name == \"gitstack-app-workload\""
+expect_has "policy: failurePolicy Fail" "${pol}" "failurePolicy: Fail"
+OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template apps senza CI fallito"; exit 1; }
+pol="$(doc ValidatingAdmissionPolicy gitstack-apps-controller-scope)"
+expect_has "policy (CI spenta): matchCondition sul ServiceAccount di core" "${pol}" 'request.userInfo.username == "system:serviceaccount:prova-ns:gitstack-core"'
+expect_has "policy (CI spenta): soggetto ammesso" "${pol}" 's.name == "gitstack-core" && s.namespace == "prova-ns"'
+OUT="$(render --namespace prova-ns --set ci.enabled=true --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template con CI e apps fallito"; exit 1; }
+OUT="$(render --namespace prova-ns)" || { bad "helm template di default fallito"; exit 1; }
+expect_eq "apps spento: nessuna policy del controller" "$(count 'gitstack-apps-controller-scope')" "0"
+OUT="$(render --namespace prova-ns --set ci.enabled=true --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template con CI e apps fallito"; exit 1; }
 expect_eq "CI e apps: nessun ServiceAccount gitstack-core" "$(docs ServiceAccount | grep -c '^  name: gitstack-core$')" "0"
 
 echo
