@@ -101,19 +101,17 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 	directIP := server(systemNS, "direct-target", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "direct-target"}, []string{"sh", "-c", "nc -lk -p 8081"}, nil)
 	otherIP := server(apps.Namespace(other.ID), "other", "busybox:1.36", appLabels, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
 	probe := func(ns, name, ip string, port int, allowed bool, labels map[string]string) {
-		check := fmt.Sprintf("if nc -z -w 2 %s %d; then ", ip, port)
+		// kube-router applica la NetworkPolicy al pod appena creato in modo
+		// asincrono: un nc che passa subito dopo l'avvio non prova nulla. Una
+		// probe negativa ritenta finche' il collegamento non e' chiuso per 3
+		// tentativi consecutivi; se resta aperto per tutto il tempo (40 tentativi)
+		// fallisce. Una probe positiva resta un tentativo solo.
+		var check string
 		if allowed {
-			check += "echo OK"
+			check = fmt.Sprintf("if nc -z -w 2 %s %d; then echo OK; else echo KO; exit 1; fi", ip, port)
 		} else {
-			check += "echo KO; exit 1"
+			check = fmt.Sprintf("blocked=0; i=0; while [ $i -lt 40 ]; do i=$((i+1)); if nc -z -w 2 %s %d; then blocked=0; sleep 1; else blocked=$((blocked+1)); if [ $blocked -ge 3 ]; then echo OK; exit 0; fi; sleep 1; fi; done; echo KO; exit 1", ip, port)
 		}
-		check += "; else "
-		if allowed {
-			check += "echo KO; exit 1"
-		} else {
-			check += "echo OK"
-		}
-		check += "; fi"
 		p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns, Labels: labels},
 			Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{Name: "probe", Image: "busybox:1.36", Command: []string{"sh", "-c", check}}}}}
 		if _, err := e.kube.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{}); err != nil {
@@ -209,7 +207,7 @@ func waitPodIP(t *testing.T, kube kubernetes.Interface, ns, name string) string 
 
 func waitPodLog(t *testing.T, kube kubernetes.Interface, ns, name string) string {
 	t.Helper()
-	deadline := time.Now().Add(90 * time.Second)
+	deadline := time.Now().Add(180 * time.Second)
 	for time.Now().Before(deadline) {
 		p, err := kube.CoreV1().Pods(ns).Get(context.Background(), name, metav1.GetOptions{})
 		if err == nil && (p.Status.Phase == corev1.PodSucceeded || p.Status.Phase == corev1.PodFailed) {
