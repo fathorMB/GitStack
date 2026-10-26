@@ -1,12 +1,15 @@
 package apps
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
@@ -103,7 +106,7 @@ func TestBuildNetworkPolicy_IsolaAppEConsenteSoloStessoRepo(t *testing.T) {
 	if p.Name != "app-isolation" || p.Namespace != Namespace(app.ID) || p.Labels[LabelRepoID] != app.RepoID.String() {
 		t.Fatalf("metadati policy: %+v", p.ObjectMeta)
 	}
-	if len(p.Spec.PolicyTypes) != 2 || len(p.Spec.Ingress) != 1 || len(p.Spec.Egress) != 1 {
+	if len(p.Spec.PolicyTypes) != 2 || len(p.Spec.Ingress) != 2 || len(p.Spec.Egress) != 1 {
 		t.Fatalf("serve deny ingress+egress con una sola apertura: %+v", p.Spec)
 	}
 	for _, peers := range [][]networkingv1.NetworkPolicyPeer{p.Spec.Ingress[0].From, p.Spec.Egress[0].To} {
@@ -112,6 +115,37 @@ func TestBuildNetworkPolicy_IsolaAppEConsenteSoloStessoRepo(t *testing.T) {
 			peers[0].PodSelector.MatchLabels[LabelManaged] != "true" {
 			t.Fatalf("peer stesso repo: %+v", peers)
 		}
+	}
+	traefik := p.Spec.Ingress[1]
+	if traefik.From[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"] != "kube-system" || traefik.From[0].PodSelector.MatchLabels["app.kubernetes.io/name"] != "traefik" || traefik.Ports[0].Port.String() != "http" {
+		t.Fatalf("ingresso Traefik: %+v", traefik)
+	}
+}
+
+func TestBuildNetworkPolicy_ProxyIPApriSoloPortaProxy(t *testing.T) {
+	app, _ := testApp()
+	p := BuildNetworkPolicy(app, NetworkPolicyOptions{ProxyEnv: map[string]string{"HTTPS_PROXY": "http://10.0.0.5:3128"}})
+	if len(p.Spec.Egress) != 2 {
+		t.Fatalf("egress senza DNS per IP: %+v", p.Spec.Egress)
+	}
+	r := p.Spec.Egress[1]
+	if r.To[0].IPBlock == nil || r.To[0].IPBlock.CIDR != "10.0.0.5/32" || r.Ports[0].Port.IntValue() != 3128 {
+		t.Fatalf("proxy: %+v", r)
+	}
+}
+
+func TestEnsureNamespace_AggiungeRepoIDMancante(t *testing.T) {
+	app, _ := testApp()
+	ns := BuildNamespace(app, false)
+	delete(ns.Labels, LabelRepoID)
+	kube := kubernetesfake.NewSimpleClientset(ns)
+	c := &Controller{kube: kube}
+	if err := c.ensureNamespace(context.Background(), app, false); err != nil {
+		t.Fatal(err)
+	}
+	got, err := kube.CoreV1().Namespaces().Get(context.Background(), ns.Name, metav1.GetOptions{})
+	if err != nil || got.Labels[LabelRepoID] != app.RepoID.String() {
+		t.Fatalf("repo-id: %v %+v", err, got.Labels)
 	}
 }
 

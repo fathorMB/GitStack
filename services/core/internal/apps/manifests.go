@@ -13,6 +13,8 @@ package apps
 
 import (
 	"fmt"
+	"net"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -97,6 +99,14 @@ type BuildOptions struct {
 	// ProxyEnv è la configurazione N9 dell'istanza. Viene dal processo core e
 	// non può essere sostituita dalle variabili dichiarate dall'app.
 	ProxyEnv map[string]string
+}
+
+// NetworkPolicyOptions sono le dipendenze d'istanza della policy H9.
+type NetworkPolicyOptions struct {
+	TraefikNamespace string
+	ProxyEnv         map[string]string
+	// ProxyIPs è la risoluzione fatta da core per un proxy nominato.
+	ProxyIPs map[string][]net.IP
 }
 
 // BuildDeployment traduce una versione nel Deployment dell'app.
@@ -285,21 +295,76 @@ func BuildNamespace(app store.App, restricted bool) *corev1.Namespace {
 // BuildNetworkPolicy crea l'unica policy dell'app. La lista Egress resta qui,
 // vuota per ora: GIT-380 aggiungerà in questo punto le aperture verso internet
 // e il proxy senza introdurre una seconda policy in conflitto con il deny.
-func BuildNetworkPolicy(app store.App) *networkingv1.NetworkPolicy {
+func BuildNetworkPolicy(app store.App, options ...NetworkPolicyOptions) *networkingv1.NetworkPolicy {
+	o := NetworkPolicyOptions{TraefikNamespace: "kube-system"}
+	if len(options) > 0 {
+		o = options[0]
+	}
+	if o.TraefikNamespace == "" {
+		o.TraefikNamespace = "kube-system"
+	}
 	labels := appLabels(app)
 	peer := networkingv1.NetworkPolicyPeer{
 		NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{LabelRepoID: app.RepoID.String()}},
 		PodSelector:       &metav1.LabelSelector{MatchLabels: map[string]string{LabelManaged: "true"}},
+	}
+	http := intstr.FromString("http")
+	ingress := []networkingv1.NetworkPolicyIngressRule{
+		{From: []networkingv1.NetworkPolicyPeer{peer}},
+		{From: []networkingv1.NetworkPolicyPeer{{NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": o.TraefikNamespace}}, PodSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/name": "traefik"}}}}, Ports: []networkingv1.NetworkPolicyPort{{Port: &http}}},
+	}
+	egress := []networkingv1.NetworkPolicyEgressRule{{To: []networkingv1.NetworkPolicyPeer{peer}}}
+	if host, port, named := proxyEndpoint(o.ProxyEnv); host != "" {
+		ports := []networkingv1.NetworkPolicyPort{{Port: &port}}
+		if named {
+			dnsPort := intstr.FromInt(53)
+			dns := networkingv1.NetworkPolicyPeer{NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": "kube-system"}}, PodSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"k8s-app": "kube-dns"}}}
+			egress = append(egress, networkingv1.NetworkPolicyEgressRule{To: []networkingv1.NetworkPolicyPeer{dns}, Ports: []networkingv1.NetworkPolicyPort{{Protocol: proto(corev1.ProtocolUDP), Port: &dnsPort}, {Protocol: proto(corev1.ProtocolTCP), Port: &dnsPort}}})
+			for _, ip := range o.ProxyIPs[host] {
+				egress = append(egress, proxyRule(ip.String(), ports))
+			}
+		} else {
+			egress = append(egress, proxyRule(host, ports))
+		}
 	}
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{Name: "app-isolation", Namespace: Namespace(app.ID), Labels: labels},
 		Spec: networkingv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{LabelManaged: "true"}},
 			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
-			Ingress:     []networkingv1.NetworkPolicyIngressRule{{From: []networkingv1.NetworkPolicyPeer{peer}}},
-			Egress:      []networkingv1.NetworkPolicyEgressRule{{To: []networkingv1.NetworkPolicyPeer{peer}}},
+			Ingress:     ingress,
+			Egress:      egress,
 		},
 	}
+}
+
+func proto(p corev1.Protocol) *corev1.Protocol { return &p }
+func proxyRule(ip string, ports []networkingv1.NetworkPolicyPort) networkingv1.NetworkPolicyEgressRule {
+	return networkingv1.NetworkPolicyEgressRule{To: []networkingv1.NetworkPolicyPeer{{IPBlock: &networkingv1.IPBlock{CIDR: ip + "/32"}}}, Ports: ports}
+}
+func proxyEndpoint(env map[string]string) (string, intstr.IntOrString, bool) {
+	v := env["HTTPS_PROXY"]
+	if v == "" {
+		v = env["HTTP_PROXY"]
+	}
+	if v == "" {
+		return "", intstr.IntOrString{}, false
+	}
+	u, err := url.Parse(v)
+	if err != nil || u.Hostname() == "" {
+		return "", intstr.IntOrString{}, false
+	}
+	p := 80
+	if u.Scheme == "https" {
+		p = 443
+	}
+	if x := u.Port(); x != "" {
+		if n, err := strconv.Atoi(x); err == nil {
+			p = n
+		}
+	}
+	host := u.Hostname()
+	return host, intstr.FromInt(p), net.ParseIP(host) == nil
 }
 
 // BuildRoute è l'IngressRoute Traefik `websecure` verso il Service (ADR 0002: tls {} e il

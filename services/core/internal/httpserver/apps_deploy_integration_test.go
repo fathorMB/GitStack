@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -126,10 +127,10 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 	rejected := func(ns, name string, spec corev1.PodSpec) {
 		t.Helper()
 		_, err := e.kube.CoreV1().Pods(ns).Create(ctx, &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns}, Spec: spec}, metav1.CreateOptions{})
-		if err == nil {
-			t.Fatalf("%s deve essere rifiutato da Pod Security", name)
+		if !apierrors.IsForbidden(err) || !strings.Contains(err.Error(), "violates PodSecurity") {
+			t.Fatalf("%s: atteso Forbidden violates PodSecurity, ricevuto %v", name, err)
 		}
-		t.Logf("%s: rifiutato (%v)", name, err)
+		t.Logf("OK: %s rifiutato da PodSecurity", name)
 	}
 	privileged := true
 	rejected(apps.Namespace(source.ID), "privileged", corev1.PodSpec{Containers: []corev1.Container{{Name: "x", Image: "busybox:1.36", SecurityContext: &corev1.SecurityContext{Privileged: &privileged}}}})
@@ -142,8 +143,25 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 	t.Cleanup(func() {
 		_ = e.kube.CoreV1().Namespaces().Delete(context.Background(), rns.Name, metav1.DeleteOptions{})
 	})
-	rejected(rns.Name, "root", corev1.PodSpec{Containers: []corev1.Container{{Name: "x", Image: "busybox:1.36"}}})
+	f := false
+	rootSC := &corev1.SecurityContext{AllowPrivilegeEscalation: &f, Capabilities: &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}}, SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}, RunAsUser: ptr(int64(0)), RunAsNonRoot: &f}
+	rejected(rns.Name, "root", corev1.PodSpec{Containers: []corev1.Container{{Name: "x", Image: "busybox:1.36", SecurityContext: rootSC}}})
+	trueValue := true
+	nonRoot := rootSC.DeepCopy()
+	nonRoot.RunAsUser = ptr(int64(10001))
+	nonRoot.RunAsNonRoot = &trueValue
+	for _, tc := range []struct {
+		name, ns string
+		sc       *corev1.SecurityContext
+	}{{"restricted-nonroot", rns.Name, nonRoot}, {"baseline-root", apps.Namespace(source.ID), rootSC}} {
+		if _, err := e.kube.CoreV1().Pods(tc.ns).Create(ctx, &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: tc.name, Namespace: tc.ns}, Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "x", Image: "busybox:1.36", SecurityContext: tc.sc}}}}, metav1.CreateOptions{}); err != nil {
+			t.Fatalf("%s deve essere accettato: %v", tc.name, err)
+		}
+		t.Logf("OK: %s accettato", tc.name)
+	}
 }
+
+func ptr(v int64) *int64 { return &v }
 
 func waitPodIP(t *testing.T, kube kubernetes.Interface, ns, name string) string {
 	t.Helper()

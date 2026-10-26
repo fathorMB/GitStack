@@ -26,10 +26,11 @@ import (
 // quest'ultimo le app con accesso `login` non ricevono una rotta. GITSTACK_CORE_APPS_PROGRESS_TIMEOUT
 // (secondi) è il tempo massimo perché una versione superi il controllo di salute.
 const (
-	envAppsEnabled         = "GITSTACK_CORE_APPS_ENABLED"
-	envAppsDomain          = "GITSTACK_CORE_APPS_DOMAIN"
-	envAppsAuthURL         = "GITSTACK_CORE_APPS_AUTH_URL"
-	envAppsProgressTimeout = "GITSTACK_CORE_APPS_PROGRESS_TIMEOUT"
+	envAppsEnabled          = "GITSTACK_CORE_APPS_ENABLED"
+	envAppsDomain           = "GITSTACK_CORE_APPS_DOMAIN"
+	envAppsAuthURL          = "GITSTACK_CORE_APPS_AUTH_URL"
+	envAppsTraefikNamespace = "GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE"
+	envAppsProgressTimeout  = "GITSTACK_CORE_APPS_PROGRESS_TIMEOUT"
 )
 
 // startApps avvia il controller e ritorna le opzioni del router; senza abilitazione ritorna nil.
@@ -54,7 +55,7 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, lo
 	if err != nil {
 		return nil, fmt.Errorf("client Kubernetes dinamico: %w", err)
 	}
-	cfg := apps.Config{AppsDomain: domain, AuthURL: strings.TrimSpace(os.Getenv(envAppsAuthURL)), AuthSecret: trust.SigningKey(gatewaySecret), Secrets: secrets, ProxyEnv: apps.ProxyEnvFrom(os.Getenv), Log: logger}
+	cfg := apps.Config{AppsDomain: domain, AuthURL: strings.TrimSpace(os.Getenv(envAppsAuthURL)), AuthSecret: trust.SigningKey(gatewaySecret), Secrets: secrets, ProxyEnv: apps.ProxyEnvFrom(os.Getenv), TraefikNamespace: strings.TrimSpace(os.Getenv(envAppsTraefikNamespace)), Log: logger}
 	if v, err := strconv.Atoi(strings.TrimSpace(os.Getenv(envAppsProgressTimeout))); err == nil && v > 0 {
 		cfg.ProgressTimeout = time.Duration(v) * time.Second
 	}

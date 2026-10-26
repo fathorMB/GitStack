@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"strconv"
 	"strings"
 	"sync"
@@ -65,6 +66,8 @@ type Config struct {
 	PullCredentials func(ctx context.Context, app store.App) (*PullCredential, error)
 	// ProxyEnv passa HTTP(S)_PROXY e NO_PROXY della configurazione N9 ai pod.
 	ProxyEnv map[string]string
+	// TraefikNamespace è il namespace dell'Ingress controller k3s.
+	TraefikNamespace string
 	// Secrets decifra i valori correnti da iniettare nei pod. E' lo stesso keyring dei segreti
 	// dell'app; nil consente solo versioni senza segreti.
 	Secrets store.AppSealer
@@ -316,7 +319,15 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 }
 
 func (c *Controller) ensureNetworkPolicy(ctx context.Context, app store.App) error {
-	want := BuildNetworkPolicy(app)
+	proxyIPs := map[string][]net.IP{}
+	if host, _, named := proxyEndpoint(c.cfg.ProxyEnv); host != "" && named {
+		ips, err := net.LookupIP(host)
+		if err != nil {
+			return fmt.Errorf("risoluzione proxy %s: %w", host, err)
+		}
+		proxyIPs[host] = ips
+	}
+	want := BuildNetworkPolicy(app, NetworkPolicyOptions{TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs})
 	policies := c.kube.NetworkingV1().NetworkPolicies(want.Namespace)
 	cur, err := policies.Get(ctx, want.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
@@ -371,13 +382,14 @@ func (c *Controller) ensureNamespace(ctx context.Context, app store.App, restric
 	if err != nil {
 		return err
 	}
-	if cur.Labels[LabelManaged] != "true" || cur.Labels[LabelAppID] != app.ID.String() {
+	if cur.Labels[LabelManaged] != "true" || cur.Labels[LabelAppID] != app.ID.String() || (cur.Labels[LabelRepoID] != "" && cur.Labels[LabelRepoID] != app.RepoID.String()) {
 		return fmt.Errorf("il namespace %s esiste ma non è di questa app", want.Name)
 	}
-	if cur.Labels["pod-security.kubernetes.io/enforce"] == want.Labels["pod-security.kubernetes.io/enforce"] {
+	if cur.Labels["pod-security.kubernetes.io/enforce"] == want.Labels["pod-security.kubernetes.io/enforce"] && cur.Labels[LabelRepoID] == app.RepoID.String() {
 		return nil
 	}
 	cur.Labels["pod-security.kubernetes.io/enforce"] = want.Labels["pod-security.kubernetes.io/enforce"]
+	cur.Labels[LabelRepoID] = app.RepoID.String()
 	_, err = c.kube.CoreV1().Namespaces().Update(ctx, cur, metav1.UpdateOptions{})
 	return err
 }
