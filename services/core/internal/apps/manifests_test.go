@@ -138,7 +138,7 @@ func TestEnsureNamespace_AggiungeRepoIDMancante(t *testing.T) {
 	app, _ := testApp()
 	ns := BuildNamespace(app, false)
 	delete(ns.Labels, LabelRepoID)
-	kube := kubernetesfake.NewSimpleClientset(ns)
+	kube := kubernetesfake.NewClientset(ns)
 	c := &Controller{kube: kube}
 	if err := c.ensureNamespace(context.Background(), app, false); err != nil {
 		t.Fatal(err)
