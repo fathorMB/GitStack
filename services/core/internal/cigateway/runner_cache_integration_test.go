@@ -41,6 +41,8 @@ const cacheKey = "npm-lock-abc"
 
 var cachePayload = bytes.Repeat([]byte("contenuto-della-cache-"), 50)
 
+// fakeActCache: ACTIONS_RUNTIME_TOKEN non e' il token opaco del job ma il JWT che lo avvolge
+// (cirunner.RuntimeToken, GIT-393), come per actions/cache; il Bearer resta il token avvolto.
 func fakeActCache() int {
 	base, tok := os.Getenv("ACTIONS_CACHE_URL"), os.Getenv("ACTIONS_RUNTIME_TOKEN")
 	if base == "" || tok == "" || os.Getenv("GITHUB_TOKEN") == "" || tok != cirunner.RuntimeToken(os.Getenv("GITHUB_TOKEN")) {
