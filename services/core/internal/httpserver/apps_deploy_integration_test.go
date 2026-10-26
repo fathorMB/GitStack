@@ -62,9 +62,7 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 	newApp := func() store.App { return store.App{ID: uuid.New(), RepoID: repo} }
 	source, peer := newApp(), newApp()
 	other := store.App{ID: uuid.New(), RepoID: uuid.New()}
-	system := store.App{ID: uuid.New(), RepoID: uuid.New()}
-	appsUnderTest := []store.App{source, peer, other, system}
-	for _, a := range appsUnderTest {
+	for _, a := range []store.App{source, peer, other} {
 		ns := apps.BuildNamespace(a, false)
 		if _, err := e.kube.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
@@ -74,26 +72,33 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 		}
 		t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), ns.Name, metav1.DeleteOptions{}) })
 	}
-	server := func(a store.App, name string) string {
-		p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: apps.Namespace(a.ID), Labels: map[string]string{apps.LabelManaged: "true"}},
-			Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyAlways, Containers: []corev1.Container{{Name: "server", Image: "busybox:1.36", Command: []string{"sh", "-c", "nc -lk -p 8080"}}}}}
+	// I servizi GitStack e il proxy sono esterni agli spazi app e senza label GitStack.
+	systemNS := "gitstack-h9-system-" + strings.ToLower(uuid.NewString()[:8])
+	if _, err := e.kube.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: systemNS}}, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = e.kube.CoreV1().Namespaces().Delete(context.Background(), systemNS, metav1.DeleteOptions{})
+	})
+	server := func(ns, name, image string, labels map[string]string, command []string) string {
+		p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns, Labels: labels},
+			Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyAlways, Containers: []corev1.Container{{Name: "server", Image: image, Command: command}}}}
 		p, err := e.kube.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
 		return waitPodIP(t, e.kube, p.Namespace, p.Name)
 	}
-	peerIP := server(peer, "peer")
-	// Con N9 configurato le variabili del proxy sono iniettate dal controller;
-	// la policy deve almeno lasciare raggiungere il proxy, senza riaprire il
-	// resto della rete. GIT-380 aggiungerà qui la sola apertura esterna.
-	proxyIP := server(peer, "proxy")
-	postgresIP := server(system, "postgres")
-	natsIP := server(system, "nats")
-	coreIP := server(system, "core")
-	otherIP := server(other, "other")
-	probe := func(name, ip string, allowed bool) {
-		check := fmt.Sprintf("if nc -z -w 2 %s 8080; then ", ip)
+	appLabels := map[string]string{apps.LabelManaged: "true"}
+	peerIP := server(apps.Namespace(peer.ID), "peer", "busybox:1.36", appLabels, []string{"sh", "-c", "nc -lk -p 8080"})
+	postgresIP := server(systemNS, "postgres", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "postgres"}, []string{"sh", "-c", "nc -lk -p 8080"})
+	natsIP := server(systemNS, "nats", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "nats"}, []string{"sh", "-c", "nc -lk -p 8080"})
+	coreIP := server(systemNS, "core", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "core"}, []string{"sh", "-c", "nc -lk -p 8080"})
+	httpIP := server(systemNS, "http-target", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "http-target"}, []string{"httpd", "-f", "-p", "8080"})
+	directIP := server(systemNS, "direct-target", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "direct-target"}, []string{"sh", "-c", "nc -lk -p 8081"})
+	otherIP := server(apps.Namespace(other.ID), "other", "busybox:1.36", appLabels, []string{"sh", "-c", "nc -lk -p 8080"})
+	probe := func(ns, name, ip string, port int, allowed bool, labels map[string]string) {
+		check := fmt.Sprintf("if nc -z -w 2 %s %d; then ", ip, port)
 		if allowed {
 			check += "echo OK"
 		} else {
@@ -106,7 +111,7 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 			check += "echo OK"
 		}
 		check += "; fi"
-		p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: apps.Namespace(source.ID), Labels: map[string]string{apps.LabelManaged: "true"}},
+		p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns, Labels: labels},
 			Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{Name: "probe", Image: "busybox:1.36", Command: []string{"sh", "-c", check}}}}}
 		if _, err := e.kube.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
@@ -114,13 +119,35 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 		if got := waitPodLog(t, e.kube, p.Namespace, p.Name); got != "OK" {
 			t.Fatalf("%s: %s", name, got)
 		}
+		t.Logf("OK: %s", name)
 	}
-	probe("same-repo", peerIP, true)
-	probe("proxy", proxyIP, true)
-	probe("postgres", postgresIP, false)
-	probe("nats", natsIP, false)
-	probe("core", coreIP, false)
-	probe("other-repo", otherIP, false)
+	probe(apps.Namespace(source.ID), "same-repo", peerIP, 8080, true, appLabels)
+	probe(apps.Namespace(source.ID), "postgres", postgresIP, 8080, false, appLabels)
+	probe(apps.Namespace(source.ID), "nats", natsIP, 8080, false, appLabels)
+	probe(apps.Namespace(source.ID), "core", coreIP, 8080, false, appLabels)
+	probe(apps.Namespace(source.ID), "other-repo", otherIP, 8080, false, appLabels)
+	probe("kube-system", "traefik-ingress", peerIP, 8080, true, map[string]string{"app.kubernetes.io/name": "traefik"})
+	probe("kube-system", "non-traefik-ingress", peerIP, 8080, false, nil)
+
+	proxyIP := server(systemNS, "proxy", "vimagick/tinyproxy:latest", map[string]string{"app.kubernetes.io/name": "tinyproxy"}, nil)
+	policy := apps.BuildNetworkPolicy(source, apps.NetworkPolicyOptions{ProxyEnv: map[string]string{"HTTP_PROXY": "http://" + proxyIP + ":8888"}})
+	if _, err := e.kube.NetworkingV1().NetworkPolicies(policy.Namespace).Update(ctx, policy, metav1.UpdateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	proxyCheck := fmt.Sprintf("wget -qO- http://%s:8080 >/dev/null && echo OK || { echo KO; exit 1; }", httpIP)
+	p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "proxy-egress", Namespace: apps.Namespace(source.ID), Labels: appLabels}, Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{Name: "probe", Image: "busybox:1.36", Env: []corev1.EnvVar{{Name: "http_proxy", Value: "http://" + proxyIP + ":8888"}, {Name: "HTTP_PROXY", Value: "http://" + proxyIP + ":8888"}}, Command: []string{"sh", "-c", proxyCheck}}}}}
+	if _, err := e.kube.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if got := waitPodLog(t, e.kube, p.Namespace, p.Name); got != "OK" {
+		t.Fatalf("proxy-egress: %s", got)
+	}
+	logs, err := e.kube.CoreV1().Pods(systemNS).GetLogs("proxy", &corev1.PodLogOptions{}).DoRaw(ctx)
+	if err != nil || !strings.Contains(string(logs), httpIP) {
+		t.Fatalf("proxy senza richiesta verso %s: %v %s", httpIP, err, logs)
+	}
+	t.Logf("OK: proxy-egress")
+	probe(apps.Namespace(source.ID), "direct-external", directIP, 8081, false, appLabels)
 
 	// Pod Security è applicata dall'API server: baseline blocca privilegi e
 	// hostPath; restricted blocca anche l'immagine che tenta di girare come root.
