@@ -71,8 +71,11 @@ type Config struct {
 	SyncEvery    time.Duration
 	// PullCredentials: credenziali del registry del repo (pull secret). Nil: nessun pull secret.
 	PullCredentials func(ctx context.Context, app store.App) (*PullCredential, error)
-	Now             func() time.Time
-	Log             *slog.Logger
+	// Secrets decifra i valori correnti da iniettare nei pod. E' lo stesso keyring dei segreti
+	// dell'app; nil consente solo versioni senza segreti.
+	Secrets store.AppSealer
+	Now     func() time.Time
+	Log     *slog.Logger
 }
 
 func (c *Config) defaults() {
@@ -274,6 +277,25 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 			pull = pullSecretName
 		}
 	}
+	appSecret := ""
+	if len(v.Config.SecretNames) > 0 {
+		if c.cfg.Secrets == nil {
+			return errors.New("chiave dei segreti dell'app non configurata")
+		}
+		values, err := c.st.AppSecretValuesForNames(ctx, c.cfg.Secrets, app.ID, v.Config.SecretNames)
+		if err != nil {
+			return fmt.Errorf("lettura dei segreti dell'app: %w", err)
+		}
+		if len(values) != len(v.Config.SecretNames) {
+			return errors.New("uno o piu' segreti dell'app non esistono piu'")
+		}
+		if err := c.ensureAppSecret(ctx, ns, app.ID, values); err != nil {
+			return fmt.Errorf("secret dell'app: %w", err)
+		}
+		appSecret = appSecretName
+	} else if err := c.deleteAppSecret(ctx, ns); err != nil {
+		return fmt.Errorf("rimozione secret dell'app: %w", err)
+	}
 	if err := c.ensureService(ctx, app, v.Config); err != nil {
 		return fmt.Errorf("service: %w", err)
 	}
@@ -283,7 +305,7 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 		c.cfg.Log.Warn("apps: rotta non applicata", "app", app.ID, "err", err)
 	}
 	deps := c.kube.AppsV1().Deployments(ns)
-	opts := BuildOptions{Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull}
+	opts := BuildOptions{Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret}
 	cur, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})
 	switch {
 	case apierrors.IsNotFound(err):
@@ -296,6 +318,36 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 	want := BuildDeployment(app, v, opts)
 	want.ResourceVersion = cur.ResourceVersion
 	_, err = deps.Update(ctx, want, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Controller) ensureAppSecret(ctx context.Context, ns string, id uuid.UUID, values map[string]string) error {
+	data := make(map[string][]byte, len(values))
+	for name, value := range values {
+		data[name] = []byte(value)
+	}
+	want := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appSecretName, Namespace: ns, Labels: objectLabels(id)}, Type: corev1.SecretTypeOpaque, Data: data}
+	secrets := c.kube.CoreV1().Secrets(ns)
+	cur, err := secrets.Get(ctx, appSecretName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		_, err = secrets.Create(ctx, want, metav1.CreateOptions{})
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	cur.Labels = want.Labels
+	cur.Type = want.Type
+	cur.Data = want.Data
+	_, err = secrets.Update(ctx, cur, metav1.UpdateOptions{})
+	return err
+}
+
+func (c *Controller) deleteAppSecret(ctx context.Context, ns string) error {
+	err := c.kube.CoreV1().Secrets(ns).Delete(ctx, appSecretName, metav1.DeleteOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
 	return err
 }
 

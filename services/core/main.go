@@ -397,7 +397,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		}
 	}
 
-	appOpts, err := startApps(ctx, pool, cfg.GatewaySecret, logger)
+	appOpts, err := startApps(ctx, pool, cfg.GatewaySecret, logger, keys)
 	if err != nil {
 		logger.Error("controller delle app non avviato", "err", err)
 		return 1
@@ -414,7 +414,8 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 			return 1
 		}
 		runnerCfg := ci.RunnerConfig{Namespace: cfg.CINamespace, Image: cfg.CIImage, GatewayURL: cfg.CIGatewayURL, GateInternalAddr: cfg.CIGateInternalAddr, ActionMirror: cfg.CIActionMirror, Capacity: cfg.CICapacity,
-			ProxyEnv: ci.ProxyEnvFrom(os.Getenv), CAConfigMap: os.Getenv("GITSTACK_CORE_CI_CA_CONFIGMAP")}
+			ProxyEnv: ci.ProxyEnvFrom(os.Getenv), CAConfigMap: os.Getenv("GITSTACK_CORE_CI_CA_CONFIGMAP"),
+			BuildNamespace: cfg.CIBuildNamespace, BuildImage: cfg.CIBuildImage, RegistryAddr: cfg.CIRegistryAddr}
 		if runnerCfg.Image == "" || runnerCfg.GatewayURL == "" {
 			logger.Error("dispatcher CI non avviato", "err", "GITSTACK_CORE_CI_IMAGE e GITSTACK_CORE_CI_GATEWAY_URL obbligatorie")
 			return 1
@@ -422,7 +423,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		reporter := httpserver.NewCIReporter(pool, routerOpts...)
 		// Reconcile gira una sola volta: per i pod vivi riattacca un observer;
 		// rieseguirlo a ogni tick ne creerebbe piu' di uno sullo stesso pod.
-		if err := ci.Reconcile(ctx, pool, kube, runnerCfg.Namespace, nil, time.Now().UTC(), reporter); err != nil {
+		if err := ci.ReconcileNS(ctx, pool, kube, runnerCfg.Namespace, runnerCfg.BuildNamespace, nil, time.Now().UTC(), reporter); err != nil {
 			logger.Error("riconciliazione CI non riuscita", "err", err)
 		}
 		go func() {

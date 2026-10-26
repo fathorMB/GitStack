@@ -40,6 +40,10 @@ func TestRun_AmbienteDelJobPerCacheEArtefatti(t *testing.T) {
 	if got["ACTIONS_RUNTIME_TOKEN"] != jobToken || got["ACTIONS_RUNTIME_TOKEN"] == secret {
 		t.Errorf("ACTIONS_RUNTIME_TOKEN = %q", got["ACTIONS_RUNTIME_TOKEN"])
 	}
+	// GIT-371: i passi (gitstack-build) leggono il repo vero del job, non quello che act deduce.
+	if got["GITSTACK_REPOSITORY"] != "alice/app" {
+		t.Errorf("GITSTACK_REPOSITORY = %q", got["GITSTACK_REPOSITORY"])
+	}
 }
 
 func TestCacheEnv_UsaLIndirizzoDellArchivio(t *testing.T) {

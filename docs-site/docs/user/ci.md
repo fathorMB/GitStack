@@ -64,6 +64,43 @@ says so, and points to the alternative: upload the ZIP with
 `PUT /ci/v1/artifacts/{name}` of the CI gateway using the job token, or use an
 external runner with a compatible artifact service.
 
+## Building and publishing an image
+
+A job with `runs-on: gitstack-build` runs in a pod of the build namespace, with
+rootless BuildKit next to the runner: no Docker, no daemon, no privileges on the
+node. An administrator switches it on (`ci.build.enabled`, or `--ci-build` of the installer);
+with it off, such a job fails without starting. The command `gitstack-build`
+builds a `Dockerfile` and pushes the image to the registry of the repository with
+the token of the job:
+
+```yaml
+name: image
+on: push
+permissions:
+  contents: read
+  packages: write
+jobs:
+  image:
+    runs-on: gitstack-build
+    steps:
+      - run: gitstack-build --tag ${{ github.sha }}
+```
+
+`gitstack-build --tag <tag> [--name <sub-name>] [--file Dockerfile] [--build-arg K=V] [context]`
+publishes `<registry>/<owner>/<repo>[/<sub-name>]:<tag>`. The image is always
+the one of the repository running the job, because its token is valid for no
+other. The token needs `packages: write`: the ceiling of the repository is `read`
+until a repository admin raises it (`PUT /repos/{owner}/{repo}/actions/permissions`
+with `"packages": "write"`), and the token never exceeds the person who started
+the run. The image shows up in the Packages tab with "ci job token"
+as the pusher; the instance signs it as it does for every image from the CI.
+
+The build pod has the same network barriers as any job: it reaches the CI
+gateway, the registry and the public Internet, never the internal network, the
+database or the other services. Base images come from the Internet (for example
+Docker Hub); a mirror of the actions on a private network
+(`ci.runner.actionMirror`) is not reachable from this pod.
+
 ## Results
 
 Each job reports a commit status named `workflow / job`. You can require it
@@ -77,7 +114,8 @@ again; the webhook events `workflow_run` and `workflow_job` are sent as well.
 Jobs run without privileges and without access to the internal network of the
 cluster. `services:`, `docker build`, the `gh` CLI and `runs-on: windows-latest`
 do not work in the built-in runner pods: use an external runner, or the
-registry and release features of GitStack instead. By default 1 job (minimum
+registry and release features of GitStack instead. To build an image use
+`runs-on: gitstack-build` (see above) instead of `docker build`. By default 1 job (minimum
 profile) or 3 jobs (recommended profile) run at the same time, with 2 vCPU,
 4 GB of memory, 20 GB of disk and 2 hours each; GitStack's own services and
 hosted apps come before the jobs.
