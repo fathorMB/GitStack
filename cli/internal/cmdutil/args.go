@@ -35,3 +35,13 @@ func GroupRun(c *cobra.Command, args []string) error {
 	}
 	return c.Help()
 }
+
+// MinArgs richiede almeno n argomenti posizionali, con un UsageError (exit 2).
+func MinArgs(n int) cobra.PositionalArgs {
+	return func(c *cobra.Command, args []string) error {
+		if len(args) < n {
+			return UsageErrorf("almeno %d argomento/i richiesti per %q", n, c.CommandPath())
+		}
+		return nil
+	}
+}

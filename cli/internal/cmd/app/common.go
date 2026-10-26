@@ -13,6 +13,7 @@ import (
 type env struct {
 	f     *cmdutil.Factory
 	gen   *gitstack.ClientWithResponses
+	raw   *api.Client
 	owner string
 	repo  string
 }
@@ -36,7 +37,7 @@ func newEnv(f *cmdutil.Factory) (*env, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &env{f: f, gen: cl.Generated(), owner: owner, repo: repo}, nil
+	return &env{f: f, gen: cl.Generated(), raw: cl, owner: owner, repo: repo}, nil
 }
 
 // check converte una risposta non-2xx nell'errore di gs.
