@@ -677,6 +677,9 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 	ns := Namespace(app.ID)
 	d, err := c.kube.AppsV1().Deployments(ns).Get(ctx, WorkloadName, metav1.GetOptions{})
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			c.reapply(ctx, app)
+		}
 		return
 	}
 	// Il modo di accesso può cambiare a deploy fermo (PUT .../access): la rotta e i suoi middleware
@@ -722,6 +725,28 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 			c.cfg.Log.Warn("apps: stato osservato non scritto", "app", app.ID, "err", err)
 		}
 	}
+}
+
+// reapply riporta la versione attiva di un'app il cui Deployment non c'è più: succede dopo un
+// restore su un cluster pulito (H4), dove le app tornano dal database (versione, configurazione,
+// immagini nel registry ripristinato).
+func (c *Controller) reapply(ctx context.Context, app store.App) {
+	v, err := c.st.GetAppVersion(ctx, app.ID, app.ActiveVersion)
+	if !shouldReapply(app, v, err) {
+		return
+	}
+	if err := c.apply(ctx, app, v); err != nil {
+		c.cfg.Log.Warn("apps: riapplicazione della versione attiva non riuscita", "app", app.ID, "version", v.Number, "err", err)
+		return
+	}
+	c.cfg.Log.Info("apps: versione attiva riapplicata (Deployment assente)", "app", app.ID, "version", v.Number)
+}
+
+// shouldReapply dice se la versione attiva va riapplicata: l'app deve avere copie volute (repo
+// non archiviato né eliminato), non essere «fallita» al primo deploy e la versione attiva deve
+// essere quella in servizio.
+func shouldReapply(app store.App, v store.AppVersion, verr error) bool {
+	return verr == nil && desiredReplicas(app) > 0 && app.Status != "failed" && v.State == "serving"
 }
 
 // Collect toglie i namespace del controller di app che non esistono più nel modello (app o repo

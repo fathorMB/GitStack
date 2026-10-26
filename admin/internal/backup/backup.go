@@ -75,6 +75,9 @@ type Manifest struct {
 	// RegistryRepos sono gli id dei repo le cui immagini OCI sono nell'archivio (RG2): di
 	// default nessuno, le immagini restano fuori dal backup.
 	RegistryRepos []string `json:"registry_repos,omitempty"`
+	// AppImages sono i riferimenti delle immagini in uso dalle app incluse (H4): versione attiva
+	// e precedente. Solo informativi: il restore non li legge.
+	AppImages []string `json:"app_images,omitempty"`
 }
 
 // RefusedError è un rifiuto motivato (versione diversa, archivio corrotto,
@@ -128,9 +131,10 @@ type Options struct {
 	Now func() time.Time
 	// Retention sovrascrive cfg.Backup.Retention quando > 0.
 	Retention int
-	// InUseRepoIDs dà gli id dei repo le cui immagini sono in uso dalle app: entrano sempre nel
-	// backup, qualunque sia includeInBackup (RG2/H4). Lo fornirà la v3; nil = nessuna.
-	InUseRepoIDs func(ctx context.Context) ([]string, error)
+	// InUseImages dà le immagini del registry in uso dalle app (versione attiva e precedente):
+	// entrano sempre nel backup, qualunque sia includeInBackup (RG2/H4). nil = le legge dal
+	// database (core.apps, core.app_versions).
+	InUseImages func(ctx context.Context) ([]InUseImage, error)
 }
 
 func (o *Options) logf(format string, a ...any) {
@@ -364,11 +368,15 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 	if e != nil {
 		return nil, e
 	}
-	regSkip, e := registrySkip(gitPath, regRepos)
+	inUse, e := o.inUseImages(ctx)
+	if e != nil {
+		return nil, e
+	}
+	regSkip, appImages, e := registrySkip(gitPath, regRepos, inUse, o.logf)
 	if e != nil {
 		return nil, fmt.Errorf("immagini del registry: %w", e)
 	}
-	o.logf("copia dei repo (git-data); immagini del registry incluse per %d repo", len(regRepos))
+	o.logf("copia dei repo (git-data); immagini del registry incluse per %d repo e %d immagini in uso dalle app", len(regRepos), len(appImages))
 	if e := st.write(GitDataName, func(w io.Writer) error { return tarDirSkip(w, gitPath, regSkip) }); e != nil {
 		return nil, fmt.Errorf("copia di git-data: %w", e)
 	}
@@ -420,6 +428,7 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 		Namespace:     o.Cfg.Namespace,
 		Files:         st.files,
 		RegistryRepos: regRepos,
+		AppImages:     appImages,
 	}
 	path, sum, err := writeArchive(dest, o.archiveName(m), st, m, o.Key)
 	if err != nil {
