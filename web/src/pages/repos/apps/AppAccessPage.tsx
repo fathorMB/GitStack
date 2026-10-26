@@ -107,7 +107,10 @@ export function AppAccessPage({ repo, app, perms, onChange }: Props) {
                   </div>
                   {!perms.canChangeAccess ? <p className="hint">Only admins of the repository can change who opens the app.</p> : null}
                 </div>
-                {data.mode !== 'public' ? <AppAccessList repo={repo} app={app} canEdit={perms.canChangeAccess} /> : null}
+                {data.mode !== 'public' && perms.canChangeAccess ? <AppAccessList repo={repo} app={app} canEdit /> : null}
+                {data.mode !== 'public' && !perms.canChangeAccess ? (
+                  <p className="hint">The access list is managed by admins of the repository.</p>
+                ) : null}
                 <div>
                   <div className="sec-h">
                     <h2>Domains</h2>

@@ -74,17 +74,19 @@ describe('Access list (H6)', () => {
     await waitFor(() => expect(screen.queryByText('gverdi')).not.toBeInTheDocument(), { timeout: T });
   }, T);
 
-  it.each(['read', 'write'] as const)('%s: lista in sola lettura, niente comandi né invito', async (role) => {
+  it.each(['read', 'write'] as const)('%s: nessuna lista, nessuna chiamata, nessun comando né errore', async (role) => {
     mount(role);
-    expect(await screen.findByText('gverdi', undefined, { timeout: T })).toBeInTheDocument();
+    expect(await screen.findByText(/The access list is managed by admins/, undefined, { timeout: T })).toBeInTheDocument();
+    expect(api.fetchAppAccessMembers).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: /Add people or team/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Invite testers/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Remove/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   }, T);
 
-  it('403: errore nella sezione, la pagina resta su', async () => {
+  it('403 (permessi cambiati): errore nella sezione, la pagina resta su', async () => {
     vi.mocked(api.fetchAppAccessMembers).mockRejectedValue(new ApiError({ error: { code: 'forbidden', message: 'Not allowed' } }, 403));
-    mount('write');
+    mount('admin');
     const section = await screen.findByRole('region', { name: 'Access list' }, { timeout: T });
     expect(await within(section).findByRole('alert', undefined, { timeout: T })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Internal · GitStack login' })).toBeChecked();
