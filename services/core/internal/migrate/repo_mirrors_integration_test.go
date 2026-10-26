@@ -89,7 +89,7 @@ func TestMigration0014_SaleEScende(t *testing.T) {
 	if _, err := pool.Exec(ctx, notif, uuid.New(), uuid.New(), "mentioned", repo, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := migrate.Down(ctx, pool, dsn, 27); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 28); err != nil {
 		t.Fatalf("down 0014: %v", err)
 	}
 	for _, tbl := range []string{"repo_mirrors", "repo_mirror_runs"} {

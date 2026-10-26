@@ -7,8 +7,10 @@ build tag `integration`; in CI girano a ogni push su `main` e sulle PR (job `go`
 
 Locale: `cd services/core && go test -tags=integration -count=1 ./internal/stackitest/`
 (serve Docker; per `TestGitClientReale` anche `git`, `ssh` e `ssh-keygen` nel PATH, altrimenti
-il test è saltato). Su Windows: `DOCKER_HOST=npipe:////./pipe/dockerDesktopLinuxEngine` e
-`TESTCONTAINERS_RYUK_DISABLED=true`.
+il test è saltato). Su Windows con Docker Desktop funziona senza variabili
+(`DOCKER_HOST=npipe:////./pipe/dockerDesktopLinuxEngine` solo se la pipe di default non si trova).
+Ryuk resta attivo: toglie il container Postgres anche se il processo viene ucciso. Non disabilitare Ryuk
+(variabili TESTCONTAINERS_*); pulizia a mano: `scripts/cleanup-test-containers.ps1` (docs/operations.md).
 
 ## Test di sicurezza (`security_integration_test.go`, `TestSecurity`)
 

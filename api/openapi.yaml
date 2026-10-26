@@ -9907,7 +9907,7 @@ paths:
         Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato
         risponde 409 `archived` (R10, H5). Scala a mano, entro la quota dell'owner (H11, niente scala
         automatica). 409 `insufficient_capacity` se le parti garantite non ci stanno (`details` dice quanto
-        manca); 409 `single_copy` per un'app con volumi (H3). Non crea una versione.
+        manca); 409 `single_copy` per un'app con volumi (H3): `copies` oltre 1 e' rifiutato con il messaggio «un'app con volumi gira in una sola copia», zero e uno restano ammessi. Non crea una versione.
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppScaleInput"}}}}
       responses:
         "200": {description: "App con le nuove copie.", content: {application/json: {schema: {$ref: "#/components/schemas/App"}}}}
@@ -10224,7 +10224,7 @@ paths:
       summary: "Legge parte garantita, tetto e copie"
       description: >
         Serve `read` sul repo (H5): 404 se il repo non si legge. Parte garantita e tetto per copia (H11),
-        copie, uso corrente e massimo consentito dall'istanza. I volumi sono della v3-b.
+        copie, uso corrente e massimo consentito dall'istanza. I volumi hanno operazioni proprie (`listAppVolumes`).
       responses:
         "200": {description: "Risorse.", content: {application/json: {schema: {$ref: "#/components/schemas/AppResources"}}}}
         "401": {$ref: "#/components/responses/Unauthorized"}
@@ -10254,6 +10254,81 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
         "409": {$ref: "#/components/responses/Conflict"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
+  /repos/{owner}/{repo}/apps/{app}/volumes:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/AppParam"}]
+    get:
+      operationId: listAppVolumes
+      tags: [apps]
+      x-required-scopes: ["read:resource"]
+      x-repo-permission: read
+      x-mcp:
+        expose: true
+        name: app_volume_list
+        destructive: false
+      summary: "Elenca i volumi persistenti dell'app"
+      description: >
+        Serve `read` sul repo (H5): 404 se il repo non si legge. Per ogni volume nome, percorso di mount e
+        dimensione fissa (H3); `quota` e' la quota delle app dell'owner con il disco dei volumi, l'uso e
+        l'avviso all'80% (H11).
+      responses:
+        "200": {description: "Volumi.", content: {application/json: {schema: {$ref: "#/components/schemas/AppVolumeList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    post:
+      operationId: createAppVolume
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: true
+        name: app_volume_create
+        destructive: true
+      summary: "Aggiunge un volume persistente all'app"
+      description: >
+        Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato
+        risponde 409 `archived` (R10, H5). Crea un PVC di dimensione fissa su local-path (lo storage di k3s)
+        montato in `mountPath`. La dimensione conta nella quota disco dell'owner (H11): 409
+        `insufficient_capacity` con `details.missing.diskBytes` se non ci sta. Crea una nuova versione (H8) e
+        distribuisce l'app con aggiornamento di tipo Recreate: con i volumi l'app gira in una sola copia (H3),
+        quindi la scala oltre 1 e' rifiutata (409 `single_copy`), come l'aggiunta di un volume a un'app che
+        ha piu' di una copia. 409 `volume_exists` se il nome c'e' gia', 409 `mount_path_in_use` se il percorso
+        e' gia' di un altro volume, 422 `too_many_volumes` oltre 8 volumi per app, 422 per un percorso o una
+        dimensione non validi. `quota.warning` e' vero se i volumi superano l'80% del disco dell'owner. La
+        dimensione non si cambia dopo la creazione. GitStack non ne fa il dump: per un database il dump resta
+        della persona che lo gestisce (v3-b).
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppVolumeInput"}}}}
+      responses:
+        "202": {description: "Volume aggiunto, deploy della nuova versione in corso.", content: {application/json: {schema: {$ref: "#/components/schemas/AppVolumeChange"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+  /repos/{owner}/{repo}/apps/{app}/volumes/{volume}:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/AppParam"}, {$ref: "#/components/parameters/AppVolumeParam"}]
+    delete:
+      operationId: deleteAppVolume
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: true
+        name: app_volume_delete
+        destructive: true
+      summary: "Elimina un volume dell'app e i suoi dati"
+      description: >
+        Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato
+        risponde 409 `archived` (R10, H5). Crea una nuova versione senza il volume; quando e' in servizio il
+        PVC e i dati che contiene sono eliminati: non si annulla. Libera la quota disco dell'owner. Un nome che
+        non c'e' e' 404.
+      responses:
+        "202": {description: "Volume tolto, deploy della nuova versione in corso.", content: {application/json: {schema: {$ref: "#/components/schemas/AppVolumeChange"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
   /repos/{owner}/{repo}/apps/{app}/logs:
     parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/AppParam"}]
     get:
@@ -11116,6 +11191,12 @@ components:
       in: path
       required: true
       schema: {$ref: "#/components/schemas/AppEnvName"}
+    AppVolumeParam:
+      name: volume
+      in: path
+      required: true
+      schema: {$ref: "#/components/schemas/AppVolumeName"}
+      description: Nome del volume dell'app (H3).
     AppTrustedKeyIdParam:
       name: keyId
       in: path
@@ -17169,6 +17250,7 @@ components:
         copies: {type: integer, minimum: 0, description: "Copie volute."}
         readyCopies: {type: integer, minimum: 0, description: "Copie sane."}
         resources: {$ref: "#/components/schemas/AppResources"}
+        volumes: {type: array, items: {$ref: "#/components/schemas/AppVolume"}, description: "Volumi persistenti (H3, v3-b); con almeno un volume l'app gira in una sola copia."}
         usage: {allOf: [{$ref: "#/components/schemas/AppUsage"}], nullable: true, type: object, description: "Uso corrente; null vuol dire metriche non disponibili."}
         lastDeploy: {allOf: [{$ref: "#/components/schemas/AppLastDeploy"}], nullable: true, type: object}
         createdAt: {type: string, format: date-time}
@@ -17232,7 +17314,7 @@ components:
         copies: {type: integer, minimum: 0, maximum: 50, description: "Zero ferma l'app (`stoppedReason: manual`)."}
     AppVersionTrigger:
       type: string
-      description: "`manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta), `rollback`, `create`."
+      description: "`manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`."
       enum: [create, manual, branch_push, config, rollback]
     AppVersionConfig:
       type: object
@@ -17247,6 +17329,7 @@ components:
         resources: {$ref: "#/components/schemas/AppResources"}
         copies: {type: integer, minimum: 0}
         restricted: {type: boolean}
+        volumes: {type: array, items: {$ref: "#/components/schemas/AppVolumeSpec"}, description: "Volumi dell'app quando la versione e' stata creata (H3). Un rollback non li cambia: i volumi sono dati."}
     AppVersion:
       type: object
       additionalProperties: false
@@ -17381,6 +17464,57 @@ components:
         guaranteed: {$ref: "#/components/schemas/AppResourceAmount"}
         limit: {$ref: "#/components/schemas/AppResourceAmount"}
         maxPerApp: {allOf: [{$ref: "#/components/schemas/AppResourceAmount"}], nullable: true, type: object, description: "Massimo consentito dall'istanza per app."}
+    AppVolumeName:
+      type: string
+      description: "Nome del volume dentro l'app: lettere minuscole, cifre e trattini, 1-30 caratteri. Il PVC si chiama `vol-<nome>`."
+      pattern: "^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$"
+      minLength: 1
+      maxLength: 30
+    AppVolumeSpec:
+      type: object
+      description: Un volume come lo congela una versione (H3, H8).
+      additionalProperties: false
+      required: [name, mountPath, sizeBytes]
+      properties:
+        name: {$ref: "#/components/schemas/AppVolumeName"}
+        mountPath: {type: string, minLength: 2, maxLength: 512, description: "Percorso assoluto nel container."}
+        sizeBytes: {type: integer, format: int64, minimum: 1048576}
+    AppVolume:
+      type: object
+      description: Volume persistente dell'app (PVC su local-path, dimensione fissa, H3).
+      additionalProperties: false
+      required: [name, mountPath, sizeBytes, version, createdAt]
+      properties:
+        name: {$ref: "#/components/schemas/AppVolumeName"}
+        mountPath: {type: string, description: "Percorso di mount nel container."}
+        sizeBytes: {type: integer, format: int64, minimum: 1048576, description: "Dimensione fissa; conta nella quota disco dell'owner. local-path non la applica come limite fisico del disco."}
+        version: {type: integer, minimum: 1, description: "Versione creata dall'aggiunta del volume."}
+        createdAt: {type: string, format: date-time}
+        createdBy: {allOf: [{$ref: "#/components/schemas/AppActor"}], nullable: true, type: object}
+    AppVolumeInput:
+      type: object
+      additionalProperties: false
+      required: [name, mountPath, sizeBytes]
+      properties:
+        name: {$ref: "#/components/schemas/AppVolumeName"}
+        mountPath: {type: string, minLength: 2, maxLength: 512, description: "Percorso assoluto e normalizzato; non la radice e non sotto /proc, /sys, /dev."}
+        sizeBytes: {type: integer, format: int64, minimum: 1048576, description: "Almeno 1 MiB."}
+    AppVolumeList:
+      type: object
+      additionalProperties: false
+      required: [items, quota]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/AppVolume"}}
+        quota: {$ref: "#/components/schemas/AppOwnerQuota"}
+    AppVolumeChange:
+      type: object
+      description: Esito di un'aggiunta o di una rimozione di volume.
+      additionalProperties: false
+      required: [volume, version, quota]
+      properties:
+        volume: {$ref: "#/components/schemas/AppVolume"}
+        version: {$ref: "#/components/schemas/AppVersion"}
+        quota: {$ref: "#/components/schemas/AppOwnerQuota"}
     AppResourcesInput:
       type: object
       additionalProperties: false

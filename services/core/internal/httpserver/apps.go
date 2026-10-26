@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -137,6 +138,7 @@ func (s *apiServer) appToAPI(a store.App) openapi.App {
 		Address: s.appAddress(a.AddressLabel), Image: imageToAPI(a.Image), ActiveVersion: a.ActiveVersion,
 		Port: a.Config.Port, HealthCheck: healthToAPI(a.Config.HealthCheck), Copies: a.Config.Copies, ReadyCopies: ready,
 		Resources: resourcesToAPI(a.Config), CreatedAt: a.CreatedAt, CreatedBy: actorToAPI(a.CreatedBy), UpdatedAt: a.UpdatedAt,
+		Volumes: volumesToAPI(a.Volumes),
 	}
 	if reason != nil {
 		sr := openapi.AppStoppedReason(*reason)
@@ -159,7 +161,7 @@ func (s *apiServer) versionToAPI(v store.AppVersion, active, previous int) opena
 	cfg := openapi.AppVersionConfig{
 		Port: v.Config.Port, HealthCheck: healthToAPI(v.Config.HealthCheck), Variables: v.Config.Variables,
 		Resources: resourcesToAPI(v.Config), Copies: v.Config.Copies, Restricted: &v.Config.Restricted,
-		SecretNames: []openapi.AppEnvName{},
+		SecretNames: []openapi.AppEnvName{}, Volumes: volumeSpecsToAPI(v.Config.Volumes),
 	}
 	cfg.SecretNames = append(cfg.SecretNames, v.Config.SecretNames...)
 	return openapi.AppVersion{
@@ -268,12 +270,24 @@ func (s *apiServer) writeAppConflict(w http.ResponseWriter, err error) bool {
 		writeError(w, http.StatusConflict, "name_taken", "Il repo ha già un'app con questo nome.")
 	case errors.Is(err, store.ErrAppAddressConflict):
 		writeError(w, http.StatusConflict, "address_conflict", "L'indirizzo automatico è già usato da un'altra app.")
+	case errors.Is(err, store.ErrAppSingleCopy):
+		writeError(w, http.StatusConflict, "single_copy", "Un'app con volumi gira in una sola copia: la scala oltre 1 non è ammessa (H3). Togli i volumi o tieni una copia.")
+	case errors.Is(err, store.ErrVolumeNameTaken):
+		writeError(w, http.StatusConflict, "volume_exists", "L'app ha già un volume con questo nome.")
+	case errors.Is(err, store.ErrVolumeMountTaken):
+		writeError(w, http.StatusConflict, "mount_path_in_use", "Un altro volume dell'app è già montato in questo percorso.")
+	case errors.Is(err, store.ErrTooManyVolumes):
+		writeError(w, http.StatusUnprocessableEntity, "too_many_volumes", fmt.Sprintf("Un'app può avere al massimo %d volumi.", store.MaxAppVolumes))
 	case errors.As(err, &ce):
-		writeErrorDetails(w, http.StatusConflict, "insufficient_capacity", "La quota delle app dell'owner non basta per le parti garantite.", map[string]any{
+		msg := "La quota delle app dell'owner non basta per le parti garantite."
+		if _, disk := ce.Missing["diskBytes"]; disk {
+			msg = "La quota disco dell'owner non basta per questo volume: mancano " + fmt.Sprint(ce.Missing["diskBytes"]) + " byte."
+		}
+		writeErrorDetails(w, http.StatusConflict, "insufficient_capacity", msg, map[string]any{
 			"owner":   ce.Owner,
 			"missing": ce.Missing,
-			"limits":  map[string]any{"cpuMillis": ce.Limits.CPUMillis, "memoryBytes": ce.Limits.MemoryBytes},
-			"used":    map[string]any{"cpuMillis": ce.Used.CPUMillis, "memoryBytes": ce.Used.MemoryBytes},
+			"limits":  map[string]any{"cpuMillis": ce.Limits.CPUMillis, "memoryBytes": ce.Limits.MemoryBytes, "diskBytes": ce.Limits.DiskBytes},
+			"used":    map[string]any{"cpuMillis": ce.Used.CPUMillis, "memoryBytes": ce.Used.MemoryBytes, "diskBytes": ce.Used.DiskBytes},
 		})
 	default:
 		return false

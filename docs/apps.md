@@ -36,3 +36,25 @@ A ogni deploy GitStack passa al container alcune variabili di sistema, che l'app
 Il commit di ogni versione è leggibile nell'API delle versioni dell'app, nel campo `commitSha` (`null` se la versione non ne ha uno).
 
 Il prefisso `GITSTACK_` è riservato: non si può creare una variabile o un segreto dell'app con quel prefisso (anche in minuscolo). L'API risponde 422 con l'errore sul campo `name`, e la pagina **Variables & secrets** mostra lo stesso messaggio prima di inviare. Un nome come `MY_GITSTACK_X` è ammesso, perché il prefisso conta solo all'inizio.
+
+## Volumi persistenti (H3)
+
+Un'app può avere fino a 8 volumi di dimensione fissa, ognuno con un nome e un percorso di mount
+assoluto (non la radice e non sotto `/proc`, `/sys`, `/dev`). Li gestisce chi ha `admin` sul repo:
+
+- `GET /repos/{owner}/{repo}/apps/{app}/volumes` elenca i volumi e la quota disco dell'owner;
+- `POST …/volumes` con `{"name", "mountPath", "sizeBytes"}` aggiunge un volume (almeno 1 MiB);
+- `DELETE …/volumes/{volume}` lo elimina **insieme ai dati**: non si annulla.
+
+Sono PVC `ReadWriteOnce` su `local-path`, lo storage di k3s. `local-path` non applica la dimensione come
+limite fisico del disco: la dimensione fissa è quella che conta nella quota disco dell'owner
+(`/admin/apps/quotas`, 20 GiB di default). Oltre la quota la richiesta è rifiutata (409
+`insufficient_capacity`, `details.missing.diskBytes`); dall'80% la risposta porta `quota.warning: true`.
+
+Un'app con volumi gira in **una sola copia**: la scala oltre 1 risponde 409 `single_copy`, come
+l'aggiunta di un volume a un'app che ha più copie (prima si scende a una). L'aggiornamento è di tipo
+`Recreate`: il pod vecchio si ferma prima che parta il nuovo, quindi c'è una breve interruzione a ogni
+deploy, riavvio o modifica. Ogni aggiunta o rimozione di un volume crea una nuova versione.
+
+I volumi sono dati, non configurazione: un rollback ripristina immagine, variabili e nomi dei segreti ma non
+toglie né rimette volumi. GitStack non fa il dump di un database: per questo resta la procedura di chi lo gestisce.

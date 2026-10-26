@@ -3271,6 +3271,9 @@ type App struct {
 
 	// Usage Uso corrente; null vuol dire metriche non disponibili.
 	Usage *AppUsage `json:"usage,omitempty"`
+
+	// Volumes Volumi persistenti (H3, v3-b); con almeno un volume l'app gira in una sola copia.
+	Volumes *[]AppVolume `json:"volumes,omitempty"`
 }
 
 // AppAccess defines model for AppAccess.
@@ -3750,7 +3753,7 @@ type AppVersion struct {
 	// Summary Per `config` e `rollback`, che cosa e' cambiato, per esempio «variabile SEARCH_TIMEOUT»; i valori dei segreti non compaiono mai.
 	Summary *string `json:"summary,omitempty"`
 
-	// Trigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta), `rollback`, `create`.
+	// Trigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`.
 	Trigger AppVersionTrigger `json:"trigger"`
 }
 
@@ -3765,6 +3768,9 @@ type AppVersionConfig struct {
 	Restricted  *bool             `json:"restricted,omitempty"`
 	SecretNames []AppEnvName      `json:"secretNames"`
 	Variables   map[string]string `json:"variables"`
+
+	// Volumes Volumi dell'app quando la versione e' stata creata (H3). Un rollback non li cambia: i volumi sono dati.
+	Volumes *[]AppVolumeSpec `json:"volumes,omitempty"`
 }
 
 // AppVersionList defines model for AppVersionList.
@@ -3773,8 +3779,69 @@ type AppVersionList struct {
 	Total int          `json:"total"`
 }
 
-// AppVersionTrigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta), `rollback`, `create`.
+// AppVersionTrigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`.
 type AppVersionTrigger string
+
+// AppVolume Volume persistente dell'app (PVC su local-path, dimensione fissa, H3).
+type AppVolume struct {
+	CreatedAt time.Time `json:"createdAt"`
+	CreatedBy *AppActor `json:"createdBy,omitempty"`
+
+	// MountPath Percorso di mount nel container.
+	MountPath string `json:"mountPath"`
+
+	// Name Nome del volume dentro l'app: lettere minuscole, cifre e trattini, 1-30 caratteri. Il PVC si chiama `vol-<nome>`.
+	Name AppVolumeName `json:"name"`
+
+	// SizeBytes Dimensione fissa; conta nella quota disco dell'owner. local-path non la applica come limite fisico del disco.
+	SizeBytes int64 `json:"sizeBytes"`
+
+	// Version Versione creata dall'aggiunta del volume.
+	Version int `json:"version"`
+}
+
+// AppVolumeChange Esito di un'aggiunta o di una rimozione di volume.
+type AppVolumeChange struct {
+	// Quota Quota delle app di un owner (H5, H11).
+	Quota   AppOwnerQuota `json:"quota"`
+	Version AppVersion    `json:"version"`
+
+	// Volume Volume persistente dell'app (PVC su local-path, dimensione fissa, H3).
+	Volume AppVolume `json:"volume"`
+}
+
+// AppVolumeInput defines model for AppVolumeInput.
+type AppVolumeInput struct {
+	// MountPath Percorso assoluto e normalizzato; non la radice e non sotto /proc, /sys, /dev.
+	MountPath string `json:"mountPath"`
+
+	// Name Nome del volume dentro l'app: lettere minuscole, cifre e trattini, 1-30 caratteri. Il PVC si chiama `vol-<nome>`.
+	Name AppVolumeName `json:"name"`
+
+	// SizeBytes Almeno 1 MiB.
+	SizeBytes int64 `json:"sizeBytes"`
+}
+
+// AppVolumeList defines model for AppVolumeList.
+type AppVolumeList struct {
+	Items []AppVolume `json:"items"`
+
+	// Quota Quota delle app di un owner (H5, H11).
+	Quota AppOwnerQuota `json:"quota"`
+}
+
+// AppVolumeName Nome del volume dentro l'app: lettere minuscole, cifre e trattini, 1-30 caratteri. Il PVC si chiama `vol-<nome>`.
+type AppVolumeName = string
+
+// AppVolumeSpec Un volume come lo congela una versione (H3, H8).
+type AppVolumeSpec struct {
+	// MountPath Percorso assoluto nel container.
+	MountPath string `json:"mountPath"`
+
+	// Name Nome del volume dentro l'app: lettere minuscole, cifre e trattini, 1-30 caratteri. Il PVC si chiama `vol-<nome>`.
+	Name      AppVolumeName `json:"name"`
+	SizeBytes int64         `json:"sizeBytes"`
+}
 
 // AppsCapacity Capacita' del server e priorita' servizi di GitStack, poi app, poi job della CI (H11).
 type AppsCapacity struct {
@@ -6534,6 +6601,9 @@ type AppTrustedKeyIdParam = openapi_types.UUID
 // AppVersionParam defines model for AppVersionParam.
 type AppVersionParam = int
 
+// AppVolumeParam Nome del volume dentro l'app: lettere minuscole, cifre e trattini, 1-30 caratteri. Il PVC si chiama `vol-<nome>`.
+type AppVolumeParam = AppVolumeName
+
 // ArchiveFormatParam defines model for ArchiveFormatParam.
 type ArchiveFormatParam string
 
@@ -7334,6 +7404,9 @@ type PutAppSecretJSONRequestBody = AppSecretInput
 // PutAppVariableJSONRequestBody defines body for PutAppVariable for application/json ContentType.
 type PutAppVariableJSONRequestBody = AppVariableInput
 
+// CreateAppVolumeJSONRequestBody defines body for CreateAppVolume for application/json ContentType.
+type CreateAppVolumeJSONRequestBody = AppVolumeInput
+
 // UpdateBranchSettingsJSONRequestBody defines body for UpdateBranchSettings for application/json ContentType.
 type UpdateBranchSettingsJSONRequestBody = UpdateBranchSettingsInput
 
@@ -7777,6 +7850,15 @@ type ServerInterface interface {
 	// GetAppVersion Legge una versione
 	// (GET /repos/{owner}/{repo}/apps/{app}/versions/{version})
 	GetAppVersion(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, version AppVersionParam)
+	// ListAppVolumes Elenca i volumi persistenti dell'app
+	// (GET /repos/{owner}/{repo}/apps/{app}/volumes)
+	ListAppVolumes(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// CreateAppVolume Aggiunge un volume persistente all'app
+	// (POST /repos/{owner}/{repo}/apps/{app}/volumes)
+	CreateAppVolume(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// DeleteAppVolume Elimina un volume dell'app e i suoi dati
+	// (DELETE /repos/{owner}/{repo}/apps/{app}/volumes/{volume})
+	DeleteAppVolume(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam)
 	// GetRepositoryArchive Archivio ZIP o tar.gz di un ref (streaming)
 	// (GET /repos/{owner}/{repo}/archive)
 	GetRepositoryArchive(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryArchiveParams)
@@ -11986,6 +12068,147 @@ func (siw *ServerInterfaceWrapper) GetAppVersion(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAppVersion(w, r, owner, repo, app, version)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAppVolumes operation middleware
+func (siw *ServerInterfaceWrapper) ListAppVolumes(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAppVolumes(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateAppVolume operation middleware
+func (siw *ServerInterfaceWrapper) CreateAppVolume(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateAppVolume(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteAppVolume operation middleware
+func (siw *ServerInterfaceWrapper) DeleteAppVolume(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "volume" -------------
+	var volume AppVolumeParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "volume", r.PathValue("volume"), &volume, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "volume", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteAppVolume(w, r, owner, repo, app, volume)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -18908,6 +19131,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/apps/{appId}/access-membership", wrapper.GetAppAccessMembership)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/resources", wrapper.GetAppResources)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/resources", wrapper.SetAppResources)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/volumes", wrapper.ListAppVolumes)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/volumes", wrapper.CreateAppVolume)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/volumes/{volume}", wrapper.DeleteAppVolume)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/logs", wrapper.GetAppLogs)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/metrics", wrapper.GetAppMetrics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps", wrapper.ListAdminApps)

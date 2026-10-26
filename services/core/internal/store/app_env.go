@@ -71,6 +71,10 @@ func currentConfig(ctx context.Context, tx pgx.Tx, appID uuid.UUID) (AppConfig, 
 	}
 	cfg := app.Config
 	cfg.Variables, cfg.SecretNames, err = envNames(ctx, tx, appID)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.Volumes, err = volumeSpecs(ctx, tx, appID)
 	return cfg, err
 }
 
