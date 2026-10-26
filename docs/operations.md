@@ -252,7 +252,43 @@ subjectAltName`.
 apps-domain apps.example.com` reissues the certificate (same CA) and rewrites
 `apps_domain:` in `config.yaml`. An installation upgraded from v2 has no apps
 domain (`gitstack status` prints "Dominio delle app: non impostato"); set it
-with this command. Apps already created keep their address.
+with this command, or choose it when you turn app hosting on (below). Apps
+already created keep their address.
+
+**App hosting (GIT-375, ADR 0002).** The app controller lives in `core` and is
+**off by default** (`apps.enabled=false` in the chart): `core` has no
+Kubernetes permission on apps, the apps API answers `503 apps_unavailable` and
+nothing is created in the cluster. Turn it on at install time with
+`install.sh --enable-apps [--apps-domain D]`, or on an existing installation
+(also one upgraded from v2, which has no apps domain) with `sudo gitstack
+upgrade --enable-apps [--apps-domain D]` or `sudo
+gitstack config set apps on [--apps-domain D]`.
+Without `--apps-domain` the existing domain is used, else the default
+`apps.<host>` with a warning. `gitstack config set apps off` turns the
+controller off: existing apps stay in the cluster and database but `core` no
+longer manages them. `gitstack status` prints "Hosting delle app: acceso" or
+"spento" (read from the `core` Deployment, not only from `config.yaml`; it
+flags a mismatch). The login in front of apps (GIT-347,
+`docs/apps-login.md`) needs no extra option: with `apps.enabled` the chart sets
+`GITSTACK_CORE_APPS_AUTH_URL` on `core` (the gateway Service,
+`/_appauth/verify`), and gives the gateway its signing keys (a Secret
+`<release>-gateway-appauth-keys`, generated once and kept across upgrades),
+the apps domain and the public URL. Without the keys `/_appauth/verify` answers
+503 and no `login` app would pass.
+
+RBAC of `core` (chart `templates/apps-rbac.yaml`): a controller ClusterRole
+with `create/get/list/watch/update/delete` on `namespaces`, `create/get` on
+`rolebindings` and `bind` on the one app role template; the template
+ClusterRole (Deployments, Services, Secrets, Pods, `pods/log`, events,
+IngressRoutes) is never bound cluster-wide — `core` creates a RoleBinding in
+each `gitstack-app-<id>` namespace. Because RBAC cannot filter by name, a
+ValidatingAdmissionPolicy (`<release>-apps-controller-scope`, Kubernetes
+>= 1.30) restricts the `core` ServiceAccount to namespaces named
+`gitstack-app-*` carrying the label `gitstack.io/managed-app=true`, and to
+RoleBindings in those namespaces bound only to the template role for the `core`
+ServiceAccount (`update` on namespaces is a deviation from the ADR, allowed only
+behind this policy). Check with `kubectl auth can-i get secrets
+-n kube-system --as system:serviceaccount:default:gitstack-core` (`no`).
 
 **Collisions.** `<app>-<repo>-<owner>` is a single DNS label (at most 63
 characters): owner and repository are lowercased and `_`, `.` and other
@@ -1713,6 +1749,7 @@ Without `GITSTACK_SMOKE_DURATION` the test is skipped, so the `go` job of
 | `gitstack upgrade --dry-run` | yes | Check readiness without making changes |
 | `gitstack config set host NEWNAME` | yes | Change the host name (certificates, services, config) |
 | `gitstack config set apps-domain DOMAIN` | yes | Set or change the apps domain and reissue the wildcard certificate (see [Apps domain](#apps-domain-and-wildcard-dns-v3-h2)) |
+| `gitstack config set apps on\|off [--apps-domain D] ` | yes | Turn app hosting on or off (see [Apps domain](#apps-domain-and-wildcard-dns-v3-h2)); `gitstack upgrade --enable-apps` does the same during an upgrade |
 | `gitstack config set network [options]` | yes | Change proxy, registry mirror, download mirror and corporate CA (see [Corporate network](#corporate-network-proxy-mirrors-and-ca)) |
 
 \* `gitstack status` reads `/etc/gitstack/config.yaml` (mode `0600`),
