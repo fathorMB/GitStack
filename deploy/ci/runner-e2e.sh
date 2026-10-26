@@ -176,7 +176,8 @@ fi
 # --- 1b. cache dei job e artefatti v4 (GIT-330, GIT-291) --------------------------------------
 # actions/cache salva nel primo run («Cache saved with key») e ripristina nel secondo («Cache
 # restored from key»); upload-artifact@v4 riceve il 501 col messaggio documentato. I run partono
-# con workflow_dispatch: quelli per push di e2e.yml non si confondono con questi.
+# con workflow_dispatch: quelli per push di e2e.yml non si confondono con questi. I marcatori E2E-CACHE-*
+# si cercano dopo «| »: act ristampa anche il testo dello script, che li contiene entrambi.
 cat >"${src}/.gitstack/workflows/cache.yml" <<'EOF'
 name: cache
 on: workflow_dispatch
@@ -227,12 +228,12 @@ job_concl() { jq -r --arg j "$2" '[.jobs[] | select(.name == $j)][0].conclusion 
 if dispatch_cache 1; then
   if [ "$(job_concl 1 cache)" = success ]; then ok "cache run 1: job cache success"; else ko "cache run 1: job cache $(job_concl 1 cache)"; tail -n 30 "${work}/cache-1-cache.log" >&2; fi
   if grep -q 'Cache saved with key: e2e-cache-v1' "${work}/cache-1-cache.log"; then ok "cache run 1: «$(grep -o 'Cache saved with key: e2e-cache-v1' "${work}/cache-1-cache.log" | head -n1)»"; else ko "cache run 1: manca «Cache saved with key»"; tail -n 30 "${work}/cache-1-cache.log" >&2; fi
-  if grep -q 'E2E-CACHE-NUOVA' "${work}/cache-1-cache.log"; then ok "cache run 1: cache vuota all'avvio"; else ko "cache run 1: la cache non era vuota"; fi
+  if grep -q '| E2E-CACHE-NUOVA' "${work}/cache-1-cache.log"; then ok "cache run 1: cache vuota all'avvio"; else ko "cache run 1: la cache non era vuota"; fi
 fi
 if dispatch_cache 2; then
   if [ "$(job_concl 2 cache)" = success ]; then ok "cache run 2: job cache success"; else ko "cache run 2: job cache $(job_concl 2 cache)"; tail -n 30 "${work}/cache-2-cache.log" >&2; fi
   if grep -q 'Cache restored from key: e2e-cache-v1' "${work}/cache-2-cache.log"; then ok "cache run 2: «$(grep -o 'Cache restored from key: e2e-cache-v1' "${work}/cache-2-cache.log" | head -n1)»"; else ko "cache run 2: manca «Cache restored from key»"; tail -n 30 "${work}/cache-2-cache.log" >&2; fi
-  if grep -q 'E2E-CACHE-PRESENTE' "${work}/cache-2-cache.log"; then ok "cache run 2: il contenuto salvato nel primo run è tornato"; else ko "cache run 2: il file della cache manca"; fi
+  if grep -q '| E2E-CACHE-PRESENTE' "${work}/cache-2-cache.log"; then ok "cache run 2: il contenuto salvato nel primo run è tornato"; else ko "cache run 2: il file della cache manca"; fi
   if [ "$(job_concl 2 artefatto)" = failure ] && grep -q 'GitStack non supporta actions/upload-artifact@v4' "${work}/cache-2-artefatto.log"; then
     ok "artefatti v4: il passo fallisce col messaggio documentato (501)"
   else
