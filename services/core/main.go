@@ -243,6 +243,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		go ci.RunStoragePurge(ctx, pool, ciLogs, ciBlobs, cfg.CIArtifactsDir, ci.DefaultStoragePurgeInterval, logger)
 	}
 
+	routerOpts = append(routerOpts, httpserver.WithInstanceCA(httpserver.CAConfig{Dir: cfg.CADir, Mode: cfg.CAMode}))
 	if cfg.SystemInfoFile != "" {
 		routerOpts = append(routerOpts, httpserver.WithSystemInfo(httpserver.SystemInfoConfig{File: cfg.SystemInfoFile}))
 	}

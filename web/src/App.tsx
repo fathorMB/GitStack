@@ -6,6 +6,7 @@ import { CiRunnersPage } from './pages/admin/CiRunnersPage';
 import { SystemPage } from './pages/admin/SystemPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { ComponentsPage } from './pages/ComponentsPage';
+import { CaGuidePage } from './pages/CaGuidePage';
 import { DownloadsPage } from './pages/DownloadsPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotificationsPage } from './pages/NotificationsPage';
@@ -44,6 +45,7 @@ export function AppRoutes() {
       <Route path="/change-password" element={<ChangePasswordPage />} />
       {/* Pubblica (serve prima del login): CLI gs e skills, M-07/K. */}
       <Route path="/downloads" element={<DownloadsPage />} />
+      <Route path="/help/ca" element={<CaGuidePage />} />
       <Route
         path="/"
         element={
