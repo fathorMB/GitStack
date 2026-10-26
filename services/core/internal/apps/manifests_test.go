@@ -163,14 +163,14 @@ func TestBuildDeployment_VariabiliDiSistema(t *testing.T) {
 
 func TestIsReservedEnvName(t *testing.T) {
 	cases := map[string]bool{
-		"GITSTACK_X":            true,
-		"GITSTACK_APP_VERSION":  true,
-		"gitstack_x":            true,
-		"GitStack_Token":        true,
-		"GITSTACK":              false,
-		"MY_GITSTACK_X":         false,
-		"DATABASE_URL":          false,
-		"":                      false,
+		"GITSTACK_X":           true,
+		"GITSTACK_APP_VERSION": true,
+		"gitstack_x":           true,
+		"GitStack_Token":       true,
+		"GITSTACK":             false,
+		"MY_GITSTACK_X":        false,
+		"DATABASE_URL":         false,
+		"":                     false,
 	}
 	for name, want := range cases {
 		if got := IsReservedEnvName(name); got != want {
