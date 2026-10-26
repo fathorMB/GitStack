@@ -166,8 +166,43 @@ Job di tipo `build` in un namespace separato `gitstack-ci-build`, BuildKit rootl
 nessun socket. Attenzione: BuildKit rootless di norma chiede `seccompProfile` e AppArmor
 *Unconfined*, che Pod Security `restricted` e `baseline` rifiutano. Il namespace dovrà quindi avere
 una policy dedicata (ValidatingAdmissionPolicy che accetta *solo* quella forma di pod) o un livello
-di Pod Security più alto, con la stessa NetworkPolicy e lo stesso cancello. **Non provato qui**:
-è il primo rischio della v2-a-build e va verificato su k3d/VM prima di promettere CI2 sulle build.
+di Pod Security più alto, con la stessa NetworkPolicy e lo stesso cancello. Provato con GIT-317 (esito più
+sotto) e collegato a `runs-on:` da GIT-371:
+
+- **Label.** Un job con `runs-on: gitstack-build` (anche insieme a `ubuntu-*`) resta `runner_type =
+  internal_pod`: non c'è un tipo `build` nel modello di `ci_jobs` e non serve una migrazione. Il job
+  salva le etichette in `runs_on` e il dispatcher sceglie il pod guardando quella colonna
+  (`ci.IsBuildJob`). Con altre etichette (`self-hosted`, ...) il job resta esterno.
+- **Pod di build** (`ci/build.go`, `ci/kubernetes.go`): nel namespace `gitstack-ci-build`, uid 1000, con
+  tre container in questo ordine: il `gate` (init container, fail-closed come nei job), `buildkitd`
+  rootless (init container con `restartPolicy: Always`, cioè sidecar nativo: parte dopo il gate, vive finché
+  gira il runner e non tiene aperto il pod a job finito; `terminationGracePeriodSeconds: 5`, perché senza
+  buildkitd impiega ~2 minuti a uscire) e il runner di sempre (`ci-runner` + act in modalità host). Il socket
+  di buildkitd sta in un `emptyDir` condiviso (`/run/buildkit`): nessun socket del runtime, nessun hostPath.
+  Solo il sidecar ha seccomp e AppArmor *Unconfined* e `allowPrivilegeEscalation`; runner e gate restano
+  `restricted`. Quota di un posto: runner 500m/512Mi/2Gi, BuildKit 1500m/3584Mi/18Gi (somma 2 CPU, 4 GiB,
+  20 GiB).
+- **Client e registry.** `buildctl` sta nell'immagine del runner (copiato dall'immagine rootless di BuildKit,
+  stesso digest di `ci.build.image`) con lo script `gitstack-build`, che scrive le credenziali del solo
+  registry del cluster dal token del job (`GITHUB_TOKEN`), aspetta buildkitd e pubblica
+  `<registry>/<owner>/<repo>[/<nome>]:<tag>`. Il registry è il gateway nel cluster
+  (`<release>-gateway.<ns>.svc:<porta>`, `GITSTACK_REGISTRY`), **mai l'ingresso**: i pod di build non hanno
+  nessuna rotta verso reti private, quindi un host in LAN come homehub.local non sarebbe raggiungibile. Il
+  token del job lo convalida il ci-gateway (GIT-286); pubblica solo con `packages: write` (tetto del repo,
+  CI4).
+- **Barriere di rete** (decisione del CEO del 26/10, CI2: la build nel runner integrato ha «le stesse barriere
+  di rete dei job»). `ci-build-egress` ammette DNS, il ci-gateway di core **solo sulla porta
+  `ci.gateway.port`**, il gateway **solo sulla porta del gateway** e Internet con le reti private escluse;
+  nessun ingresso. Le regole gemelle di ingresso stanno nella policy di core (porta del ci-gateway) e in
+  quella del gateway, solo dal namespace di build e solo per i pod con `gitstack.io/ci-job=true`. Postgres,
+  NATS, identity, git, l'API Kubernetes e le altre porte di core restano chiusi (le prove sono nel job
+  `chart`, `deploy/ci/runner-e2e.sh`, passo 4). Il registry convalida il token del job nel ci-gateway: con
+  `ci.enabled` il chart punta `GITSTACK_GIT_CI_GATEWAY_URL` al ci-gateway di core e apre git→core su quella
+  porta (prima restava vuoto, quindi il registry rifiutava i token dei job).
+- **Dispatcher.** Role e RoleBinding minimi in `ci.build.namespace` (stessi verbi di `ci-dispatcher`, nessun
+  ClusterRole); `Reconcile` cerca il pod nel namespace giusto.
+- **Limite noto.** `ci.runner.actionMirrorEgress` e `proxyEgress` non si applicano al namespace di build: un
+  mirror delle action su rete privata non è raggiungibile dai job `gitstack-build`.
 
 ## Quanto girano i workflow di GitStack (`.github/workflows`)
 
@@ -245,9 +280,8 @@ due non si possono togliere: `newuidmap` (file con setuid) per creare lo user na
 hostNetwork/PID/IPC, hostPath, token del ServiceAccount, hostPort, capability diverse da SETUID e SETGID, e
 richiede `runAsNonRoot`. Un pod `privileged` nello stesso namespace è rifiutato con
 «i pod di build non possono essere privileged». Stessa NetworkPolicy dei job (nessun ingresso, uscita solo
-verso Internet); **il cancello `gate` non c'è ancora sui pod di build**. Il dispatcher non crea ancora pod
-di build: il tipo di job `build` non esiste nel modello di `ci_jobs` (resta da fare, insieme al ruolo
-del dispatcher nel namespace di build).
+verso Internet). Con GIT-371 la NetworkPolicy aggiunge solo le due uscite verso il ci-gateway e il gateway
+(sezione 6), il `gate` c'è anche sui pod di build e il dispatcher crea i pod dei job `gitstack-build`.
 
 **Mirror delle action e `uses:`.** act 0.2.89 non accetta `uses: https://...` e `--github-instance` forza
 `https://`, e inoltre manda `GITHUB_TOKEN` (qui il token del job `gsj_`) come credenziale del clone verso

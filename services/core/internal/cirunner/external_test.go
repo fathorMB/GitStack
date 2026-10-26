@@ -127,7 +127,7 @@ func hasPlatform(args []string, p string) bool {
 
 // TestRun_PiattaformeDiActDelRunnerEsterno: act deve conoscere «self-hosted» e le etichette
 // normalizzate del runner, o salta il job ed esce 0 (job verde senza passi). Un pod interno
-// (nessuna etichetta) ha solo le ubuntu-*.
+// (nessuna etichetta) ha solo le ubuntu-* e gitstack-build (GIT-371).
 func TestRun_PiattaformeDiActDelRunnerEsterno(t *testing.T) {
 	for _, runsOn := range []string{"self-hosted", "[self-hosted, Linux]"} {
 		args := runArgs(t, runsOn, []string{"Linux:host"})
@@ -147,7 +147,7 @@ func TestRun_PiattaformeDiActDelRunnerEsterno(t *testing.T) {
 			n++
 		}
 	}
-	if n != 4 || hasPlatform(args, "self-hosted") {
+	if n != 5 || !hasPlatform(args, "gitstack-build") || hasPlatform(args, "self-hosted") {
 		t.Errorf("pod interno: %d piattaforme, self-hosted=%v: %v", n, hasPlatform(args, "self-hosted"), args)
 	}
 }

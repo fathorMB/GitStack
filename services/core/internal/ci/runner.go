@@ -56,6 +56,8 @@ type Pod struct {
 	Env                                   map[string]string
 	// CAConfigMap è il ConfigMap (chiave ca.crt) con la CA aziendale, nel namespace dei job (N9).
 	CAConfigMap string
+	// BuildKit non nil: pod di build (ADR 0001 §6), con il sidecar buildkitd rootless.
+	BuildKit *BuildKit
 }
 
 // RunnerConfig contiene solo i dati che l'amministratore può scegliere.
@@ -67,6 +69,10 @@ type RunnerConfig struct {
 	ProxyEnv map[string]string
 	// CAConfigMap: ConfigMap con la CA aziendale (chiave ca.crt) nel namespace dei job; vuoto = nessuna.
 	CAConfigMap string
+	// BuildNamespace, BuildImage e RegistryAddr servono ai job con la label gitstack-build:
+	// namespace di build, immagine rootless di BuildKit e host:porta del gateway nel cluster
+	// (il registry /v2/). Vuoti: quei job falliscono senza creare pod.
+	BuildNamespace, BuildImage, RegistryAddr string
 }
 
 func (c RunnerConfig) normal() RunnerConfig {
@@ -104,12 +110,16 @@ func PodForJob(c RunnerConfig, job JobRow, run RunRow) (Pod, error) {
 	env["GITSTACK_CI_GATE_INTERNAL_ADDR"] = c.GateInternalAddr
 	env["GITSTACK_CI_ACTION_MIRROR"] = c.ActionMirror
 	env["GITSTACK_CI_RUNNER"] = "act-host"
-	return Pod{Name: name, Namespace: c.Namespace, Image: c.Image, PriorityClass: "gitstack-ci-job",
+	p := Pod{Name: name, Namespace: c.Namespace, Image: c.Image, PriorityClass: "gitstack-ci-job",
 		ActiveDeadlineSeconds: int64(MaxRuntime / time.Second), AutomountServiceAccountToken: false,
 		RunAsUser: 10001, AllowPrivilegeEscalation: false, ReadOnlyRootFilesystem: true,
 		DropAllCapabilities: true, CPU: MaxCPU, Memory: MaxMemory, EphemeralStorage: MaxEphemeral,
 		InitGate: true,
-		Command:  []string{"/usr/local/bin/ci-runner"}, Env: env, CAConfigMap: c.CAConfigMap}, nil
+		Command:  []string{"/usr/local/bin/ci-runner"}, Env: env, CAConfigMap: c.CAConfigMap}
+	if IsBuildJob(job.RunsOn) {
+		return podForBuild(c, p)
+	}
+	return p, nil
 }
 
 // CAMountDir è dove il pod del job monta la CA aziendale (N9).
@@ -199,6 +209,11 @@ func observePod(ctx context.Context, pool *pgxpool.Pool, api PodWatcher, pod Pod
 // dopo un riavvio o una cancellazione). Il gancio ticketExpired verra' usato
 // dalla presa monouso: per ora e' nil e non cambia lo stato dei job validi.
 func Reconcile(ctx context.Context, pool *pgxpool.Pool, pods PodInspector, namespace string, ticketExpired func(JobRow) bool, now time.Time, rep Reporter) error {
+	return ReconcileNS(ctx, pool, pods, namespace, "", ticketExpired, now, rep)
+}
+
+// ReconcileNS è Reconcile con il namespace di build: i pod dei job gitstack-build stanno lì.
+func ReconcileNS(ctx context.Context, pool *pgxpool.Pool, pods PodInspector, namespace, buildNamespace string, ticketExpired func(JobRow) bool, now time.Time, rep Reporter) error {
 	rows, err := pool.Query(ctx, `SELECT `+jobColumns+` FROM core.ci_jobs WHERE status = 'in_progress' AND runner_type = 'internal_pod'`)
 	if err != nil {
 		return err
@@ -209,9 +224,13 @@ func Reconcile(ctx context.Context, pool *pgxpool.Pool, pods PodInspector, names
 		if err != nil {
 			return err
 		}
+		ns := namespace
+		if buildNamespace != "" && IsBuildJob(job.RunsOn) {
+			ns = buildNamespace
+		}
 		missing := ticketExpired != nil && ticketExpired(job)
 		if !missing {
-			exists, err := pods.Exists(ctx, namespace, "ci-"+strings.ReplaceAll(job.ID.String(), "-", ""))
+			exists, err := pods.Exists(ctx, ns, "ci-"+strings.ReplaceAll(job.ID.String(), "-", ""))
 			if err != nil {
 				return err
 			}
@@ -226,7 +245,7 @@ func Reconcile(ctx context.Context, pool *pgxpool.Pool, pods PodInspector, names
 		// Dopo il riavvio nessuna goroutine sta piu' osservando un pod vivo:
 		// riprendiamo l'attesa prima di prendere altri job dalla coda.
 		if watcher, ok := pods.(PodWatcher); ok {
-			pod := Pod{Name: "ci-" + strings.ReplaceAll(job.ID.String(), "-", ""), Namespace: namespace}
+			pod := Pod{Name: "ci-" + strings.ReplaceAll(job.ID.String(), "-", ""), Namespace: ns}
 			go observePod(ctx, pool, watcher, pod, job.ID, rep)
 		}
 	}
