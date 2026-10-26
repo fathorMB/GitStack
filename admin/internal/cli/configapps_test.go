@@ -39,7 +39,7 @@ func TestConfigSetAppsOnSenzaDominio(t *testing.T) {
 	withAppsChart(t, cfg)
 	r := &recRunner{getentOut: "192.168.1.20 x\n"}
 	a, out, errb := hostApp(r, tlsDir)
-	if code := a.Run(context.Background(), []string{"config", "set", "apps", "on", "--auth-middleware", "default/login", "--config", cfg}); code != ExitOK {
+	if code := a.Run(context.Background(), []string{"config", "set", "apps", "on", "--config", cfg}); code != ExitOK {
 		t.Fatalf("exit %d: %s", code, errb)
 	}
 	if !strings.Contains(errb.String(), "--apps-domain non indicato") || !strings.Contains(errb.String(), "apps.gitstack.internal") {
@@ -54,7 +54,7 @@ func TestConfigSetAppsOnSenzaDominio(t *testing.T) {
 		t.Fatal("helm upgrade non lanciato")
 	}
 	got := strings.Join(h.args, " ")
-	for _, want := range []string{"upgrade gitstack", "--reuse-values", "--set apps.enabled=true", "--set apps.domain=apps.gitstack.internal", "--set apps.authMiddleware=default/login"} {
+	for _, want := range []string{"upgrade gitstack", "--reuse-values", "--set apps.enabled=true", "--set apps.domain=apps.gitstack.internal"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("helm senza %q: %s", want, got)
 		}
@@ -144,7 +144,7 @@ func TestConfigSetAppsRejects(t *testing.T) {
 		{},
 		{"forse"},
 		{"on", "off"},
-		{"on", "--auth-middleware", "ns/Nome Con Spazi"},
+		{"on", "--auth-middleware", "default/login"}, // tolto: il forward-auth lo porta il chart
 	} {
 		r := &recRunner{}
 		a, _, _ := hostApp(r, tlsDir)
@@ -205,12 +205,12 @@ func TestUpgradeEnableAppsPassaValoriEConfig(t *testing.T) {
 	}
 	var out, errb strings.Builder
 	a.Stdout, a.Stderr = &out, &errb
-	_ = a.Run(context.Background(), []string{"upgrade", "--config", cfg, "--dry-run", "--enable-apps", "--auth-middleware", "default/login"})
+	_ = a.Run(context.Background(), []string{"upgrade", "--config", cfg, "--dry-run", "--enable-apps"})
 	if got == nil {
 		t.Fatal("TuneUpgrade non chiamato")
 	}
 	have := strings.Join(got.Sets, " ")
-	for _, want := range []string{"apps.enabled=true", "apps.domain=apps.h", "apps.authMiddleware=default/login"} {
+	for _, want := range []string{"apps.enabled=true", "apps.domain=apps.h"} {
 		if !strings.Contains(have, want) {
 			t.Errorf("Sets senza %q: %s", want, have)
 		}
@@ -239,7 +239,7 @@ func TestUpgradeSenzaEnableAppsNonTocca(t *testing.T) {
 	if got == nil || strings.Contains(strings.Join(got.Sets, " "), "apps.") || len(got.ExtraConfig) != 0 {
 		t.Errorf("Options: %+v", got)
 	}
-	// --apps-domain e --auth-middleware valgono solo con --enable-apps.
+	// --apps-domain vale solo con --enable-apps.
 	if code := a.Run(context.Background(), []string{"upgrade", "--config", cfg, "--apps-domain", "apps.x.it"}); code != ExitUsage {
 		t.Errorf("--apps-domain senza --enable-apps: exit %d", code)
 	}

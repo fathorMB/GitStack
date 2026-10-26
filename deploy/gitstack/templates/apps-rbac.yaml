@@ -84,8 +84,9 @@ rules:
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["list"]
+  # Rotta e Middleware del login (strip e forward-auth, GIT-347) che il controller crea per app.
   - apiGroups: ["traefik.io"]
-    resources: ["ingressroutes"]
+    resources: ["ingressroutes", "middlewares"]
     verbs: ["create", "get", "update", "delete"]
 ---
 # Perimetro del controller (ADR 0002): i verbi del ClusterRole del controller valgono su TUTTO il

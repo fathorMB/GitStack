@@ -353,11 +353,21 @@ expect_lacks "hosting spento: core senza ServiceAccount dedicato" "$(doc Deploym
 expect_eq "hosting spento: nessun ClusterRoleBinding" "$(docs ClusterRoleBinding | grep -c '^kind: ClusterRoleBinding$')" "0"
 if helm_rc --set apps.enabled=true; then bad "apps.enabled senza apps.domain: helm template doveva fermarsi"; else ok; fi
 
-OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test --set apps.authMiddleware=gitstack/app-login)" || { bad "helm template con apps.enabled fallito"; exit 1; }
+OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test --set core.env.publicUrl=https://git.acme.test)" || { bad "helm template con apps.enabled fallito"; exit 1; }
 d="$(doc Deployment gitstack-core)"
 expect_has "hosting acceso: core riceve ENABLED" "${d}" "GITSTACK_CORE_APPS_ENABLED"
 expect_has "hosting acceso: core riceve il dominio" "${d}" 'value: "apps.acme.test"'
-expect_has "hosting acceso: core riceve il middleware" "${d}" 'value: "gitstack/app-login"'
+expect_lacks "hosting acceso: niente più AUTH_MIDDLEWARE (GIT-347)" "${d}" "GITSTACK_CORE_APPS_AUTH_MIDDLEWARE"
+expect_has "hosting acceso: core riceve l'indirizzo del forward-auth del gateway" "${d}" 'value: "http://gitstack-gateway.prova-ns.svc.cluster.local:8080/_appauth/verify"'
+g="$(doc Deployment gitstack-gateway)"
+expect_has "hosting acceso: il gateway ha le chiavi di firma da Secret" "${g}" "GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS"
+expect_has "hosting acceso: le chiavi vengono dal Secret del chart" "${g}" "name: gitstack-gateway-appauth-keys"
+expect_has "hosting acceso: il gateway conosce il dominio delle app" "${g}" 'value: "apps.acme.test"'
+expect_has "hosting acceso: il gateway conosce l'indirizzo pubblico" "${g}" 'value: "https://git.acme.test"'
+sk="$(doc Secret gitstack-gateway-appauth-keys)"
+expect_has "hosting acceso: Secret delle chiavi di firma" "${sk}" "signing-keys:"
+expect_has "hosting acceso: il Secret sopravvive a helm uninstall" "${sk}" "helm.sh/resource-policy: keep"
+if printf '%s\n' "${sk}" | grep -Eq 'signing-keys: "[A-Za-z0-9+/]{43}="'; then ok; else bad "hosting acceso: le chiavi sono un seme di 32 byte in base64"; fi
 expect_has "hosting acceso: ServiceAccount di core" "${d}" "serviceAccountName: gitstack-core"
 expect_has "hosting acceso: core sa chi è (ServiceAccount del RoleBinding)" "${d}" 'value: "prova-ns/gitstack-core"'
 expect_has "hosting acceso: core sa quale ClusterRole modello usare" "${d}" 'value: "gitstack-app-workload"'
@@ -381,7 +391,8 @@ expect_eq "controller: rolebindings" "$(rules_of "${ctl}" | grep '"rolebindings"
 expect_eq "controller: bind solo sul ruolo modello" "$(rules_of "${ctl}" | grep '"clusterroles"')" '"rbac.authorization.k8s.io"|"clusterroles"|"bind"|"gitstack-app-workload"'
 expect_eq "controller: tre regole in tutto" "$(rules_of "${ctl}" | grep -c .)" "3"
 wl="$(doc ClusterRole gitstack-app-workload)"
-expect_eq "modello: risorse ammesse dall'ADR" "$(rules_of "${wl}" | cut -d'|' -f2 | sort | tr '\n' ' ')" '"deployments" "events" "ingressroutes" "pods" "pods/log" "secrets" "services" '
+expect_eq "modello: risorse ammesse (ADR 0002 + Middleware del login GIT-347)" "$(rules_of "${wl}" | cut -d'|' -f2 | sort | tr '\n' ' ')" '"deployments" "events" "ingressroutes", "middlewares" "pods" "pods/log" "secrets" "services" '
+expect_eq "modello: middlewares e ingressroutes con i soli verbi del controller" "$(rules_of "${wl}" | grep '"middlewares"')" '"traefik.io"|"ingressroutes", "middlewares"|"create", "get", "update", "delete"|'
 expect_lacks "modello: mai delete su deployments, pods, secrets" "$(rules_of "${wl}" | grep -E '"(deployments|pods|secrets)"')" "delete"
 expect_lacks "modello: nessun permesso su namespaces" "${wl}" "namespaces"
 expect_lacks "modello: nessun permesso su rolebindings" "${wl}" "rolebindings"
@@ -410,6 +421,12 @@ expect_has "policy (CI spenta): soggetto ammesso" "${pol}" 's.name == "gitstack-
 OUT="$(render --namespace prova-ns --set ci.enabled=true --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template con CI e apps fallito"; exit 1; }
 OUT="$(render --namespace prova-ns)" || { bad "helm template di default fallito"; exit 1; }
 expect_eq "apps spento: nessuna policy del controller" "$(count 'gitstack-apps-controller-scope')" "0"
+expect_lacks "apps spento: il gateway senza chiavi di firma" "$(doc Deployment gitstack-gateway)" "GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS"
+expect_eq "apps spento: nessun Secret delle chiavi di firma" "$(count 'gitstack-gateway-appauth-keys')" "0"
+OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test --set apps.signingKeys.existingSecret=mio --set apps.authUrl=http://x:1/_appauth/verify)" || { bad "helm template con signingKeys.existingSecret fallito"; exit 1; }
+expect_has "apps: Secret delle chiavi indicato dall'utente" "$(doc Deployment gitstack-gateway)" "name: mio"
+expect_eq "apps: con un Secret dell'utente il chart non ne crea uno" "$(count 'gitstack-gateway-appauth-keys')" "0"
+expect_has "apps: authUrl sovrascrivibile" "$(doc Deployment gitstack-core)" 'value: "http://x:1/_appauth/verify"'
 OUT="$(render --namespace prova-ns --set ci.enabled=true --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template con CI e apps fallito"; exit 1; }
 expect_eq "CI e apps: nessun ServiceAccount gitstack-core" "$(docs ServiceAccount | grep -c '^  name: gitstack-core$')" "0"
 echo "== GIT-383: core legge la CA interna (impronta per la guida dei tester)"

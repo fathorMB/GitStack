@@ -261,16 +261,20 @@ Kubernetes permission on apps, the apps API answers `503 apps_unavailable` and
 nothing is created in the cluster. Turn it on at install time with
 `install.sh --enable-apps [--apps-domain D]`, or on an existing installation
 (also one upgraded from v2, which has no apps domain) with `sudo gitstack
-upgrade --enable-apps [--apps-domain D] [--auth-middleware NS/NAME]` or `sudo
-gitstack config set apps on [--apps-domain D] [--auth-middleware NS/NAME]`.
+upgrade --enable-apps [--apps-domain D]` or `sudo
+gitstack config set apps on [--apps-domain D]`.
 Without `--apps-domain` the existing domain is used, else the default
 `apps.<host>` with a warning. `gitstack config set apps off` turns the
 controller off: existing apps stay in the cluster and database but `core` no
 longer manages them. `gitstack status` prints "Hosting delle app: acceso" or
 "spento" (read from the `core` Deployment, not only from `config.yaml`; it
-flags a mismatch). `--auth-middleware` is the Traefik forward-auth Middleware
-of the login: without it, apps whose access is `login` (the default) get no
-route.
+flags a mismatch). The login in front of apps (GIT-347,
+`docs/apps-login.md`) needs no extra option: with `apps.enabled` the chart sets
+`GITSTACK_CORE_APPS_AUTH_URL` on `core` (the gateway Service,
+`/_appauth/verify`), and gives the gateway its signing keys (a Secret
+`<release>-gateway-appauth-keys`, generated once and kept across upgrades),
+the apps domain and the public URL. Without the keys `/_appauth/verify` answers
+503 and no `login` app would pass.
 
 RBAC of `core` (chart `templates/apps-rbac.yaml`): a controller ClusterRole
 with `create/get/list/watch/update/delete` on `namespaces`, `create/get` on
@@ -1745,7 +1749,7 @@ Without `GITSTACK_SMOKE_DURATION` the test is skipped, so the `go` job of
 | `gitstack upgrade --dry-run` | yes | Check readiness without making changes |
 | `gitstack config set host NEWNAME` | yes | Change the host name (certificates, services, config) |
 | `gitstack config set apps-domain DOMAIN` | yes | Set or change the apps domain and reissue the wildcard certificate (see [Apps domain](#apps-domain-and-wildcard-dns-v3-h2)) |
-| `gitstack config set apps on\|off [--apps-domain D] [--auth-middleware NS/NAME]` | yes | Turn app hosting on or off (see [Apps domain](#apps-domain-and-wildcard-dns-v3-h2)); `gitstack upgrade --enable-apps` does the same during an upgrade |
+| `gitstack config set apps on\|off [--apps-domain D] ` | yes | Turn app hosting on or off (see [Apps domain](#apps-domain-and-wildcard-dns-v3-h2)); `gitstack upgrade --enable-apps` does the same during an upgrade |
 | `gitstack config set network [options]` | yes | Change proxy, registry mirror, download mirror and corporate CA (see [Corporate network](#corporate-network-proxy-mirrors-and-ca)) |
 
 \* `gitstack status` reads `/etc/gitstack/config.yaml` (mode `0600`),

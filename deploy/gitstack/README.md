@@ -291,14 +291,17 @@ Per uno sviluppo locale — cluster persistente, `web` incluso, ciclo modifica �
 ## Hosting delle app: `apps.enabled` (GIT-375, ADR 0002)
 
 Spento di default. `apps.enabled=true` richiede `apps.domain` (il dominio delle app) e imposta su core
-`GITSTACK_CORE_APPS_ENABLED`, `GITSTACK_CORE_APPS_DOMAIN`, `GITSTACK_CORE_APPS_AUTH_MIDDLEWARE`
-(da `apps.authMiddleware`, facoltativo) e, per il RoleBinding dei namespace, `GITSTACK_CORE_APPS_CONTROLLER_SA`
+`GITSTACK_CORE_APPS_ENABLED`, `GITSTACK_CORE_APPS_DOMAIN`, `GITSTACK_CORE_APPS_AUTH_URL`
+(`apps.authUrl`, default: il Service del gateway + `/_appauth/verify`) e, per il RoleBinding dei namespace, `GITSTACK_CORE_APPS_CONTROLLER_SA`
 e `GITSTACK_CORE_APPS_WORKLOAD_ROLE`. `templates/apps-rbac.yaml` crea il ClusterRole del controller
 (`namespaces`, `rolebindings` create/get, `bind` sul solo ruolo modello) e il ClusterRole modello
-`<release>-app-workload`, che **non ha ClusterRoleBinding**: lo lega solo il RoleBinding che core crea in
+`<release>-app-workload` (anche IngressRoute e Middleware Traefik del login), che **non ha ClusterRoleBinding**: lo lega solo il RoleBinding che core crea in
 ogni namespace `gitstack-app-<id>`. Con `ci.enabled` core usa `ci-dispatcher`, altrimenti `<release>-core`.
 Una `ValidatingAdmissionPolicy` + Binding (`<release>-apps-controller-scope`) restringe il solo ServiceAccount
 di core ai namespace `gitstack-app-*` con label `gitstack.io/managed-app=true` e ai RoleBinding verso il ruolo
 modello per core stesso (`update` su namespaces è una deviazione dall'ADR, ammessa solo dietro la policy).
+Sul gateway, con `apps.enabled`, `GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS` (Secret `<release>-gateway-appauth-keys`,
+generato una volta e riletto con `lookup`, oppure `apps.signingKeys.existingSecret`), `GITSTACK_GATEWAY_APPS_DOMAIN` e
+`GITSTACK_GATEWAY_PUBLIC_URL` (= `core.env.publicUrl`): senza chiavi `/_appauth/verify` risponde 503 (docs/apps-login.md).
 Con `apps.enabled=false` (e `apps.domain` vuoto) non si rende nessuna risorsa delle app. Il test è in
 `deploy/tests/chart_hardening_test.sh`. Come accenderlo: [deploy/README.md](../README.md#hosting-delle-app-accenderlo-git-375-adr-0002).

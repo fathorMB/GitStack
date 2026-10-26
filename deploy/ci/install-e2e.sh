@@ -41,12 +41,12 @@
 #                              (SNI <app>-<repo>-<owner>.<dominio>). Con install.log e warn|nowarn controlla
 #                              che l'avviso del dominio predefinito ci sia (warn) o manchi (nowarn). Con `unset` (v2 aggiornata): nessun apps_domain
 #                              in config.yaml e status lo dice. Una riga ok/ko per controllo.
-#   apps-prepare               Hosting delle app (GIT-375): crea il Middleware di prova default/e2e-app-login,
-#                              da passare all'installazione con --set apps.authMiddleware=default/e2e-app-login.
 #   verify-apps-hosting on|off Core con/senza GITSTACK_CORE_APPS_ENABLED, `gitstack status`, config.yaml e RBAC
 #                              (auth can-i del ServiceAccount di core). Una riga ok/ko per controllo.
 #   apps-off-api               Hosting spento: POST app = 503 apps_unavailable, nessun namespace, nessuna app.
-#   apps-run <dominio>         Hosting acceso: un'app creata da API risponde 200 al suo indirizzo automatico.
+#   apps-run <dominio>         Hosting acceso: un'app `login` creata da API passa dal forward-auth VERO del gateway:
+#                              senza credenziali redirect/401, con un token API valido (read:resource e read sul repo)
+#                              200 dall'app, con un token falso mai 200.
 #   latest-backup              Stampa il percorso dell'archivio più recente.
 #   diagnostics <cartella>     Log del cluster e dei servizi (non fallisce mai).
 #
@@ -534,35 +534,11 @@ verify_apps_domain() {
 
 # --- Hosting delle app (GIT-375, ADR 0002) -------------------------------------
 
-# Middleware Traefik «che lascia passare» usato come forward-auth di prova: il forward-auth vero del
-# gateway è di un altro item. Senza un middleware le app con accesso `login` (il default) non
-# ricevono una rotta (core, routeHost), quindi la prova ne passa uno al chart con
-# --set apps.authMiddleware=default/e2e-app-login.
-APPS_E2E_MIDDLEWARE="e2e-app-login"
-
-# apps-prepare: crea il Middleware di prova (le CRD di Traefik arrivano dopo il nodo Ready).
-apps_prepare() {
-  local deadline=$((SECONDS + 300))
-  until "${KUBECTL[@]}" get crd middlewares.traefik.io >/dev/null 2>&1; do
-    [ "${SECONDS}" -lt "${deadline}" ] || fail "le CRD di Traefik non ci sono dopo 300s"
-    sleep 5
-  done
-  "${KUBECTL[@]}" apply -f - <<EOF >/dev/null
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: ${APPS_E2E_MIDDLEWARE}
-  namespace: default
-spec:
-  headers:
-    customResponseHeaders:
-      X-Gitstack-E2e: "ok"
-EOF
-  log "Middleware di prova default/${APPS_E2E_MIDDLEWARE} creato"
-}
-
 core_env() { # <NOME> -> valore dell'env di core (vuoto se manca)
   "${KUBECTL[@]}" -n default get deployment gitstack-core -o jsonpath="{.spec.template.spec.containers[0].env[?(@.name==\"$1\")].value}"
+}
+gateway_env_name() { # <NOME> -> NOME se il gateway ha quella variabile (anche da Secret), vuoto se manca
+  "${KUBECTL[@]}" -n default get deployment gitstack-gateway -o jsonpath="{.spec.template.spec.containers[0].env[?(@.name==\"$1\")].name}"
 }
 
 can_i() { # <serviceaccount> <verbo> <risorsa> [opzioni...]: yes|no
@@ -639,6 +615,10 @@ verify_apps_hosting() {
   if [ "${want}" = on ]; then
     apps_check "core: GITSTACK_CORE_APPS_ENABLED=true" test "$(core_env GITSTACK_CORE_APPS_ENABLED)" = true
     apps_check "core: GITSTACK_CORE_APPS_DOMAIN impostato" test -n "$(core_env GITSTACK_CORE_APPS_DOMAIN)"
+    apps_check "core: GITSTACK_CORE_APPS_AUTH_URL verso il gateway" test "$(core_env GITSTACK_CORE_APPS_AUTH_URL | grep -c '/_appauth/verify$')" = 1
+    apps_check "gateway: chiavi di firma del login (GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS)" test -n "$(gateway_env_name GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS)"
+    apps_check "gateway: dominio delle app (GITSTACK_GATEWAY_APPS_DOMAIN)" test -n "$(gateway_env_name GITSTACK_GATEWAY_APPS_DOMAIN)"
+    apps_check "gateway: indirizzo pubblico (GITSTACK_GATEWAY_PUBLIC_URL)" test -n "$(gateway_env_name GITSTACK_GATEWAY_PUBLIC_URL)"
     apps_check "gitstack status: Hosting delle app: acceso" bash -c "sudo gitstack status | grep -q 'Hosting delle app: acceso'"
     apps_check "config.yaml: apps_enabled: true" bash -c "sudo grep -qx 'apps_enabled: true' /etc/gitstack/config.yaml"
     apps_check "RBAC: il ServiceAccount di core crea namespace" test "$(can_i "${sa}" create namespaces)" = yes
@@ -683,27 +663,41 @@ apps_off_api() {
 apps_run() {
   need E2E_HOST
   load_seed
-  local domain="${1:?dominio delle app}" label host deadline code="" ns
+  local domain="${1:?dominio delle app}" host deadline code="" ns loc
+  local resolve="${HOST}"
   api POST "/api/v1/repos/${CI_USER}/${CI_REPO}/apps" '{"name":"web","image":"docker.io/library/nginx:1.27-alpine","port":80,"healthCheck":{"path":"/","intervalSeconds":5}}' -H "Authorization: Bearer ${CI_TOKEN}"
   expect 202 "${CODE}" "creazione app"
-  label="$(printf '%s' "${BODY}" | jq -r '.app.address // empty' | sed -E 's#^https://##')"
-  host="${label}"
+  host="$(printf '%s' "${BODY}" | jq -r '.app.address // empty' | sed -E 's#^https://##')"
   [ -n "${host}" ] || fail "l'app creata non ha un indirizzo automatico: $(printf '%s' "${BODY}" | head -c 300)"
   case "${host}" in *".${domain}") ;; *) fail "indirizzo ${host} fuori dal dominio ${domain}" ;; esac
   ns="$("${KUBECTL[@]}" get namespaces -l gitstack.io/managed-app=true -o jsonpath='{.items[0].metadata.name}')"
+  # Con un token API valido (accesso `login`: read sul repo) il forward-auth del gateway ammette e
+  # l'app risponde. Il DNS wildcard non c'è sul runner: la risoluzione è forzata verso l'host.
   deadline=$((SECONDS + 420))
   while [ "${SECONDS}" -lt "${deadline}" ]; do
-    code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${HOST}" -o /dev/null -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
+    code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -H "Authorization: Bearer ${CI_TOKEN}" -o /dev/null -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
     [ "${code}" = 200 ] && break
     sleep 5
   done
   [ "${code}" = 200 ] || {
-    "${KUBECTL[@]}" -n "${ns:-default}" get all,ingressroute -o wide || true
+    "${KUBECTL[@]}" -n "${ns:-default}" get all,ingressroute,middleware -o wide || true
     "${KUBECTL[@]}" -n "${ns:-default}" describe pods | tail -40 || true
-    fail "l'app non risponde su https://${host}/ (ultimo codice '${code}')"
+    "${KUBECTL[@]}" -n default logs deployment/gitstack-gateway --tail=40 || true
+    fail "l'app non risponde con un token valido su https://${host}/ (ultimo codice '${code}')"
   }
-  curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${HOST}" "https://${host}/" | grep -qi 'nginx' || fail "la risposta di ${host} non è quella dell'app di prova"
-  printf 'ok  apps-run: https://%s/ risponde 200 (namespace %s)\n' "${host}" "${ns}"
+  curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -H "Authorization: Bearer ${CI_TOKEN}" "https://${host}/" | grep -qi 'nginx' || fail "la risposta di ${host} non è quella dell'app di prova"
+  printf 'ok  apps-run: con un token valido https://%s/ risponde 200 (namespace %s)\n' "${host}" "${ns}"
+  # Senza credenziali: redirect al login (browser) o 401 (client API), mai 200.
+  code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -o /dev/null -D "${STATE_DIR}/apps-noauth.hdr" -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
+  loc="$(grep -i '^location:' "${STATE_DIR}/apps-noauth.hdr" | head -n1 | tr -d '\r' || true)"
+  case "${code}" in
+    301 | 302 | 303 | 307 | 308 | 401) printf 'ok  apps-run: senza credenziali %s %s\n' "${code}" "${loc}" ;;
+    *) fail "senza credenziali l'app doveva dare un redirect al login o 401, trovato '${code}'" ;;
+  esac
+  # Un token falso non passa.
+  code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -H "Authorization: Bearer gst_falso" -o /dev/null -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
+  if [ "${code}" = 200 ]; then fail "un token falso ha passato il forward-auth (200)"; fi
+  printf 'ok  apps-run: con un token falso %s (non 200)\n' "${code}"
 }
 
 latest_backup() {
@@ -752,7 +746,6 @@ main() {
     ci-run) ci_run ;;
     verify-ci) verify_ci ;;
     verify-apps-domain) verify_apps_domain "$@" ;;
-    apps-prepare) apps_prepare ;;
     verify-apps-hosting) verify_apps_hosting "$@" ;;
     apps-off-api) apps_off_api ;;
     apps-run) apps_run "$@" ;;

@@ -41,7 +41,6 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 	k3sMinor := fs.Bool("k3s", false, "consente l'aggiornamento di k3s a una nuova minore (una alla volta); le patch si applicano da sole")
 	enableApps := fs.Bool("enable-apps", false, "accende l'hosting delle app (chart apps.enabled): core riceve il controller delle app e i permessi Kubernetes minimi dell'ADR 0002")
 	appsDomain := fs.String("apps-domain", "", "con --enable-apps: dominio delle app (default: quello già impostato, altrimenti apps.<host> con avviso)")
-	authMW := fs.String("auth-middleware", "", "con --enable-apps: Middleware Traefik forward-auth del login (nome o namespace/nome)")
 	var sets, values multiFlag
 	fs.Var(&sets, "set", "valore del chart (chiave=valore), ripetibile")
 	fs.Var(&values, "values", "file di valori del chart, ripetibile")
@@ -74,12 +73,8 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 	if cfg == nil {
 		return code
 	}
-	if (*appsDomain != "" || *authMW != "") && !*enableApps {
-		a.errorf("upgrade: --apps-domain e --auth-middleware valgono solo con --enable-apps")
-		return ExitUsage
-	}
-	if *authMW != "" && !appsMiddlewareRe.MatchString(*authMW) {
-		a.errorf("upgrade: --auth-middleware %q non valido (nome o namespace/nome)", *authMW)
+	if *appsDomain != "" && !*enableApps {
+		a.errorf("upgrade: --apps-domain vale solo con --enable-apps")
 		return ExitUsage
 	}
 	// Hosting delle app (GIT-375): dominio (anche per una v2 che non ne ha uno) e valori del chart.
@@ -93,9 +88,6 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		}
 		appsConfig = map[string]string{"apps_enabled": "true"}
 		appsSets = []string{"apps.enabled=true", "apps.domain=" + d}
-		if *authMW != "" {
-			appsSets = append(appsSets, "apps.authMiddleware="+*authMW)
-		}
 		if d != cfg.AppsDomain {
 			appsDomainNew = d
 		}

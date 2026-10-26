@@ -369,6 +369,16 @@ ServiceAccount di core: ci-dispatcher se la CI è accesa (stesso account, un sol
 {{- end -}}
 {{- end -}}
 
+{{/* Indirizzo interno del forward-auth del gateway (GITSTACK_CORE_APPS_AUTH_URL). */}}
+{{- define "gitstack.apps.authUrl" -}}
+{{- default (printf "%s/_appauth/verify" (include "gitstack.gateway.url" .)) .Values.apps.authUrl -}}
+{{- end -}}
+
+{{/* Secret con le chiavi di firma del login delle app (del chart, o apps.signingKeys.existingSecret). */}}
+{{- define "gitstack.apps.signingKeysSecret" -}}
+{{- default (printf "%s-gateway-appauth-keys" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-") .Values.apps.signingKeys.existingSecret -}}
+{{- end -}}
+
 {{/* ClusterRole «modello» con i permessi sull'app: lo usano solo i RoleBinding dei namespace delle app. */}}
 {{- define "gitstack.apps.workloadRoleName" -}}
 {{- printf "%s-app-workload" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-" -}}

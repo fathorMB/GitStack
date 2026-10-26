@@ -53,6 +53,21 @@ spec:
             # Segreto di servizio del gateway (F9): Bearer verso /internal/verify
             # di identity e firma dell'identità inoltrata a core. Solo da Secret.
             {{- include "gitstack.serviceSecret.env" (dict "root" . "caller" "gateway") | nindent 12 }}
+            {{- if .Values.apps.enabled }}
+            # Login davanti alle app (GIT-347): chiavi di firma delle intestazioni, indirizzo pubblico
+            # e dominio delle app. Senza le chiavi /_appauth/verify risponde 503.
+            - name: GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gitstack.apps.signingKeysSecret" . }}
+                  key: signing-keys
+            - name: GITSTACK_GATEWAY_APPS_DOMAIN
+              value: {{ .Values.apps.domain | quote }}
+            {{- with .Values.core.env.publicUrl }}
+            - name: GITSTACK_GATEWAY_PUBLIC_URL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- end }}
             - name: GITSTACK_GATEWAY_AUTH_CACHE_TTL
               value: {{ .Values.gateway.env.authCacheTTL | quote }}
             - name: GITSTACK_GATEWAY_AUTH_CACHE_NEGATIVE_TTL

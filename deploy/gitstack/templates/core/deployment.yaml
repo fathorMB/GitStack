@@ -110,10 +110,8 @@ spec:
               value: {{ printf "%s/%s" .Release.Namespace (include "gitstack.core.serviceAccountName" .) | quote }}
             - name: GITSTACK_CORE_APPS_WORKLOAD_ROLE
               value: {{ include "gitstack.apps.workloadRoleName" . | quote }}
-            {{- if .Values.apps.authMiddleware }}
-            - name: GITSTACK_CORE_APPS_AUTH_MIDDLEWARE
-              value: {{ .Values.apps.authMiddleware | quote }}
-            {{- end }}
+            - name: GITSTACK_CORE_APPS_AUTH_URL
+              value: {{ include "gitstack.apps.authUrl" . | quote }}
             {{- end }}
             {{- if .Values.ci.enabled }}
             - name: GITSTACK_CORE_CI_ENABLED

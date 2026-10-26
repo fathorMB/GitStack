@@ -7,16 +7,15 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/fathorMB/GitStack/admin/internal/config"
 )
 
 // Hosting delle app (GIT-375, ADR 0002): `gitstack config set apps on|off` e le opzioni
-// --enable-apps / --apps-domain / --auth-middleware di `gitstack upgrade` accendono il controller
-// delle app in core e i suoi permessi Kubernetes minimi (chart: apps.enabled, apps.domain,
-// apps.authMiddleware).
+// --enable-apps / --apps-domain di `gitstack upgrade` accendono il controller delle app in core, i
+// suoi permessi Kubernetes minimi e il forward-auth del gateway (chart: apps.enabled, apps.domain;
+// l'indirizzo del forward-auth e le chiavi di firma li porta il chart da solo, GIT-347).
 
 // defaultAppsDomain è il dominio che install.sh sceglie quando non ne viene indicato uno.
 func defaultAppsDomain(host string) string {
@@ -25,8 +24,6 @@ func defaultAppsDomain(host string) string {
 	}
 	return "apps." + host
 }
-
-var appsMiddlewareRe = regexp.MustCompile(`^([a-z0-9]([a-z0-9.-]*[a-z0-9])?/)?[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
 
 // chartHasApps dice se il chart sul disco conosce l'hosting delle app (values.yaml con `apps:`):
 // una v2 non aggiornata no, e `helm upgrade --reuse-values` con le sue chiavi non avrebbe effetto.
@@ -100,7 +97,6 @@ func runConfigSetApps(ctx context.Context, a *App, args []string) int {
 	fs.SetOutput(io.Discard)
 	cfgPath := fs.String("config", "", configFlagUsage)
 	domainFlag := fs.String("apps-domain", "", "dominio delle app (default: quello già impostato, altrimenti apps.<host> con avviso)")
-	authMW := fs.String("auth-middleware", "", "Middleware Traefik forward-auth del login (nome o namespace/nome); vuoto = non cambiare")
 	var pos []string
 	rest := args
 	for {
@@ -115,14 +111,10 @@ func runConfigSetApps(ctx context.Context, a *App, args []string) int {
 		rest = fs.Args()[1:]
 	}
 	if len(pos) != 1 || (pos[0] != "on" && pos[0] != "off") {
-		a.errorf("%s: serve on oppure off: gitstack config set apps on [--apps-domain apps.azienda.it] [--auth-middleware ns/nome]", cmd)
+		a.errorf("%s: serve on oppure off: gitstack config set apps on [--apps-domain apps.azienda.it]", cmd)
 		return ExitUsage
 	}
 	on := pos[0] == "on"
-	if *authMW != "" && !appsMiddlewareRe.MatchString(*authMW) {
-		a.errorf("%s: --auth-middleware %q non valido (nome o namespace/nome)", cmd, *authMW)
-		return ExitUsage
-	}
 	path := a.configPath(*cfgPath)
 	cfg, code := a.loadConfig(path)
 	if cfg == nil {
@@ -158,9 +150,6 @@ func runConfigSetApps(ctx context.Context, a *App, args []string) int {
 		}
 	}
 	sets := []string{"apps.enabled=true", "apps.domain=" + domain}
-	if *authMW != "" {
-		sets = append(sets, "apps.authMiddleware="+*authMW)
-	}
 	if c := a.helmApps(ctx, cfg, cmd, sets...); c != ExitOK {
 		_, _ = fmt.Fprintln(a.Stderr, "Il dominio è già stato impostato: dopo aver sistemato la causa rilancia lo stesso comando.")
 		return c
@@ -171,8 +160,5 @@ func runConfigSetApps(ctx context.Context, a *App, args []string) int {
 	}
 	updateInstallConfKey(tlsDir, "APPS_ENABLED", "true")
 	_, _ = fmt.Fprintf(a.Stdout, "Hosting delle app acceso (dominio %s).\n", domain)
-	if *authMW == "" {
-		_, _ = fmt.Fprintln(a.Stderr, "AVVISO: nessun forward-auth del login (--auth-middleware): le app con accesso «login» (il default) non ricevono una rotta e non sono raggiungibili dal browser finché non lo imposti.")
-	}
 	return ExitOK
 }
