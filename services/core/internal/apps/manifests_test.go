@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubernetesfake "k8s.io/client-go/kubernetes/fake"
@@ -26,7 +27,7 @@ func testApp() (store.App, store.AppVersion) {
 		Limit:      store.AppResourceAmount{CPUMillis: 500, MemoryBytes: 512 << 20}, Copies: 2,
 	}
 	app := store.App{ID: uuid.New(), RepoID: uuid.New(), Name: "web", AddressLabel: &label, Access: "none", Config: cfg}
-	ver := store.AppVersion{AppID: app.ID, Number: 7, Config: cfg, Image: store.AppImage{Reference: "registry.example.com/alice/handbook:sha-1", Digest: &digest, Source: "registry"}}
+	ver := store.AppVersion{AppID: app.ID, Number: 7, Config: cfg, CreatedAt: time.Date(2026, 10, 26, 9, 30, 15, 0, time.UTC), Image: store.AppImage{Reference: "registry.example.com/alice/handbook:sha-1", Digest: &digest, Source: "registry"}}
 	return app, ver
 }
 
@@ -60,8 +61,8 @@ func TestBuildDeployment_AggiornamentoSenzaInterruzioneESalute(t *testing.T) {
 	if c.LivenessProbe == nil || c.Lifecycle == nil || c.Lifecycle.PreStop.Sleep == nil {
 		t.Fatalf("liveness/preStop: %+v %+v", c.LivenessProbe, c.Lifecycle)
 	}
-	if got := c.Env[0].Name + c.Env[1].Name + c.Env[2].Name; got != "ABPORT" {
-		t.Fatalf("variabili ordinate e PORT: %s", got)
+	if got := envNames(c.Env); got != "A,B,GITSTACK_APP_VERSION,GITSTACK_DEPLOYED_AT,PORT" {
+		t.Fatalf("variabili ordinate, di sistema e PORT: %s", got)
 	}
 	if len(tpl.Spec.ImagePullSecrets) != 1 || tpl.Spec.ImagePullSecrets[0].Name != "registry-pull" {
 		t.Fatalf("pull secret: %+v", tpl.Spec.ImagePullSecrets)
@@ -98,6 +99,83 @@ func TestBuildDeployment_PassaProxyN9ESovrascriveQuelloDellApp(t *testing.T) {
 	}
 	if got["HTTPS_PROXY"] != "http://proxy:3128" || got["NO_PROXY"] != ".svc" {
 		t.Fatalf("proxy N9: %v", got)
+	}
+}
+
+// envNames elenca i nomi delle variabili del container, nell'ordine in cui le passa il Deployment.
+func envNames(env []corev1.EnvVar) string {
+	names := make([]string, 0, len(env))
+	for _, e := range env {
+		names = append(names, e.Name)
+	}
+	return strings.Join(names, ",")
+}
+
+func envValues(env []corev1.EnvVar) map[string]string {
+	out := map[string]string{}
+	for _, e := range env {
+		out[e.Name] = e.Value
+	}
+	return out
+}
+
+func TestBuildDeployment_VariabiliDiSistema(t *testing.T) {
+	cases := []struct {
+		name    string
+		ref     string
+		digest  bool
+		vers    map[string]string
+		version string
+	}{
+		{name: "tag e digest: APP_VERSION è il tag", ref: "registry.example.com/alice/handbook:sha-1", digest: true, version: "sha-1"},
+		{name: "solo digest nel riferimento: APP_VERSION assente", ref: "registry.example.com/alice/handbook@sha256:" + strings.Repeat("b", 64)},
+		{name: "porta del registry senza tag: APP_VERSION assente", ref: "localhost:5000/app"},
+		{name: "tag con digest nel riferimento: il tag prima del digest", ref: "registry.example.com/alice/handbook:v2@sha256:" + strings.Repeat("c", 64), version: "v2"},
+		{name: "una variabile dell'app non sovrascrive quella di sistema", ref: "registry.example.com/alice/handbook:sha-1", digest: true, vers: map[string]string{"GITSTACK_APP_VERSION": "finta"}, version: "sha-1"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app, ver := testApp()
+			ver.Image.Reference = tc.ref
+			if !tc.digest {
+				ver.Image.Digest = nil
+			}
+			for k, v := range tc.vers {
+				ver.Config.Variables[k] = v
+			}
+			ver.CreatedAt = time.Date(2026, 10, 26, 9, 30, 15, 0, time.FixedZone("CEST", 2*3600))
+			env := envValues(BuildDeployment(app, ver, BuildOptions{Replicas: 1}).Spec.Template.Spec.Containers[0].Env)
+			if got, ok := env[EnvAppVersion]; tc.version == "" && ok || tc.version != "" && got != tc.version {
+				t.Fatalf("GITSTACK_APP_VERSION = %q (presente %v), atteso %q", got, ok, tc.version)
+			}
+			if got := env[EnvDeployedAt]; got != "2026-10-26T07:30:15Z" {
+				t.Fatalf("GITSTACK_DEPLOYED_AT = %q, atteso UTC RFC 3339", got)
+			}
+			if _, ok := env["GITSTACK_COMMIT_SHA"]; ok {
+				t.Fatal("GITSTACK_COMMIT_SHA senza etichetta revision non deve esserci (GIT-386)")
+			}
+			if env["PORT"] != "8080" {
+				t.Fatalf("PORT = %q", env["PORT"])
+			}
+		})
+	}
+}
+
+func TestIsReservedEnvName(t *testing.T) {
+	cases := map[string]bool{
+		"GITSTACK_X":            true,
+		"GITSTACK_APP_VERSION":  true,
+		"gitstack_x":            true,
+		"GitStack_Token":        true,
+		"GITSTACK":              false,
+		"MY_GITSTACK_X":         false,
+		"DATABASE_URL":          false,
+		"":                      false,
+	}
+	for name, want := range cases {
+		if got := IsReservedEnvName(name); got != want {
+			t.Errorf("IsReservedEnvName(%q) = %v, atteso %v", name, got, want)
+		}
 	}
 }
 
