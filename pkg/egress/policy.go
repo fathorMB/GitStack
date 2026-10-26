@@ -279,3 +279,39 @@ func (p *Policy) checkPort(host string, ip netip.Addr, port uint16) error {
 	}
 	return nil
 }
+
+// NetworkExceptions returns the prefixes a network-level firewall (a
+// Kubernetes NetworkPolicy ipBlock on 0.0.0.0/0 and ::/0) must carve out of
+// "the whole internet" to give pods the same barriers as CheckIP (H16):
+// loopback, link-local, multicast, reserved and special-purpose ranges, the
+// private networks (RFC 1918, ULA, CGNAT: Allow entries are not applied,
+// opening them is the administrator's decision at a higher level), the cluster
+// networks and the node addresses. The lists are the ones of the policy, not
+// copies. IPv4 and IPv6 are returned apart because an ipBlock exception must
+// lie inside its own CIDR. Order is stable and without duplicates.
+func (p *Policy) NetworkExceptions() (v4, v6 []netip.Prefix) {
+	seen := map[netip.Prefix]bool{}
+	add := func(pr netip.Prefix) {
+		pr = pr.Masked()
+		if !pr.IsValid() || seen[pr] {
+			return
+		}
+		seen[pr] = true
+		if pr.Addr().Is4() {
+			v4 = append(v4, pr)
+		} else {
+			v6 = append(v6, pr)
+		}
+	}
+	for _, l := range [][]netip.Prefix{hardBlocked, softBlocked, privateRanges, {nat64}, p.cluster.prefixes, p.node.prefixes} {
+		for _, pr := range l {
+			add(pr)
+		}
+	}
+	return v4, v6
+}
+
+// privateRanges are the ranges isPrivate accepts: RFC 1918, ULA and CGNAT.
+var privateRanges = []netip.Prefix{
+	pfx("10.0.0.0/8"), pfx("172.16.0.0/12"), pfx("192.168.0.0/16"), cgnat, pfx("fc00::/7"),
+}
