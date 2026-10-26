@@ -17,6 +17,9 @@ type fakePackages struct {
 	gotRepo         string
 	gotImage        string
 	gotTag          string
+	gotDigest       string
+	revision        string
+	revErr          error
 }
 
 func (f *fakePackages) ListPackages(_ context.Context, repoID string) ([]registry.Package, error) {
@@ -27,6 +30,11 @@ func (f *fakePackages) ListPackages(_ context.Context, repoID string) ([]registr
 	return []registry.Package{{Image: "core", Tags: []string{"v1"}, Digest: "sha256:aa", UpdatedAt: time.Unix(1, 0).UTC(),
 		Signature: registry.SignatureVerified, Kind: "image",
 		TagDetails: []registry.PackageTag{{Name: "v1", Digest: "sha256:aa", Signature: registry.SignatureVerified, PushedBy: &registry.Pusher{Kind: "job", Login: "ci job token"}}}}}, nil
+}
+
+func (f *fakePackages) ImageRevision(_ context.Context, repoID, image, tag, digest string) (string, error) {
+	f.gotRepo, f.gotImage, f.gotTag, f.gotDigest = repoID, image, tag, digest
+	return f.revision, f.revErr
 }
 
 func (f *fakePackages) DeletePackage(_ context.Context, repoID, image, tag string) error {

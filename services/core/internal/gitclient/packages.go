@@ -86,3 +86,32 @@ func (c *Client) DeletePackage(ctx context.Context, caller trust.Identity, repoI
 }
 
 var _ Packager = (*Client)(nil)
+
+// ImageRevisioner è il lookup puntuale dell'etichetta revision di un'immagine (H14, GIT-395):
+// il servizio git legge solo il manifest e il config richiesti, non tutto il registry del repo.
+type ImageRevisioner interface {
+	// ImageRevision dà il commit dell'etichetta OCI revision del tag o del digest (con entrambi
+	// vale il digest) dell'immagine image (vuoto = senza nome). «» se l'etichetta manca o non è
+	// valida; ErrNotFound se l'immagine o il tag non ci sono.
+	ImageRevision(ctx context.Context, caller trust.Identity, repoID uuid.UUID, image, tag, digest string) (string, error)
+}
+
+// ImageRevision implementa ImageRevisioner: GET .../packages/revision?image=&tag=|digest=.
+func (c *Client) ImageRevision(ctx context.Context, caller trust.Identity, repoID uuid.UUID, image, tag, digest string) (string, error) {
+	q := url.Values{}
+	q.Set("image", image)
+	if digest != "" {
+		q.Set("digest", digest)
+	} else if tag != "" {
+		q.Set("tag", tag)
+	}
+	var out struct {
+		Revision string `json:"revision"`
+	}
+	if err := c.do(ctx, caller, http.MethodGet, "/internal/git/repos/"+repoID.String()+"/packages/revision?"+q.Encode(), nil, &out, http.StatusOK); err != nil {
+		return "", err
+	}
+	return out.Revision, nil
+}
+
+var _ ImageRevisioner = (*Client)(nil)
