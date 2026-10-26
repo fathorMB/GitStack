@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strings"
 	"time"
@@ -29,7 +30,7 @@ func (s *apiServer) imageCommit(ctx context.Context, repo store.Repo, img store.
 	if digest == "" && tag == "" {
 		return nil
 	}
-	pk, ok := s.git.(gitclient.Packager)
+	ir, ok := s.git.(gitclient.ImageRevisioner)
 	if !ok {
 		return nil
 	}
@@ -40,26 +41,17 @@ func (s *apiServer) imageCommit(ctx context.Context, repo store.Repo, img store.
 	}
 	ctx, cancel := context.WithTimeout(ctx, imageCommitTimeout)
 	defer cancel()
-	items, err := pk.ListPackages(ctx, caller, repo.ID)
+	rev, err := ir.ImageRevision(ctx, caller, repo.ID, image, tag, digest)
 	if err != nil {
-		slog.Default().Warn("commit dell'immagine: lettura del registry non riuscita, GITSTACK_COMMIT_SHA resta assente", "err", err, "image", img.Reference)
+		if !errors.Is(err, gitclient.ErrNotFound) {
+			slog.Default().Warn("commit dell'immagine: lettura del registry non riuscita, GITSTACK_COMMIT_SHA resta assente", "err", err, "image", img.Reference)
+		}
 		return nil
 	}
-	for _, p := range items {
-		if p.Image != image {
-			continue
-		}
-		for _, t := range p.TagDetails {
-			if (digest != "" && t.Digest == digest) || (digest == "" && t.Name == tag) {
-				if t.Revision == "" {
-					return nil
-				}
-				rev := t.Revision
-				return &rev
-			}
-		}
+	if rev == "" {
+		return nil
 	}
-	return nil
+	return &rev
 }
 
 // registryParts scompone un riferimento del registry del repo (quello che resolveAppImage ha già

@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -25,18 +26,38 @@ const (
 
 var commitTestDigest = "sha256:" + strings.Repeat("d", 64)
 
-// commitGit è il servizio git finto: il solo ListPackages conta; il resto dell'interfaccia non
-// serve al commit e resta nil.
+// commitGit è il servizio git finto: il lookup puntuale ImageRevision conta e cerca in items come
+// la rotta vera; ListPackages fa fallire il test, perché il commit non deve più elencare il repo.
 type commitGit struct {
 	gitclient.Git
+	t     *testing.T
 	items []gitclient.PackageInfo
 	err   error
 	calls int
 }
 
 func (g *commitGit) ListPackages(_ context.Context, _ trust.Identity, _ uuid.UUID) ([]gitclient.PackageInfo, error) {
+	g.t.Helper()
+	g.t.Error("imageCommit ha chiamato ListPackages: serve il lookup puntuale ImageRevision")
+	return nil, nil
+}
+
+func (g *commitGit) ImageRevision(_ context.Context, _ trust.Identity, _ uuid.UUID, image, tag, digest string) (string, error) {
 	g.calls++
-	return g.items, g.err
+	if g.err != nil {
+		return "", g.err
+	}
+	for _, p := range g.items {
+		if p.Image != image {
+			continue
+		}
+		for _, t := range p.TagDetails {
+			if (digest != "" && t.Digest == digest) || (digest == "" && t.Name == tag) {
+				return t.Revision, nil
+			}
+		}
+	}
+	return "", gitclient.ErrNotFound
 }
 
 func (g *commitGit) DeletePackage(_ context.Context, _ trust.Identity, _ uuid.UUID, _, _ string) error {
@@ -111,7 +132,7 @@ func TestImageCommit_EtichettaDelRegistry(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			g := &commitGit{items: tc.items}
+			g := &commitGit{t: t, items: tc.items}
 			got := commitServer(g).imageCommit(commitCtx(t), commitRepo(), tc.img)
 			if tc.want == "" {
 				if got != nil {
@@ -128,7 +149,7 @@ func TestImageCommit_EtichettaDelRegistry(t *testing.T) {
 
 // Un'immagine esterna non passa mai dal registry del repo: nessuna chiamata al servizio git.
 func TestImageCommit_EsternaNonLegge(t *testing.T) {
-	g := &commitGit{items: []gitclient.PackageInfo{{Image: "web", TagDetails: []gitclient.PackageTag{{Name: "v1", Revision: commitTestSha}}}}}
+	g := &commitGit{t: t, items: []gitclient.PackageInfo{{Image: "web", TagDetails: []gitclient.PackageTag{{Name: "v1", Revision: commitTestSha}}}}}
 	img := store.AppImage{Reference: "ghcr.io/alice/web:v1", Source: "external"}
 	if got := commitServer(g).imageCommit(commitCtx(t), commitRepo(), img); got != nil {
 		t.Fatalf("immagine esterna con commit %q", *got)
@@ -140,13 +161,33 @@ func TestImageCommit_EsternaNonLegge(t *testing.T) {
 
 // Un errore del servizio git non fa fallire il deploy: il commit resta nil (e si scrive un log).
 func TestImageCommit_ErroreDelServizioGitNonBloccaIlDeploy(t *testing.T) {
-	g := &commitGit{err: gitclient.ErrNotFound}
+	g := &commitGit{t: t, err: gitclient.ErrNotFound}
 	img := store.AppImage{Reference: "git.example.com/alice/handbook/web:v1", Source: "registry"}
 	if got := commitServer(g).imageCommit(commitCtx(t), commitRepo(), img); got != nil {
 		t.Fatalf("commit %q con errore del servizio git", *got)
 	}
 	if g.calls != 1 {
 		t.Fatalf("chiamate al servizio git: %d, attesa 1", g.calls)
+	}
+}
+
+// Un errore generico o un timeout (non ErrNotFound) segue il ramo con warning: il deploy va avanti,
+// commit nil, una sola lettura.
+func TestImageCommit_ErroreGenericoETimeoutNonBloccanoIlDeploy(t *testing.T) {
+	for name, err := range map[string]error{
+		"errore generico": errors.New("git giù"),
+		"timeout":         context.DeadlineExceeded,
+	} {
+		t.Run(name, func(t *testing.T) {
+			g := &commitGit{t: t, err: err}
+			img := store.AppImage{Reference: "git.example.com/alice/handbook/web:v1", Source: "registry"}
+			if got := commitServer(g).imageCommit(commitCtx(t), commitRepo(), img); got != nil {
+				t.Fatalf("commit %q con errore del servizio git", *got)
+			}
+			if g.calls != 1 {
+				t.Fatalf("chiamate al servizio git: %d, attesa 1", g.calls)
+			}
+		})
 	}
 }
 

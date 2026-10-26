@@ -399,6 +399,54 @@ func (h *Handler) ListPackages(ctx context.Context, repoID string) ([]Package, e
 	return out, nil
 }
 
+// ImageRevision dà l'etichetta revision (H14, GIT-395) del tag o del digest richiesto di
+// un'immagine, leggendo solo i link dei tag, il manifest e il config blob di quell'immagine.
+// «» se l'etichetta manca o non è un commit. ErrPackageNotFound se l'immagine o il tag non
+// ci sono; ErrInvalidImage se il nome non è valido. Con digest e tag vale il digest.
+func (h *Handler) ImageRevision(ctx context.Context, repoID, image, tag, digest string) (string, error) {
+	if !uuidRe.MatchString(repoID) {
+		return "", ErrPackageNotFound
+	}
+	name := repoID
+	if image != "" {
+		for _, seg := range strings.Split(image, "/") {
+			if !imageSegRe.MatchString(seg) {
+				return "", ErrInvalidImage
+			}
+		}
+		name = repoID + "/" + image
+	}
+	if digest != "" {
+		if _, ok := hexOf(digest); !ok {
+			return "", ErrPackageNotFound
+		}
+		all, err := h.tagsOf(ctx, name)
+		if err != nil {
+			return "", err
+		}
+		for t, dg := range all {
+			if _, aux := provenanceSubject(t); !aux && dg == digest {
+				return h.revisionOf(ctx, dg), nil
+			}
+		}
+		return "", ErrPackageNotFound
+	}
+	if !tagRe.MatchString(tag) {
+		return "", ErrPackageNotFound
+	}
+	if _, aux := provenanceSubject(tag); aux {
+		return "", ErrPackageNotFound
+	}
+	dg, err := h.tagDigest(ctx, name, tag)
+	if err != nil {
+		return "", err
+	}
+	if dg == "" {
+		return "", ErrPackageNotFound
+	}
+	return h.revisionOf(ctx, dg), nil
+}
+
 func signatureValue(ok bool) string {
 	if ok {
 		return SignatureVerified

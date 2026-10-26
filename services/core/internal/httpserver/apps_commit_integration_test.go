@@ -23,20 +23,42 @@ import (
 // revision; senza etichetta, per un'immagine esterna o se il servizio git fallisce, resta nil e il
 // deploy va avanti. La configurazione eredita il commit della versione attiva.
 
-// commitGitPkg è il servizio git con i pacchetti finti: conta le letture di ListPackages.
+// commitGitPkg è il servizio git con i pacchetti finti: conta le letture puntuali di ImageRevision.
 type commitGitPkg struct {
 	*fakeGit
-	mu    sync.Mutex
-	items []gitclient.PackageInfo
-	err   error
-	calls int
+	mu        sync.Mutex
+	items     []gitclient.PackageInfo
+	err       error
+	calls     int
+	listCalls int
 }
 
-func (g *commitGitPkg) ListPackages(_ context.Context, _ trust.Identity, _ uuid.UUID) ([]gitclient.PackageInfo, error) {
+func (g *commitGitPkg) ImageRevision(_ context.Context, _ trust.Identity, _ uuid.UUID, image, tag, digest string) (string, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.calls++
-	return g.items, g.err
+	if g.err != nil {
+		return "", g.err
+	}
+	for _, p := range g.items {
+		if p.Image != image {
+			continue
+		}
+		for _, t := range p.TagDetails {
+			if (digest != "" && t.Digest == digest) || (digest == "" && t.Name == tag) {
+				return t.Revision, nil
+			}
+		}
+	}
+	return "", gitclient.ErrNotFound
+}
+
+// ListPackages non deve più essere chiamato dal deploy (GIT-395): se succede il test lo vede.
+func (g *commitGitPkg) ListPackages(_ context.Context, _ trust.Identity, _ uuid.UUID) ([]gitclient.PackageInfo, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.listCalls++
+	return nil, nil
 }
 
 func (g *commitGitPkg) DeletePackage(_ context.Context, _ trust.Identity, _ uuid.UUID, _, _ string) error {
@@ -140,6 +162,9 @@ func TestApps_DeployScriveCommitDallEtichetta(t *testing.T) {
 	e.want(e.do(http.MethodPost, base+"/web/deploys", "alice", `{"image":"git.example.com/alice/handbook/web:v3"}`), http.StatusAccepted, "")
 	if got := e.commitInDB(t, "web", 4); got != nil {
 		t.Fatalf("versione 4 senza etichetta: commit_sha = %q, atteso nil", *got)
+	}
+	if g.listCalls != 0 {
+		t.Fatalf("il deploy ha elencato il registry con ListPackages (%d volte)", g.listCalls)
 	}
 }
 
