@@ -95,6 +95,17 @@ describe('AppConfigPage (H6)', () => {
     expect(screen.queryByDisplayValue('super-secret-value')).not.toBeInTheDocument();
   });
 
+  it('il prefisso GITSTACK_ è riservato: la variabile non si salva e il messaggio lo dice', async () => {
+    mount(<AppConfigPage repo={repo} app={makeApp()} perms={perms('admin')} />);
+    expect(await screen.findByText('SEARCH_URL')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'New variable' }));
+    await userEvent.type(screen.getByLabelText('Name'), 'GITSTACK_APP_VERSION');
+    await userEvent.type(screen.getByLabelText('Value'), 'x');
+    await userEvent.click(screen.getByRole('button', { name: 'Save variable' }));
+    expect(await screen.findByText(/prefix is reserved for GitStack/)).toBeInTheDocument();
+    expect(api.saveAppVariable).not.toHaveBeenCalled();
+  });
+
   it('non mostra un eventuale campo value ricevuto per errore nei metadati', async () => {
     vi.mocked(api.fetchAppSecrets).mockResolvedValueOnce({
       items: [{ name: 'DATABASE_URL', updatedAt: '2026-10-24T10:00:00Z', value: 'leak' } as unknown as Awaited<ReturnType<typeof api.fetchAppSecrets>>['items'][number]],

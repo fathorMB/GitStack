@@ -127,6 +127,10 @@ func TestAppEnv_WriteLeggeVariabiliNonSegreti(t *testing.T) {
 	e.want(e.do(http.MethodPut, base+"/secrets/SEARCH_TIMEOUT", "alice", `{"value":"x"}`), http.StatusConflict, "name_in_use")
 	e.want(e.do(http.MethodPut, base+"/secrets/DB_PASSWORD", "alice", `{"value":""}`), http.StatusUnprocessableEntity, "")
 	e.want(e.do(http.MethodPut, base+"/variables/1X", "alice", `{"value":"x"}`), http.StatusUnprocessableEntity, "")
+	// GIT-378 (H14): il prefisso GITSTACK_ è riservato a variabili e segreti, anche in minuscolo.
+	e.want(e.do(http.MethodPut, base+"/variables/GITSTACK_APP_VERSION", "alice", `{"value":"x"}`), http.StatusUnprocessableEntity, "validation_failed")
+	e.want(e.do(http.MethodPut, base+"/secrets/gitstack_token", "alice", `{"value":"x"}`), http.StatusUnprocessableEntity, "validation_failed")
+	e.want(e.do(http.MethodPut, base+"/variables/MY_GITSTACK_X", "alice", `{"value":"x"}`), http.StatusOK, "")
 	e.want(e.do(http.MethodDelete, base+"/variables/SEARCH_TIMEOUT", "alice", ""), http.StatusNoContent, "")
 	e.want(e.do(http.MethodDelete, base+"/variables/SEARCH_TIMEOUT", "alice", ""), http.StatusNotFound, "not_found")
 	e.want(e.do(http.MethodDelete, base+"/secrets/DB_PASSWORD", "alice", ""), http.StatusNoContent, "")
