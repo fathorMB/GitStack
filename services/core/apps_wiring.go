@@ -17,22 +17,23 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/apps"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
+	"github.com/fathorMB/GitStack/services/core/internal/trust"
 )
 
 // Controller dei deploy delle app (v3-a, GIT-343, ADR 0002). Abilitato con
 // GITSTACK_CORE_APPS_ENABLED=true; GITSTACK_CORE_APPS_DOMAIN è il dominio delle app (H2) e
-// GITSTACK_CORE_APPS_AUTH_MIDDLEWARE il forward-auth del login (`nome` o `namespace/nome`): senza
+// GITSTACK_CORE_APPS_AUTH_URL l'indirizzo del forward-auth del gateway (/_appauth/verify): senza
 // quest'ultimo le app con accesso `login` non ricevono una rotta. GITSTACK_CORE_APPS_PROGRESS_TIMEOUT
 // (secondi) è il tempo massimo perché una versione superi il controllo di salute.
 const (
 	envAppsEnabled         = "GITSTACK_CORE_APPS_ENABLED"
 	envAppsDomain          = "GITSTACK_CORE_APPS_DOMAIN"
-	envAppsAuthMiddleware  = "GITSTACK_CORE_APPS_AUTH_MIDDLEWARE"
+	envAppsAuthURL         = "GITSTACK_CORE_APPS_AUTH_URL"
 	envAppsProgressTimeout = "GITSTACK_CORE_APPS_PROGRESS_TIMEOUT"
 )
 
 // startApps avvia il controller e ritorna le opzioni del router; senza abilitazione ritorna nil.
-func startApps(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger) ([]httpserver.Option, error) {
+func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, logger *slog.Logger) ([]httpserver.Option, error) {
 	domain := strings.TrimSpace(os.Getenv(envAppsDomain))
 	opts := []httpserver.Option{}
 	if domain != "" {
@@ -53,7 +54,7 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger) ([]
 	if err != nil {
 		return nil, fmt.Errorf("client Kubernetes dinamico: %w", err)
 	}
-	cfg := apps.Config{AppsDomain: domain, AuthMiddleware: strings.TrimSpace(os.Getenv(envAppsAuthMiddleware)), Log: logger}
+	cfg := apps.Config{AppsDomain: domain, AuthURL: strings.TrimSpace(os.Getenv(envAppsAuthURL)), AuthSecret: trust.SigningKey(gatewaySecret), Log: logger}
 	if v, err := strconv.Atoi(strings.TrimSpace(os.Getenv(envAppsProgressTimeout))); err == nil && v > 0 {
 		cfg.ProgressTimeout = time.Duration(v) * time.Second
 	}

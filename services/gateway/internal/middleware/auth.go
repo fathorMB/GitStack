@@ -341,3 +341,7 @@ func writeAuthError(w http.ResponseWriter, status int, code, message string, det
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(map[string]errBody{"error": {Code: code, Message: message, Details: details}})
 }
+
+// CredentialFrom è credentialFrom per chi sta fuori dal pacchetto (il login davanti alle app,
+// appauth): prima Authorization: Bearer gst_..., poi i cookie di sessione.
+func CredentialFrom(r *http.Request) (string, identityclient.Kind) { return credentialFrom(r) }
