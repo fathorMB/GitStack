@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	gitstack "github.com/fathorMB/GitStack/client/go"
 	"github.com/fathorMB/GitStack/cli/internal/cmdutil"
+	gitstack "github.com/fathorMB/GitStack/client/go"
 )
 
 // newDeleteCmd è `gs app delete`: operazione distruttiva (H5, v3-b). Elimina l'app e, con lei, i

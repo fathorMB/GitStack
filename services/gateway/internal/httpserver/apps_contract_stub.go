@@ -29,7 +29,7 @@ func (s *apiServer) UpdateApp(w http.ResponseWriter, r *http.Request, owner open
 	s.appsProxy(w, r)
 }
 
-func (s *apiServer) DeleteApp(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
+func (s *apiServer) DeleteApp(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, params openapi.DeleteAppParams) {
 	s.appsProxy(w, r)
 }
 
