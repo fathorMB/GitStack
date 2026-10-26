@@ -518,6 +518,17 @@ ul.list{margin:0;padding:0;list-style:none}
 .meter{height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden;margin-top:6px;position:relative}
 .meter i{display:block;height:100%;background:var(--accent)}
 .meter b{position:absolute;top:0;bottom:0;width:2px;background:var(--text);opacity:.55}
+.admin-apps-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.admin-app-list{grid-column:1/-1;min-width:0}
+.admin-app-list .list-row{display:grid;grid-template-columns:minmax(220px,1fr) repeat(4,minmax(120px,170px));gap:12px;align-items:center}
+.admin-app-list .list-row>span:first-child{overflow-wrap:anywhere}
+.admin-apps-kv{grid-template-columns:150px minmax(0,1fr);padding:16px}
+.admin-apps-kv dd>.row{justify-content:flex-start}
+.admin-apps-kv input[type=checkbox]{accent-color:var(--accent)}
+.admin-apps-grid input[type=number]{width:90px}
+.modal textarea.input{width:100%;resize:vertical;font-family:var(--font-mono)}
+@media (max-width:1000px){.admin-apps-grid{grid-template-columns:1fr}.admin-app-list{grid-column:auto}.admin-app-list .list{overflow-x:auto}.admin-app-list .list-row{min-width:850px}}
+@media (max-width:700px){.admin-apps-kv{grid-template-columns:1fr}.admin-apps-kv dt{font-weight:600}.admin-apps-kv dd{margin-bottom:10px}}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 @media (max-width:860px){.grid3{grid-template-columns:1fr}}
 .opt{display:flex;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r);cursor:pointer;font-size:13px}

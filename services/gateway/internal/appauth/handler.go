@@ -199,7 +199,7 @@ func (h *Handler) ServeVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !allowed {
-		h.deny(w, http.StatusForbidden, "no_read", "Accesso negato: serve il permesso read sul repo dell'app.")
+		h.deny(w, http.StatusForbidden, "no_read", "Accesso negato: serve il permesso read sul repo dell'app o un posto nella sua lista di accesso.")
 		return
 	}
 
@@ -415,7 +415,7 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request, app App, host
 		return
 	}
 	if !allowed {
-		h.deny(w, http.StatusForbidden, "no_read", "Accesso negato: serve il permesso read sul repo dell'app.")
+		h.deny(w, http.StatusForbidden, "no_read", "Accesso negato: serve il permesso read sul repo dell'app o un posto nella sua lista di accesso.")
 		return
 	}
 	http.SetCookie(w, &http.Cookie{

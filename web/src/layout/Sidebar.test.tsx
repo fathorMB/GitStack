@@ -43,4 +43,12 @@ describe('Sidebar: voce Notifications', () => {
     expect(link).not.toHaveClass('active');
     expect(link.querySelector('.counter')).toBeNull();
   });
+
+  it('raggiunge Apps & resources dal gruppo Administration', async () => {
+    mockedCount.mockResolvedValue(0);
+    renderAt('/admin/apps');
+    const link = await screen.findByRole('link', { name: 'Apps & resources' });
+    expect(link).toHaveAttribute('href', '/admin/apps');
+    expect(link).toHaveClass('active');
+  });
 });

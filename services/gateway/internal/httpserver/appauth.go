@@ -30,6 +30,11 @@ func mountAppAuth(mux *http.ServeMux, cfg config.Config, logger *slog.Logger, ba
 			ac.Signer = signer
 		}
 	}
+	// Lista di accesso dei tester (GIT-376): read sul repo OPPURE membro della lista, chiesta a core.
+	// Un test può sostituire tutta la regola con WithAppAccess.
+	if ac.Access == nil && cfg.CoreURL != nil && cfg.IdentityServiceSecret != "" && o.permissions != nil {
+		ac.Access = appauth.WithAccessList(appauth.DefaultAccess(o.permissions), appauth.NewCoreMembership(cfg.CoreURL, cfg.IdentityServiceSecret, cfg.CoreTimeout, o.now))
+	}
 	h := appauth.New(ac)
 	mux.Handle(appauth.PathVerify, base(http.HandlerFunc(h.ServeVerify)))
 	mux.Handle("GET "+appauth.PathLogin, base(http.HandlerFunc(h.ServeLogin)))
