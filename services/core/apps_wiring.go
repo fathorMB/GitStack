@@ -33,7 +33,7 @@ const (
 )
 
 // startApps avvia il controller e ritorna le opzioni del router; senza abilitazione ritorna nil.
-func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, logger *slog.Logger) ([]httpserver.Option, error) {
+func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, logger *slog.Logger, secrets store.AppSealer) ([]httpserver.Option, error) {
 	domain := strings.TrimSpace(os.Getenv(envAppsDomain))
 	opts := []httpserver.Option{}
 	if domain != "" {
@@ -54,7 +54,7 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, lo
 	if err != nil {
 		return nil, fmt.Errorf("client Kubernetes dinamico: %w", err)
 	}
-	cfg := apps.Config{AppsDomain: domain, AuthURL: strings.TrimSpace(os.Getenv(envAppsAuthURL)), AuthSecret: trust.SigningKey(gatewaySecret), Log: logger}
+	cfg := apps.Config{AppsDomain: domain, AuthURL: strings.TrimSpace(os.Getenv(envAppsAuthURL)), AuthSecret: trust.SigningKey(gatewaySecret), Secrets: secrets, Log: logger}
 	if v, err := strconv.Atoi(strings.TrimSpace(os.Getenv(envAppsProgressTimeout))); err == nil && v > 0 {
 		cfg.ProgressTimeout = time.Duration(v) * time.Second
 	}

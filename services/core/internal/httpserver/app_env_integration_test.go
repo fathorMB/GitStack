@@ -25,6 +25,10 @@ import (
 // newAppEnvWithKeys è newAppsEnv con la chiave dei segreti (GITSTACK_WEBHOOK_SECRET_KEY), come in
 // produzione: senza, i segreti delle app rispondono 503.
 func newAppEnvWithKeys(t *testing.T) *appsEnv {
+	return newAppEnvWithKeysAndController(t, nil)
+}
+
+func newAppEnvWithKeysAndController(t *testing.T, ctl httpserver.AppController) *appsEnv {
 	t.Helper()
 	pool, _ := dbtest.NewPool(t)
 	id := &issuesIdentity{fakeIdentity: newFakeIdentity(), writers: map[uuid.UUID][]string{}}
@@ -35,11 +39,16 @@ func newAppEnvWithKeys(t *testing.T) *appsEnv {
 	}
 	git := newFakeGit()
 	clock := &appClock{t: time.Now().UTC().Truncate(time.Second)}
-	e.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
+	opts := []httpserver.Option{
 		httpserver.WithRepoIdentity(id), httpserver.WithReadableLister(id), httpserver.WithGit(git),
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "https://git.example.com"}),
 		httpserver.WithAppsDomain("apps.example.com"), httpserver.WithClock(clock.Now),
-		httpserver.WithWebhooks(httpserver.WebhookConfig{Keys: keys}))
+		httpserver.WithWebhooks(httpserver.WebhookConfig{Keys: keys}),
+	}
+	if ctl != nil {
+		opts = append(opts, httpserver.WithAppController(ctl))
+	}
+	e.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret, opts...)
 	return &appsEnv{issuesEnv: e, clock: clock, git: git}
 }
 
