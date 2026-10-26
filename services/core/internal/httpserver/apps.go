@@ -320,13 +320,8 @@ func (s *apiServer) ListApps(w http.ResponseWriter, r *http.Request, owner opena
 		appInternalError(w, "quota delle app", err)
 		return
 	}
-	warn := float64(used.CPUMillis) > 0.8*float64(limits.CPUMillis) || float64(used.MemoryBytes) > 0.8*float64(limits.MemoryBytes) ||
-		float64(used.DiskBytes) > 0.8*float64(limits.DiskBytes)
-	out.Quota = &openapi.AppOwnerQuota{
-		Owner: repo.OwnerName, IsDefault: &isDefault, Warning: warn,
-		Limits: openapi.AppOwnerQuotaInput{CpuMillis: limits.CPUMillis, MemoryBytes: limits.MemoryBytes, DiskBytes: limits.DiskBytes},
-		Used:   openapi.AppOwnerQuotaInput{CpuMillis: used.CPUMillis, MemoryBytes: used.MemoryBytes, DiskBytes: used.DiskBytes},
-	}
+	quota := quotaToAPI(store.AppOwnerQuota{Owner: repo.OwnerName, Limits: limits, Used: used, IsDefault: isDefault})
+	out.Quota = &quota
 	writeJSON(w, http.StatusOK, out)
 }
 
