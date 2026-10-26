@@ -52,7 +52,8 @@ const (
 	SignatureUnverified = "unverified"
 )
 
-// PackageTag è un tag di un'immagine.
+// PackageTag è un tag di un'immagine. Revision è il commit dell'etichetta OCI
+// org.opencontainers.image.revision (H14, GIT-386): assente se l'immagine non ne ha una valida.
 type PackageTag struct {
 	Name      string    `json:"name"`
 	Digest    string    `json:"digest"`
@@ -62,7 +63,15 @@ type PackageTag struct {
 	HasSbom   bool      `json:"hasSbom"`
 	Protected bool      `json:"protected"`
 	PushedBy  *Pusher   `json:"pushedBy,omitempty"`
+	Revision  string    `json:"revision,omitempty"`
 }
+
+// RevisionLabel è l'etichetta OCI con il commit da cui è nata l'immagine (H14).
+const RevisionLabel = "org.opencontainers.image.revision"
+
+// revisionRe accetta un commit: esadecimale da 7 a 64 caratteri. Un'etichetta che non lo è
+// (un nome di branch, una versione) non diventa GITSTACK_COMMIT_SHA.
+var revisionRe = regexp.MustCompile(`^[0-9a-f]{7,64}$`)
 
 // Package è un'immagine del repo. Image è il nome sotto il repo (vuoto = l'immagine senza
 // nome). Digest, firma, SBOM, dimensione e data sono quelli del tag più recente.
@@ -162,6 +171,36 @@ func (h *Handler) readManifest(ctx context.Context, dg string) (manifestDoc, int
 		return manifestDoc{}, 0, false
 	}
 	return m, int64(len(b)), true
+}
+
+// revisionOf legge l'etichetta revision dal config blob del manifest dg. «» se il manifest non
+// ha un config (un indice), se il blob manca o se l'etichetta non è un commit: nessun errore,
+// il campo resta assente.
+func (h *Handler) revisionOf(ctx context.Context, dg string) string {
+	m, _, ok := h.readManifest(ctx, dg)
+	if !ok || m.Config == nil {
+		return ""
+	}
+	x, ok := hexOf(m.Config.Digest)
+	if !ok {
+		return ""
+	}
+	b, err := h.driver.GetContent(ctx, blobDataPath(x))
+	if err != nil {
+		return ""
+	}
+	var cfg struct {
+		Config struct {
+			Labels map[string]string `json:"Labels"`
+		} `json:"config"`
+	}
+	if json.Unmarshal(b, &cfg) != nil {
+		return ""
+	}
+	if rev := cfg.Config.Labels[RevisionLabel]; revisionRe.MatchString(rev) {
+		return rev
+	}
+	return ""
 }
 
 // imageSize somma i byte unici dell'immagine: manifest, config, layer e, per un indice, le
@@ -306,6 +345,7 @@ func (h *Handler) ListPackages(ctx context.Context, repoID string) ([]Package, e
 		return nil, err
 	}
 	out := []Package{}
+	revs := map[string]string{} // digest → etichetta revision, letta una volta per digest
 	for _, name := range names {
 		all, err := h.tagsOf(ctx, name)
 		if err != nil {
@@ -324,10 +364,16 @@ func (h *Handler) ListPackages(ctx context.Context, repoID string) ([]Package, e
 			if !ok {
 				continue
 			}
+			rev, seen := revs[dg]
+			if !seen {
+				rev = h.revisionOf(ctx, dg)
+				revs[dg] = rev
+			}
 			pkg.TagDetails = append(pkg.TagDetails, PackageTag{
 				Name: t, Digest: dg, SizeBytes: h.imageSize(ctx, dg), PushedAt: pushed.UTC(),
 				Signature: signatureValue(h.verifySignature(ctx, all, dg)),
 				HasSbom:   h.hasSbom(ctx, all, dg), Protected: st.protected(t), PushedBy: h.readPusher(ctx, name, t),
+				Revision: rev,
 			})
 		}
 		if len(pkg.TagDetails) == 0 {
