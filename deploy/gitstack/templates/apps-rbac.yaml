@@ -87,6 +87,11 @@ rules:
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["list"]
+  # Volumi persistenti delle app (v3-b, H3): i PVC si creano prima del Deployment e si eliminano
+  # quando il volume viene tolto dall'app; la dimensione non cambia mai (niente update).
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["create", "get", "list", "delete"]
   # Rotta e Middleware del login (strip e forward-auth, GIT-347) che il controller crea per app.
   - apiGroups: ["traefik.io"]
     resources: ["ingressroutes", "middlewares"]

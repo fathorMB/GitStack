@@ -52,7 +52,7 @@ func TestMigrate0027_TokenELogDelJob(t *testing.T) {
 		t.Fatalf("righe rimaste: %d %v", left, err)
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 14); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 15); err != nil {
 		t.Fatalf("down 0027: %v", err)
 	}
 	var n int

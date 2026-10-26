@@ -1,0 +1,22 @@
+GIT-356 (H3) - prova su k3d di TestApps_VolumiSuK3d
+Comando: GITSTACK_TEST_KUBECONFIG=<kubeconfig di k3d> go test -tags integration -count=1 -run TestApps_VolumiSuK3d -v ./internal/httpserver/   (da services/core)
+Cluster: k3d v5.9.0 con rancher/k3s:v1.34.1-k3s1 (NON la v1.36.4 di deploy/k3s-version: su questo host Docker usa cgroup v1 e il kubelet 1.36 non parte,
+"kubelet is configured to not run on a host using cgroup v1"). Immagini nginxinc/nginx-unprivileged:1.27-alpine e 1.27.5-alpine importate con k3d image import
+(il pull dal registry in questo ambiente supera il timeout di 75 s del deploy). Il container nginx ufficiale non parte con capabilities ALL tolte: si usa la variante unprivileged.
+Passi provati: PVC vol-dati su local-path (Bound) e Deployment Recreate; scrittura nel pod, riavvio (pod sostituito) e dati ritrovati sia via Service sia dentro il nuovo pod;
+deploy di una nuova versione dell'immagine e rollback alla versione senza volumi: dati e PVC intatti; scala a 2 rifiutata (409 single_copy);
+volume tolto: PVC eliminato, di nuovo RollingUpdate, scala a 2 ammessa.
+
+=== RUN   TestApps_VolumiSuK3d
+=== RUN   TestApps_VolumiSuK3d/scrive,_il_riavvio_ritrova_i_dati
+    app_volumes_k3d_integration_test.go:155: pod prima: app-6678958579-rxwwn, dopo il riavvio: app-879f45989-75lr4
+=== RUN   TestApps_VolumiSuK3d/deploy_di_una_nuova_versione_senza_perdita
+=== RUN   TestApps_VolumiSuK3d/scala_a_2_rifiutata
+=== RUN   TestApps_VolumiSuK3d/il_volume_tolto_elimina_il_PVC
+--- PASS: TestApps_VolumiSuK3d (258.60s)
+    --- PASS: TestApps_VolumiSuK3d/scrive,_il_riavvio_ritrova_i_dati (11.11s)
+    --- PASS: TestApps_VolumiSuK3d/deploy_di_una_nuova_versione_senza_perdita (24.54s)
+    --- PASS: TestApps_VolumiSuK3d/scala_a_2_rifiutata (0.07s)
+    --- PASS: TestApps_VolumiSuK3d/il_volume_tolto_elimina_il_PVC (9.51s)
+PASS
+ok  	github.com/fathorMB/GitStack/services/core/internal/httpserver	261.721s

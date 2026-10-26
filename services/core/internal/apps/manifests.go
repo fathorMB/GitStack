@@ -177,6 +177,21 @@ func BuildDeployment(app store.App, v store.AppVersion, o BuildOptions) *appsv1.
 	if o.PullSecret != "" {
 		pod.ImagePullSecrets = []corev1.LocalObjectReference{{Name: o.PullSecret}}
 	}
+	// Strategia: RollingUpdate senza copie in meno (la nuova parte prima che la vecchia si fermi).
+	strategy := appsv1.DeploymentStrategy{
+		Type:          appsv1.RollingUpdateDeploymentStrategyType,
+		RollingUpdate: &appsv1.RollingUpdateDeployment{MaxUnavailable: &zero, MaxSurge: &one},
+	}
+	if len(cfg.Volumes) > 0 {
+		// H3: con i volumi l'app gira in una sola copia e l'aggiornamento è Recreate: il PVC è
+		// ReadWriteOnce, due pod non possono scrivere insieme. Il pod vecchio si ferma, poi parte il nuovo.
+		strategy = appsv1.DeploymentStrategy{Type: appsv1.RecreateDeploymentStrategyType}
+		for _, v := range cfg.Volumes {
+			pod.Volumes = append(pod.Volumes, corev1.Volume{Name: volumeKubeName(v.Name), VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: PVCName(v.Name)}}})
+			pod.Containers[0].VolumeMounts = append(pod.Containers[0].VolumeMounts, corev1.VolumeMount{Name: volumeKubeName(v.Name), MountPath: v.MountPath})
+		}
+	}
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{Name: WorkloadName, Namespace: Namespace(app.ID), Labels: labels},
 		Spec: appsv1.DeploymentSpec{
@@ -185,11 +200,7 @@ func BuildDeployment(app store.App, v store.AppVersion, o BuildOptions) *appsv1.
 			ProgressDeadlineSeconds: &deadline,
 			RevisionHistoryLimit:    int32Ptr(3),
 			Selector:                &metav1.LabelSelector{MatchLabels: selectorLabels(app.ID)},
-			// Nessuna copia in meno durante l'aggiornamento: la nuova parte prima che la vecchia si fermi.
-			Strategy: appsv1.DeploymentStrategy{
-				Type:          appsv1.RollingUpdateDeploymentStrategyType,
-				RollingUpdate: &appsv1.RollingUpdateDeployment{MaxUnavailable: &zero, MaxSurge: &one},
-			},
+			Strategy:                strategy,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: labels, Annotations: ann},
 				Spec:       pod,
@@ -199,6 +210,35 @@ func BuildDeployment(app store.App, v store.AppVersion, o BuildOptions) *appsv1.
 }
 
 func int32Ptr(i int32) *int32 { return &i }
+
+// StorageClassVolumes è la storage class dei volumi: local-path, quella di k3s (H3).
+const StorageClassVolumes = "local-path"
+
+// LabelVolume marca i PVC del controller con il nome del volume.
+const LabelVolume = "gitstack.io/volume"
+
+// PVCName è il nome del PVC di un volume dell'app.
+func PVCName(volume string) string { return "vol-" + volume }
+
+func volumeKubeName(volume string) string { return "vol-" + volume }
+
+// BuildPVC è il PersistentVolumeClaim di un volume: ReadWriteOnce, local-path, dimensione fissa. Il
+// controller non lo modifica dopo la creazione (la dimensione non cambia, H3).
+func BuildPVC(app store.App, v store.AppVolumeSpec) *corev1.PersistentVolumeClaim {
+	class := StorageClassVolumes
+	labels := appLabels(app)
+	labels[LabelVolume] = v.Name
+	return &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: PVCName(v.Name), Namespace: Namespace(app.ID), Labels: labels},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			StorageClassName: &class,
+			Resources: corev1.VolumeResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceStorage: *resource.NewQuantity(v.SizeBytes, resource.BinarySI)},
+			},
+		},
+	}
+}
 
 func probes(cfg store.AppConfig) (ready, live *corev1.Probe) {
 	handler := corev1.ProbeHandler{TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt32(int32(*cfg.Port))}}
