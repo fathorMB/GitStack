@@ -26,10 +26,10 @@ import (
 // commitGitPkg è il servizio git con i pacchetti finti: conta le letture puntuali di ImageRevision.
 type commitGitPkg struct {
 	*fakeGit
-	mu    sync.Mutex
-	items []gitclient.PackageInfo
-	err   error
-	calls int
+	mu        sync.Mutex
+	items     []gitclient.PackageInfo
+	err       error
+	calls     int
 	listCalls int
 }
 
