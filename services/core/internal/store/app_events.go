@@ -64,8 +64,8 @@ type versionWire struct {
 }
 
 func imageSnapshot(i AppImage) imageWire {
-	return imageWire{Reference: i.Reference, Digest: i.Digest, Source: i.Source, Verified: i.Verified,
-		SignedBy: i.SignedBy, RunsAsRoot: i.RunsAsRoot}
+	// Stessi campi e tipi di AppImage: cambia solo il nome dei campi JSON (tag).
+	return imageWire(i)
 }
 
 // appSnapshot è l'App del contratto al momento dell'evento (stato e copie pronte come li mostra l'API).
