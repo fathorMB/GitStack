@@ -18,6 +18,6 @@ func NewCmd(f *cmdutil.Factory) *cobra.Command {
 		RunE:  cmdutil.GroupRun,
 	}
 	cmd.AddCommand(newListCmd(f), newCreateCmd(f), newDeployCmd(f), newStatusCmd(f), newLogsCmd(f),
-		newRestartCmd(f), newRollbackCmd(f), newScaleCmd(f), newEnvCmd(f), newSecretCmd(f), newAccessCmd(f))
+		newRestartCmd(f), newRollbackCmd(f), newScaleCmd(f), newEnvCmd(f), newSecretCmd(f), newAccessCmd(f), newVolumeCmd(f))
 	return cmd
 }
