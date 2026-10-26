@@ -17,9 +17,13 @@ import (
 )
 
 // GIT-380 (H16): le barriere in uscita della NetworkPolicy sono applicate dal CNI di k3d.
-// Internet è aperto; rete privata (qui: l'IP del nodo, 172.x), nodo, servizi del cluster e API di
-// Kubernetes restano chiusi, anche per un'app che gira come root (baseline, H9). I controlli
-// negativi sono `if nc -z ...; then echo KO; exit 1; fi`, una riga ok/ko per controllo.
+// Internet è aperto; la rete privata (qui l'IP del nodo k3d, 172.x), i servizi del cluster e l'API
+// di Kubernetes restano chiusi, anche per un'app che gira come root (baseline, H9). La policy è
+// costruita senza NodeAddresses, come in produzione senza GITSTACK_EGRESS_NODE_ADDRESSES: il
+// blocco dell'IP del nodo viene dalle reti private di pkg/egress, non dall'eccezione del nodo (che
+// coprono i test unitari). Ogni negativo ha il suo controllo opposto (stesso bersaglio raggiunto da
+// un namespace senza policy). I negativi sono `if nc -z ...; then echo KO; exit 1; fi`, una riga
+// ok/ko per controllo.
 func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
 	e := newDeployEnv(t)
 	ctx := context.Background()
@@ -52,7 +56,7 @@ func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
 		}
 		t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), ns.Name, metav1.DeleteOptions{}) })
 	}
-	policy := apps.BuildNetworkPolicy(source, apps.NetworkPolicyOptions{NodeAddresses: []string{nodeIP}})
+	policy := apps.BuildNetworkPolicy(source, apps.NetworkPolicyOptions{})
 	if _, err := e.kube.NetworkingV1().NetworkPolicies(policy.Namespace).Create(ctx, policy, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
@@ -81,25 +85,37 @@ func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
 
 	// App con root nel container: baseline lo accetta, le barriere valgono lo stesso.
 	root := int64(0)
-	probe := func(name, host string, port int, allowed bool) {
+	probe := func(ns, name, host string, port int, allowed bool) {
 		t.Helper()
+		labels := map[string]string{}
+		if ns != systemNS {
+			labels[apps.LabelManaged] = "true"
+		}
 		ok, ko := "echo OK", "echo KO; exit 1"
 		if !allowed {
 			ok, ko = ko, ok
 		}
 		script := fmt.Sprintf("if nc -z -w 5 %s %d; then %s; else %s; fi", host, port, ok, ko)
-		create(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: apps.Namespace(source.ID), Labels: map[string]string{apps.LabelManaged: "true"}},
+		create(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns, Labels: labels},
 			Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{
 				Name: "probe", Image: "busybox:1.36", Command: []string{"sh", "-c", script},
 				SecurityContext: &corev1.SecurityContext{RunAsUser: &root}}}}})
-		if got := waitPodLog(t, e.kube, apps.Namespace(source.ID), name); got != "OK" {
+		if got := waitPodLog(t, e.kube, ns, name); got != "OK" {
 			t.Fatalf("%s: %s", name, got)
 		}
 		t.Logf("OK: %s", name)
 	}
-	probe("internet-aperto", "1.1.1.1", 443, true)
-	probe("ip-nodo-privato-lan", nodeIP, 18080, false)
-	probe("api-kubernetes-nodo", nodeIP, 6443, false)
-	probe("api-kubernetes-servizio", kubeSvc.Spec.ClusterIP, 443, false)
-	probe("pod-altro-repo", otherIP, 8080, false)
+	appNS, sysNS := apps.Namespace(source.ID), systemNS
+	// Controlli opposti, da un namespace senza NetworkPolicy: gli stessi bersagli SONO raggiungibili.
+	// Senza questi, un listener che non parte o una porta che non risponde farebbero passare i negativi.
+	probe(sysNS, "ctrl-ip-nodo", nodeIP, 18080, true)
+	probe(sysNS, "ctrl-api-nodo", nodeIP, 6443, true)
+	probe(sysNS, "ctrl-api-servizio", kubeSvc.Spec.ClusterIP, 443, true)
+	probe(sysNS, "ctrl-pod-altro-repo", otherIP, 8080, true)
+	// Dal namespace dell'app (root): internet sì, il resto no.
+	probe(appNS, "internet-aperto", "1.1.1.1", 443, true)
+	probe(appNS, "ip-nodo-privato-lan", nodeIP, 18080, false)
+	probe(appNS, "api-kubernetes-nodo", nodeIP, 6443, false)
+	probe(appNS, "api-kubernetes-servizio", kubeSvc.Spec.ClusterIP, 443, false)
+	probe(appNS, "pod-altro-repo", otherIP, 8080, false)
 }
