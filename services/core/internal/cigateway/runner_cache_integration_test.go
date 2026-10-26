@@ -43,7 +43,7 @@ var cachePayload = bytes.Repeat([]byte("contenuto-della-cache-"), 50)
 
 func fakeActCache() int {
 	base, tok := os.Getenv("ACTIONS_CACHE_URL"), os.Getenv("ACTIONS_RUNTIME_TOKEN")
-	if base == "" || tok == "" || tok != os.Getenv("GITHUB_TOKEN") {
+	if base == "" || tok == "" || os.Getenv("GITHUB_TOKEN") == "" || tok != cirunner.RuntimeToken(os.Getenv("GITHUB_TOKEN")) {
 		fmt.Println("Error: ACTIONS_CACHE_URL/ACTIONS_RUNTIME_TOKEN assenti nell'ambiente del job")
 		return 1
 	}
