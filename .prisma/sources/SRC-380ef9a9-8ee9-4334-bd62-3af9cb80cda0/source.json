@@ -1,0 +1,20 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-380ef9a9-8ee9-4334-bd62-3af9cb80cda0",
+  "imported": "2026-10-25T23:18:31.457454+00:00",
+  "locators": [
+    "# Richiesta dal progetto retail.it: ambiente di test ospitato su GitStack",
+    "## Contesto",
+    "## P1: serve per il primo rilascio in test",
+    "## P2: serve presto, per lavorare bene",
+    "## P3: utile, non bloccante",
+    "## Cosa ci serve sapere da voi"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": null,
+  "original_filename": "richiesta-retail-it-2026-10-26.md",
+  "schema_version": 1,
+  "sha256": "29fd5949e336a5adf4b55c5c8c4df9e1c3ff732b07472c4960b240652bdbeed7",
+  "stored_path": "sources/SRC-380ef9a9-8ee9-4334-bd62-3af9cb80cda0/original.md",
+  "warnings": []
+}

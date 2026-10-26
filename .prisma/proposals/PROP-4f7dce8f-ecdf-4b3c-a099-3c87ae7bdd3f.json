@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "id": "PROP-4f7dce8f-ecdf-4b3c-a099-3c87ae7bdd3f",
+  "state": "applied",
+  "created": "2026-10-25T23:31:58.336216900+00:00",
+  "input": {
+    "kind": "product_roadmap",
+    "summary": "Scelta dell'operatore del 2026-10-26 (opzione 1): portare GitStack il prima possibile a una versione completa delle funzioni decise. Tutti gli obiettivi decisi (v1.1, v2 con v2-a/b/c, v3 con v3-a/b/c) passano da later a now e si chiudono in parallelo; la v1.0 resta il primo rilascio pubblico con i criteri V1, le versioni successive escono appena complete, senza attese. Pulizia del Pilota retail.it: nessuna data (tempi gestiti dall'operatore), domande aperte risolte segnate con le regole nate (CI2, CI3, H6, H7, H14–H16).",
+    "operations": [
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-33ee21a1-e5f1-4a4e-8668-4dfb162d8446",
+          "knowledge": [
+            "DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7",
+            "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+            "DOC-3d5a5862-5bff-4e92-821c-c5caa78ca358",
+            "DOC-b18abc32-db2c-4b14-8800-d37f5443dbad"
+          ],
+          "reopen_reason": "Orizzonte now dal 2026-10-26: obiettivi decisi chiusi in parallelo, rilascio appena completi.",
+          "schema_version": 1,
+          "title": "v1.1 — Collaborazione: Pull Request e server MCP",
+          "updated": "2026-10-25T23:32:19.361985600+00:00"
+        },
+        "body": "\n\n# v1.1 — Collaborazione: Pull Request e server MCP\n\n## Outcome\n\nPull Request con diff, review e merge; server MCP generato dalla stessa API pubblica.\n\n## Rationale\n\nD8 e D9: le PR sono il flusso chiave di collaborazione con gli agenti; il modello dati le prevede già dalla v1. Il server MCP porta GitStack negli assistenti AI che non usano il terminale.\n\n**Orizzonte now dal 2026-10-26** (scelta dell'operatore): gli obiettivi decisi si chiudono in parallelo per arrivare il prima possibile a una versione completa; la v1.0 resta il primo rilascio pubblico (V1) e la v1.1 esce appena è completa, senza attese.\n\n## Scope\n\n**Pull Request** — regole in [[knowledge/topics/pull-request]] (PR1–PR12): PR tra branch dello stesso repo; review con commenti sulle righe e conversazioni risolte; approvazione valida solo da persone con `write`; merge commit o squash; impostazione \"Richiedi una Pull Request\" sul branch principale con approvazioni minime e stati obbligatori; bozze; conflitti mostrati e risolti in locale; chiusura delle issues al merge; API degli stati dei commit per CI esterne; comandi `gs pr` e flusso degli agenti nelle skills; notifiche ed eventi webhook delle PR; filtri di ricerca per le PR e casella Viewed. Mockup 25–28.\n\n**Server MCP** — regole in [[knowledge/topics/server-mcp]] (M1–M5): comando locale `gs mcp` con login e istanze di `gs`; circa 30–40 strumenti scelti generati dal contratto OpenAPI più `api_request`; modalità sola lettura, annotazione distruttiva e operazioni pericolose senza strumento dedicato; flussi delle skills come prompt MCP; configurazione pronta in `/downloads` e avviso di versione.\n\nFuori dalla v1.1: fork, rebase, suggerimenti applicabili e risoluzione dei conflitti dal browser; endpoint MCP remoto con OAuth e risorse MCP.\n\n## Source references\n\n- `.lmbrain-lite/knowledge/vision.md`\n- Tema di analisi \"v1.1 — Pull Request: regole di prodotto\" (PR1–PR12)\n- Tema di analisi \"v1.1 — Server MCP: regole di prodotto\" (M1–M5)\n",
+        "expected_digest": "c20d1c2faf194a77026640247adea307037c54ef4e705609864203a2283c226e",
+        "slug": null,
+        "reason": "Orizzonte now dal 2026-10-26: obiettivi decisi chiusi in parallelo, rilascio appena completi."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-397d65b0-f4a8-4a4c-b965-08d5e41c8be0",
+          "knowledge": [
+            "DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7",
+            "DOC-04fbc589-a144-403b-99e0-13e541fac16a",
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e"
+          ],
+          "reopen_reason": "Orizzonte now dal 2026-10-26: passi realizzati in parallelo, non più dopo v1.0 e v1.1.",
+          "schema_version": 1,
+          "title": "v2 — Build: CI e registry container",
+          "updated": "2026-10-25T23:32:19.363317300+00:00"
+        },
+        "body": "\n\n# v2 — Build: CI e registry container\n\n## Outcome\n\nCI in stile GitHub Actions che reagisce a push, PR e avvii manuali, registry di immagini container e release sui tag, tutto dentro GitStack e utilizzabile da persone e agenti.\n\n## Rationale\n\nPrimo passo verso il \"piccolo cloud privato\"; si aggancia agli eventi e alle risorse generiche predisposti in v1 (D15) e agli stati dei commit della v1.1 (PR9). Per GitStack stesso restituisce la CI ai branch di lavoro dopo il passaggio della casa su homehub.\n\n## Scope\n\nRegole in [[knowledge/topics/ci-registry-release]] (analisi del 2026-10-12). **Dal 2026-10-26** (scelta dell'operatore) i tre passi non aspettano più v1.0 e v1.1: si chiudono in parallelo, ciascuno utilizzabile da solo, e la v2 esce appena è completa:\n\n1. **v2-a CI** (CI1–CI7);\n2. **v2-b Registry** (RG1–RG2);\n3. **v2-c Release** (REL1, al posto della pagina Tags di B7).\n\nFuori dalla v2: eventi su issues e commenti, ambienti con approvazione manuale, verifica obbligatoria delle firme al deploy (v3).\n\n## Source references\n\n- `.lmbrain-lite/knowledge/vision.md`\n- Tema di analisi \"v2 — CI e registry container: regole di prodotto\"\n",
+        "expected_digest": "08c78356d8276870a85a0cfe86da3f2e4be44f1797e982c9fcaaf256fdc2afd0",
+        "slug": null,
+        "reason": "Orizzonte now dal 2026-10-26: passi realizzati in parallelo, non più dopo v1.0 e v1.1."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-dd71564f-d3a2-411d-bae7-f9395b449131",
+          "knowledge": [
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e",
+            "DOC-3d5a5862-5bff-4e92-821c-c5caa78ca358"
+          ],
+          "reopen_reason": "Orizzonte now dal 2026-10-26.",
+          "schema_version": 1,
+          "title": "v2-a — CI in stile GitHub Actions",
+          "updated": "2026-10-25T23:32:19.366077+00:00"
+        },
+        "body": "\n\n# v2-a — CI in stile GitHub Actions\n\n## Outcome\n\nI workflow in formato GitHub Actions girano su GitStack a ogni push, PR, avvio manuale o orario; i risultati compaiono come stati dei commit e gli agenti li seguono con `gs run`.\n\n## Rationale\n\nCI1–CI7: la parte più grande della v2 e quella che serve subito al dogfooding, perché dopo la tappa 2 i branch di lavoro di GitStack non hanno più la CI di GitHub. Orizzonte now dal 2026-10-26.\n\n## Scope\n\nWorkflow compatibili con GitHub Actions; runner integrato isolato più runner esterni, con la build delle immagini nel runner integrato come strada standard (CI2, 2026-10-26); eventi push, pull_request, workflow_dispatch, schedule, anche sui repo in mirror in pull quando la CI è accesa (CI3, 2026-10-26); segreti, variabili e token del job con tetto sui permessi; log, artefatti e cache; scheda Actions, notifiche, webhook, `gs run` e `gs workflow`, skills aggiornate; limiti di risorse automatici. Regole in [[knowledge/topics/ci-registry-release]].\n\nPrimo dei tre passi della v2; dipende dagli stati dei commit della v1.1 (PR9).\n\n## Source references\n\n- Tema di analisi \"v2 — CI e registry container: regole di prodotto\" (CI1–CI7)\n",
+        "expected_digest": "85341ec24c3b39643d353b3a037bf09486207e426a61ff615858540e73f550df",
+        "slug": null,
+        "reason": "Orizzonte now dal 2026-10-26."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-58a0b0bf-3830-4ce4-9ae3-0c7504240bde",
+          "knowledge": [
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e",
+            "DOC-d1718775-770d-4065-8b27-3dc7a400dad6"
+          ],
+          "reopen_reason": "Orizzonte now dal 2026-10-26.",
+          "schema_version": 1,
+          "title": "v2-b — Registry di immagini container",
+          "updated": "2026-10-25T23:32:19.368254900+00:00"
+        },
+        "body": "\n\n# v2-b — Registry di immagini container\n\n## Outcome\n\nOgni repo può pubblicare immagini OCI su GitStack, con i suoi permessi e la sua visibilità, da `docker`, dalla CI o dagli agenti.\n\n## Rationale\n\nRG1–RG2: chiude il ciclo build della CI e prepara la v3, dove le app su k3s useranno le immagini del proprio repo. Orizzonte now dal 2026-10-26.\n\n## Scope\n\nRegistry OCI legato ai repo, login con token, scheda Packages, pulizia automatica, tag protetti, quote, disco o S3, immagini escluse di default dai backup (tranne quelle in uso dalle app, H4), firme cosign e SBOM conservate. Regole in [[knowledge/topics/ci-registry-release]].\n\nSecondo dei tre passi della v2, in parallelo agli altri.\n\n## Source references\n\n- Tema di analisi \"v2 — CI e registry container: regole di prodotto\" (RG1–RG2)\n",
+        "expected_digest": "1eb795d25741a83ba52ee091822b2a2281e80544ec3b4cf840a6d8daed420b94",
+        "slug": null,
+        "reason": "Orizzonte now dal 2026-10-26."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-a5afa7c2-2943-4650-92ed-8d0528fd0eda",
+          "knowledge": [
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e",
+            "DOC-04fbc589-a144-403b-99e0-13e541fac16a"
+          ],
+          "reopen_reason": "Orizzonte now dal 2026-10-26.",
+          "schema_version": 1,
+          "title": "v2-c — Release sui tag",
+          "updated": "2026-10-25T23:32:19.370050100+00:00"
+        },
+        "body": "\n\n# v2-c — Release sui tag\n\n## Outcome\n\nOgni versione ha una pagina di release con note e file allegati, creata a mano o dalla CI, e si scarica anche con `gs release`.\n\n## Rationale\n\nREL1 e B7: le release erano rimandate alla v2; permettono a GitStack di rilasciare se stesso da GitStack. Orizzonte now dal 2026-10-26.\n\n## Scope\n\nRelease su tag con note generate da commit e PR, file allegati fino a 2 GB con SHA-256, bozza, pre-release e Latest, pagina Releases al posto di Tags, `gs release`, webhook `release`. Regole in [[knowledge/topics/ci-registry-release]].\n\nTerzo dei tre passi della v2, in parallelo agli altri.\n\n## Source references\n\n- Tema di analisi \"v2 — CI e registry container: regole di prodotto\" (REL1)\n",
+        "expected_digest": "e1c73796fb7431d51ffac40bd8e0e74ed48b716f234b26d69cc585f693389ddb",
+        "slug": null,
+        "reason": "Orizzonte now dal 2026-10-26."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-ece89711-7a10-4f38-9aad-9106ddeeeeb1",
+          "knowledge": [
+            "DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7",
+            "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363",
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e"
+          ],
+          "reopen_reason": "Orizzonte now dal 2026-10-26; regole H1–H16.",
+          "schema_version": 1,
+          "title": "v3 — Hosting di app e container",
+          "updated": "2026-10-25T23:32:19.371482900+00:00"
+        },
+        "body": "\n\n# v3 — Hosting di app e container\n\n## Outcome\n\nDeploy di app e container su k3s da web UI, API, `gs` e MCP: app interne o pubbliche, domini e certificati automatici, variabili e segreti, volumi persistenti, log, metriche, rollback e scala a mano, tutto con i permessi del repo e utilizzabile da persone e agenti.\n\n## Rationale\n\nCompleta la visione \"piccolo Azure\" sfruttando k3s già incluso (D2) e chiude ciò che la v2 rimandava: verifica delle firme al deploy e ripartenza delle app dopo un ripristino.\n\n## Scope\n\nRegole H1–H16 in [[knowledge/topics/hosting-app]] (analisi del 2026-10-18; H6 e H7 allargate e H14–H16 aggiunte il 2026-10-26 dal [[roadmap/product/pilota-retail-it]]). **Dal 2026-10-26** (scelta dell'operatore) la v3 non aspetta più la v2: i tre passi si chiudono in parallelo, ciascuno utilizzabile da solo, e la v3 esce appena è completa:\n\n1. **v3-a App interne** (H2 indirizzo automatico, H4–H16), di cui il Pilota retail.it è la prima parte;\n2. **v3-b Dati** (H3);\n3. **v3-c App pubbliche** (H1, H2 domini propri e Let's Encrypt).\n\nFuori dalla v3: database gestiti e multi-nodo («Oltre»), anteprime per ogni PR, definizione dell'app in un file del repo, scala automatica.\n\n## Source references\n\n- `.lmbrain-lite/knowledge/vision.md`\n- Tema di analisi \"v3 — Hosting di app e container: regole di prodotto\" (H1–H13)\n- Richiesta retail.it del 2026-10-26 (H6, H7, H14–H16)\n",
+        "expected_digest": "9b3a1ae57f92570ffa65476903ec3d2179ab41cfebe1944ec03ccc5d950e9319",
+        "slug": null,
+        "reason": "Orizzonte now dal 2026-10-26; regole H1–H16."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-a9f00bcc-bbe6-4a91-bc24-963bae228761",
+          "knowledge": [
+            "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363",
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e",
+            "DOC-d1718775-770d-4065-8b27-3dc7a400dad6"
+          ],
+          "reopen_reason": "Orizzonte now dal 2026-10-26; aggiunte H14–H16, lista di accesso (H6) e deploy su regola di tag (H7).",
+          "schema_version": 1,
+          "title": "v3-a — App interne",
+          "updated": "2026-10-25T23:32:19.372972800+00:00"
+        },
+        "body": "\n\n# v3-a — App interne\n\n## Outcome\n\nChi ha `write` su un repo mette in esecuzione un'app senza disco, raggiungibile in rete aziendale con il login GitStack, la aggiorna a mano, a ogni push sul branch scelto o a ogni tag che rispetta una regola, ne legge log e metriche e torna indietro con un clic; un agente fa lo stesso con `gs app` o MCP.\n\n## Rationale\n\nH5–H16: è il nucleo della v3 e il passo più sicuro da rilasciare per primo, senza esposizione su internet mentre si collaudano isolamento e risorse. Orizzonte now dal 2026-10-26; la prima parte è il [[roadmap/product/pilota-retail-it]].\n\n## Scope\n\nScheda **Apps** nel repo (H5); indirizzo automatico sotto il dominio delle app con CA interna (parte di H2); login GitStack davanti all'app con lista di accesso per i tester esterni (H6); deploy a mano, da branch o da regola sui tag (H7); configurazione con versioni e segreti (H8); isolamento (H9); firme al deploy e firma automatica dalla CI (H10); parte garantita, tetto e quote (H11); log, metriche, salute, rollback e scala a mano (H12); agenti, MCP e skills (H13); variabili di sistema `GITSTACK_` (H14); nomi interni tra app dello stesso repo (H15); uscita verso internet e rete privata (H16); immagini in uso nei backup (H4). Solo app senza volumi.\n\nPrimo dei tre passi della v3; dipende da v2-a (CI) e v2-b (registry).\n\n## Source references\n\n- Tema di analisi \"v3 — Hosting di app e container: regole di prodotto\" (H2, H4–H13)\n- Richiesta retail.it del 2026-10-26 (H6, H7, H14–H16)\n",
+        "expected_digest": "32e45613a7f84c6407e8c0e05957e0731e713654b7d014feef38a6cb9a2a5145",
+        "slug": null,
+        "reason": "Orizzonte now dal 2026-10-26; aggiunte H14–H16, lista di accesso (H6) e deploy su regola di tag (H7)."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-990d3f4a-a762-48d5-a0a1-4147fca8b7d1",
+          "knowledge": [
+            "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363",
+            "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e"
+          ],
+          "reopen_reason": "Orizzonte now dal 2026-10-26.",
+          "schema_version": 1,
+          "title": "v3-b — Dati persistenti delle app",
+          "updated": "2026-10-25T23:32:19.375458500+00:00"
+        },
+        "body": "\n\n# v3-b — Dati persistenti delle app\n\n## Outcome\n\nUn'app può conservare dati su volumi persistenti che entrano nei backup di GitStack e tornano con il ripristino, così wiki, CMS e piccoli strumenti interni girano su GitStack.\n\n## Rationale\n\nH3: alla maggior parte delle aziende on-prem i dati servono prima dell'esposizione su internet; i database gestiti restano in «Oltre». Orizzonte now dal 2026-10-26; retail.it valuterà di portarci il proprio PostgreSQL di test.\n\n## Scope\n\nVolumi di dimensione fissa nella quota dell'owner; app con volume a una sola copia; volumi inclusi di default nei backup ed escludibili per app; avviso e guida al dump per i database dentro un container (H3, D19).\n\nSecondo dei tre passi della v3, in parallelo agli altri.\n\n## Source references\n\n- Tema di analisi \"v3 — Hosting di app e container: regole di prodotto\" (H3)\n",
+        "expected_digest": "12ecb7ce68f946d4843e030b9c8195bc4eb9507a57c823af24cba50ab1fe7341",
+        "slug": null,
+        "reason": "Orizzonte now dal 2026-10-26."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-a9706e40-6490-451b-a667-475fd17886f5",
+          "knowledge": [
+            "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363",
+            "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e"
+          ],
+          "reopen_reason": "Orizzonte now dal 2026-10-26.",
+          "schema_version": 1,
+          "title": "v3-c — App pubbliche e domini propri",
+          "updated": "2026-10-25T23:32:19.377276400+00:00"
+        },
+        "body": "\n\n# v3-c — App pubbliche e domini propri\n\n## Outcome\n\nUn'app può essere pubblicata su internet con il proprio dominio e un certificato automatico, solo con il doppio consenso dell'amministratore dell'installazione e di chi ha `admin` sull'app.\n\n## Rationale\n\nH1 e H2: completa la promessa «cloud hosting» per siti e API rivolti all'esterno, mantenendo «interno di default» come per i repo. Orizzonte now dal 2026-10-26; Let's Encrypt evita anche ai tester di retail.it di installare la CA interna.\n\n## Scope\n\nInterruttore di istanza per le app pubbliche e scelta per app (H1); domini propri con controllo del DNS; Let's Encrypt automatico via Traefik (porta 80 raggiungibile) o certificato del cliente (H2).\n\nTerzo dei tre passi della v3, in parallelo agli altri.\n\n## Source references\n\n- Tema di analisi \"v3 — Hosting di app e container: regole di prodotto\" (H1, H2)\n",
+        "expected_digest": "7dabb4f62c44c2b8255981e6b0b9c725971ca53d4afdc4fafcce3fbbe997b3d8",
+        "slug": null,
+        "reason": "Orizzonte now dal 2026-10-26."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-20366828-5e70-4aba-9c46-1575a1bb7b18",
+          "knowledge": [
+            "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363",
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e",
+            "DOC-3595cb24-e019-4230-a412-009769bae527",
+            "DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d"
+          ],
+          "reopen_reason": "Domande aperte risolte il 2026-10-26 (CI2, CI3, H6, H7, H14–H16); nessuna data, tempi gestiti dall'operatore.",
+          "schema_version": 1,
+          "sources": [
+            {
+              "source_id": "SRC-380ef9a9-8ee9-4334-bd62-3af9cb80cda0"
+            }
+          ],
+          "title": "Pilota retail.it — ambiente di test su GitStack",
+          "updated": "2026-10-25T23:32:19.378568700+00:00"
+        },
+        "body": "\n# Pilota retail.it — ambiente di test su GitStack\n\n## Outcome\n\nIl progetto retail.it (primo repo ospitato ufficialmente) ha su GitStack un ambiente di test: il repo è un mirror in pull da GitHub, la CI di GitStack costruisce le immagini di API, sito e backoffice e le pubblica nel registry del repo, le immagini girano come app GitStack interne accessibili solo ai tester, e i tester aprono issue con screenshot sul repo.\n\n## Rationale\n\nScelta dell'operatore del 2026-10-26: il pilota corre **in parallelo alla v1.0**, che resta il primo rilascio pubblico con i criteri V1. È il primo cliente reale della v3-a: collaudarla su un caso vero vale più di un collaudo interno. Nessuna data: i tempi li gestisce l'operatore, nel quadro della scelta di chiudere in parallelo tutti gli obiettivi decisi.\n\n## Scope\n\n**Prima parte (P1 della richiesta, serve per il primo rilascio in test)** — tutte coperte da regole decise, manca il codice:\n\n1. CI su un repo in mirror in pull, accesa per repo da chi ha `admin`; ogni sincronizzazione con ref nuovi genera eventi push e tag come un push normale (CI3).\n2. Build delle immagini nel runner integrato con BuildKit senza privilegi (CI2).\n3. Hosting delle app attivabile dall'installer e da `gitstack upgrade`, con il dominio delle app (H2).\n4. Immagini private del registry dello stesso repo usate dalle app senza credenziali a mano (H7, RG1).\n5. Segreti delle app passati ai container, mai mostrati, nuova versione a ogni modifica (H8).\n6. Login GitStack davanti alle app interne per chi ha `read` sul repo e per chi è nella lista di accesso dell'app, utente in intestazioni firmate (H6).\n\n**Seconda parte (P2, subito dopo):** deploy automatico da branch o da regola sui tag e deploy di un tag preciso dalla CI (H7); variabili `GITSTACK_APP_VERSION`, `GITSTACK_COMMIT_SHA`, `GITSTACK_DEPLOYED_AT` (H14); nome interno stabile tra app dello stesso repo (H15); uscita verso internet e rete privata con guida (H16); log, stato e webhook `deployment` (H12); `gs app` (H13).\n\n**Fuori dal pilota:** P3 (account bot, guida CA per i tester, Let's Encrypt della v3-c, volumi della v3-b) resta nei rispettivi obiettivi o si decide dopo.\n\n## Open questions\n\n- **Account bot** limitato ad aprire issue e caricare allegati (P3): bastano i grant (P4) o serve altro.\n- Dove sta il PostgreSQL di test di retail.it (cloud o rete aziendale): decide se serve aprire una destinazione privata (H16).\n\n## Source references\n\n- Richiesta retail.it del 2026-10-26 (SRC-380ef9a9-8ee9-4334-bd62-3af9cb80cda0)\n- [[knowledge/topics/hosting-app]], [[knowledge/topics/ci-registry-release]], [[knowledge/topics/mirror-in-pull]], [[knowledge/topics/rilascio-v1]]\n",
+        "expected_digest": "c68c8994b49f331e37afd9c6bb2a2ec1dae2ee25a313d4d32206a25d34a73330",
+        "slug": null,
+        "reason": "Domande aperte risolte il 2026-10-26 (CI2, CI3, H6, H7, H14–H16); nessuna data, tempi gestiti dall'operatore."
+      }
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "confermo"
+  }
+}

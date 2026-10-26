@@ -1,6 +1,7 @@
 ---
-{"horizon":"later","id":"OBJ-33ee21a1-e5f1-4a4e-8668-4dfb162d8446","knowledge":["DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7","DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd","DOC-3d5a5862-5bff-4e92-821c-c5caa78ca358","DOC-b18abc32-db2c-4b14-8800-d37f5443dbad"],"reopen_reason":"Scope del server MCP definito dalle regole M1–M5 (2026-10-05); orizzonte invariato.","schema_version":1,"title":"v1.1 — Collaborazione: Pull Request e server MCP","updated":"2026-10-05T20:44:55.192580700+00:00"}
+{"horizon":"now","id":"OBJ-33ee21a1-e5f1-4a4e-8668-4dfb162d8446","knowledge":["DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7","DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd","DOC-3d5a5862-5bff-4e92-821c-c5caa78ca358","DOC-b18abc32-db2c-4b14-8800-d37f5443dbad"],"reopen_reason":"Orizzonte now dal 2026-10-26: obiettivi decisi chiusi in parallelo, rilascio appena completi.","schema_version":1,"title":"v1.1 — Collaborazione: Pull Request e server MCP","updated":"2026-10-25T23:32:19.361985600+00:00"}
 ---
+
 
 
 # v1.1 — Collaborazione: Pull Request e server MCP
@@ -12,6 +13,8 @@ Pull Request con diff, review e merge; server MCP generato dalla stessa API pubb
 ## Rationale
 
 D8 e D9: le PR sono il flusso chiave di collaborazione con gli agenti; il modello dati le prevede già dalla v1. Il server MCP porta GitStack negli assistenti AI che non usano il terminale.
+
+**Orizzonte now dal 2026-10-26** (scelta dell'operatore): gli obiettivi decisi si chiudono in parallelo per arrivare il prima possibile a una versione completa; la v1.0 resta il primo rilascio pubblico (V1) e la v1.1 esce appena è completa, senza attese.
 
 ## Scope
 

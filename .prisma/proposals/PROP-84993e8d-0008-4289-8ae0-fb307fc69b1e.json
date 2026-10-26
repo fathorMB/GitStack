@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "id": "PROP-84993e8d-0008-4289-8ae0-fb307fc69b1e",
+  "state": "applied",
+  "created": "2026-10-25T23:18:57.105535200+00:00",
+  "input": {
+    "kind": "product_roadmap",
+    "summary": "Nuovo obiettivo «Pilota retail.it» (orizzonte now), in parallelo alla v1.0: i P1 della richiesta retail.it del 26/10/2026 diventano il primo pezzo della v3-a da chiudere; i P2 seguono subito dopo. La v1.0 resta la priorità e i suoi criteri non cambiano. Le decisioni nuove (tester esterni, deploy su regola di tag, eventi dalla sincronizzazione del mirror, account bot) restano domande aperte.",
+    "operations": [
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-20366828-5e70-4aba-9c46-1575a1bb7b18",
+          "knowledge": [
+            "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363",
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e",
+            "DOC-3595cb24-e019-4230-a412-009769bae527",
+            "DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d"
+          ],
+          "reopen_reason": "Scelta dell'operatore del 2026-10-26 (opzione 1): pilota retail.it in parallelo alla v1.0, primo pezzo della v3-a.",
+          "schema_version": 1,
+          "sources": [
+            {
+              "source_id": "SRC-380ef9a9-8ee9-4334-bd62-3af9cb80cda0"
+            }
+          ],
+          "title": "Pilota retail.it — ambiente di test su GitStack",
+          "updated": "2026-10-25T23:21:25.910306800+00:00"
+        },
+        "body": "# Pilota retail.it — ambiente di test su GitStack\n\n## Outcome\n\nIl progetto retail.it (primo repo ospitato ufficialmente) ha su GitStack un ambiente di test: il repo è un mirror in pull da GitHub, la CI di GitStack costruisce le immagini di API, sito e backoffice e le pubblica nel registry del repo, le immagini girano come app GitStack interne accessibili solo ai tester, e i tester aprono issue con screenshot sul repo.\n\n## Rationale\n\nScelta dell'operatore del 2026-10-26: il pilota corre **in parallelo alla v1.0**, che resta la priorità e non cambia i suoi criteri (V1). È il primo cliente reale della v3-a, già avviata nel codice (controller dei deploy, variabili e segreti): collaudarla su un caso vero vale più di un collaudo interno. Il pilota anticipa una parte della v3-a, non tutta.\n\n## Scope\n\n**Prima parte (P1 della richiesta, serve per il primo rilascio in test)** — tutte coperte da regole già decise, manca il codice:\n\n1. CI su un repo in mirror in pull, attivabile per repo da UI e API (CI3: spenta di default sui mirror).\n2. Build delle immagini in CI (CI2: build senza privilegi; strada integrata o runner esterno da scegliere).\n3. Hosting delle app attivabile dall'installer e da `gitstack upgrade`, con il dominio delle app (H2).\n4. Immagini private del registry dello stesso repo usate dalle app senza credenziali a mano (H7, RG1).\n5. Segreti delle app passati ai container, mai mostrati, nuova versione a ogni modifica (H8).\n6. Login GitStack davanti alle app interne per chi ha `read` sul repo, utente in intestazioni firmate (H6).\n\n**Seconda parte (P2, subito dopo):** deploy automatico e deploy di un tag preciso dalla CI (H7), versione e commit visibili all'app, nome interno stabile tra app dello stesso repo (H9), uscita verso servizi esterni documentata (H9, N9), log, stato e webhook `deployment` (H12), `gs app` (H13).\n\n**Fuori dal pilota:** P3 (account bot, guida CA per i tester, Let's Encrypt della v3-c, volumi della v3-b) resta nei rispettivi obiettivi o si decide dopo.\n\n## Open questions\n\n- **Tester esterni:** accesso alle sole app per persone del business senza vedere il codice; oggi H5 esclude ruoli nuovi e H6 richiede `read` sul repo.\n- **Deploy automatico su regola di tag** (es. `v*-test.*`) invece che seguendo un branch (H7).\n- **Eventi dalla sincronizzazione del mirror:** se ogni sincronizzazione con nuovi commit o tag genera gli eventi push e tag come un push normale (regola nuova per mirror in pull e CI3).\n- **Account bot** limitato ad aprire issue e caricare allegati: bastano i grant (P4) o serve altro.\n- Data indicativa del primo rilascio in test.\n\n## Source references\n\n- Richiesta retail.it del 2026-10-26 (SRC-380ef9a9-8ee9-4334-bd62-3af9cb80cda0)\n- [[knowledge/topics/hosting-app]], [[knowledge/topics/ci-registry-release]], [[knowledge/topics/mirror-in-pull]], [[knowledge/topics/rilascio-v1]]\n",
+        "expected_digest": null,
+        "slug": "pilota-retail-it",
+        "reason": "Scelta dell'operatore del 2026-10-26 (opzione 1): pilota retail.it in parallelo alla v1.0, primo pezzo della v3-a."
+      }
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "sì, confermo"
+  }
+}
