@@ -111,6 +111,60 @@ printf 'version: 1\nhost: git.azienda.it\napps_domain: apps.dalconfig.it\ntls: i
 resolve_apps_domain >/dev/null 2>&1
 check_eq "dal config.yaml" "${APPS_DOMAIN}" "apps.dalconfig.it"
 
+# --- resolve_apps_enabled (GIT-375): hosting delle app ---------------------------
+PUBLIC_HOST="homehub.local"
+APPS_DOMAIN="apps.azienda.it"
+rm -f "${TLS_DIR}/install.conf" "${GITSTACK_CONFIG_FILE}"
+
+# Senza scelte: spento, con il dominio comunque passato al chart.
+GITSTACK_ENABLE_APPS=""
+run resolve_apps_enabled
+expect_ok "hosting: esito"
+expect_has "hosting: spento di default" "Hosting delle app: spento (predefinito)"
+resolve_apps_enabled >/dev/null 2>&1
+check_eq "hosting spento: APPS_ENABLED" "${APPS_ENABLED}" "0"
+check_eq "hosting spento: valori del chart" "${APPS_HELM_SETS[*]}" "apps.domain=apps.azienda.it apps.enabled=false"
+
+# --enable-apps: acceso.
+GITSTACK_ENABLE_APPS=1
+run resolve_apps_enabled; expect_has "hosting: --enable-apps" "Hosting delle app: acceso (--enable-apps/--disable-apps)"
+resolve_apps_enabled >/dev/null 2>&1
+check_eq "hosting acceso: APPS_ENABLED" "${APPS_ENABLED}" "1"
+check_eq "hosting acceso: valori del chart" "${APPS_HELM_SETS[*]}" "apps.domain=apps.azienda.it apps.enabled=true"
+
+# Una riesecuzione senza opzioni conserva la scelta (install.conf, poi config.yaml).
+GITSTACK_ENABLE_APPS=""
+printf 'MODE=internal\nAPPS_ENABLED=true\n' >"${TLS_DIR}/install.conf"
+resolve_apps_enabled >/dev/null 2>&1
+check_eq "hosting: scelta salvata in install.conf" "${APPS_ENABLED}" "1"
+rm -f "${TLS_DIR}/install.conf"
+printf 'version: 1\napps_enabled: true\n' >"${GITSTACK_CONFIG_FILE}"
+resolve_apps_enabled >/dev/null 2>&1
+check_eq "hosting: scelta salvata in config.yaml" "${APPS_ENABLED}" "1"
+# --disable-apps vince sulla scelta salvata.
+GITSTACK_ENABLE_APPS=0
+resolve_apps_enabled >/dev/null 2>&1
+check_eq "hosting: --disable-apps" "${APPS_ENABLED}" "0"
+# Una v2 aggiornata (config.yaml senza apps_enabled) resta spenta.
+GITSTACK_ENABLE_APPS=""
+printf 'version: 1\nhost: h\n' >"${GITSTACK_CONFIG_FILE}"
+resolve_apps_enabled >/dev/null 2>&1
+check_eq "hosting: v2 senza apps_enabled" "${APPS_ENABLED}" "0"
+rm -f "${GITSTACK_CONFIG_FILE}"
+
+# L'opzione --enable-apps arriva ai valori Helm di install_gitstack (helm_value_args).
+GITSTACK_ENABLE_APPS=1
+APPS_DOMAIN="apps.azienda.it"
+resolve_apps_enabled >/dev/null 2>&1
+GITSTACK_IMAGE_REGISTRY=""
+TLS_HELM_SETS=()
+helm_value_args sha-abc >/dev/null 2>&1
+OUT="${HELM_VALUE_ARGS[*]}"
+RC=0
+expect_has "helm: apps.enabled=true" "apps.enabled=true"
+expect_has "helm: apps.domain" "apps.domain=apps.azienda.it"
+GITSTACK_ENABLE_APPS=""
+
 # --- gitstack-tls: certificato wildcard con la CA interna ---------------------
 if ! command -v openssl >/dev/null 2>&1; then
   printf 'openssl non disponibile: salto la parte del certificato.\n'

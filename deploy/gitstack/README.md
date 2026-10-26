@@ -287,3 +287,15 @@ Per uno sviluppo locale — cluster persistente, `web` incluso, ciclo modifica �
 - **Residuo**: niente TLS dentro il cluster (HTTP fra i servizi, NATS e Postgres incluso in chiaro): vedi F8 in `docs/security/asvs-l2.md`.
 - Un pod di prova che deve parlare con NATS (come fa `deploy/test-vm/e2e/remote.sh`) prende le label di core **e** `app.kubernetes.io/part-of=gitstack` (senza quest'ultima la policy `allow-dns` non lo seleziona e il DNS è chiuso) e le credenziali dal Secret.
 - Test: `deploy/tests/chart_hardening_test.sh` (rendering con `helm template`).
+
+## Hosting delle app: `apps.enabled` (GIT-375, ADR 0002)
+
+Spento di default. `apps.enabled=true` richiede `apps.domain` (il dominio delle app) e imposta su core
+`GITSTACK_CORE_APPS_ENABLED`, `GITSTACK_CORE_APPS_DOMAIN`, `GITSTACK_CORE_APPS_AUTH_MIDDLEWARE`
+(da `apps.authMiddleware`, facoltativo) e, per il RoleBinding dei namespace, `GITSTACK_CORE_APPS_CONTROLLER_SA`
+e `GITSTACK_CORE_APPS_WORKLOAD_ROLE`. `templates/apps-rbac.yaml` crea il ClusterRole del controller
+(`namespaces`, `rolebindings` create/get, `bind` sul solo ruolo modello) e il ClusterRole modello
+`<release>-app-workload`, che **non ha ClusterRoleBinding**: lo lega solo il RoleBinding che core crea in
+ogni namespace `gitstack-app-<id>`. Con `ci.enabled` core usa `ci-dispatcher`, altrimenti `<release>-core`.
+Con `apps.enabled=false` (e `apps.domain` vuoto) non si rende nessuna risorsa delle app. Il test è in
+`deploy/tests/chart_hardening_test.sh`. Come accenderlo: [deploy/README.md](../README.md#hosting-delle-app-accenderlo-git-375-adr-0002).

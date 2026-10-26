@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fathorMB/GitStack/admin/internal/config"
 	"github.com/fathorMB/GitStack/admin/internal/status"
 	"github.com/fathorMB/GitStack/admin/internal/upgrade"
 )
@@ -38,6 +39,9 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 	timeout := fs.Duration("timeout", upgrade.DefaultTimeout, "tempo massimo per l'aggiornamento dei servizi e per la loro salute")
 	dry := fs.Bool("dry-run", false, "esegue solo i controlli sulla destinazione, senza modificare nulla")
 	k3sMinor := fs.Bool("k3s", false, "consente l'aggiornamento di k3s a una nuova minore (una alla volta); le patch si applicano da sole")
+	enableApps := fs.Bool("enable-apps", false, "accende l'hosting delle app (chart apps.enabled): core riceve il controller delle app e i permessi Kubernetes minimi dell'ADR 0002")
+	appsDomain := fs.String("apps-domain", "", "con --enable-apps: dominio delle app (default: quello già impostato, altrimenti apps.<host> con avviso)")
+	authMW := fs.String("auth-middleware", "", "con --enable-apps: Middleware Traefik forward-auth del login (nome o namespace/nome)")
 	var sets, values multiFlag
 	fs.Var(&sets, "set", "valore del chart (chiave=valore), ripetibile")
 	fs.Var(&values, "values", "file di valori del chart, ripetibile")
@@ -69,6 +73,35 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 	cfg, code := a.loadConfig(path)
 	if cfg == nil {
 		return code
+	}
+	if (*appsDomain != "" || *authMW != "") && !*enableApps {
+		a.errorf("upgrade: --apps-domain e --auth-middleware valgono solo con --enable-apps")
+		return ExitUsage
+	}
+	if *authMW != "" && !appsMiddlewareRe.MatchString(*authMW) {
+		a.errorf("upgrade: --auth-middleware %q non valido (nome o namespace/nome)", *authMW)
+		return ExitUsage
+	}
+	// Hosting delle app (GIT-375): dominio (anche per una v2 che non ne ha uno) e valori del chart.
+	var appsSets []string
+	var appsConfig map[string]string
+	appsDomainNew := ""
+	if *enableApps {
+		d, ok := a.chooseAppsDomain(cfg, *appsDomain, "upgrade")
+		if !ok {
+			return ExitUsage
+		}
+		appsConfig = map[string]string{"apps_enabled": "true"}
+		appsSets = []string{"apps.enabled=true", "apps.domain=" + d}
+		if *authMW != "" {
+			appsSets = append(appsSets, "apps.authMiddleware="+*authMW)
+		}
+		if d != cfg.AppsDomain {
+			appsDomainNew = d
+		}
+		if *dry {
+			_, _ = fmt.Fprintf(a.Stdout, "==> --dry-run: l'hosting delle app si accenderebbe con il dominio %s.\n", d)
+		}
 	}
 	var key []byte
 	if *keyFile != "" {
@@ -106,7 +139,8 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		DryRun:        *dry,
 		AllowK3sMinor: *k3sMinor,
 		Timeout:       *timeout,
-		Sets:          sets,
+		Sets:          append(append([]string{}, sets...), appsSets...),
+		ExtraConfig:   appsConfig,
 		ValueFiles:    values,
 		HelmBin:       a.helmBin(),
 		ExePath:       a.exePath(),
@@ -141,6 +175,14 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		a.TuneUpgrade(o)
 	}
 
+	// Il dominio nuovo (e il suo certificato wildcard) prima dell'aggiornamento, mai in --dry-run:
+	// se l'upgrade poi si ferma, il dominio resta impostato come con «config set apps-domain».
+	if appsDomainNew != "" && !*dry {
+		if c := a.applyAppsDomain(ctx, cfg, path, appsDomainNew, "upgrade"); c != ExitOK {
+			return c
+		}
+	}
+
 	res, err := upgrade.Run(ctx, o)
 	var ref *upgrade.RefusedError
 	switch {
@@ -154,6 +196,25 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 			_, _ = fmt.Fprintln(a.Stderr, l)
 		}
 		return ExitUnexpected
+	}
+	if *enableApps && !*dry {
+		switch res.Outcome {
+		case upgrade.Upgraded:
+			// config.yaml l'ha già scritto l'upgrade (ExtraConfig), insieme a image_tag.
+			updateInstallConfKey(a.tlsDirFor(path), "APPS_ENABLED", "true")
+			_, _ = fmt.Fprintln(a.Stdout, "Hosting delle app acceso.")
+		case upgrade.NoChange:
+			// Già alla versione richiesta: niente helm upgrade dell'aggiornamento, si applicano solo i valori.
+			if c := a.helmApps(ctx, cfg, "upgrade", appsSets...); c != ExitOK {
+				return c
+			}
+			if err := config.SetFields(path, appsConfig); err != nil {
+				a.errorf("upgrade: hosting delle app acceso ma config.yaml non aggiornato: %v", err)
+				return ExitUnexpected
+			}
+			updateInstallConfKey(a.tlsDirFor(path), "APPS_ENABLED", "true")
+			_, _ = fmt.Fprintln(a.Stdout, "Hosting delle app acceso.")
+		}
 	}
 	a.autoPublish(ctx, cfg, path)
 	w := a.Stdout

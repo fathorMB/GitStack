@@ -74,6 +74,10 @@ type Report struct {
 	Host          string    `json:"host"`
 	SSHPort       int       `json:"ssh_port"`
 	AppsDomain    string    `json:"apps_domain,omitempty"`
+	// AppsEnabled è l'hosting delle app come scritto in config.yaml; AppsLive quello che il cluster
+	// fa davvero ("on", "off", "" se non leggibile): core ha GITSTACK_CORE_APPS_ENABLED=true o no.
+	AppsEnabled   bool      `json:"apps_enabled"`
+	AppsLive      string    `json:"apps_live,omitempty"`
 	Release       string    `json:"release"`
 	Namespace     string    `json:"namespace"`
 	ServerVersion string    `json:"server_version"`
@@ -162,6 +166,7 @@ func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir s
 		Host:       cfg.Host,
 		SSHPort:    cfg.SSHPort,
 		AppsDomain: cfg.AppsDomain,
+		AppsEnabled: cfg.AppsEnabled,
 		Release:    cfg.Release,
 		Namespace:  cfg.Namespace,
 	}
@@ -171,6 +176,9 @@ func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir s
 		r.ClusterError = err.Error()
 	}
 	r.Services = svcs
+	if r.ClusterError == "" {
+		r.AppsLive = c.appsLive(ctx, cfg)
+	}
 	r.ServerVersion = serverVersion(svcs, cfg)
 	r.APIHealthy, r.APIDetail = c.api(ctx, cfg)
 	r.Database = c.database(ctx, cfg, r.ClusterError == "")
@@ -183,6 +191,27 @@ func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir s
 		r.SupplyChainWarning = SupplyChainUnsignedWarning
 	}
 	return r
+}
+
+// appsLive legge da core se l'hosting delle app è acceso davvero (GITSTACK_CORE_APPS_ENABLED nel
+// Deployment): "on", "off" o "" se il cluster non risponde.
+func (c *Collector) appsLive(ctx context.Context, cfg *config.Config) string {
+	bin, pre, err := c.kubectlCommand()
+	if err != nil {
+		return ""
+	}
+	args := append(append([]string{}, pre...), "get", "deployment", cfg.Release+"-core", "-n", cfg.Namespace,
+		"-o", `jsonpath={.spec.template.spec.containers[0].env[?(@.name=="GITSTACK_CORE_APPS_ENABLED")].value}`)
+	cctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	out, err := c.Runner.Run(cctx, []string{"KUBECONFIG=" + cfg.Kubeconfig}, bin, args...)
+	if err != nil {
+		return ""
+	}
+	if strings.TrimSpace(string(out)) == "true" {
+		return "on"
+	}
+	return "off"
 }
 
 var k3sVersionRe = regexp.MustCompile(`v\d+\.\d+\.\d+\+k3s\d+`)

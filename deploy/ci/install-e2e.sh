@@ -41,6 +41,12 @@
 #                              (SNI <app>-<repo>-<owner>.<dominio>). Con install.log e warn|nowarn controlla
 #                              che l'avviso del dominio predefinito ci sia (warn) o manchi (nowarn). Con `unset` (v2 aggiornata): nessun apps_domain
 #                              in config.yaml e status lo dice. Una riga ok/ko per controllo.
+#   apps-prepare               Hosting delle app (GIT-375): crea il Middleware di prova default/e2e-app-login,
+#                              da passare all'installazione con --set apps.authMiddleware=default/e2e-app-login.
+#   verify-apps-hosting on|off Core con/senza GITSTACK_CORE_APPS_ENABLED, `gitstack status`, config.yaml e RBAC
+#                              (auth can-i del ServiceAccount di core). Una riga ok/ko per controllo.
+#   apps-off-api               Hosting spento: POST app = 503 apps_unavailable, nessun namespace, nessuna app.
+#   apps-run <dominio>         Hosting acceso: un'app creata da API risponde 200 al suo indirizzo automatico.
 #   latest-backup              Stampa il percorso dell'archivio più recente.
 #   diagnostics <cartella>     Log del cluster e dei servizi (non fallisce mai).
 #
@@ -526,6 +532,125 @@ verify_apps_domain() {
 ' "${want}"
 }
 
+# --- Hosting delle app (GIT-375, ADR 0002) -------------------------------------
+
+# Middleware Traefik «che lascia passare» usato come forward-auth di prova: il forward-auth vero del
+# gateway è di un altro item. Senza un middleware le app con accesso `login` (il default) non
+# ricevono una rotta (core, routeHost), quindi la prova ne passa uno al chart con
+# --set apps.authMiddleware=default/e2e-app-login.
+APPS_E2E_MIDDLEWARE="e2e-app-login"
+
+# apps-prepare: crea il Middleware di prova (le CRD di Traefik arrivano dopo il nodo Ready).
+apps_prepare() {
+  local deadline=$((SECONDS + 300))
+  until "${KUBECTL[@]}" get crd middlewares.traefik.io >/dev/null 2>&1; do
+    [ "${SECONDS}" -lt "${deadline}" ] || fail "le CRD di Traefik non ci sono dopo 300s"
+    sleep 5
+  done
+  "${KUBECTL[@]}" apply -f - <<EOF >/dev/null
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: ${APPS_E2E_MIDDLEWARE}
+  namespace: default
+spec:
+  headers:
+    customResponseHeaders:
+      X-Gitstack-E2e: "ok"
+EOF
+  log "Middleware di prova default/${APPS_E2E_MIDDLEWARE} creato"
+}
+
+core_env() { # <NOME> -> valore dell'env di core (vuoto se manca)
+  "${KUBECTL[@]}" -n default get deployment gitstack-core -o jsonpath="{.spec.template.spec.containers[0].env[?(@.name==\"$1\")].value}"
+}
+
+can_i() { # <serviceaccount> <verbo> <risorsa> [opzioni...]: yes|no
+  local sa="$1"
+  shift
+  "${KUBECTL[@]}" auth can-i "$@" --as "${sa}" 2>/dev/null || true
+}
+
+no_workload_binding() {
+  ! "${KUBECTL[@]}" get clusterrolebinding -o jsonpath='{range .items[*]}{.roleRef.name}{"
+"}{end}' | grep -qx gitstack-app-workload
+}
+
+no_apps_clusterroles() {
+  ! "${KUBECTL[@]}" get clusterrole gitstack-apps-controller gitstack-app-workload >/dev/null 2>&1
+}
+
+# verify-apps-hosting on|off: una riga ok/ko per controllo; l'esito è il codice di uscita.
+verify_apps_hosting() {
+  local want="${1:-}" sa
+  APPS_KO=0
+  case "${want}" in on | off) ;; *) fail "uso: verify-apps-hosting on|off" ;; esac
+  sa="system:serviceaccount:default:$("${KUBECTL[@]}" -n default get deployment gitstack-core -o jsonpath='{.spec.template.spec.serviceAccountName}')"
+  if [ "${want}" = on ]; then
+    apps_check "core: GITSTACK_CORE_APPS_ENABLED=true" test "$(core_env GITSTACK_CORE_APPS_ENABLED)" = true
+    apps_check "core: GITSTACK_CORE_APPS_DOMAIN impostato" test -n "$(core_env GITSTACK_CORE_APPS_DOMAIN)"
+    apps_check "gitstack status: Hosting delle app: acceso" bash -c "sudo gitstack status | grep -q 'Hosting delle app: acceso'"
+    apps_check "config.yaml: apps_enabled: true" bash -c "sudo grep -qx 'apps_enabled: true' /etc/gitstack/config.yaml"
+    apps_check "RBAC: il ServiceAccount di core crea namespace" test "$(can_i "${sa}" create namespaces)" = yes
+    apps_check "RBAC: ... ma non legge i Secret del cluster" test "$(can_i "${sa}" get secrets -n kube-system)" = no
+    apps_check "RBAC: ... né crea Deployment fuori dalle app" test "$(can_i "${sa}" create deployments -n kube-system)" = no
+    apps_check "RBAC: ... né crea ClusterRoleBinding" test "$(can_i "${sa}" create clusterrolebindings)" = no
+    apps_check "RBAC: nessun ClusterRoleBinding verso il ruolo modello" no_workload_binding
+  else
+    apps_check "core: senza GITSTACK_CORE_APPS_ENABLED" test -z "$(core_env GITSTACK_CORE_APPS_ENABLED)"
+    apps_check "gitstack status: Hosting delle app: spento" bash -c "sudo gitstack status | grep -q 'Hosting delle app: spento'"
+    apps_check "RBAC: nessun ClusterRole delle app" no_apps_clusterroles
+  fi
+  [ "${APPS_KO}" -eq 0 ] || fail "verify-apps-hosting ${want}: ${APPS_KO} controlli ko"
+  printf 'ok  verify-apps-hosting %s\n' "${want}"
+}
+
+# apps-off-api: con l'hosting spento l'API risponde 503 apps_unavailable e nel cluster non nasce nulla.
+apps_off_api() {
+  need E2E_HOST
+  load_seed
+  local before after
+  before="$("${KUBECTL[@]}" get namespaces -l gitstack.io/managed-app=true -o name | wc -l)"
+  api POST "/api/v1/repos/${CI_USER}/${CI_REPO}/apps" '{"name":"web","image":"docker.io/library/nginx:1.27-alpine","port":80}' -H "Authorization: Bearer ${CI_TOKEN}"
+  expect 503 "${CODE}" "creazione app con l'hosting spento"
+  printf '%s' "${BODY}" | jq -e '.code == "apps_unavailable"' >/dev/null || fail "503 senza il codice apps_unavailable"
+  sleep 5
+  after="$("${KUBECTL[@]}" get namespaces -l gitstack.io/managed-app=true -o name | wc -l)"
+  [ "${before}" = "${after}" ] || fail "con l'hosting spento sono comparsi namespace delle app (${before} -> ${after})"
+  api GET "/api/v1/repos/${CI_USER}/${CI_REPO}/apps" '' -H "Authorization: Bearer ${CI_TOKEN}"
+  expect 200 "${CODE}" "elenco app"
+  printf '%s' "${BODY}" | jq -e '.items | length == 0' >/dev/null || fail "con l'hosting spento è stata creata un'app nel modello"
+  printf 'ok  apps-off-api: 503 apps_unavailable, nessun namespace, nessuna app nel modello\n'
+}
+
+# apps-run <dominio>: un'app di prova creata da API risponde al suo indirizzo automatico (HTTPS con la
+# CA interna, risoluzione forzata verso l'host: il DNS wildcard non c'è sul runner).
+apps_run() {
+  need E2E_HOST
+  load_seed
+  local domain="${1:?dominio delle app}" label host deadline code="" ns
+  api POST "/api/v1/repos/${CI_USER}/${CI_REPO}/apps" '{"name":"web","image":"docker.io/library/nginx:1.27-alpine","port":80,"healthCheck":{"path":"/","intervalSeconds":5}}' -H "Authorization: Bearer ${CI_TOKEN}"
+  expect 202 "${CODE}" "creazione app"
+  label="$(printf '%s' "${BODY}" | jq -r '.app.address // empty' | sed -E 's#^https://##')"
+  host="${label}"
+  [ -n "${host}" ] || fail "l'app creata non ha un indirizzo automatico: $(printf '%s' "${BODY}" | head -c 300)"
+  case "${host}" in *".${domain}") ;; *) fail "indirizzo ${host} fuori dal dominio ${domain}" ;; esac
+  ns="$("${KUBECTL[@]}" get namespaces -l gitstack.io/managed-app=true -o jsonpath='{.items[0].metadata.name}')"
+  deadline=$((SECONDS + 420))
+  while [ "${SECONDS}" -lt "${deadline}" ]; do
+    code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${HOST}" -o /dev/null -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
+    [ "${code}" = 200 ] && break
+    sleep 5
+  done
+  [ "${code}" = 200 ] || {
+    "${KUBECTL[@]}" -n "${ns:-default}" get all,ingressroute -o wide || true
+    "${KUBECTL[@]}" -n "${ns:-default}" describe pods | tail -40 || true
+    fail "l'app non risponde su https://${host}/ (ultimo codice '${code}')"
+  }
+  curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${HOST}" "https://${host}/" | grep -qi 'nginx' || fail "la risposta di ${host} non è quella dell'app di prova"
+  printf 'ok  apps-run: https://%s/ risponde 200 (namespace %s)\n' "${host}" "${ns}"
+}
+
 latest_backup() {
   local f
   f="$(sudo find /var/backups/gitstack -maxdepth 1 -type f -name 'gitstack-backup-*' -not -name '*.sha256' -printf '%T@ %p\n' | sort -rn | head -n1 | cut -d' ' -f2-)"
@@ -572,6 +697,10 @@ main() {
     ci-run) ci_run ;;
     verify-ci) verify_ci ;;
     verify-apps-domain) verify_apps_domain "$@" ;;
+    apps-prepare) apps_prepare ;;
+    verify-apps-hosting) verify_apps_hosting "$@" ;;
+    apps-off-api) apps_off_api ;;
+    apps-run) apps_run "$@" ;;
     latest-backup) latest_backup ;;
     diagnostics) diagnostics "$@" ;;
     *) fail "sottocomando sconosciuto: ${cmd}" ;;
