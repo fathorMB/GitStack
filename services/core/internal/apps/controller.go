@@ -130,6 +130,8 @@ type Controller struct {
 	kube kubernetes.Interface
 	dyn  dynamic.Interface
 	cfg  Config
+	// siblings dà le app di un repo (H15); nil senza store (alcuni test): niente nomi interni.
+	siblings func(context.Context, uuid.UUID) ([]store.App, error)
 
 	kick    chan struct{}
 	mu      sync.Mutex
@@ -141,8 +143,12 @@ type Controller struct {
 // New crea il controller. dyn può essere nil: allora non crea le rotte Traefik.
 func New(st *store.Store, kube kubernetes.Interface, dyn dynamic.Interface, cfg Config) *Controller {
 	cfg.defaults()
-	return &Controller{st: st, kube: kube, dyn: dyn, cfg: cfg, kick: make(chan struct{}, 1),
+	c := &Controller{st: st, kube: kube, dyn: dyn, cfg: cfg, kick: make(chan struct{}, 1),
 		running: map[uuid.UUID]bool{}, oomSeen: map[uuid.UUID]map[string]int32{}}
+	if st != nil {
+		c.siblings = st.ListApps
+	}
+	return c
 }
 
 // Kick sveglia il ciclo: c'è un deploy nuovo o una scala da applicare.
@@ -334,6 +340,9 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 	} else if err := c.deleteAppSecret(ctx, ns); err != nil {
 		return fmt.Errorf("rimozione secret dell'app: %w", err)
 	}
+	if err := c.ensureSiblingAliases(ctx, app, true); err != nil {
+		return fmt.Errorf("nomi interni delle app sorelle: %w", err)
+	}
 	if err := c.ensureService(ctx, app, v.Config); err != nil {
 		return fmt.Errorf("service: %w", err)
 	}
@@ -508,6 +517,67 @@ func (c *Controller) ensureService(ctx context.Context, app store.App, cfg store
 	cur.Spec.Selector, cur.Spec.Ports, cur.Labels = want.Spec.Selector, want.Spec.Ports, want.Labels
 	_, err = services.Update(ctx, cur, metav1.UpdateOptions{})
 	return err
+}
+
+// ensureSiblingAliases porta nel namespace dell'app i nomi interni delle sorelle dello stesso repo
+// (H15). announce scrive nei log dell'app i nomi saltati: lo fa il deploy, non il Sync ogni 5 s.
+func (c *Controller) ensureSiblingAliases(ctx context.Context, app store.App, announce bool) error {
+	if c.siblings == nil {
+		return nil
+	}
+	siblings, err := c.siblings(ctx, app.RepoID)
+	if err != nil {
+		return err
+	}
+	skipped, err := c.reconcileSiblingAliases(ctx, app, siblings)
+	if announce {
+		for _, s := range skipped {
+			c.platform(ctx, app.ID, fmt.Sprintf("nome interno «%s» non pubblicato: %s", s.Name, s.Skipped))
+		}
+	}
+	return err
+}
+
+// reconcileSiblingAliases crea, aggiorna e toglie i Service ExternalName con la label
+// LabelSiblingAlias per arrivare allo stato voluto; non tocca mai un Service senza quella label.
+func (c *Controller) reconcileSiblingAliases(ctx context.Context, app store.App, siblings []store.App) ([]SiblingAlias, error) {
+	want, skipped := BuildSiblingAliases(app, siblings)
+	services := c.kube.CoreV1().Services(Namespace(app.ID))
+	list, err := services.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return skipped, err
+	}
+	have := make(map[string]corev1.Service, len(list.Items))
+	for _, s := range list.Items {
+		have[s.Name] = s
+	}
+	wanted := make(map[string]bool, len(want))
+	for _, w := range want {
+		wanted[w.Name] = true
+		cur, ok := have[w.Name]
+		switch {
+		case !ok:
+			if _, err := services.Create(ctx, w, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
+				return skipped, err
+			}
+		case cur.Labels[LabelSiblingAlias] != "true":
+			skipped = append(skipped, SiblingAlias{w.Name, "esiste già un Service con questo nome nel namespace"})
+		case cur.Spec.Type != corev1.ServiceTypeExternalName || cur.Spec.ExternalName != w.Spec.ExternalName || cur.Labels[LabelRepoID] != w.Labels[LabelRepoID]:
+			cur.Spec = corev1.ServiceSpec{Type: corev1.ServiceTypeExternalName, ExternalName: w.Spec.ExternalName}
+			cur.Labels = w.Labels
+			if _, err := services.Update(ctx, &cur, metav1.UpdateOptions{}); err != nil {
+				return skipped, err
+			}
+		}
+	}
+	for name, cur := range have {
+		if cur.Labels[LabelSiblingAlias] == "true" && !wanted[name] {
+			if err := services.Delete(ctx, name, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+				return skipped, err
+			}
+		}
+	}
+	return skipped, nil
 }
 
 // routeHost è l'indirizzo automatico dell'app, "" se non ne ha diritto.
@@ -842,6 +912,10 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 	// si riallineano qui, senza rifare il rollout.
 	if err := c.ensureRoute(ctx, app, app.Config); err != nil {
 		c.cfg.Log.Warn("apps: rotta non riallineata", "app", app.ID, "err", err)
+	}
+	// H15: le sorelle nascono, cambiano nome o spariscono a deploy fermo; gli alias si riallineano qui.
+	if err := c.ensureSiblingAliases(ctx, app, false); err != nil {
+		c.cfg.Log.Warn("apps: nomi interni non riallineati", "app", app.ID, "err", err)
 	}
 	if app.Status == "failed" {
 		if v, err := c.st.GetAppVersion(ctx, app.ID, app.ActiveVersion); err == nil && v.State == "failed" {

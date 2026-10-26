@@ -392,6 +392,7 @@ expect_eq "controller: bind solo sul ruolo modello" "$(rules_of "${ctl}" | grep 
 expect_eq "controller: tre regole in tutto" "$(rules_of "${ctl}" | grep -c .)" "3"
 wl="$(doc ClusterRole gitstack-app-workload)"
 expect_eq "modello: risorse ammesse (ADR 0002, NetworkPolicy H9 e Middleware del login GIT-347)" "$(rules_of "${wl}" | cut -d'|' -f2 | sort | tr '\n' ' ')" '"deployments" "events" "ingressroutes", "middlewares" "networkpolicies" "pods" "pods/log" "secrets" "services" '
+expect_eq "modello: Service (anche gli alias ExternalName H15, con list per toglierli)" "$(rules_of "${wl}" | grep '"services"')" '""|"services"|"create", "get", "list", "update", "delete"|'
 expect_eq "modello: NetworkPolicy H9" "$(rules_of "${wl}" | grep '"networkpolicies"')" '"networking.k8s.io"|"networkpolicies"|"get", "create", "update"|'
 expect_eq "modello: middlewares e ingressroutes con i soli verbi del controller" "$(rules_of "${wl}" | grep '"middlewares"')" '"traefik.io"|"ingressroutes", "middlewares"|"create", "get", "update", "delete"|'
 expect_lacks "modello: mai delete su deployments, pods, secrets" "$(rules_of "${wl}" | grep -E '"(deployments|pods|secrets)"')" "delete"
@@ -414,6 +415,10 @@ expect_has "policy: namespace UPDATE/DELETE controllano oldObject" "${pol}" "old
 expect_has "policy: namespace CREATE UPDATE DELETE" "${pol}" 'operations: ["CREATE", "UPDATE", "DELETE"]'
 expect_has "policy: rolebindings solo in namespace marcati" "${pol}" "namespaceObject.metadata.labels['gitstack.io/managed-app'] == 'true'"
 expect_has "policy: NetworkPolicy solo in namespace marcati" "${pol}" "request.resource.resource != 'networkpolicies'"
+expect_has "policy: Service solo in namespace marcati" "${pol}" "request.resource.resource != 'services'"
+expect_has "policy: ExternalName solo verso il Service app di un namespace app (H15)" "${pol}" "object.spec.type != 'ExternalName'"
+expect_has "policy: ExternalName vincolato al formato app.gitstack-app-<uuid>.svc.cluster.local" "${pol}" 'app[.]gitstack-app-[0-9a-f-]{36}[.]svc[.]cluster[.]local'
+expect_has "policy: Service CREATE UPDATE" "${pol}" 'resources: ["services"]'
 expect_has "policy: rolebindings solo verso il ruolo modello" "${pol}" "object.roleRef.name == \"gitstack-app-workload\""
 expect_has "policy: failurePolicy Fail" "${pol}" "failurePolicy: Fail"
 OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template apps senza CI fallito"; exit 1; }

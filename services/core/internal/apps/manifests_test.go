@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/fathorMB/GitStack/services/core/internal/store"
@@ -107,8 +109,8 @@ func TestBuildNetworkPolicy_IsolaAppEConsenteSoloStessoRepo(t *testing.T) {
 	if p.Name != "app-isolation" || p.Namespace != Namespace(app.ID) || p.Labels[LabelRepoID] != app.RepoID.String() {
 		t.Fatalf("metadati policy: %+v", p.ObjectMeta)
 	}
-	if len(p.Spec.PolicyTypes) != 2 || len(p.Spec.Ingress) != 2 || len(p.Spec.Egress) != 1 {
-		t.Fatalf("serve deny ingress+egress con una sola apertura: %+v", p.Spec)
+	if len(p.Spec.PolicyTypes) != 2 || len(p.Spec.Ingress) != 2 || len(p.Spec.Egress) != 2 {
+		t.Fatalf("serve deny ingress+egress con stesso repo e solo DNS: %+v", p.Spec)
 	}
 	for _, peers := range [][]networkingv1.NetworkPolicyPeer{p.Spec.Ingress[0].From, p.Spec.Egress[0].To} {
 		if len(peers) != 1 || peers[0].NamespaceSelector == nil || peers[0].PodSelector == nil ||
@@ -116,6 +118,10 @@ func TestBuildNetworkPolicy_IsolaAppEConsenteSoloStessoRepo(t *testing.T) {
 			peers[0].PodSelector.MatchLabels[LabelManaged] != "true" {
 			t.Fatalf("peer stesso repo: %+v", peers)
 		}
+	}
+	dns := p.Spec.Egress[1]
+	if len(dns.To) != 1 || dns.To[0].PodSelector.MatchLabels["k8s-app"] != "kube-dns" || dns.To[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"] != "kube-system" || len(dns.Ports) != 2 || dns.Ports[0].Port.IntValue() != 53 || dns.Ports[1].Port.IntValue() != 53 {
+		t.Fatalf("DNS di cluster sempre aperto, e solo quello (H15): %+v", dns)
 	}
 	traefik := p.Spec.Ingress[1]
 	if traefik.From[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"] != "kube-system" || traefik.From[0].PodSelector.MatchLabels["app.kubernetes.io/name"] != "traefik" || traefik.Ports[0].Port.String() != "http" {
@@ -126,10 +132,10 @@ func TestBuildNetworkPolicy_IsolaAppEConsenteSoloStessoRepo(t *testing.T) {
 func TestBuildNetworkPolicy_ProxyIPApriSoloPortaProxy(t *testing.T) {
 	app, _ := testApp()
 	p := BuildNetworkPolicy(app, NetworkPolicyOptions{ProxyEnv: map[string]string{"HTTPS_PROXY": "http://10.0.0.5:3128"}})
-	if len(p.Spec.Egress) != 2 {
-		t.Fatalf("egress senza DNS per IP: %+v", p.Spec.Egress)
+	if len(p.Spec.Egress) != 3 {
+		t.Fatalf("egress: stesso repo, DNS e proxy: %+v", p.Spec.Egress)
 	}
-	r := p.Spec.Egress[1]
+	r := p.Spec.Egress[2]
 	if r.To[0].IPBlock == nil || r.To[0].IPBlock.CIDR != "10.0.0.5/32" || r.Ports[0].Port.IntValue() != 3128 {
 		t.Fatalf("proxy: %+v", r)
 	}
@@ -138,10 +144,10 @@ func TestBuildNetworkPolicy_ProxyIPApriSoloPortaProxy(t *testing.T) {
 func TestBuildNetworkPolicy_ProxyMinuscoloApriSoloPortaProxy(t *testing.T) {
 	app, _ := testApp()
 	p := BuildNetworkPolicy(app, NetworkPolicyOptions{ProxyEnv: map[string]string{"http_proxy": "http://10.0.0.6:3128"}})
-	if len(p.Spec.Egress) != 2 {
+	if len(p.Spec.Egress) != 3 {
 		t.Fatalf("egress proxy minuscolo: %+v", p.Spec.Egress)
 	}
-	r := p.Spec.Egress[1]
+	r := p.Spec.Egress[2]
 	if r.To[0].IPBlock == nil || r.To[0].IPBlock.CIDR != "10.0.0.6/32" || r.Ports[0].Port.IntValue() != 3128 {
 		t.Fatalf("proxy minuscolo: %+v", r)
 	}
@@ -289,5 +295,118 @@ func TestDesiredReplicas_RepoArchiviatoFermaLApp(t *testing.T) {
 	app.RepoArchivedAt = &now
 	if desiredReplicas(app) != 0 {
 		t.Fatal("repo archiviato: zero copie")
+	}
+}
+
+func TestBuildService_PortaDichiarataOltreLa80(t *testing.T) {
+	app, _ := testApp() // porta 8080
+	ports := BuildService(app, app.Config).Spec.Ports
+	if len(ports) != 2 || ports[0].Name != "http" || ports[0].Port != 80 || ports[0].TargetPort.String() != "http" {
+		t.Fatalf("la 80 resta per ingress e forward-auth: %+v", ports)
+	}
+	if ports[1].Name != DeclaredPortName || ports[1].Port != 8080 || ports[1].TargetPort.IntValue() != 8080 {
+		t.Fatalf("porta dichiarata: %+v", ports[1])
+	}
+	p80 := 80
+	cfg := app.Config
+	cfg.Port = &p80
+	if ports := BuildService(app, cfg).Spec.Ports; len(ports) != 1 || ports[0].Port != 80 {
+		t.Fatalf("dichiarata = 80: una porta sola: %+v", ports)
+	}
+}
+
+func aliasApp(repo uuid.UUID, name string, port bool) store.App {
+	a := store.App{ID: uuid.New(), RepoID: repo, Name: name}
+	if port {
+		p := 5432
+		a.Config.Port = &p
+	}
+	return a
+}
+
+func TestBuildSiblingAliases_SoloStessoRepoENomiValidi(t *testing.T) {
+	repo := uuid.New()
+	site, api := aliasApp(repo, "site", true), aliasApp(repo, "api", true)
+	other := aliasApp(uuid.New(), "api", true) // stesso nome, altro repo
+	got, skipped := BuildSiblingAliases(site, []store.App{site, api, other, aliasApp(repo, "app", true), aliasApp(repo, "9db", true), aliasApp(repo, "worker", false)})
+	if len(got) != 1 {
+		t.Fatalf("solo api: %+v", got)
+	}
+	a := got[0]
+	if a.Name != "api" || a.Namespace != Namespace(site.ID) || a.Spec.Type != corev1.ServiceTypeExternalName ||
+		a.Spec.ExternalName != "app."+Namespace(api.ID)+".svc.cluster.local" || a.Labels[LabelSiblingAlias] != "true" {
+		t.Fatalf("alias: %+v", a)
+	}
+	if a.Spec.ExternalName == "app."+Namespace(other.ID)+".svc.cluster.local" {
+		t.Fatal("l'alias punta all'app di un altro repo")
+	}
+	if len(skipped) != 2 || skipped[0].Name != "app" || skipped[1].Name != "9db" {
+		t.Fatalf("saltati: %+v", skipped)
+	}
+}
+
+func svcNames(t *testing.T, kube kubernetes.Interface, ns string) map[string]corev1.Service {
+	t.Helper()
+	l, err := kube.CoreV1().Services(ns).List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := map[string]corev1.Service{}
+	for _, s := range l.Items {
+		out[s.Name] = s
+	}
+	return out
+}
+
+func TestReconcileSiblingAliases_CreaRinominaEliminaESaltaLeCollisioni(t *testing.T) {
+	repo := uuid.New()
+	site, api := aliasApp(repo, "site", true), aliasApp(repo, "api", true)
+	kube := kubernetesfake.NewClientset()
+	c := New(nil, kube, nil, Config{})
+	ctx := context.Background()
+	ns := Namespace(site.ID)
+	// un Service dell'app stessa, e uno estraneo con il nome di un'altra sorella
+	if _, err := kube.CoreV1().Services(ns).Create(ctx, BuildService(site, site.Config), metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	foreign := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "cache", Namespace: ns}}
+	if _, err := kube.CoreV1().Services(ns).Create(ctx, foreign, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	cache := aliasApp(repo, "cache", true)
+	skipped, err := c.reconcileSiblingAliases(ctx, site, []store.App{site, api, cache})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := svcNames(t, kube, ns)
+	if got["api"].Spec.ExternalName != "app."+Namespace(api.ID)+".svc.cluster.local" {
+		t.Fatalf("alias api mancante: %+v", got)
+	}
+	if got["cache"].Spec.Type == corev1.ServiceTypeExternalName || len(skipped) != 1 || skipped[0].Name != "cache" {
+		t.Fatalf("il Service estraneo non si tocca: %+v %+v", got["cache"], skipped)
+	}
+	if _, ok := got["app"]; !ok {
+		t.Fatal("il Service dell'app non si tocca")
+	}
+	// idempotente
+	if _, err := c.reconcileSiblingAliases(ctx, site, []store.App{site, api, cache}); err != nil {
+		t.Fatal(err)
+	}
+	// api rinominata in backend: il vecchio nome sparisce, il nuovo compare
+	api.Name = "backend"
+	if _, err := c.reconcileSiblingAliases(ctx, site, []store.App{site, api}); err != nil {
+		t.Fatal(err)
+	}
+	got = svcNames(t, kube, ns)
+	if _, ok := got["api"]; ok || got["backend"].Spec.ExternalName == "" {
+		t.Fatalf("rinomina: %+v", got)
+	}
+	// api eliminata: restano solo il Service dell'app e quello estraneo
+	if _, err := c.reconcileSiblingAliases(ctx, site, []store.App{site}); err != nil {
+		t.Fatal(err)
+	}
+	got = svcNames(t, kube, ns)
+	if len(got) != 2 || got["app"].Name == "" || got["cache"].Name == "" {
+		t.Fatalf("eliminazione: %+v", got)
 	}
 }

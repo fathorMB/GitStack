@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/fathorMB/GitStack/pkg/names"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
 
@@ -38,6 +39,9 @@ const (
 	// LabelRepoID lega il namespace e i pod al repository: la policy H9 lo usa
 	// per permettere traffico solo fra le app dello stesso repository.
 	LabelRepoID = "gitstack.io/repo-id"
+	// LabelSiblingAlias marca i Service ExternalName con cui un'app raggiunge per nome le sorelle
+	// dello stesso repo (H15): il controller tocca solo i Service con questa label.
+	LabelSiblingAlias = "gitstack.io/sibling-alias"
 	// AnnotationVersion è il numero di versione nel template del pod.
 	AnnotationVersion = "gitstack.io/version"
 	// AnnotationRestartedAt cambia a ogni riavvio e viene portata avanti dai deploy successivi.
@@ -49,6 +53,8 @@ const (
 	appSecretName  = "app-secrets"
 	containerName  = "app"
 	servicePort    = 80
+	// DeclaredPortName è il nome della seconda porta del Service `app`: la porta dichiarata dall'app.
+	DeclaredPortName = "app"
 )
 
 // Namespace è il namespace Kubernetes dell'app.
@@ -271,13 +277,66 @@ func BuildService(app store.App, cfg store.AppConfig) *corev1.Service {
 	if cfg.Port == nil {
 		return nil
 	}
+	ports := []corev1.ServicePort{{Name: "http", Port: servicePort, TargetPort: intstr.FromString("http"), Protocol: corev1.ProtocolTCP}}
+	// H15: con il nome interno (http://api:5432) le altre app usano la porta dichiarata dall'app,
+	// non solo la 80 di ingress e forward-auth. Se la dichiarata è la 80 basta la prima.
+	if *cfg.Port != servicePort {
+		ports = append(ports, corev1.ServicePort{Name: DeclaredPortName, Port: int32(*cfg.Port), TargetPort: intstr.FromInt32(int32(*cfg.Port)), Protocol: corev1.ProtocolTCP})
+	}
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{Name: WorkloadName, Namespace: Namespace(app.ID), Labels: appLabels(app)},
 		Spec: corev1.ServiceSpec{
 			Selector: selectorLabels(app.ID),
-			Ports:    []corev1.ServicePort{{Name: "http", Port: servicePort, TargetPort: intstr.FromString("http"), Protocol: corev1.ProtocolTCP}},
+			Ports:    ports,
 		},
 	}
+}
+
+// SiblingAlias è un nome interno non pubblicabile: nome dell'app sorella e motivo.
+type SiblingAlias struct {
+	Name, Skipped string
+}
+
+// reservedAliasNames sono nomi che nel namespace dell'app hanno già un significato.
+var reservedAliasNames = map[string]bool{WorkloadName: true, "kubernetes": true}
+
+// BuildSiblingAliases dà i Service ExternalName da tenere nel namespace di `app`: uno per ogni
+// altra app dello stesso repo con un Service (H15). Punta al Service `app` della sorella, che il
+// controller non ricrea a ogni deploy: l'alias non cambia con deploy, rollback, riavvio e scala.
+// Le app di altri repo non entrano mai; i nomi non pubblicabili tornano in skipped con il motivo.
+func BuildSiblingAliases(app store.App, apps []store.App) (aliases []*corev1.Service, skipped []SiblingAlias) {
+	for _, s := range apps {
+		if s.ID == app.ID || s.RepoID != app.RepoID || s.Config.Port == nil {
+			continue
+		}
+		switch {
+		case reservedAliasNames[s.Name]:
+			skipped = append(skipped, SiblingAlias{s.Name, "nome riservato nel namespace"})
+			continue
+		case !validAliasName(s.Name):
+			skipped = append(skipped, SiblingAlias{s.Name, "non è un nome DNS valido (deve iniziare con una lettera)"})
+			continue
+		}
+		l := appLabels(app)
+		l[LabelSiblingAlias] = "true"
+		aliases = append(aliases, &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{Name: s.Name, Namespace: Namespace(app.ID), Labels: l},
+			Spec: corev1.ServiceSpec{
+				Type:         corev1.ServiceTypeExternalName,
+				ExternalName: WorkloadName + "." + Namespace(s.ID) + ".svc.cluster.local",
+			},
+		})
+	}
+	sort.Slice(aliases, func(i, j int) bool { return aliases[i].Name < aliases[j].Name })
+	return aliases, skipped
+}
+
+// validAliasName: etichetta DNS-1035 (un Service non può iniziare con una cifra).
+func validAliasName(n string) bool {
+	if names.ValidateAppName(n) != nil {
+		return false
+	}
+	return n[0] >= 'a' && n[0] <= 'z'
 }
 
 // BuildNamespace: PSS baseline per default (il root è permesso, H9), restricted per le app che lo
@@ -315,11 +374,8 @@ func BuildNetworkPolicy(app store.App, options ...NetworkPolicyOptions) *network
 	}
 	egress := []networkingv1.NetworkPolicyEgressRule{{To: []networkingv1.NetworkPolicyPeer{peer}}}
 	endpoints := proxyEndpoints(o.ProxyEnv)
-	needsDNS := false
-	for _, endpoint := range endpoints {
-		needsDNS = needsDNS || endpoint.named
-	}
-	if needsDNS {
+	// DNS sempre: serve ai nomi interni delle app sorelle (H15) e ai proxy con nome. Nessun'altra uscita.
+	{
 		dnsPort := intstr.FromInt(53)
 		dns := networkingv1.NetworkPolicyPeer{NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": "kube-system"}}, PodSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"k8s-app": "kube-dns"}}}
 		egress = append(egress, networkingv1.NetworkPolicyEgressRule{To: []networkingv1.NetworkPolicyPeer{dns}, Ports: []networkingv1.NetworkPolicyPort{{Protocol: proto(corev1.ProtocolUDP), Port: &dnsPort}, {Protocol: proto(corev1.ProtocolTCP), Port: &dnsPort}}})

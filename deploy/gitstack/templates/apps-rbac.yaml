@@ -71,7 +71,7 @@ rules:
     verbs: ["create", "get", "update"]
   - apiGroups: [""]
     resources: ["services"]
-    verbs: ["create", "get", "update", "delete"]
+    verbs: ["create", "get", "list", "update", "delete"]
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["create", "get", "update"]
@@ -119,6 +119,10 @@ spec:
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE"]
         resources: ["networkpolicies"]
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["services"]
   matchConditions:
     - name: solo-il-serviceaccount-di-core
       expression: >-
@@ -144,6 +148,17 @@ spec:
         (request.namespace.startsWith('gitstack-app-') && has(namespaceObject.metadata.labels) &&
          'gitstack.io/managed-app' in namespaceObject.metadata.labels && namespaceObject.metadata.labels['gitstack.io/managed-app'] == 'true')
       message: "core può creare NetworkPolicy solo nei namespace gitstack-app-* marcati gitstack.io/managed-app=true"
+    - expression: >-
+        request.resource.resource != 'services' ||
+        (request.namespace.startsWith('gitstack-app-') && has(namespaceObject.metadata.labels) &&
+         'gitstack.io/managed-app' in namespaceObject.metadata.labels && namespaceObject.metadata.labels['gitstack.io/managed-app'] == 'true')
+      message: "core può creare Service solo nei namespace gitstack-app-* marcati gitstack.io/managed-app=true"
+    # H15: l'unico ExternalName ammesso è l'alias di un'app sorella, cioè il Service `app` di un altro
+    # namespace gitstack-app-* e non un nome esterno (niente uscita verso host a scelta via DNS).
+    - expression: >-
+        request.resource.resource != 'services' || object.spec.type != 'ExternalName' ||
+        (has(object.spec.externalName) && object.spec.externalName.matches('^app[.]gitstack-app-[0-9a-f-]{36}[.]svc[.]cluster[.]local$'))
+      message: "un Service ExternalName può puntare solo al Service app di un altro namespace gitstack-app-* (H15)"
     - expression: >-
         request.resource.resource != 'rolebindings' ||
         (object.roleRef.kind == 'ClusterRole' && object.roleRef.name == {{ $workload | quote }})
