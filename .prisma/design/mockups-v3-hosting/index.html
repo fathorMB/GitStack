@@ -172,6 +172,12 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
 .subnav .grp{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-subtle);font-weight:600;padding:14px 10px 4px}
 .sec-h{display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:16px}.sec-h h2{font-size:18px;font-weight:600}
 .app-h{display:flex;align-items:center;gap:12px;margin-bottom:4px}.app-h h1{font-size:20px;font-weight:600}
+.badge-open{border-style:dashed;border-color:var(--warning);color:var(--warning);background:transparent}
+.app.bare{grid-template-columns:1fr}.app.bare .sidebar,.app.bare .topbar{display:none}
+.guide{max-width:640px;margin:0 auto;padding:36px 20px 64px}
+.guide-step{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--border);font-size:14px}
+.guide-step:first-child{border-top:0}
+.guide-n{width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent-text);font-weight:600;font-size:12px;display:inline-flex;align-items:center;justify-content:center;flex:none}
 @media (max-width:1100px){.grid4,.grid3{grid-template-columns:1fr 1fr}.two{grid-template-columns:1fr}}
 @media (max-width:860px){.app{grid-template-columns:1fr}.sidebar{display:none}.settings-grid{grid-template-columns:1fr}.page{padding:16px}.mbar .desc{display:none}.kv{grid-template-columns:1fr}}
 </style>
@@ -235,6 +241,7 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
     </optgroup>
     <optgroup label="v3-b Dati"><option value="volumes">H8 · App · Settings · Volumes &amp; resources</option></optgroup>
     <optgroup label="v3-c App pubbliche"><option value="access-public" data-alias="access">H7 · Access &amp; domains (variante pubblica)</option></optgroup>
+    <optgroup label="Pilota retail.it"><option value="retail">H11 · retail.it: app di test con PostgreSQL su volume</option><option value="ca">H12 · Guida CA per i tester</option><option value="testers">H13 · Admin di retail.it: tester, invito, bot</option></optgroup>
   </select>
   <button id="prev">←</button><button id="next">→</button>
   <span class="desc" id="desc"></span>
@@ -293,7 +300,7 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
 </section>
 
 <!-- ============ H2 NEW APP / DEPLOY ============ -->
-<section class="screen" data-screen="new" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>handbook</a><span class='sep'>/</span><a>Apps</a><span class='sep'>/</span><b>New app</b>" data-desc="H7, H10, H11, H2: nuova app. Sorgente: immagine del repo (firmata dalla CI) o esterna (etichetta «non verificata», bloccata se l'istanza accetta solo immagini firmate); deploy a mano o seguendo un branch; parte garantita e tetto; rifiuto chiaro se le parti garantite non ci stanno.">
+<section class="screen" data-screen="new" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>handbook</a><span class='sep'>/</span><a>Apps</a><span class='sep'>/</span><b>New app</b>" data-desc="H7, H10, H11, H2: nuova app. Sorgente: immagine del repo (firmata dalla CI) o esterna (etichetta «non verificata», bloccata se l'istanza accetta solo immagini firmate); deploy a mano, seguendo un branch o una regola sui tag (H7 allargata il 2026-10-26); parte garantita e tetto; rifiuto chiaro se le parti garantite non ci stanno.">
   <div class="mvar"><span class="mvar-note">Variante:</span><button data-var="repo">Immagine del repo</button><button data-var="ext">Immagine esterna</button><button data-var="full">Server pieno</button></div>
   <div class="page page-narrow">
     <h1 style="font-size:22px;font-weight:600;margin-bottom:4px">New app</h1>
@@ -314,8 +321,9 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
       </div>
       <div class="field"><label>Deploys</label>
         <label class="opt on" data-v="repo full"><input type="radio" name="dm" checked><div><b>Follow branch <span class="mono">main</span></b><div class="hint">Each image the CI publishes for <span class="mono">main</span> goes live. If the new version fails its health check, the previous one keeps running.</div></div></label>
+        <label class="opt" data-v="repo full"><input type="radio" name="dm"><div><b>Follow a tag rule</b> <input class="input mono" value="v*-test.*" style="max-width:160px;height:24px;margin-left:6px"><div class="hint">Each image that arrives in this repository's registry with a matching tag goes live, e.g. <span class="mono">v1.4.0-test.3</span>. Either a branch or a tag rule, not both.</div></div></label>
         <label class="opt" data-v="repo full"><input type="radio" name="dm"><div><b>Manual only</b><div class="hint">Deploy from here, <span class="mono">gs app deploy</span> or a workflow step.</div></div></label>
-        <label class="opt off" data-v="ext"><input type="radio" disabled><div><b>Follow branch</b><div class="hint">Not available for external images.</div></div></label>
+        <label class="opt off" data-v="ext"><input type="radio" disabled><div><b>Follow branch or tag rule</b><div class="hint">Not available for external images: automatic deploys need images signed by this repository's CI.</div></div></label>
         <label class="opt on" data-v="ext"><input type="radio" checked><div><b>Manual only</b></div></label>
       </div>
       <div class="field"><label>Port</label><input class="input" value="8080" style="max-width:140px"></div>
@@ -427,7 +435,7 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
 </section>
 
 <!-- ============ H6 CONFIG ============ -->
-<section class="screen" data-screen="config" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>handbook</a><span class='sep'>/</span><a data-go='apps'>Apps</a><span class='sep'>/</span><a data-go='overview'>web</a><span class='sep'>/</span><b>Settings</b>" data-desc="H8: variabili (lette da chi ha write) e segreti dell'app (gestiti da admin, mai riletti, mascherati nei log), separati dai segreti della CI. Ogni salvataggio crea una nuova versione e riavvia le copie senza interruzione.">
+<section class="screen" data-screen="config" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>handbook</a><span class='sep'>/</span><a data-go='apps'>Apps</a><span class='sep'>/</span><a data-go='overview'>web</a><span class='sep'>/</span><b>Settings</b>" data-desc="H8, H14: variabili (lette da chi ha write) e segreti dell'app (gestiti da admin, mai riletti, mascherati nei log), separati dai segreti della CI; variabili di sistema impostate da GitStack, prefisso GITSTACK_ riservato. Ogni salvataggio crea una nuova versione e riavvia le copie senza interruzione.">
   <div class="repo-h"><div class="inner">
     <div class="app-h"><svg class="icon icon-lg muted"><use href="#i-apps"/></svg><h1><a class="muted" style="font-weight:400" data-go="apps">acme / handbook /</a> web</h1><span class="badge badge-ok">Running</span></div>
     <div class="tabs"><a class="tab" data-go="overview">Overview</a><a class="tab" data-go="logs">Logs</a><a class="tab" data-go="versions">Versions</a><a class="tab active">Settings</a></div>
@@ -439,8 +447,15 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
         <div class="list">
           <div class="list-row"><span class="mono" style="width:220px">SEARCH_URL</span><span class="mono muted" style="flex:1">http://search-worker:9200</span><button class="btn btn-sm btn-ghost">Edit</button></div>
           <div class="list-row"><span class="mono" style="width:220px">SEARCH_TIMEOUT</span><span class="mono muted" style="flex:1">5s</span><button class="btn btn-sm btn-ghost">Edit</button></div>
-          <div class="list-row"><span class="mono" style="width:220px">GITSTACK_USER_HEADER</span><span class="mono muted" style="flex:1">X-GitStack-User</span><span class="badge">set by GitStack</span></div>
         </div></div>
+      <div><div class="sec-h"><h2>System variables</h2><span class="badge">set by GitStack at each deploy</span></div>
+        <div class="list">
+          <div class="list-row"><span class="mono" style="width:220px">PORT</span><span class="mono muted" style="flex:1">8080</span><span class="badge">set by GitStack</span></div>
+          <div class="list-row"><span class="mono" style="width:220px">GITSTACK_APP_VERSION</span><span class="mono muted" style="flex:1">sha-7f3a91c</span><span class="small muted">image tag</span><span class="badge">set by GitStack</span></div>
+          <div class="list-row"><span class="mono" style="width:220px">GITSTACK_COMMIT_SHA</span><span class="mono muted" style="flex:1">7f3a91c2e8b04d1a…</span><span class="small muted">from the image's OCI revision label</span><span class="badge">set by GitStack</span></div>
+          <div class="list-row"><span class="mono" style="width:220px">GITSTACK_DEPLOYED_AT</span><span class="mono muted" style="flex:1">2026-10-26T17:44:12Z</span><span class="badge">set by GitStack</span></div>
+        </div>
+        <p class="hint" style="margin-top:8px">The <span class="mono">GITSTACK_</span> prefix is reserved: your variables and secrets can't use it. The signed-in user reaches the app in signed request headers, not in variables.</p></div>
       <div><div class="sec-h"><h2>Secrets</h2><span class="badge">admin only</span><span class="sp"></span><button class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>New secret</button></div>
         <div class="list">
           <div class="list-row"><svg class="icon muted"><use href="#i-lock"/></svg><span class="mono" style="flex:1">DATABASE_URL</span><span class="small muted">updated 5 days ago by mrossi</span><button class="btn btn-sm">Update</button><button class="btn btn-sm btn-ghost">Delete</button></div>
@@ -453,7 +468,7 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
 </section>
 
 <!-- ============ H7 ACCESS & DOMAINS ============ -->
-<section class="screen" data-screen="access" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>handbook</a><span class='sep'>/</span><a data-go='apps'>Apps</a><span class='sep'>/</span><a data-go='overview'>web</a><span class='sep'>/</span><b>Access &amp; domains</b>" data-desc="H1, H2, H6: modo di accesso (login GitStack per chi ha read sul repo, senza login, pubblica) e domini. «Public» solo se l'amministratore ha abilitato le app pubbliche (doppio consenso). Domini propri attivi dopo il controllo DNS; certificato dalla CA interna, Let's Encrypt automatico per le pubbliche o caricato.">
+<section class="screen" data-screen="access" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>handbook</a><span class='sep'>/</span><a data-go='apps'>Apps</a><span class='sep'>/</span><a data-go='overview'>web</a><span class='sep'>/</span><b>Access &amp; domains</b>" data-desc="H1, H2, H6: modo di accesso (login GitStack per chi ha read sul repo e per la lista di accesso dell'app, allargata il 2026-10-26; senza login; pubblica) e domini. «Public» solo se l'amministratore ha abilitato le app pubbliche (doppio consenso). Domini propri attivi dopo il controllo DNS; certificato dalla CA interna, Let's Encrypt automatico per le pubbliche o caricato.">
   <div class="mvar"><span class="mvar-note">Variante:</span><button data-var="int">Interna (pubbliche non abilitate)</button><button data-var="pub">Pubblica con dominio proprio (v3-c)</button></div>
   <div class="repo-h"><div class="inner">
     <div class="app-h"><svg class="icon icon-lg muted"><use href="#i-apps"/></svg><h1><a class="muted" style="font-weight:400" data-go="apps">acme / handbook /</a> web</h1><span class="badge badge-ok">Running</span><span class="badge" data-v="int"><svg class="icon"><use href="#i-lock"/></svg>Internal · GitStack login</span><span class="badge badge-accent" data-v="pub"><svg class="icon"><use href="#i-globe"/></svg>Public</span></div>
@@ -464,12 +479,17 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
     <div class="stack" style="gap:24px">
       <div><div class="sec-h"><h2>Who can open this app</h2><span class="badge">admin only</span></div>
         <div class="stack" style="gap:8px">
-          <label class="opt" data-v="int" style="border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-soft)"><input type="radio" name="acc" checked><div><b>Internal · GitStack login</b> <span class="badge">default</span><div class="hint">People with read access to <b>acme/handbook</b> sign in with GitStack (or your company SSO). The repository is <b>internal</b>, so every GitStack user can open it. The app receives the user's name, email and teams in signed headers. Agents use a token with read access.</div></div></label>
+          <label class="opt" data-v="int" style="border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-soft)"><input type="radio" name="acc" checked><div><b>Internal · GitStack login</b> <span class="badge">default</span><div class="hint">People with read access to <b>acme/handbook</b> sign in with GitStack (or your company SSO). The repository is <b>internal</b>, so every GitStack user can open it. People and teams on the <b>access list</b> below can open it too. The app receives the user's name, email and teams in signed headers. Agents use a token with read access.</div></div></label>
           <label class="opt" data-v="pub"><input type="radio" name="acc2"><div><b>Internal · GitStack login</b> <span class="badge">default</span></div></label>
           <label class="opt"><input type="radio" name="acc"><div><b>Internal · no login</b><div class="hint">Anyone who can reach the GitStack network opens it. Use only for apps with their own login.</div></div></label>
           <label class="opt off" data-v="int"><input type="radio" disabled><div><b>Public on the internet</b> <span class="badge">disabled by the administrator</span><div class="hint">An installation administrator must first allow public apps in <a data-go="admin">System · Apps</a>.</div></div></label>
           <label class="opt on" data-v="pub"><input type="radio" name="acc2" checked><div><b>Public on the internet</b><div class="hint">Anyone on the internet can open it; GitStack login does not apply. Allowed on this instance by <b>admin</b>; chosen by <b>mrossi</b> on 12 Mar.</div></div></label>
         </div></div>
+      <div data-v="int"><div class="sec-h"><h2>Access list</h2><span class="badge">admin only</span><span class="sp"></span><button class="btn"><svg class="icon"><use href="#i-link"/></svg>Invite testers</button><button class="btn"><svg class="icon"><use href="#i-plus"/></svg>Add people or team</button></div>
+        <div class="list">
+          <div class="list-row"><span class="avatar avatar-sq" style="background:#0f766e">PX</span><div style="flex:1"><b>partners/reviewers</b> <span class="badge">team · 3 people</span><div class="small muted">added by mrossi · 12 Mar</div></div><button class="btn btn-sm btn-ghost">Remove</button></div>
+        </div>
+        <p class="hint" style="margin-top:8px">With GitStack login, people on this list open <b>this app only</b>: they don't see code, issues or anything else in the repository and get no role on it. GitStack accounts only, no anonymous access. Not used for public apps.</p></div>
       <div><div class="sec-h"><h2>Domains</h2><span class="sp"></span><button class="btn" data-v="pub"><svg class="icon"><use href="#i-plus"/></svg>Add domain</button></div>
         <div class="list">
           <div class="list-row"><svg class="icon muted"><use href="#i-link"/></svg><span class="mono" style="flex:1">web-handbook-acme.apps.acme.it</span><span class="badge">automatic</span><span class="badge badge-ok" data-v="int"><svg class="icon"><use href="#i-shield"/></svg>GitStack CA</span><span class="badge badge-ok" data-v="pub"><svg class="icon"><use href="#i-shield"/></svg>Let's Encrypt · renews in 61 days</span></div>
@@ -483,7 +503,7 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
 </section>
 
 <!-- ============ H8 VOLUMES & RESOURCES ============ -->
-<section class="screen" data-screen="volumes" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>handbook</a><span class='sep'>/</span><a data-go='apps'>Apps</a><span class='sep'>/</span><a>wiki</a><span class='sep'>/</span><b>Volumes &amp; resources</b>" data-desc="H3, H9, H11 (v3-b): volumi di dimensione fissa nella quota dell'owner, inclusi di default nei backup ed escludibili; avviso per i database nel container; un'app con volume resta a una copia. Parte garantita e tetto; root permesso con avviso o regola «restricted».">
+<section class="screen" data-screen="volumes" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>handbook</a><span class='sep'>/</span><a data-go='apps'>Apps</a><span class='sep'>/</span><a>wiki</a><span class='sep'>/</span><b>Volumes &amp; resources</b>" data-desc="H3, H9, H11, H16 (v3-b): uscita dell'app (internet aperto, rete privata chiusa salvo destinazioni aperte dall'amministratore, restrizione per app); volumi di dimensione fissa nella quota dell'owner, inclusi di default nei backup ed escludibili; avviso per i database nel container; un'app con volume resta a una copia. Parte garantita e tetto; root permesso con avviso o regola «restricted».">
   <div class="repo-h"><div class="inner">
     <div class="app-h"><svg class="icon icon-lg muted"><use href="#i-apps"/></svg><h1><a class="muted" style="font-weight:400" data-go="apps">acme / handbook /</a> wiki</h1><span class="badge badge-ok">Running</span><span class="badge badge-run"><svg class="icon"><use href="#i-alert"/></svg>not verified</span></div>
     <div class="tabs"><a class="tab">Overview</a><a class="tab">Logs</a><a class="tab">Versions</a><a class="tab active">Settings</a></div>
@@ -509,12 +529,175 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
           <div class="row"><span class="sw"></span><b>Restricted mode</b><span class="muted">— refuse images that run as root</span></div>
           <div class="alert alert-info"><svg class="icon"><use href="#i-shield"/></svg><div>This image runs as <b>root</b> inside its container. It still can't use privileges, the server's disks or network, GitStack's internal services, or apps of other repositories. Turn on restricted mode, or ask an administrator to require it for the whole instance.</div></div>
         </div></div>
+      <div><div class="sec-h"><h2>Outbound network</h2><span class="badge">admin only</span></div>
+        <dl class="kv">
+          <dt>Internet</dt><dd>open · through the company proxy</dd>
+          <dt>Private network</dt><dd>closed · the instance administrator opened <span class="mono">smtp.acme.lan:587</span> <span class="hint">· nothing else in 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16</span></dd>
+          <dt>Always blocked</dt><dd class="muted">loopback, cluster network, link-local, Kubernetes ports</dd>
+          <dt>Restrict this app</dt><dd class="row"><span class="sw"></span><span class="hint">Off · when on, wiki can only reach the destinations you list, never more than the administrator allows</span></dd>
+        </dl></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============ H11 PILOTA RETAIL.IT ============ -->
+<section class="screen" data-screen="retail" data-nav="repo" data-crumb="<a>retail</a><span class='sep'>/</span><a>retail-it</a><span class='sep'>/</span><b>Apps</b>" data-desc="Pilota retail.it, prima parte (H3, H4, H5, H6, H9): repo in mirror in pull con le app di test api, sito e backoffice dalle immagini firmate della CI e il PostgreSQL di test come app con volume nello stesso repo (scelta del 2026-10-26). Variante postgres: volume nei backup, avviso di coerenza e dump; nessuna rete privata aperta (H16 invariata).">
+  <div class="mvar"><span class="mvar-note">Variante:</span><button data-var="list">Apps del repo</button><button data-var="pg">postgres · Volumes &amp; backup</button></div>
+  <div class="repo-h"><div class="inner">
+    <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>retail</a> / retail-it</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span><span class="badge badge-info"><svg class="icon"><use href="#i-sync"/></svg>Mirror of github.com/retail/retail-it · synced 6 min ago</span></div>
+    <div class="tabs"><a class="tab"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab"><svg class="icon"><use href="#i-issue"/></svg>Issues</a><a class="tab"><svg class="icon"><use href="#i-actions"/></svg>Actions</a><a class="tab"><svg class="icon"><use href="#i-pkg"/></svg>Packages</a><a class="tab active"><svg class="icon"><use href="#i-apps"/></svg>Apps <span class="counter">4</span></a><a class="tab"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+  </div></div>
+  <div class="page">
+    <div data-v="list">
+      <div class="row" style="margin-bottom:14px"><div class="input-icon" style="flex:1;max-width:360px"><svg class="icon"><use href="#i-apps"/></svg><input class="input" placeholder="Filter apps"></div><span class="sp"></span><button class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>New app</button></div>
+      <div class="list">
+        <div class="list-row list-head"><b style="color:var(--text)">4 apps · test environment</b><span class="sp"></span><span class="small">Quota retail: 1.5 / 4 vCPU guaranteed · 2.5 / 8 GB RAM · disk 8 / 40 GB</span></div>
+        <div class="list-row hover"><span class="st ok"><svg class="icon"><use href="#i-check"/></svg></span><div style="flex:1"><b>api</b> <span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Internal · GitStack login</span><div class="small muted"><a class="mono">api-retail-it-retail.apps.gitstack.lan</a> · manual deploys · <span class="mono">v1.4.0-test.3</span> <span class="sha">sha-3c8d0a2</span> · 1 copy · secret <span class="mono">DATABASE_URL</span> → <span class="mono">postgres:5432</span> (stable internal name of the app <b>postgres</b> of this repo)</div></div><span class="badge badge-ok"><svg class="icon"><use href="#i-shield"/></svg>verified</span><span class="badge badge-ok">Running</span></div>
+        <div class="list-row hover"><span class="st ok"><svg class="icon"><use href="#i-check"/></svg></span><div style="flex:1"><b>sito</b> <span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Internal · GitStack login</span> <span class="badge"><svg class="icon"><use href="#i-users"/></svg>+ access list · 6 testers</span><div class="small muted"><a class="mono">sito-retail-it-retail.apps.gitstack.lan</a> · manual deploys · <span class="mono">v1.4.0-test.3</span> · 1 copy</div></div><span class="badge badge-ok"><svg class="icon"><use href="#i-shield"/></svg>verified</span><span class="badge badge-ok">Running</span></div>
+        <div class="list-row hover"><span class="st ok"><svg class="icon"><use href="#i-check"/></svg></span><div style="flex:1"><b>backoffice</b> <span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Internal · GitStack login</span> <span class="badge"><svg class="icon"><use href="#i-users"/></svg>+ access list · team business</span><div class="small muted"><a class="mono">backoffice-retail-it-retail.apps.gitstack.lan</a> · manual deploys · <span class="mono">v1.4.0-test.3</span> · 1 copy</div></div><span class="badge badge-ok"><svg class="icon"><use href="#i-shield"/></svg>verified</span><span class="badge badge-ok">Running</span></div>
+        <div class="list-row hover"><span class="st ok"><svg class="icon"><use href="#i-check"/></svg></span><div style="flex:1"><a data-var="pg" style="font-weight:600;color:var(--text)">postgres</a> <span class="badge">No address</span> <span class="badge"><svg class="icon"><use href="#i-disk"/></svg>2 volumes · in backups</span><div class="small muted">Talks only to apps of this repo · manual deploys · <span class="mono">docker.io/library/postgres:16</span> · 1 copy (has volumes)</div></div><span class="badge badge-run"><svg class="icon"><use href="#i-alert"/></svg>not verified</span><span class="badge badge-ok">Running</span></div>
+      </div>
+      <div class="alert alert-info" style="margin-top:12px"><svg class="icon"><use href="#i-info"/></svg><div>The test database lives <b>inside GitStack</b> as an app with a volume: no access to the server, and no private-network destination opened for this repository. Testers on the access list open <b>sito</b> and <b>backoffice</b> only; they don't see code, issues or this tab. The bot <b>agent</b> files issues with a token limited to this repository.</div></div>
+    </div>
+    <div data-v="pg">
+      <div class="app-h" style="margin-bottom:14px"><svg class="icon icon-lg muted"><use href="#i-disk"/></svg><h2 style="font-size:18px;font-weight:600"><a class="muted" style="font-weight:400" data-var="list">Apps /</a> postgres · Volumes &amp; backup</h2><span class="badge badge-ok">Running</span><span class="badge badge-run"><svg class="icon"><use href="#i-alert"/></svg>not verified</span></div>
+      <div class="stack" style="gap:24px">
+        <div><div class="sec-h"><h2>Volumes</h2><span class="badge">admin only</span><span class="sp"></span><button class="btn"><svg class="icon"><use href="#i-plus"/></svg>Add volume</button></div>
+          <div class="list">
+            <div class="list-row"><svg class="icon muted"><use href="#i-disk"/></svg><div style="flex:1"><span class="mono" style="font-weight:600">pgdata</span> → <span class="mono">/var/lib/postgresql/data</span><div class="meter" style="max-width:320px"><i style="width:24%"></i></div><div class="small muted">2.4 of 10 GB · counts toward the retail disk quota</div></div><label class="row small"><span class="sw on"></span>In backups</label></div>
+            <div class="list-row"><svg class="icon muted"><use href="#i-disk"/></svg><div style="flex:1"><span class="mono" style="font-weight:600">dumps</span> → <span class="mono">/dumps</span><div class="meter" style="max-width:320px"><i style="width:15%"></i></div><div class="small muted">0.6 of 4 GB · last dump <span class="mono">retail_test-2026-10-26-0300.sql.gz</span> · 03:00</div></div><label class="row small"><span class="sw on"></span>In backups</label></div>
+          </div>
+          <div class="alert alert-warning" style="margin-top:10px"><svg class="icon"><use href="#i-alert"/></svg><div><b>This is a database.</b> Backups copy files while the app runs, so the copy of <span class="mono">pgdata</span> may not be consistent. Restore from the dumps in <span class="mono">dumps</span>, which are included in backups. <a>How to schedule pg_dump</a></div></div>
+          <p class="hint" style="margin-top:8px">Apps with volumes run as a single copy. Managed databases are not part of GitStack v3.</p></div>
+        <div><div class="sec-h"><h2>Last backup</h2></div>
+          <dl class="kv">
+            <dt>Instance backup</dt><dd><span class="badge badge-ok"><svg class="icon"><use href="#i-check"/></svg>Today 02:00</span> <span class="hint">includes pgdata, dumps and the images in use by the 4 apps (active and previous)</span></dd>
+            <dt>After a restore</dt><dd>postgres restarts with its volumes; api, sito and backoffice restart on their current versions</dd>
+          </dl></div>
+        <div><div class="sec-h"><h2>Network</h2></div>
+          <dl class="kv">
+            <dt>Reachable from</dt><dd>apps of <b>retail/retail-it</b> only, as <span class="mono">postgres:5432</span> · stable across deploys · no address, no login page</dd>
+            <dt>Outbound</dt><dd>internet via proxy · private network closed (no destination opened by the administrator)</dd>
+          </dl></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ H12 GUIDA CA PER I TESTER ============ -->
+<section class="screen" data-screen="ca" data-bare="1" data-desc="Pilota retail.it, punto 9 (H2, N5): pagina pubblica della guida CA, aperta dal link mandato ai tester. Una sola CA per GitStack e app (H2 precisata il 2026-10-26). Riconosce il sistema, scarica il certificato da /downloads, mostra i passi e l'impronta da confrontare; «Prova» apre sito e conferma che l'avviso è sparito. Niente barra laterale: il tester non vede il resto di GitStack.">
+  <div class="mvar"><span class="mvar-note">Sistema rilevato:</span><button data-var="win">Windows</button><button data-var="mac">macOS</button><button data-var="ios">iPhone / iPad</button><button data-var="and">Android</button><span class="mvar-note" style="margin-left:10px">Dopo:</span><button data-var="ok">Prova riuscita</button></div>
+  <div class="guide">
+    <div class="row" style="margin-bottom:22px"><svg width="28" height="28"><use href="#logo"/></svg><b style="font-size:16px">GitStack</b><span class="sp"></span><span class="small muted">git.gitstack.lan</span></div>
+    <h1 style="font-size:24px;font-weight:600;margin-bottom:6px">Open the retail.it test apps without warnings</h1>
+    <p class="muted" style="margin-bottom:18px">Your company's GitStack signs its own certificates. Install its certificate once on this device and the browser will trust GitStack and every test app, such as <b>sito</b> and <b>backoffice</b>.</p>
+
+    <div class="alert alert-info" style="margin-bottom:18px"><svg class="icon"><use href="#i-info"/></svg><div>The browser may have warned you when opening this page: that's the problem this guide solves. Check that the fingerprint below matches the one in the invitation you received.<div class="mono small" style="margin-top:6px">SHA-256 4F:9A:21:C7:…:8E:03:B2</div></div></div>
+
+    <div data-v="win mac ios and">
+      <div class="card"><div class="card-h"><svg class="icon"><use href="#i-shield"/></svg>
+        <span data-v="win">Windows · about 1 minute</span><span data-v="mac">macOS · about 1 minute</span><span data-v="ios">iPhone / iPad · about 2 minutes</span><span data-v="and">Android · about 1 minute</span>
+        <span class="sp"></span><a class="small" style="font-weight:400">Other device</a></div>
+        <div class="card-b">
+          <button class="btn btn-primary" style="height:40px;font-size:14px;margin-bottom:14px"><svg class="icon"><use href="#i-key"/></svg>Download certificate <span class="mono small" style="opacity:.8">gitstack-ca.crt</span></button>
+          <div data-v="win">
+            <div class="guide-step"><span class="guide-n">1</span><div>Open the downloaded file and choose <b>Install certificate</b>.</div></div>
+            <div class="guide-step"><span class="guide-n">2</span><div>Choose <b>Current user</b>, then <b>Place all certificates in the following store</b> → <b>Trusted Root Certification Authorities</b>.</div></div>
+            <div class="guide-step"><span class="guide-n">3</span><div>Confirm with <b>Yes</b> and restart the browser.</div></div>
+          </div>
+          <div data-v="mac">
+            <div class="guide-step"><span class="guide-n">1</span><div>Open the downloaded file: <b>Keychain Access</b> adds it to <b>login</b>.</div></div>
+            <div class="guide-step"><span class="guide-n">2</span><div>Double-click <b>GitStack CA</b>, open <b>Trust</b> and set <b>When using this certificate</b> to <b>Always Trust</b>.</div></div>
+            <div class="guide-step"><span class="guide-n">3</span><div>Close the window and enter your Mac password.</div></div>
+          </div>
+          <div data-v="ios">
+            <div class="guide-step"><span class="guide-n">1</span><div>Open this page in <b>Safari</b>, tap <b>Download certificate</b> and <b>Allow</b>.</div></div>
+            <div class="guide-step"><span class="guide-n">2</span><div><b>Settings</b> → <b>Profile Downloaded</b> → <b>Install</b>.</div></div>
+            <div class="guide-step"><span class="guide-n">3</span><div><b>Settings</b> → <b>General</b> → <b>About</b> → <b>Certificate Trust Settings</b> → turn on <b>GitStack CA</b>.</div></div>
+          </div>
+          <div data-v="and">
+            <div class="guide-step"><span class="guide-n">1</span><div>Tap <b>Download certificate</b>.</div></div>
+            <div class="guide-step"><span class="guide-n">2</span><div><b>Settings</b> → <b>Security</b> → <b>More security settings</b> → <b>Install from device storage</b> → <b>CA certificate</b>, then pick <span class="mono">gitstack-ca.crt</span>.</div></div>
+            <div class="guide-step"><span class="guide-n">3</span><div>Confirm the warning about trusted certificates. Menu names can vary by brand.</div></div>
+          </div>
+        </div></div>
+      <div class="row" style="margin-top:18px"><button class="btn btn-primary" data-var="ok"><svg class="icon"><use href="#i-play"/></svg>Try: open sito</button><span class="hint">Opens <span class="mono">sito-retail-it-retail.apps.gitstack.lan</span>; you'll sign in with GitStack.</span></div>
+      <p class="hint" style="margin-top:14px">On a company-managed computer you may not be allowed to install certificates: send this page to your IT team. Only install a certificate if the fingerprint matches.</p>
+    </div>
+
+    <div data-v="ok">
+      <div class="alert alert-ok" style="margin-bottom:14px"><svg class="icon"><use href="#i-check"/></svg><div><b>Done: this device trusts GitStack.</b> sito opened over a secure connection without warnings. The same certificate covers backoffice and any other test app.</div></div>
+      <div class="list">
+        <div class="list-row"><svg class="icon muted"><use href="#i-link"/></svg><span class="mono" style="flex:1">sito-retail-it-retail.apps.gitstack.lan</span><span class="badge badge-ok"><svg class="icon"><use href="#i-lock"/></svg>secure</span><a class="btn btn-sm">Open</a></div>
+        <div class="list-row"><svg class="icon muted"><use href="#i-link"/></svg><span class="mono" style="flex:1">backoffice-retail-it-retail.apps.gitstack.lan</span><span class="badge badge-ok"><svg class="icon"><use href="#i-lock"/></svg>secure</span><a class="btn btn-sm">Open</a></div>
+      </div>
+      <p class="hint" style="margin-top:12px">Found a problem in the app? Use <b>Report a problem</b> inside sito or backoffice: it opens an issue for the retail.it team with your screenshot and your name. <a data-var="win">Back to the guide</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ H13 ADMIN DI RETAIL.IT ============ -->
+<section class="screen" data-screen="testers" data-nav="repo" data-crumb="<a>retail</a><span class='sep'>/</span><a>retail-it</a><span class='sep'>/</span><a data-go='retail'>Apps</a><span class='sep'>/</span><a>sito</a><span class='sep'>/</span><b>Access &amp; domains</b>" data-desc="Pilota retail.it, lato admin (H6, H8, P4, punto 9; decisioni del 2026-10-26): lista di accesso dei tester su sito, invito con link alla guida CA e impronta, token del bot agent come segreto dell'app. L'invito è un testo da copiare che l'admin manda con i propri strumenti (scelta del 2026-10-26).">
+  <div class="mvar"><span class="mvar-note">Variante:</span><button data-var="list">Lista di accesso</button><button data-var="inv">Invito ai tester</button><button data-var="bot">Segreto del bot</button></div>
+  <div class="repo-h"><div class="inner">
+    <div class="app-h"><svg class="icon icon-lg muted"><use href="#i-apps"/></svg><h1><a class="muted" style="font-weight:400" data-go="retail">retail / retail-it /</a> sito</h1><span class="badge badge-ok">Running</span><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Internal · GitStack login</span></div>
+    <div class="tabs"><a class="tab">Overview</a><a class="tab">Logs</a><a class="tab">Versions</a><a class="tab active">Settings</a></div>
+  </div></div>
+  <div class="page"><div class="settings-grid">
+    <nav class="subnav"><a><svg class="icon"><use href="#i-settings"/></svg>General</a><a data-var="bot"><svg class="icon"><use href="#i-key"/></svg>Variables &amp; secrets</a><a class="active" data-var="list"><svg class="icon"><use href="#i-globe"/></svg>Access &amp; domains</a><a><svg class="icon"><use href="#i-disk"/></svg>Volumes &amp; resources</a></nav>
+    <div class="stack" style="gap:24px">
+
+      <div data-v="list inv">
+        <div class="sec-h"><h2>Access list</h2><span class="badge">admin only</span><span class="sp"></span><button class="btn" data-var="inv"><svg class="icon"><use href="#i-link"/></svg>Invite testers</button><button class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>Add people or team</button></div>
+        <p class="hint" style="margin-bottom:10px">People with read access to <b>retail/retail-it</b> can always open sito. People on this list can open <b>this app only</b>: they don't see code, issues, the Apps tab or anything else in the repository, and get no role on it.</p>
+        <div class="list">
+          <div class="list-row"><span class="avatar avatar-sq av-org">BZ</span><div style="flex:1"><b>retail/business</b> <span class="badge">team · 4 people</span><div class="small muted">added by mrossi · 26 Oct</div></div><button class="btn btn-sm btn-ghost">Remove</button></div>
+          <div class="list-row"><span class="avatar av-b">GV</span><div style="flex:1"><b>gverdi</b> <span class="small muted">giulia.verdi@retail.it</span><div class="small muted">added by mrossi · 26 Oct</div></div><button class="btn btn-sm btn-ghost">Remove</button></div>
+          <div class="list-row"><span class="avatar av-a">LN</span><div style="flex:1"><b>lneri</b> <span class="small muted">l.neri@agenzia-esterna.it</span><div class="small muted">added by mrossi · 26 Oct</div></div><button class="btn btn-sm btn-ghost">Remove</button></div>
+        </div>
+        <div class="alert alert-info" style="margin-top:10px"><svg class="icon"><use href="#i-users"/></svg><div>Only GitStack users and teams can be added: there is no anonymous access. A tester without an account needs one first, created by an administrator in <b>Organization</b> or through your company SSO.</div></div>
+      </div>
+
+      <div class="modal-back" data-v="inv" style="position:fixed;top:40px">
+        <div class="modal">
+          <div class="modal-h">Invite testers to sito</div>
+          <div class="modal-b stack" style="gap:12px;font-size:13px">
+            <p class="muted">Copy this text and send it to the people on the access list by email or chat. It contains the link to the certificate guide and the fingerprint they must check.</p>
+<div class="cmdblock" style="white-space:pre-wrap;font-size:12px">Hi, you can now test sito for retail.it.
+
+1. Open https://git.gitstack.lan/downloads/ca and follow the steps for your device.
+   Your browser may warn you on that page: continue only if the page shows this fingerprint:
+   SHA-256 4F:9A:21:C7:…:8E:03:B2
+2. Open https://sito-retail-it-retail.apps.gitstack.lan and sign in with your GitStack account.
+3. Found a problem? Use "Report a problem" inside the app.</div>
+            <p class="hint">The fingerprint is taken from the instance certificate; it changes only if the GitStack CA is replaced.</p>
+          </div>
+          <div class="modal-f"><button class="btn" data-var="list">Close</button><button class="btn btn-primary" data-var="list"><svg class="icon"><use href="#i-file"/></svg>Copy text</button></div>
+        </div>
+      </div>
+
+      <div data-v="bot">
+        <div class="sec-h"><h2>Secrets</h2><span class="badge">admin only</span><span class="sp"></span><button class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>New secret</button></div>
+        <div class="list">
+          <div class="list-row"><svg class="icon muted"><use href="#i-lock"/></svg><div style="flex:1"><span class="mono">ISSUE_BOT_TOKEN</span><div class="small muted">token of <b>agent</b> <span class="badge badge-agent">agent</span> · grant on <b>retail/retail-it</b> only · expires 26 Jan 2027</div></div><span class="small muted">updated today by mrossi</span><button class="btn btn-sm">Update</button></div>
+          <div class="list-row"><svg class="icon muted"><use href="#i-lock"/></svg><span class="mono" style="flex:1">SESSION_SECRET</span><span class="small muted">updated 3 days ago by mrossi</span><button class="btn btn-sm">Update</button></div>
+        </div>
+        <p class="hint" style="margin-top:8px">Values can't be read back and are masked in logs. Names starting with <span class="mono">GITSTACK_</span> are reserved.</p>
+        <div class="card card-b stack" style="gap:10px;font-size:13px;margin-top:16px">
+          <div class="row"><svg class="icon"><use href="#i-bot"/></svg><b>How "Report a problem" works</b></div>
+          <div class="guide-step"><span class="guide-n">1</span><div>A tester presses <b>Report a problem</b> in sito and adds a screenshot.</div></div>
+          <div class="guide-step"><span class="guide-n">2</span><div>sito opens an issue on <b>retail/retail-it</b> with <span class="mono">ISSUE_BOT_TOKEN</span>: the author is <b>agent</b>, the text says who reported it, taken from the signed GitStack headers.</div></div>
+          <div class="guide-step"><span class="guide-n">3</span><div>The screenshot is a protected attachment, up to 10 MB, visible only to people who see the repository.</div></div>
+          <div class="alert alert-warning"><svg class="icon"><use href="#i-alert"/></svg><div>Grants are per repository, not per action: with read on a private repository, <b>agent</b> can also read its code. Keep the token in this app's secrets only and let it expire.</div></div>
+        </div>
+      </div>
+
     </div>
   </div></div>
 </section>
 
 <!-- ============ H9 ADMIN ============ -->
-<section class="screen" data-screen="admin" data-nav="admin" data-crumb="<a>Administration</a><span class='sep'>/</span><b>Apps &amp; resources</b>" data-desc="H11, H1, H2, H9, H10: console dell'amministratore. Spazio del server riservato alle app (dopo i servizi di GitStack, prima della CI), quote per owner con avviso all'80%, per app garantito/uso/tetto; impostazioni d'istanza: dominio delle app, app pubbliche sì/no, solo immagini firmate e chiavi fidate, regola restricted.">
+<section class="screen" data-screen="admin" data-nav="admin" data-crumb="<a>Administration</a><span class='sep'>/</span><b>Apps &amp; resources</b>" data-desc="H11, H1, H2, H9, H10: console dell'amministratore. Spazio del server riservato alle app (dopo i servizi di GitStack, prima della CI), quote per owner con avviso all'80%, per app garantito/uso/tetto; impostazioni d'istanza: dominio delle app, app pubbliche sì/no, solo immagini firmate e chiavi fidate, regola restricted; uscita delle app e destinazioni private aperte per tutta l'istanza (H16).">
   <div class="page">
     <div class="row" style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:600">Apps &amp; resources</h1><span class="sp"></span><span class="small muted">Server: 8 vCPU · 16 GB · recommended profile</span></div>
     <div class="card" style="margin-bottom:16px"><div class="card-h"><svg class="icon"><use href="#i-cpu"/></svg>Server capacity · priority GitStack services › apps › CI jobs</div><div class="card-b stack" style="gap:12px">
@@ -536,6 +719,8 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
           <dt>Only signed images</dt><dd class="row"><span class="sw"></span><span class="hint">Off · manual deploys of unsigned images show "not verified"</span></dd>
           <dt>Trusted keys</dt><dd>Instance CI key <a class="small">+ Add key</a></dd>
           <dt>Restricted mode</dt><dd class="row"><span class="sw"></span><span class="hint">Off · images may run as root (baseline)</span></dd>
+          <dt>App outbound</dt><dd>internet open via proxy · private network closed</dd>
+          <dt>Private destinations</dt><dd><span class="mono">smtp.acme.lan:587</span> <a class="small">+ Add destination</a> <span class="hint">· same allow-list as webhooks and mirrors</span></dd>
           <dt>Max per app</dt><dd>4 vCPU · 8 GB · logs 7 days / 1 GB</dd>
         </dl></div></div>
       <div class="card" style="grid-column:1/-1"><div class="card-h">Apps</div>
@@ -603,6 +788,7 @@ deploying v43 to web (2 copies) · image signed by acme/handbook CI
     var s=screens[ids.indexOf(id)];
     crumb.innerHTML=s.dataset.crumb||'';desc.textContent=s.dataset.desc||'';pick.value=variant?'access-public':id;
     document.querySelectorAll('.sb-item[data-nav]').forEach(function(a){a.classList.toggle('active',a.dataset.nav===s.dataset.nav)});
+    document.getElementById('app').classList.toggle('bare',!!s.dataset.bare);
     if(variant&&s._setv)s._setv(variant);
     content.scrollTop=0;
     var h=variant?'access-public':id;
@@ -610,7 +796,7 @@ deploying v43 to web (2 copies) · image signed by acme/handbook CI
   }
   document.addEventListener('click',function(e){var t=e.target.closest('[data-go]');if(t){e.preventDefault();show(t.dataset.go)}});
   pick.addEventListener('change',function(){show(pick.value)});
-  var order=['apps','new','overview','logs','versions','config','access','access-public','volumes','admin','cli'];
+  var order=['apps','new','overview','logs','versions','config','access','access-public','volumes','retail','ca','testers','admin','cli'];
   function cur(){return pick.value}
   document.getElementById('prev').onclick=function(){var i=order.indexOf(cur());show(order[(i-1+order.length)%order.length])};
   document.getElementById('next').onclick=function(){var i=order.indexOf(cur());show(order[(i+1)%order.length])};

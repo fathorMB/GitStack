@@ -4,11 +4,14 @@
     "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363",
     "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e",
     "DOC-ef8572eb-11a9-4ab0-ac04-ff006b41bdc4",
-    "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e"
+    "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e",
+    "DOC-d1718775-770d-4065-8b27-3dc7a400dad6",
+    "DOC-1565db4b-4108-490d-aca1-28d30c36ad99",
+    "DOC-6db23bbe-fbf2-4913-a207-711865af66f6"
   ],
   "schema_version": 1,
   "status": "ready",
   "title": "GitStack Mockups · v3 Hosting (apps)",
-  "update_reason": null,
-  "updated": "2026-10-18T17:06:47.567280+00:00"
+  "update_reason": "H2–H9 riallineate alle regole del 2026-10-26: H2 deploy da regola sui tag (H7); H6 tolta GITSTACK_USER_HEADER (non prevista), aggiunte le variabili di sistema e il prefisso riservato (H14); H7 lista di accesso (H6); H8 uscita dell'app e restrizione (H16); H9 uscita e destinazioni private d'istanza (H16).",
+  "updated": "2026-10-26T00:52:28.226110400+00:00"
 }
