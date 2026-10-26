@@ -409,6 +409,9 @@ La rinomina e il trasferimento non esistono nella v1 (R3): niente eventi.
 | `commit_status.created` | `commit_status` / `created` | nessuna |
 | `workflow_run.queued`, `in_progress`, `completed`, `cancelled` | `workflow_run` / azione omonima | `completed` con esito `failure`, o `success` dopo una precedente `failure` dello stesso workflow e ref: `state_change` a chi ha avviato l'esecuzione (mai allo schedule, che non ha attore) |
 | `workflow_job.queued`, `in_progress`, `completed`, `cancelled` | `workflow_job` / azione omonima | nessuna |
+| `app_deployment.started`, `succeeded`, `rolled_back` | `deployment` / azione omonima | nessuna |
+| `app_deployment.failed` | `deployment` / `failed` | `state_change` a chi ha fatto il deploy (GIT-384, H12) |
+| `app_status.unhealthy` (app in esecuzione con copie non pronte) | nessuno | `state_change` a chi ha fatto l'ultimo deploy attivo (GIT-384, H12) |
 
 Chi riceve una notifica lo decide il consumer: iscritti alla issue
 (`core.issue_subscriptions`), watch del repo (`core.repo_watches`), menzioni e

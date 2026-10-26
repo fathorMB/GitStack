@@ -88,6 +88,10 @@ type Config struct {
 	PodLogs PodLogReader
 	// LogsEvery: ogni quanto si raccolgono le righe delle copie (default 2 s, la «diretta»).
 	LogsEvery time.Duration
+	// MetricsEvery: ogni quanto si raccolgono i campioni delle metriche (GIT-384). PodMetrics: la
+	// sorgente di CPU e memoria; nil = metrics-server.
+	MetricsEvery time.Duration
+	PodMetrics   PodMetricsReader
 	// LogRetention: per quanto si tengono le righe (default 7 giorni); LogMaxBytes: per app (default 1 GiB).
 	LogRetention time.Duration
 	LogMaxBytes  int64
@@ -101,6 +105,9 @@ type Config struct {
 func (c *Config) defaults() {
 	if c.LogsEvery <= 0 {
 		c.LogsEvery = defaultLogsEvery
+	}
+	if c.MetricsEvery <= 0 {
+		c.MetricsEvery = defaultMetricsEvery
 	}
 	if c.LogRetention <= 0 {
 		c.LogRetention = defaultLogRetention
@@ -171,7 +178,7 @@ func (c *Controller) Kick() {
 func (c *Controller) Run(ctx context.Context) {
 	tick := time.NewTicker(c.cfg.LoopInterval)
 	defer tick.Stop()
-	var lastSync, lastCollect, lastLogs, lastPrune time.Time
+	var lastSync, lastCollect, lastLogs, lastMetrics, lastPrune time.Time
 	for {
 		c.processPending(ctx)
 		if now := time.Now(); now.Sub(lastSync) >= c.cfg.SyncEvery {
@@ -185,6 +192,10 @@ func (c *Controller) Run(ctx context.Context) {
 		if now := time.Now(); now.Sub(lastLogs) >= c.cfg.LogsEvery {
 			lastLogs = now
 			c.CollectLogs(ctx)
+		}
+		if now := time.Now(); now.Sub(lastMetrics) >= c.cfg.MetricsEvery {
+			lastMetrics = now
+			c.CollectMetrics(ctx)
 		}
 		if now := time.Now(); now.Sub(lastPrune) >= time.Minute {
 			lastPrune = now

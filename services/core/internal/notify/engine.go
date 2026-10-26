@@ -265,6 +265,9 @@ func (e *Engine) handle(ctx context.Context, tx pgx.Tx, ev outboxEvent) error {
 	if ev.name == domainevents.WorkflowRunCompleted {
 		return e.handleRun(ctx, tx, ev)
 	}
+	if isAppNotice(ev.name) {
+		return e.handleApp(ctx, tx, ev)
+	}
 	switch ev.name {
 	case domainevents.IssueCreated, domainevents.IssueEdited, domainevents.IssueClosed,
 		domainevents.IssueReopened, domainevents.IssueAssigned:

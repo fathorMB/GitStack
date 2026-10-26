@@ -62,7 +62,7 @@ func TestMigration0042_AppVolumes(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.app_volumes`).Scan(&n); err != nil || n != 0 {
 		t.Fatalf("dopo l'eliminazione dell'app restano %d volumi: %v", n, err)
 	}
-	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
 		t.Fatalf("down 0042: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.tables WHERE table_schema = 'core' AND table_name = 'app_volumes'`).Scan(&n); err != nil || n != 0 {
