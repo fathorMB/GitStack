@@ -1,5 +1,6 @@
-// Package app è il gruppo `gs app`. Per ora porta `gs app access` (GIT-376, H6): la lista di accesso
-// dell'app per i tester esterni e l'invito.
+// Package app è il gruppo `gs app`. Porta il giro di un'app (GIT-354, H13): list, create, deploy, status, logs,
+// restart, rollback, scale, env e secret, più `gs app access` (GIT-376, H6). Stessa API della UI, con --json e
+// codici di uscita G3.
 package app
 
 import (
@@ -16,6 +17,7 @@ func NewCmd(f *cmdutil.Factory) *cobra.Command {
 		Args:  cmdutil.NoArgs,
 		RunE:  cmdutil.GroupRun,
 	}
-	cmd.AddCommand(newAccessCmd(f))
+	cmd.AddCommand(newListCmd(f), newCreateCmd(f), newDeployCmd(f), newStatusCmd(f), newLogsCmd(f),
+		newRestartCmd(f), newRollbackCmd(f), newScaleCmd(f), newEnvCmd(f), newSecretCmd(f), newAccessCmd(f))
 	return cmd
 }

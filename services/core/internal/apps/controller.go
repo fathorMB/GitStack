@@ -87,8 +87,11 @@ type Config struct {
 	// LogRetention: per quanto si tengono le righe (default 7 giorni); LogMaxBytes: per app (default 1 GiB).
 	LogRetention time.Duration
 	LogMaxBytes  int64
-	Now          func() time.Time
-	Log          *slog.Logger
+	// OnDeployFailed è chiamato dopo che un deploy è stato scritto come fallito (H13: gli admin del
+	// repo ricevono una notifica). Nil: nessun avviso. Non deve bloccare a lungo.
+	OnDeployFailed func(ctx context.Context, app store.App, v store.AppVersion, reason string)
+	Now            func() time.Time
+	Log            *slog.Logger
 }
 
 func (c *Config) defaults() {
@@ -272,6 +275,9 @@ func (c *Controller) RunDeploy(ctx context.Context, p store.PendingAppDeploy) {
 		return
 	}
 	c.platform(ctx, app.ID, fmt.Sprintf("deploy della versione %d: fallito: %s", v.Number, reason))
+	if c.cfg.OnDeployFailed != nil {
+		c.cfg.OnDeployFailed(ctx, app, v, reason)
+	}
 	c.Sync(ctx)
 }
 

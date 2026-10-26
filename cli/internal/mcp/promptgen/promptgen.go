@@ -36,6 +36,13 @@ var Defs = []Def{
 		},
 	},
 	{
+		Name: "app_deploy", Skill: "gitstack-apps", Title: "Deploy di un'app e giro di salute",
+		Args: []Arg{
+			{"repo", "Repository nella forma owner/nome.", true},
+			{"app", "Nome dell'app da mettere in produzione.", true},
+		},
+	},
+	{
 		Name: "issue_to_pr", Skill: "gitstack-issue-to-commit", Title: "Da una issue alla Pull Request",
 		Args: []Arg{
 			{"repo", "Repository nella forma owner/nome.", true},

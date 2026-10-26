@@ -10123,7 +10123,7 @@ paths:
       x-mcp:
         expose: true
         name: app_access_member_add
-        destructive: false
+        destructive: true
       summary: "Aggiunge un utente o un team alla lista di accesso"
       description: >
         Serve `admin` sull'app (H5, H6): `write` riceve 403, un repo che non si legge 404. Su un repo
