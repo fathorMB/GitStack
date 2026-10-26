@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 	corev1 "k8s.io/api/core/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
@@ -253,6 +254,11 @@ func newDeployEnv(t *testing.T) *appsDeployEnv {
 	}
 	dyn, err := dynamic.NewForConfig(rc)
 	if err != nil {
+		t.Fatal(err)
+	}
+	// Il chart crea la PriorityClass delle app (ADR 0002); su un k3d vuoto i pod senza non nascono.
+	pc := &schedulingv1.PriorityClass{ObjectMeta: metav1.ObjectMeta{Name: "gitstack-apps"}, Value: 100000}
+	if _, err := kube.SchedulingV1().PriorityClasses().Create(context.Background(), pc, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
 		t.Fatal(err)
 	}
 	pool, _ := dbtest.NewPool(t)
