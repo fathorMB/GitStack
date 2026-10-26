@@ -109,6 +109,19 @@
          stesso commit, `gitstack restore`: stessa CA, admin con la password
          cambiata, dati e allegato identici, clone HTTPS e SSH uguali con la
          chiave host verificata in modo rigido, `gitstack status` sano.
+      h-app, i-app. (GIT-388, criterio 2 di GIT-351, H4) l'installazione (prima e
+         dopo il reset) accende l'hosting (--enable-apps --apps-domain
+         -AppsDomain). Prima del backup: immagine di prova con tre tag
+         (v1, v2, v3) nel registry del repo di prova (e2e/gs-app-restore.sh),
+         app da API con v1, una variabile, un segreto, poi deploy di v2 (v2
+         attiva, v1 precedente). Dopo `gitstack restore`, una riga [PASS]/[FAIL]
+         per controllo e l'esito complessivo: 1 il Deployment `app` esiste nel
+         namespace dell'app, 2 la sua immagine e quella della versione attiva
+         (v2), 3 stato dell'app via API running, 4 la variabile e nell'env del
+         container, 5 il segreto si decifra (valore uguale), 6 manifest di v1 e
+         v2 scaricabili dal registry ripristinato (200), 7 il terzo tag no
+         (404, RG2). Si salta con -SkipBackupRestore (e allora l'hosting resta
+         spento, come prima).
       j. (GIT-148, DF/F) reset, installazione del commit precedente
          (-PreviousRef, default: il primo genitore di -Ref), dati, restore
          di un archivio di un'altra versione rifiutato (exit 6), `gitstack
@@ -133,6 +146,13 @@
 
 .PARAMETER SkipBackupRestore
     Salta i passi h e i (backup, reset, restore). Per il debug.
+
+.PARAMETER AppsDomain
+    Dominio delle app per i passi h-app/i-app (GIT-388): l'installer parte con
+    --enable-apps --apps-domain <dominio>. Default apps.e2e.test (nessun DNS
+    serve: le app non si raggiungono dal nome, il passo guarda il cluster e
+    l'API). Stringa vuota: hosting spento e passi dell'app non eseguiti. Ignorato
+    con -SkipBackupRestore.
 
 .PARAMETER SkipUpgrade
     Salta il passo j (upgrade dal commit precedente). Per il debug.
@@ -180,6 +200,7 @@ param(
     [switch]$SkipReset,
     [switch]$SkipBackupRestore,
     [switch]$SkipUpgrade,
+    [string]$AppsDomain = 'apps.e2e.test',
     [string]$PreviousRef,
     [int]$ResetBootTimeoutSeconds = 300,
     [int]$SshTimeoutSeconds = 180,
@@ -488,8 +509,12 @@ function Main {
         # --- d.2 installer, prima esecuzione ----------------------------
         Write-Log "==> Passo d (2/2): eseguo l'installer di GIT-9 dal commit $Ref di main (prima esecuzione) ..."
         $installCmd = "curl -fsSL https://raw.githubusercontent.com/$GitStackRepo/$Ref/deploy/install.sh | sudo GITSTACK_REF=$Ref GITSTACK_ADMIN_REQUIRED=1 bash"
-        Write-Log "Comando: $installCmd"
-        $install1 = Invoke-VmSsh -Command $installCmd -TimeoutSeconds $InstallTimeoutSeconds
+        # Hosting delle app (GIT-388): acceso solo se il passo h/i li prova; le riesecuzioni
+        # senza opzioni (f) e con --ci conservano la scelta.
+        $script:AppsDomain = if ($SkipBackupRestore) { '' } else { $AppsDomain }
+        $installFirst = if ($script:AppsDomain) { "$installCmd -s -- --enable-apps --apps-domain $script:AppsDomain" } else { $installCmd }
+        Write-Log "Comando: $installFirst"
+        $install1 = Invoke-VmSsh -Command $installFirst -TimeoutSeconds $InstallTimeoutSeconds
         $install1Log = Join-Path $OutDir 'installer-run1.log'
         Set-Content -LiteralPath $install1Log -Value $install1.StdOut -Encoding utf8
         Add-Content -LiteralPath $install1Log -Value $install1.StdErr

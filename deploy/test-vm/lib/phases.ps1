@@ -10,8 +10,11 @@
 # --- Piccoli aiuti ---------------------------------------------------------
 
 function Get-E2eInstallCommand {
-    param([Parameter(Mandatory)][string]$InstallRef)
-    return "curl -fsSL https://raw.githubusercontent.com/$script:GitStackRepo/$InstallRef/deploy/install.sh | sudo GITSTACK_REF=$InstallRef GITSTACK_ADMIN_REQUIRED=1 bash"
+    # -AppsDomain: accende l'hosting delle app (GIT-375, --enable-apps) con quel dominio.
+    param([Parameter(Mandatory)][string]$InstallRef, [string]$AppsDomain)
+    $cmd = "curl -fsSL https://raw.githubusercontent.com/$script:GitStackRepo/$InstallRef/deploy/install.sh | sudo GITSTACK_REF=$InstallRef GITSTACK_ADMIN_REQUIRED=1 bash"
+    if ($AppsDomain) { $cmd += " -s -- --enable-apps --apps-domain $AppsDomain" }
+    return $cmd
 }
 
 function Write-E2eText {
@@ -43,8 +46,8 @@ function Invoke-E2eVmReset {
 
 # Installer di GIT-9 al commit indicato. Ritorna $null se ok, altrimenti il motivo.
 function Invoke-E2eInstall {
-    param([Parameter(Mandatory)][string]$InstallRef, [Parameter(Mandatory)][string]$LogName)
-    $r = Invoke-VmSsh -Command (Get-E2eInstallCommand -InstallRef $InstallRef) -TimeoutSeconds $script:InstallTimeoutSeconds
+    param([Parameter(Mandatory)][string]$InstallRef, [Parameter(Mandatory)][string]$LogName, [string]$AppsDomain)
+    $r = Invoke-VmSsh -Command (Get-E2eInstallCommand -InstallRef $InstallRef -AppsDomain $AppsDomain) -TimeoutSeconds $script:InstallTimeoutSeconds
     $log = Join-Path $script:OutDir $LogName
     Write-E2eText -Path $log -Stdout $r.StdOut -Stderr $r.StdErr
     if ($r.ExitCode -ne 0) { return "installer di ${InstallRef}: exit $($r.ExitCode) (log: $log)" }
@@ -319,6 +322,215 @@ function Test-E2eDataset {
     return , $problems.ToArray()
 }
 
+# --- App nel ciclo backup -> restore (GIT-388, criterio 2 di GIT-351, H4) --
+# Prima del backup: immagine di prova con tre tag nel registry, app da API,
+# variabile e segreto, v1 poi v2 (v2 attiva, v1 precedente). Dopo il restore:
+# sette controlli, una riga ok/ko ciascuno (Test-E2eAppAfterRestore).
+
+$script:E2eAppName = 'e2eapp'
+$script:E2eAppImageName = 'e2eimg'
+$script:E2eAppVarName = 'E2E_VAR'
+$script:E2eAppSecretName = 'E2E_SECRET'
+
+function Get-E2eBearer {
+    param([Parameter(Mandatory)]$Data)
+    return @{ Authorization = "Bearer $($Data.Token)" }
+}
+
+# Attende che la versione piu' recente dell'app sia `serving`. Ritorna il suo numero.
+function Wait-E2eAppServing {
+    param([Parameter(Mandatory)][string]$AppsApi, [Parameter(Mandatory)][hashtable]$Headers, [int]$TimeoutSeconds = 300)
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $last = ''
+    while ((Get-Date) -lt $deadline) {
+        $r = Invoke-HttpRaw -Uri "$AppsApi/$script:E2eAppName/versions?per_page=1" -Headers $Headers
+        if ($r.StatusCode -eq 200) {
+            $items = @(($r.Body | ConvertFrom-Json).items)
+            if ($items.Count -gt 0) {
+                $v = $items[0]
+                if ($v.state -eq 'serving') { return [int]$v.number }
+                if ($v.state -eq 'failed' -or $v.state -eq 'rolled_back') { throw "versione $($v.number) dell'app: stato $($v.state) ($($v.stateReason))" }
+                $last = "versione $($v.number) stato $($v.state)"
+            }
+        } else {
+            $last = "status $($r.StatusCode) $($r.Error)"
+        }
+        Start-Sleep -Seconds 5
+    }
+    throw "la versione piu' recente dell'app non e' serving dopo ${TimeoutSeconds}s (ultimo: $last)"
+}
+
+# Il token del dataset ha solo read/write:resource: il registry vuole read:registry e
+# write:registry (services/git/internal/registry, pkg/scopes: *:resource non li implica).
+# Token dedicato, con il login dell'utente del dataset; sta nel DB e torna col restore.
+function New-E2eRegistryToken {
+    param([Parameter(Mandatory)][string]$BaseUrl, [Parameter(Mandatory)]$Data)
+    $l = Invoke-HttpRaw -Uri "$BaseUrl/api/v1/auth/login" -Method 'POST' -Body (@{ username = $Data.User; password = $Data.Password } | ConvertTo-Json)
+    if ($l.StatusCode -ne 200 -or -not $l.Cookie) { throw "login dell'utente $($Data.User) per il token del registry: status $($l.StatusCode)" }
+    $expires = (Get-Date).ToUniversalTime().AddHours(6).ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $t = Invoke-HttpRaw -Uri "$BaseUrl/api/v1/user/tokens" -Method 'POST' -Cookie $l.Cookie -Body (@{ name = 'e2e-registry'; scopes = @('read:registry', 'write:registry'); expiresAt = $expires } | ConvertTo-Json)
+    if ($t.StatusCode -ne 201) { throw "creazione del token del registry: status $($t.StatusCode) $($t.Body)" }
+    $tok = ($t.Body | ConvertFrom-Json).token
+    if (-not $tok) { throw "creazione del token del registry: risposta senza 'token'" }
+    return [string]$tok
+}
+
+# Prepara l'app prima del backup. Ritorna il contesto per i controlli dopo il restore.
+function New-E2eAppFixture {
+    param(
+        [Parameter(Mandatory)][string]$BaseUrl,
+        [Parameter(Mandatory)][string]$CaPath,
+        [Parameter(Mandatory)]$Data,
+        [Parameter(Mandatory)][string]$WorkDir
+    )
+    New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
+    $stage = 'copia dello script sulla VM'
+    try {
+        $h = Get-E2eBearer -Data $Data
+        $appsApi = "$BaseUrl/api/v1/repos/$($Data.User)/$($Data.Repo)/apps"
+        $imagePath = "$($Data.User)/$($Data.Repo)/$script:E2eAppImageName"
+        $mk = Invoke-VmSsh -Command 'mkdir -p /tmp/gitstack-e2e' -TimeoutSeconds $script:SshCommandTimeoutSeconds
+        if ($mk.ExitCode -ne 0) { throw "mkdir sulla VM: exit $($mk.ExitCode) $($mk.StdErr)" }
+        $cp = Copy-ToVm -LocalPath (Join-Path (Split-Path -Parent $PSScriptRoot) 'e2e\gs-app-restore.sh') -RemotePath '/tmp/gitstack-e2e/gs-app-restore.sh' -TimeoutSeconds $script:SshCommandTimeoutSeconds
+        if ($cp.ExitCode -ne 0) { throw "scp di gs-app-restore.sh: exit $($cp.ExitCode) $($cp.StdErr)" }
+        $cc = Copy-ToVm -LocalPath $CaPath -RemotePath '/tmp/gitstack-e2e/app-ca.crt' -TimeoutSeconds $script:SshCommandTimeoutSeconds
+        if ($cc.ExitCode -ne 0) { throw "scp della CA: exit $($cc.ExitCode) $($cc.StdErr)" }
+
+        $stage = 'token del registry'
+        $regToken = New-E2eRegistryToken -BaseUrl $BaseUrl -Data $Data
+
+        $stage = 'immagine di prova con tre tag nel registry'
+        $push = Invoke-VmSsh -Command "GS_VM_IP='$script:VmIp' GS_CA=/tmp/gitstack-e2e/app-ca.crt GS_USER_TOKEN='$regToken' GS_IMAGE='$imagePath' bash /tmp/gitstack-e2e/gs-app-restore.sh push" -TimeoutSeconds 600
+        Write-E2eText -Path (Join-Path $WorkDir 'push.log') -Stdout $push.StdOut -Stderr $push.StdErr
+        if ($push.ExitCode -ne 0 -or $push.StdOut -notmatch 'STEP ok push') { throw "push dell'immagine: exit $($push.ExitCode) $($push.StdOut) $($push.StdErr)" }
+
+        $stage = 'creazione dell''app con v1'
+        $c = Invoke-HttpRaw -Uri $appsApi -Method 'POST' -Headers $h -Body (@{ name = $script:E2eAppName; image = "$($script:E2eAppImageName):v1" } | ConvertTo-Json) -TimeoutSec 60
+        if ($c.StatusCode -ne 202) { throw "POST apps: status $($c.StatusCode) $($c.Body) $($c.Error)" }
+        $appId = ($c.Body | ConvertFrom-Json).app.id
+        if (-not $appId) { throw 'POST apps: risposta senza app.id' }
+        [void](Wait-E2eAppServing -AppsApi $appsApi -Headers $h)
+
+        $stage = 'variabile e segreto'
+        $varValue = "valore-var-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
+        $secValue = "segreto-$([guid]::NewGuid().ToString('N'))"
+        $pv = Invoke-HttpRaw -Uri "$appsApi/$script:E2eAppName/variables/$script:E2eAppVarName" -Method 'PUT' -Headers $h -Body (@{ value = $varValue } | ConvertTo-Json)
+        if ($pv.StatusCode -ne 200) { throw "PUT variabile: status $($pv.StatusCode) $($pv.Body)" }
+        [void](Wait-E2eAppServing -AppsApi $appsApi -Headers $h)
+        $ps = Invoke-HttpRaw -Uri "$appsApi/$script:E2eAppName/secrets/$script:E2eAppSecretName" -Method 'PUT' -Headers $h -Body (@{ value = $secValue } | ConvertTo-Json)
+        if ($ps.StatusCode -ne 200) { throw "PUT segreto: status $($ps.StatusCode) (corpo non stampato)" }
+        [void](Wait-E2eAppServing -AppsApi $appsApi -Headers $h)
+
+        $stage = 'deploy di v2'
+        $d = Invoke-HttpRaw -Uri "$appsApi/$script:E2eAppName/deploys" -Method 'POST' -Headers $h -Body (@{ image = "$($script:E2eAppImageName):v2" } | ConvertTo-Json) -TimeoutSec 60
+        if ($d.StatusCode -ne 202) { throw "POST deploys: status $($d.StatusCode) $($d.Body)" }
+        $activeNumber = Wait-E2eAppServing -AppsApi $appsApi -Headers $h
+
+        $stage = 'lettura dello stato prima del backup'
+        $g = Invoke-HttpRaw -Uri "$appsApi/$script:E2eAppName" -Headers $h
+        if ($g.StatusCode -ne 200) { throw "GET app: status $($g.StatusCode)" }
+        $app = $g.Body | ConvertFrom-Json
+        if ($app.image.reference -notmatch ':v2(@sha256:[0-9a-f]{64})?$') { throw "l'immagine attiva non e v2: $($app.image.reference)" }
+        $vl = Invoke-HttpRaw -Uri "$appsApi/$script:E2eAppName/versions" -Headers $h
+        $prev = @(($vl.Body | ConvertFrom-Json).items | Where-Object { $_.image.reference -match ':v1(@sha256:[0-9a-f]{64})?$' -and $_.inBackup })
+        if ($prev.Count -lt 1) { throw 'nessuna versione precedente con v1 segnata inBackup' }
+        Write-Log "App $script:E2eAppName ($appId): versione attiva $($app.activeVersion) ($($app.image.reference)), precedente $($prev[0].number) ($($prev[0].image.reference)), stato $($app.status)"
+        return [pscustomobject]@{
+            AppId = [string]$appId; Namespace = "gitstack-app-$appId"; ActiveVersion = [int]$app.activeVersion
+            ActiveRef = [string]$app.image.reference; VarValue = $varValue; SecretValue = $secValue
+            ImagePath = $imagePath; Number = $activeNumber; RegistryToken = $regToken
+        }
+    } catch {
+        throw "[app di prova: $stage] $($_.Exception.Message)"
+    }
+}
+
+# Sette controlli dopo il restore. Ritorna sette oggetti {Name, Ok, Detail}, sempre.
+function Test-E2eAppAfterRestore {
+    param(
+        [Parameter(Mandatory)][string]$BaseUrl,
+        [Parameter(Mandatory)]$Data,
+        [Parameter(Mandatory)]$Ctx,
+        [Parameter(Mandatory)][string]$WorkDir
+    )
+    New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
+    $names = @(
+        "i-app 1/7 il Deployment 'app' esiste nel namespace dell'app",
+        'i-app 2/7 la sua immagine e il riferimento della versione attiva (v2)',
+        'i-app 3/7 lo stato dell''app via API e running',
+        'i-app 4/7 la variabile e nell''env del container',
+        'i-app 5/7 il segreto si decifra (valore uguale a quello impostato)',
+        'i-app 6/7 i tag v1 e v2 si scaricano dal registry ripristinato (manifest 200)',
+        'i-app 7/7 il terzo tag non c''e (RG2: il resto del registry resta fuori)'
+    )
+    $rows = @()
+    foreach ($n in $names) { $rows += [pscustomobject]@{ Name = $n; Ok = $false; Detail = 'non verificato' } }
+    try {
+        $h = Get-E2eBearer -Data $Data
+        $appUrl = "$BaseUrl/api/v1/repos/$($Data.User)/$($Data.Repo)/apps/$script:E2eAppName"
+
+        # le app ripartono dopo il restore: si attende running (check 3), senza fermarsi se non arriva
+        $status = ''; $http = 0
+        for ($attempt = 0; $attempt -lt 42; $attempt++) {
+            $a = Invoke-HttpRaw -Uri $appUrl -Headers $h
+            $http = $a.StatusCode
+            if ($a.StatusCode -eq 200) {
+                $status = [string](($a.Body | ConvertFrom-Json).status)
+                if ($status -eq 'running') { break }
+            }
+            Start-Sleep -Seconds 10
+        }
+        $rows[2].Ok = ($status -eq 'running')
+        $rows[2].Detail = if ($status -eq 'running') { '' } else { "status HTTP $http, stato '$status' (atteso running entro 420s)" }
+
+        # Deployment, immagine, variabile e segreto: dentro la VM
+        $cp = Copy-ToVm -LocalPath (Join-Path (Split-Path -Parent $PSScriptRoot) 'e2e\gs-app-restore.sh') -RemotePath '/tmp/gitstack-e2e/gs-app-restore.sh' -TimeoutSeconds $script:SshCommandTimeoutSeconds
+        if ($cp.ExitCode -ne 0) { throw "scp di gs-app-restore.sh sulla VM nuova: exit $($cp.ExitCode) $($cp.StdErr)" }
+        $env1 = "GS_APP_NS='$($Ctx.Namespace)' GS_VAR_NAME='$script:E2eAppVarName' GS_VAR_VALUE='$($Ctx.VarValue)' GS_SECRET_NAME='$script:E2eAppSecretName' GS_SECRET_VALUE='$($Ctx.SecretValue)'"
+        $ins = Invoke-VmSsh -Command "$env1 bash /tmp/gitstack-e2e/gs-app-restore.sh inspect" -TimeoutSeconds 300
+        Write-E2eText -Path (Join-Path $WorkDir 'inspect.log') -Stdout $ins.StdOut -Stderr $ins.StdErr
+        $kv = @{}
+        foreach ($line in ($ins.StdOut -split "`r?`n")) {
+            $i = $line.IndexOf('=')
+            if ($i -gt 0) { $kv[$line.Substring(0, $i)] = $line.Substring($i + 1) }
+        }
+        if ($ins.ExitCode -ne 0 -or -not $kv.ContainsKey('deploy')) {
+            $why = "inspect: exit $($ins.ExitCode) $($ins.StdErr)"
+            foreach ($i in 0, 1, 3, 4) { $rows[$i].Detail = $why }
+        } else {
+            $rows[0].Ok = ($kv['deploy'] -eq 'yes')
+            $rows[0].Detail = if ($rows[0].Ok) { '' } else { "nessun Deployment 'app' in $($Ctx.Namespace)" }
+            # l'host del registry puo' cambiare con l'IP della VM: si confronta dal primo '/'
+            $expPath = $Ctx.ActiveRef -replace '^[^/]+/', ''
+            $gotPath = $kv['image'] -replace '^[^/]+/', ''
+            $rows[1].Ok = ($kv['deploy'] -eq 'yes' -and $gotPath -eq $expPath)
+            $rows[1].Detail = if ($rows[1].Ok) { '' } else { "immagine '$($kv['image'])', attesa '$($Ctx.ActiveRef)' (versione attiva $($Ctx.ActiveVersion))" }
+            $rows[3].Ok = ($kv['var'] -eq 'match')
+            $rows[3].Detail = if ($rows[3].Ok) { '' } else { "$script:E2eAppVarName nel container: $($kv['var'])" }
+            $rows[4].Ok = ($kv['secret'] -eq 'match')
+            $rows[4].Detail = if ($rows[4].Ok) { '' } else { "$script:E2eAppSecretName decifrato: $($kv['secret'])" }
+        }
+
+        # registry ripristinato: v1 e v2 si scaricano, v3 no
+        $basic = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("token:$($Ctx.RegistryToken)"))
+        $rh = @{ Authorization = "Basic $basic"; Accept = 'application/vnd.oci.image.manifest.v1+json' }
+        $st = @{}
+        foreach ($t in 'v1', 'v2', 'v3') {
+            $m = Invoke-HttpRaw -Uri "$BaseUrl/v2/$($Ctx.ImagePath)/manifests/$t" -Headers $rh
+            $st[$t] = $m.StatusCode
+        }
+        $rows[5].Ok = ($st['v1'] -eq 200 -and $st['v2'] -eq 200)
+        $rows[5].Detail = if ($rows[5].Ok) { '' } else { "manifest v1: $($st['v1']), v2: $($st['v2']) (attesi 200)$(if ($st.Values -contains 401 -or $st.Values -contains 403) { ': permessi, il token del registry non e accettato' })" }
+        # solo 404 vale come «tag assente»: 401/403 sono un problema di permessi, non un esito di RG2
+        $rows[6].Ok = ($st['v3'] -eq 404)
+        $rows[6].Detail = if ($rows[6].Ok) { '' } elseif ($st['v3'] -eq 401 -or $st['v3'] -eq 403) { "manifest v3: status $($st['v3']), permessi: il token del registry non e accettato, l'assenza del tag non e verificata" } elseif ($st['v3'] -eq 200) { 'manifest v3: status 200, il tag non usato da nessuna app e presente (atteso 404, RG2)' } else { "manifest v3: status $($st['v3']) (atteso 404)" }
+    } catch {
+        $msg = $_.Exception.Message
+        foreach ($r in $rows) { if (-not $r.Ok -and $r.Detail -eq 'non verificato') { $r.Detail = "non verificato: $msg" } }
+    }
+    return , $rows
+}
+
 # --- Fase h/i: backup, reset, reinstallazione, restore (DF/D) -------------
 
 function Invoke-E2eBackupRestorePhase {
@@ -332,16 +544,26 @@ function Invoke-E2eBackupRestorePhase {
     New-Item -ItemType Directory -Path $phaseDir -Force | Out-Null
     $script:BackupArchiveLocal = $null
     $script:BackupKeyLocal = $null
+    $script:RestoredBaseUrl = $null
 
     # --- h. dati di prova e backup (sullo stato dell'installazione appena provata) ---
     Write-Log "==> Passo h: dati di prova e gitstack backup cifrato ..."
     $hOk = $true; $hDetails = @()
-    $data = $null; $fpBefore = $null; $oldIp = $script:VmIp
+    $data = $null; $fpBefore = $null; $oldIp = $script:VmIp; $appCtx = $null
     try {
         $fpBefore = Get-CertSha256Fingerprint -Path $CaPath
         $adminCk = Get-E2eAdminCookie -BaseUrl $BaseUrl -Password $AdminPassword
         $data = New-E2eDataset -BaseUrl $BaseUrl -AdminCookie $adminCk -CaPath $CaPath -WorkDir (Join-Path $phaseDir 'dati') -Tag 'b'
         Write-Log "Dati di prova: utente $($data.User), org $($data.Org), repo $($data.Repo) (HEAD $($data.HeadSha)), issue #$($data.IssueNumber) con allegato"
+
+        # app di prova (GIT-388): immagine con tre tag, app con v1 poi v2, variabile e segreto
+        if ($script:AppsDomain) {
+            try {
+                $appCtx = New-E2eAppFixture -BaseUrl $BaseUrl -CaPath $CaPath -Data $data -WorkDir (Join-Path $phaseDir 'app')
+            } catch {
+                $hOk = $false; $hDetails += "app di prova: $($_.Exception.Message)"
+            }
+        }
 
         $gen = Invoke-VmSsh -Command 'umask 077; mkdir -p /tmp/gitstack-e2e/backup && openssl rand -base64 32 > /tmp/gitstack-e2e/backup/chiave' -TimeoutSeconds $script:SshCommandTimeoutSeconds
         if ($gen.ExitCode -ne 0) { throw "generazione della chiave di backup sulla VM: exit $($gen.ExitCode) $($gen.StdErr)" }
@@ -399,7 +621,7 @@ function Invoke-E2eBackupRestorePhase {
         $why = Invoke-E2eVmReset -Label 'restore'
         if ($why) { throw "reset: $why" }
         Write-Log "IP della VM dopo il reset: $script:VmIp (prima: $oldIp)"
-        $why = Invoke-E2eInstall -InstallRef $InstallRef -LogName 'installer-restore.log'
+        $why = Invoke-E2eInstall -InstallRef $InstallRef -LogName 'installer-restore.log' -AppsDomain $script:AppsDomain
         if ($why) { throw $why }
         $baseUrl2 = "https://$script:VmIp"
         $caPath2 = Join-Path $phaseDir 'ca-nuova-installazione.crt'
@@ -447,6 +669,19 @@ function Invoke-E2eBackupRestorePhase {
         $iOk = $false; $iDetails += $_.Exception.Message
     }
     Add-StepResult -Name 'i. reset, reinstallazione della stessa versione, gitstack restore: CA e admin come prima, utente/token/org/repo/issue/allegato intatti, clone HTTPS e SSH identici (host key invariata), status sano' -Ok $iOk -Detail ($iDetails -join '; ')
+
+    # --- i-app. l'app col suo stato dopo il restore (GIT-388): sette righe ok/ko e l'esito ---
+    if ($appCtx) {
+        Write-Log "==> Passo i-app: app e registry dopo il restore (sette controlli) ..."
+        if (-not $script:RestoredBaseUrl -or $script:RestoredBaseUrl -ne "https://$script:VmIp") {
+            Add-StepResult -Name 'i-app. app dopo il restore' -Ok $false -Detail 'il restore non e arrivato in fondo (passo i fallito): controlli dell''app non eseguiti'
+            return
+        }
+        $rows = Test-E2eAppAfterRestore -BaseUrl $script:RestoredBaseUrl -Data $data -Ctx $appCtx -WorkDir (Join-Path $phaseDir 'app-dopo-restore')
+        foreach ($r in $rows) { Add-StepResult -Name $r.Name -Ok $r.Ok -Detail $r.Detail }
+        $okCount = @($rows | Where-Object { $_.Ok }).Count
+        Add-StepResult -Name "i-app. esito complessivo: $okCount/$(@($rows).Count) controlli dell'app ok" -Ok ($okCount -eq @($rows).Count) -Detail "$(@($rows).Count - $okCount) controlli ko (vedi le righe i-app sopra)"
+    }
 }
 
 # --- Fase j: upgrade dal commit precedente (DF/F) --------------------------
