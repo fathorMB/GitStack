@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // usesRe riconosce `uses: owner/repo[/percorso]@ref` di un passo. Restano fuori `./locale`
@@ -73,7 +75,79 @@ func MirrorActions(ctx context.Context, workflow []byte, base, gitBin, dest stri
 	if firstErr != nil {
 		return nil, firstErr
 	}
+	if len(fetched) > 0 {
+		return ensureWorkspace(out, filepath.Base(dest))
+	}
 	return out, nil
+}
+
+// ensureWorkspace fa si' che un job con action riscritte in locale ne trovi la cartella anche
+// senza `uses: actions/checkout`. act in modalita' host copia il workspace nella sua cartella di
+// lavoro solo nel passo actions/checkout (step_action_remote.go): senza, ./.gitstack-actions/...
+// non esiste e il job cade con «failed to read 'Dockerfile' from action» (GIT-393). Su GitHub
+// actions/cache o upload-artifact funzionano senza checkout, quindi il runner antepone lui il
+// passo (che act salta copiando il codice) ai job in cui una action riscritta non e' preceduta
+// da un checkout. I job senza action riscritte restano com'erano.
+func ensureWorkspace(workflow []byte, mirrorDir string) ([]byte, error) {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(workflow, &doc); err != nil || len(doc.Content) == 0 {
+		return workflow, nil // non e' un workflow leggibile: act dara' il suo errore
+	}
+	jobs := mapValue(doc.Content[0], "jobs")
+	if jobs == nil || jobs.Kind != yaml.MappingNode {
+		return workflow, nil
+	}
+	changed := false
+	for i := 1; i < len(jobs.Content); i += 2 {
+		steps := mapValue(jobs.Content[i], "steps")
+		if steps == nil || steps.Kind != yaml.SequenceNode {
+			continue
+		}
+		// Serve un checkout PRIMA della prima action riscritta: uno che viene dopo (ordine valido
+		// su GitHub) non copia il workspace in tempo.
+		needs := false
+		for _, st := range steps.Content {
+			u := mapValue(st, "uses")
+			if u == nil {
+				continue
+			}
+			if strings.HasPrefix(u.Value, "actions/checkout@") {
+				break
+			}
+			if strings.HasPrefix(u.Value, "./"+mirrorDir+"/") {
+				needs = true
+				break
+			}
+		}
+		if !needs {
+			continue
+		}
+		step := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "name"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "GitStack - codice del repo nel workspace"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "uses"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "actions/checkout@v4"},
+		}}
+		steps.Content = append([]*yaml.Node{step}, steps.Content...)
+		changed = true
+	}
+	if !changed {
+		return workflow, nil
+	}
+	return yaml.Marshal(&doc)
+}
+
+// mapValue e' il valore della chiave key di un nodo mappa, nil se manca.
+func mapValue(n *yaml.Node, key string) *yaml.Node {
+	if n == nil || n.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		if n.Content[i].Value == key {
+			return n.Content[i+1]
+		}
+	}
+	return nil
 }
 
 func fetchAction(ctx context.Context, gitBin, url, ref, dir string, env []string) error {

@@ -2,6 +2,8 @@ package cirunner_test
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,7 +39,7 @@ func TestRun_AmbienteDelJobPerCacheEArtefatti(t *testing.T) {
 	if got["ACTIONS_RESULTS_URL"] != url+"/" {
 		t.Errorf("ACTIONS_RESULTS_URL = %q", got["ACTIONS_RESULTS_URL"])
 	}
-	if got["ACTIONS_RUNTIME_TOKEN"] != jobToken || got["ACTIONS_RUNTIME_TOKEN"] == secret {
+	if got["ACTIONS_RUNTIME_TOKEN"] != cirunner.RuntimeToken(jobToken) || strings.Contains(got["ACTIONS_RUNTIME_TOKEN"], secret) {
 		t.Errorf("ACTIONS_RUNTIME_TOKEN = %q", got["ACTIONS_RUNTIME_TOKEN"])
 	}
 	// GIT-371: i passi (gitstack-build) leggono il repo vero del job, non quello che act deduce.
@@ -48,8 +50,28 @@ func TestRun_AmbienteDelJobPerCacheEArtefatti(t *testing.T) {
 
 func TestCacheEnv_UsaLIndirizzoDellArchivio(t *testing.T) {
 	env := cirunner.CacheEnv("http://ci-gateway.ns:8081/ci/v1/archive", "tok")
-	want := []string{"ACTIONS_CACHE_URL=http://ci-gateway.ns:8081/ci/v1/cache/", "ACTIONS_RESULTS_URL=http://ci-gateway.ns:8081/", "ACTIONS_RUNTIME_TOKEN=tok"}
+	want := []string{"ACTIONS_CACHE_URL=http://ci-gateway.ns:8081/ci/v1/cache/", "ACTIONS_RESULTS_URL=http://ci-gateway.ns:8081/", "ACTIONS_RUNTIME_TOKEN=" + cirunner.RuntimeToken("tok")}
 	if strings.Join(env, "|") != strings.Join(want, "|") {
 		t.Errorf("env = %v", env)
+	}
+}
+
+// upload-artifact@v4 fa `token.split('.')[1]` e legge scp (GIT-393): il token e' un JWT con quel
+// claim, e il token del job sta in gsj.
+func TestRuntimeToken_ELUnJWTConIlTokenDelJob(t *testing.T) {
+	parts := strings.Split(cirunner.RuntimeToken("gsj_abc"), ".")
+	if len(parts) != 3 {
+		t.Fatalf("parti = %d", len(parts))
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c map[string]string
+	if err := json.Unmarshal(raw, &c); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(c["scp"], "Actions.Results:") || c["gsj"] != "gsj_abc" {
+		t.Errorf("claim = %v", c)
 	}
 }

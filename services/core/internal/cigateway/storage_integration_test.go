@@ -10,12 +10,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/fathorMB/GitStack/services/core/internal/ci"
 	"github.com/fathorMB/GitStack/services/core/internal/cigateway"
+	"github.com/fathorMB/GitStack/services/core/internal/cirunner"
 	"github.com/google/uuid"
 )
 
@@ -185,6 +187,17 @@ func TestStorage_CacheProtocolloV1(t *testing.T) {
 	st, got := call(t, srv, "GET", dl, tokA, "", "", nil)
 	if st != http.StatusOK || !bytes.Equal(got, archive) {
 		t.Errorf("download: %d %q", st, got)
+	}
+	// actions/cache scarica con un GET senza intestazioni: basta l'archiveLocation com'e' (?token=),
+	// anche col token avvolto nel JWT di ACTIONS_RUNTIME_TOKEN (GIT-393). Senza token, 401.
+	if st, got := call(t, srv, "GET", dl, "", "", "", nil); st != http.StatusOK || !bytes.Equal(got, archive) {
+		t.Errorf("download con ?token=: %d %q", st, got)
+	}
+	if st, got := call(t, srv, "GET", strings.SplitN(dl, "?", 2)[0]+"?token="+url.QueryEscape(cirunner.RuntimeToken(tokA)), "", "", "", nil); st != http.StatusOK || !bytes.Equal(got, archive) {
+		t.Errorf("download col token avvolto: %d %q", st, got)
+	}
+	if st, _ := call(t, srv, "GET", strings.SplitN(dl, "?", 2)[0], "", "", "", nil); st != http.StatusUnauthorized {
+		t.Errorf("download senza token: %d", st)
 	}
 	// Un altro repo non la trova, non la scarica e non scrive nei suoi pezzi.
 	if st, _ := call(t, srv, "GET", api+"cache?keys=npm-1&version=v1", tokB, "", "", nil); st != http.StatusNoContent {
