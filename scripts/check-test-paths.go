@@ -68,10 +68,12 @@ func sh(name string, args ...string) (string, error) {
 }
 
 var (
-	reKV      = regexp.MustCompile(`^(\w+)\s*=\s*(.*)$`)
-	reStr     = regexp.MustCompile(`"((?:[^"\\]|\\.)*)"`)
-	reRelLit  = regexp.MustCompile(`"((?:\.\./)+[A-Za-z0-9_./-]+)"`)
-	reRootLit = regexp.MustCompile(`"(deploy|docs|skills|scripts|web|api|README\.md)"(?:\s*,\s*"([^"]+)")?`)
+	reKV     = regexp.MustCompile(`^(\w+)\s*=\s*(.*)$`)
+	reStr    = regexp.MustCompile(`"((?:[^"\\]|\\.)*)"`)
+	reRelLit = regexp.MustCompile(`"((?:\.\./)+[A-Za-z0-9_./-]+)"`)
+	// README.md e' escluso: nei test CLI indica un file temporaneo o
+	// cli/README.md, gia' coperto da cli/**, non il README della radice.
+	reRootLit = regexp.MustCompile(`"(deploy|docs|skills|scripts|web|api)"(?:\s*,\s*"([^"]+)")?`)
 )
 
 // parseChecks legge le tabelle [[check]]: solo name, run, cwd e paths (array su

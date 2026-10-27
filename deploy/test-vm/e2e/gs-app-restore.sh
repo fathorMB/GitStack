@@ -111,10 +111,26 @@ inspect() {
     s="$(kc get secret app-secrets -n "$GS_APP_NS" -o "jsonpath={.data.${GS_SECRET_NAME}}" 2>/dev/null | base64 -d 2>/dev/null)" || s=""
   fi
   compare secret "$GS_SECRET_VALUE" "$s"
+  if kc exec -n "$GS_APP_NS" deploy/app -- sh -c 'test -f /data/gitstack-e2e.txt && test "$(cat /data/gitstack-e2e.txt; printf x)" = gitstack-e2e-volume-423x' 2>/dev/null; then
+    echo 'volume=match'
+  else
+    echo 'volume=mismatch'
+  fi
+}
+
+write_volume() {
+  for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
+    if kc exec -n "$GS_APP_NS" deploy/app -- sh -c 'printf %s gitstack-e2e-volume-423 > /data/gitstack-e2e.txt && test "$(cat /data/gitstack-e2e.txt)" = gitstack-e2e-volume-423' 2>/dev/null; then
+      echo 'STEP ok volume'; return 0
+    fi
+    sleep 5
+  done
+  fail volume 'scrittura o rilettura fallita'
 }
 
 case "${1:-}" in
   push) push ;;
   inspect) inspect ;;
+  write-volume) write_volume ;;
   *) echo "uso: $0 push|inspect" >&2; exit 2 ;;
 esac

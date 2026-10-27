@@ -411,6 +411,13 @@ function New-E2eAppFixture {
         if (-not $appId) { throw 'POST apps: risposta senza app.id' }
         [void](Wait-E2eAppServing -AppsApi $appsApi -Headers $h)
 
+        $stage = 'volume data'
+        $vol = Invoke-HttpRaw -Uri "$appsApi/$script:E2eAppName/volumes" -Method 'POST' -Headers $h -Body (@{ name = 'data'; mountPath = '/data'; sizeBytes = 1048576 } | ConvertTo-Json)
+        if ($vol.StatusCode -ne 201 -and $vol.StatusCode -ne 202) { throw "POST volume: status $($vol.StatusCode) $($vol.Body)" }
+        [void](Wait-E2eAppServing -AppsApi $appsApi -Headers $h)
+        $write = Invoke-VmSsh -Command "GS_APP_NS='gitstack-app-$appId' bash /tmp/gitstack-e2e/gs-app-restore.sh write-volume" -TimeoutSeconds 300
+        if ($write.ExitCode -ne 0 -or $write.StdOut -notmatch 'STEP ok volume') { throw "scrittura volume: $($write.StdErr)" }
+
         $stage = 'variabile e segreto'
         $varValue = "valore-var-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
         $secValue = "segreto-$([guid]::NewGuid().ToString('N'))"
@@ -451,7 +458,8 @@ function Test-E2eAppAfterRestore {
         [Parameter(Mandatory)][string]$BaseUrl,
         [Parameter(Mandatory)]$Data,
         [Parameter(Mandatory)]$Ctx,
-        [Parameter(Mandatory)][string]$WorkDir
+        [Parameter(Mandatory)][string]$WorkDir,
+        [string]$RestoreLog = ''
     )
     New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
     $names = @(
@@ -461,10 +469,15 @@ function Test-E2eAppAfterRestore {
         'i-app 4/7 la variabile e nell''env del container',
         'i-app 5/7 il segreto si decifra (valore uguale a quello impostato)',
         'i-app 6/7 i tag v1 e v2 si scaricano dal registry ripristinato (manifest 200)',
-        'i-app 7/7 il terzo tag non c''e (RG2: il resto del registry resta fuori)'
+        'i-app 7/7 il terzo tag non c''e (RG2: il resto del registry resta fuori)',
+        'i-app volume: log del restore dei volumi',
+        'i-app volume: file data presente con contenuto invariato'
     )
     $rows = @()
     foreach ($n in $names) { $rows += [pscustomobject]@{ Name = $n; Ok = $false; Detail = 'non verificato' } }
+    $expectedVolume = "ripristino del volume data dell'app $($Data.User)/$($Data.Repo)/$script:E2eAppName"
+    $rows[7].Ok = $RestoreLog.Contains('ripristino dei volumi delle app (1)') -and $RestoreLog.Contains($expectedVolume)
+    $rows[7].Detail = if ($rows[7].Ok) { '' } else { 'mancano le righe del restore del volume nel log' }
     try {
         $h = Get-E2eBearer -Data $Data
         $appUrl = "$BaseUrl/api/v1/repos/$($Data.User)/$($Data.Repo)/apps/$script:E2eAppName"
@@ -509,6 +522,8 @@ function Test-E2eAppAfterRestore {
             $rows[3].Detail = if ($rows[3].Ok) { '' } else { "$script:E2eAppVarName nel container: $($kv['var'])" }
             $rows[4].Ok = ($kv['secret'] -eq 'match')
             $rows[4].Detail = if ($rows[4].Ok) { '' } else { "$script:E2eAppSecretName decifrato: $($kv['secret'])" }
+            $rows[8].Ok = ($kv['volume'] -eq 'match')
+            $rows[8].Detail = if ($rows[8].Ok) { '' } else { "file nel volume: $($kv['volume'])" }
         }
 
         # registry ripristinato: v1 e v2 si scaricano, v3 no
@@ -677,7 +692,7 @@ function Invoke-E2eBackupRestorePhase {
             Add-StepResult -Name 'i-app. app dopo il restore' -Ok $false -Detail 'il restore non e arrivato in fondo (passo i fallito): controlli dell''app non eseguiti'
             return
         }
-        $rows = Test-E2eAppAfterRestore -BaseUrl $script:RestoredBaseUrl -Data $data -Ctx $appCtx -WorkDir (Join-Path $phaseDir 'app-dopo-restore')
+        $rows = Test-E2eAppAfterRestore -BaseUrl $script:RestoredBaseUrl -Data $data -Ctx $appCtx -WorkDir (Join-Path $phaseDir 'app-dopo-restore') -RestoreLog "$($rs.StdOut)`n$($rs.StdErr)"
         foreach ($r in $rows) { Add-StepResult -Name $r.Name -Ok $r.Ok -Detail $r.Detail }
         $okCount = @($rows | Where-Object { $_.Ok }).Count
         Add-StepResult -Name "i-app. esito complessivo: $okCount/$(@($rows).Count) controlli dell'app ok" -Ok ($okCount -eq @($rows).Count) -Detail "$(@($rows).Count - $okCount) controlli ko (vedi le righe i-app sopra)"
