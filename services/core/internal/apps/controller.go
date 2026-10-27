@@ -406,8 +406,16 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 	if err := c.ensureVolumes(ctx, app, v); err != nil {
 		return fmt.Errorf("volumi: %w", err)
 	}
+	restricted := false
+	if c.st != nil { // l'env del proxy segue la restrizione dell'uscita, come la NetworkPolicy
+		rs, err := c.st.GetAppEgressRestriction(ctx, app.ID)
+		if err != nil {
+			return fmt.Errorf("restrizione dell'uscita: %w", err)
+		}
+		restricted = rs != nil
+	}
 	deps := c.kube.AppsV1().Deployments(ns)
-	opts := BuildOptions{Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret, ProxyEnv: c.cfg.ProxyEnv, GateImage: c.cfg.GateImage}
+	opts := BuildOptions{EgressRestricted: restricted, Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret, ProxyEnv: c.cfg.ProxyEnv, GateImage: c.cfg.GateImage}
 	// Get+Build+Update a ogni tentativo: il deployment controller di Kubernetes aggiorna lo stesso
 	// oggetto (status, revisione, rollout precedente) e l'Update con un ResourceVersion vecchio
 	// riceve 409.
@@ -505,9 +513,37 @@ func (c *Controller) RefreshEgress(ctx context.Context, ids []uuid.UUID) error {
 			if firstErr == nil {
 				firstErr = err
 			}
+			continue
+		}
+		if err := c.refreshProxyEnv(ctx, app); err != nil {
+			c.cfg.Log.Warn("apps: env del proxy non aggiornato", "app", app.ID, "err", err)
+			if firstErr == nil {
+				firstErr = err
+			}
 		}
 	}
 	return firstErr
+}
+
+// refreshProxyEnv riallinea il Deployment alla restrizione dell'uscita: se accendere o spegnere la
+// restrizione cambia l'env del proxy N9, il template del pod cambia e Kubernetes riavvia l'app
+// (rollout). Un'app senza Deployment, o con un deploy in corso (che legge già la restrizione nuova),
+// si salta; i Deployment il cui template non cambia non si riavviano.
+func (c *Controller) refreshProxyEnv(ctx context.Context, app store.App) error {
+	if len(c.cfg.ProxyEnv) == 0 || c.isDeploying(app.ID) {
+		return nil
+	}
+	if _, err := c.kube.AppsV1().Deployments(Namespace(app.ID)).Get(ctx, WorkloadName, metav1.GetOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	v, err := c.versionOf(ctx, app)
+	if err != nil || v.State != "serving" {
+		return nil
+	}
+	return c.apply(ctx, app, v)
 }
 
 func (c *Controller) ensureAppSecret(ctx context.Context, ns string, id uuid.UUID, values map[string]string) error {

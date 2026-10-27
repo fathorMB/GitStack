@@ -3437,6 +3437,9 @@ type AppEgress struct {
 	// Destinations Le destinazioni della restrizione; vuoto se `restricted` e' false.
 	Destinations []AppEgressDestination `json:"destinations"`
 
+	// InstanceProxy L'istanza ha un proxy di uscita configurato (N9): un'app con l'uscita ristretta esce in modo diretto, senza il proxy.
+	InstanceProxy bool `json:"instanceProxy"`
+
 	// Restricted L'app ha una restrizione propria.
 	Restricted bool       `json:"restricted"`
 	UpdatedAt  *time.Time `json:"updatedAt,omitempty"`

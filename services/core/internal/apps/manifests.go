@@ -108,6 +108,9 @@ type BuildOptions struct {
 	// ProxyEnv è la configurazione N9 dell'istanza. Viene dal processo core e
 	// non può essere sostituita dalle variabili dichiarate dall'app.
 	ProxyEnv map[string]string
+	// EgressRestricted: l'app ha la restrizione dell'uscita (H16). La sua NetworkPolicy non apre il proxy,
+	// quindi non riceve nessuna variabile del proxy N9 (esce in modo diretto verso le destinazioni elencate).
+	EgressRestricted bool
 	// GateImage è l'immagine (di core) dell'init container «gate» (GIT-418): l'app parte solo dopo che la
 	// NetworkPolicy è stata applicata al pod. Vuoto: nessun cancello (solo prove senza l'immagine di core).
 	GateImage string
@@ -164,7 +167,7 @@ func BuildDeployment(app store.App, v store.AppVersion, o BuildOptions) *appsv1.
 		Name:            containerName,
 		Image:           ImageRef(v),
 		ImagePullPolicy: corev1.PullIfNotPresent,
-		Env:             envVars(cfg.Variables, app.Config.Port, systemEnv(v), o.ProxyEnv),
+		Env:             envVars(cfg.Variables, app.Config.Port, systemEnv(v), deploymentProxyEnv(o)),
 		SecurityContext: sc,
 		Resources: corev1.ResourceRequirements{
 			Requests: resourceList(cfg.Guaranteed),
@@ -328,6 +331,19 @@ func imageTag(ref string) string {
 		return ""
 	}
 	return ref[i+1:]
+}
+
+// deploymentProxyEnv è la configurazione N9 da passare al pod: nessuna per un'app con l'uscita ristretta.
+func deploymentProxyEnv(o BuildOptions) map[string]string {
+	if o.EgressRestricted {
+		return nil
+	}
+	return o.ProxyEnv
+}
+
+// HasProxy dice se la configurazione N9 contiene un proxy di uscita (HTTP_PROXY o HTTPS_PROXY validi).
+func HasProxy(env map[string]string) bool {
+	return len(proxyEndpoints(env)) > 0
 }
 
 // envVars compone l'ambiente del container: variabili dell'app, poi quelle di sistema (che non si

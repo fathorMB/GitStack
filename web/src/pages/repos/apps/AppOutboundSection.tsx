@@ -102,6 +102,11 @@ export function AppOutboundSection({ app, canEdit }: Props) {
           </span>
         </dd>
       </dl>
+      {data.instanceProxy ? (
+        <p className="hint" role="note" aria-label="Restricted apps and the proxy">
+          A restricted app connects directly to the listed destinations, without the instance proxy: if the installation network only reaches out through the proxy, a restricted app cannot reach the internet.
+        </p>
+      ) : null}
       {data.restricted ? (
         <div className="stack" style={{ gap: 8, marginTop: 8 }}>
           {data.destinations.length === 0 ? <p className="hint">No destination listed: the app reaches only the apps of this repository and DNS.</p> : null}

@@ -59,7 +59,7 @@ function mount(app: App = makeApp({ copies: 1, resources: { guaranteed: { cpuMil
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(api.fetchAppVersions).mockResolvedValue(withVersion(false));
-  vi.mocked(api.fetchAppEgress).mockResolvedValue({ restricted: false, destinations: [], allowedPrivate: [] });
+  vi.mocked(api.fetchAppEgress).mockResolvedValue({ restricted: false, destinations: [], allowedPrivate: [], instanceProxy: false });
 });
 
 // Mockup .prisma/design/mockups-v3-hosting/index.html, data-screen="volumes".
@@ -220,7 +220,7 @@ describe('AppVolumesPage · Outbound network (H16)', () => {
 
   it("mostra internet aperto, la rete privata chiusa con le destinazioni dell'amministratore e le sempre bloccate", async () => {
     vi.mocked(api.fetchAppVolumes).mockResolvedValue(list());
-    vi.mocked(api.fetchAppEgress).mockResolvedValue({ restricted: false, destinations: [], allowedPrivate: opened });
+    vi.mocked(api.fetchAppEgress).mockResolvedValue({ restricted: false, destinations: [], allowedPrivate: opened, instanceProxy: false });
     mount();
     const section = within(await screen.findByRole('region', { name: 'Outbound network' }));
     expect(section.getByText(/open · through the company proxy/)).toBeInTheDocument();
@@ -233,11 +233,11 @@ describe('AppVolumesPage · Outbound network (H16)', () => {
   it("restringe l'app, aggiunge e toglie destinazioni", async () => {
     const user = userEvent.setup();
     vi.mocked(api.fetchAppVolumes).mockResolvedValue(list());
-    vi.mocked(api.fetchAppEgress).mockResolvedValue({ restricted: false, destinations: [], allowedPrivate: opened });
+    vi.mocked(api.fetchAppEgress).mockResolvedValue({ restricted: false, destinations: [], allowedPrivate: opened, instanceProxy: false });
     vi.mocked(api.saveAppEgress)
-      .mockResolvedValueOnce({ restricted: true, destinations: [], allowedPrivate: opened })
-      .mockResolvedValueOnce({ restricted: true, destinations: [{ host: 'smtp.acme.lan', port: 587 }], allowedPrivate: opened })
-      .mockResolvedValueOnce({ restricted: true, destinations: [], allowedPrivate: opened });
+      .mockResolvedValueOnce({ restricted: true, destinations: [], allowedPrivate: opened, instanceProxy: false })
+      .mockResolvedValueOnce({ restricted: true, destinations: [{ host: 'smtp.acme.lan', port: 587 }], allowedPrivate: opened, instanceProxy: false })
+      .mockResolvedValueOnce({ restricted: true, destinations: [], allowedPrivate: opened, instanceProxy: false });
     mount();
     const section = within(await screen.findByRole('region', { name: 'Outbound network' }));
     await user.click(section.getByRole('switch', { name: 'Restrict this app' }));
@@ -256,7 +256,7 @@ describe('AppVolumesPage · Outbound network (H16)', () => {
   it("mostra il rifiuto dell'API per una destinazione fuori dalla lista dell'amministratore", async () => {
     const user = userEvent.setup();
     vi.mocked(api.fetchAppVolumes).mockResolvedValue(list());
-    vi.mocked(api.fetchAppEgress).mockResolvedValue({ restricted: true, destinations: [], allowedPrivate: [] });
+    vi.mocked(api.fetchAppEgress).mockResolvedValue({ restricted: true, destinations: [], allowedPrivate: [], instanceProxy: false });
     vi.mocked(api.saveAppEgress).mockRejectedValue(new ApiError({ error: { code: 'destination_blocked', message: 'Destinazione non ammessa: 10.20.0.99:5432 is in the private network' } }, 422));
     mount();
     const section = within(await screen.findByRole('region', { name: 'Outbound network' }));
@@ -266,12 +266,29 @@ describe('AppVolumesPage · Outbound network (H16)', () => {
     expect(await section.findByText(/Destinazione non ammessa/)).toBeInTheDocument();
   }, T);
 
+  it("mostra l'avviso sul proxy se l'istanza ha un proxy configurato", async () => {
+    vi.mocked(api.fetchAppVolumes).mockResolvedValue(list());
+    vi.mocked(api.fetchAppEgress).mockResolvedValue({ restricted: false, destinations: [], allowedPrivate: [], instanceProxy: true });
+    mount();
+    const section = within(await screen.findByRole('region', { name: 'Outbound network' }));
+    expect(section.getByText(/connects directly to the listed destinations, without the instance proxy/)).toBeInTheDocument();
+  }, T);
+
+  it("non mostra l'avviso sul proxy se l'istanza non ha un proxy", async () => {
+    vi.mocked(api.fetchAppVolumes).mockResolvedValue(list());
+    vi.mocked(api.fetchAppEgress).mockResolvedValue({ restricted: false, destinations: [], allowedPrivate: [], instanceProxy: false });
+    mount();
+    const section = within(await screen.findByRole('region', { name: 'Outbound network' }));
+    expect(section.getByRole('switch', { name: 'Restrict this app' })).toBeInTheDocument();
+    expect(section.queryByText(/without the instance proxy/)).not.toBeInTheDocument();
+  }, T);
+
   it('toglie la restrizione', async () => {
     const user = userEvent.setup();
     vi.mocked(api.fetchAppVolumes).mockResolvedValue(list());
     vi.mocked(api.fetchAppEgress)
-      .mockResolvedValueOnce({ restricted: true, destinations: [{ host: 'api.example.com', port: 443 }], allowedPrivate: [] })
-      .mockResolvedValue({ restricted: false, destinations: [], allowedPrivate: [] });
+      .mockResolvedValueOnce({ restricted: true, destinations: [{ host: 'api.example.com', port: 443 }], allowedPrivate: [], instanceProxy: false })
+      .mockResolvedValue({ restricted: false, destinations: [], allowedPrivate: [], instanceProxy: false });
     vi.mocked(api.clearAppEgress).mockResolvedValue(undefined);
     mount();
     const section = within(await screen.findByRole('region', { name: 'Outbound network' }));

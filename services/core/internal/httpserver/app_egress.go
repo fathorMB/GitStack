@@ -143,7 +143,7 @@ func (s *apiServer) appEgressOut(r *http.Request, a store.App) (openapi.AppEgres
 	if err != nil {
 		return openapi.AppEgress{}, err
 	}
-	out := openapi.AppEgress{Destinations: []openapi.AppEgressDestination{}, AllowedPrivate: privateDestinationsOut(opened)}
+	out := openapi.AppEgress{Destinations: []openapi.AppEgressDestination{}, AllowedPrivate: privateDestinationsOut(opened), InstanceProxy: s.appEgress.ProxyConfigured}
 	if rs != nil {
 		out.Restricted = true
 		for _, d := range rs.Destinations {
