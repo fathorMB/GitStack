@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
+	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
@@ -15,15 +16,6 @@ import (
 // la modifica è avvenuta. Le istantanee App e AppVersion hanno i nomi del contratto
 // (WebhookDeploymentPayload): sono composte qui perché la consegna non rilegge il database.
 
-type imageWire struct {
-	Reference  string  `json:"reference"`
-	Digest     *string `json:"digest,omitempty"`
-	Source     string  `json:"source"`
-	Verified   bool    `json:"verified"`
-	SignedBy   *string `json:"signedBy,omitempty"`
-	RunsAsRoot *bool   `json:"runsAsRoot,omitempty"`
-}
-
 type appWire struct {
 	ID            string             `json:"id"`
 	Name          string             `json:"name"`
@@ -32,7 +24,7 @@ type appWire struct {
 	Status        string             `json:"status"`
 	StoppedReason *string            `json:"stoppedReason,omitempty"`
 	Access        string             `json:"access"`
-	Image         imageWire          `json:"image"`
+	Image         openapi.AppImage   `json:"image"`
 	ActiveVersion int                `json:"activeVersion"`
 	Copies        int                `json:"copies"`
 	ReadyCopies   int                `json:"readyCopies"`
@@ -42,17 +34,12 @@ type appWire struct {
 	CreatedBy     *domainevents.User `json:"createdBy,omitempty"`
 }
 
-type appResourcesWire struct {
-	Guaranteed AppResourceAmount `json:"guaranteed"`
-	Limit      AppResourceAmount `json:"limit"`
-}
-
 type versionWire struct {
 	Number         int                `json:"number"`
 	Trigger        string             `json:"trigger"`
 	State          string             `json:"state"`
 	StateReason    *string            `json:"stateReason,omitempty"`
-	Image          imageWire          `json:"image"`
+	Image          openapi.AppImage   `json:"image"`
 	ImageAvailable bool               `json:"imageAvailable"`
 	InBackup       bool               `json:"inBackup"`
 	Branch         *string            `json:"branch,omitempty"`
@@ -63,34 +50,45 @@ type versionWire struct {
 	CreatedBy      *domainevents.User `json:"createdBy,omitempty"`
 }
 
-func imageSnapshot(i AppImage) imageWire {
-	// Stessi campi e tipi di AppImage: cambia solo il nome dei campi JSON (tag).
-	return imageWire(i)
-}
-
 // appSnapshot è l'App del contratto al momento dell'evento (stato e copie pronte come li mostra l'API).
 func appSnapshot(a App) appWire {
-	status, reason := a.Effective()
-	ready := a.ReadyCopies
-	if status == "stopped" {
-		ready = 0
+	converted := AppToAPI(a)
+	var reason *string
+	if converted.StoppedReason != nil {
+		value := string(*converted.StoppedReason)
+		reason = &value
 	}
 	return appWire{
-		ID: a.ID.String(), Name: a.Name, Owner: a.Owner, Repo: a.RepoName, Status: status, StoppedReason: reason,
-		Access: a.Access, Image: imageSnapshot(a.Image), ActiveVersion: a.ActiveVersion, Copies: a.Config.Copies,
-		ReadyCopies: ready, Resources: appResourcesWire{Guaranteed: a.Config.Guaranteed, Limit: a.Config.Limit},
-		CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt, CreatedBy: actorUser(a.CreatedBy),
+		ID: converted.Id.String(), Name: string(converted.Name), Owner: converted.Owner, Repo: converted.Repo,
+		Status: string(converted.Status), StoppedReason: reason, Access: string(converted.Access), Image: converted.Image,
+		ActiveVersion: converted.ActiveVersion, Copies: converted.Copies, ReadyCopies: converted.ReadyCopies,
+		Resources: appResourcesWire{Guaranteed: AppResourceAmount{CPUMillis: converted.Resources.Guaranteed.CpuMillis, MemoryBytes: converted.Resources.Guaranteed.MemoryBytes},
+			Limit: AppResourceAmount{CPUMillis: converted.Resources.Limit.CpuMillis, MemoryBytes: converted.Resources.Limit.MemoryBytes}},
+		CreatedAt: converted.CreatedAt, UpdatedAt: converted.UpdatedAt, CreatedBy: actorUser(a.CreatedBy),
 	}
+}
+
+type appResourcesWire struct {
+	Guaranteed AppResourceAmount `json:"guaranteed"`
+	Limit      AppResourceAmount `json:"limit"`
 }
 
 // versionSnapshot è la AppVersion del contratto. InBackup: attiva e precedente (H4).
 func versionSnapshot(v AppVersion, active int) versionWire {
+	converted := AppVersionToAPI(v, active, previousAppVersion(active))
 	return versionWire{
-		Number: v.Number, Trigger: v.Trigger, State: v.State, StateReason: v.StateReason, Image: imageSnapshot(v.Image),
-		ImageAvailable: true, InBackup: v.Number == active || (active > 1 && v.Number == active-1),
-		Branch: v.Branch, CommitSha: v.CommitSha, Summary: v.Summary, RollbackOf: v.RollbackOf,
-		CreatedAt: v.CreatedAt, CreatedBy: actorUser(v.CreatedBy),
+		Number: converted.Number, Trigger: string(converted.Trigger), State: string(converted.State), StateReason: converted.StateReason,
+		Image: converted.Image, ImageAvailable: converted.ImageAvailable, InBackup: converted.InBackup,
+		Branch: converted.Branch, CommitSha: converted.CommitSha, Summary: converted.Summary, RollbackOf: converted.RollbackOf,
+		CreatedAt: converted.CreatedAt, CreatedBy: actorUser(v.CreatedBy),
 	}
+}
+
+func previousAppVersion(active int) int {
+	if active > 1 {
+		return active - 1
+	}
+	return 0
 }
 
 func actorUser(a *AppActor) *domainevents.User {
