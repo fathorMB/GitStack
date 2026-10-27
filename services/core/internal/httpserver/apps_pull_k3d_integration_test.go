@@ -148,6 +148,12 @@ func TestApps_RegistryPrivatoSuK3d(t *testing.T) {
 		pods, _ := e.kube.CoreV1().Pods(e.ns).List(context.Background(), metav1.ListOptions{})
 		var out []string
 		for _, p := range pods.Items {
+			for _, cs := range p.Status.InitContainerStatuses {
+				if cs.LastTerminationState.Terminated != nil && cs.LastTerminationState.Terminated.ExitCode != 0 {
+					raw, _ := e.kube.CoreV1().Pods(e.ns).GetLogs(p.Name, &corev1.PodLogOptions{Container: cs.Name, Previous: true}).DoRaw(context.Background())
+					out = append(out, "init "+cs.Name+": "+strings.TrimSpace(string(raw)))
+				}
+			}
 			for _, cs := range p.Status.ContainerStatuses {
 				if cs.State.Waiting != nil {
 					out = append(out, cs.State.Waiting.Reason+": "+cs.State.Waiting.Message)

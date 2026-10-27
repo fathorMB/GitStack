@@ -10,6 +10,7 @@
 # Il registry è un registry:2 vero dietro un proxy TLS (CA di prova) che chiede al ci-gateway vero di
 # core cosa può fare il token (TestApps_RegistryPrivatoSuK3d). Servono docker, k3d, openssl e go; Postgres
 # parte con testcontainers. GITSTACK_TEST_CORE_IMAGE: immagine di core già in docker, con `apps-gate`.
+# Host con cgroup v1 (Docker Desktop con WSL2): K3D_EXTRA_ARGS="--k3s-arg --kubelet-arg=fail-cgroupv1=false@server:*".
 #   GITSTACK_TEST_CORE_IMAGE=gitstack-core:t418 services/core/internal/apps/k3d-pull-test.sh
 set -euo pipefail
 
@@ -21,6 +22,8 @@ port=${PULL_PROXY_PORT:-5543}
 host=host.k3d.internal
 reg=gs-pull-registry
 work=$(mktemp -d)
+# Git Bash su Windows: openssl, k3d, docker e go (nativi) vogliono percorsi C:/..., non /tmp/...
+command -v cygpath >/dev/null 2>&1 && work=$(cygpath -m "$work")
 clusters=()
 
 cleanup() {
@@ -36,6 +39,11 @@ openssl req -x509 -newkey rsa:2048 -nodes -keyout "$work/ca.key" -out "$work/ca.
 openssl req -newkey rsa:2048 -nodes -keyout "$work/server.key" -out "$work/server.csr" -subj "/CN=$host" >/dev/null 2>&1
 printf 'subjectAltName=DNS:%s\n' "$host" >"$work/san.cnf"
 openssl x509 -req -in "$work/server.csr" -CA "$work/ca.crt" -CAkey "$work/ca.key" -CAcreateserial -out "$work/server.crt" -days 2 -extfile "$work/san.cnf" >/dev/null 2>&1
+# L'orologio della VM di Docker può restare indietro rispetto all'host: un certificato «non ancora valido»
+# darebbe un errore x509 diverso da quello che si vuole provare. Si aspetta che la VM lo raggiunga.
+vm_now=$(docker run --rm alpine date -u +%s)
+lag=$(( $(date -u +%s) - vm_now + 3 ))
+if [ "$lag" -gt 0 ]; then echo "orologio della VM di Docker indietro di ${lag}s: attendo"; sleep "$lag"; fi
 
 # registry:2 vero con l'immagine dell'app (nginx senza privilegi, porta 8080).
 docker rm -f "$reg" >/dev/null 2>&1 || true
@@ -64,7 +72,7 @@ run_scenario() { # nome cluster kubeconfig
   local scenario=$1 cluster=$2
   (
     cd "$root/services/core"
-    GITSTACK_TEST_KUBECONFIG="$work/kubeconfig-$cluster" GITSTACK_TEST_CORE_IMAGE \
+    GITSTACK_TEST_KUBECONFIG="$work/kubeconfig-$cluster" GITSTACK_TEST_CORE_IMAGE="$GITSTACK_TEST_CORE_IMAGE" \
       GITSTACK_TEST_PULL_PROXY_ADDR="$host:$port" GITSTACK_TEST_PULL_UPSTREAM=http://127.0.0.1:5000 \
       GITSTACK_TEST_PULL_CERT_DIR="$work" GITSTACK_TEST_PULL_IMAGE=alice/handbook/e2eimg:v1 \
       GITSTACK_TEST_PULL_SCENARIO="$scenario" \
@@ -76,7 +84,7 @@ mk_cluster() { # nome [extra args...]
   local cluster=$1
   shift
   "$k3d_bin" cluster create "$cluster" --image "$k3s_image" --wait --timeout 300s \
-    --kubeconfig-update-default=false --kubeconfig-switch-context=false "$@" >/dev/null
+    --kubeconfig-update-default=false --kubeconfig-switch-context=false ${K3D_EXTRA_ARGS:-} "$@" >/dev/null
   clusters+=("$cluster")
   "$k3d_bin" image import "$GITSTACK_TEST_CORE_IMAGE" -c "$cluster" >/dev/null
   "$k3d_bin" kubeconfig get "$cluster" >"$work/kubeconfig-$cluster"
@@ -88,7 +96,10 @@ run_scenario x509 gs-pull-a
 "$k3d_bin" cluster delete gs-pull-a >/dev/null 2>&1 || true
 
 echo "=== 2. con registries.yaml, senza credenziali (controllo negativo) ==="
-mk_cluster gs-pull-b --registry-config "$work/registries.yaml" --volume "$work/ca.crt:/etc/gitstack/tls/ca.crt@server:0"
+mk_cluster gs-pull-b --registry-config "$work/registries.yaml"
+# Come in install.sh: k3s parte con registries.yaml, la CA interna arriva dopo (setup_tls) e containerd la legge al pull.
+docker exec k3d-gs-pull-b-server-0 mkdir -p /etc/gitstack/tls
+docker cp "$work/ca.crt" k3d-gs-pull-b-server-0:/etc/gitstack/tls/ca.crt
 run_scenario auth gs-pull-b
 
 echo "=== 3. con registries.yaml e credenziali create da core ==="
