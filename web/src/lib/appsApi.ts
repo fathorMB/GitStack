@@ -28,6 +28,7 @@ import {
   listAppVolumes as sdkListAppVolumes,
   createAppVolume as sdkCreateAppVolume,
   deleteAppVolume as sdkDeleteAppVolume,
+  updateAppVolume as sdkUpdateAppVolume,
   setAppResources as sdkSetAppResources,
 } from '@gitstack/api-client';
 import type {
@@ -177,6 +178,11 @@ export async function addAppVolume(owner: string, repo: string, app: string, inp
 
 export async function removeAppVolume(owner: string, repo: string, app: string, volume: string): Promise<AppVolumeChange> {
   return unwrap(await sdkDeleteAppVolume({ ...atApp(owner, repo, app), path: { ...atApp(owner, repo, app).path, volume } }));
+}
+
+/** Include o esclude il volume dal backup (D19): non crea versioni né deploy. */
+export async function setVolumeInBackup(owner: string, repo: string, app: string, volume: string, includeInBackup: boolean): Promise<AppVolume> {
+  return unwrap(await sdkUpdateAppVolume({ ...atApp(owner, repo, app), path: { ...atApp(owner, repo, app).path, volume }, body: { includeInBackup } }));
 }
 
 export async function saveAppResources(owner: string, repo: string, app: string, input: AppResourcesInput): Promise<AppResources> {

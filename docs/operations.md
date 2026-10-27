@@ -917,10 +917,71 @@ sudo gitstack backup --dest /mnt/backup/gitstack --retention 14
 | `database.sql` | `pg_dump` of the `identity` and `core` schemas |
 | `git-data.tar` | All Git repositories (the `git-data` volume) |
 | `attachments.tar` | Issue attachments (only if the directory exists) |
+| `app-volumes/<app-id>/<volume>.tar` | One entry per persistent volume of a hosted app that is **in backups** (the default; see [Volumes and databases](#volumes-and-databases)). The manifest lists them under `app_volumes` |
 | `secrets.json` | Kubernetes secrets used by GitStack (certificate data, SSH host keys, OIDC keys, etc.) |
 | `config/` | Copy of the contents of `/etc/gitstack/` (CA certificate, CA key, configuration files) |
 
 A `gitstack-backup-*.sha256` sidecar file is written next to each archive.
+
+### Volumes and databases
+
+Persistent volumes of hosted apps (v3, rule H3) are **in the backup by default**, to the local
+destination and to S3 alike (N7, same archive, same encryption). The app keeps running while its
+volumes are copied: the read-only window only stops `gateway` and `git`.
+
+**Leaving a volume out.** Every volume has its own "In backups" switch in the app's
+*Settings → Volumes & resources* page (repository admins), or:
+
+```sh
+curl -X PATCH https://HOST/api/v1/repos/OWNER/REPO/apps/APP/volumes/VOLUME \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"includeInBackup": false}'
+```
+
+An excluded volume is not in the archive and comes back **empty** after a restore. The choice is
+about the data, not the app configuration: it creates no version, makes no deploy, and a rollback
+does not change it. `GET .../volumes` returns `includeInBackup` for each volume.
+
+**Space estimate.** Before the read-only window `gitstack backup` prints an estimate of the data
+it will copy (repositories, attachments, CI logs and, separately, the data in the app volumes) and
+the free space needed in the backup directory (twice the data: the working copy and the archive).
+If the free space is lower it prints a warning and goes on, because the figure is an upper bound
+(the archive is compressed and registry images that are not selected stay out). The sizes counted
+are the bytes used in each volume, not the size declared when the volume was created.
+
+**Databases inside a container: the copy may not be consistent.** The volume is copied while the
+app is running. For a database whose files are in a volume (PostgreSQL, MySQL, MongoDB, SQLite
+with writes in flight...) the copy can capture files from different moments and may not start
+after a restore. The UI and the API warn about it: `looksLikeDatabase` is true when the mount
+path, the volume name or the image looks like a database, and the "Volumes & resources" page shows
+"Looks like a database". The supported way to protect such data is a **dump into another volume**:
+
+1. Add a second volume to the app, for example `dumps` mounted at `/dumps`, and keep it in backups.
+2. Schedule a dump that writes into it. With PostgreSQL, a cron job or a sidecar-less loop in the
+   same image:
+
+   ```sh
+   # every night at 03:00, keep 7 days
+   0 3 * * * pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" | gzip > /dumps/db-$(date +\%F).sql.gz \
+     && find /dumps -name 'db-*.sql.gz' -mtime +7 -delete
+   ```
+
+   MySQL/MariaDB: `mysqldump --single-transaction`. MongoDB: `mongodump --archive=/dumps/db.archive --gzip`.
+   SQLite: `sqlite3 db.sqlite ".backup /dumps/db.sqlite"`.
+3. Turn **In backups** off for the volume that holds the live database files (optional: it saves
+   space, and avoids carrying an inconsistent copy), and leave it on for the one with the dumps.
+4. After a restore, start the database from the dump: restore it into a fresh data directory
+   (`psql`, `mysql`, `mongorestore`) instead of trusting the copied files.
+
+GitStack v3 has no managed databases and does not run the dump for you.
+
+**Restore.** `gitstack restore` puts each volume back where it was and the app restarts with its
+data. On a clean machine it first recreates the app's namespace, the volume and the claim (same
+labels and size as `core` would create), writes the data and lets `core` re-apply the app,
+together with the images in use that the archive carries (rule H4). An app that is running on
+the target is scaled to zero while its volume is written; `core` brings the copies back when it
+starts again. An archive with app volumes cannot be restored on a cluster that does not support
+them: the command stops before touching anything.
 
 ### Retention
 
@@ -1126,6 +1187,7 @@ services.
    ripristino del database (in una sola transazione)
    ripristino dei repo (git-data)
    ripristino degli allegati
+   ripristino dei volumi delle app (1)
    ripristino dei Secret
    ripristinati 7 file di configurazione (config.yaml resta quello della nuova installazione)
    riavvio NATS per le credenziali ripristinate

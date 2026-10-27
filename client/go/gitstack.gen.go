@@ -4180,6 +4180,12 @@ type AppVolume struct {
 	CreatedAt time.Time `json:"createdAt"`
 	CreatedBy *AppActor `json:"createdBy,omitempty"`
 
+	// IncludeInBackup Il volume entra in `gitstack backup` (anche verso S3) e torna con `gitstack restore` (H3, D19). Di default si; si esclude con `updateAppVolume`.
+	IncludeInBackup bool `json:"includeInBackup"`
+
+	// LooksLikeDatabase Avviso database (D19): il percorso di mount, il nome del volume o l'immagine dell'app fanno pensare a un database. La copia del backup si fa con l'app accesa: per un database dentro un container non e' garantita la coerenza, quindi la guida (docs/operations.md, «Volumes and databases») dice di pianificare un dump in un altro volume.
+	LooksLikeDatabase bool `json:"looksLikeDatabase"`
+
 	// MountPath Percorso di mount nel container.
 	MountPath string `json:"mountPath"`
 
@@ -4234,6 +4240,12 @@ type AppVolumeSpec struct {
 	// Name Nome del volume dentro l'app: lettere minuscole, cifre e trattini, 1-30 caratteri. Il PVC si chiama `vol-<nome>`.
 	Name      AppVolumeName `json:"name"`
 	SizeBytes int64         `json:"sizeBytes"`
+}
+
+// AppVolumeUpdate defines model for AppVolumeUpdate.
+type AppVolumeUpdate struct {
+	// IncludeInBackup `false` toglie il volume dal backup (e dal restore); `true` lo rimette.
+	IncludeInBackup bool `json:"includeInBackup"`
 }
 
 // AppsCapacity Capacita' del server e priorita' servizi di GitStack, poi app, poi job della CI (H11).
@@ -8851,6 +8863,9 @@ type PutAppVariableJSONRequestBody = AppVariableInput
 // CreateAppVolumeJSONRequestBody defines body for CreateAppVolume for application/json ContentType.
 type CreateAppVolumeJSONRequestBody = AppVolumeInput
 
+// UpdateAppVolumeJSONRequestBody defines body for UpdateAppVolume for application/json ContentType.
+type UpdateAppVolumeJSONRequestBody = AppVolumeUpdate
+
 // UpdateBranchSettingsJSONRequestBody defines body for UpdateBranchSettings for application/json ContentType.
 type UpdateBranchSettingsJSONRequestBody = UpdateBranchSettingsInput
 
@@ -10732,6 +10747,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `DeleteAppVolume` operationId).
 	DeleteAppVolume(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAppVolumeWithBody Include o esclude il volume dal backup
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `UpdateAppVolume` operationId).
+	UpdateAppVolumeWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAppVolume Include o esclude il volume dal backup
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `UpdateAppVolume` operationId).
+	UpdateAppVolume(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, body UpdateAppVolumeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRepositoryArchive Archivio ZIP o tar.gz di un ref (streaming)
 	//
@@ -16089,6 +16122,44 @@ func (c *Client) CreateAppVolume(ctx context.Context, owner RepoOwnerParam, repo
 // Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `DeleteAppVolume` operationId).
 func (c *Client) DeleteAppVolume(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteAppVolumeRequest(c.Server, owner, repo, app, volume)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAppVolumeWithBody Include o esclude il volume dal backup
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `UpdateAppVolume` operationId).
+func (c *Client) UpdateAppVolumeWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAppVolumeRequestWithBody(c.Server, owner, repo, app, volume, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAppVolume Include o esclude il volume dal backup
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `UpdateAppVolume` operationId).
+func (c *Client) UpdateAppVolume(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, body UpdateAppVolumeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAppVolumeRequest(c.Server, owner, repo, app, volume, body)
 	if err != nil {
 		return nil, err
 	}
@@ -27910,6 +27981,74 @@ func NewDeleteAppVolumeRequest(server string, owner RepoOwnerParam, repo RepoNam
 	return req, nil
 }
 
+// NewUpdateAppVolumeRequest calls the generic UpdateAppVolume builder with application/json body
+func NewUpdateAppVolumeRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, body UpdateAppVolumeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateAppVolumeRequestWithBody(server, owner, repo, app, volume, "application/json", bodyReader)
+}
+
+// NewUpdateAppVolumeRequestWithBody constructs an http.Request for the UpdateAppVolume method, with any body, and a specified content type
+func NewUpdateAppVolumeRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "volume", volume, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/volumes/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetRepositoryArchiveRequest constructs an http.Request for the GetRepositoryArchive method
 func NewGetRepositoryArchiveRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryArchiveParams) (*http.Request, error) {
 	var err error
@@ -39028,6 +39167,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `DeleteAppVolume` operationId).
 	DeleteAppVolumeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, reqEditors ...RequestEditorFn) (*DeleteAppVolumeResponse, error)
+
+	// UpdateAppVolumeWithBodyWithResponse Include o esclude il volume dal backup
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `UpdateAppVolume` operationId).
+	UpdateAppVolumeWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAppVolumeResponse, error)
+
+	// UpdateAppVolumeWithResponse Include o esclude il volume dal backup
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `UpdateAppVolume` operationId).
+	UpdateAppVolumeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, body UpdateAppVolumeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAppVolumeResponse, error)
 
 	// GetRepositoryArchiveWithResponse Archivio ZIP o tar.gz di un ref (streaming)
 	//
@@ -52009,6 +52166,89 @@ func (r DeleteAppVolumeResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r DeleteAppVolumeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateAppVolumeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppVolume
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateAppVolumeResponse) GetJSON200() *AppVolume {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateAppVolumeResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateAppVolumeResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateAppVolumeResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateAppVolumeResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateAppVolumeResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateAppVolumeResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateAppVolumeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateAppVolumeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateAppVolumeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateAppVolumeResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -67425,6 +67665,36 @@ func (c *ClientWithResponses) DeleteAppVolumeWithResponse(ctx context.Context, o
 	return ParseDeleteAppVolumeResponse(rsp)
 }
 
+// UpdateAppVolumeWithBodyWithResponse Include o esclude il volume dal backup
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `UpdateAppVolume` operationId).
+func (c *ClientWithResponses) UpdateAppVolumeWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAppVolumeResponse, error) {
+	rsp, err := c.UpdateAppVolumeWithBody(ctx, owner, repo, app, volume, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAppVolumeResponse(rsp)
+}
+
+// UpdateAppVolumeWithResponse Include o esclude il volume dal backup
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `UpdateAppVolume` operationId).
+func (c *ClientWithResponses) UpdateAppVolumeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, body UpdateAppVolumeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAppVolumeResponse, error) {
+	rsp, err := c.UpdateAppVolume(ctx, owner, repo, app, volume, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAppVolumeResponse(rsp)
+}
+
 // GetRepositoryArchiveWithResponse Archivio ZIP o tar.gz di un ref (streaming)
 //
 // Archivio dell'albero a `ref` (branch, tag o commit, regola B3), in ZIP (default) o tar.gz secondo `format`, prodotto e inviato in streaming (nessun buffer in memoria). `Content-Disposition: attachment` con nome `<repo>-<ref>.zip` o `<repo>-<ref>.tar.gz` (un `/` nel ref diventa `-`); stesse intestazioni di sicurezza di `getRepositoryRaw`. Sono questi gli indirizzi di scaricamento dei tag (`Tag.zipUrl`, `Tag.tarGzUrl`, regola B7). Servono sessione o token con `read`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
@@ -79319,6 +79589,74 @@ func ParseDeleteAppVolumeResponse(rsp *http.Response) (*DeleteAppVolumeResponse,
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateAppVolumeResponse parses an HTTP response from a UpdateAppVolumeWithResponse call
+func ParseUpdateAppVolumeResponse(rsp *http.Response) (*UpdateAppVolumeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateAppVolumeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppVolume
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 

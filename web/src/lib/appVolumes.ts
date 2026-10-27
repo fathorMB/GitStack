@@ -26,6 +26,9 @@ export function formatDisk(bytes: number): string {
   return `${Math.round(bytes / 1024 ** 2)} MB`;
 }
 
+/** Guida al dump di un database in un volume (D19): sezione «Volumes and databases» di docs/operations.md. */
+export const DUMP_GUIDE_URL = 'https://github.com/fathorMB/GitStack/blob/main/docs/operations.md#volumes-and-databases';
+
 const DB_HINT = /postgres|pgdata|mysql|mariadb|mongo|redis|couchdb|influx|cassandra|clickhouse|sqlite|\.db\b/i;
 
 /** Il volume sembra contenere un database: lo dicono il percorso di mount o l'immagine (avviso del mockup). */
