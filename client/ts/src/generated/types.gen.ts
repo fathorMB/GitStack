@@ -3910,6 +3910,128 @@ export type AppSecretInput = {
     value: string;
 };
 
+/**
+ * Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`).
+ */
+export type AppDomainName = string;
+
+/**
+ * Stato del dominio (v3-c): `pending_dns` il record atteso non c'e' ancora, `verified` il DNS punta a GitStack, `error` il DNS risponde altro (motivo in `statusReason`).
+ */
+export type AppDomainStatus = 'pending_dns' | 'verified' | 'error';
+
+/**
+ * `letsencrypt` emissione e rinnovo automatici (HTTP-01 sulla porta 80), `custom` certificato caricato dal cliente.
+ */
+export type AppDomainCertificateMode = 'letsencrypt' | 'custom';
+
+/**
+ * `none` nessun certificato (DNS non ancora `verified`), `issuing` emissione in corso, `valid` certificato valido (vedi `validUntil`), `error` emissione o rinnovo falliti (vedi `error`).
+ */
+export type AppDomainCertificateState = 'none' | 'issuing' | 'valid' | 'error';
+
+/**
+ * Record DNS atteso. `type` e' `CNAME` verso l'indirizzo automatico dell'app, oppure `A`/`AAAA` verso l'IP pubblico dichiarato dell'istanza. Per un dominio all'apice (dove il CNAME non e' ammesso) l'unica forma e' A/AAAA.
+ */
+export type AppDomainDnsRecord = {
+    type: 'CNAME' | 'A' | 'AAAA';
+    /**
+     * Nome del record, cioe' il dominio.
+     */
+    name: string;
+    /**
+     * Valore atteso: l'host dell'indirizzo automatico (CNAME) o l'IP (A/AAAA).
+     */
+    value: string;
+    /**
+     * Altri record equivalenti accettati dal controllo (es. A e AAAA quando l'istanza dichiara entrambi). Vuoto se non ce ne sono.
+     */
+    alternatives: Array<{
+        type: 'CNAME' | 'A' | 'AAAA';
+        value: string;
+    }>;
+};
+
+export type AppDomainCertificate = {
+    mode: AppDomainCertificateMode;
+    state: AppDomainCertificateState;
+    validFrom?: string | null;
+    /**
+     * Scadenza del certificato in uso; null se non c'e' ancora.
+     */
+    validUntil?: string | null;
+    /**
+     * Emittente (es. «Let's Encrypt R11» o l'emittente del certificato del cliente).
+     */
+    issuer?: string | null;
+    /**
+     * Motivo dell'ultimo errore di emissione o rinnovo; null se `state` non e' `error`.
+     */
+    error?: string | null;
+    lastAttemptAt?: string | null;
+};
+
+export type AppDomain = {
+    id: string;
+    domain: AppDomainName;
+    status: AppDomainStatus;
+    /**
+     * Motivo quando `status` e' `error` (es. il DNS risponde un altro IP); null altrimenti.
+     */
+    statusReason?: string | null;
+    dns: AppDomainDnsRecord;
+    certificate: AppDomainCertificate;
+    /**
+     * Ultimo controllo del DNS.
+     */
+    lastCheckedAt?: string | null;
+    verifiedAt?: string | null;
+    createdAt: string;
+    createdBy?: AppActor | null;
+};
+
+export type AppDomainList = {
+    items: Array<AppDomain>;
+};
+
+export type AppDomainInput = {
+    domain: AppDomainName;
+};
+
+export type AppDomainCertificateInput = {
+    /**
+     * Certificato e catena intermedia, in PEM, foglia per prima.
+     */
+    certificate: string;
+};
+
+/**
+ * Stato di Let's Encrypt sull'istanza (v3-c), in sola lettura dentro `AppsInstanceSettings`.
+ */
+export type AppsLetsEncryptStatus = {
+    /**
+     * Let's Encrypt e' attivo: c'e' un'email ACME e le app pubbliche sono abilitate.
+     */
+    enabled: boolean;
+    /**
+     * Email per l'account ACME; null se non impostata.
+     */
+    acmeEmail?: string | null;
+    /**
+     * La porta 80 dell'istanza e' raggiungibile da internet (serve alla sfida HTTP-01). null = non ancora verificato.
+     */
+    port80Reachable: boolean | null;
+    port80CheckedAt?: string | null;
+    /**
+     * Motivo quando `port80Reachable` e' false.
+     */
+    port80Error?: string | null;
+    /**
+     * IP pubblici dichiarati dell'istanza (A/AAAA) contro cui si controlla il DNS dei domini propri.
+     */
+    publicIps?: Array<string>;
+};
+
 export type AppAccess = {
     mode: AppAccessMode;
     /**
@@ -4220,6 +4342,10 @@ export type AppsInstanceSettings = {
      */
     appsDomainIsDefault?: boolean;
     publicAppsEnabled: boolean;
+    /**
+     * Stato di Let's Encrypt (v3-c). Assente finche' core non lo calcola.
+     */
+    letsEncrypt?: AppsLetsEncryptStatus;
     signedImagesOnly: boolean;
     restricted: boolean;
     maxPerApp: AppResourceAmount;
@@ -4228,6 +4354,14 @@ export type AppsInstanceSettings = {
 
 export type AppsInstanceSettingsInput = {
     publicAppsEnabled: boolean;
+    /**
+     * Email dell'account ACME (v3-c). Assente = invariata; null = la toglie.
+     */
+    acmeEmail?: string | null;
+    /**
+     * IP pubblici dell'istanza (A/AAAA) per il controllo DNS (v3-c). Assente = invariati; [] li toglie. Solo IP validi e non privati: 422 altrimenti.
+     */
+    publicIps?: Array<string>;
     signedImagesOnly: boolean;
     restricted: boolean;
     maxPerApp: AppResourceAmount;
@@ -4807,6 +4941,17 @@ export type BranchSettingsWritable = {
     requiredStatusContexts: Array<string>;
 };
 
+export type AppDomainCertificateInputWritable = {
+    /**
+     * Certificato e catena intermedia, in PEM, foglia per prima.
+     */
+    certificate: string;
+    /**
+     * Chiave privata in PEM (PKCS#8, PKCS#1 o EC), senza passphrase. Solo scrittura.
+     */
+    privateKey: string;
+};
+
 /**
  * Identificatore della risorsa.
  */
@@ -5078,6 +5223,11 @@ export type ArtifactIdParam = string;
 export type CacheIdParam = string;
 
 export type ActionsNameParam = string;
+
+/**
+ * Dominio proprio dell'app, in minuscolo.
+ */
+export type AppDomainParam = AppDomainName;
 
 /**
  * Nome dell'app dentro il repo (H5).
@@ -20434,6 +20584,393 @@ export type GetAppAccessMembershipResponses = {
 };
 
 export type GetAppAccessMembershipResponse = GetAppAccessMembershipResponses[keyof GetAppAccessMembershipResponses];
+
+export type ListAppDomainsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/domains';
+};
+
+export type ListAppDomainsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type ListAppDomainsError = ListAppDomainsErrors[keyof ListAppDomainsErrors];
+
+export type ListAppDomainsResponses = {
+    /**
+     * I domini.
+     */
+    200: AppDomainList;
+};
+
+export type ListAppDomainsResponse = ListAppDomainsResponses[keyof ListAppDomainsResponses];
+
+export type AddAppDomainData = {
+    body: AppDomainInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/domains';
+};
+
+export type AddAppDomainErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type AddAppDomainError = AddAppDomainErrors[keyof AddAppDomainErrors];
+
+export type AddAppDomainResponses = {
+    /**
+     * Aggiunto.
+     */
+    201: AppDomain;
+};
+
+export type AddAppDomainResponse = AddAppDomainResponses[keyof AddAppDomainResponses];
+
+export type RemoveAppDomainData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+        /**
+         * Dominio proprio dell'app, in minuscolo.
+         */
+        domain: AppDomainName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/domains/{domain}';
+};
+
+export type RemoveAppDomainErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type RemoveAppDomainError = RemoveAppDomainErrors[keyof RemoveAppDomainErrors];
+
+export type RemoveAppDomainResponses = {
+    /**
+     * Tolto.
+     */
+    204: void;
+};
+
+export type RemoveAppDomainResponse = RemoveAppDomainResponses[keyof RemoveAppDomainResponses];
+
+export type GetAppDomainData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+        /**
+         * Dominio proprio dell'app, in minuscolo.
+         */
+        domain: AppDomainName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/domains/{domain}';
+};
+
+export type GetAppDomainErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetAppDomainError = GetAppDomainErrors[keyof GetAppDomainErrors];
+
+export type GetAppDomainResponses = {
+    /**
+     * Il dominio.
+     */
+    200: AppDomain;
+};
+
+export type GetAppDomainResponse = GetAppDomainResponses[keyof GetAppDomainResponses];
+
+export type RecheckAppDomainData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+        /**
+         * Dominio proprio dell'app, in minuscolo.
+         */
+        domain: AppDomainName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/domains/{domain}/recheck';
+};
+
+export type RecheckAppDomainErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type RecheckAppDomainError = RecheckAppDomainErrors[keyof RecheckAppDomainErrors];
+
+export type RecheckAppDomainResponses = {
+    /**
+     * Dominio dopo il ricontrollo.
+     */
+    200: AppDomain;
+};
+
+export type RecheckAppDomainResponse = RecheckAppDomainResponses[keyof RecheckAppDomainResponses];
+
+export type RemoveAppDomainCertificateData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+        /**
+         * Dominio proprio dell'app, in minuscolo.
+         */
+        domain: AppDomainName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate';
+};
+
+export type RemoveAppDomainCertificateErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type RemoveAppDomainCertificateError = RemoveAppDomainCertificateErrors[keyof RemoveAppDomainCertificateErrors];
+
+export type RemoveAppDomainCertificateResponses = {
+    /**
+     * Dominio in modalita' letsencrypt.
+     */
+    200: AppDomain;
+};
+
+export type RemoveAppDomainCertificateResponse = RemoveAppDomainCertificateResponses[keyof RemoveAppDomainCertificateResponses];
+
+export type UploadAppDomainCertificateData = {
+    body: AppDomainCertificateInputWritable;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+        /**
+         * Dominio proprio dell'app, in minuscolo.
+         */
+        domain: AppDomainName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate';
+};
+
+export type UploadAppDomainCertificateErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type UploadAppDomainCertificateError = UploadAppDomainCertificateErrors[keyof UploadAppDomainCertificateErrors];
+
+export type UploadAppDomainCertificateResponses = {
+    /**
+     * Dominio con il certificato caricato.
+     */
+    200: AppDomain;
+};
+
+export type UploadAppDomainCertificateResponse = UploadAppDomainCertificateResponses[keyof UploadAppDomainCertificateResponses];
 
 export type GetAppResourcesData = {
     body?: never;
