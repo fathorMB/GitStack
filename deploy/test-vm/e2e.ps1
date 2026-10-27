@@ -218,6 +218,7 @@ param(
 . (Join-Path $PSScriptRoot 'lib\http.ps1')
 . (Join-Path $PSScriptRoot 'lib\tls.ps1')
 . (Join-Path $PSScriptRoot 'lib\phases.ps1')
+. (Join-Path $PSScriptRoot 'lib\pilot.ps1')
 
 # --- Stato globale (risultati dei passi, file di log) ----------------------
 
@@ -1456,6 +1457,15 @@ function Main {
             $e12Details += "[$e12Stage] $($_.Exception.Message)"
         }
         Add-StepResult -Name 'e12. CI (GIT-291): workflow con input, run watch --exit-status, view --log-failed, immagine nel registry e release' -Ok $e12Ok -Detail ($e12Details -join '; ')
+
+        if (-not $SkipBackupRestore -and $script:AppsDomain) {
+            if ($e12Ok -and $gitToken -and $gitUser) {
+                Invoke-E2ePilotMirror -BaseUrl $baseUrl -Owner $gitUser -Token $gitToken -Suffix $suffix -AliasIp $MirrorAliasIp -OriginPort $MirrorOriginPort
+            } else {
+                Add-StepResult -Name 'pilot: prerequisiti CI' -Ok $false -Detail 'e12 fallito o token di prova mancante'
+            }
+            Add-StepResult -Name 'pilot: app, tester e restore' -Ok $false -Detail 'fasi non ancora implementate'
+        }
 
         # Conserva i log prima che il passo f ricrei core e git.
         $preFDir = Join-Path $OutDir 'pre-f-diagnostics'

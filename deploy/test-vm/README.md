@@ -574,6 +574,19 @@ Alla fine: il riepilogo, il percorso dello zip `<OutDir>.zip` (log +
 diagnostica, **sempre creato**) e `RISULTATO: VERDE` o `RISULTATO: ROSSO`.
 Il codice di uscita e' diverso da zero se un passo e' fallito.
 
+### Pilota retail.it (GIT-381, in sviluppo)
+
+Con l'hosting acceso e senza `-SkipBackupRestore`, dopo e12 il passo `pilot`
+prepara un'origine Git HTTPS sulla VM, importa un repo privato come mirror,
+abilita la CI, crea un tag sull'origine e richiede la sincronizzazione. Verifica
+il run del tag sul runner integrato e le firme delle immagini `api` e `sito`.
+Ogni controllo compare nel riepilogo; l'origine e la configurazione di rete
+temporanea vengono rimosse anche se un controllo fallisce.
+
+Le fasi relative ad app, tester, issue e backup/restore sono ancora da
+completare: il riepilogo le segnala come `[FAIL]`. Questa sezione non costituisce
+una prova verde del pilota. L'accesso delle app all'API dipende da GIT-442.
+
 ### Istruzioni per il board: passo e10 (GIT-201)
 
 Dopo il reintegro di GIT-201, da PowerShell come amministratore, dalla radice
