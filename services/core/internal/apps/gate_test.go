@@ -2,6 +2,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"net"
 	"testing"
 	"time"
@@ -71,6 +72,25 @@ func TestRunGate(t *testing.T) {
 	go func() { time.Sleep(400 * time.Millisecond); _ = ln.Close() }()
 	if err := RunGate(ctx, env(host, port), 5*time.Second); err != nil {
 		t.Fatalf("API chiusa durante l'attesa: il cancello deve aprire: %v", err)
+	}
+}
+
+// GIT-426: l'errore di dial arrivato alla scadenza dell'attesa (ctx non ancora annullato) non è una barriera.
+func TestDialSaysUnreachable(t *testing.T) {
+	ctx := context.Background()
+	deadline := time.Now().Add(time.Second)
+	errDial := errors.New("dial tcp: i/o timeout")
+	if !dialSaysUnreachable(ctx, errDial, deadline, deadline.Add(-time.Millisecond)) {
+		t.Fatal("errore prima della scadenza: barriera presente")
+	}
+	if dialSaysUnreachable(ctx, errDial, deadline, deadline) {
+		t.Fatal("errore alla scadenza: non è una barriera, il cancello resta chiuso")
+	}
+	if dialSaysUnreachable(ctx, errDial, deadline, deadline.Add(time.Millisecond)) {
+		t.Fatal("errore dopo la scadenza: il cancello resta chiuso")
+	}
+	if dialSaysUnreachable(ctx, nil, deadline, deadline.Add(-time.Millisecond)) {
+		t.Fatal("dial riuscito: API raggiungibile")
 	}
 }
 
