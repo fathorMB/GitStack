@@ -48,7 +48,9 @@ export GITSTACK_TEST_CORE_SA="default/$sa"
 export GITSTACK_TEST_WORKLOAD_ROLE=gitstack-app-workload
 # Caso opposto: il ruolo modello non ha binding cluster-wide, quindi col token del SA (non
 # dell'admin) delete sui secrets fuori dai namespace delle app resta vietato.
-if ! kubectl --kubeconfig "$work/kubeconfig-core" auth can-i delete secrets -n kube-system | grep -qx no; then echo "KO: il SA di core può cancellare secrets fuori dai namespace delle app"; exit 1; fi
+answer=$(kubectl --kubeconfig "$work/kubeconfig-core" auth can-i delete secrets -n kube-system 2>&1 || true)
+if [ "$answer" != "no" ]; then echo "KO: il SA di core può cancellare secrets fuori dai namespace delle app (can-i: $answer)"; exit 1; fi
+echo "ok: il SA di core non può cancellare secrets in kube-system"
 
 cd "$root/services/core"
 GITSTACK_TEST_KUBECONFIG="$work/kubeconfig" go test -tags integration -count=1 -timeout 25m \
