@@ -3,11 +3,15 @@ package notify
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
+
+// AppUnhealthyNoticeWindow limita a un avviso ogni cinque minuti per app e destinatario.
+const AppUnhealthyNoticeWindow = 5 * time.Minute
 
 // Avvisi delle app (v3-a, GIT-384, H12). Chi ha fatto il deploy riceve un avviso quando il deploy
 // fallisce (la versione precedente resta in esecuzione) e quando un'app che era in esecuzione ha le
@@ -54,5 +58,22 @@ func (e *Engine) handleApp(ctx context.Context, tx pgx.Tx, ev outboxEvent) error
 		data["reason"] = p.Reason
 	}
 	o := occurrence{name: ev.name, repoID: repoID, access: map[uuid.UUID]bool{}, data: data}
+	if ev.name == domainevents.AppStatusUnhealthy {
+		// Conserva il primo avviso immediato, poi sopprime le oscillazioni ravvicinate
+		// della stessa app. Il controllo è per destinatario e vede anche gli insert
+		// precedenti nella stessa transazione.
+		var recent bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (
+			SELECT 1 FROM core.notifications
+			WHERE user_id = $1 AND repo_id = $2 AND event_name = $3
+			  AND data->>'app' = $4
+			  AND created_at >= clock_timestamp() - ($5 * interval '1 millisecond')
+		)`, actor, repoID, ev.name, p.AppName, AppUnhealthyNoticeWindow.Milliseconds()).Scan(&recent); err != nil {
+			return err
+		}
+		if recent {
+			return nil
+		}
+	}
 	return e.insert(ctx, tx, o, map[uuid.UUID]string{actor: ReasonStateChange})
 }

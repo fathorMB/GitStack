@@ -72,16 +72,20 @@ func TestAppEvents_AvvisiAChiHaFattoIlDeploy(t *testing.T) {
 	}
 
 	// Un'app in esecuzione che perde le copie pronte avvisa; restare non pronta no.
-	if err := st.SetAppObserved(ctx, app.ID, "running", 1); err != nil {
-		t.Fatal(err)
+	for i := 0; i < 3; i++ {
+		if err := st.SetAppObserved(ctx, app.ID, "running", 1); err != nil {
+			t.Fatal(err)
+		}
+		if err := st.SetAppObserved(ctx, app.ID, "unhealthy", 0); err != nil {
+			t.Fatal(err)
+		}
+		e.process()
+		if i == 0 {
+			if n := countNotices("app_status.unhealthy"); n != 1 {
+				t.Fatalf("il primo passaggio a unhealthy avvisa subito: %d (voluto 1)", n)
+			}
+		}
 	}
-	if err := st.SetAppObserved(ctx, app.ID, "unhealthy", 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := st.SetAppObserved(ctx, app.ID, "unhealthy", 0); err != nil {
-		t.Fatal(err)
-	}
-	e.process()
 	if n := countNotices("app_status.unhealthy"); n != 1 {
 		t.Fatalf("avvisi di app fermata a chi ha fatto il deploy: %d (voluto 1)", n)
 	}
