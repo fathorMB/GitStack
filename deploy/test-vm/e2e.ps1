@@ -1463,10 +1463,13 @@ function Main {
                 Invoke-E2ePilotMirror -BaseUrl $baseUrl -Owner $gitUser -Token $gitToken -Suffix $suffix -AliasIp $MirrorAliasIp -OriginPort $MirrorOriginPort
                 $script:PilotDbReady = $false
                 if ($script:PilotContext) { $script:PilotDbReady = Initialize-E2ePilotDatabase -BaseUrl $baseUrl -Context $script:PilotContext }
+                if ($script:PilotDbReady -and $ck -and $script:CaFingerprint) {
+                    $script:PilotSite = Initialize-E2ePilotSite -BaseUrl $baseUrl -AdminCookie $ck -Suffix $suffix -CaFingerprint $script:CaFingerprint -Context $script:PilotContext
+                }
             } else {
                 Add-StepResult -Name 'pilot: prerequisiti CI' -Ok $false -Detail 'e12 fallito o token di prova mancante'
             }
-            Add-StepResult -Name 'pilot: sito, tester e issue' -Ok $false -Detail 'fasi non ancora implementate'
+            Add-StepResult -Name 'pilot: HTTPS del tester e issue' -Ok $false -Detail 'verifiche non ancora implementate'
         }
 
         # Conserva i log prima che il passo f ricrei core e git.

@@ -4,6 +4,8 @@ $script:sha = 'a' * 40
 $script:digest = 'b' * 64
 $script:unsigned = $false
 $script:probeFail = $false
+$script:siteMode = $false
+$script:showIssues = $false
 $script:cleanup = @()
 function Add-StepResult { param($Name, $Ok, $Detail) $script:rows += [pscustomobject]@{ Name = $Name; Ok = $Ok; Detail = $Detail } }
 function Start-Sleep { param($Seconds) }
@@ -21,7 +23,25 @@ function Invoke-VmSsh {
 }
 function Invoke-RepoImportWithRetry { param($Uri, $Headers, $MaxAttempts, $DelaySeconds, $Body) [pscustomobject]@{ StatusCode = 201; Body = '{}' } }
 function Invoke-HttpRaw {
-    param($Uri, $Method, $Headers, $Body)
+    param($Uri, $Method, $Headers, $Body, $Cookie)
+    if ($script:siteMode) {
+        $status = 200
+        $response = if ($Uri -like '*/auth/login') { '{"ok":true}' }
+        elseif ($Uri -like '*/user/tokens') { $status = 201; '{"token":"tester-token"}' }
+        elseif ($Uri -like '*/users/*/tokens') { $status = 201; '{"token":"bot-token"}' }
+        elseif ($Uri -like '*/users') { $status = 201; '{"id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}' }
+        elseif ($Uri -like '*/resources/*/grants') { $status = 201; '{}' }
+        elseif ($Uri -like '*/apps' -and $Method -eq 'POST') { $status = 202; '{}' }
+        elseif ($Uri -like '*/versions?per_page=1') { '{"items":[{"state":"serving"}]}' }
+        elseif ($Uri -like '*/access/members' -and $Method -eq 'POST') { $status = 201; '{}' }
+        elseif ($Uri -like '*/access/members') { '{"items":[{"kind":"user","name":"e2etester123"}]}' }
+        elseif ($Uri -like '*/access/invite') { '{"caMode":"internal","fingerprintSha256":"' + ('ab' * 32) + '","address":"https://sito.example.test","guideUrl":"https://example.test/help/ca"}' }
+        elseif ($Uri -like '*/issues') { $status = if ($script:showIssues) { 200 } else { 404 }; '{}' }
+        elseif ($Headers.Authorization -eq 'Bearer tester-token') { $status = 404; '{}' }
+        elseif ($Uri -like '*/repos/alice/pilot') { '{"id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}' }
+        else { '{}' }
+        return [pscustomobject]@{ StatusCode = $status; Body = $response; Cookie = 'session' }
+    }
     $status = 200
     $response = if ($Uri -like '*/apps' -and $Method -eq 'POST') { $status = 202; '{"app":{"id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}}' }
     elseif ($Uri -like '*/versions?per_page=1') { '{"items":[{"state":"serving"}]}' }
@@ -59,3 +79,13 @@ $script:rows = @(); $script:probeFail = $true
 Test-E2ePilotDatabaseAfterRestore -BaseUrl 'https://example.invalid' -Context $ctx
 if (@($script:rows | Where-Object { -not $_.Ok }).Count -ne 1) { throw 'restore accepted failed database probe' }
 Write-Host '[PASS] pilot database: preparazione, restore e probe fallito'
+$script:siteMode = $true; $script:rows = @(); $script:showIssues = $false
+$site = Initialize-E2ePilotSite -BaseUrl 'https://example.invalid' -AdminCookie 'admin' -Suffix '123' -CaFingerprint ('ab' * 32) -Context $ctx
+if (-not $site -or $site.Tester -ne 'e2etester123' -or @($script:rows | Where-Object { -not $_.Ok }).Count -ne 0) { throw 'pilot site setup failed' }
+$script:rows = @(); $script:showIssues = $true
+$site = Initialize-E2ePilotSite -BaseUrl 'https://example.invalid' -AdminCookie 'admin' -Suffix '123' -CaFingerprint ('ab' * 32) -Context $ctx
+if ($site -or @($script:rows | Where-Object { -not $_.Ok }).Count -ne 1) { throw 'tester access to issues accepted' }
+$script:rows = @(); $script:showIssues = $false
+$site = Initialize-E2ePilotSite -BaseUrl 'https://example.invalid' -AdminCookie 'admin' -Suffix '123' -CaFingerprint ('cd' * 32) -Context $ctx
+if ($site -or @($script:rows | Where-Object { -not $_.Ok }).Count -ne 1) { throw 'wrong CA fingerprint accepted' }
+Write-Host '[PASS] pilot site: lista, privacy e impronta CA'

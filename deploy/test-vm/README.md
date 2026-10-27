@@ -589,9 +589,13 @@ valore collegandosi a `postgres:5432`. Dopo h/i, il probe rilegge il valore
 dall'API ripristinata. I controlli sono eseguiti sulla VM, con una riga per
 ciascun esito.
 
-Le fasi relative a sito, tester e issue sono ancora da completare: il riepilogo
-le segnala come `[FAIL]`. Questa sezione non costituisce una prova verde del
-pilota. L'accesso delle app all'API dipende da GIT-442.
+Il passo prepara anche il sito, un bot con grant sul repo e token in un segreto,
+e un tester nella lista di accesso. Verifica che il tester riceva 404 su repo e
+issue e confronta l'impronta dell'invito con quella della CA scaricata.
+
+L'apertura HTTPS del sito e la segnalazione con screenshot non sono ancora
+verificate: il riepilogo le segnala come `[FAIL]`. Questa sezione non costituisce
+una prova verde del pilota. L'accesso delle app all'API dipende da GIT-442.
 
 ### Istruzioni per il board: passo e10 (GIT-201)
 

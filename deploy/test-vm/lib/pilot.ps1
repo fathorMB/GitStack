@@ -192,3 +192,81 @@ function Test-E2ePilotDatabaseAfterRestore {
         Add-StepResult -Name 'pilot 7. dato PostgreSQL conservato dopo backup e restore' -Ok $false -Detail $_.Exception.Message
     }
 }
+
+function Initialize-E2ePilotSite {
+    param(
+        [Parameter(Mandatory)][string]$BaseUrl,
+        [Parameter(Mandatory)][string]$AdminCookie,
+        [Parameter(Mandatory)][string]$Suffix,
+        [Parameter(Mandatory)][string]$CaFingerprint,
+        [Parameter(Mandatory)]$Context
+    )
+    $repoApi = "$BaseUrl/api/v1/repos/$($Context.Owner)/$($Context.Repo)"
+    $apps = "$repoApi/apps"
+    $headers = @{ Authorization = "Bearer $($Context.Token)" }
+    $tester = "e2etester$Suffix"
+    $bot = "e2epilotbot$Suffix"
+    $password = 'E2e-tester-' + [guid]::NewGuid().ToString('N')
+    $expires = (Get-Date).ToUniversalTime().AddHours(6).ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $stage = 'utente tester e bot'
+    try {
+        $u = Invoke-HttpRaw -Uri "$BaseUrl/api/v1/users" -Method 'POST' -Cookie $AdminCookie -Body (@{ username = $tester; email = "$tester@example.invalid"; password = $password } | ConvertTo-Json)
+        if ($u.StatusCode -ne 201) { throw "creazione tester: status $($u.StatusCode)" }
+        $login = Invoke-HttpRaw -Uri "$BaseUrl/api/v1/auth/login" -Method 'POST' -Body (@{ username = $tester; password = $password } | ConvertTo-Json)
+        if ($login.StatusCode -ne 200 -or -not $login.Cookie) { throw "login tester: status $($login.StatusCode)" }
+        $testerTokenResponse = Invoke-HttpRaw -Uri "$BaseUrl/api/v1/user/tokens" -Method 'POST' -Cookie $login.Cookie -Body (@{ name = 'pilot-tester'; scopes = @('read:resource'); expiresAt = $expires } | ConvertTo-Json)
+        if ($testerTokenResponse.StatusCode -ne 201) { throw "token tester: status $($testerTokenResponse.StatusCode)" }
+        $testerToken = ($testerTokenResponse.Body | ConvertFrom-Json).token
+        if (-not $testerToken) { throw 'token tester mancante' }
+        $agent = Invoke-HttpRaw -Uri "$BaseUrl/api/v1/users" -Method 'POST' -Cookie $AdminCookie -Body (@{ username = $bot; kind = 'agent'; email = "$bot@example.invalid" } | ConvertTo-Json)
+        if ($agent.StatusCode -ne 201) { throw "creazione bot: status $($agent.StatusCode)" }
+        $botId = ($agent.Body | ConvertFrom-Json).id
+        if (-not $botId) { throw 'id bot mancante' }
+        $agentTokenResponse = Invoke-HttpRaw -Uri "$BaseUrl/api/v1/users/$bot/tokens" -Method 'POST' -Cookie $AdminCookie -Body (@{ name = 'pilot-bot'; scopes = @('read:resource', 'write:resource'); expiresAt = $expires } | ConvertTo-Json)
+        if ($agentTokenResponse.StatusCode -ne 201) { throw "token bot: status $($agentTokenResponse.StatusCode)" }
+        $botToken = ($agentTokenResponse.Body | ConvertFrom-Json).token
+        if (-not $botToken) { throw 'token bot mancante' }
+        $repo = Invoke-HttpRaw -Uri $repoApi -Headers $headers
+        if ($repo.StatusCode -ne 200) { throw "repo: status $($repo.StatusCode)" }
+        $repoId = ($repo.Body | ConvertFrom-Json).id
+        if (-not $repoId) { throw 'id repo mancante' }
+        $grant = Invoke-HttpRaw -Uri "$BaseUrl/api/v1/resources/$repoId/grants" -Method 'POST' -Headers $headers -Body (@{ subjectType = 'user'; subjectId = $botId; role = 'write' } | ConvertTo-Json)
+        if ($grant.StatusCode -ne 201) { throw "grant bot: status $($grant.StatusCode)" }
+        Add-StepResult -Name 'pilot 5a. tester e bot dedicati, grant bot sul repo' -Ok $true -Detail ''
+
+        $stage = 'deploy sito'
+        $site = Invoke-HttpRaw -Uri $apps -Method 'POST' -Headers $headers -Body (@{ name = 'sito'; image = "sito:$($Context.Tag)"; port = 8080 } | ConvertTo-Json)
+        if ($site.StatusCode -ne 202) { throw "creazione sito: status $($site.StatusCode)" }
+        $var = Invoke-HttpRaw -Uri "$apps/sito/variables/PILOT_REPO" -Method 'PUT' -Headers $headers -Body (@{ value = "$($Context.Owner)/$($Context.Repo)" } | ConvertTo-Json)
+        if ($var.StatusCode -ne 200) { throw "variabile repo: status $($var.StatusCode)" }
+        $secret = Invoke-HttpRaw -Uri "$apps/sito/secrets/BOT_TOKEN" -Method 'PUT' -Headers $headers -Body (@{ value = $botToken } | ConvertTo-Json)
+        if ($secret.StatusCode -ne 200) { throw "segreto bot: status $($secret.StatusCode)" }
+        Wait-E2ePilotServing -AppsApi $apps -Name 'sito' -Headers $headers
+        Add-StepResult -Name 'pilot 5b. sito in salute con immagine del repo e token bot segreto' -Ok $true -Detail ''
+
+        $stage = 'lista accesso tester'
+        $member = Invoke-HttpRaw -Uri "$apps/sito/access/members" -Method 'POST' -Headers $headers -Body (@{ kind = 'user'; name = $tester } | ConvertTo-Json)
+        if ($member.StatusCode -ne 201) { throw "aggiunta tester: status $($member.StatusCode)" }
+        $list = Invoke-HttpRaw -Uri "$apps/sito/access/members" -Headers $headers
+        if ($list.StatusCode -ne 200 -or @((($list.Body | ConvertFrom-Json).items) | Where-Object { $_.kind -eq 'user' -and $_.name -eq $tester }).Count -ne 1) { throw 'tester non presente nella lista' }
+        $testerHeaders = @{ Authorization = "Bearer $testerToken" }
+        foreach ($path in @('', '/contents?path=server.cjs', '/issues')) {
+            $hidden = Invoke-HttpRaw -Uri "$repoApi$path" -Headers $testerHeaders
+            if ($hidden.StatusCode -ne 404) { throw "tester vede repo o issues: status $($hidden.StatusCode)" }
+        }
+        Add-StepResult -Name 'pilot 5c. tester in lista, repo e issues nascosti' -Ok $true -Detail ''
+
+        $stage = 'invito e impronta CA'
+        $invite = Invoke-HttpRaw -Uri "$apps/sito/access/invite" -Headers $headers
+        if ($invite.StatusCode -ne 200) { throw "invito: status $($invite.StatusCode)" }
+        $info = $invite.Body | ConvertFrom-Json
+        $actual = ([string]$info.fingerprintSha256 -replace '[^0-9a-fA-F]', '').ToLowerInvariant()
+        $expected = ($CaFingerprint -replace '[^0-9a-fA-F]', '').ToLowerInvariant()
+        if ($info.caMode -ne 'internal' -or $actual.Length -ne 64 -or $actual -ne $expected -or -not $info.address -or -not $info.guideUrl) { throw 'invito senza indirizzo o impronta CA diversa dalla CA scaricata' }
+        Add-StepResult -Name 'pilot 5d. impronta CA dell invito corrisponde alla CA scaricata' -Ok $true -Detail ''
+        return [pscustomobject]@{ Address = [string]$info.address; Tester = $tester; TesterToken = $testerToken; Bot = $bot }
+    } catch {
+        Add-StepResult -Name "pilot: $stage" -Ok $false -Detail $_.Exception.Message
+        return $null
+    }
+}
