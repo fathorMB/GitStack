@@ -241,7 +241,7 @@ func TestApps_CancelloVeroSenzaPolicySuK3d(t *testing.T) {
 	if _, err := e.kube.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), ns, metav1.DeleteOptions{}) })
+	cleanupNamespaceWithDiag(t, e.kube, ns)
 	gate := apps.GateContainer(img, apps.GateCommand)
 	gate.Env = []corev1.EnvVar{{Name: apps.EnvGateTimeout, Value: "5"}}
 	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "gate-aperto", Namespace: ns},

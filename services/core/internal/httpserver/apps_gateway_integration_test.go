@@ -43,7 +43,7 @@ func TestApps_GatewayInternoSuK3d(t *testing.T) {
 		if _, err := e.kube.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), ns.Name, metav1.DeleteOptions{}) })
+		cleanupNamespaceWithDiag(t, e.kube, ns.Name)
 		policy := apps.BuildNetworkPolicy(*a, o)
 		if _, err := e.kube.NetworkingV1().NetworkPolicies(policy.Namespace).Create(ctx, policy, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
@@ -55,7 +55,7 @@ func TestApps_GatewayInternoSuK3d(t *testing.T) {
 			t.Fatal(err)
 		}
 		n := name
-		t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), n, metav1.DeleteOptions{}) })
+		cleanupNamespaceWithDiag(t, e.kube, n)
 	}
 	serve := `serve() { while true; do printf 'HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok' | nc -l -p $1; done; }; serve 18090 & serve 18091 & wait`
 	if _, err := e.kube.CoreV1().Pods(gwNS).Create(ctx, &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "gateway", Namespace: gwNS, Labels: gw.PodLabels},

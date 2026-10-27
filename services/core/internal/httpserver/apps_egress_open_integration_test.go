@@ -55,7 +55,7 @@ func TestApps_DestinazionePrivataApertaSuK3d(t *testing.T) {
 		if _, err := e.kube.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), ns.Name, metav1.DeleteOptions{}) })
+		cleanupNamespaceWithDiag(t, e.kube, ns.Name)
 		policy := apps.BuildNetworkPolicy(*a, o)
 		if _, err := e.kube.NetworkingV1().NetworkPolicies(policy.Namespace).Create(ctx, policy, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
@@ -66,9 +66,7 @@ func TestApps_DestinazionePrivataApertaSuK3d(t *testing.T) {
 	if _, err := e.kube.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: systemNS}}, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		_ = e.kube.CoreV1().Namespaces().Delete(context.Background(), systemNS, metav1.DeleteOptions{})
-	})
+	cleanupNamespaceWithDiag(t, e.kube, systemNS)
 	create := func(p *corev1.Pod) {
 		if _, err := e.kube.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)

@@ -170,9 +170,7 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 	if _, err := e.kube.CoreV1().Namespaces().Create(ctx, rns, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		_ = e.kube.CoreV1().Namespaces().Delete(context.Background(), rns.Name, metav1.DeleteOptions{})
-	})
+	cleanupNamespaceWithDiag(t, e.kube, rns.Name)
 	f := false
 	rootSC := &corev1.SecurityContext{AllowPrivilegeEscalation: &f, Capabilities: &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}}, SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}, RunAsUser: ptr(int64(0)), RunAsNonRoot: &f}
 	rejected(rns.Name, "root", corev1.PodSpec{Containers: []corev1.Container{{Name: "x", Image: "busybox:1.36", SecurityContext: rootSC}}})
@@ -489,7 +487,7 @@ func TestApps_ControllerSuK3d(t *testing.T) {
 	}
 	e.ns = apps.Namespace(uuid.UUID(created.App.Id))
 	path := base + "/web"
-	t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), e.ns, metav1.DeleteOptions{}) })
+	cleanupNamespaceWithDiag(t, e.kube, e.ns)
 
 	t.Run("la versione risulta partita solo dopo la salute ok", func(t *testing.T) {
 		e.t = t
