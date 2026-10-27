@@ -184,9 +184,9 @@ func imageTrust(i gitstack.AppImage) string {
 func newCreateCmd(f *cmdutil.Factory) *cobra.Command {
 	var (
 		image, branch, tagPattern, healthPath string
-		port, copies              int
-		restricted                bool
-		jo                        output.JSONOptions
+		port, copies                          int
+		restricted                            bool
+		jo                                    output.JSONOptions
 	)
 	cmd := &cobra.Command{
 		Use:   "create <app>",

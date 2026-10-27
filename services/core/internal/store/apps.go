@@ -119,17 +119,17 @@ type AppDeploy struct {
 
 // App è la riga dell'app con i dati del repo che servono a derivarne lo stato.
 type App struct {
-	ID                 uuid.UUID
-	RepoID             uuid.UUID
-	Name               string
-	AddressLabel       *string
-	Status             string
-	Access             string
-	Config             AppConfig
-	ReadyCopies        int
-	FollowBranch       *string
+	ID           uuid.UUID
+	RepoID       uuid.UUID
+	Name         string
+	AddressLabel *string
+	Status       string
+	Access       string
+	Config       AppConfig
+	ReadyCopies  int
+	FollowBranch *string
 	// FollowTagPattern è la regola sui tag del deploy automatico (H7): alternativa a FollowBranch.
-	FollowTagPattern *string
+	FollowTagPattern   *string
 	AutoDeployPaused   bool
 	ActiveVersion      int
 	Image              AppImage // dell'ultima versione attiva
@@ -173,7 +173,7 @@ type NewApp struct {
 	FollowBranch *string
 	// FollowTagPattern: alternativa a FollowBranch, mai tutte e due (H7).
 	FollowTagPattern *string
-	Actor        *AppActor
+	Actor            *AppActor
 	// CommitSha è il commit dell'etichetta revision dell'immagine (H14); nil se non si legge.
 	CommitSha *string
 }
