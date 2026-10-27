@@ -1552,14 +1552,14 @@ jobs:
       - name: Importa le immagini nel cluster (nessun push su un registry per questo job)
         run: |
           docker build -f deploy/ci-runner/Dockerfile -t gitstack-ci-runner:test .
-          k3d image import \
+          # GIT-432: import verificato nel nodo (crictl), con max 3 tentativi.
+          bash scripts/k3d-import-verified.sh gitstack-ci \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-gateway:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-identity:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-core:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-git:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-web:${IMAGE_TAG}" \
-            gitstack-ci-runner:test \
-            -c gitstack-ci
+            gitstack-ci-runner:test
 
       # GIT-152: web attivo (default del chart), con l'immagine costruita sopra:
       # lo smoke del browser passa dall'Ingress e serve la UI vera.
