@@ -10,7 +10,7 @@ name: smoke
 # Comando locale: docs/operations.md, sezione «Load smoke test (V3)».
 on:
   push:
-    branches: [main]
+    branches: [main, 'integrate/**']
   schedule:
     - cron: '11 4 * * *'
   workflow_dispatch:

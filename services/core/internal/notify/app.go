@@ -63,12 +63,16 @@ func (e *Engine) handleApp(ctx context.Context, tx pgx.Tx, ev outboxEvent) error
 		// della stessa app. Il controllo è per destinatario e vede anche gli insert
 		// precedenti nella stessa transazione.
 		var recent bool
+		window := e.AppUnhealthyNoticeWindow
+		if window <= 0 {
+			window = AppUnhealthyNoticeWindow
+		}
 		if err := tx.QueryRow(ctx, `SELECT EXISTS (
 			SELECT 1 FROM core.notifications
 			WHERE user_id = $1 AND repo_id = $2 AND event_name = $3
 			  AND data->>'app' = $4
 			  AND created_at >= clock_timestamp() - ($5 * interval '1 millisecond')
-		)`, actor, repoID, ev.name, p.AppName, AppUnhealthyNoticeWindow.Milliseconds()).Scan(&recent); err != nil {
+		)`, actor, repoID, ev.name, p.AppName, window.Milliseconds()).Scan(&recent); err != nil {
 			return err
 		}
 		if recent {

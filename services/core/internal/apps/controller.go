@@ -325,8 +325,16 @@ func (c *Controller) rollout(ctx context.Context, app store.App, v store.AppVers
 	return c.waitReady(ctx, app, v)
 }
 
+// ErrGateImageMissing: senza l'immagine del cancello (GITSTACK_CORE_APPS_GATE_IMAGE) il pod dell'app
+// partirebbe prima che la NetworkPolicy valga (H16, GIT-418): il deploy è rifiutato (fail-closed, GIT-422).
+var ErrGateImageMissing = errors.New("GITSTACK_CORE_APPS_GATE_IMAGE non impostata: senza il cancello di rete (core apps-gate) i pod delle app non vengono creati")
+
 // apply crea o aggiorna namespace, pull secret, Service, rotta e Deployment della versione.
+// Prima di toccare il cluster verifica che il cancello sia configurato.
 func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersion) error {
+	if c.cfg.GateImage == "" {
+		return ErrGateImageMissing
+	}
 	ns := Namespace(app.ID)
 	if err := c.ensureNamespace(ctx, app, v.Config.Restricted); err != nil {
 		return fmt.Errorf("namespace: %w", err)
@@ -882,6 +890,9 @@ func trim(s string) string {
 // Restart riavvia le copie una alla volta (H12): cambia l'annotazione del template, Kubernetes fa
 // l'aggiornamento graduale senza togliere copie pronte. Non crea una versione.
 func (c *Controller) Restart(ctx context.Context, app store.App) error {
+	if c.cfg.GateImage == "" {
+		return ErrGateImageMissing // il riavvio ricrea i pod: senza cancello restano aperti (GIT-422)
+	}
 	deps := c.kube.AppsV1().Deployments(Namespace(app.ID))
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		d, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})
@@ -911,6 +922,9 @@ func (c *Controller) Restart(ctx context.Context, app store.App) error {
 
 // Scale porta le repliche del Deployment alle copie dell'app (già validate e scritte dalla quota).
 func (c *Controller) Scale(ctx context.Context, app store.App) error {
+	if c.cfg.GateImage == "" && desiredReplicas(app) > 0 {
+		return ErrGateImageMissing // nuove copie = nuovi pod; fermare l'app (0 copie) resta permesso (GIT-422)
+	}
 	deps := c.kube.AppsV1().Deployments(Namespace(app.ID))
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		d, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})

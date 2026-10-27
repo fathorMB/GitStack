@@ -276,6 +276,18 @@ flags a mismatch). The login in front of apps (GIT-347,
 the apps domain and the public URL. Without the keys `/_appauth/verify` answers
 503 and no `login` app would pass.
 
+**Network gate, fail-closed (GIT-418, GIT-422).** Every app pod starts with the
+init container `core apps-gate`, so the app runs only once its NetworkPolicy is
+enforced (kube-router applies it after the pod starts). The chart sets
+`GITSTACK_CORE_APPS_GATE_IMAGE` (the `core` image) whenever `apps.enabled` is
+on. If apps are enabled but the variable is empty (a deploy outside the chart,
+a wrong configuration), `core` stays up (git and CI are not affected) and logs a
+`ERROR` log at start, but **refuses to deploy any app** (also restart and
+scale-up, which recreate pods; stopping an app stays allowed): the deploy ends `failed`
+with the reason «GITSTACK_CORE_APPS_GATE_IMAGE non impostata …», and nothing is
+created in the cluster (no namespace, no Deployment). Fix: set the variable to
+the `core` image and deploy again.
+
 RBAC of `core` (chart `templates/apps-rbac.yaml`): a controller ClusterRole
 with `create/get/list/watch/update/delete` on `namespaces`, `create/get` on
 `rolebindings` and `bind` on the one app role template; the template
@@ -2532,3 +2544,9 @@ Il periodo è valido solo se tutti i quattro criteri valgono: nessuna perdita di
 
 *Guida operativa — install.sh (T-09 di M-08 [c_8458909a21d9035f]),
 decisioni D17–D19 [c_1d1d61aca3dea601]*
+
+## Verifica GitHub dei rami di integrazione
+
+I push su `integrate/**` avviano i workflow GitHub CI, api-contract, docs e smoke con le verifiche previste sui push a main. I job di pubblicazione e gli upload di artifact sono esclusi da questi rami. Il workflow install resta limitato ai tag, alla pianificazione e all'avvio manuale.
+
+GL-78 deve pubblicare su origin il ramo `integrate/MR-n` e attendere l'esito delle verifiche prima di `propose_merge`. Fino a quel cambiamento del motore, questi trigger non ricevono push automatici. Il giro sui runner GitHub aggiunge una stima di 30–40 minuti per reintegro.

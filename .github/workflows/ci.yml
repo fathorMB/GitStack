@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'integrate/**']
     tags: ['v*']
   pull_request:
 
@@ -1991,7 +1991,7 @@ jobs:
           pnpm e2e
 
       - name: Trace e screenshot dello smoke UI (solo se fallisce)
-        if: failure()
+        if: failure() && !startsWith(github.ref, 'refs/heads/integrate/')
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: e2e-ui-trace
