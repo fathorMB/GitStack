@@ -112,6 +112,8 @@ spec:
               value: {{ include "gitstack.apps.workloadRoleName" . | quote }}
             - name: GITSTACK_CORE_APPS_AUTH_URL
               value: {{ include "gitstack.apps.authUrl" . | quote }}
+            - name: GITSTACK_CORE_APPS_TRAEFIK_METRICS_URL
+              value: {{ include "gitstack.apps.traefikMetricsUrl" . | quote }}
             # Cancello fail-closed dei pod delle app (GIT-418): init container con l'immagine di core (`core apps-gate`).
             - name: GITSTACK_CORE_APPS_GATE_IMAGE
               value: {{ include "gitstack.image" (dict "root" $ "component" .Values.core) | quote }}

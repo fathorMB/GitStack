@@ -275,7 +275,11 @@ TLS_BIN_PATH="/usr/local/sbin/gitstack-tls"
 TLS_SYSTEMD_DIR="/etc/systemd/system"
 BACKUP_SYSTEMD_DIR="/etc/systemd/system"
 K3S_MANIFESTS_DIR="/var/lib/rancher/k3s/server/manifests"
-ACME_MANIFEST="${K3S_MANIFESTS_DIR}/gitstack-traefik-letsencrypt.yaml"
+# Una sola HelmChartConfig `traefik`: metriche (GIT-403) e, con --tls letsencrypt, il resolver ACME.
+# Due file con lo stesso oggetto si sovrascriverebbero a vicenda, quindi il vecchio file del solo
+# Let's Encrypt (prima di GIT-403) viene tolto.
+TRAEFIK_MANIFEST="${K3S_MANIFESTS_DIR}/gitstack-traefik.yaml"
+OLD_ACME_MANIFEST="${K3S_MANIFESTS_DIR}/gitstack-traefik-letsencrypt.yaml"
 # Valorizzate da resolve_tls (nomi e IP dei SAN, host dell'URL pubblico, schema).
 TLS_NAMES=""
 TLS_IPS=""
@@ -2301,18 +2305,27 @@ disable_backup_timer() {
   fi
 }
 
-# Let's Encrypt: il Traefik di k3s e' un HelmChart; la sua configurazione si
-# estende con un HelmChartConfig (certificatesResolvers + storage persistente
-# per acme.json). k3s lo applica da solo.
-write_acme_manifest() {
+# HelmChartConfig `traefik` (kube-system): il Traefik di k3s e' un HelmChart e la sua configurazione
+# si estende cosi'; k3s la applica da solo. Contiene sempre le metriche Prometheus su un entrypoint
+# interno al cluster (GIT-403, H12; valori in deploy/gitstack/files/traefik-metrics-values.yaml, che
+# core legge per richieste ed errori 5xx delle app) e, con --tls letsencrypt (N5/GIT-143),
+# anche il resolver ACME + lo storage persistente per acme.json. Lo scrive l'installer e non il
+# chart di release perche' e' un oggetto di kube-system che segue il ciclo di k3s (come l'ACME) e
+# perche' l'ACME e le metriche vanno nello stesso oggetto: due file con lo stesso nome oggetto
+# si sovrascriverebbero.
+write_traefik_manifest() {
+  local chart_dir="$1" acme="$2"
+  local metrics_values="${chart_dir}/files/traefik-metrics-values.yaml"
+  [ -f "${metrics_values}" ] || fail "manca ${metrics_values} (valori delle metriche di Traefik)"
   mkdir -p "${K3S_MANIFESTS_DIR}"
+  rm -f "${OLD_ACME_MANIFEST}"
   local email_line="" server_line=""
   [ -n "${GITSTACK_TLS_EMAIL}" ] && email_line="          email: ${GITSTACK_TLS_EMAIL}"
   [ -n "${GITSTACK_ACME_CA_SERVER}" ] && server_line="          caServer: ${GITSTACK_ACME_CA_SERVER}"
   {
-    cat <<'EOF'
-# Scritto da deploy/install.sh (--tls letsencrypt, N5/GIT-143). Non modificarlo
-# a mano: rilancia l'installer.
+    cat <<'EOF2'
+# Scritto da deploy/install.sh (metriche di Traefik GIT-403; Let's Encrypt N5/GIT-143). Non
+# modificarlo a mano: rilancia l'installer.
 apiVersion: helm.cattle.io/v1
 kind: HelmChartConfig
 metadata:
@@ -2320,6 +2333,10 @@ metadata:
   namespace: kube-system
 spec:
   valuesContent: |-
+EOF2
+    grep -v '^[[:space:]]*#' "${metrics_values}" | grep -v '^[[:space:]]*$' | sed 's/^/    /' | tr -d '\r'
+    if [ "${acme}" = "yes" ]; then
+      cat <<'EOF2'
     persistence:
       enabled: true
       path: /data
@@ -2327,19 +2344,23 @@ spec:
     certificatesResolvers:
       letsencrypt:
         acme:
-EOF
-    [ -n "${email_line}" ] && printf '%s\n' "${email_line}"
-    [ -n "${server_line}" ] && printf '%s\n' "${server_line}"
-    cat <<'EOF'
+EOF2
+      [ -n "${email_line}" ] && printf '%s\n' "${email_line}"
+      [ -n "${server_line}" ] && printf '%s\n' "${server_line}"
+      cat <<'EOF2'
           storage: /data/acme.json
           httpChallenge:
             entryPoint: web
-EOF
-  } >"${ACME_MANIFEST}.tmp"
-  mv -f "${ACME_MANIFEST}.tmp" "${ACME_MANIFEST}"
-  log "Let's Encrypt: scritta la configurazione di Traefik in ${ACME_MANIFEST} (HTTP-01 sulla porta 80, host ${PUBLIC_HOST})."
-  if [ -z "${GITSTACK_TLS_EMAIL}" ]; then
-    warn "--tls-email non indicata: Let's Encrypt non potra' avvisarti delle scadenze."
+EOF2
+    fi
+  } >"${TRAEFIK_MANIFEST}.tmp"
+  mv -f "${TRAEFIK_MANIFEST}.tmp" "${TRAEFIK_MANIFEST}"
+  log "Traefik: scritta la configurazione in ${TRAEFIK_MANIFEST} (metriche interne al cluster)."
+  if [ "${acme}" = "yes" ]; then
+    log "Let's Encrypt: resolver HTTP-01 sulla porta 80, host ${PUBLIC_HOST}."
+    if [ -z "${GITSTACK_TLS_EMAIL}" ]; then
+      warn "--tls-email non indicata: Let's Encrypt non potra' avvisarti delle scadenze."
+    fi
   fi
 }
 
@@ -2350,7 +2371,7 @@ setup_tls() {
   save_tls_choices
   case "${GITSTACK_TLS_MODE}" in
     internal|custom)
-      rm -f "${ACME_MANIFEST}"
+      write_traefik_manifest "${chart_dir}" no
       install_tls_tool "${chart_dir}"
       local args=(ensure --mode "${GITSTACK_TLS_MODE}" --names "${TLS_NAMES}" --ips "${TLS_IPS}" --apps-domain "${APPS_DOMAIN}"
         --release "${GITSTACK_RELEASE_NAME}" --namespace "${GITSTACK_NAMESPACE}" --kubeconfig "${GITSTACK_KUBECONFIG}")
@@ -2372,10 +2393,10 @@ setup_tls() {
       ;;
     letsencrypt)
       disable_renew_timer
-      write_acme_manifest
+      write_traefik_manifest "${chart_dir}" yes
       ;;
     insecure)
-      rm -f "${ACME_MANIFEST}"
+      write_traefik_manifest "${chart_dir}" no
       disable_renew_timer
       warn "--insecure-http: GitStack parla HTTP in chiaro, password e token viaggiano senza cifratura. Solo per prove locali: la UI mostra un avviso."
       ;;

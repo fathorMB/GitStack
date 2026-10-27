@@ -32,6 +32,9 @@ const (
 	envAppsTraefikNamespace = "GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE"
 	envAppsProgressTimeout  = "GITSTACK_CORE_APPS_PROGRESS_TIMEOUT"
 	envAppsGateImage        = "GITSTACK_CORE_APPS_GATE_IMAGE"
+	// Indirizzo delle metriche Prometheus di Traefik (entrypoint interno `metrics`, GIT-403): da lì
+	// vengono richieste ed errori 5xx. Vuoto: richieste ed errori restano non disponibili.
+	envAppsTraefikMetricsURL = "GITSTACK_CORE_APPS_TRAEFIK_METRICS_URL"
 	// ServiceAccount di core (`namespace/nome`) e ClusterRole modello dei permessi sull'app: con
 	// entrambi il controller crea un RoleBinding in ogni namespace delle app (ADR 0002).
 	envAppsControllerSA = "GITSTACK_CORE_APPS_CONTROLLER_SA"
@@ -66,7 +69,8 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, eg
 	st := store.New(pool)
 	cfg := apps.Config{AppsDomain: domain, AuthURL: strings.TrimSpace(os.Getenv(envAppsAuthURL)), AuthSecret: trust.SigningKey(gatewaySecret), Secrets: secrets, Log: logger,
 		ControllerServiceAccount: strings.TrimSpace(os.Getenv(envAppsControllerSA)), WorkloadRole: strings.TrimSpace(os.Getenv(envAppsWorkloadRole)),
-		EgressClusterCIDRs: egressCluster, EgressNodeAddresses: egressNode, ProxyEnv: apps.ProxyEnvFrom(os.Getenv), TraefikNamespace: strings.TrimSpace(os.Getenv(envAppsTraefikNamespace)), GateImage: strings.TrimSpace(os.Getenv(envAppsGateImage))}
+		EgressClusterCIDRs: egressCluster, EgressNodeAddresses: egressNode, ProxyEnv: apps.ProxyEnvFrom(os.Getenv), TraefikNamespace: strings.TrimSpace(os.Getenv(envAppsTraefikNamespace)), GateImage: strings.TrimSpace(os.Getenv(envAppsGateImage)),
+		TraefikMetricsURL: strings.TrimSpace(os.Getenv(envAppsTraefikMetricsURL))}
 	if v, err := strconv.Atoi(strings.TrimSpace(os.Getenv(envAppsProgressTimeout))); err == nil && v > 0 {
 		cfg.ProgressTimeout = time.Duration(v) * time.Second
 	}

@@ -67,7 +67,7 @@ I client non devono rifare niente quando cambia il certificato del server: si fi
 
 ## Let's Encrypt
 
-`--tls letsencrypt --host git.example.com` accetta solo un nome pubblico (non un IP, non `.local`/`.lan`/`.internal`). L'installer scrive `/var/lib/rancher/k3s/server/manifests/gitstack-traefik-letsencrypt.yaml`, un `HelmChartConfig` di k3s per il Traefik incluso: resolver `letsencrypt` (HTTP-01 sull'entrypoint `web`), `acme.json` su un volume persistente da 128 Mi. Servono le porte 80 e 443 raggiungibili da internet e un record DNS che punti all'host. Il chart mette sull'Ingress e sulla rotta git `certResolver: letsencrypt`; Traefik rinnova da solo. L'indirizzo ACME di test si imposta con `GITSTACK_ACME_CA_SERVER` (staging di Let's Encrypt).
+`--tls letsencrypt --host git.example.com` accetta solo un nome pubblico (non un IP, non `.local`/`.lan`/`.internal`). L'installer scrive `/var/lib/rancher/k3s/server/manifests/gitstack-traefik.yaml`, un `HelmChartConfig` di k3s per il Traefik incluso (lo scrive con ogni modalità TLS, per le metriche delle app; con `letsencrypt` aggiunge): resolver `letsencrypt` (HTTP-01 sull'entrypoint `web`), `acme.json` su un volume persistente da 128 Mi. Servono le porte 80 e 443 raggiungibili da internet e un record DNS che punti all'host. Il chart mette sull'Ingress e sulla rotta git `certResolver: letsencrypt`; Traefik rinnova da solo. L'indirizzo ACME di test si imposta con `GITSTACK_ACME_CA_SERVER` (staging di Let's Encrypt).
 
 Questa modalità è documentata e implementata ma non è stata provata con un'emissione reale (richiede un dominio pubblico). Diagnostica: `k3s kubectl -n kube-system logs deploy/traefik | grep -i acme`.
 

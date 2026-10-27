@@ -130,5 +130,11 @@ func (s *Store) PruneAppMetrics(ctx context.Context, before time.Time) (int64, e
 	if err != nil {
 		return 0, err
 	}
-	return tag.RowsAffected(), nil
+	n := tag.RowsAffected()
+	// GIT-403: i campioni di richieste ed errori hanno la stessa scadenza.
+	tag, err = s.pool.Exec(ctx, `DELETE FROM core.app_traffic_samples WHERE at < $1`, before.UTC())
+	if err != nil {
+		return n, err
+	}
+	return n + tag.RowsAffected(), nil
 }
