@@ -62,7 +62,7 @@ func TestMigration0041_AppLogs(t *testing.T) {
 		t.Fatalf("dopo l'eliminazione dell'app restano %d righe di log: %v", n, err)
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 8); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 9); err != nil {
 		t.Fatalf("down 0041: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.tables WHERE table_schema = 'core' AND table_name = 'app_log_lines'`).Scan(&n); err != nil || n != 0 {

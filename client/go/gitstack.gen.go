@@ -3822,6 +3822,34 @@ type AppDeployInput struct {
 // AppDeployState Esito di una versione: `in_progress` (in avvio o in attesa del controllo di salute), `serving` (serve il traffico), `superseded` (sostituita da una piu' recente), `failed` (non ha superato il controllo di salute) e `rolled_back` (fallita con ritorno automatico alla versione precedente, H12).
 type AppDeployState string
 
+// AppEgress defines model for AppEgress.
+type AppEgress struct {
+	// AllowedPrivate Le destinazioni private aperte dall'amministratore: l'app puo' sceglierle.
+	AllowedPrivate []AppPrivateDestination `json:"allowedPrivate"`
+
+	// Destinations Le destinazioni della restrizione; vuoto se `restricted` e' false.
+	Destinations []AppEgressDestination `json:"destinations"`
+
+	// Restricted L'app ha una restrizione propria.
+	Restricted bool       `json:"restricted"`
+	UpdatedAt  *time.Time `json:"updatedAt,omitempty"`
+	UpdatedBy  *AppActor  `json:"updatedBy,omitempty"`
+}
+
+// AppEgressDestination defines model for AppEgressDestination.
+type AppEgressDestination struct {
+	// Host Indirizzo IP o nome DNS, senza schema ne' porta.
+	Host string `json:"host"`
+
+	// Port Porta TCP.
+	Port int `json:"port"`
+}
+
+// AppEgressInput defines model for AppEgressInput.
+type AppEgressInput struct {
+	Destinations []AppEgressDestination `json:"destinations"`
+}
+
 // AppEnvName Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
 type AppEnvName = string
 
@@ -3981,6 +4009,24 @@ type AppOwnerQuotaInput struct {
 // AppOwnerQuotaList defines model for AppOwnerQuotaList.
 type AppOwnerQuotaList struct {
 	Items []AppOwnerQuota `json:"items"`
+}
+
+// AppPrivateDestination defines model for AppPrivateDestination.
+type AppPrivateDestination struct {
+	CreatedAt *time.Time `json:"createdAt,omitempty"`
+	CreatedBy *AppActor  `json:"createdBy,omitempty"`
+	Host      string     `json:"host"`
+
+	// Note A cosa serve (es. database del backoffice).
+	Note string `json:"note"`
+	Port int    `json:"port"`
+}
+
+// AppPrivateDestinationInput defines model for AppPrivateDestinationInput.
+type AppPrivateDestinationInput struct {
+	Host string  `json:"host"`
+	Note *string `json:"note,omitempty"`
+	Port int     `json:"port"`
 }
 
 // AppResourceAmount CPU e memoria, per copia.
@@ -4292,6 +4338,16 @@ type AppsCapacity struct {
 		// Reserved CPU e memoria, per copia.
 		Reserved AppResourceAmount `json:"reserved"`
 	} `json:"services"`
+}
+
+// AppsEgressSettings defines model for AppsEgressSettings.
+type AppsEgressSettings struct {
+	PrivateDestinations []AppPrivateDestination `json:"privateDestinations"`
+}
+
+// AppsEgressSettingsInput defines model for AppsEgressSettingsInput.
+type AppsEgressSettingsInput struct {
+	PrivateDestinations []AppPrivateDestinationInput `json:"privateDestinations"`
 }
 
 // AppsInstanceSettings defines model for AppsInstanceSettings.
@@ -8739,6 +8795,9 @@ type ListUserTokensParams struct {
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// UpdateAdminAppsEgressJSONRequestBody defines body for UpdateAdminAppsEgress for application/json ContentType.
+type UpdateAdminAppsEgressJSONRequestBody = AppsEgressSettingsInput
+
 // PutAdminAppOwnerQuotaJSONRequestBody defines body for PutAdminAppOwnerQuota for application/json ContentType.
 type PutAdminAppOwnerQuotaJSONRequestBody = AppOwnerQuotaInput
 
@@ -8867,6 +8926,9 @@ type AddAppAccessMemberJSONRequestBody = AppAccessMemberInput
 
 // DeployAppJSONRequestBody defines body for DeployApp for application/json ContentType.
 type DeployAppJSONRequestBody = AppDeployInput
+
+// SetAppEgressJSONRequestBody defines body for SetAppEgress for application/json ContentType.
+type SetAppEgressJSONRequestBody = AppEgressInput
 
 // SetAppResourcesJSONRequestBody defines body for SetAppResources for application/json ContentType.
 type SetAppResourcesJSONRequestBody = AppResourcesInput
@@ -9141,6 +9203,31 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /admin/apps/capacity (the `GetAdminAppsCapacity` operationId).
 	GetAdminAppsCapacity(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAdminAppsEgress Legge le destinazioni private aperte all'uscita delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Internet e' aperto alle app; la rete privata (RFC 1918, ULA, CGNAT) e' chiusa e si apre solo per destinazioni precise (`db.azienda.lan:5432`), con le stesse regole di webhook e mirror (pkg/egress, C8). Loopback, link-local, indirizzi del cluster e del nodo e porte di Kubernetes non si aprono mai.
+	//
+	// Corresponds with GET /admin/apps/egress (the `GetAdminAppsEgress` operationId).
+	GetAdminAppsEgress(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAdminAppsEgressWithBody Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked` (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
+	UpdateAdminAppsEgressWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAdminAppsEgress Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked` (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
+	UpdateAdminAppsEgress(ctx context.Context, body UpdateAdminAppsEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListAdminAppOwnerQuotas Elenca le quote delle app per owner (solo amministratore)
 	//
@@ -10585,6 +10672,38 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/deploys (the `DeployApp` operationId).
 	DeployApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body DeployAppJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteAppEgress Toglie la restrizione di uscita dell'app
+	//
+	// Serve `admin` sul repo (H16). L'app torna all'uscita dell'istanza. Idempotente: senza restrizione risponde comunque 204. Repo archiviato 409 `archived`.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/egress (the `DeleteAppEgress` operationId).
+	DeleteAppEgress(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAppEgress Legge l'uscita dell'app
+	//
+	// Serve `write` sul repo (H16): `read` riceve 403, un repo che non si legge 404. `restricted` dice se l'app ha una restrizione propria; senza, l'app esce come l'istanza (internet aperto piu' le destinazioni private aperte dall'amministratore, in `allowedPrivate`).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/egress (the `GetAppEgress` operationId).
+	GetAppEgress(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetAppEgressWithBody Restringe l'uscita dell'app a un elenco di destinazioni
+	//
+	// Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409 `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza riavviare l'app e senza creare una versione.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/egress (the `SetAppEgress` operationId).
+	SetAppEgressWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetAppEgress Restringe l'uscita dell'app a un elenco di destinazioni
+	//
+	// Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409 `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza riavviare l'app e senza creare una versione.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/egress (the `SetAppEgress` operationId).
+	SetAppEgress(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetAppLogs Legge i log dell'app, in diretta o dalla cronologia
 	//
@@ -12393,6 +12512,61 @@ func (c *Client) ListAdminApps(ctx context.Context, params *ListAdminAppsParams,
 // Corresponds with GET /admin/apps/capacity (the `GetAdminAppsCapacity` operationId).
 func (c *Client) GetAdminAppsCapacity(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetAdminAppsCapacityRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAdminAppsEgress Legge le destinazioni private aperte all'uscita delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Internet e' aperto alle app; la rete privata (RFC 1918, ULA, CGNAT) e' chiusa e si apre solo per destinazioni precise (`db.azienda.lan:5432`), con le stesse regole di webhook e mirror (pkg/egress, C8). Loopback, link-local, indirizzi del cluster e del nodo e porte di Kubernetes non si aprono mai.
+//
+// Corresponds with GET /admin/apps/egress (the `GetAdminAppsEgress` operationId).
+func (c *Client) GetAdminAppsEgress(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAdminAppsEgressRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAdminAppsEgressWithBody Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked` (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
+func (c *Client) UpdateAdminAppsEgressWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAdminAppsEgressRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAdminAppsEgress Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked` (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
+func (c *Client) UpdateAdminAppsEgress(ctx context.Context, body UpdateAdminAppsEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAdminAppsEgressRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -15737,6 +15911,78 @@ func (c *Client) DeployAppWithBody(ctx context.Context, owner RepoOwnerParam, re
 // Corresponds with POST /repos/{owner}/{repo}/apps/{app}/deploys (the `DeployApp` operationId).
 func (c *Client) DeployApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body DeployAppJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeployAppRequest(c.Server, owner, repo, app, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteAppEgress Toglie la restrizione di uscita dell'app
+//
+// Serve `admin` sul repo (H16). L'app torna all'uscita dell'istanza. Idempotente: senza restrizione risponde comunque 204. Repo archiviato 409 `archived`.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/egress (the `DeleteAppEgress` operationId).
+func (c *Client) DeleteAppEgress(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteAppEgressRequest(c.Server, owner, repo, app)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAppEgress Legge l'uscita dell'app
+//
+// Serve `write` sul repo (H16): `read` riceve 403, un repo che non si legge 404. `restricted` dice se l'app ha una restrizione propria; senza, l'app esce come l'istanza (internet aperto piu' le destinazioni private aperte dall'amministratore, in `allowedPrivate`).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/egress (the `GetAppEgress` operationId).
+func (c *Client) GetAppEgress(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAppEgressRequest(c.Server, owner, repo, app)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetAppEgressWithBody Restringe l'uscita dell'app a un elenco di destinazioni
+//
+// Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409 `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza riavviare l'app e senza creare una versione.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/egress (the `SetAppEgress` operationId).
+func (c *Client) SetAppEgressWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetAppEgressRequestWithBody(c.Server, owner, repo, app, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetAppEgress Restringe l'uscita dell'app a un elenco di destinazioni
+//
+// Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409 `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza riavviare l'app e senza creare una versione.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/egress (the `SetAppEgress` operationId).
+func (c *Client) SetAppEgress(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetAppEgressRequest(c.Server, owner, repo, app, body)
 	if err != nil {
 		return nil, err
 	}
@@ -19918,6 +20164,73 @@ func NewGetAdminAppsCapacityRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetAdminAppsEgressRequest constructs an http.Request for the GetAdminAppsEgress method
+func NewGetAdminAppsEgressRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps/egress")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateAdminAppsEgressRequest calls the generic UpdateAdminAppsEgress builder with application/json body
+func NewUpdateAdminAppsEgressRequest(server string, body UpdateAdminAppsEgressJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateAdminAppsEgressRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateAdminAppsEgressRequestWithBody constructs an http.Request for the UpdateAdminAppsEgress method, with any body, and a specified content type
+func NewUpdateAdminAppsEgressRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps/egress")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -26903,6 +27216,163 @@ func NewDeployAppRequestWithBody(server string, owner RepoOwnerParam, repo RepoN
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteAppEgressRequest constructs an http.Request for the DeleteAppEgress method
+func NewDeleteAppEgressRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/egress", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAppEgressRequest constructs an http.Request for the GetAppEgress method
+func NewGetAppEgressRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/egress", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetAppEgressRequest calls the generic SetAppEgress builder with application/json body
+func NewSetAppEgressRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppEgressJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetAppEgressRequestWithBody(server, owner, repo, app, "application/json", bodyReader)
+}
+
+// NewSetAppEgressRequestWithBody constructs an http.Request for the SetAppEgress method, with any body, and a specified content type
+func NewSetAppEgressRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/egress", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -37413,6 +37883,33 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /admin/apps/capacity (the `GetAdminAppsCapacity` operationId).
 	GetAdminAppsCapacityWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAdminAppsCapacityResponse, error)
 
+	// GetAdminAppsEgressWithResponse Legge le destinazioni private aperte all'uscita delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Internet e' aperto alle app; la rete privata (RFC 1918, ULA, CGNAT) e' chiusa e si apre solo per destinazioni precise (`db.azienda.lan:5432`), con le stesse regole di webhook e mirror (pkg/egress, C8). Loopback, link-local, indirizzi del cluster e del nodo e porte di Kubernetes non si aprono mai.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/apps/egress (the `GetAdminAppsEgress` operationId).
+	GetAdminAppsEgressWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAdminAppsEgressResponse, error)
+
+	// UpdateAdminAppsEgressWithBodyWithResponse Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked` (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
+	UpdateAdminAppsEgressWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAdminAppsEgressResponse, error)
+
+	// UpdateAdminAppsEgressWithResponse Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked` (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
+	UpdateAdminAppsEgressWithResponse(ctx context.Context, body UpdateAdminAppsEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAdminAppsEgressResponse, error)
+
 	// ListAdminAppOwnerQuotasWithResponse Elenca le quote delle app per owner (solo amministratore)
 	//
 	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Le quote contano sull'owner del repo (H5, H11): CPU e RAM garantite e disco dei volumi, con l'uso e l'avviso all'80%. Compaiono gli owner con almeno un'app o una quota impostata.
@@ -39064,6 +39561,42 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/deploys (the `DeployApp` operationId).
 	DeployAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body DeployAppJSONRequestBody, reqEditors ...RequestEditorFn) (*DeployAppResponse, error)
+
+	// DeleteAppEgressWithResponse Toglie la restrizione di uscita dell'app
+	//
+	// Serve `admin` sul repo (H16). L'app torna all'uscita dell'istanza. Idempotente: senza restrizione risponde comunque 204. Repo archiviato 409 `archived`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/egress (the `DeleteAppEgress` operationId).
+	DeleteAppEgressWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*DeleteAppEgressResponse, error)
+
+	// GetAppEgressWithResponse Legge l'uscita dell'app
+	//
+	// Serve `write` sul repo (H16): `read` riceve 403, un repo che non si legge 404. `restricted` dice se l'app ha una restrizione propria; senza, l'app esce come l'istanza (internet aperto piu' le destinazioni private aperte dall'amministratore, in `allowedPrivate`).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/egress (the `GetAppEgress` operationId).
+	GetAppEgressWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*GetAppEgressResponse, error)
+
+	// SetAppEgressWithBodyWithResponse Restringe l'uscita dell'app a un elenco di destinazioni
+	//
+	// Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409 `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza riavviare l'app e senza creare una versione.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/egress (the `SetAppEgress` operationId).
+	SetAppEgressWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetAppEgressResponse, error)
+
+	// SetAppEgressWithResponse Restringe l'uscita dell'app a un elenco di destinazioni
+	//
+	// Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409 `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza riavviare l'app e senza creare una versione.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/egress (the `SetAppEgress` operationId).
+	SetAppEgressWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*SetAppEgressResponse, error)
 
 	// GetAppLogsWithResponse Legge i log dell'app, in diretta o dalla cronologia
 	//
@@ -41199,6 +41732,130 @@ func (r GetAdminAppsCapacityResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetAdminAppsCapacityResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAdminAppsEgressResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppsEgressSettings
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAdminAppsEgressResponse) GetJSON200() *AppsEgressSettings {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAdminAppsEgressResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAdminAppsEgressResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAdminAppsEgressResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAdminAppsEgressResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAdminAppsEgressResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAdminAppsEgressResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateAdminAppsEgressResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppsEgressSettings
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateAdminAppsEgressResponse) GetJSON200() *AppsEgressSettings {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateAdminAppsEgressResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateAdminAppsEgressResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateAdminAppsEgressResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateAdminAppsEgressResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateAdminAppsEgressResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateAdminAppsEgressResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateAdminAppsEgressResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateAdminAppsEgressResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -51092,6 +51749,213 @@ func (r DeployAppResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r DeployAppResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteAppEgressResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteAppEgressResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteAppEgressResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteAppEgressResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteAppEgressResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteAppEgressResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteAppEgressResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteAppEgressResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteAppEgressResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAppEgressResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppEgress
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAppEgressResponse) GetJSON200() *AppEgress {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAppEgressResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAppEgressResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetAppEgressResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAppEgressResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAppEgressResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAppEgressResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAppEgressResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetAppEgressResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppEgress
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetAppEgressResponse) GetJSON200() *AppEgress {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SetAppEgressResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SetAppEgressResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SetAppEgressResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SetAppEgressResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SetAppEgressResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SetAppEgressResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r SetAppEgressResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetAppEgressResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetAppEgressResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetAppEgressResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -64724,6 +65588,51 @@ func (c *ClientWithResponses) GetAdminAppsCapacityWithResponse(ctx context.Conte
 	return ParseGetAdminAppsCapacityResponse(rsp)
 }
 
+// GetAdminAppsEgressWithResponse Legge le destinazioni private aperte all'uscita delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Internet e' aperto alle app; la rete privata (RFC 1918, ULA, CGNAT) e' chiusa e si apre solo per destinazioni precise (`db.azienda.lan:5432`), con le stesse regole di webhook e mirror (pkg/egress, C8). Loopback, link-local, indirizzi del cluster e del nodo e porte di Kubernetes non si aprono mai.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/apps/egress (the `GetAdminAppsEgress` operationId).
+func (c *ClientWithResponses) GetAdminAppsEgressWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAdminAppsEgressResponse, error) {
+	rsp, err := c.GetAdminAppsEgress(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAdminAppsEgressResponse(rsp)
+}
+
+// UpdateAdminAppsEgressWithBodyWithResponse Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked` (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
+func (c *ClientWithResponses) UpdateAdminAppsEgressWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAdminAppsEgressResponse, error) {
+	rsp, err := c.UpdateAdminAppsEgressWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAdminAppsEgressResponse(rsp)
+}
+
+// UpdateAdminAppsEgressWithResponse Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked` (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
+func (c *ClientWithResponses) UpdateAdminAppsEgressWithResponse(ctx context.Context, body UpdateAdminAppsEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAdminAppsEgressResponse, error) {
+	rsp, err := c.UpdateAdminAppsEgress(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAdminAppsEgressResponse(rsp)
+}
+
 // ListAdminAppOwnerQuotasWithResponse Elenca le quote delle app per owner (solo amministratore)
 //
 // Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Le quote contano sull'owner del repo (H5, H11): CPU e RAM garantite e disco dei volumi, con l'uso e l'avviso all'80%. Compaiono gli owner con almeno un'app o una quota impostata.
@@ -67514,6 +68423,66 @@ func (c *ClientWithResponses) DeployAppWithResponse(ctx context.Context, owner R
 		return nil, err
 	}
 	return ParseDeployAppResponse(rsp)
+}
+
+// DeleteAppEgressWithResponse Toglie la restrizione di uscita dell'app
+//
+// Serve `admin` sul repo (H16). L'app torna all'uscita dell'istanza. Idempotente: senza restrizione risponde comunque 204. Repo archiviato 409 `archived`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/egress (the `DeleteAppEgress` operationId).
+func (c *ClientWithResponses) DeleteAppEgressWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*DeleteAppEgressResponse, error) {
+	rsp, err := c.DeleteAppEgress(ctx, owner, repo, app, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteAppEgressResponse(rsp)
+}
+
+// GetAppEgressWithResponse Legge l'uscita dell'app
+//
+// Serve `write` sul repo (H16): `read` riceve 403, un repo che non si legge 404. `restricted` dice se l'app ha una restrizione propria; senza, l'app esce come l'istanza (internet aperto piu' le destinazioni private aperte dall'amministratore, in `allowedPrivate`).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/egress (the `GetAppEgress` operationId).
+func (c *ClientWithResponses) GetAppEgressWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*GetAppEgressResponse, error) {
+	rsp, err := c.GetAppEgress(ctx, owner, repo, app, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAppEgressResponse(rsp)
+}
+
+// SetAppEgressWithBodyWithResponse Restringe l'uscita dell'app a un elenco di destinazioni
+//
+// Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409 `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza riavviare l'app e senza creare una versione.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/egress (the `SetAppEgress` operationId).
+func (c *ClientWithResponses) SetAppEgressWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetAppEgressResponse, error) {
+	rsp, err := c.SetAppEgressWithBody(ctx, owner, repo, app, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetAppEgressResponse(rsp)
+}
+
+// SetAppEgressWithResponse Restringe l'uscita dell'app a un elenco di destinazioni
+//
+// Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409 `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza riavviare l'app e senza creare una versione.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/egress (the `SetAppEgress` operationId).
+func (c *ClientWithResponses) SetAppEgressWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*SetAppEgressResponse, error) {
+	rsp, err := c.SetAppEgress(ctx, owner, repo, app, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetAppEgressResponse(rsp)
 }
 
 // GetAppLogsWithResponse Legge i log dell'app, in diretta o dalla cronologia
@@ -70999,6 +71968,100 @@ func ParseGetAdminAppsCapacityResponse(rsp *http.Response) (*GetAdminAppsCapacit
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAdminAppsEgressResponse parses an HTTP response from a GetAdminAppsEgressWithResponse call
+func ParseGetAdminAppsEgressResponse(rsp *http.Response) (*GetAdminAppsEgressResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAdminAppsEgressResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppsEgressSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateAdminAppsEgressResponse parses an HTTP response from a UpdateAdminAppsEgressWithResponse call
+func ParseUpdateAdminAppsEgressResponse(rsp *http.Response) (*UpdateAdminAppsEgressResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateAdminAppsEgressResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppsEgressSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 
@@ -78820,6 +79883,171 @@ func ParseDeployAppResponse(rsp *http.Response) (*DeployAppResponse, error) {
 			return nil, err
 		}
 		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteAppEgressResponse parses an HTTP response from a DeleteAppEgressWithResponse call
+func ParseDeleteAppEgressResponse(rsp *http.Response) (*DeleteAppEgressResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteAppEgressResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAppEgressResponse parses an HTTP response from a GetAppEgressWithResponse call
+func ParseGetAppEgressResponse(rsp *http.Response) (*GetAppEgressResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAppEgressResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppEgress
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetAppEgressResponse parses an HTTP response from a SetAppEgressWithResponse call
+func ParseSetAppEgressResponse(rsp *http.Response) (*SetAppEgressResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetAppEgressResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppEgress
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest

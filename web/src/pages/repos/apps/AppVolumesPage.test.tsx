@@ -1,3 +1,4 @@
+import { ApiError } from '../../../lib/http';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -16,6 +17,9 @@ vi.mock('../../../lib/appsApi', () => ({
   setVolumeInBackup: vi.fn(),
   saveAppResources: vi.fn(),
   updateApp: vi.fn(),
+  fetchAppEgress: vi.fn(),
+  saveAppEgress: vi.fn(),
+  clearAppEgress: vi.fn(),
 }));
 
 import * as api from '../../../lib/appsApi';
@@ -55,6 +59,7 @@ function mount(app: App = makeApp({ copies: 1, resources: { guaranteed: { cpuMil
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(api.fetchAppVersions).mockResolvedValue(withVersion(false));
+  vi.mocked(api.fetchAppEgress).mockResolvedValue({ restricted: false, destinations: [], allowedPrivate: [] });
 });
 
 // Mockup .prisma/design/mockups-v3-hosting/index.html, data-screen="volumes".
@@ -206,5 +211,80 @@ describe('AppVolumesPage (H3, H9, H11)', () => {
     expect(screen.queryByRole('button', { name: 'Remove volume data' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Save resources' })).not.toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Restricted mode' })).toBeDisabled();
+  }, T);
+});
+
+// Mockup .prisma/design/mockups-v3-hosting/index.html, data-screen="volumes", «Outbound network» (H16).
+describe('AppVolumesPage · Outbound network (H16)', () => {
+  const opened = [{ host: 'smtp.acme.lan', port: 587, note: '' }];
+
+  it("mostra internet aperto, la rete privata chiusa con le destinazioni dell'amministratore e le sempre bloccate", async () => {
+    vi.mocked(api.fetchAppVolumes).mockResolvedValue(list());
+    vi.mocked(api.fetchAppEgress).mockResolvedValue({ restricted: false, destinations: [], allowedPrivate: opened });
+    mount();
+    const section = within(await screen.findByRole('region', { name: 'Outbound network' }));
+    expect(section.getByText(/open · through the company proxy/)).toBeInTheDocument();
+    expect(section.getByText('smtp.acme.lan:587')).toBeInTheDocument();
+    expect(section.getByText(/loopback, cluster network, link-local, Kubernetes ports/)).toBeInTheDocument();
+    expect(section.getByRole('switch', { name: 'Restrict this app' })).not.toBeChecked();
+    expect(section.queryByRole('list', { name: 'Allowed destinations' })).not.toBeInTheDocument();
+  }, T);
+
+  it("restringe l'app, aggiunge e toglie destinazioni", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchAppVolumes).mockResolvedValue(list());
+    vi.mocked(api.fetchAppEgress).mockResolvedValue({ restricted: false, destinations: [], allowedPrivate: opened });
+    vi.mocked(api.saveAppEgress)
+      .mockResolvedValueOnce({ restricted: true, destinations: [], allowedPrivate: opened })
+      .mockResolvedValueOnce({ restricted: true, destinations: [{ host: 'smtp.acme.lan', port: 587 }], allowedPrivate: opened })
+      .mockResolvedValueOnce({ restricted: true, destinations: [], allowedPrivate: opened });
+    mount();
+    const section = within(await screen.findByRole('region', { name: 'Outbound network' }));
+    await user.click(section.getByRole('switch', { name: 'Restrict this app' }));
+    await waitFor(() => expect(api.saveAppEgress).toHaveBeenCalledWith('acme', 'handbook', 'web', []));
+    expect(await section.findByText(/No destination listed/)).toBeInTheDocument();
+    await user.type(section.getByLabelText('Host'), 'smtp.acme.lan');
+    await user.type(section.getByLabelText('Port'), '587');
+    await user.click(section.getByRole('button', { name: 'Add destination' }));
+    await waitFor(() => expect(api.saveAppEgress).toHaveBeenLastCalledWith('acme', 'handbook', 'web', [{ host: 'smtp.acme.lan', port: 587 }]));
+    const row = within(await section.findByRole('list', { name: 'Allowed destinations' }));
+    expect(row.getByText('smtp.acme.lan:587')).toBeInTheDocument();
+    await user.click(row.getByRole('button', { name: 'Remove smtp.acme.lan:587' }));
+    await waitFor(() => expect(api.saveAppEgress).toHaveBeenLastCalledWith('acme', 'handbook', 'web', []));
+  }, T);
+
+  it("mostra il rifiuto dell'API per una destinazione fuori dalla lista dell'amministratore", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchAppVolumes).mockResolvedValue(list());
+    vi.mocked(api.fetchAppEgress).mockResolvedValue({ restricted: true, destinations: [], allowedPrivate: [] });
+    vi.mocked(api.saveAppEgress).mockRejectedValue(new ApiError({ error: { code: 'destination_blocked', message: 'Destinazione non ammessa: 10.20.0.99:5432 is in the private network' } }, 422));
+    mount();
+    const section = within(await screen.findByRole('region', { name: 'Outbound network' }));
+    await user.type(section.getByLabelText('Host'), '10.20.0.99');
+    await user.type(section.getByLabelText('Port'), '5432');
+    await user.click(section.getByRole('button', { name: 'Add destination' }));
+    expect(await section.findByText(/Destinazione non ammessa/)).toBeInTheDocument();
+  }, T);
+
+  it('toglie la restrizione', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchAppVolumes).mockResolvedValue(list());
+    vi.mocked(api.fetchAppEgress)
+      .mockResolvedValueOnce({ restricted: true, destinations: [{ host: 'api.example.com', port: 443 }], allowedPrivate: [] })
+      .mockResolvedValue({ restricted: false, destinations: [], allowedPrivate: [] });
+    vi.mocked(api.clearAppEgress).mockResolvedValue(undefined);
+    mount();
+    const section = within(await screen.findByRole('region', { name: 'Outbound network' }));
+    expect(section.getByText('api.example.com:443')).toBeInTheDocument();
+    await user.click(section.getByRole('switch', { name: 'Restrict this app' }));
+    await waitFor(() => expect(api.clearAppEgress).toHaveBeenCalledWith('acme', 'handbook', 'web'));
+    await waitFor(() => expect(section.getByRole('switch', { name: 'Restrict this app' })).not.toBeChecked());
+  }, T);
+
+  it('senza admin la restrizione è in sola lettura', async () => {
+    vi.mocked(api.fetchAppVolumes).mockResolvedValue(list());
+    mount(undefined, 'write');
+    const section = within(await screen.findByRole('region', { name: 'Outbound network' }));
+    expect(section.getByRole('switch', { name: 'Restrict this app' })).toBeDisabled();
   }, T);
 });

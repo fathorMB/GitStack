@@ -30,6 +30,9 @@ import {
   deleteAppVolume as sdkDeleteAppVolume,
   updateAppVolume as sdkUpdateAppVolume,
   setAppResources as sdkSetAppResources,
+  getAppEgress as sdkGetAppEgress,
+  setAppEgress as sdkSetAppEgress,
+  deleteAppEgress as sdkDeleteAppEgress,
 } from '@gitstack/api-client';
 import type {
   App,
@@ -37,6 +40,8 @@ import type {
   AppAccessInvite,
   AppAccessMember,
   AppAccessMode,
+  AppEgress,
+  AppEgressDestination,
   AppCreateInput,
   AppCreated,
   AppList,
@@ -55,7 +60,7 @@ import type {
 } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
-export type { App, AppAccess, AppAccessInvite, AppAccessMember, AppAccessMode, AppCreateInput, AppCreated, AppList, AppMetrics, AppUpdateInput, AppVersion, AppVersionList, AppLogLine, AppSecretList, AppVariableList, AppVolume, AppVolumeChange, AppVolumeList, AppResources, AppResourcesInput };
+export type { App, AppAccess, AppAccessInvite, AppAccessMember, AppAccessMode, AppCreateInput, AppCreated, AppList, AppMetrics, AppUpdateInput, AppVersion, AppVersionList, AppLogLine, AppSecretList, AppVariableList, AppVolume, AppVolumeChange, AppVolumeList, AppResources, AppResourcesInput, AppEgress, AppEgressDestination };
 
 const at = (owner: string, repo: string) => ({ baseUrl: API_BASE_URL, path: { owner, repo } });
 const atApp = (owner: string, repo: string, app: string) => ({ baseUrl: API_BASE_URL, path: { owner, repo, app } });
@@ -187,4 +192,17 @@ export async function setVolumeInBackup(owner: string, repo: string, app: string
 
 export async function saveAppResources(owner: string, repo: string, app: string, input: AppResourcesInput): Promise<AppResources> {
   return unwrap(await sdkSetAppResources({ ...atApp(owner, repo, app), body: input }));
+}
+
+// Uscita dell'app (H16): la restrizione per app, mai oltre le destinazioni aperte dall'amministratore.
+export async function fetchAppEgress(owner: string, repo: string, app: string): Promise<AppEgress> {
+  return unwrap(await sdkGetAppEgress(atApp(owner, repo, app)));
+}
+
+export async function saveAppEgress(owner: string, repo: string, app: string, destinations: AppEgressDestination[]): Promise<AppEgress> {
+  return unwrap(await sdkSetAppEgress({ ...atApp(owner, repo, app), body: { destinations } }));
+}
+
+export async function clearAppEgress(owner: string, repo: string, app: string): Promise<void> {
+  unwrapEmpty(await sdkDeleteAppEgress(atApp(owner, repo, app)));
 }

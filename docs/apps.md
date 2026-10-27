@@ -78,3 +78,37 @@ deploy, riavvio o modifica. Ogni aggiunta o rimozione di un volume crea una nuov
 
 I volumi sono dati, non configurazione: un rollback ripristina immagine, variabili e nomi dei segreti ma non
 toglie né rimette volumi. GitStack non fa il dump di un database: per questo resta la procedura di chi lo gestisce.
+
+## Uscita delle app: internet aperto, rete privata chiusa (H16)
+
+Le app escono con le stesse regole di webhook e mirror (`pkg/egress`, C8), applicate dalla NetworkPolicy `app-isolation` del namespace dell'app, quindi valgono anche per un'immagine che gira come root:
+
+- **internet** è aperto (IPv4 e IPv6; se l'istanza ha un proxy, passa da lì);
+- la **rete privata** (RFC 1918, ULA, CGNAT) è chiusa: un'app non raggiunge il database o il server di posta della tua LAN;
+- **loopback, link-local, indirizzi del cluster e del nodo e porte di Kubernetes** (6443, 10250, 10255, 2379-2380) restano bloccati sempre, anche se qualcuno li elenca.
+
+### Per l'amministratore: aprire una destinazione privata
+
+Un'app che deve parlare con un servizio della LAN (per esempio `db.azienda.lan:5432` o `smtp.acme.lan:587`) non ha bisogno di una rete aperta: l'amministratore dell'installazione apre **solo quell'indirizzo e quella porta**.
+
+1. **Console.** In *Administration → Apps & resources → Instance settings*, riga *Private destinations*, **+ Add destination**: host (IP o nome DNS), porta e una nota facoltativa. *Remove* chiude la destinazione.
+2. **API.** `GET /admin/apps/egress` legge l'elenco, `PUT /admin/apps/egress` lo sostituisce per intero (`{"privateDestinations":[{"host":"db.azienda.lan","port":5432,"note":"database del backoffice"}]}`). Serve essere amministratore dell'installazione (altrimenti 403).
+
+Cosa succede:
+
+- l'API risponde **422 `destination_blocked`** per un indirizzo del cluster (`10.42.0.0/16`, `10.43.0.0/16`), un indirizzo del nodo, loopback, link-local, una porta di Kubernetes o una destinazione della lista `GITSTACK_EGRESS_DENY`; **422 `destination_unresolved`** se il nome non si risolve. Se un nome porta a più indirizzi basta uno vietato per rifiutarlo, e nulla viene scritto;
+- la destinazione vale **solo** per l'indirizzo e la porta TCP indicati: dell'app resta chiuso tutto il resto della rete privata, e la stessa porta su un altro host;
+- la NetworkPolicy lavora sugli indirizzi IP: un nome si risolve quando la policy viene applicata (a ogni deploy e a ogni modifica di queste impostazioni), non di continuo. Se l'indirizzo del servizio cambia, riapplica salvando di nuovo le impostazioni o con un deploy dell'app;
+- la modifica si applica subito alle app in esecuzione, senza riavvii e senza creare versioni;
+- la lista `--egress-allow` di webhook e mirror (`docs/operations.md`) non apre la rete privata alle app: per le app l'unico modo è questa console. La lista vietata `--egress-deny`, invece, vale anche qui.
+
+### Per chi configura l'app: restringere l'uscita
+
+Chi ha `admin` sul repo può restringere l'uscita della **sua** app a un elenco di destinazioni: *App → Settings → Volumes & resources → Outbound network → Restrict this app*. Con la restrizione l'app raggiunge solo le destinazioni elencate, più le app dello stesso repo (per nome, H15) e il DNS; niente internet aperto e niente proxy.
+
+- `GET /repos/{owner}/{repo}/apps/{app}/egress` (serve `write`) mostra la restrizione e le destinazioni private che l'amministratore ha aperto (`allowedPrivate`);
+- `PUT …/egress` con `{"destinations":[{"host":"api.example.com","port":443}]}` la imposta (serve `admin`); un elenco vuoto chiude ogni altra uscita; `DELETE …/egress` la toglie e l'app torna all'uscita dell'istanza;
+- una voce pubblica (internet) va sempre bene; una voce nella **rete privata** deve essere una di quelle aperte dall'amministratore, con la stessa porta, altrimenti **422 `destination_blocked`**. Una restrizione non può mai aprire più di quanto permette l'amministratore. Se l'amministratore chiude poi una destinazione, l'app la perde alla prima riapplicazione della policy (subito, perché la chiusura riapplica la policy di tutte le app) anche se resta scritta nell'elenco;
+- come per l'amministratore, un nome si risolve all'applicazione della policy e vale per le porte TCP.
+
+Se l'app usa un database nello stesso repo (un'altra app, H15) non serve nessuna apertura: le app dello stesso repo si raggiungono per nome anche con la restrizione.
