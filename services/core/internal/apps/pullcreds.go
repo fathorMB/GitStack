@@ -40,10 +40,10 @@ func PullCredentialsFor(keys []string, now func() time.Time) func(context.Contex
 // imageHost è l'host (con porta) di un riferimento di immagine; vuoto se non ha host.
 func imageHost(ref string) string {
 	host, _, ok := strings.Cut(ref, "/")
-	if !ok || !(strings.ContainsAny(host, ".:") || host == "localhost") {
-		return ""
+	if ok && (strings.ContainsAny(host, ".:") || host == "localhost") {
+		return host
 	}
-	return host
+	return ""
 }
 
 // refreshPullSecret ruota il token del pull secret di un'app in servizio prima che scada: i pod

@@ -537,8 +537,8 @@ func (c *Controller) ensurePullSecret(ctx context.Context, ns string, id uuid.UU
 	want := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: pullSecretName, Namespace: ns, Labels: objectLabels(id),
 			Annotations: map[string]string{annotationPullIssued: c.cfg.Now().UTC().Format(time.RFC3339)}},
-		Type:      corev1.SecretTypeDockerConfigJson,
-		Data:       map[string][]byte{corev1.DockerConfigJsonKey: cfg},
+		Type: corev1.SecretTypeDockerConfigJson,
+		Data: map[string][]byte{corev1.DockerConfigJsonKey: cfg},
 	}
 	secrets := c.kube.CoreV1().Secrets(ns)
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {

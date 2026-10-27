@@ -98,9 +98,9 @@ type Config struct {
 	// token di pull delle app (GIT-425). Vuote: quei token non valgono.
 	AppPullKeys []string
 	PollTimeout time.Duration
-	PollEvery    time.Duration
-	Now          func() time.Time
-	Log          *slog.Logger
+	PollEvery   time.Duration
+	Now         func() time.Time
+	Log         *slog.Logger
 }
 
 type gateway struct {
