@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -44,18 +45,30 @@ var runRe = regexp.MustCompile(`(?m)^\s*- run: (.*)$`)
 // fakeAct legge il workflow indicato da -W e stampa l'output nello stile di act: un passo
 // per ogni `- run:`; un comando che contiene "exit 1" fallisce e ferma il job.
 func fakeAct(args []string) int {
-	var wf string
+	var wf, evf string
 	for i, a := range args {
 		if a == "-W" && i+1 < len(args) {
 			wf = args[i+1]
 		}
+		if a == "-e" && i+1 < len(args) {
+			evf = args[i+1]
+		}
+	}
+	if f := os.Getenv("CIRUNNER_FAKE_ACT_EVENT"); f != "" { // file evento + HEAD del workspace, come act li leggerebbe
+		ev, err := os.ReadFile(evf)
+		if err != nil {
+			fmt.Println("Error: file evento:", err)
+			return 1
+		}
+		head, _ := os.ReadFile(filepath.Join(".git", "HEAD"))
+		_ = os.WriteFile(f, []byte(string(ev)+"\n"+strings.TrimSpace(string(head))), 0o600)
 	}
 	if f := os.Getenv("CIRUNNER_FAKE_ACT_ARGS"); f != "" {
 		_ = os.WriteFile(f, []byte(strings.Join(args, "\n")), 0o600)
 	}
 	if f := os.Getenv("CIRUNNER_FAKE_ACT_ENV"); f != "" {
 		var kv []string
-		for _, k := range []string{"ACTIONS_CACHE_URL", "ACTIONS_RESULTS_URL", "ACTIONS_RUNTIME_TOKEN", "GITHUB_TOKEN", "GITSTACK_REPOSITORY"} {
+		for _, k := range []string{"ACTIONS_CACHE_URL", "ACTIONS_RESULTS_URL", "ACTIONS_RUNTIME_TOKEN", "GITHUB_TOKEN", "GITSTACK_REPOSITORY", "GITHUB_SHA", "GITHUB_REF"} {
 			kv = append(kv, k+"="+os.Getenv(k))
 		}
 		_ = os.WriteFile(f, []byte(strings.Join(kv, "\n")), 0o600)
@@ -98,6 +111,7 @@ type fakeGateway struct {
 	runnerv1connect.UnimplementedRunnerServiceHandler
 	mu       sync.Mutex
 	workflow string
+	extra    map[string]any // campi in piu' del contesto del task
 	taken    bool
 	rows     []string
 	result   runnerv1.Result
@@ -116,7 +130,11 @@ func (g *fakeGateway) FetchTask(_ context.Context, req *connect.Request[runnerv1
 		return connect.NewResponse(&runnerv1.FetchTaskResponse{}), nil
 	}
 	g.taken = true
-	cx, _ := structpb.NewStruct(map[string]any{"job": "build", "event_name": "push", "sha": strings.Repeat("a", 40), "repository": "alice/app"})
+	fields := map[string]any{"job": "build", "event_name": "push", "sha": strings.Repeat("a", 40), "repository": "alice/app"}
+	for k, v := range g.extra {
+		fields[k] = v
+	}
+	cx, _ := structpb.NewStruct(fields)
 	return connect.NewResponse(&runnerv1.FetchTaskResponse{Task: &runnerv1.Task{
 		Id: 42, WorkflowPayload: []byte(g.workflow), Context: cx, Secrets: map[string]string{"GITHUB_TOKEN": jobToken},
 	}}), nil
@@ -262,6 +280,72 @@ func TestRun_WorkflowADuePassi(t *testing.T) {
 	}
 	if b, err := os.ReadFile(filepath.Join(cfg.WorkDir, "workspace", "src", "a.txt")); err != nil || string(b) != "a" {
 		t.Errorf("file estratto: %q %v", b, err)
+	}
+}
+
+// TestRun_EventoSha (GIT-439): act riceve -e con un file evento che ha gli input del run, il ref
+// e lo sha; il workspace ha un HEAD sullo sha del run e l'ambiente ha GITHUB_SHA e GITHUB_REF.
+func TestRun_EventoSha(t *testing.T) {
+	sha := strings.Repeat("b", 40)
+	g := &fakeGateway{workflow: twoSteps, archive: tarball(t, map[string]string{"README.md": "x"}), extra: map[string]any{
+		"event_name": "workflow_dispatch", "sha": sha, "ref": "refs/heads/main",
+		"inputs": map[string]any{"versione": "0.0.1", "rompi": "no"},
+	}}
+	cfg := cfgFor(t, start(t, g))
+	dir := t.TempDir()
+	argsF, envF, evF := filepath.Join(dir, "args"), filepath.Join(dir, "env"), filepath.Join(dir, "event")
+	t.Setenv("CIRUNNER_FAKE_ACT_ARGS", argsF)
+	t.Setenv("CIRUNNER_FAKE_ACT_ENV", envF)
+	t.Setenv("CIRUNNER_FAKE_ACT_EVENT", evF)
+	res, err := cirunner.Run(context.Background(), cfg)
+	if err != nil || res.Conclusion != runnerv1.Result_RESULT_SUCCESS {
+		t.Fatalf("esito %+v: %v", res, err)
+	}
+	args, _ := os.ReadFile(argsF)
+	evFile := filepath.Join(cfg.WorkDir, "workflow", "event.json")
+	lines := strings.Split(string(args), "\n")
+	if len(lines) < 3 || lines[0] != "workflow_dispatch" || lines[1] != "-e" || lines[2] != evFile {
+		t.Errorf("argomenti di act: %q", lines)
+	}
+	raw, _ := os.ReadFile(evF)
+	evJSON, head, _ := strings.Cut(string(raw), "\n")
+	var ev struct {
+		Inputs     map[string]string `json:"inputs"`
+		Ref        string            `json:"ref"`
+		After      string            `json:"after"`
+		Repository struct {
+			FullName string `json:"full_name"`
+		} `json:"repository"`
+	}
+	if err := json.Unmarshal([]byte(evJSON), &ev); err != nil {
+		t.Fatalf("file evento %q: %v", evJSON, err)
+	}
+	if ev.Inputs["versione"] != "0.0.1" || ev.Inputs["rompi"] != "no" || len(ev.Inputs) != 2 || ev.Ref != "refs/heads/main" || ev.After != sha || ev.Repository.FullName != "alice/app" {
+		t.Errorf("file evento: %s", evJSON)
+	}
+	if head != sha {
+		t.Errorf(".git/HEAD del workspace: %q", head)
+	}
+	env, _ := os.ReadFile(envF)
+	for _, want := range []string{"GITHUB_SHA=" + sha, "GITHUB_REF=refs/heads/main"} {
+		if !strings.Contains(string(env), want) {
+			t.Errorf("manca %q nell'ambiente:\n%s", want, env)
+		}
+	}
+}
+
+// TestRun_PushSenzaInput: un evento push ha il file evento (ref e sha) ma nessun input.
+func TestRun_PushSenzaInput(t *testing.T) {
+	g := &fakeGateway{workflow: twoSteps, archive: tarball(t, map[string]string{"README.md": "x"}), extra: map[string]any{"ref": "refs/heads/dev"}}
+	cfg := cfgFor(t, start(t, g))
+	evF := filepath.Join(t.TempDir(), "event")
+	t.Setenv("CIRUNNER_FAKE_ACT_EVENT", evF)
+	if _, err := cirunner.Run(context.Background(), cfg); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := os.ReadFile(evF)
+	if strings.Contains(string(raw), `"inputs"`) || !strings.Contains(string(raw), `"ref":"refs/heads/dev"`) {
+		t.Errorf("file evento: %s", raw)
 	}
 }
 
