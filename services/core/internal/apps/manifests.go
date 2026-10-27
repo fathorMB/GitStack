@@ -142,6 +142,12 @@ func (g *GatewayAccess) APIURL() string {
 	return fmt.Sprintf("http://%s.%s.svc.cluster.local:%d/v1", g.Service, g.Namespace, g.Port)
 }
 
+// AppKeysURL è il valore di GITSTACK_APP_KEYS_URL (GIT-444): le chiavi pubbliche con cui l'app
+// verifica le intestazioni firmate H6, sulla porta interna del gateway (senza prefisso /v1 né /api).
+func (g *GatewayAccess) AppKeysURL() string {
+	return fmt.Sprintf("http://%s.%s.svc.cluster.local:%d/.well-known/gitstack-app-keys", g.Service, g.Namespace, g.Port)
+}
+
 // NetworkPolicyOptions sono le dipendenze d'istanza della policy H9.
 type NetworkPolicyOptions struct {
 	// Gateway: se valido, una regola di egress fissa verso i soli pod del gateway sulla porta interna
@@ -327,6 +333,9 @@ const (
 	// EnvAPIURL è l'API di GitStack dal gateway nel cluster (GIT-442): presente solo se core conosce
 	// il gateway interno.
 	EnvAPIURL = "GITSTACK_API_URL"
+	// EnvAppKeysURL sono le chiavi pubbliche delle intestazioni firmate H6 sulla porta interna del
+	// gateway (GIT-444): stesse condizioni di EnvAPIURL.
+	EnvAppKeysURL = "GITSTACK_APP_KEYS_URL"
 )
 
 // IsReservedEnvName dice se il nome di una variabile o di un segreto dell'app usa il prefisso
@@ -343,6 +352,7 @@ func systemEnv(v store.AppVersion, o BuildOptions) map[string]string {
 	out := map[string]string{}
 	if o.Gateway.Valid() {
 		out[EnvAPIURL] = o.Gateway.APIURL()
+		out[EnvAppKeysURL] = o.Gateway.AppKeysURL()
 	}
 	if tag := imageTag(v.Image.Reference); tag != "" {
 		out[EnvAppVersion] = tag

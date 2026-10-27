@@ -34,7 +34,8 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 
 // NewInternalRouter è il router della porta interna (GITSTACK_GATEWAY_INTERNAL_ADDR, GIT-442, H16):
 // quella che il chart apre alle app ospitate. Serve solo /v1 (contratto e rotte di identity), con la
-// stessa autenticazione per token; niente forward-auth e login delle app, niente /v2, niente probe.
+// stessa autenticazione per token; delle rotte di appauth solo le chiavi pubbliche (GIT-444), niente
+// forward-auth e login delle app, niente /v2, niente probe.
 // Non si fida mai di X-Forwarded-For (TrustedProxies è svuotato): l'IP del client è quello del peer,
 // così un'app non può falsificarlo per rate limit e audit.
 func NewInternalRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Handler {
@@ -95,6 +96,9 @@ func newRouter(cfg config.Config, logger *slog.Logger, internal bool, opts ...Op
 
 	if !internal {
 		mountAppAuth(mux, cfg, logger, base, verifier, o)
+	} else {
+		// Sulla porta interna solo le chiavi pubbliche delle intestazioni H6 (GIT-444).
+		mountAppKeys(mux, cfg, logger, base)
 	}
 
 	// Middlewares è applicato per ogni operazione generata, dal primo

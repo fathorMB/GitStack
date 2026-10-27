@@ -17,6 +17,18 @@ import (
 // «login» passa senza (mai fail open). Sull'host di GitStack passano dal prefisso /api del chart.
 func mountAppAuth(mux *http.ServeMux, cfg config.Config, logger *slog.Logger, base middleware.Middleware,
 	verifier identityclient.Verifier, o routerOptions) {
+	mountAppAuthRoutes(mux, cfg, logger, base, verifier, o, false)
+}
+
+// mountAppKeys monta sulla porta interna (GIT-444, H6/H16) la sola rotta delle chiavi pubbliche: le
+// app ospitate la raggiungono (GITSTACK_APP_KEYS_URL) per verificare le intestazioni firmate. Sono
+// pubbliche e senza autenticazione; verify e login restano fuori dalla porta interna (GIT-442).
+func mountAppKeys(mux *http.ServeMux, cfg config.Config, logger *slog.Logger, base middleware.Middleware) {
+	mountAppAuthRoutes(mux, cfg, logger, base, nil, routerOptions{}, true)
+}
+
+func mountAppAuthRoutes(mux *http.ServeMux, cfg config.Config, logger *slog.Logger, base middleware.Middleware,
+	verifier identityclient.Verifier, o routerOptions, keysOnly bool) {
 	ac := appauth.Config{
 		Verifier: verifier, Profiles: o.profiles, Permissions: o.permissions, Access: o.appAccess,
 		Secret: cfg.IdentityServiceSecret, PublicURL: cfg.PublicURL, AppsDomain: cfg.AppsDomain,
@@ -29,6 +41,11 @@ func mountAppAuth(mux *http.ServeMux, cfg config.Config, logger *slog.Logger, ba
 		} else {
 			ac.Signer = signer
 		}
+	}
+	if keysOnly {
+		h := appauth.New(ac)
+		mux.Handle("GET "+appauth.PathKeys, base(http.HandlerFunc(h.ServeKeys)))
+		return
 	}
 	// Lista di accesso dei tester (GIT-376): read sul repo OPPURE membro della lista, chiesta a core.
 	// Un test può sostituire tutta la regola con WithAppAccess.

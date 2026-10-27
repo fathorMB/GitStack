@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -54,7 +55,7 @@ func TestInternalRouter_SoloV1(t *testing.T) {
 
 	in := NewInternalRouter(cfg, discardLogger())
 	pub := NewRouter(cfg, discardLogger())
-	for _, path := range []string{appauth.PathVerify, appauth.PathLogin, appauth.PathKeys, "/healthz", "/readyz", "/", "/index.html", "/login", "/v2/"} {
+	for _, path := range []string{appauth.PathVerify, appauth.PathLogin, "/healthz", "/readyz", "/", "/index.html", "/login", "/v2/"} {
 		rec := httptest.NewRecorder()
 		in.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 		if rec.Code != http.StatusNotFound {
@@ -73,5 +74,49 @@ func TestInternalRouter_SoloV1(t *testing.T) {
 	in.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/meta", nil))
 	if rec.Code != http.StatusOK {
 		t.Errorf("interna GET /v1/meta: %d, voluto 200", rec.Code)
+	}
+}
+
+// Le chiavi pubbliche delle intestazioni H6 sono raggiungibili dalle app sulla porta interna
+// (GIT-444, GITSTACK_APP_KEYS_URL), senza autenticazione; verify e login restano assenti.
+func TestInternalRouter_ChiaviAppPubbliche(t *testing.T) {
+	cfg := newTestConfig(t, "http://127.0.0.1:1")
+	cfg.IdentityServiceSecret = testSecret
+	cfg.AppAuthSigningKeys = base64.StdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef"))
+	cfg.AppsDomain = "apps.example.com"
+
+	in := NewInternalRouter(cfg, discardLogger())
+	rec := httptest.NewRecorder()
+	in.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, appauth.PathKeys, nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("interna GET %s: %d, voluto 200", appauth.PathKeys, rec.Code)
+	}
+	var body struct {
+		Keys []struct {
+			Kid       string `json:"kid"`
+			Alg       string `json:"alg"`
+			PublicKey string `json:"publicKey"`
+		} `json:"keys"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("corpo non JSON: %v", err)
+	}
+	if len(body.Keys) == 0 || body.Keys[0].Alg != "Ed25519" || body.Keys[0].PublicKey == "" {
+		t.Errorf("chiavi inattese: %s", rec.Body.String())
+	}
+	// Solo GET, e verify/login restano fuori.
+	for _, path := range []string{appauth.PathVerify, appauth.PathLogin} {
+		r := httptest.NewRecorder()
+		in.ServeHTTP(r, httptest.NewRequest(http.MethodGet, path, nil))
+		if r.Code != http.StatusNotFound {
+			t.Errorf("interna GET %s: %d, voluto 404", path, r.Code)
+		}
+	}
+	// Senza chiavi di firma la rotta risponde 404, come sulla porta pubblica.
+	cfg.AppAuthSigningKeys = ""
+	r := httptest.NewRecorder()
+	NewInternalRouter(cfg, discardLogger()).ServeHTTP(r, httptest.NewRequest(http.MethodGet, appauth.PathKeys, nil))
+	if r.Code != http.StatusNotFound {
+		t.Errorf("senza chiavi: %d, voluto 404", r.Code)
 	}
 }
