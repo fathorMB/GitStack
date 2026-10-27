@@ -349,6 +349,7 @@ rules_of() {
 OUT="$(render --namespace prova-ns)" || { bad "helm template di default fallito"; exit 1; }
 expect_eq "hosting spento: nessun ClusterRole delle app" "$(count 'name: gitstack-(apps-controller|app-workload)')" "0"
 expect_lacks "hosting spento: core senza GITSTACK_CORE_APPS_ENABLED" "$(doc Deployment gitstack-core)" "GITSTACK_CORE_APPS_ENABLED"
+expect_lacks "hosting spento: core senza GITSTACK_CORE_APPS_GATE_IMAGE" "$(doc Deployment gitstack-core)" "GITSTACK_CORE_APPS_GATE_IMAGE"
 expect_lacks "hosting spento: core senza ServiceAccount dedicato" "$(doc Deployment gitstack-core)" "serviceAccountName"
 expect_eq "hosting spento: nessun ClusterRoleBinding" "$(docs ClusterRoleBinding | grep -c '^kind: ClusterRoleBinding$')" "0"
 if helm_rc --set apps.enabled=true; then bad "apps.enabled senza apps.domain: helm template doveva fermarsi"; else ok; fi
@@ -357,6 +358,11 @@ OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=app
 d="$(doc Deployment gitstack-core)"
 expect_has "hosting acceso: core riceve ENABLED" "${d}" "GITSTACK_CORE_APPS_ENABLED"
 expect_has "hosting acceso: core riceve il dominio" "${d}" 'value: "apps.acme.test"'
+# GIT-418: il cancello di rete dei pod delle app usa l'immagine di core (la stessa del container core).
+gate_image="$(printf '%s\n' "${d}" | grep -A1 'name: GITSTACK_CORE_APPS_GATE_IMAGE' | grep 'value:' | cut -d'"' -f2)"
+if [ -n "${gate_image}" ]; then ok; else bad "hosting acceso: core senza GITSTACK_CORE_APPS_GATE_IMAGE"; fi
+core_image="$(printf '%s\n' "${d}" | grep -E '^[[:space:]]+image: ' | sed 's/^[[:space:]]*image: //; s/"//g' | grep -Fx -e "${gate_image}" | head -1)"
+expect_eq "hosting acceso: GATE_IMAGE uguale all'image: del container core" "${core_image}" "${gate_image}"
 expect_lacks "hosting acceso: niente più AUTH_MIDDLEWARE (GIT-347)" "${d}" "GITSTACK_CORE_APPS_AUTH_MIDDLEWARE"
 expect_has "hosting acceso: core riceve l'indirizzo del forward-auth del gateway" "${d}" 'value: "http://gitstack-gateway.prova-ns.svc.cluster.local:8080/_appauth/verify"'
 g="$(doc Deployment gitstack-gateway)"
