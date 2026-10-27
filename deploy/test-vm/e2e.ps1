@@ -1118,6 +1118,8 @@ function Main {
                 Start-Sleep -Seconds 5
             }
             if (-not $apiBack) { throw "l'API dei mirror non risponde 200 dopo il riavvio di core (ultimo status $($probe.StatusCode))" }
+            # Anche git e' in rollout: si aspetta una richiesta che passa dal servizio git (GIT-434).
+            Wait-GitServing -BaseUrl $baseUrl -Owner $gitUser -Repo $gitRepo -Headers $e9Bearer -TimeoutSeconds 180
 
             $e9Stage = 'creazione del mirror'
             $mirrorsUrl = "$baseUrl/api/v1/repos/$gitUser/$gitRepo/mirrors"
@@ -1136,8 +1138,8 @@ function Main {
                 $getMirror = Invoke-HttpRaw -Uri $e9MirrorUrl -Headers $e9Bearer
                 if ($getMirror.StatusCode -eq 200) {
                     $mj = $getMirror.Body | ConvertFrom-Json
-                    $mirrorState = [string]$mj.state
-                    $mirrorErr = [string]$mj.lastError
+                    $mirrorState = Get-JsonField -Object $mj -Name 'state'
+                    $mirrorErr = Get-JsonField -Object $mj -Name 'lastError'
                     if ($mirrorState -eq 'in_sync' -or $mirrorState -eq 'diverged') { break }
                 }
                 Start-Sleep -Seconds 5
@@ -1189,7 +1191,15 @@ function Main {
             # Pulizia: mirror, cablaggio e server di prova, anche dopo un fallimento.
             try {
                 if ($e9MirrorUrl) { Invoke-HttpRaw -Uri $e9MirrorUrl -Method 'DELETE' -Headers $e9Bearer | Out-Null }
-                if ($e9Wired) { Invoke-RemoteHelper -RemoteArgs @('mirror-disable', 'gitstack', 'default') -TimeoutSeconds 600 | Out-Null }
+                if ($e9Wired) {
+                    Invoke-RemoteHelper -RemoteArgs @('mirror-disable', 'gitstack', 'default') -TimeoutSeconds 600 | Out-Null
+                    try {
+                        Wait-GitServing -BaseUrl $baseUrl -Owner $gitUser -Repo $gitRepo -Headers $e9Bearer -TimeoutSeconds 180
+                    } catch {
+                        $e9Ok = $false
+                        $e9Details += "[dopo mirror-disable] $($_.Exception.Message)"
+                    }
+                }
                 if ($e9Started) { Invoke-RemoteHelper -RemoteArgs @('mirror-dest-stop') -TimeoutSeconds 30 | Out-Null }
             } catch {
                 Write-Log "e9: pulizia non completata: $($_.Exception.Message)"
@@ -1253,13 +1263,17 @@ function Main {
                 Start-Sleep -Seconds 5
             }
             if (-not $coreBack) { throw "core non risponde 200 dopo il riavvio (ultimo status $($probe10.StatusCode))" }
+            # La sonda sopra tocca solo core e DB: si aspetta anche il servizio git (GIT-434).
+            Wait-GitServing -BaseUrl $baseUrl -Owner $gitUser -Repo $gitRepo -Headers $e10Bearer -TimeoutSeconds 180
 
             $e10Stage = 'import come mirror'
             $originUrl = "https://${MirrorAliasIp}:$e10Port/mirror.git"
-            $imp = Invoke-HttpRaw -Uri "$baseUrl/api/v1/repos/import" -Method 'POST' -Headers $e10Bearer -Body (@{
+            # Al massimo 4 tentativi, e solo su 503 git_unavailable (il repo non e' stato creato).
+            $imp = Invoke-RepoImportWithRetry -Uri "$baseUrl/api/v1/repos/import" -Headers $e10Bearer -MaxAttempts 4 -DelaySeconds 10 -Body (@{
                     owner = $gitUser; name = $e10Name; visibility = 'private'; url = $originUrl; mode = 'mirror'
                     username = $originUser; token = $originToken; intervalSeconds = 3600 } | ConvertTo-Json)
-            if ($imp.StatusCode -ne 201) { throw "POST /repos/import: status $($imp.StatusCode), corpo '$($imp.Body)' $($imp.Error)" }
+            if ($imp.Attempts -gt 1) { $e10Details += "POST /repos/import: $($imp.Attempts) tentativi (503 git_unavailable prima dell'ultimo)" }
+            if ($imp.StatusCode -ne 201) { throw "POST /repos/import: status $($imp.StatusCode) dopo $($imp.Attempts) tentativi, corpo '$($imp.Body)' $($imp.Error)" }
             $e10Repo = $e10Name
             if ($imp.Body.Contains($originToken)) { throw "il token dell'origine compare nella risposta dell'import" }
             $e10PullUrl = "$baseUrl/api/v1/repos/$gitUser/$e10Name/pull-mirror"
@@ -1272,8 +1286,8 @@ function Main {
                 $getPull = Invoke-HttpRaw -Uri $e10PullUrl -Headers $e10Bearer
                 if ($getPull.StatusCode -eq 200) {
                     $pj = $getPull.Body | ConvertFrom-Json
-                    $pullState = [string]$pj.state
-                    $pullErr = [string]$pj.lastError
+                    $pullState = Get-JsonField -Object $pj -Name 'state'
+                    $pullErr = Get-JsonField -Object $pj -Name 'lastError'
                     if ($pullState -eq 'in_sync' -or $pullState -eq 'error') { break }
                 }
                 Start-Sleep -Seconds 5
@@ -1331,7 +1345,15 @@ function Main {
                     Invoke-HttpRaw -Uri "$e10PullUrl/stop" -Method 'POST' -Headers $e10Bearer -Body (@{ confirm = $e10Repo } | ConvertTo-Json) | Out-Null
                     Invoke-HttpRaw -Uri "$baseUrl/api/v1/repos/$gitUser/$e10Repo" -Method 'DELETE' -Headers $e10Bearer | Out-Null
                 }
-                if ($e10Wired) { Invoke-RemoteHelper -RemoteArgs @('mirror-disable', 'gitstack', 'default') -TimeoutSeconds 600 | Out-Null }
+                if ($e10Wired) {
+                    Invoke-RemoteHelper -RemoteArgs @('mirror-disable', 'gitstack', 'default') -TimeoutSeconds 600 | Out-Null
+                    try {
+                        Wait-GitServing -BaseUrl $baseUrl -Owner $gitUser -Repo $gitRepo -Headers $e10Bearer -TimeoutSeconds 180
+                    } catch {
+                        $e10Ok = $false
+                        $e10Details += "[dopo mirror-disable] $($_.Exception.Message)"
+                    }
+                }
                 if ($e10Started) { Invoke-RemoteHelper -RemoteArgs @('mirror-dest-stop') -TimeoutSeconds 30 | Out-Null }
             } catch {
                 Write-Log "e10: pulizia non completata: $($_.Exception.Message)"
