@@ -6772,6 +6772,11 @@ type ResourceList struct {
 	Total   int        `json:"total"`
 }
 
+// ResourceMembersResult defines model for ResourceMembersResult.
+type ResourceMembersResult struct {
+	UserIds []openapi_types.UUID `json:"userIds"`
+}
+
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
 type ResourceRole string
 
@@ -8181,6 +8186,11 @@ type GitGetTreeParams struct {
 
 	// Path Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
 	Path *PathParam `form:"path,omitempty" json:"path,omitempty"`
+}
+
+// ListResourceMembersParams defines parameters for ListResourceMembers.
+type ListResourceMembersParams struct {
+	Role ResourceRole `form:"role" json:"role"`
 }
 
 // DeleteNotificationsParams defines parameters for DeleteNotifications.
@@ -9710,6 +9720,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /internal/resources/{resourceId}/grants/creator (the `GrantResourceCreator` operationId).
 	GrantResourceCreator(ctx context.Context, resourceId openapi_types.UUID, body GrantResourceCreatorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListResourceMembers Elenca gli utenti con almeno un ruolo su una risorsa (per core)
+	//
+	// Per core (v3-a, H12, GIT-404): gli utenti attivi con almeno il ruolo `role` sulla risorsa, calcolato come in `checkPermission` (grant diretto, via team, owner dell'organizzazione, proprietario del repo personale, amministratore di sistema). Core la usa per avvisare gli admin di un repo. Una risorsa senza grant ne attributi da' un elenco vuoto (a parte gli amministratori di sistema per `admin`). Raggiungibile solo dai servizi: il gateway pubblico rifiuta `/v1/internal/*`.
+	//
+	// Corresponds with GET /internal/resources/{resourceId}/members (the `ListResourceMembers` operationId).
+	ListResourceMembers(ctx context.Context, resourceId openapi_types.UUID, params *ListResourceMembersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// LookupSshKey Risolve un utente dal fingerprint di una chiave SSH
 	//
@@ -13715,6 +13732,23 @@ func (c *Client) GrantResourceCreatorWithBody(ctx context.Context, resourceId op
 // Corresponds with POST /internal/resources/{resourceId}/grants/creator (the `GrantResourceCreator` operationId).
 func (c *Client) GrantResourceCreator(ctx context.Context, resourceId openapi_types.UUID, body GrantResourceCreatorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGrantResourceCreatorRequest(c.Server, resourceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListResourceMembers Elenca gli utenti con almeno un ruolo su una risorsa (per core)
+//
+// Per core (v3-a, H12, GIT-404): gli utenti attivi con almeno il ruolo `role` sulla risorsa, calcolato come in `checkPermission` (grant diretto, via team, owner dell'organizzazione, proprietario del repo personale, amministratore di sistema). Core la usa per avvisare gli admin di un repo. Una risorsa senza grant ne attributi da' un elenco vuoto (a parte gli amministratori di sistema per `admin`). Raggiungibile solo dai servizi: il gateway pubblico rifiuta `/v1/internal/*`.
+//
+// Corresponds with GET /internal/resources/{resourceId}/members (the `ListResourceMembers` operationId).
+func (c *Client) ListResourceMembers(ctx context.Context, resourceId openapi_types.UUID, params *ListResourceMembersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListResourceMembersRequest(c.Server, resourceId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -22457,6 +22491,63 @@ func NewGrantResourceCreatorRequestWithBody(server string, resourceId openapi_ty
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListResourceMembersRequest constructs an http.Request for the ListResourceMembers method
+func NewListResourceMembersRequest(server string, resourceId openapi_types.UUID, params *ListResourceMembersParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "resourceId", resourceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/resources/%s/members", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "role", params.Role, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -37989,6 +38080,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /internal/resources/{resourceId}/grants/creator (the `GrantResourceCreator` operationId).
 	GrantResourceCreatorWithResponse(ctx context.Context, resourceId openapi_types.UUID, body GrantResourceCreatorJSONRequestBody, reqEditors ...RequestEditorFn) (*GrantResourceCreatorResponse, error)
 
+	// ListResourceMembersWithResponse Elenca gli utenti con almeno un ruolo su una risorsa (per core)
+	//
+	// Per core (v3-a, H12, GIT-404): gli utenti attivi con almeno il ruolo `role` sulla risorsa, calcolato come in `checkPermission` (grant diretto, via team, owner dell'organizzazione, proprietario del repo personale, amministratore di sistema). Core la usa per avvisare gli admin di un repo. Una risorsa senza grant ne attributi da' un elenco vuoto (a parte gli amministratori di sistema per `admin`). Raggiungibile solo dai servizi: il gateway pubblico rifiuta `/v1/internal/*`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/resources/{resourceId}/members (the `ListResourceMembers` operationId).
+	ListResourceMembersWithResponse(ctx context.Context, resourceId openapi_types.UUID, params *ListResourceMembersParams, reqEditors ...RequestEditorFn) (*ListResourceMembersResponse, error)
+
 	// LookupSshKeyWithResponse Risolve un utente dal fingerprint di una chiave SSH
 	//
 	// Usata dal servizio git all'accesso SSH. Aggiorna `lastUsedAt`.
@@ -44902,6 +45002,68 @@ func (r GrantResourceCreatorResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GrantResourceCreatorResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListResourceMembersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ResourceMembersResult
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListResourceMembersResponse) GetJSON200() *ResourceMembersResult {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListResourceMembersResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListResourceMembersResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListResourceMembersResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListResourceMembersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListResourceMembersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListResourceMembersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListResourceMembersResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -65664,6 +65826,21 @@ func (c *ClientWithResponses) GrantResourceCreatorWithResponse(ctx context.Conte
 	return ParseGrantResourceCreatorResponse(rsp)
 }
 
+// ListResourceMembersWithResponse Elenca gli utenti con almeno un ruolo su una risorsa (per core)
+//
+// Per core (v3-a, H12, GIT-404): gli utenti attivi con almeno il ruolo `role` sulla risorsa, calcolato come in `checkPermission` (grant diretto, via team, owner dell'organizzazione, proprietario del repo personale, amministratore di sistema). Core la usa per avvisare gli admin di un repo. Una risorsa senza grant ne attributi da' un elenco vuoto (a parte gli amministratori di sistema per `admin`). Raggiungibile solo dai servizi: il gateway pubblico rifiuta `/v1/internal/*`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/resources/{resourceId}/members (the `ListResourceMembers` operationId).
+func (c *ClientWithResponses) ListResourceMembersWithResponse(ctx context.Context, resourceId openapi_types.UUID, params *ListResourceMembersParams, reqEditors ...RequestEditorFn) (*ListResourceMembersResponse, error) {
+	rsp, err := c.ListResourceMembers(ctx, resourceId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListResourceMembersResponse(rsp)
+}
+
 // LookupSshKeyWithResponse Risolve un utente dal fingerprint di una chiave SSH
 //
 // Usata dal servizio git all'accesso SSH. Aggiorna `lastUsedAt`.
@@ -73811,6 +73988,53 @@ func ParseGrantResourceCreatorResponse(rsp *http.Response) (*GrantResourceCreato
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListResourceMembersResponse parses an HTTP response from a ListResourceMembersWithResponse call
+func ParseListResourceMembersResponse(rsp *http.Response) (*ListResourceMembersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListResourceMembersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ResourceMembersResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/google/uuid"
 )
@@ -43,3 +44,28 @@ func (c *Client) OrgOwners(ctx context.Context, orgID uuid.UUID) ([]uuid.UUID, e
 }
 
 var _ OrgOwnerLister = (*Client)(nil)
+
+// ResourceMembers elenca gli utenti attivi con almeno il ruolo dato sulla risorsa
+// (GET /internal/resources/{resourceId}/members?role=), con le regole di HasRole.
+// Core la usa per avvisare gli admin di un repo (GIT-404).
+func (c *Client) ResourceMembers(ctx context.Context, resourceID uuid.UUID, role string) ([]uuid.UUID, error) {
+	var res struct {
+		UserIDs []string `json:"userIds"`
+	}
+	st, err := c.call(ctx, http.MethodGet, "/internal/resources/"+resourceID.String()+"/members?role="+url.QueryEscape(role), nil, http.StatusOK, &res)
+	if err != nil {
+		return nil, err
+	}
+	if st != http.StatusOK {
+		return nil, fmt.Errorf("%w: l'elenco degli utenti con ruolo ha risposto %d", ErrUnavailable, st)
+	}
+	out := make([]uuid.UUID, 0, len(res.UserIDs))
+	for _, s := range res.UserIDs {
+		id, err := uuid.Parse(s)
+		if err != nil {
+			return nil, fmt.Errorf("%w: id utente non valido", ErrUnavailable)
+		}
+		out = append(out, id)
+	}
+	return out, nil
+}

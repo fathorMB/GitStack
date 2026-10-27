@@ -52,6 +52,22 @@ func (f *notifyIdentity) LookupUsers(ctx context.Context, ids []uuid.UUID) (map[
 	return out, err
 }
 
+// ResourceMembers elenca gli utenti noti con almeno il ruolo sulla risorsa, come farebbe identity (GIT-404).
+func (f *notifyIdentity) ResourceMembers(ctx context.Context, resourceID uuid.UUID, role string) ([]uuid.UUID, error) {
+	var out []uuid.UUID
+	for _, id := range users {
+		u := uuid.MustParse(id)
+		ok, err := f.HasRole(ctx, u, resourceID, role)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			out = append(out, u)
+		}
+	}
+	return out, nil
+}
+
 func (f *notifyIdentity) revoke(repo uuid.UUID, user string) {
 	f.rmu.Lock()
 	defer f.rmu.Unlock()

@@ -8642,6 +8642,52 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /internal/resources/{resourceId}/members:
+    parameters:
+      - name: resourceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listResourceMembers
+      tags: [internal]
+      x-mcp:
+        expose: false
+        name: resource_members_list
+        destructive: false
+      summary: Elenca gli utenti con almeno un ruolo su una risorsa (per core)
+      description: >
+        Per core (v3-a, H12, GIT-404): gli utenti attivi con almeno il ruolo
+        `role` sulla risorsa, calcolato come in `checkPermission` (grant
+        diretto, via team, owner dell'organizzazione, proprietario del repo
+        personale, amministratore di sistema). Core la usa per avvisare gli
+        admin di un repo. Una risorsa senza grant ne attributi da' un elenco
+        vuoto (a parte gli amministratori di sistema per `admin`). Raggiungibile
+        solo dai servizi: il gateway pubblico rifiuta `/v1/internal/*`.
+      security:
+        - serviceAuth: []
+      parameters:
+        - name: role
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/ResourceRole"
+      responses:
+        "200":
+          description: Gli utenti.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceMembersResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /internal/resources/{resourceId}:
     parameters:
       - name: resourceId
@@ -13543,6 +13589,17 @@ components:
       required: [owners]
       properties:
         owners:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    ResourceMembersResult:
+      type: object
+      additionalProperties: false
+      required: [userIds]
+      properties:
+        userIds:
           type: array
           items:
             type: string

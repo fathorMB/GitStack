@@ -1489,6 +1489,10 @@ export type OrgOwnersResult = {
     owners: Array<string>;
 };
 
+export type ResourceMembersResult = {
+    userIds: Array<string>;
+};
+
 export type GitCreateRepoInput = {
     repoId: string;
     name: RepoName;
@@ -17756,6 +17760,43 @@ export type SetResourceAttributesResponses = {
 };
 
 export type SetResourceAttributesResponse = SetResourceAttributesResponses[keyof SetResourceAttributesResponses];
+
+export type ListResourceMembersData = {
+    body?: never;
+    path: {
+        resourceId: string;
+    };
+    query: {
+        role: ResourceRole;
+    };
+    url: '/internal/resources/{resourceId}/members';
+};
+
+export type ListResourceMembersErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListResourceMembersError = ListResourceMembersErrors[keyof ListResourceMembersErrors];
+
+export type ListResourceMembersResponses = {
+    /**
+     * Gli utenti.
+     */
+    200: ResourceMembersResult;
+};
+
+export type ListResourceMembersResponse = ListResourceMembersResponses[keyof ListResourceMembersResponses];
 
 export type PurgeResourceAccessData = {
     body?: never;
