@@ -397,13 +397,15 @@ expect_eq "controller: rolebindings" "$(rules_of "${ctl}" | grep '"rolebindings"
 expect_eq "controller: bind solo sul ruolo modello" "$(rules_of "${ctl}" | grep '"clusterroles"')" '"rbac.authorization.k8s.io"|"clusterroles"|"bind"|"gitstack-app-workload"'
 expect_eq "controller: tre regole in tutto" "$(rules_of "${ctl}" | grep -c .)" "3"
 wl="$(doc ClusterRole gitstack-app-workload)"
-expect_eq "modello: risorse ammesse (ADR 0002, NetworkPolicy H9 e Middleware del login GIT-347)" "$(rules_of "${wl}" | cut -d'|' -f2 | sort | tr '\n' ' ')" '"deployments" "events" "ingressroutes", "middlewares" "networkpolicies" "persistentvolumeclaims" "pods" "pods/log" "secrets" "services" '
+expect_eq "modello: risorse ammesse (ADR 0002, NetworkPolicy H9 e Middleware del login GIT-347)" "$(rules_of "${wl}" | cut -d'|' -f2 | sort | tr '\n' ' ')" '"deployments" "events" "ingressroutes", "middlewares" "networkpolicies" "persistentvolumeclaims" "pods" "pods" "pods/log" "secrets" "services" '
 expect_eq "modello: Service (anche gli alias ExternalName H15, con list per toglierli)" "$(rules_of "${wl}" | grep '"services"')" '""|"services"|"create", "get", "list", "update", "delete"|'
 expect_eq "modello: NetworkPolicy H9" "$(rules_of "${wl}" | grep '"networkpolicies"')" '"networking.k8s.io"|"networkpolicies"|"get", "create", "update"|'
 expect_eq "modello: middlewares e ingressroutes con i soli verbi del controller" "$(rules_of "${wl}" | grep '"middlewares"')" '"traefik.io"|"ingressroutes", "middlewares"|"create", "get", "update", "delete"|'
 expect_eq "modello: PVC dei volumi (v3-b, H3) senza update" "$(rules_of "${wl}" | grep '"persistentvolumeclaims"')" '""|"persistentvolumeclaims"|"create", "get", "list", "delete"|'
 expect_lacks "modello: mai delete su deployments, pods" "$(rules_of "${wl}" | grep -E '"(deployments|pods)"')" "delete"
 expect_eq "modello: secrets con delete (deleteAppSecret sulle app senza segreti, GIT-424)" "$(rules_of "${wl}" | grep '"secrets"')" '""|"secrets"|"create", "get", "update", "delete"|'
+expect_eq "modello: metriche dei pod (metrics.k8s.io, solo get e list, GIT-427)" "$(rules_of "${wl}" | grep '"metrics.k8s.io"')" '"metrics.k8s.io"|"pods"|"get", "list"|'
+expect_lacks "controller: nessun permesso su metrics.k8s.io (la regola sta nel ruolo modello, GIT-427)" "${ctl}" "metrics.k8s.io"
 expect_lacks "modello: nessun permesso su namespaces" "${wl}" "namespaces"
 expect_lacks "modello: nessun permesso su rolebindings" "${wl}" "rolebindings"
 
