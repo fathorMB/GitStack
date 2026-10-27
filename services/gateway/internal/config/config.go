@@ -20,6 +20,11 @@ type Config struct {
 	// Addr è l'indirizzo di ascolto HTTP, es. ":8080".
 	Addr string
 
+	// InternalAddr è l'indirizzo della porta interna (GITSTACK_GATEWAY_INTERNAL_ADDR, GIT-442, H16),
+	// aperta dal chart alle app ospitate: serve solo /v1 e non si fida di X-Forwarded-For. Vuoto
+	// (default): la porta non c'è.
+	InternalAddr string
+
 	// CoreURL è la base URL del servizio core (es. "http://core:8080"),
 	// verso cui il gateway instrada le richieste /v1/*. Nessun default: il
 	// chart Helm di GIT-8 la imposta esplicitamente.
@@ -108,7 +113,8 @@ type RateLimitConfig struct {
 }
 
 const (
-	envAddr        = "GITSTACK_GATEWAY_ADDR"
+	envAddr         = "GITSTACK_GATEWAY_ADDR"
+	envInternalAddr = "GITSTACK_GATEWAY_INTERNAL_ADDR"
 	envCoreURL     = "GITSTACK_CORE_URL"
 	envCoreTimeout = "GITSTACK_CORE_TIMEOUT"
 	envLogLevel    = "GITSTACK_LOG_LEVEL"
@@ -228,6 +234,13 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 
 	if v, ok := lookup(envAddr); ok && strings.TrimSpace(v) != "" {
 		cfg.Addr = v
+	}
+
+	if v, ok := lookup(envInternalAddr); ok && strings.TrimSpace(v) != "" {
+		cfg.InternalAddr = strings.TrimSpace(v)
+		if cfg.InternalAddr == cfg.Addr {
+			errs = append(errs, fmt.Sprintf("%s deve essere diversa da %s: la porta interna non si fida di X-Forwarded-For", envInternalAddr, envAddr))
+		}
 	}
 
 	if v, ok := lookup(envVersion); ok && strings.TrimSpace(v) != "" {
