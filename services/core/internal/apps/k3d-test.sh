@@ -128,6 +128,17 @@ echo "ok: metriche di Traefik attive su traefik-metrics:9100, non esposte dal Se
 export GITSTACK_TEST_TRAEFIK_METRICS=1
 
 cd "$root/services/core"
+# GIT-443: se i test cadono, la diagnostica di rete (policy dei namespace delle app e regole di
+# kube-router sul nodo) finisce nel log del job: prima c'era solo il «KO» del probe.
+diagnose() {
+  echo "::group::diagnostica NetworkPolicy"
+  kc get networkpolicy -A -o yaml || true
+  kc get pods -A -o wide || true
+  docker exec "k3d-$cluster-server-0" sh -c 'iptables-save | grep -i -E "KUBE-NWPLCY|KUBE-DST|KUBE-SRC|KUBE-POD-FW"; ipset list 2>/dev/null | head -300' || true
+  echo "::endgroup::"
+}
+trap 'diagnose' ERR
 GITSTACK_TEST_KUBECONFIG="$work/kubeconfig" go test -tags integration -count=1 -timeout 25m \
   -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d|TestApps_SegretiKubernetesERollback|TestApps_IsolamentoSuK3d|TestApps_BarriereInUscitaSuK3d|TestApps_DestinazionePrivataApertaSuK3d|TestApps_CancelloVeroSenzaPolicySuK3d|TestApps_NomiInterniSuK3d|TestApps_VolumiSuK3d|TestApps_SenzaSegretiConRbacDelChartSuK3d|TestApps_RichiesteETraefikSuK3d' -v ./internal/httpserver/
+trap - ERR
 echo "OK: controller, segreti, isolamento, barriere in uscita, nomi interni, volumi e metriche di Traefik (richieste ed errori 5xx) delle app provati su k3d"
