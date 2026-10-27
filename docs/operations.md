@@ -2482,3 +2482,9 @@ Il periodo è valido solo se tutti i quattro criteri valgono: nessuna perdita di
 
 *Guida operativa — install.sh (T-09 di M-08 [c_8458909a21d9035f]),
 decisioni D17–D19 [c_1d1d61aca3dea601]*
+
+## Verifica GitHub dei rami di integrazione
+
+I push su `integrate/**` avviano i workflow GitHub CI, api-contract, docs e smoke con le verifiche previste sui push a main. I job di pubblicazione e gli upload di artifact sono esclusi da questi rami. Il workflow install resta limitato ai tag, alla pianificazione e all'avvio manuale.
+
+GL-78 deve pubblicare su origin il ramo `integrate/MR-n` e attendere l'esito delle verifiche prima di `propose_merge`. Fino a quel cambiamento del motore, questi trigger non ricevono push automatici. Il giro sui runner GitHub aggiunge una stima di 30–40 minuti per reintegro.
