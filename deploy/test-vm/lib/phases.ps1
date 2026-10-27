@@ -656,6 +656,17 @@ function Test-E2eAppAfterRestore {
         $msg = $_.Exception.Message
         foreach ($r in $rows) { if (-not $r.Ok -and $r.Detail -eq 'non verificato') { $r.Detail = "non verificato: $msg" } }
     }
+    if (@($rows | Where-Object { -not $_.Ok }).Count -gt 0) {
+        try {
+            $api = Invoke-HttpRaw -Uri $appUrl -Headers $h
+            Write-E2eText -Path (Join-Path $WorkDir 'app-api.log') -Stdout "HTTP $($api.StatusCode)`n$($api.Body)" -Stderr ''
+        } catch { Set-Content -LiteralPath (Join-Path $WorkDir 'app-api.log') -Value $_.Exception.Message -Encoding utf8 }
+        try {
+            $diag = Invoke-VmSsh -Command "GS_APP_NS='$($Ctx.Namespace)' bash /tmp/gitstack-e2e/gs-app-restore.sh diagnose /tmp/gitstack-e2e/app-diagnostics" -TimeoutSeconds 120
+            $pull = Copy-FromVm -RemotePath '/tmp/gitstack-e2e/app-diagnostics/*' -LocalPath $WorkDir -TimeoutSeconds 120
+            if ($diag.ExitCode -ne 0 -or $pull.ExitCode -ne 0) { throw "diagnose exit $($diag.ExitCode); scp exit $($pull.ExitCode): $($diag.StdErr) $($pull.StdErr)" }
+        } catch { Set-Content -LiteralPath (Join-Path $WorkDir 'diagnostica-errore.txt') -Value $_.Exception.Message -Encoding utf8 }
+    }
     return , $rows
 }
 

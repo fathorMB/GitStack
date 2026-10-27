@@ -305,3 +305,17 @@ func TestLoad_LoginDavantiAlleApp(t *testing.T) {
 		t.Fatal("PUBLIC_URL senza schema o con percorso va rifiutata")
 	}
 }
+
+func TestLoad_InternalAddr(t *testing.T) {
+	cfg, err := load(lookupFrom(map[string]string{envCoreURL: "http://core:8080"}))
+	if err != nil || cfg.InternalAddr != "" {
+		t.Fatalf("default: InternalAddr = %q, err = %v, voluto vuoto", cfg.InternalAddr, err)
+	}
+	cfg, err = load(lookupFrom(map[string]string{envCoreURL: "http://core:8080", envInternalAddr: " :8081 "}))
+	if err != nil || cfg.InternalAddr != ":8081" {
+		t.Fatalf("InternalAddr = %q, err = %v, voluto :8081", cfg.InternalAddr, err)
+	}
+	if _, err = load(lookupFrom(map[string]string{envCoreURL: "http://core:8080", envInternalAddr: ":8080"})); err == nil {
+		t.Error("la porta interna uguale a quella pubblica va rifiutata")
+	}
+}

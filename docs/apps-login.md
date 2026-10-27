@@ -115,8 +115,8 @@ più vecchio di 60 secondi per richieste normali; per connessioni lunghe come We
 
 ### Chiave pubblica
 
-`GET https://<gitstack>/api/.well-known/gitstack-app-keys` (senza autenticazione; dentro il cluster
-`http://<gateway>:8080/.well-known/gitstack-app-keys`):
+`GET https://<gitstack>/api/.well-known/gitstack-app-keys` (senza autenticazione; dentro il cluster,
+dall'app, l'indirizzo è la variabile di sistema `GITSTACK_APP_KEYS_URL`, sulla porta interna del gateway):
 
 ```json
 {"keys":[{"kid":"9f3a1c2b7d4e5f60","alg":"Ed25519","publicKey":"<32 byte in base64>"}]}

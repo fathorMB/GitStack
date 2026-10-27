@@ -63,6 +63,13 @@ gateway:
   containerPort: 8080
   service:
     port: 8080
+  # Porta interna per le app ospitate (GIT-442, H16; GITSTACK_GATEWAY_INTERNAL_ADDR), solo con
+  # apps.enabled: serve esclusivamente /v1 (niente forward-auth, login e pagine web) e non si fida mai
+  # di X-Forwarded-For, quindi un'app non può falsificare l'IP del client. È l'unica porta del gateway
+  # che la NetworkPolicy apre ai namespace delle app, e quella di GITSTACK_API_URL. Stessa porta sul
+  # Service e sul container; deve differire da containerPort. 0 = nessuna porta interna (le app non
+  # raggiungono l'API di GitStack dal cluster).
+  internalPort: 8081
   # GITSTACK_CORE_URL e GITSTACK_IDENTITY_URL (questa solo con
   # identity.enabled) sono calcolate dal nome dei Service (vedi
   # templates/gateway/deployment.yaml): non serve impostarle qui.
@@ -376,7 +383,9 @@ git:
     signing:
       existingSecret: ""
     # Token del job (gsj_): URL e porta del ci-gateway di core, con cui il registry lo
-    # convalida. Vuoto = solo i token personali; il ci-gateway non è ancora nel chart.
+    # convalida. Vuoto = ci-gateway di core se la CI è accesa, oppure (CI spenta, apps.enabled
+    # e registry accesi, GIT-449) la porta di core in sola modalità «pull delle app»: i token
+    # del job restano rifiutati. Altrimenti solo i token personali.
     ciGateway:
       url: ""
       port: 0

@@ -32,6 +32,11 @@ const (
 	envAppsTraefikNamespace = "GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE"
 	envAppsProgressTimeout  = "GITSTACK_CORE_APPS_PROGRESS_TIMEOUT"
 	envAppsGateImage        = "GITSTACK_CORE_APPS_GATE_IMAGE"
+	// GIT-442: porta interna del gateway per le app (impostate dal chart; tutte o nessuna).
+	envAppsGatewayNamespace = "GITSTACK_CORE_APPS_GATEWAY_NAMESPACE"
+	envAppsGatewayService   = "GITSTACK_CORE_APPS_GATEWAY_SERVICE"
+	envAppsGatewayPodLabels = "GITSTACK_CORE_APPS_GATEWAY_POD_LABELS"
+	envAppsGatewayPort      = "GITSTACK_CORE_APPS_GATEWAY_INTERNAL_PORT"
 	// Indirizzo delle metriche Prometheus di Traefik (entrypoint interno `metrics`, GIT-403): da lì
 	// vengono richieste ed errori 5xx. Vuoto: richieste ed errori restano non disponibili.
 	envAppsTraefikMetricsURL = "GITSTACK_CORE_APPS_TRAEFIK_METRICS_URL"
@@ -79,9 +84,30 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, eg
 	if cfg.GateImage == "" {
 		logger.Error("apps: GITSTACK_CORE_APPS_GATE_IMAGE vuota, i deploy delle app saranno rifiutati finché non è impostata (GIT-422)")
 	}
+	cfg.Gateway = gatewayAccessFrom(os.Getenv)
 	cfg.OnDeployFailed = onDeployFailed
 	cfg.PullCredentials = apps.PullCredentialsFor(trust.ParseKeys(gatewaySecret), time.Now)
 	ctl := apps.New(st, kube, dyn, cfg)
 	go ctl.Run(ctx)
 	return append(opts, httpserver.WithAppController(ctl)), ctl, nil
+}
+
+// gatewayAccessFrom legge dall'ambiente la porta interna del gateway per le app (GIT-442). Tutte le
+// variabili o nessuna: una configurazione incompleta vale come assente (comportamento di prima).
+func gatewayAccessFrom(lookup func(string) string) *apps.GatewayAccess {
+	g := &apps.GatewayAccess{
+		Namespace: strings.TrimSpace(lookup(envAppsGatewayNamespace)),
+		Service:   strings.TrimSpace(lookup(envAppsGatewayService)),
+		PodLabels: map[string]string{},
+	}
+	for _, kv := range strings.Split(lookup(envAppsGatewayPodLabels), ",") {
+		if k, v, ok := strings.Cut(strings.TrimSpace(kv), "="); ok && k != "" {
+			g.PodLabels[strings.TrimSpace(k)] = strings.TrimSpace(v)
+		}
+	}
+	g.Port, _ = strconv.Atoi(strings.TrimSpace(lookup(envAppsGatewayPort)))
+	if !g.Valid() {
+		return nil
+	}
+	return g
 }

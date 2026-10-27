@@ -21,6 +21,8 @@ import (
 // CNI di k3d. Come TestApps_BarriereInUscitaSuK3d gira solo in CI (serve un cluster k3d). La rete
 // privata è qui l'IP del nodo k3d (172.x) con due porte in ascolto: 18080 viene aperta, 18081 no.
 // Ogni negativo ha il suo controllo opposto (stesso bersaglio da un namespace senza policy).
+// GIT-443: il bersaglio è httpd e non `nc -lk`, che esce dopo la prima connessione (anche un solo
+// `nc -z`) e fa sembrare «rifiutata» dalla policy una porta che non ascolta più.
 func TestApps_DestinazionePrivataApertaSuK3d(t *testing.T) {
 	e := newDeployEnvOpt(t, false)
 	ctx := context.Background()
@@ -53,7 +55,7 @@ func TestApps_DestinazionePrivataApertaSuK3d(t *testing.T) {
 		if _, err := e.kube.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), ns.Name, metav1.DeleteOptions{}) })
+		cleanupNamespaceWithDiag(t, e.kube, ns.Name)
 		policy := apps.BuildNetworkPolicy(*a, o)
 		if _, err := e.kube.NetworkingV1().NetworkPolicies(policy.Namespace).Create(ctx, policy, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
@@ -64,9 +66,7 @@ func TestApps_DestinazionePrivataApertaSuK3d(t *testing.T) {
 	if _, err := e.kube.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: systemNS}}, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		_ = e.kube.CoreV1().Namespaces().Delete(context.Background(), systemNS, metav1.DeleteOptions{})
-	})
+	cleanupNamespaceWithDiag(t, e.kube, systemNS)
 	create := func(p *corev1.Pod) {
 		if _, err := e.kube.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
@@ -74,7 +74,7 @@ func TestApps_DestinazionePrivataApertaSuK3d(t *testing.T) {
 	}
 	create(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "node-listener", Namespace: systemNS},
 		Spec: corev1.PodSpec{HostNetwork: true, RestartPolicy: corev1.RestartPolicyAlways,
-			Containers: []corev1.Container{{Name: "server", Image: "busybox:1.36", Command: []string{"sh", "-c", "nc -lk -p 18080 & nc -lk -p 18081 & wait"}}}}})
+			Containers: []corev1.Container{{Name: "server", Image: "busybox:1.36", Command: []string{"sh", "-c", "httpd -f -p 18080 -h /tmp & httpd -f -p 18081 -h /tmp & wait"}}}}})
 	waitPodIP(t, e.kube, systemNS, "node-listener")
 
 	root := int64(0)

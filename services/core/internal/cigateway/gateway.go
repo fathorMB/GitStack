@@ -97,6 +97,9 @@ type Config struct {
 	// AppPullKeys: chiavi (elenco «nuova,vecchia» del segreto del gateway) con cui si verificano i
 	// token di pull delle app (GIT-425). Vuote: quei token non valgono.
 	AppPullKeys []string
+	// AppPullOnly: la CI è spenta (GIT-449). Il gateway serve solo registry-access per i token di
+	// pull delle app; ogni altro percorso è 404 e ogni token del job è 401.
+	AppPullOnly bool
 	PollTimeout time.Duration
 	PollEvery   time.Duration
 	Now         func() time.Time
@@ -123,6 +126,9 @@ func New(cfg Config) http.Handler {
 		cfg.PollEvery = DefaultPollEvery
 	}
 	g := &gateway{Config: cfg}
+	if cfg.AppPullOnly {
+		return g.appPullOnlyHandler()
+	}
 	mux := http.NewServeMux()
 	path, h := runnerv1connect.NewRunnerServiceHandler(&rpc{g: g}, connect.WithInterceptors(g.auth()))
 	mux.Handle(path, h)

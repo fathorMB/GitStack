@@ -66,15 +66,26 @@ git.registry.ciGateway, altrimenti con ci.enabled il ci-gateway di core. Vuoto =
 {{- define "gitstack.registry.ciGatewayURL" -}}
 {{- if .Values.git.registry.ciGateway.url -}}
 {{- .Values.git.registry.ciGateway.url -}}
-{{- else if .Values.ci.enabled -}}
+{{- else if or .Values.ci.enabled (include "gitstack.ci.appPullOnly" .) -}}
 {{- printf "http://%s-core.%s.svc:%d" (include "gitstack.fullname" .) .Release.Namespace (.Values.ci.gateway.port | int) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+CI spenta ma app e registry accesi (GIT-449): il cluster scarica le immagini delle app con un token
+gsj_app., che il servizio git fa convalidare al ci-gateway di core. Core allora apre la porta in
+modalità «solo pull delle app» (nessun token del job, nessun altro percorso). Stringa vuota = no.
+*/}}
+{{- define "gitstack.ci.appPullOnly" -}}
+{{- if and (not .Values.ci.enabled) .Values.core.enabled .Values.apps.enabled .Values.git.enabled .Values.git.registry.enabled (not .Values.git.registry.ciGateway.url) -}}
+true
 {{- end -}}
 {{- end -}}
 
 {{- define "gitstack.registry.ciGatewayPort" -}}
 {{- if .Values.git.registry.ciGateway.url -}}
 {{- .Values.git.registry.ciGateway.port | int -}}
-{{- else if .Values.ci.enabled -}}
+{{- else if or .Values.ci.enabled (include "gitstack.ci.appPullOnly" .) -}}
 {{- .Values.ci.gateway.port | int -}}
 {{- else -}}
 0
@@ -394,6 +405,17 @@ ServiceAccount di core: ci-dispatcher se la CI è accesa (stesso account, un sol
 {{/* Indirizzo interno del forward-auth del gateway (GITSTACK_CORE_APPS_AUTH_URL). */}}
 {{- define "gitstack.apps.authUrl" -}}
 {{- default (printf "%s/_appauth/verify" (include "gitstack.gateway.url" .)) .Values.apps.authUrl -}}
+{{- end -}}
+
+{{/* Porta interna del gateway per le app (GIT-442, H16): la porta se le app sono abilitate e il gateway
+     la espone, altrimenti vuoto. Deve differire dalla porta pubblica del container. */}}
+{{- define "gitstack.apps.gatewayInternalPort" -}}
+{{- if and .Values.apps.enabled .Values.gateway.enabled (gt (.Values.gateway.internalPort | int) 0) -}}
+{{- if eq (.Values.gateway.internalPort | int) (.Values.gateway.containerPort | int) -}}
+{{- fail "gateway.internalPort deve essere diversa da gateway.containerPort: la porta interna non si fida di X-Forwarded-For" -}}
+{{- end -}}
+{{- .Values.gateway.internalPort | int -}}
+{{- end -}}
 {{- end -}}
 
 {{/* Metriche Prometheus di Traefik (GITSTACK_CORE_APPS_TRAEFIK_METRICS_URL, GIT-403): il Service headless

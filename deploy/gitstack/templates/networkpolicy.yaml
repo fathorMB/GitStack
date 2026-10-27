@@ -121,6 +121,21 @@ spec:
         - protocol: TCP
           port: {{ .Values.gateway.containerPort }}
     {{- end }}
+    {{- if include "gitstack.apps.gatewayInternalPort" . }}
+    # App ospitate (GIT-442, H16): l'API di GitStack dal cluster. Solo i pod dei namespace gestiti
+    # (etichetta LabelManaged che core mette su namespace e pod) e solo la porta interna, che serve
+    # /v1 e ignora X-Forwarded-For. Mai la porta pubblica, mai gli altri componenti.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              gitstack.io/managed-app: "true"
+          podSelector:
+            matchLabels:
+              gitstack.io/managed-app: "true"
+      ports:
+        - protocol: TCP
+          port: {{ include "gitstack.apps.gatewayInternalPort" . }}
+    {{- end }}
   egress:
     - to:
         - podSelector:
@@ -204,6 +219,16 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.core.containerPort }}
+    {{- if include "gitstack.ci.appPullOnly" . }}
+    # CI spenta, app e registry accesi (GIT-449): solo il pod git raggiunge il ci-gateway (pull delle app).
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "git") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.ci.gateway.port }}
+    {{- end }}
     {{- if .Values.ci.enabled }}
     # Il namespace CI raggiunge esclusivamente il ci-gateway di core.
     - from:

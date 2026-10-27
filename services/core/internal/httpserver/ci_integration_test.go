@@ -46,13 +46,18 @@ func (g *ciGit) ReadJSON(ctx context.Context, c trust.Identity, repo uuid.UUID, 
 	case strings.HasSuffix(path, "/resolve"):
 		ref := strings.TrimSuffix(strings.TrimPrefix(path, "commits/"), "/resolve")
 		unescaped, _ := url.PathUnescape(ref)
-		if unescaped == "main" || unescaped == "refs/heads/main" || unescaped == ciHeadSHA {
+		if unescaped == ciHeadSHA {
 			return json.RawMessage(`{"sha":"` + ciHeadSHA + `"}`), nil
 		}
 		return nil, notFound
+	case path == "branches":
+		return json.RawMessage(`{"items":[{"name":"main","isDefault":true,"protected":false,"commit":{"sha":"` + ciHeadSHA + `"}}],"total":1}`), nil
+	case path == "tags":
+		return json.RawMessage(`{"items":[{"name":"v1","annotated":false,"commit":{"sha":"` + ciHeadSHA + `"}}],"total":1}`), nil
 	case path == "commits" && q.Get("perPage") == "1":
-		// Come il servizio git vero: commit in testa a una ref; la ref sconosciuta non c'è.
-		if r := q.Get("ref"); r == "main" || r == "refs/heads/main" || r == "refs/tags/main" {
+		// Come il servizio git vero (gitref.Resolve): aggiunge da sé i prefissi, quindi
+		// il nome breve si trova e quello completo no (GIT-451).
+		if r := q.Get("ref"); r == "main" || r == "v1" {
 			return json.RawMessage(`{"items":[{"sha":"` + ciHeadSHA + `","subject":"s"}],"page":1,"perPage":1}`), nil
 		}
 		return nil, notFound
@@ -108,6 +113,15 @@ func TestCI_AvvioManualeEElenchi(t *testing.T) {
 		run.WorkflowId != "deploy.yml" || len(run.Jobs) != 1 || run.Jobs[0].Status != "queued" || run.Jobs[0].RunnerType != "internal_pod" {
 		t.Errorf("esecuzione: %s", rec.Body.String())
 	}
+	// GIT-451: un tag diventa refs/tags/<tag>, un ref già completo resta tale, uno sha resta uno sha.
+	for in, want := range map[string]string{"v1": "refs/tags/v1", "refs/tags/v1": "refs/tags/v1", "refs/heads/main": "refs/heads/main", ciHeadSHA: ciHeadSHA} {
+		rec = e.do("POST", base+"/workflows/deploy.yml/dispatches", "alice", `{"ref":"`+in+`","inputs":{"env":"prod"}}`)
+		e.want(rec, 202)
+		var r struct{ Ref, Sha string }
+		if err := json.Unmarshal(rec.Body.Bytes(), &r); err != nil || r.Ref != want || r.Sha != ciHeadSHA {
+			t.Errorf("dispatch ref %q: ref=%q sha=%q (%v)", in, r.Ref, r.Sha, err)
+		}
+	}
 	// Errori: input mancante, workflow senza dispatch, workflow o ref inesistenti.
 	e.want(e.do("POST", base+"/workflows/deploy.yml/dispatches", "alice", `{"ref":"main"}`), 400)
 	e.want(e.do("POST", base+"/workflows/build.yml/dispatches", "alice", `{"ref":"main"}`), 400)
@@ -118,8 +132,18 @@ func TestCI_AvvioManualeEElenchi(t *testing.T) {
 	rec = e.do("GET", base+"/actions/runs", "bob", "")
 	e.want(rec, 200)
 	var rl struct{ Items []struct{ Id string } }
-	if err := json.Unmarshal(rec.Body.Bytes(), &rl); err != nil || len(rl.Items) != 1 || rl.Items[0].Id != run.Id {
+	if err := json.Unmarshal(rec.Body.Bytes(), &rl); err != nil || len(rl.Items) != 5 { // 1 avvio + 4 di GIT-451
 		t.Fatalf("elenco esecuzioni: %v %s", err, rec.Body.String())
+	}
+	if found := func() bool {
+		for _, it := range rl.Items {
+			if it.Id == run.Id {
+				return true
+			}
+		}
+		return false
+	}(); !found {
+		t.Fatalf("elenco esecuzioni senza il run %s: %s", run.Id, rec.Body.String())
 	}
 	e.want(e.do("GET", base+"/actions/runs/"+run.Id, "bob", ""), 200)
 	e.want(e.do("GET", base+"/actions/runs/"+uuid.NewString(), "bob", ""), 404)

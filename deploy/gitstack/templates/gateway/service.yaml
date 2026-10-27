@@ -12,4 +12,10 @@ spec:
     - name: http
       port: {{ .Values.gateway.service.port }}
       targetPort: http
+    {{- if include "gitstack.apps.gatewayInternalPort" . }}
+    # Porta interna per le app ospitate (GIT-442): solo /v1, aperta dalla NetworkPolicy ai loro namespace.
+    - name: internal
+      port: {{ include "gitstack.apps.gatewayInternalPort" . }}
+      targetPort: internal
+    {{- end }}
 {{- end }}
