@@ -10383,7 +10383,7 @@ paths:
       x-mcp:
         expose: false
         name: app_domain_recheck
-        destructive: false
+        destructive: true
       summary: "Ricontrolla il DNS di un dominio proprio (v3-c)"
       description: >
         Serve `admin` sull'app (H5). Rifa subito il controllo del DNS (regole nell'ADR 0002) senza
