@@ -4011,6 +4011,14 @@ export type AppVolume = {
      */
     mountPath: string;
     /**
+     * Il volume entra in `gitstack backup` (anche verso S3) e torna con `gitstack restore` (H3, D19). Di default si; si esclude con `updateAppVolume`.
+     */
+    includeInBackup: boolean;
+    /**
+     * Avviso database (D19): il percorso di mount, il nome del volume o l'immagine dell'app fanno pensare a un database. La copia del backup si fa con l'app accesa: per un database dentro un container non e' garantita la coerenza, quindi la guida (docs/operations.md, «Volumes and databases») dice di pianificare un dump in un altro volume.
+     */
+    looksLikeDatabase: boolean;
+    /**
      * Dimensione fissa; conta nella quota disco dell'owner. local-path non la applica come limite fisico del disco.
      */
     sizeBytes: number;
@@ -4020,6 +4028,13 @@ export type AppVolume = {
     version: number;
     createdAt: string;
     createdBy?: AppActor | null;
+};
+
+export type AppVolumeUpdate = {
+    /**
+     * `false` toglie il volume dal backup (e dal restore); `true` lo rimette.
+     */
+    includeInBackup: boolean;
 };
 
 export type AppVolumeInput = {
@@ -20556,6 +20571,70 @@ export type DeleteAppVolumeResponses = {
 };
 
 export type DeleteAppVolumeResponse = DeleteAppVolumeResponses[keyof DeleteAppVolumeResponses];
+
+export type UpdateAppVolumeData = {
+    body: AppVolumeUpdate;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+        /**
+         * Nome del volume dell'app (H3).
+         */
+        volume: AppVolumeName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/volumes/{volume}';
+};
+
+export type UpdateAppVolumeErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type UpdateAppVolumeError = UpdateAppVolumeErrors[keyof UpdateAppVolumeErrors];
+
+export type UpdateAppVolumeResponses = {
+    /**
+     * Volume aggiornato.
+     */
+    200: AppVolume;
+};
+
+export type UpdateAppVolumeResponse = UpdateAppVolumeResponses[keyof UpdateAppVolumeResponses];
 
 export type GetAppLogsData = {
     body?: never;

@@ -15,7 +15,7 @@ import (
 )
 
 // VolumeFields sono i campi di --json di `gs app volume list` e `add` (schema AppVolume, H3).
-var VolumeFields = []string{"name", "mountPath", "sizeBytes", "version", "createdAt", "createdBy"}
+var VolumeFields = []string{"name", "mountPath", "sizeBytes", "version", "createdAt", "createdBy", "includeInBackup", "looksLikeDatabase"}
 
 const minVolumeBytes = 1 << 20 // 1 MiB, come il contratto
 
@@ -29,7 +29,7 @@ func newVolumeCmd(f *cmdutil.Factory) *cobra.Command {
 		Args: cmdutil.NoArgs,
 		RunE: cmdutil.GroupRun,
 	}
-	cmd.AddCommand(newVolumeListCmd(f), newVolumeAddCmd(f), newVolumeRemoveCmd(f))
+	cmd.AddCommand(newVolumeListCmd(f), newVolumeAddCmd(f), newVolumeRemoveCmd(f), newVolumeBackupCmd(f))
 	return cmd
 }
 
@@ -106,9 +106,9 @@ func newVolumeListCmd(f *cmdutil.Factory) *cobra.Command {
 				}
 				return nil
 			}
-			t := output.NewTable(f.IO.OutTTY, f.IO.Width, "NOME", "MOUNT", "DIMENSIONE", "VERSIONE", "CREATO")
+			t := output.NewTable(f.IO.OutTTY, f.IO.Width, "NOME", "MOUNT", "DIMENSIONE", "VERSIONE", "CREATO", "BACKUP")
 			for _, v := range resp.JSON200.Items {
-				t.AddRow(string(v.Name), v.MountPath, humanSize(v.SizeBytes), strconv.Itoa(v.Version), v.CreatedAt.Local().Format(time.DateOnly))
+				t.AddRow(string(v.Name), v.MountPath, humanSize(v.SizeBytes), strconv.Itoa(v.Version), v.CreatedAt.Local().Format(time.DateOnly), inBackup(v.IncludeInBackup))
 			}
 			return t.Render(f.IO.Out)
 		},
@@ -174,6 +174,69 @@ func newVolumeAddCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&mount, "mount", "", "Percorso di mount nel container (assoluto, obbligatorio)")
 	cmd.Flags().StringVar(&size, "size", "", "Dimensione fissa, per esempio 512MB o 10GB (obbligatoria)")
+	output.AddJSONFlags(cmd, &jo, VolumeFields)
+	return cmd
+}
+
+func inBackup(b bool) string {
+	if b {
+		return "sì"
+	}
+	return "no"
+}
+
+func newVolumeBackupCmd(f *cmdutil.Factory) *cobra.Command {
+	var include, exclude bool
+	var jo output.JSONOptions
+	cmd := &cobra.Command{
+		Use:   "backup <app> <nome> (--include | --exclude)",
+		Short: "Includi o escludi un volume dal backup",
+		Long: "Di default ogni volume entra in `gitstack backup` (anche verso S3) e torna con `gitstack restore` (H3, D19). " +
+			"--exclude lo toglie, --include lo rimette. È una scelta sul dato: non crea versioni né deploy. Un volume escluso " +
+			"ritorna vuoto dopo un restore. Per un database il backup copia i file con l'app accesa e la coerenza non è " +
+			"garantita: pianifica un dump in un altro volume (docs/operations.md, «Volumes and databases»). Serve `admin` sul repo.",
+		Example: "  gs app volume backup wiki cache --exclude\n  gs app volume backup wiki cache --include",
+		Args:    cmdutil.NArgs(2),
+		RunE: func(c *cobra.Command, args []string) error {
+			if include == exclude {
+				return cmdutil.UsageErrorf("serve esattamente una scelta fra --include e --exclude")
+			}
+			app, err := appName(args)
+			if err != nil {
+				return err
+			}
+			name := strings.ToLower(strings.TrimSpace(args[1]))
+			if name == "" {
+				return cmdutil.UsageErrorf("il nome del volume non può essere vuoto")
+			}
+			e, err := newEnv(f)
+			if err != nil {
+				return err
+			}
+			resp, err := e.gen.UpdateAppVolumeWithResponse(c.Context(), gitstack.RepoOwnerParam(e.owner), gitstack.RepoNameParam(e.repo), gitstack.AppParam(app), gitstack.AppVolumeParam(name),
+				gitstack.AppVolumeUpdate{IncludeInBackup: include})
+			if err != nil {
+				return err
+			}
+			if err := e.check(resp.StatusCode(), resp.Body); err != nil {
+				return err
+			}
+			if resp.JSON200 == nil {
+				return unexpected(resp.StatusCode())
+			}
+			if jo.Enabled() {
+				return jo.Write(f.IO.Out, resp.JSON200, f.IO.OutTTY)
+			}
+			if include {
+				_, _ = fmt.Fprintf(f.IO.Out, "%s di %s è nei backup\n", name, app)
+			} else {
+				_, _ = fmt.Fprintf(f.IO.Out, "%s di %s è escluso dai backup\n", name, app)
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&include, "include", false, "Metti il volume nei backup")
+	cmd.Flags().BoolVar(&exclude, "exclude", false, "Togli il volume dai backup")
 	output.AddJSONFlags(cmd, &jo, VolumeFields)
 	return cmd
 }

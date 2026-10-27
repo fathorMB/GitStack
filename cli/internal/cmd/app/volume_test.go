@@ -9,8 +9,8 @@ import (
 
 const (
 	volBase = "/repos/acme/web/apps/wiki/volumes"
-	volData = `{"name":"data","mountPath":"/wiki/data","sizeBytes":10737418240,"version":3,"createdAt":"2026-10-26T10:00:00Z"}`
-	volDb   = `{"name":"db","mountPath":"/var/lib/postgresql/data","sizeBytes":5368709120,"version":4,"createdAt":"2026-10-26T11:00:00Z"}`
+	volData = `{"name":"data","mountPath":"/wiki/data","sizeBytes":10737418240,"version":3,"createdAt":"2026-10-26T10:00:00Z","includeInBackup":true,"looksLikeDatabase":false}`
+	volDb   = `{"name":"db","mountPath":"/var/lib/postgresql/data","sizeBytes":5368709120,"version":4,"createdAt":"2026-10-26T11:00:00Z","includeInBackup":false,"looksLikeDatabase":true}`
 	quotaJS = `{"owner":"acme","limits":{"cpuMillis":4000,"memoryBytes":8589934592,"diskBytes":53687091200},"used":{"cpuMillis":500,"memoryBytes":805306368,"diskBytes":16106127360},"warning":false}`
 )
 
@@ -27,6 +27,33 @@ func TestVolumeList(t *testing.T) {
 	r = run(t, fk, "app", "volume", "list", "wiki", "--json", "name,mountPath,sizeBytes")
 	if r.code != 0 || !strings.Contains(r.out, `"mountPath"`) || !strings.Contains(r.out, `10737418240`) || strings.Contains(r.out, `"version"`) {
 		t.Fatalf("json: %+v", r)
+	}
+}
+
+func TestVolumeBackup(t *testing.T) {
+	fk := newFake(t, map[string]reply{"PATCH " + volBase + "/db": {200, volDb}})
+	r := run(t, fk, "app", "volume", "backup", "wiki", "db", "--exclude")
+	if r.code != 0 || !strings.Contains(r.out, "escluso dai backup") {
+		t.Fatalf("exclude: %+v", r)
+	}
+	calls := fk.find("PATCH", volBase+"/db")
+	if len(calls) != 1 || calls[0].Body["includeInBackup"] != false {
+		t.Fatalf("corpo: %+v", calls)
+	}
+	r = run(t, fk, "app", "volume", "backup", "wiki", "db", "--include")
+	if r.code != 0 || !strings.Contains(r.out, "è nei backup") {
+		t.Fatalf("include: %+v", r)
+	}
+	if calls = fk.find("PATCH", volBase+"/db"); len(calls) != 2 || calls[1].Body["includeInBackup"] != true {
+		t.Fatalf("corpo include: %+v", calls)
+	}
+	for _, args := range [][]string{
+		{"app", "volume", "backup", "wiki", "db"},
+		{"app", "volume", "backup", "wiki", "db", "--include", "--exclude"},
+	} {
+		if r := run(t, fk, args...); r.code != 2 {
+			t.Errorf("%v: exit %d, atteso 2", args, r.code)
+		}
 	}
 }
 

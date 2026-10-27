@@ -52,6 +52,9 @@ type AppVolume struct {
 	Version   int
 	CreatedAt time.Time
 	CreatedBy *AppActor
+	// IncludeInBackup: il volume entra nel backup e nel restore (H3, D19). Di default sì; è una scelta
+	// sul dato: non crea versioni e non fa parte della configurazione congelata.
+	IncludeInBackup bool
 }
 
 // ValidateVolumeMountPath dà il motivo se il percorso non può essere un mount, "" se va bene:
@@ -95,7 +98,7 @@ func volumeSpecs(ctx context.Context, q execQuerier, appID uuid.UUID) ([]AppVolu
 
 // volumesOfApp legge i volumi dell'app con versione e autore, in ordine di nome.
 func volumesOfApp(ctx context.Context, q execQuerier, appID uuid.UUID) ([]AppVolume, error) {
-	rows, err := q.Query(ctx, `SELECT name, mount_path, size_bytes, version, created_at, created_by FROM core.app_volumes
+	rows, err := q.Query(ctx, `SELECT name, mount_path, size_bytes, version, created_at, created_by, include_in_backup FROM core.app_volumes
 		WHERE app_id = $1 ORDER BY name`, appID)
 	if err != nil {
 		return nil, err
@@ -105,7 +108,7 @@ func volumesOfApp(ctx context.Context, q execQuerier, appID uuid.UUID) ([]AppVol
 	for rows.Next() {
 		var v AppVolume
 		var by []byte
-		if err := rows.Scan(&v.Name, &v.MountPath, &v.SizeBytes, &v.Version, &v.CreatedAt, &by); err != nil {
+		if err := rows.Scan(&v.Name, &v.MountPath, &v.SizeBytes, &v.Version, &v.CreatedAt, &by, &v.IncludeInBackup); err != nil {
 			return nil, err
 		}
 		if v.CreatedBy, err = scanActor(by); err != nil {
@@ -199,7 +202,7 @@ func (s *Store) AddAppVolume(ctx context.Context, appID uuid.UUID, in AppVolumeS
 		return AppVolumeChange{}, err
 	}
 	used.DiskBytes += in.SizeBytes
-	out := AppVolumeChange{Volume: AppVolume{AppVolumeSpec: in, Version: number, CreatedAt: now, CreatedBy: actor}, Version: ver, Limits: limits, Used: used}
+	out := AppVolumeChange{Volume: AppVolume{AppVolumeSpec: in, Version: number, CreatedAt: now, CreatedBy: actor, IncludeInBackup: true}, Version: ver, Limits: limits, Used: used}
 	return out, tx.Commit(ctx)
 }
 
@@ -223,8 +226,8 @@ func (s *Store) DeleteAppVolume(ctx context.Context, appID uuid.UUID, name strin
 	}
 	var gone AppVolume
 	err = tx.QueryRow(ctx, `DELETE FROM core.app_volumes WHERE app_id = $1 AND name = $2
-		RETURNING name, mount_path, size_bytes, version, created_at`, appID, name).
-		Scan(&gone.Name, &gone.MountPath, &gone.SizeBytes, &gone.Version, &gone.CreatedAt)
+		RETURNING name, mount_path, size_bytes, version, created_at, include_in_backup`, appID, name).
+		Scan(&gone.Name, &gone.MountPath, &gone.SizeBytes, &gone.Version, &gone.CreatedAt, &gone.IncludeInBackup)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return AppVolumeChange{}, ErrNotFound
 	}
@@ -248,4 +251,24 @@ func (s *Store) DeleteAppVolume(ctx context.Context, appID uuid.UUID, name strin
 		return AppVolumeChange{}, err
 	}
 	return AppVolumeChange{Volume: gone, Version: ver, Limits: limits, Used: used}, tx.Commit(ctx)
+}
+
+// SetAppVolumeBackup include o esclude il volume dal backup (H3, D19). Non crea versioni né deploy:
+// l'esclusione è una scelta sul dato. ErrNotFound se il volume non c'è.
+func (s *Store) SetAppVolumeBackup(ctx context.Context, appID uuid.UUID, name string, include bool) (AppVolume, error) {
+	var v AppVolume
+	var by []byte
+	err := s.pool.QueryRow(ctx, `UPDATE core.app_volumes SET include_in_backup = $3 WHERE app_id = $1 AND name = $2
+		RETURNING name, mount_path, size_bytes, version, created_at, created_by, include_in_backup`, appID, name, include).
+		Scan(&v.Name, &v.MountPath, &v.SizeBytes, &v.Version, &v.CreatedAt, &by, &v.IncludeInBackup)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return AppVolume{}, ErrNotFound
+	}
+	if err != nil {
+		return AppVolume{}, err
+	}
+	if v.CreatedBy, err = scanActor(by); err != nil {
+		return AppVolume{}, err
+	}
+	return v, nil
 }

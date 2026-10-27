@@ -9,6 +9,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -99,18 +101,27 @@ type KubectlCluster struct {
 }
 
 func (k *KubectlCluster) run(ctx context.Context, stdin io.Reader, stdout io.Writer, args ...string) error {
+	return k.runIn(ctx, k.Namespace, stdin, stdout, args...)
+}
+
+// runIn esegue kubectl nel namespace dato (i volumi delle app stanno nei namespace delle app).
+func (k *KubectlCluster) runIn(ctx context.Context, ns string, stdin io.Reader, stdout io.Writer, args ...string) error {
 	ex := k.Exec
 	if ex == nil {
 		ex = ExecStream
 	}
-	full := append(append([]string{}, k.Pre...), "-n", k.Namespace)
+	full := append(append([]string{}, k.Pre...), "-n", ns)
 	full = append(full, args...)
 	return ex(ctx, []string{"KUBECONFIG=" + k.Kubeconfig}, stdin, stdout, k.Bin, full...)
 }
 
 func (k *KubectlCluster) out(ctx context.Context, args ...string) ([]byte, error) {
+	return k.outIn(ctx, k.Namespace, args...)
+}
+
+func (k *KubectlCluster) outIn(ctx context.Context, ns string, args ...string) ([]byte, error) {
 	var b bytes.Buffer
-	err := k.run(ctx, nil, &b, args...)
+	err := k.runIn(ctx, ns, nil, &b, args...)
 	return b.Bytes(), err
 }
 
@@ -198,20 +209,24 @@ func (k *KubectlCluster) PGExec(ctx context.Context, stdin io.Reader, stdout io.
 // VolumePath implementa Cluster: risale dal PVC al PV e ne legge il
 // percorso locale (local-path di k3s: hostPath o local).
 func (k *KubectlCluster) VolumePath(ctx context.Context, pvc string) (string, error) {
-	o, err := k.out(ctx, "get", "pvc", pvc, "--ignore-not-found", "-o", "jsonpath={.spec.volumeName}")
+	return k.volumePath(ctx, k.Namespace, pvc)
+}
+
+func (k *KubectlCluster) volumePath(ctx context.Context, ns, pvc string) (string, error) {
+	o, err := k.outIn(ctx, ns, "get", "pvc", pvc, "--ignore-not-found", "-o", "jsonpath={.spec.volumeName}")
 	if err != nil {
 		return "", err
 	}
 	pv := strings.TrimSpace(string(o))
 	if pv == "" {
-		chk, err := k.out(ctx, "get", "pvc", pvc, "--ignore-not-found", "-o", "name")
+		chk, err := k.outIn(ctx, ns, "get", "pvc", pvc, "--ignore-not-found", "-o", "name")
 		if err != nil {
 			return "", err
 		}
 		if strings.TrimSpace(string(chk)) == "" {
 			return "", fmt.Errorf("%w: pvc %s", ErrNotFound, pvc)
 		}
-		return "", fmt.Errorf("pvc %s non ancora associato a un volume", pvc)
+		return "", fmt.Errorf("%w: %s", ErrNotBound, pvc)
 	}
 	var spec struct {
 		Spec struct {
@@ -224,7 +239,7 @@ func (k *KubectlCluster) VolumePath(ctx context.Context, pvc string) (string, er
 		} `json:"spec"`
 	}
 	// Un PV non ha namespace: il flag -n è ignorato da kubectl.
-	o, err = k.out(ctx, "get", "pv", pv, "-o", "json")
+	o, err = k.outIn(ctx, ns, "get", "pv", pv, "-o", "json")
 	if err != nil {
 		return "", err
 	}
@@ -286,5 +301,110 @@ func (k *KubectlCluster) ApplySecret(ctx context.Context, s Secret) error {
 	return k.run(ctx, bytes.NewReader(s.Raw), io.Discard, "apply", "-f", "-")
 }
 
+// AppVolumePath implementa AppVolumeCluster.
+func (k *KubectlCluster) AppVolumePath(ctx context.Context, v AppVolumeRef) (string, error) {
+	return k.volumePath(ctx, v.Namespace(), v.PVC())
+}
+
+// StopApp implementa AppVolumeCluster: il Deployment "app" del namespace dell'app va a zero repliche.
+// Core, che in restore riparte per ultimo, riporta le copie volute (Sync).
+func (k *KubectlCluster) StopApp(ctx context.Context, v AppVolumeRef) error {
+	ns := v.Namespace()
+	o, err := k.outIn(ctx, ns, "get", "deployment", "app", "--ignore-not-found", "-o", "name")
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(string(o)) == "" {
+		return nil
+	}
+	if err := k.runIn(ctx, ns, nil, io.Discard, "scale", "deployment", "app", "--replicas=0"); err != nil {
+		return err
+	}
+	return k.runIn(ctx, ns, nil, io.Discard, "wait", "--for=delete", "pod", "-l", "gitstack.io/app-id="+v.AppID, "--timeout=180s")
+}
+
+// EnsureAppVolume implementa AppVolumeCluster. Su un'installazione pulita il namespace e il PVC
+// dell'app non esistono e local-path crea la cartella solo al primo pod: qui si crea la cartella
+// sotto base e si legano a mano un PersistentVolume (hostPath, come quelli di local-path, con
+// l'annotazione del provisioner perché sappia toglierlo) e un PVC con le stesse label e dimensione
+// del controller. Il controller di core, riapplicando l'app, trova PVC e dati già al loro posto.
+func (k *KubectlCluster) EnsureAppVolume(ctx context.Context, v AppVolumeRef, base string) (string, error) {
+	if err := v.validate(); err != nil {
+		return "", err
+	}
+	ns, pvc := v.Namespace(), v.PVC()
+	p, err := k.volumePath(ctx, ns, pvc)
+	switch {
+	case err == nil:
+		return p, nil
+	case errors.Is(err, ErrNotBound):
+		// Un PVC mai usato non ha dati: lo si ricrea legato alla cartella ripristinata.
+		if e := k.runIn(ctx, ns, nil, io.Discard, "delete", "pvc", pvc, "--wait=true", "--timeout=60s"); e != nil {
+			return "", fmt.Errorf("eliminazione del PVC %s non usato: %w", pvc, e)
+		}
+	case !errors.Is(err, ErrNotFound):
+		return "", err
+	}
+	node, err := k.outIn(ctx, ns, "get", "nodes", "-o", "jsonpath={.items[0].metadata.labels.kubernetes\\.io/hostname}")
+	if err != nil {
+		return "", fmt.Errorf("nome del nodo: %w", err)
+	}
+	host := strings.TrimSpace(string(node))
+	if host == "" {
+		return "", errors.New("nome del nodo non trovato")
+	}
+	pv := "pvc-restore-" + v.AppID + "-" + v.Name
+	dir := filepath.Join(base, pv+"_"+ns+"_"+pvc)
+	if err := ensureDir(dir); err != nil {
+		return "", fmt.Errorf("cartella del volume: %w", err)
+	}
+	size := strconv.FormatInt(v.SizeBytes, 10)
+	appLabels := map[string]string{
+		"gitstack.io/app-id": v.AppID, "app.kubernetes.io/name": "app",
+		"gitstack.io/managed-app": "true", "app.kubernetes.io/managed-by": "gitstack-core",
+	}
+	if v.RepoID != "" {
+		appLabels["gitstack.io/repo-id"] = v.RepoID
+	}
+	nsLabels := map[string]string{}
+	pvcLabels := map[string]string{"gitstack.io/volume": v.Name}
+	for key, val := range appLabels {
+		nsLabels[key] = val
+		pvcLabels[key] = val
+	}
+	nsLabels["pod-security.kubernetes.io/enforce"] = "baseline"
+	class := "local-path"
+	objs := []map[string]any{
+		{"apiVersion": "v1", "kind": "Namespace", "metadata": map[string]any{"name": ns, "labels": nsLabels}},
+		{"apiVersion": "v1", "kind": "PersistentVolume",
+			"metadata": map[string]any{"name": pv, "annotations": map[string]string{"pv.kubernetes.io/provisioned-by": "rancher.io/local-path"}},
+			"spec": map[string]any{
+				"capacity": map[string]string{"storage": size}, "accessModes": []string{"ReadWriteOnce"},
+				"persistentVolumeReclaimPolicy": "Delete", "storageClassName": class, "volumeMode": "Filesystem",
+				"claimRef": map[string]string{"namespace": ns, "name": pvc},
+				"hostPath": map[string]string{"path": dir, "type": "DirectoryOrCreate"},
+				"nodeAffinity": map[string]any{"required": map[string]any{"nodeSelectorTerms": []any{map[string]any{
+					"matchExpressions": []any{map[string]any{"key": "kubernetes.io/hostname", "operator": "In", "values": []string{host}}}}}}},
+			}},
+		{"apiVersion": "v1", "kind": "PersistentVolumeClaim", "metadata": map[string]any{"name": pvc, "namespace": ns, "labels": pvcLabels},
+			"spec": map[string]any{
+				"accessModes": []string{"ReadWriteOnce"}, "storageClassName": class, "volumeName": pv,
+				"resources": map[string]any{"requests": map[string]string{"storage": size}},
+			}},
+	}
+	list := map[string]any{"apiVersion": "v1", "kind": "List", "items": objs}
+	body, err := json.Marshal(list)
+	if err != nil {
+		return "", err
+	}
+	if err := k.runIn(ctx, ns, bytes.NewReader(body), io.Discard, "apply", "-f", "-"); err != nil {
+		return "", fmt.Errorf("creazione di namespace, volume e PVC: %w", err)
+	}
+	return dir, nil
+}
+
 // Verifica a compile time.
-var _ Cluster = (*KubectlCluster)(nil)
+var (
+	_ Cluster          = (*KubectlCluster)(nil)
+	_ AppVolumeCluster = (*KubectlCluster)(nil)
+)

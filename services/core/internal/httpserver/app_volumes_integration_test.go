@@ -253,3 +253,84 @@ func TestAppDelete_ConVolumiRichiedeConferma(t *testing.T) {
 		t.Fatalf("volumi rimasti: %d (%v)", n, err)
 	}
 }
+
+// GIT-357 (v3-b, H3, D19): ogni volume entra nel backup di default e si esclude per volume con PATCH,
+// da admin; non crea versioni né deploy. L'avviso database è nell'API.
+func TestAppVolumes_EsclusioneDalBackupEAvvisoDatabase(t *testing.T) {
+	e := newAppsEnv(t, httpserver.WithAppController(commitNoopController{}))
+	repoID := e.repo("handbook", true)
+	e.id.grantWrite(repoID, "bob")
+	base := "/repos/alice/handbook/apps/web"
+	e.want(e.do(http.MethodPost, "/repos/alice/handbook/apps", "alice", createWeb), http.StatusAccepted, "")
+	e.finishDeploys()
+	e.want(e.do(http.MethodPost, base+"/volumes", "alice", volumeBody("data", "/wiki/data", 64<<20)), http.StatusAccepted, "")
+	e.finishDeploys()
+	e.want(e.do(http.MethodPost, base+"/volumes", "alice", volumeBody("dump", "/dump", 64<<20)), http.StatusAccepted, "")
+	e.finishDeploys()
+	e.want(e.do(http.MethodPost, base+"/volumes", "alice", volumeBody("pg", "/var/lib/postgresql/data", 64<<20)), http.StatusAccepted, "")
+	e.finishDeploys()
+
+	list := func() map[string]openapi.AppVolume {
+		t.Helper()
+		rec := e.do(http.MethodGet, base+"/volumes", "carol", "")
+		e.want(rec, http.StatusOK, "")
+		var l openapi.AppVolumeList
+		if err := json.Unmarshal(rec.Body.Bytes(), &l); err != nil {
+			t.Fatal(err)
+		}
+		m := map[string]openapi.AppVolume{}
+		for _, v := range l.Items {
+			m[string(v.Name)] = v
+		}
+		return m
+	}
+	// Di default tutti nel backup; l'avviso database solo dove il percorso lo dice.
+	vols := list()
+	for _, n := range []string{"data", "dump", "pg"} {
+		if !vols[n].IncludeInBackup {
+			t.Errorf("volume %s: includeInBackup deve essere vero di default", n)
+		}
+	}
+	if vols["data"].LooksLikeDatabase || vols["dump"].LooksLikeDatabase || !vols["pg"].LooksLikeDatabase {
+		t.Errorf("avviso database: data=%v dump=%v pg=%v", vols["data"].LooksLikeDatabase, vols["dump"].LooksLikeDatabase, vols["pg"].LooksLikeDatabase)
+	}
+
+	// Solo admin cambia l'esclusione.
+	off := `{"includeInBackup": false}`
+	e.want(e.do(http.MethodPatch, base+"/volumes/pg", "bob", off), http.StatusForbidden, "forbidden")
+	e.want(e.do(http.MethodPatch, base+"/volumes/pg", "carol", off), http.StatusForbidden, "forbidden")
+	e.want(e.do(http.MethodPatch, base+"/volumes/non-esiste", "alice", off), http.StatusNotFound, "")
+	e.want(e.do(http.MethodPatch, base+"/volumes/pg", "alice", `{}`), http.StatusUnprocessableEntity, "")
+
+	versions := func() int {
+		var n int
+		if err := e.pool.QueryRow(context.Background(), `SELECT count(*) FROM core.app_versions`).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	before := versions()
+	rec := e.do(http.MethodPatch, base+"/volumes/pg", "alice", off)
+	e.want(rec, http.StatusOK, "")
+	var got openapi.AppVolume
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || got.IncludeInBackup || !got.LooksLikeDatabase || got.Name != "pg" {
+		t.Fatalf("esito: %s (%v)", rec.Body.String(), err)
+	}
+	if versions() != before {
+		t.Error("escludere un volume dal backup non deve creare versioni")
+	}
+	vols = list()
+	if vols["pg"].IncludeInBackup || !vols["data"].IncludeInBackup {
+		t.Errorf("solo pg è escluso: %+v", vols)
+	}
+	// L'esclusione si vede anche dalla query che usa il backup (solo i volumi inclusi).
+	var included int
+	if err := e.pool.QueryRow(context.Background(), `SELECT count(*) FROM core.app_volumes WHERE include_in_backup`).Scan(&included); err != nil || included != 2 {
+		t.Errorf("volumi inclusi = %d, %v; attesi 2", included, err)
+	}
+	// Si rimette dentro.
+	e.want(e.do(http.MethodPatch, base+"/volumes/pg", "alice", `{"includeInBackup": true}`), http.StatusOK, "")
+	if !list()["pg"].IncludeInBackup {
+		t.Error("pg doveva tornare nel backup")
+	}
+}

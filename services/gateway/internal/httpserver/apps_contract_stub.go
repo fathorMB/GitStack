@@ -181,3 +181,7 @@ func (s *apiServer) GetAppAccessInvite(w http.ResponseWriter, r *http.Request, o
 func (s *apiServer) GetAppAccessMembership(w http.ResponseWriter, r *http.Request, appId openapi_types.UUID) {
 	s.appsProxy(w, r)
 }
+
+func (s *apiServer) UpdateAppVolume(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, volume openapi.AppVolumeParam) {
+	s.appsProxy(w, r)
+}

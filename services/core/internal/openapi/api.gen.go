@@ -3787,6 +3787,12 @@ type AppVolume struct {
 	CreatedAt time.Time `json:"createdAt"`
 	CreatedBy *AppActor `json:"createdBy,omitempty"`
 
+	// IncludeInBackup Il volume entra in `gitstack backup` (anche verso S3) e torna con `gitstack restore` (H3, D19). Di default si; si esclude con `updateAppVolume`.
+	IncludeInBackup bool `json:"includeInBackup"`
+
+	// LooksLikeDatabase Avviso database (D19): il percorso di mount, il nome del volume o l'immagine dell'app fanno pensare a un database. La copia del backup si fa con l'app accesa: per un database dentro un container non e' garantita la coerenza, quindi la guida (docs/operations.md, «Volumes and databases») dice di pianificare un dump in un altro volume.
+	LooksLikeDatabase bool `json:"looksLikeDatabase"`
+
 	// MountPath Percorso di mount nel container.
 	MountPath string `json:"mountPath"`
 
@@ -3841,6 +3847,12 @@ type AppVolumeSpec struct {
 	// Name Nome del volume dentro l'app: lettere minuscole, cifre e trattini, 1-30 caratteri. Il PVC si chiama `vol-<nome>`.
 	Name      AppVolumeName `json:"name"`
 	SizeBytes int64         `json:"sizeBytes"`
+}
+
+// AppVolumeUpdate defines model for AppVolumeUpdate.
+type AppVolumeUpdate struct {
+	// IncludeInBackup `false` toglie il volume dal backup (e dal restore); `true` lo rimette.
+	IncludeInBackup bool `json:"includeInBackup"`
 }
 
 // AppsCapacity Capacita' del server e priorita' servizi di GitStack, poi app, poi job della CI (H11).
@@ -7413,6 +7425,9 @@ type PutAppVariableJSONRequestBody = AppVariableInput
 // CreateAppVolumeJSONRequestBody defines body for CreateAppVolume for application/json ContentType.
 type CreateAppVolumeJSONRequestBody = AppVolumeInput
 
+// UpdateAppVolumeJSONRequestBody defines body for UpdateAppVolume for application/json ContentType.
+type UpdateAppVolumeJSONRequestBody = AppVolumeUpdate
+
 // UpdateBranchSettingsJSONRequestBody defines body for UpdateBranchSettings for application/json ContentType.
 type UpdateBranchSettingsJSONRequestBody = UpdateBranchSettingsInput
 
@@ -7865,6 +7880,9 @@ type ServerInterface interface {
 	// DeleteAppVolume Elimina un volume dell'app e i suoi dati
 	// (DELETE /repos/{owner}/{repo}/apps/{app}/volumes/{volume})
 	DeleteAppVolume(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam)
+	// UpdateAppVolume Include o esclude il volume dal backup
+	// (PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume})
+	UpdateAppVolume(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam)
 	// GetRepositoryArchive Archivio ZIP o tar.gz di un ref (streaming)
 	// (GET /repos/{owner}/{repo}/archive)
 	GetRepositoryArchive(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryArchiveParams)
@@ -12231,6 +12249,59 @@ func (siw *ServerInterfaceWrapper) DeleteAppVolume(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteAppVolume(w, r, owner, repo, app, volume)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateAppVolume operation middleware
+func (siw *ServerInterfaceWrapper) UpdateAppVolume(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "volume" -------------
+	var volume AppVolumeParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "volume", r.PathValue("volume"), &volume, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "volume", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateAppVolume(w, r, owner, repo, app, volume)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -19156,6 +19227,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/volumes", wrapper.ListAppVolumes)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/volumes", wrapper.CreateAppVolume)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/volumes/{volume}", wrapper.DeleteAppVolume)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/volumes/{volume}", wrapper.UpdateAppVolume)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/logs", wrapper.GetAppLogs)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/metrics", wrapper.GetAppMetrics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps", wrapper.ListAdminApps)

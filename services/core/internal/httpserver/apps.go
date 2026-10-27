@@ -139,7 +139,7 @@ func (s *apiServer) appToAPI(a store.App) openapi.App {
 		Address: s.appAddress(a.AddressLabel), Image: imageToAPI(a.Image), ActiveVersion: a.ActiveVersion,
 		Port: a.Config.Port, HealthCheck: healthToAPI(a.Config.HealthCheck), Copies: a.Config.Copies, ReadyCopies: ready,
 		Resources: resourcesToAPI(a.Config), CreatedAt: a.CreatedAt, CreatedBy: actorToAPI(a.CreatedBy), UpdatedAt: a.UpdatedAt,
-		Volumes: volumesToAPI(a.Volumes),
+		Volumes: volumesToAPI(a.Volumes, a.Image.Reference),
 	}
 	if reason != nil {
 		sr := openapi.AppStoppedReason(*reason)
