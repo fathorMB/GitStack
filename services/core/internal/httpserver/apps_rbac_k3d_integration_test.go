@@ -36,6 +36,16 @@ func TestApps_SenzaSegretiConRbacDelChartSuK3d(t *testing.T) {
 	e.ns = apps.Namespace(uuid.UUID(app.Id))
 	t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), e.ns, metav1.DeleteOptions{}) })
 
+	// Prova di girare davvero con l'RBAC del chart: il RoleBinding creato dal controller nel
+	// namespace dell'app lega il SA di core al ClusterRole modello (letto con l'admin).
+	rb, err := e.kube.RbacV1().RoleBindings(e.ns).Get(context.Background(), apps.RoleBindingName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("RoleBinding %s nel namespace %s: %v", apps.RoleBindingName, e.ns, err)
+	}
+	if rb.RoleRef.Kind != "ClusterRole" || rb.RoleRef.Name != os.Getenv(envTestWorkloadRole) {
+		t.Fatalf("roleRef del RoleBinding: %+v", rb.RoleRef)
+	}
+
 	v := e.waitState(appPath, 1, "serving")
 	if v.State != "serving" {
 		t.Fatalf("versione 1: %s %s", v.State, deref(v.StateReason))

@@ -256,6 +256,13 @@ func newDeployEnvOpt(t *testing.T, runController bool) *appsDeployEnv {
 // i permessi del controller.
 const envTestKubeconfigCore = "GITSTACK_TEST_KUBECONFIG_CORE"
 
+// Nomi esportati da k3d-test.sh insieme al kubeconfig: ServiceAccount di core come
+// `namespace/nome` e ClusterRole modello delle app.
+const (
+	envTestCoreSA       = "GITSTACK_TEST_CORE_SA"
+	envTestWorkloadRole = "GITSTACK_TEST_WORKLOAD_ROLE"
+)
+
 // newDeployEnvAs: se controllerKubeconfig non è vuoto, il controller (e solo lui) parla al
 // cluster con quel kubeconfig; le asserzioni e la pulizia dei test restano con l'amministratore.
 func newDeployEnvAs(t *testing.T, runController bool, controllerKubeconfig string) *appsDeployEnv {
@@ -307,13 +314,23 @@ func newDeployEnvAs(t *testing.T, runController bool, controllerKubeconfig strin
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctl := apps.New(store.New(pool), ctlKube, ctlDyn, apps.Config{
+	cfg := apps.Config{
 		AppsDomain: "apps.example.com", ProgressTimeout: 75 * time.Second, FailureGrace: 6 * time.Second,
 		PollInterval: 500 * time.Millisecond, LoopInterval: time.Second, SyncEvery: 2 * time.Second,
 		Secrets: keys,
 		// GIT-418: con GITSTACK_TEST_CORE_IMAGE i pod delle app hanno il cancello vero (immagine di core importata nel cluster).
 		GateImage: os.Getenv(envTestCoreImage),
-	})
+	}
+	if controllerKubeconfig != "" {
+		// GIT-424: come in produzione, il controller si lega al ruolo modello nel namespace di ogni
+		// app; senza questi due campi ensureRoleBinding non crea il RoleBinding.
+		cfg.ControllerServiceAccount = os.Getenv(envTestCoreSA)
+		cfg.WorkloadRole = os.Getenv(envTestWorkloadRole)
+		if cfg.ControllerServiceAccount == "" || cfg.WorkloadRole == "" {
+			t.Fatalf("%s e %s vanno impostate insieme a %s", envTestCoreSA, envTestWorkloadRole, envTestKubeconfigCore)
+		}
+	}
+	ctl := apps.New(store.New(pool), ctlKube, ctlDyn, cfg)
 	base.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
 		httpserver.WithRepoIdentity(id), httpserver.WithReadableLister(id), httpserver.WithGit(git),
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "https://git.example.com"}),
