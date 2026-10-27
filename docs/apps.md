@@ -2,7 +2,7 @@
 
 Le applicazioni sono configurate in GitStack: ogni modifica di immagine, porta, variabili o segreti crea una nuova versione e avvia un deploy. Le variabili sono visibili a chi ha `write`; i segreti sono gestiti solo da chi ha `admin` e il loro valore non viene mai restituito dalle API.
 
-## Deploy automatico da branch e firme (H7, H10)
+## Deploy automatico da branch o da regola sui tag, e firme (H7, H10)
 
 **Firma.** La CI firma con cosign, con la chiave dell'istanza, ogni immagine che pubblica con il token del job; la chiave pubblica sta in `GET /registry/signing-key` e, per l'amministratore, in cima a `GET /admin/apps/trusted-keys`. Una versione dell'app porta `image.verified` (e `image.signedBy`): vero solo se la firma è valida. La firma della CI vale solo per **questo** repo e per **questa** immagine: la firma ricopiata da un altro repo o da un'altra immagine non conta (il riferimento firmato deve coincidere con `owner/repo[/immagine]`; se il repo viene rinominato le immagini già pubblicate risultano non verificate finché la CI non le ripubblica).
 
@@ -11,6 +11,12 @@ Le applicazioni sono configurate in GitStack: ogni modifica di immagine, porta, 
 - per un'immagine non firmata, firmata da un altro repo o da una chiave fidata aggiuntiva: il deploy automatico accetta **solo** la firma della CI di questo stesso repo, e `followBranch` su un'app con un'immagine così è rifiutato (422 `follow_branch_unsigned`);
 - se l'app ha il deploy automatico sospeso (`autoDeployPaused`), per esempio dopo un rollback;
 - se l'immagine è già quella dell'ultima versione (altro tag dello stesso build) o se c'è un altro deploy in corso: il prossimo push riprova.
+
+**Seguire una regola sui tag.** In alternativa al branch l'app segue una regola sui tag: `followTagPattern` (per esempio `v*-test.*`, `gs app create --follow-tag 'v*-test.*'`). Quando nel registry del repo arriva, pubblicata da un job della CI (push o `workflow_dispatch`), un'immagine della stessa app con un tag che rispetta la regola, GitStack la mette in produzione (`trigger: tag_push`, `commitSha` dall'immagine). La regola è un glob (`*` qualsiasi sequenza, `?` un carattere, `[a-z]` una classe) e deve combaciare con **tutto** il tag: con `v*-test.*` l'immagine firmata `v1.2-test.3` va in produzione, `v1.2` no. Valgono le stesse condizioni del branch: immagine firmata **dalla CI di questo repo** (mai non firmata, mai firmata da un altro repo o da una chiave aggiuntiva), permessi di chi ha fatto il push (CI4; su un repo in mirror in pull è chi ha acceso la CI sul mirror, CI3), se l'avvio fallisce resta la versione precedente (H12), niente deploy se `autoDeployPaused`.
+
+**Una sola sorgente.** Un'app segue un branch **oppure** una regola sui tag, mai tutte e due: `followBranch` e `followTagPattern` insieme, alla creazione o alla modifica, danno 422 `follow_both`. Per passare dall'una all'altra si toglie la prima nella stessa richiesta (`PATCH` con `{"followBranch": null, "followTagPattern": "v*-test.*"}`). Anche `followTagPattern` richiede un'immagine del registry firmata dalla CI (422 `follow_branch_unsigned`) e una regola valida (422 sul campo).
+
+**Un tag preciso dalla CI.** Un workflow con il token del job (vedi sotto) mette in produzione un tag preciso senza regola né branch: `gs app deploy web --image v1.2-test.3` con `GS_TOKEN` uguale al token del job, oppure `POST /repos/{owner}/{repo}/apps/{app}/deploys` con `{"image": "v1.2-test.3"}`. La versione ha `trigger: manual` e `commitSha` letto dall'immagine (H14), come il deploy a mano.
 
 **A mano.** Il deploy a mano (UI, API, `gs app deploy`) accetta anche immagini non firmate o esterne, etichettate «non verificata». Anche un workflow lo fa con il token del job (`Authorization: Bearer $GITSTACK_TOKEN` del job) su `POST /repos/{owner}/{repo}/apps/{app}/deploys`: serve `permissions: packages: write`, vale solo per le app del proprio repo ed è solo il deploy, nient'altro; il deploy è a nome di chi ha causato il run, che deve avere ancora `write` (un run senza autore, come una schedule, non può).
 

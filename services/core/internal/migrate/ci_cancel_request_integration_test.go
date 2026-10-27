@@ -31,7 +31,7 @@ func TestMigration0026_RichiestaDiAnnullamento(t *testing.T) {
 	}
 	mustExec(t, pool, `UPDATE core.ci_jobs SET cancel_requested_at = now() WHERE id = $1`, job)
 
-	if err := migrate.Down(ctx, pool, dsn, 20); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 21); err != nil {
 		t.Fatalf("down 0026: %v", err)
 	}
 	var n int
