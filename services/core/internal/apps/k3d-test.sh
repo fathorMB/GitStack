@@ -53,24 +53,37 @@ if [ "$answer" != "no" ]; then echo "KO: il SA di core può cancellare secrets f
 echo "ok: il SA di core non può cancellare secrets in kube-system"
 # GIT-427: readPodMetrics (metrics.go) fa List su metrics.k8s.io/v1beta1 pods nel namespace
 # dell'app. Il permesso sta nel ruolo modello, legato per namespace: si crea un namespace di prova
-# col RoleBinding che crea il controller e si chiede a Kubernetes (can-i non richiede metrics-server).
+# col RoleBinding che crea il controller e si chiede a Kubernetes (SubjectAccessReview).
 mns=gitstack-app-metricsprobe
 kubectl --kubeconfig "$work/kubeconfig" create namespace "$mns" >/dev/null
 kubectl --kubeconfig "$work/kubeconfig" -n "$mns" create rolebinding probe-workload \
   --clusterrole=gitstack-app-workload --serviceaccount="default:$sa" >/dev/null
-# Lo stdout resta separato dallo stderr: su un k3d appena creato il metrics-server non e' ancora
-# Available e kubectl scrive i warning di discovery su stderr, la risposta resta yes/no.
-answer=$(kubectl --kubeconfig "$work/kubeconfig" auth can-i list pods.metrics.k8s.io --as="system:serviceaccount:default:$sa" -n "$mns" 2>"$work/cani-metrics.err" || true)
-if [ "$answer" = yes ]; then
+# GIT-431: una SubjectAccessReview diretta non passa dalla discovery di metrics.k8s.io, che su un
+# k3d appena creato non risolve la risorsa finche' l'APIService non e' Available (can-i diceva no).
+sar_metrics() {
+  kubectl --kubeconfig "$work/kubeconfig" create -o jsonpath='{.status.allowed}' -f - <<SAR 2>"$work/sar-metrics.err"
+apiVersion: authorization.k8s.io/v1
+kind: SubjectAccessReview
+spec:
+  user: system:serviceaccount:default:$sa
+  resourceAttributes:
+    group: metrics.k8s.io
+    resource: pods
+    verb: list
+    namespace: $1
+SAR
+}
+answer=$(sar_metrics "$mns" || true)
+if [ "$answer" = true ]; then
   echo "ok: il SA di core può leggere le metriche dei pod nel namespace dell'app"
 else
-  echo "KO: il SA di core non può fare list su pods.metrics.k8s.io nel namespace dell'app (can-i: $answer; stderr: $(cat "$work/cani-metrics.err"))"; exit 1
+  echo "KO: il SA di core non può fare list su pods.metrics.k8s.io nel namespace dell'app (allowed: $answer; stderr: $(cat "$work/sar-metrics.err"))"; exit 1
 fi
-answer=$(kubectl --kubeconfig "$work/kubeconfig" auth can-i list pods.metrics.k8s.io --as="system:serviceaccount:default:$sa" -n kube-system 2>"$work/cani-metrics.err" || true)
-if [ "$answer" = no ]; then
+answer=$(sar_metrics kube-system || true)
+if [ "$answer" = false ]; then
   echo "ok: il SA di core non può leggere le metriche dei pod fuori dai namespace delle app"
 else
-  echo "KO: il SA di core può leggere pods.metrics.k8s.io fuori dai namespace delle app (can-i: $answer; stderr: $(cat "$work/cani-metrics.err"))"; exit 1
+  echo "KO: il SA di core può leggere pods.metrics.k8s.io fuori dai namespace delle app (allowed: $answer; stderr: $(cat "$work/sar-metrics.err"))"; exit 1
 fi
 kubectl --kubeconfig "$work/kubeconfig" delete namespace "$mns" --wait=false >/dev/null
 
