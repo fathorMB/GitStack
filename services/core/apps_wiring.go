@@ -71,7 +71,7 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, eg
 		cfg.ProgressTimeout = time.Duration(v) * time.Second
 	}
 	if cfg.GateImage == "" {
-		logger.Warn("apps: GITSTACK_CORE_APPS_GATE_IMAGE vuota, i pod delle app partono senza cancello: le barriere in uscita valgono solo dopo qualche secondo (GIT-418)")
+		logger.Error("apps: GITSTACK_CORE_APPS_GATE_IMAGE vuota, i deploy delle app saranno rifiutati finché non è impostata (GIT-422)")
 	}
 	cfg.OnDeployFailed = onDeployFailed
 	ctl := apps.New(st, kube, dyn, cfg)

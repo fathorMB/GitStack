@@ -252,6 +252,10 @@ func newDeployEnvOpt(t *testing.T, runController bool) *appsDeployEnv {
 	if kc == "" {
 		t.Skip("GITSTACK_TEST_KUBECONFIG non impostata: serve un cluster k3d (internal/apps/k3d-test.sh)")
 	}
+	if os.Getenv(envTestCoreImage) == "" {
+		// GIT-422: senza immagine del cancello core rifiuta ogni deploy.
+		t.Skip("GITSTACK_TEST_CORE_IMAGE non impostata: core rifiuta i deploy senza cancello (GIT-422)")
+	}
 	rc, err := clientcmd.BuildConfigFromFlags("", kc)
 	if err != nil {
 		t.Fatal(err)
