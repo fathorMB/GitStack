@@ -84,24 +84,7 @@ func (g *gateway) buildTask(ctx context.Context, job ci.JobRow, run ci.RunRow, t
 	if err := g.Pool.QueryRow(ctx, `SELECT owner_name, name FROM core.repositories WHERE resource_id = $1`, run.RepoID).Scan(&owner, &name); err != nil {
 		return nil, fmt.Errorf("repo: %w", err)
 	}
-	fields := map[string]any{
-		"repository":      owner + "/" + name,
-		"sha":             run.SHA,
-		"ref":             run.Ref,
-		"event_name":      run.Event,
-		"run_id":          run.ID.String(),
-		"job":             job.Key,
-		"workflow":        run.WorkflowName,
-		"token":           token,
-		"gitstack_job_id": job.ID.String(),
-	}
-	if g.ArchiveURL != "" {
-		fields["gitstack_archive_url"] = strings.TrimRight(g.ArchiveURL, "/") + ArchivePath
-	}
-	if run.PullNumber != nil {
-		fields["pull_number"] = float64(*run.PullNumber)
-	}
-	cx, err := structpb.NewStruct(fields)
+	cx, err := structpb.NewStruct(taskContext(owner+"/"+name, job, run, token, g.ArchiveURL))
 	if err != nil {
 		return nil, err
 	}
@@ -126,6 +109,38 @@ func (g *gateway) buildTask(ctx context.Context, job ci.JobRow, run ci.RunRow, t
 		Secrets:         secrets,
 		Vars:            vars,
 	}, nil
+}
+
+// taskContext è il contesto `github` minimo del task. Per un workflow_dispatch contiene anche
+// `inputs`: gli input risolti del run, default compresi (li ha riempiti resolveInputs
+// all'avvio), che il runner mette in github.event.inputs (GIT-439). Gli altri eventi non
+// hanno la chiave.
+func taskContext(repository string, job ci.JobRow, run ci.RunRow, token, archiveBase string) map[string]any {
+	fields := map[string]any{
+		"repository":      repository,
+		"sha":             run.SHA,
+		"ref":             run.Ref,
+		"event_name":      run.Event,
+		"run_id":          run.ID.String(),
+		"job":             job.Key,
+		"workflow":        run.WorkflowName,
+		"token":           token,
+		"gitstack_job_id": job.ID.String(),
+	}
+	if archiveBase != "" {
+		fields["gitstack_archive_url"] = strings.TrimRight(archiveBase, "/") + ArchivePath
+	}
+	if run.PullNumber != nil {
+		fields["pull_number"] = float64(*run.PullNumber)
+	}
+	if run.Event == "workflow_dispatch" {
+		inputs := make(map[string]any, len(run.Inputs))
+		for k, v := range run.Inputs {
+			inputs[k] = v
+		}
+		fields["inputs"] = inputs
+	}
+	return fields
 }
 
 // UpdateTask riporta lo stato dei passi; un esito finale chiude il job (CompleteJob)

@@ -10318,6 +10318,72 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
         "409": {$ref: "#/components/responses/Conflict"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
+  /repos/{owner}/{repo}/apps/{app}/egress:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/AppParam"}]
+    get:
+      operationId: getAppEgress
+      tags: [apps]
+      x-required-scopes: ["read:resource"]
+      x-repo-permission: write
+      x-mcp:
+        expose: false
+        name: app_egress_get
+        destructive: false
+      summary: "Legge l'uscita dell'app"
+      description: >
+        Serve `write` sul repo (H16): `read` riceve 403, un repo che non si legge 404. `restricted` dice se
+        l'app ha una restrizione propria; senza, l'app esce come l'istanza (internet aperto piu' le
+        destinazioni private aperte dall'amministratore, in `allowedPrivate`).
+      responses:
+        "200": {description: "Uscita dell'app.", content: {application/json: {schema: {$ref: "#/components/schemas/AppEgress"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    put:
+      operationId: setAppEgress
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: false
+        name: app_egress_set
+        destructive: true
+      summary: "Restringe l'uscita dell'app a un elenco di destinazioni"
+      description: >
+        Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409
+        `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello
+        stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere
+        una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va
+        sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza
+        riavviare l'app e senza creare una versione.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppEgressInput"}}}}
+      responses:
+        "200": {description: "Uscita aggiornata.", content: {application/json: {schema: {$ref: "#/components/schemas/AppEgress"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+    delete:
+      operationId: deleteAppEgress
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: false
+        name: app_egress_delete
+        destructive: true
+      summary: "Toglie la restrizione di uscita dell'app"
+      description: >
+        Serve `admin` sul repo (H16). L'app torna all'uscita dell'istanza. Idempotente: senza restrizione
+        risponde comunque 204. Repo archiviato 409 `archived`.
+      responses:
+        "204": {description: "Restrizione tolta."}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
   /repos/{owner}/{repo}/apps/{app}/volumes:
     parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/AppParam"}]
     get:
@@ -10623,6 +10689,49 @@ paths:
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppsInstanceSettingsInput"}}}}
       responses:
         "200": {description: "Impostazioni aggiornate.", content: {application/json: {schema: {$ref: "#/components/schemas/AppsInstanceSettings"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+  /admin/apps/egress:
+    get:
+      operationId: getAdminAppsEgress
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: admin_apps_egress_view
+        destructive: false
+      summary: "Legge le destinazioni private aperte all'uscita delle app (solo amministratore)"
+      description: >
+        Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono
+        403 `forbidden`. Internet e' aperto alle app; la rete privata (RFC 1918, ULA, CGNAT) e' chiusa e si
+        apre solo per destinazioni precise (`db.azienda.lan:5432`), con le stesse regole di webhook e mirror
+        (pkg/egress, C8). Loopback, link-local, indirizzi del cluster e del nodo e porte di Kubernetes non
+        si aprono mai.
+      responses:
+        "200": {description: "Destinazioni aperte.", content: {application/json: {schema: {$ref: "#/components/schemas/AppsEgressSettings"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    put:
+      operationId: updateAdminAppsEgress
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: admin_apps_egress_update
+        destructive: true
+      summary: "Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)"
+      description: >
+        Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono
+        403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome
+        si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked`
+        (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione
+        si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non
+        di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppsEgressSettingsInput"}}}}
+      responses:
+        "200": {description: "Destinazioni aggiornate.", content: {application/json: {schema: {$ref: "#/components/schemas/AppsEgressSettings"}}}}
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
@@ -17745,6 +17854,74 @@ components:
         restricted: {type: boolean}
         maxPerApp: {$ref: "#/components/schemas/AppResourceAmount"}
         logRetention: {$ref: "#/components/schemas/AppLogRetention"}
+    AppEgressDestination:
+      type: object
+      additionalProperties: false
+      required: [host, port]
+      properties:
+        host: {type: string, maxLength: 253, description: "Indirizzo IP o nome DNS, senza schema ne' porta."}
+        port: {type: integer, minimum: 1, maximum: 65535, description: "Porta TCP."}
+    AppPrivateDestination:
+      type: object
+      additionalProperties: false
+      required: [host, port, note]
+      properties:
+        host: {type: string, maxLength: 253}
+        port: {type: integer, minimum: 1, maximum: 65535}
+        note: {type: string, maxLength: 200, description: "A cosa serve (es. database del backoffice)."}
+        createdAt: {type: string, format: date-time}
+        createdBy: {allOf: [{$ref: "#/components/schemas/AppActor"}], nullable: true, type: object}
+    AppPrivateDestinationInput:
+      type: object
+      additionalProperties: false
+      required: [host, port]
+      properties:
+        host: {type: string, maxLength: 253}
+        port: {type: integer, minimum: 1, maximum: 65535}
+        note: {type: string, maxLength: 200}
+    AppsEgressSettings:
+      type: object
+      additionalProperties: false
+      required: [privateDestinations]
+      properties:
+        privateDestinations:
+          type: array
+          items: {$ref: "#/components/schemas/AppPrivateDestination"}
+    AppsEgressSettingsInput:
+      type: object
+      additionalProperties: false
+      required: [privateDestinations]
+      properties:
+        privateDestinations:
+          type: array
+          maxItems: 200
+          items: {$ref: "#/components/schemas/AppPrivateDestinationInput"}
+    AppEgress:
+      type: object
+      additionalProperties: false
+      required: [restricted, destinations, allowedPrivate, instanceProxy]
+      properties:
+        restricted: {type: boolean, description: "L'app ha una restrizione propria."}
+        instanceProxy: {type: boolean, description: "L'istanza ha un proxy di uscita configurato (N9): un'app con l'uscita ristretta esce in modo diretto, senza il proxy."}
+        destinations:
+          type: array
+          items: {$ref: "#/components/schemas/AppEgressDestination"}
+          description: "Le destinazioni della restrizione; vuoto se `restricted` e' false."
+        allowedPrivate:
+          type: array
+          items: {$ref: "#/components/schemas/AppPrivateDestination"}
+          description: "Le destinazioni private aperte dall'amministratore: l'app puo' sceglierle."
+        updatedAt: {type: string, format: date-time}
+        updatedBy: {allOf: [{$ref: "#/components/schemas/AppActor"}], nullable: true, type: object}
+    AppEgressInput:
+      type: object
+      additionalProperties: false
+      required: [destinations]
+      properties:
+        destinations:
+          type: array
+          maxItems: 200
+          items: {$ref: "#/components/schemas/AppEgressDestination"}
     AppLogRetention:
       type: object
       additionalProperties: false

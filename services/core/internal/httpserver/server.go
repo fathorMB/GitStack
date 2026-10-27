@@ -62,6 +62,8 @@ type apiServer struct {
 	appCtl AppController
 	// appsOff: hosting spento di proposito (WithAppsHostingOff); la creazione di app risponde 503.
 	appsOff bool
+	// appEgress: barriere d'istanza per le destinazioni di uscita delle app (H16).
+	appEgress AppEgressConfig
 }
 
 var _ openapi.ServerInterface = (*apiServer)(nil)

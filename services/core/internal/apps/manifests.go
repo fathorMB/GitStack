@@ -108,6 +108,9 @@ type BuildOptions struct {
 	// ProxyEnv è la configurazione N9 dell'istanza. Viene dal processo core e
 	// non può essere sostituita dalle variabili dichiarate dall'app.
 	ProxyEnv map[string]string
+	// EgressRestricted: l'app ha la restrizione dell'uscita (H16). La sua NetworkPolicy non apre il proxy,
+	// quindi non riceve nessuna variabile del proxy N9 (esce in modo diretto verso le destinazioni elencate).
+	EgressRestricted bool
 	// GateImage è l'immagine (di core) dell'init container «gate» (GIT-418): l'app parte solo dopo che la
 	// NetworkPolicy è stata applicata al pod. Vuoto: nessun cancello (solo prove senza l'immagine di core).
 	GateImage string
@@ -123,6 +126,15 @@ type NetworkPolicyOptions struct {
 	// anche in uscita dalle app (H16). Vuoti: default di pkg/egress, senza indirizzi del nodo.
 	ClusterCIDRs  []string
 	NodeAddresses []string
+	// Deny è la lista vietata dell'installazione: nessuna apertura la supera.
+	Deny []string
+	// PrivateOpenings sono gli indirizzi:porta della rete privata aperti dall'amministratore (già
+	// risolti, GIT-385). Valgono per le app senza restrizione; il builder ricontrolla ognuno con
+	// egress.Policy.CheckOpening e scarta quelli che le regole di fondo vietano.
+	PrivateOpenings []netip.AddrPort
+	// Restriction: se non nil l'app esce solo verso questi indirizzi:porta (oltre a peer dello stesso
+	// repo e DNS), senza internet aperto né proxy. Una slice vuota chiude ogni altra uscita.
+	Restriction *[]netip.AddrPort
 }
 
 // BuildDeployment traduce una versione nel Deployment dell'app.
@@ -155,7 +167,7 @@ func BuildDeployment(app store.App, v store.AppVersion, o BuildOptions) *appsv1.
 		Name:            containerName,
 		Image:           ImageRef(v),
 		ImagePullPolicy: corev1.PullIfNotPresent,
-		Env:             envVars(cfg.Variables, app.Config.Port, systemEnv(v), o.ProxyEnv),
+		Env:             envVars(cfg.Variables, app.Config.Port, systemEnv(v), deploymentProxyEnv(o)),
 		SecurityContext: sc,
 		Resources: corev1.ResourceRequirements{
 			Requests: resourceList(cfg.Guaranteed),
@@ -319,6 +331,19 @@ func imageTag(ref string) string {
 		return ""
 	}
 	return ref[i+1:]
+}
+
+// deploymentProxyEnv è la configurazione N9 da passare al pod: nessuna per un'app con l'uscita ristretta.
+func deploymentProxyEnv(o BuildOptions) map[string]string {
+	if o.EgressRestricted {
+		return nil
+	}
+	return o.ProxyEnv
+}
+
+// HasProxy dice se la configurazione N9 contiene un proxy di uscita (HTTP_PROXY o HTTPS_PROXY validi).
+func HasProxy(env map[string]string) bool {
+	return len(proxyEndpoints(env)) > 0
 }
 
 // envVars compone l'ambiente del container: variabili dell'app, poi quelle di sistema (che non si
@@ -486,6 +511,9 @@ func BuildNetworkPolicy(app store.App, options ...NetworkPolicyOptions) *network
 		dns := networkingv1.NetworkPolicyPeer{NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": "kube-system"}}, PodSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"k8s-app": "kube-dns"}}}
 		egress = append(egress, networkingv1.NetworkPolicyEgressRule{To: []networkingv1.NetworkPolicyPeer{dns}, Ports: []networkingv1.NetworkPolicyPort{{Protocol: proto(corev1.ProtocolUDP), Port: &dnsPort}, {Protocol: proto(corev1.ProtocolTCP), Port: &dnsPort}}})
 	}
+	if o.Restriction != nil { // uscita ristretta (H16): solo gli indirizzi elencati, niente internet né proxy
+		endpoints = nil
+	}
 	for _, endpoint := range endpoints {
 		ports := []networkingv1.NetworkPolicyPort{{Port: &endpoint.port}}
 		if endpoint.named {
@@ -496,7 +524,13 @@ func BuildNetworkPolicy(app store.App, options ...NetworkPolicyOptions) *network
 		}
 		egress = append(egress, proxyRule(endpoint.host, ports))
 	}
-	egress = append(egress, internetRule(o))
+	policy := EgressPolicy(o.ClusterCIDRs, o.NodeAddresses, o.Deny)
+	if o.Restriction == nil {
+		egress = append(egress, internetRule(o))
+		egress = append(egress, addressRules(policy, o.PrivateOpenings)...)
+	} else {
+		egress = append(egress, addressRules(policy, *o.Restriction)...)
+	}
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{Name: "app-isolation", Namespace: Namespace(app.ID), Labels: labels},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -519,6 +553,27 @@ func hostCIDR(ip string) string {
 		return netip.PrefixFrom(a.Unmap().WithZone(""), a.Unmap().BitLen()).String()
 	}
 	return ip + "/32"
+}
+
+// addressRules: una regola per indirizzo e porta (TCP), /32 o /128. Ogni voce passa ancora da
+// egress.Policy.CheckOpening: loopback, link-local, cluster, nodo e porte di Kubernetes non si aprono
+// qualunque cosa arrivi dal database. Ordine stabile, senza doppioni.
+func addressRules(policy *egress.Policy, list []netip.AddrPort) []networkingv1.NetworkPolicyEgressRule {
+	seen := OpenedSet{}
+	for _, ap := range list {
+		if policy.CheckOpening(ap.Addr(), ap.Port()) == nil {
+			seen[netip.AddrPortFrom(ap.Addr().Unmap().WithZone(""), ap.Port())] = true
+		}
+	}
+	var rules []networkingv1.NetworkPolicyEgressRule
+	for _, ap := range sortedAddrPorts(seen) {
+		port := intstr.FromInt(int(ap.Port()))
+		rules = append(rules, networkingv1.NetworkPolicyEgressRule{
+			To:    []networkingv1.NetworkPolicyPeer{{IPBlock: &networkingv1.IPBlock{CIDR: hostCIDR(ap.Addr().String())}}},
+			Ports: []networkingv1.NetworkPolicyPort{{Protocol: proto(corev1.ProtocolTCP), Port: &port}},
+		})
+	}
+	return rules
 }
 
 // internetRule apre tutto internet (IPv4 e IPv6) meno le eccezioni di pkg/egress (H16).

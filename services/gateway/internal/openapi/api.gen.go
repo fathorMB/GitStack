@@ -3429,6 +3429,37 @@ type AppDeployInput struct {
 // AppDeployState Esito di una versione: `in_progress` (in avvio o in attesa del controllo di salute), `serving` (serve il traffico), `superseded` (sostituita da una piu' recente), `failed` (non ha superato il controllo di salute) e `rolled_back` (fallita con ritorno automatico alla versione precedente, H12).
 type AppDeployState string
 
+// AppEgress defines model for AppEgress.
+type AppEgress struct {
+	// AllowedPrivate Le destinazioni private aperte dall'amministratore: l'app puo' sceglierle.
+	AllowedPrivate []AppPrivateDestination `json:"allowedPrivate"`
+
+	// Destinations Le destinazioni della restrizione; vuoto se `restricted` e' false.
+	Destinations []AppEgressDestination `json:"destinations"`
+
+	// InstanceProxy L'istanza ha un proxy di uscita configurato (N9): un'app con l'uscita ristretta esce in modo diretto, senza il proxy.
+	InstanceProxy bool `json:"instanceProxy"`
+
+	// Restricted L'app ha una restrizione propria.
+	Restricted bool       `json:"restricted"`
+	UpdatedAt  *time.Time `json:"updatedAt,omitempty"`
+	UpdatedBy  *AppActor  `json:"updatedBy,omitempty"`
+}
+
+// AppEgressDestination defines model for AppEgressDestination.
+type AppEgressDestination struct {
+	// Host Indirizzo IP o nome DNS, senza schema ne' porta.
+	Host string `json:"host"`
+
+	// Port Porta TCP.
+	Port int `json:"port"`
+}
+
+// AppEgressInput defines model for AppEgressInput.
+type AppEgressInput struct {
+	Destinations []AppEgressDestination `json:"destinations"`
+}
+
 // AppEnvName Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
 type AppEnvName = string
 
@@ -3588,6 +3619,24 @@ type AppOwnerQuotaInput struct {
 // AppOwnerQuotaList defines model for AppOwnerQuotaList.
 type AppOwnerQuotaList struct {
 	Items []AppOwnerQuota `json:"items"`
+}
+
+// AppPrivateDestination defines model for AppPrivateDestination.
+type AppPrivateDestination struct {
+	CreatedAt *time.Time `json:"createdAt,omitempty"`
+	CreatedBy *AppActor  `json:"createdBy,omitempty"`
+	Host      string     `json:"host"`
+
+	// Note A cosa serve (es. database del backoffice).
+	Note string `json:"note"`
+	Port int    `json:"port"`
+}
+
+// AppPrivateDestinationInput defines model for AppPrivateDestinationInput.
+type AppPrivateDestinationInput struct {
+	Host string  `json:"host"`
+	Note *string `json:"note,omitempty"`
+	Port int     `json:"port"`
 }
 
 // AppResourceAmount CPU e memoria, per copia.
@@ -3899,6 +3948,16 @@ type AppsCapacity struct {
 		// Reserved CPU e memoria, per copia.
 		Reserved AppResourceAmount `json:"reserved"`
 	} `json:"services"`
+}
+
+// AppsEgressSettings defines model for AppsEgressSettings.
+type AppsEgressSettings struct {
+	PrivateDestinations []AppPrivateDestination `json:"privateDestinations"`
+}
+
+// AppsEgressSettingsInput defines model for AppsEgressSettingsInput.
+type AppsEgressSettingsInput struct {
+	PrivateDestinations []AppPrivateDestinationInput `json:"privateDestinations"`
 }
 
 // AppsInstanceSettings defines model for AppsInstanceSettings.
@@ -7354,6 +7413,9 @@ type GetUserAccessParams struct {
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// UpdateAdminAppsEgressJSONRequestBody defines body for UpdateAdminAppsEgress for application/json ContentType.
+type UpdateAdminAppsEgressJSONRequestBody = AppsEgressSettingsInput
+
 // PutAdminAppOwnerQuotaJSONRequestBody defines body for PutAdminAppOwnerQuota for application/json ContentType.
 type PutAdminAppOwnerQuotaJSONRequestBody = AppOwnerQuotaInput
 
@@ -7419,6 +7481,9 @@ type AddAppAccessMemberJSONRequestBody = AppAccessMemberInput
 
 // DeployAppJSONRequestBody defines body for DeployApp for application/json ContentType.
 type DeployAppJSONRequestBody = AppDeployInput
+
+// SetAppEgressJSONRequestBody defines body for SetAppEgress for application/json ContentType.
+type SetAppEgressJSONRequestBody = AppEgressInput
 
 // SetAppResourcesJSONRequestBody defines body for SetAppResources for application/json ContentType.
 type SetAppResourcesJSONRequestBody = AppResourcesInput
@@ -7590,6 +7655,12 @@ type ServerInterface interface {
 	// GetAdminAppsCapacity Legge la capacita' del server e la riserva per le app (solo amministratore)
 	// (GET /admin/apps/capacity)
 	GetAdminAppsCapacity(w http.ResponseWriter, r *http.Request)
+	// GetAdminAppsEgress Legge le destinazioni private aperte all'uscita delle app (solo amministratore)
+	// (GET /admin/apps/egress)
+	GetAdminAppsEgress(w http.ResponseWriter, r *http.Request)
+	// UpdateAdminAppsEgress Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+	// (PUT /admin/apps/egress)
+	UpdateAdminAppsEgress(w http.ResponseWriter, r *http.Request)
 	// ListAdminAppOwnerQuotas Elenca le quote delle app per owner (solo amministratore)
 	// (GET /admin/apps/quotas)
 	ListAdminAppOwnerQuotas(w http.ResponseWriter, r *http.Request)
@@ -7842,6 +7913,15 @@ type ServerInterface interface {
 	// DeployApp Mette in produzione un'immagine (nuova versione)
 	// (POST /repos/{owner}/{repo}/apps/{app}/deploys)
 	DeployApp(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// DeleteAppEgress Toglie la restrizione di uscita dell'app
+	// (DELETE /repos/{owner}/{repo}/apps/{app}/egress)
+	DeleteAppEgress(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// GetAppEgress Legge l'uscita dell'app
+	// (GET /repos/{owner}/{repo}/apps/{app}/egress)
+	GetAppEgress(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// SetAppEgress Restringe l'uscita dell'app a un elenco di destinazioni
+	// (PUT /repos/{owner}/{repo}/apps/{app}/egress)
+	SetAppEgress(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
 	// GetAppLogs Legge i log dell'app, in diretta o dalla cronologia
 	// (GET /repos/{owner}/{repo}/apps/{app}/logs)
 	GetAppLogs(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params GetAppLogsParams)
@@ -8357,6 +8437,34 @@ func (siw *ServerInterfaceWrapper) GetAdminAppsCapacity(w http.ResponseWriter, r
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAdminAppsCapacity(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAdminAppsEgress operation middleware
+func (siw *ServerInterfaceWrapper) GetAdminAppsEgress(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAdminAppsEgress(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateAdminAppsEgress operation middleware
+func (siw *ServerInterfaceWrapper) UpdateAdminAppsEgress(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateAdminAppsEgress(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -11268,6 +11376,138 @@ func (siw *ServerInterfaceWrapper) DeployApp(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeployApp(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteAppEgress operation middleware
+func (siw *ServerInterfaceWrapper) DeleteAppEgress(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteAppEgress(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAppEgress operation middleware
+func (siw *ServerInterfaceWrapper) GetAppEgress(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAppEgress(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetAppEgress operation middleware
+func (siw *ServerInterfaceWrapper) SetAppEgress(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetAppEgress(w, r, owner, repo, app)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -19255,6 +19495,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/apps/{appId}/access-membership", wrapper.GetAppAccessMembership)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/resources", wrapper.GetAppResources)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/resources", wrapper.SetAppResources)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/egress", wrapper.DeleteAppEgress)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/egress", wrapper.GetAppEgress)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/egress", wrapper.SetAppEgress)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/volumes", wrapper.ListAppVolumes)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/volumes", wrapper.CreateAppVolume)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/volumes/{volume}", wrapper.DeleteAppVolume)
@@ -19269,6 +19512,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/admin/apps/quotas/{owner}", wrapper.PutAdminAppOwnerQuota)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps/settings", wrapper.GetAdminAppsSettings)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/admin/apps/settings", wrapper.UpdateAdminAppsSettings)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps/egress", wrapper.GetAdminAppsEgress)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/admin/apps/egress", wrapper.UpdateAdminAppsEgress)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps/trusted-keys", wrapper.ListAdminAppTrustedKeys)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/admin/apps/trusted-keys", wrapper.AddAdminAppTrustedKey)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/admin/apps/trusted-keys/{keyId}", wrapper.DeleteAdminAppTrustedKey)
