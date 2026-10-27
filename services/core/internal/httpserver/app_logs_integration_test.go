@@ -75,7 +75,7 @@ func newLogsEnv(t *testing.T) *logsEnv {
 	kube := fake.NewSimpleClientset()
 	pods := &fakePodLogs{lines: map[string][]string{}}
 	ctl := apps.New(st, kube, nil, apps.Config{
-		Now: clock.Now, PodLogs: pods.read,
+		Now: clock.Now, PodLogs: pods.read, GateImage: "registry.gitstack.test/gitstack-core:test",
 		Secrets: keys,
 	})
 	base.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,

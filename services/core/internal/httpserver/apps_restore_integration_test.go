@@ -38,7 +38,7 @@ func TestApps_DopoIlRestoreLaVersioneAttivaRiparte(t *testing.T) {
 		t.Fatal(err)
 	}
 	kube := fake.NewClientset()
-	ctl := apps.New(st, kube, nil, apps.Config{AppsDomain: "apps.example.com", ProgressTimeout: 75 * time.Second})
+	ctl := apps.New(st, kube, nil, apps.Config{AppsDomain: "apps.example.com", ProgressTimeout: 75 * time.Second, GateImage: "registry.gitstack.test/gitstack-core:test"})
 
 	ctl.Sync(ctx)
 

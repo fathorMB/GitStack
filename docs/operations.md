@@ -276,6 +276,17 @@ flags a mismatch). The login in front of apps (GIT-347,
 the apps domain and the public URL. Without the keys `/_appauth/verify` answers
 503 and no `login` app would pass.
 
+**Network gate, fail-closed (GIT-418, GIT-422).** Every app pod starts with the
+init container `core apps-gate`, so the app runs only once its NetworkPolicy is
+enforced (kube-router applies it after the pod starts). The chart sets
+`GITSTACK_CORE_APPS_GATE_IMAGE` (the `core` image) whenever `apps.enabled` is
+on. If apps are enabled but the variable is empty (a deploy outside the chart,
+a wrong configuration), `core` stays up (git and CI are not affected) and logs a
+warning at start, but **refuses to deploy any app**: the deploy ends `failed`
+with the reason «GITSTACK_CORE_APPS_GATE_IMAGE non impostata …», and nothing is
+created in the cluster (no namespace, no Deployment). Fix: set the variable to
+the `core` image and deploy again.
+
 RBAC of `core` (chart `templates/apps-rbac.yaml`): a controller ClusterRole
 with `create/get/list/watch/update/delete` on `namespaces`, `create/get` on
 `rolebindings` and `bind` on the one app role template; the template
