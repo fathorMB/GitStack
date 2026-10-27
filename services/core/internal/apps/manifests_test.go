@@ -3,6 +3,7 @@ package apps
 import (
 	"context"
 	"net"
+	"net/netip"
 	"strings"
 	"testing"
 	"time"
@@ -509,6 +510,39 @@ func TestBuildNetworkPolicy_ProxyIPv6Usa128EIPv4Usa32(t *testing.T) {
 	}
 	if got := p.Spec.Egress[3].To[0].IPBlock.CIDR; got != "10.0.0.7/32" {
 		t.Errorf("proxy con nome IPv4: %s", got)
+	}
+}
+
+// Kubernetes rifiuta gli except IPv4-mapped e quelli non strettamente dentro il cidr (GIT-415).
+func TestBuildNetworkPolicy_ExceptValidiPerKubernetes(t *testing.T) {
+	app, _ := testApp()
+	p := BuildNetworkPolicy(app, NetworkPolicyOptions{ClusterCIDRs: []string{"10.50.0.0/16"}, NodeAddresses: []string{"192.168.1.10", "::ffff:10.1.2.3"}})
+	r := p.Spec.Egress[len(p.Spec.Egress)-1]
+	for _, peer := range r.To {
+		outer := netip.MustParsePrefix(peer.IPBlock.CIDR)
+		if len(peer.IPBlock.Except) == 0 {
+			t.Errorf("%s senza eccezioni", outer)
+		}
+		for _, s := range peer.IPBlock.Except {
+			x, err := netip.ParsePrefix(s)
+			if err != nil {
+				t.Errorf("except %q non è un CIDR: %v", s, err)
+				continue
+			}
+			if x.Addr().Is4In6() {
+				t.Errorf("except %s è IPv4-mapped", s)
+			}
+			if x.Addr().Is4() != outer.Addr().Is4() || x.Bits() <= outer.Bits() || !outer.Contains(x.Addr()) {
+				t.Errorf("except %s non è strettamente dentro %s", s, outer)
+			}
+		}
+	}
+	found := false
+	for _, s := range r.To[0].IPBlock.Except {
+		found = found || s == "10.1.2.3/32"
+	}
+	if !found {
+		t.Errorf("il nodo ::ffff:10.1.2.3 deve uscire come 10.1.2.3/32 in v4: %v", r.To[0].IPBlock.Except)
 	}
 }
 
