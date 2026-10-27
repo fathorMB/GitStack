@@ -44,6 +44,9 @@ export GS_NO_KEYRING=1
 GS="$W/bin/gs"
 REPO="${GS_USER_NAME}/${GS_REPO_NAME}"
 as_person() { GS_TOKEN="$GS_USER_TOKEN" "$GS" "$@"; }
+# Il credential helper di `gs auth setup-git` legge GS_TOKEN dall'ambiente: ogni git che parla
+# col server passa da as_git (GIT-433), senza esportare il token per tutto lo script.
+as_git() { GS_TOKEN="$GS_USER_TOKEN" git "$@"; }
 GS_TOKEN="$GS_USER_TOKEN" "$GS" auth setup-git >/dev/null 2>&1 || fail setup_git "gs auth setup-git: exit $?"
 
 out="$(as_person repo create "$GS_REPO_NAME" --json fullName 2>&1)" || fail repo_create "$out"
@@ -88,7 +91,7 @@ EOF
 echo "# ciclo CI" >README.md
 git add -A
 git commit -q -m "Workflow image" || fail clone "commit"
-git push -q origin HEAD:main 2>&1 || fail clone "push"
+out="$(as_git push -q origin HEAD:main 2>&1)" || fail workflow_push "$out"
 ok workflow_push
 
 wl="$(as_person workflow list -R "$REPO" 2>&1)" || fail workflow_list "$wl"
@@ -146,7 +149,7 @@ ok package_list
 
 cd "$W/repo" || exit 1
 git tag v0.0.0-test.1 || fail release "git tag"
-git push -q origin v0.0.0-test.1 2>&1 || fail release "push del tag"
+out="$(as_git push -q origin v0.0.0-test.1 2>&1)" || fail release "push del tag: $out"
 relid="$(as_person release create -R "$REPO" --tag v0.0.0-test.1 --name "Prova 1" --generate-notes --prerelease 2>&1)" || fail release "release create: $relid"
 as_person release upload "$relid" "$W/layer.tar" -R "$REPO" >/dev/null 2>&1 || fail release "release upload"
 as_person release list -R "$REPO" 2>&1 | grep -q v0.0.0-test.1 || fail release "release list senza il tag"
