@@ -162,6 +162,9 @@ type Controller struct {
 	// versionOf dà la versione attiva dell'app (reapply); senza store è un seam dei test.
 	versionOf func(context.Context, store.App) (store.AppVersion, error)
 
+	// publicOn è un seam dei test per l'interruttore delle app pubbliche; nil = lo legge lo store.
+	publicOn func(context.Context) (bool, error)
+
 	kick    chan struct{}
 	mu      sync.Mutex
 	running map[uuid.UUID]bool
@@ -766,6 +769,18 @@ func (c *Controller) routeHost(app store.App, cfg store.AppConfig) string {
 	return *app.AddressLabel + "." + c.cfg.AppsDomain
 }
 
+// publicAppsEnabled legge l'interruttore d'istanza delle app pubbliche (H1); senza store (test) è
+// il seam publicOn, e senza nemmeno quello vale spento.
+func (c *Controller) publicAppsEnabled(ctx context.Context) (bool, error) {
+	if c.publicOn != nil {
+		return c.publicOn(ctx)
+	}
+	if c.st == nil {
+		return false, nil
+	}
+	return c.st.PublicAppsEnabled(ctx)
+}
+
 // authConfigured: il forward-auth del login (H6) ha indirizzo e segreto.
 func (c *Controller) authConfigured() bool {
 	return c.cfg.AuthURL != "" && c.cfg.AuthSecret != ""
@@ -777,6 +792,18 @@ func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.A
 	}
 	routes := c.dyn.Resource(routeGVR).Namespace(Namespace(app.ID))
 	host := c.routeHost(app, cfg)
+	// App pubbliche (H1): con l'interruttore d'istanza spento un'app `public` non è esposta. Il modo
+	// resta salvato; alla riaccensione la rotta torna al prossimo giro. Nel dubbio (errore di lettura)
+	// la rotta non si crea: mai esposta per sbaglio.
+	if host != "" && app.Access == "public" {
+		on, err := c.publicAppsEnabled(ctx)
+		if err != nil {
+			return fmt.Errorf("lettura dell'interruttore delle app pubbliche: %w", err)
+		}
+		if !on {
+			host = ""
+		}
+	}
 	if host == "" {
 		err := routes.Delete(ctx, WorkloadName, metav1.DeleteOptions{})
 		if apierrors.IsNotFound(err) {

@@ -84,7 +84,7 @@ func TestMigration0049_AppEgress(t *testing.T) {
 		t.Fatalf("la restrizione esce con l'app: %d %v", n, err)
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
 		t.Fatalf("down 0049: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.tables WHERE table_schema = 'core' AND table_name IN ('app_private_destinations', 'app_egress_restrictions')`).Scan(&n); err != nil || n != 0 {

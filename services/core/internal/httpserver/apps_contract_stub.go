@@ -5,6 +5,7 @@ import (
 
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
+	"github.com/fathorMB/GitStack/services/core/internal/trust"
 )
 
 func appStringPtr(v string) *string { return &v }
@@ -43,11 +44,17 @@ func (s *apiServer) GetAdminAppsSettings(w http.ResponseWriter, r *http.Request)
 		appInternalError(w, "lettura delle impostazioni delle app", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, openapi.AppsInstanceSettings{AppsDomain: appStringPtr(s.appsDomain), AppsDomainIsDefault: appBoolPtr(s.appsDomain == ""), MaxPerApp: openapi.AppResourceAmount{CpuMillis: c.Max.CPUMillis, MemoryBytes: c.Max.MemoryBytes}, PublicAppsEnabled: false, SignedImagesOnly: signedOnly, Restricted: false, LogRetention: openapi.AppLogRetention{Days: 7, MaxBytes: 1 << 30}})
+	publicOn, err := s.resources.PublicAppsEnabled(r.Context())
+	if err != nil {
+		appInternalError(w, "lettura delle impostazioni delle app", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, openapi.AppsInstanceSettings{AppsDomain: appStringPtr(s.appsDomain), AppsDomainIsDefault: appBoolPtr(s.appsDomain == ""), MaxPerApp: openapi.AppResourceAmount{CpuMillis: c.Max.CPUMillis, MemoryBytes: c.Max.MemoryBytes}, PublicAppsEnabled: publicOn, SignedImagesOnly: signedOnly, Restricted: false, LogRetention: openapi.AppLogRetention{Days: 7, MaxBytes: 1 << 30}})
 }
 
 func (s *apiServer) UpdateAdminAppsSettings(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.requireInstanceAdmin(w, r, "modificare le impostazioni delle app"); !ok {
+	adminID, ok := s.requireInstanceAdmin(w, r, "modificare le impostazioni delle app")
+	if !ok {
 		return
 	}
 	var in openapi.AppsInstanceSettingsInput
@@ -56,10 +63,6 @@ func (s *apiServer) UpdateAdminAppsSettings(w http.ResponseWriter, r *http.Reque
 	}
 	if in.MaxPerApp.CpuMillis < 1 || in.MaxPerApp.MemoryBytes < 1 {
 		writeFieldError(w, "maxPerApp", "CPU e memoria devono essere positive.")
-		return
-	}
-	if in.PublicAppsEnabled {
-		writeFieldError(w, "publicAppsEnabled", "non ancora configurabile")
 		return
 	}
 	if in.Restricted {
@@ -81,5 +84,21 @@ func (s *apiServer) UpdateAdminAppsSettings(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	signedOnly := in.SignedImagesOnly
-	writeJSON(w, http.StatusOK, openapi.AppsInstanceSettings{AppsDomain: appStringPtr(s.appsDomain), AppsDomainIsDefault: appBoolPtr(s.appsDomain == ""), MaxPerApp: openapi.AppResourceAmount{CpuMillis: c.Max.CPUMillis, MemoryBytes: c.Max.MemoryBytes}, PublicAppsEnabled: false, SignedImagesOnly: signedOnly, Restricted: false, LogRetention: openapi.AppLogRetention{Days: 7, MaxBytes: 1 << 30}})
+	// App pubbliche (H1): lo storico registra chi ha cambiato l'interruttore, agenti compresi. I modi
+	// di accesso delle app restano com'erano; l'esposizione la ricalcola il controller.
+	caller, _ := trust.FromContext(r.Context())
+	kind := "human"
+	if isAgent, err := s.callerIsAgent(r.Context(), adminID); err == nil && isAgent {
+		kind = "agent"
+	}
+	changed, err := s.resources.SetPublicAppsEnabled(r.Context(), in.PublicAppsEnabled, &store.AppActor{ID: adminID, Username: caller.Username, Type: kind}, s.now())
+	if err != nil {
+		appInternalError(w, "aggiornamento delle app pubbliche", err)
+		return
+	}
+	if changed && s.appCtl != nil {
+		s.appCtl.Kick()
+	}
+	publicOn := in.PublicAppsEnabled
+	writeJSON(w, http.StatusOK, openapi.AppsInstanceSettings{AppsDomain: appStringPtr(s.appsDomain), AppsDomainIsDefault: appBoolPtr(s.appsDomain == ""), MaxPerApp: openapi.AppResourceAmount{CpuMillis: c.Max.CPUMillis, MemoryBytes: c.Max.MemoryBytes}, PublicAppsEnabled: publicOn, SignedImagesOnly: signedOnly, Restricted: false, LogRetention: openapi.AppLogRetention{Days: 7, MaxBytes: 1 << 30}})
 }

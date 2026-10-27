@@ -9530,7 +9530,7 @@ type ClientInterface interface {
 
 	// UpdateAdminAppsSettingsWithBody Modifica le impostazioni d'istanza delle app (solo amministratore)
 	//
-	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`, `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -9539,7 +9539,7 @@ type ClientInterface interface {
 
 	// UpdateAdminAppsSettings Modifica le impostazioni d'istanza delle app (solo amministratore)
 	//
-	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`, `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -13019,7 +13019,7 @@ func (c *Client) GetAdminAppsSettings(ctx context.Context, reqEditors ...Request
 
 // UpdateAdminAppsSettingsWithBody Modifica le impostazioni d'istanza delle app (solo amministratore)
 //
-// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`, `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
 //
 // Takes any type of body and a specified content type.
 //
@@ -13038,7 +13038,7 @@ func (c *Client) UpdateAdminAppsSettingsWithBody(ctx context.Context, contentTyp
 
 // UpdateAdminAppsSettings Modifica le impostazioni d'istanza delle app (solo amministratore)
 //
-// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`, `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -38846,7 +38846,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateAdminAppsSettingsWithBodyWithResponse Modifica le impostazioni d'istanza delle app (solo amministratore)
 	//
-	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`, `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -38855,7 +38855,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateAdminAppsSettingsWithResponse Modifica le impostazioni d'istanza delle app (solo amministratore)
 	//
-	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`, `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -67182,7 +67182,7 @@ func (c *ClientWithResponses) GetAdminAppsSettingsWithResponse(ctx context.Conte
 
 // UpdateAdminAppsSettingsWithBodyWithResponse Modifica le impostazioni d'istanza delle app (solo amministratore)
 //
-// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`, `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -67197,7 +67197,7 @@ func (c *ClientWithResponses) UpdateAdminAppsSettingsWithBodyWithResponse(ctx co
 
 // UpdateAdminAppsSettingsWithResponse Modifica le impostazioni d'istanza delle app (solo amministratore)
 //
-// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`, `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

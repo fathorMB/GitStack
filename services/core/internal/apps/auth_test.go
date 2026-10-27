@@ -158,3 +158,60 @@ func TestAuthSignature_VettoreFisso(t *testing.T) {
 		t.Fatalf("firma dell'indirizzo cambiata: %s", got)
 	}
 }
+
+// TestEnsureRoute_PubblicaSoloConInterruttore (GIT-456, H1): un'app `public` ha la rotta solo con
+// l'interruttore d'istanza acceso; spento la rotta sparisce (il modo resta all'app) e la
+// riaccensione la rimette. La rotta pubblica non ha il forward-auth.
+func TestEnsureRoute_PubblicaSoloConInterruttore(t *testing.T) {
+	ctx := context.Background()
+	app, ver := testApp()
+	app.RepoID = uuid.New()
+	app.Access = "public"
+	dyn := fakeDynamic()
+	on := false
+	c := &Controller{dyn: dyn, cfg: Config{AppsDomain: "apps.example.com", AuthURL: "http://gw/_appauth/verify", AuthSecret: "s"},
+		publicOn: func(context.Context) (bool, error) { return on, nil }}
+	ns := Namespace(app.ID)
+	hasRoute := func() bool {
+		_, err := dyn.Resource(routeGVR).Namespace(ns).Get(ctx, WorkloadName, metav1.GetOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			t.Fatal(err)
+		}
+		return err == nil
+	}
+	if err := c.ensureRoute(ctx, app, ver.Config); err != nil {
+		t.Fatal(err)
+	}
+	if hasRoute() {
+		t.Fatal("interruttore spento: un'app public non deve avere la rotta")
+	}
+	on = true
+	if err := c.ensureRoute(ctx, app, ver.Config); err != nil {
+		t.Fatal(err)
+	}
+	if !hasRoute() {
+		t.Fatal("interruttore acceso: la rotta dell'app public deve esserci")
+	}
+	if _, err := dyn.Resource(middlewareGVR).Namespace(ns).Get(ctx, MiddlewareAuth, metav1.GetOptions{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("un'app public non ha il forward-auth: %v", err)
+	}
+	on = false
+	if err := c.ensureRoute(ctx, app, ver.Config); err != nil {
+		t.Fatal(err)
+	}
+	if hasRoute() {
+		t.Fatal("interruttore spento di nuovo: la rotta deve sparire")
+	}
+	on = true
+	if err := c.ensureRoute(ctx, app, ver.Config); err != nil {
+		t.Fatal(err)
+	}
+	if !hasRoute() {
+		t.Fatal("la riaccensione deve ripristinare la rotta")
+	}
+	// Errore di lettura dell'interruttore: niente rotta nuova, errore al chiamante.
+	c.publicOn = func(context.Context) (bool, error) { return false, context.DeadlineExceeded }
+	if err := c.ensureRoute(ctx, app, ver.Config); err == nil {
+		t.Fatal("errore di lettura: ensureRoute deve fallire")
+	}
+}
