@@ -8,8 +8,8 @@
 #      quindi core lo usa come URL pubblico e i nodi lo raggiungono con un hosts.toml di containerd;
 #   b. crea un repo con un workflow `on: push` su `runs-on: gitstack-build` che costruisce
 #      un'immagine (BuildKit rootless, come in runner-e2e.sh) e la pubblica col token del job: il
-#      registry la firma con la chiave dell'istanza. Il primo run pubblica sha-<commit>, poi si
-#      crea l'app con followBranch=main su <registry>/<owner>/<repo>/web:sha-<commit>;
+#      registry la firma con la chiave dell'istanza. Il primo run pubblica e2e-1 (tag fisso nel file build-tag: act non ha GITHUB_SHA nel workspace senza .git), poi si
+#      crea l'app con followBranch=main su <registry>/<owner>/<repo>/web:e2e-1;
 #   c. un secondo push su main: il workflow pubblica un tag nuovo e, senza altro, core mette in
 #      produzione una versione nuova: trigger=branch_push, image.verified=true, stato serving;
 #   c2. (GIT-377) l'app passa alla regola sui tag v*-test.*; un terzo push pubblica tre tag e solo
@@ -151,7 +151,7 @@ jobs:
     runs-on: gitstack-build
     steps:
       - uses: actions/checkout@v4
-      - run: gitstack-build --name web --tag "sha-$(echo "$GITHUB_SHA" | cut -c1-7)" .
+      - run: gitstack-build --name web --tag "$(cat build-tag)" .
 EOF
 # Un'immagine che parte davvero: busybox serve una pagina sulla porta 8080.
 cat >"${src}/Dockerfile" <<'EOF'
@@ -161,6 +161,7 @@ EXPOSE 8080
 CMD ["httpd", "-f", "-p", "8080", "-h", "/www"]
 EOF
 echo "versione uno" >"${src}/index.html"
+echo "e2e-1" >"${src}/build-tag"
 sha1=$(push "workflow di build e prima immagine")
 
 run_status() { # sha -> stampa status/conclusion del run di quel commit (vuoto se non c'e')
@@ -179,13 +180,13 @@ wait_run() { # sha etichetta
 }
 wait_run "${sha1}" "build del primo commit"
 
-tag1="sha-${sha1:0:7}"
+tag1="e2e-1"
 code=$(curl -s -o "${work}/pkgs.json" -w '%{http_code}' -H "Authorization: Bearer ${tok}" "${api}/repos/${OWNER}/${REPO}/packages" || true)
 if [ "${code}" != 200 ] || ! jq -e --arg t "${tag1}" '[.. | objects | select((.tags? // []) | index($t))] | length >= 1' "${work}/pkgs.json" >/dev/null; then
-  echo "KO: immagine web:${tag1} assente dai pacchetti (status ${code}): $(head -c 300 "${work}/pkgs.json")" >&2; exit 1
+  echo "KO: immagine web:${tag1} assente dai pacchetti (status ${code}): $(cat "${work}/pkgs.json")" >&2; exit 1
 fi
 if ! jq -e --arg t "${tag1}" '[.. | objects | select((.tagDetails? // []) | any(.name == $t and .signature == "verified" and .pushedBy.kind == "job"))] | length >= 1' "${work}/pkgs.json" >/dev/null; then
-  echo "KO: web:${tag1} non risulta pubblicata dal job e firmata (signature verified): $(head -c 400 "${work}/pkgs.json")" >&2; exit 1
+  echo "KO: web:${tag1} non risulta pubblicata dal job e firmata (signature verified): $(cat "${work}/pkgs.json")" >&2; exit 1
 fi
 echo "OK: web:${tag1} pubblicata dal job e firmata dalla CI (signature verified)"
 
@@ -215,9 +216,10 @@ echo "OK: app creata sul branch main - versione 1 serving, verified"
 
 # --- c. secondo push: deploy automatico ---------------------------------------------------------
 echo "versione due" >"${src}/index.html"
+echo "e2e-2" >"${src}/build-tag"
 sha2=$(push "seconda versione")
 wait_run "${sha2}" "build del secondo commit"
-tag2="sha-${sha2:0:7}"
+tag2="e2e-2"
 if ! wait_serving '.number > 1 and .trigger == "branch_push" and .image.verified == true and .state == "serving"'; then
   echo "KO: nessuna versione branch_push verificata e serving entro ${SERVE_TIMEOUT}s: $(versions | jq -c '[.items[]? | {number, trigger, state, stateReason, verified: .image.verified}]')" >&2; exit 1
 fi
@@ -229,7 +231,7 @@ echo "OK: deploy automatico - versione ${n} serving, trigger branch_push, verifi
 
 # --- c2. regola sui tag (GIT-377) ---------------------------------------------------------------
 # L'app passa dal branch alla regola v*-test.* (nella stessa richiesta: insieme sarebbero 422).
-# Un terzo push costruisce l'immagine e la pubblica con tre tag: sha-<commit> e v9.9 non
+# Un terzo push costruisce l'immagine e la pubblica con tre tag: e2e-3 e v9.9 non
 # rispettano la regola, v9.9-test.1 si': la versione nuova nasce da quel tag (trigger=tag_push).
 code=$(curl -s -o "${work}/both.json" -w '%{http_code}' -H "Authorization: Bearer ${tok}" -X PATCH -H 'content-type: application/json' \
   -d '{"followBranch":"main","followTagPattern":"v*-test.*"}' "${api}/repos/${OWNER}/${REPO}/apps/${APP}" || true)
@@ -255,11 +257,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          gitstack-build --name web --tag "sha-$(echo "$GITHUB_SHA" | cut -c1-7)" .
+          gitstack-build --name web --tag "$(cat build-tag)" .
           gitstack-build --name web --tag v9.9 .
           gitstack-build --name web --tag v9.9-test.1 .
 EOF
 echo "versione tre" >"${src}/index.html"
+echo "e2e-3" >"${src}/build-tag"
 sha3=$(push "terza versione: tre tag, uno solo rispetta la regola")
 wait_run "${sha3}" "build del terzo commit"
 if ! wait_serving '.trigger == "tag_push" and .image.verified == true and .state == "serving"'; then
@@ -272,7 +275,7 @@ fi
 if [ "$(versions | jq '[.items[]? | select(.trigger == "tag_push")] | length')" != 1 ] || [ "$(versions | jq '.total')" != "$((before_tag + 1))" ]; then
   echo "KO: i tag che non rispettano la regola hanno creato versioni: $(versions | jq -c '[.items[]? | {number, trigger, image: .image.reference}]')" >&2; exit 1
 fi
-echo "OK: regola sui tag - versione ${n} da v9.9-test.1 serving, trigger tag_push, verified; sha-* e v9.9 ignorati"
+echo "OK: regola sui tag - versione ${n} da v9.9-test.1 serving, trigger tag_push, verified; e2e-* e v9.9 ignorati"
 
 # --- d. immagine non firmata -------------------------------------------------------------------
 before=$(versions | jq -r '.total')
@@ -292,7 +295,7 @@ code=$(printf '%s' "${manifest}" | curl -s -o "${work}/manifest.body" -w '%{http
 if [ "${code}" != 201 ]; then echo "KO: pubblicazione del tag senza-firma: status ${code}, corpo '$(head -c 200 "${work}/manifest.body")'" >&2; exit 1; fi
 code=$(curl -s -o "${work}/pkgs2.json" -w '%{http_code}' -H "Authorization: Bearer ${tok}" "${api}/repos/${OWNER}/${REPO}/packages" || true)
 if [ "${code}" != 200 ] || ! jq -e '[.. | objects | select((.tagDetails? // []) | any(.name == "senza-firma" and .signature == "unverified"))] | length >= 1' "${work}/pkgs2.json" >/dev/null; then
-  echo "KO: il tag senza-firma non risulta pubblicato e unverified (status ${code}): $(head -c 400 "${work}/pkgs2.json")" >&2; exit 1
+  echo "KO: il tag senza-firma non risulta pubblicato e unverified (status ${code}): $(cat "${work}/pkgs2.json")" >&2; exit 1
 fi
 sleep "${NEG_WAIT}"
 after=$(versions | jq -r '.total')
