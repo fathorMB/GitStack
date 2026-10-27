@@ -6,7 +6,9 @@ import (
 	"net/netip"
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 
 	"github.com/fathorMB/GitStack/pkg/egress"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
@@ -195,5 +197,78 @@ func TestCheckAppDestinationEResolve(t *testing.T) {
 	g, _ := egress.NewDestinationPort("gone.lan", 80)
 	if _, err := ResolveDestination(context.Background(), fakeResolver(nil), g); !errors.Is(err, ErrDestinationUnresolved) {
 		t.Fatalf("nome inesistente: %v", err)
+	}
+}
+
+var testProxyEnv = map[string]string{
+	"HTTP_PROXY": "http://proxy:3128", "http_proxy": "http://proxy:3128",
+	"HTTPS_PROXY": "http://proxy:3128", "https_proxy": "http://proxy:3128",
+	"NO_PROXY": ".svc", "no_proxy": ".svc",
+}
+
+func deploymentEnvNames(opts BuildOptions) map[string]string {
+	app, ver := testApp()
+	d := BuildDeployment(app, ver, opts)
+	got := map[string]string{}
+	for _, e := range d.Spec.Template.Spec.Containers[0].Env {
+		got[e.Name] = e.Value
+	}
+	return got
+}
+
+func TestBuildDeployment_AppRistrettaNonRiceveIlProxyN9(t *testing.T) {
+	restricted := deploymentEnvNames(BuildOptions{Replicas: 1, ProxyEnv: testProxyEnv, EgressRestricted: true})
+	for k := range testProxyEnv {
+		if _, ok := restricted[k]; ok {
+			t.Errorf("un'app ristretta non deve avere %s: %v", k, restricted)
+		}
+	}
+	free := deploymentEnvNames(BuildOptions{Replicas: 1, ProxyEnv: testProxyEnv})
+	for k, v := range testProxyEnv {
+		if free[k] != v {
+			t.Errorf("un'app libera deve avere %s=%q, ha %q", k, v, free[k])
+		}
+	}
+}
+
+// Accendere o spegnere la restrizione cambia il template del pod (quindi il rollout) in entrambi i versi,
+// e l'env torna uguale a quello di prima.
+func TestBuildDeployment_CambioDiRestrizioneCambiaIlTemplate(t *testing.T) {
+	app, ver := testApp()
+	build := func(restricted bool) *appsv1.Deployment {
+		return BuildDeployment(app, ver, BuildOptions{Replicas: 1, ProxyEnv: testProxyEnv, EgressRestricted: restricted})
+	}
+	free, restricted, freeAgain := build(false), build(true), build(false)
+	if equality.Semantic.DeepEqual(free.Spec.Template, restricted.Spec.Template) {
+		t.Fatal("libera -> ristretta: il template del pod deve cambiare")
+	}
+	if equality.Semantic.DeepEqual(restricted.Spec.Template, freeAgain.Spec.Template) {
+		t.Fatal("ristretta -> libera: il template del pod deve cambiare")
+	}
+	if !equality.Semantic.DeepEqual(free.Spec.Template, freeAgain.Spec.Template) {
+		t.Fatal("spenta la restrizione l'env deve tornare quello di prima")
+	}
+	// Senza proxy sull'istanza la restrizione non cambia il pod: nessun riavvio inutile.
+	a := BuildDeployment(app, ver, BuildOptions{Replicas: 1})
+	b := BuildDeployment(app, ver, BuildOptions{Replicas: 1, EgressRestricted: true})
+	if !equality.Semantic.DeepEqual(a.Spec.Template, b.Spec.Template) {
+		t.Fatal("senza proxy il template non deve cambiare")
+	}
+}
+
+func TestHasProxy(t *testing.T) {
+	cases := []struct {
+		env  map[string]string
+		want bool
+	}{
+		{nil, false},
+		{map[string]string{"NO_PROXY": ".svc"}, false},
+		{map[string]string{"HTTPS_PROXY": "http://proxy:3128"}, true},
+		{map[string]string{"http_proxy": "http://10.0.0.5:3128"}, true},
+	}
+	for _, c := range cases {
+		if got := HasProxy(c.env); got != c.want {
+			t.Errorf("HasProxy(%v) = %v, atteso %v", c.env, got, c.want)
+		}
 	}
 }

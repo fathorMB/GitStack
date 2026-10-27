@@ -267,6 +267,8 @@ type AppEgressConfig struct {
 	NodeAddresses []string
 	Deny          []string
 	Resolver      apps.Resolver
+	// ProxyConfigured: l'istanza ha un proxy di uscita N9; le app ristrette non lo usano.
+	ProxyConfigured bool
 }
 
 // WithAppEgress imposta le barriere con cui si valutano le destinazioni di uscita delle app (H16).

@@ -4276,6 +4276,10 @@ export type AppEgress = {
      */
     restricted: boolean;
     /**
+     * L'istanza ha un proxy di uscita configurato (N9): un'app con l'uscita ristretta esce in modo diretto, senza il proxy.
+     */
+    instanceProxy: boolean;
+    /**
      * Le destinazioni della restrizione; vuoto se `restricted` e' false.
      */
     destinations: Array<AppEgressDestination>;

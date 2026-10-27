@@ -17899,9 +17899,10 @@ components:
     AppEgress:
       type: object
       additionalProperties: false
-      required: [restricted, destinations, allowedPrivate]
+      required: [restricted, destinations, allowedPrivate, instanceProxy]
       properties:
         restricted: {type: boolean, description: "L'app ha una restrizione propria."}
+        instanceProxy: {type: boolean, description: "L'istanza ha un proxy di uscita configurato (N9): un'app con l'uscita ristretta esce in modo diretto, senza il proxy."}
         destinations:
           type: array
           items: {$ref: "#/components/schemas/AppEgressDestination"}

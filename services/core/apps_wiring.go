@@ -48,7 +48,7 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, eg
 	domain := strings.TrimSpace(os.Getenv(envAppsDomain))
 	opts := []httpserver.Option{}
 	// Barriere d'istanza per le destinazioni di uscita delle app (H16): le stesse di webhook e mirror.
-	opts = append(opts, httpserver.WithAppEgress(httpserver.AppEgressConfig{ClusterCIDRs: egressCluster, NodeAddresses: egressNode, Deny: egressDeny}))
+	opts = append(opts, httpserver.WithAppEgress(httpserver.AppEgressConfig{ClusterCIDRs: egressCluster, NodeAddresses: egressNode, Deny: egressDeny, ProxyConfigured: apps.HasProxy(apps.ProxyEnvFrom(os.Getenv))}))
 	if domain != "" {
 		opts = append(opts, httpserver.WithAppsDomain(domain))
 	}

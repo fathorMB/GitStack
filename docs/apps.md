@@ -104,11 +104,12 @@ Cosa succede:
 
 ### Per chi configura l'app: restringere l'uscita
 
-Chi ha `admin` sul repo può restringere l'uscita della **sua** app a un elenco di destinazioni: *App → Settings → Volumes & resources → Outbound network → Restrict this app*. Con la restrizione l'app raggiunge solo le destinazioni elencate, più le app dello stesso repo (per nome, H15) e il DNS; niente internet aperto e niente proxy.
+Chi ha `admin` sul repo può restringere l'uscita della **sua** app a un elenco di destinazioni: *App → Settings → Volumes & resources → Outbound network → Restrict this app*. Con la restrizione l'app raggiunge solo le destinazioni elencate, più le app dello stesso repo (per nome, H15) e il DNS; niente internet aperto. L'app esce **in modo diretto** verso le destinazioni elencate, senza il proxy dell'istanza (vedi sotto).
 
 - `GET /repos/{owner}/{repo}/apps/{app}/egress` (serve `write`) mostra la restrizione e le destinazioni private che l'amministratore ha aperto (`allowedPrivate`);
 - `PUT …/egress` con `{"destinations":[{"host":"api.example.com","port":443}]}` la imposta (serve `admin`); un elenco vuoto chiude ogni altra uscita; `DELETE …/egress` la toglie e l'app torna all'uscita dell'istanza;
 - una voce pubblica (internet) va sempre bene; una voce nella **rete privata** deve essere una di quelle aperte dall'amministratore, con la stessa porta, altrimenti **422 `destination_blocked`**. Una restrizione non può mai aprire più di quanto permette l'amministratore. Se l'amministratore chiude poi una destinazione, l'app la perde alla prima riapplicazione della policy (subito, perché la chiusura riapplica la policy di tutte le app) anche se resta scritta nell'elenco;
-- come per l'amministratore, un nome si risolve all'applicazione della policy e vale per le porte TCP.
+- come per l'amministratore, un nome si risolve all'applicazione della policy e vale per le porte TCP;
+- **proxy dell'istanza.** Un'app con l'uscita ristretta esce in modo diretto verso le destinazioni elencate, senza il proxy dell'istanza: se la rete dell'installazione esce solo dal proxy, un'app ristretta non raggiunge internet. Per questo un'app ristretta non riceve `HTTP_PROXY`, `HTTPS_PROXY` e `NO_PROXY` (né le minuscole) dell'istanza; accendere o spegnere la restrizione cambia l'ambiente del pod e riavvia l'app (rollout, copia per copia). La scheda *Volumes & resources* mostra questo avviso accanto a *Restrict this app* quando l'istanza ha un proxy (`instanceProxy` nella risposta di `GET …/egress`).
 
 Se l'app usa un database nello stesso repo (un'altra app, H15) non serve nessuna apertura: le app dello stesso repo si raggiungono per nome anche con la restrizione.
