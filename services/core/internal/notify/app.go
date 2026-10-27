@@ -18,7 +18,8 @@ const AppUnhealthyNoticeWindow = 5 * time.Minute
 // fallisce (la versione precedente resta in esecuzione) e quando un'app che era in esecuzione ha le
 // copie non più pronte («fermata»). Il motivo è state_change, come per la CI; come le altre notifiche,
 // niente a chi non legge il repo (insert). Il sistema non è mai il destinatario: senza attore
-// (deploy automatico senza chi l'ha avviato) nessuno viene avvisato.
+// (deploy automatico senza chi l'ha avviato) manca l'avviso a chi ha fatto il deploy; il deploy fallito
+// avvisa comunque gli admin.
 // Il deploy fallito arriva anche agli admin del repo (GIT-404), elencati da identity con
 // GET /internal/resources/{id}/members?role=admin (stesse regole di HasRole): chi ha fatto il deploy e
 // è anche admin riceve un solo avviso. Senza elenco (Identity non lo sa fare) restano solo gli autori.

@@ -15,6 +15,7 @@ import (
 	"github.com/fathorMB/GitStack/services/identity/internal/permissions"
 	"github.com/fathorMB/GitStack/services/identity/internal/sessions"
 	"github.com/fathorMB/GitStack/services/identity/internal/users"
+	"github.com/google/uuid"
 )
 
 func TestListOrgOwnersOverHTTP(t *testing.T) {
@@ -49,12 +50,15 @@ func TestListResourceMembersOverHTTP(t *testing.T) {
 	c := &clock{t: time.Now().UTC().Truncate(time.Microsecond)}
 	us := users.New(pool, c.now)
 	svc := &auth.Service{Users: us, Sessions: sessions.New(pool, c.now, time.Hour), Limiter: loginlimit.New(cfg, c.now)}
-	h := httpapi.New(svc, nil, httpapi.WithPermissions(permissions.New(pool, c.now)), httpapi.WithServiceSecret(secret))
+	perms := permissions.New(pool, c.now)
+	h := httpapi.New(svc, nil, httpapi.WithPermissions(perms), httpapi.WithServiceSecret(secret))
 	e := &env{t: t, h: h, clock: c, users: us}
 	e.mk("alice", true)
 	e.mk("bob", false)
 	res := "22222222-2222-2222-2222-222222222222"
-	if _, err := pool.Exec(context.Background(), `INSERT INTO identity.resource_grants (resource_id, user_id, role) VALUES ($1, $2, 'write')`, res, e.userID("bob")); err != nil {
+	if _, err := perms.Create(context.Background(), permissions.CreateInput{
+		ResourceID: uuid.MustParse(res), SubjectType: permissions.SubjectUser, SubjectID: uuid.MustParse(e.userID("bob")), Role: permissions.RoleWrite,
+	}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -73,5 +77,5 @@ func TestListResourceMembersOverHTTP(t *testing.T) {
 	if got, _ = r.json()["userIds"].([]any); len(got) != 2 {
 		t.Fatalf("write = alice e bob: %s", r.body)
 	}
-	status(t, e.do("GET", "/internal/resources/"+res+"/members?role=boh", nil, nil, bearer(secret)...), 400)
+	status(t, e.do("GET", "/internal/resources/"+res+"/members?role=boh", nil, nil, bearer(secret)...), 422)
 }

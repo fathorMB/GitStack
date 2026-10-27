@@ -47,6 +47,7 @@ func TestUsersWithRole_ComeIlRuoloEffettivo(t *testing.T) {
 	acme := e.org(t, "acme")
 	ops := e.team(t, acme, "ops")
 	e.orgMember(t, acme, boss, "owner")
+	e.orgMember(t, acme, viaTeam, "member")
 	e.teamMember(t, acme, ops, viaTeam)
 
 	repo := uuid.New()
