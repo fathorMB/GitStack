@@ -297,7 +297,13 @@ func TestRestoreTLSEnsureFailureExitsNonZero(t *testing.T) {
 	}
 	ents, _ := filepath.Glob(filepath.Join(dest, "gitstack-backup-*.tar.gz"))
 	a.Runner = failTLSRunner{}
-	a.Getenv = func(string) string { return "" } // ensure fallisce prima di toccare registries.yaml
+	k3sDir := t.TempDir() // ensure fallisce prima di registries.yaml, ma non si sa mai /etc veri
+	a.Getenv = func(k string) string {
+		if k == "GITSTACK_K3S_DIR" {
+			return k3sDir
+		}
+		return ""
+	}
 	var stderr strings.Builder
 	a.Stderr = &stderr
 	if code := a.Run(context.Background(), []string{"restore", "--config", cfg, "--dest", dest, ents[0]}); code != ExitUnexpected {
