@@ -6,10 +6,15 @@ on:
     tags: ['v*']
   pull_request:
 
-# Un solo run per ramo/PR alla volta: un push nuovo cancella quello vecchio.
+# Su PR, integrate/** e tag: un solo run per ref alla volta, un push nuovo
+# cancella quello vecchio. Su main il gruppo è unico per commit e niente si
+# cancella: ogni commit di main deve completare il job Registry, che pubblica
+# le immagini sha-<commit> richieste dall'e2e (GIT-370, GIT-437). Con lo stesso
+# gruppo anche cancel-in-progress: false non basterebbe: GitHub tiene un solo
+# run in coda per gruppo e un terzo push cancellerebbe quello in attesa.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   GOLANGCI_LINT_VERSION: v2.14.0
