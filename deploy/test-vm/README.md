@@ -418,7 +418,9 @@ esecuzione verde sono **8 righe `[PASS]`** (7 nell'output reale di Atlas del 28/
 [PASS] h. dati di prova ... e gitstack backup cifrato ...
 [PASS] i. reset, reinstallazione della stessa versione, gitstack restore ...
 [PASS] i-app 1/7 ... 7/7 (sette righe, una per controllo, vedi sotto)
-[PASS] i-app. esito complessivo: 7/7 controlli dell'app ok
+[PASS] i-app volume: log del restore dei volumi
+[PASS] i-app volume: file data presente con contenuto invariato
+[PASS] i-app. esito complessivo: 9/9 controlli dell'app ok
 [PASS] j. upgrade: installazione del commit precedente, dati, ... gitstack upgrade ...
 RISULTATO: VERDE
 ```
@@ -506,6 +508,9 @@ Cosa controlla ciascun passo:
 - **h-app / i-app.** (GIT-388, criterio 2 di GIT-351, H4) con l'hosting acceso
   dall'installer (`--enable-apps --apps-domain`, prima installazione e
   reinstallazione del restore). Prima del backup (`New-E2eAppFixture`):
+  crea un volume `data` montato su `/data` e vi scrive un file di contenuto noto.
+  Dopo il restore verifica le due righe del log relative al volume e confronta
+  il contenuto del file nel container; lo stato `running` resta nel controllo 3.
   `e2e/gs-app-restore.sh push` pubblica nel registry del repo di prova
   `<utente>/<repo>/e2eimg` con tre tag, ognuno con il suo manifest (rootfs
   busybox dell'immagine gia scaricata dal chart, `sleep` come entrypoint;
