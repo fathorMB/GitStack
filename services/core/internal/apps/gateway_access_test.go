@@ -76,7 +76,28 @@ func TestBuildDeployment_APIURL(t *testing.T) {
 		v, ok := envValues(BuildDeployment(app, ver, o).Spec.Template.Spec.Containers[0].Env)[EnvAPIURL]
 		return v, ok
 	}
+	keys := func(o BuildOptions) (string, bool) {
+		v, ok := envValues(BuildDeployment(app, ver, o).Spec.Template.Spec.Containers[0].Env)[EnvAppKeysURL]
+		return v, ok
+	}
 	const want = "http://gitstack-gateway.gitstack.svc.cluster.local:8081/v1"
+	const wantKeys = "http://gitstack-gateway.gitstack.svc.cluster.local:8081/.well-known/gitstack-app-keys"
+	for name, o := range map[string]BuildOptions{
+		"configurato": {Replicas: 1, Gateway: testGateway()},
+		"ristretta":   {Replicas: 1, Gateway: testGateway(), EgressRestricted: true},
+	} {
+		if got, ok := keys(o); !ok || got != wantKeys {
+			t.Errorf("%s: GITSTACK_APP_KEYS_URL = %q (presente %v), voluto %q", name, got, ok, wantKeys)
+		}
+	}
+	for name, o := range map[string]BuildOptions{
+		"nil":        {Replicas: 1},
+		"incompleto": {Replicas: 1, Gateway: &GatewayAccess{Namespace: "gitstack"}},
+	} {
+		if got, ok := keys(o); ok {
+			t.Errorf("%s: GITSTACK_APP_KEYS_URL = %q, non deve esserci", name, got)
+		}
+	}
 	for name, o := range map[string]BuildOptions{
 		"configurato": {Replicas: 1, Gateway: testGateway()},
 		"ristretta":   {Replicas: 1, Gateway: testGateway(), EgressRestricted: true},
