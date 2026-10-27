@@ -37,7 +37,7 @@ func TestMigration0044_WebhookDeploymentEvent(t *testing.T) {
 		t.Error("un evento sconosciuto deve essere rifiutato")
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 4); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 5); err != nil {
 		t.Fatalf("down 0044: %v", err)
 	}
 	if err := insert("deployment"); err == nil {

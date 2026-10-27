@@ -13,10 +13,10 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
 )
 
-// TestMigration0047_AppTraffic (GIT-403, H12): campioni di richieste ed errori 5xx per app. Le
+// TestMigration0048_AppTraffic (GIT-403, H12): campioni di richieste ed errori 5xx per app. Le
 // differenze non sono negative e gli errori non superano le richieste; la cascata dall'app li toglie;
 // il down toglie la tabella.
-func TestMigration0047_AppTraffic(t *testing.T) {
+func TestMigration0048_AppTraffic(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 	exec := func(q string, args ...any) error {
@@ -64,10 +64,10 @@ func TestMigration0047_AppTraffic(t *testing.T) {
 		t.Fatalf("i campioni devono uscire con l'app: %d %v", n, err)
 	}
 	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("down 0047: %v", err)
+		t.Fatalf("down 0048: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.app_traffic_samples`).Scan(&n); err == nil {
-		t.Fatal("la tabella dei campioni deve sparire con il down 0047")
+		t.Fatal("la tabella dei campioni deve sparire con il down 0048")
 	}
 	if err := migrate.Up(ctx, pool, dsn); err != nil {
 		t.Fatalf("up dopo il down: %v", err)
