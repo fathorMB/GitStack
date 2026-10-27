@@ -323,13 +323,37 @@ func TestRun_EventoSha(t *testing.T) {
 	if ev.Inputs["versione"] != "0.0.1" || ev.Inputs["rompi"] != "no" || len(ev.Inputs) != 2 || ev.Ref != "refs/heads/main" || ev.After != sha || ev.Repository.FullName != "alice/app" {
 		t.Errorf("file evento: %s", evJSON)
 	}
-	if head != sha {
+	// GIT-448: su un ramo HEAD e' simbolico, cosi' act ricava GITHUB_REF=refs/heads/main.
+	if head != "ref: refs/heads/main" {
 		t.Errorf(".git/HEAD del workspace: %q", head)
+	}
+	if b, err := os.ReadFile(filepath.Join(cfg.WorkDir, "workspace", ".git", "refs", "heads", "main")); err != nil || strings.TrimSpace(string(b)) != sha {
+		t.Errorf("refs/heads/main del workspace: %q (%v)", b, err)
 	}
 	env, _ := os.ReadFile(envF)
 	for _, want := range []string{"GITHUB_SHA=" + sha, "GITHUB_REF=refs/heads/main"} {
 		if !strings.Contains(string(env), want) {
 			t.Errorf("manca %q nell'ambiente:\n%s", want, env)
+		}
+	}
+}
+
+// TestRun_HeadStaccatoPerTagERefStrano: per un tag o un ref di ramo non sicuro HEAD resta sullo sha.
+func TestRun_HeadStaccatoPerTagERefStrano(t *testing.T) {
+	sha := strings.Repeat("c", 40)
+	for _, ref := range []string{"refs/tags/v1", "refs/heads/../x", "refs/heads/a.lock"} {
+		g := &fakeGateway{workflow: twoSteps, archive: tarball(t, map[string]string{"README.md": "x"}), extra: map[string]any{
+			"event_name": "workflow_dispatch", "sha": sha, "ref": ref,
+		}}
+		cfg := cfgFor(t, start(t, g))
+		evF := filepath.Join(t.TempDir(), "event")
+		t.Setenv("CIRUNNER_FAKE_ACT_EVENT", evF)
+		if _, err := cirunner.Run(context.Background(), cfg); err != nil {
+			t.Fatal(err)
+		}
+		raw, _ := os.ReadFile(evF)
+		if _, head, _ := strings.Cut(string(raw), "\n"); head != sha {
+			t.Errorf("ref %q: .git/HEAD %q, atteso lo sha", ref, head)
 		}
 	}
 }

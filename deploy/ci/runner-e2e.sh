@@ -121,8 +121,19 @@ auth="Authorization: Basic $(printf 'admin:%s' "${tok}" | base64 -w0)"
 push() { # messaggio
   git -C "${src}" add -A
   git -C "${src}" commit -q -m "$1"
-  git -C "${src}" -c credential.helper= -c "http.extraHeader=${auth}" push -q "${BASE_URL}/${OWNER}/${REPO}.git" HEAD:refs/heads/main
-  git -C "${src}" rev-parse HEAD
+  # Dopo un rollout di core il percorso del push (gateway, identity, core) puo' rispondere 503
+  # per qualche secondo: il push si riprova un numero limitato di volte (GIT-448), poi e' un KO.
+  local try tries=12 delay=5
+  for ((try = 1; try <= tries; try++)); do
+    if git -C "${src}" -c credential.helper= -c "http.extraHeader=${auth}" push -q "${BASE_URL}/${OWNER}/${REPO}.git" HEAD:refs/heads/main >&2; then
+      git -C "${src}" rev-parse HEAD
+      return 0
+    fi
+    echo "push non riuscito (tentativo ${try}/${tries}): riprovo tra ${delay}s" >&2
+    sleep "${delay}"
+  done
+  echo "KO: push: non riuscito dopo ${tries} tentativi" >&2
+  return 1
 }
 
 wait_run() { # sha -> scrive in ${work}/run.json l'esecuzione conclusa
@@ -308,7 +319,7 @@ if dispatch_image 1 '{"versione":"0.0.1"}'; then
   if image_has 1 'E2E-INPUT-ROMPI=no' build; then ok "image run 1: l'input con default (rompi=no) arriva al passo"; else ko "image run 1: input rompi assente dal log"; fi
   if image_has 1 "E2E-SHA-CTX=${shaI}" build; then ok "image run 1: github.sha è lo sha del commit"; else ko "image run 1: github.sha diverso da ${shaI}"; grep -F 'E2E-SHA' "${work}/image-1-build.log" >&2 || true; fi
   if image_has 1 "E2E-SHA-ENV=${shaI}" build; then ok "image run 1: GITHUB_SHA è lo sha del commit"; else ko "image run 1: GITHUB_SHA diverso da ${shaI}"; fi
-  if image_has 1 'E2E-REF-ENV=refs/heads/main' build; then ok "image run 1: GITHUB_REF è refs/heads/main"; else ko "image run 1: GITHUB_REF inatteso"; fi
+  if image_has 1 'E2E-REF-ENV=refs/heads/main' build; then ok "image run 1: GITHUB_REF è refs/heads/main"; else ko "image run 1: GITHUB_REF inatteso"; grep -F 'E2E-REF' "${work}/image-1-build.log" >&2 || echo "(nessuna riga E2E-REF nel log)" >&2; fi
   if image_has 1 'E2E-IMAGE-TEST-OK' test; then ok "image run 1: il job test (needs: build) è partito"; else ko "image run 1: il job test non ha stampato E2E-IMAGE-TEST-OK"; fi
 fi
 if dispatch_image 2 '{"versione":"0.0.2","rompi":"si"}'; then
