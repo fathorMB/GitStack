@@ -115,10 +115,10 @@ type RateLimitConfig struct {
 const (
 	envAddr         = "GITSTACK_GATEWAY_ADDR"
 	envInternalAddr = "GITSTACK_GATEWAY_INTERNAL_ADDR"
-	envCoreURL     = "GITSTACK_CORE_URL"
-	envCoreTimeout = "GITSTACK_CORE_TIMEOUT"
-	envLogLevel    = "GITSTACK_LOG_LEVEL"
-	envVersion     = "GITSTACK_VERSION"
+	envCoreURL      = "GITSTACK_CORE_URL"
+	envCoreTimeout  = "GITSTACK_CORE_TIMEOUT"
+	envLogLevel     = "GITSTACK_LOG_LEVEL"
+	envVersion      = "GITSTACK_VERSION"
 
 	// envTrustedProxies: CIDR separati da virgola (es. "10.42.0.0/16").
 	envTrustedProxies = "GITSTACK_GATEWAY_TRUSTED_PROXIES"
