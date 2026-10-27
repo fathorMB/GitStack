@@ -157,6 +157,8 @@ type Controller struct {
 	running map[uuid.UUID]bool
 	// oomSeen: ultimo riavvio per OOM già registrato, per app e copia (mu).
 	oomSeen map[uuid.UUID]map[string]int32
+	// pullChecked: ultimo controllo della rotazione del pull secret, per app (mu).
+	pullChecked map[uuid.UUID]time.Time
 }
 
 // New crea il controller. dyn può essere nil: allora non crea le rotte Traefik.
@@ -352,6 +354,9 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 			return fmt.Errorf("credenziali del registry: %w", err)
 		}
 		if cred != nil {
+			if cred.Server == "" {
+				cred.Server = imageHost(v.Image.Reference)
+			}
 			if err := c.ensurePullSecret(ctx, ns, app.ID, cred); err != nil {
 				return fmt.Errorf("pull secret: %w", err)
 			}
@@ -530,9 +535,10 @@ func (c *Controller) ensurePullSecret(ctx context.Context, ns string, id uuid.UU
 	cfg, _ := json.Marshal(map[string]any{"auths": map[string]any{cred.Server: map[string]string{
 		"username": cred.Username, "password": cred.Password, "auth": auth}}})
 	want := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: pullSecretName, Namespace: ns, Labels: objectLabels(id)},
-		Type:       corev1.SecretTypeDockerConfigJson,
-		Data:       map[string][]byte{corev1.DockerConfigJsonKey: cfg},
+		ObjectMeta: metav1.ObjectMeta{Name: pullSecretName, Namespace: ns, Labels: objectLabels(id),
+			Annotations: map[string]string{annotationPullIssued: c.cfg.Now().UTC().Format(time.RFC3339)}},
+		Type: corev1.SecretTypeDockerConfigJson,
+		Data: map[string][]byte{corev1.DockerConfigJsonKey: cfg},
 	}
 	secrets := c.kube.CoreV1().Secrets(ns)
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -545,6 +551,10 @@ func (c *Controller) ensurePullSecret(ctx context.Context, ns string, id uuid.UU
 			return err
 		}
 		cur.Data = want.Data
+		if cur.Annotations == nil {
+			cur.Annotations = map[string]string{}
+		}
+		cur.Annotations[annotationPullIssued] = want.Annotations[annotationPullIssued]
 		_, err = secrets.Update(ctx, cur, metav1.UpdateOptions{})
 		return err
 	})
@@ -994,6 +1004,7 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 	}
 	// H3: i volumi tolti si eliminano quando la versione in servizio non li monta più.
 	c.pruneVolumes(ctx, app)
+	c.refreshPullSecret(ctx, app)
 	if app.Status == "failed" {
 		if v, err := c.st.GetAppVersion(ctx, app.ID, app.ActiveVersion); err == nil && v.State == "failed" {
 			return // il primo deploy è fallito: l'app resta «fallita» finché non ne arriva un altro

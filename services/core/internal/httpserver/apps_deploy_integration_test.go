@@ -247,6 +247,18 @@ func newDeployEnv(t *testing.T) *appsDeployEnv { return newDeployEnvOpt(t, true)
 // newDeployEnvOpt: runController=false non avvia ctl.Run, per i test che creano
 // namespace gestiti fuori dal DB.
 func newDeployEnvOpt(t *testing.T, runController bool) *appsDeployEnv {
+	return newDeployEnvWith(t, runController, deployEnvOptions{})
+}
+
+// deployEnvOptions: ritocchi per i test che provano un pezzo del cluster in più (GIT-425).
+type deployEnvOptions struct {
+	// tune ritocca la Config del controller prima di crearlo.
+	tune func(*apps.Config)
+	// publicURL è l'URL pubblico di GitStack (e quindi l'host del registry); vuoto: git.example.com.
+	publicURL string
+}
+
+func newDeployEnvWith(t *testing.T, runController bool, opt deployEnvOptions) *appsDeployEnv {
 	t.Helper()
 	kc := os.Getenv("GITSTACK_TEST_KUBECONFIG")
 	if kc == "" {
@@ -282,16 +294,24 @@ func newDeployEnvOpt(t *testing.T, runController bool) *appsDeployEnv {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctl := apps.New(store.New(pool), kube, dyn, apps.Config{
+	appsCfg := apps.Config{
 		AppsDomain: "apps.example.com", ProgressTimeout: 75 * time.Second, FailureGrace: 6 * time.Second,
 		PollInterval: 500 * time.Millisecond, LoopInterval: time.Second, SyncEvery: 2 * time.Second,
 		Secrets: keys,
 		// GIT-418: con GITSTACK_TEST_CORE_IMAGE i pod delle app hanno il cancello vero (immagine di core importata nel cluster).
 		GateImage: os.Getenv(envTestCoreImage),
-	})
+	}
+	if opt.tune != nil {
+		opt.tune(&appsCfg)
+	}
+	publicURL := opt.publicURL
+	if publicURL == "" {
+		publicURL = "https://git.example.com"
+	}
+	ctl := apps.New(store.New(pool), kube, dyn, appsCfg)
 	base.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
 		httpserver.WithRepoIdentity(id), httpserver.WithReadableLister(id), httpserver.WithGit(git),
-		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "https://git.example.com"}),
+		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: publicURL}),
 		httpserver.WithAppsDomain("apps.example.com"), httpserver.WithClock(clock.Now), httpserver.WithWebhooks(httpserver.WebhookConfig{Keys: keys}), httpserver.WithAppController(ctl))
 	env := &appsDeployEnv{appsEnv: &appsEnv{issuesEnv: base, clock: clock, git: git}, kube: kube, dyn: dyn}
 	ctx, cancel := context.WithCancel(context.Background())

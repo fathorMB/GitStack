@@ -6,9 +6,51 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/fathorMB/GitStack/services/core/internal/apppull"
 	"github.com/fathorMB/GitStack/services/core/internal/ci"
 	"github.com/jackc/pgx/v5"
 )
+
+// appPullAccess risponde per il token di pull di un'app (GIT-425): sola lettura (packages: read)
+// sul registry del repo dell'app, e nessun altro repo (404, come per il token del job). Il
+// gateway esposto fuori dal cluster non lo accetta: il token vive solo nel cluster.
+func (g *gateway) appPullAccess(w http.ResponseWriter, r *http.Request, token string) {
+	unauthorized := func() {
+		w.Header().Set("WWW-Authenticate", `Bearer realm="gitstack-ci"`)
+		http.Error(w, "token non valido", http.StatusUnauthorized)
+	}
+	if g.ExternalOnly {
+		unauthorized()
+		return
+	}
+	appID, err := apppull.Verify(g.AppPullKeys, token, g.Now())
+	if err != nil {
+		unauthorized()
+		return
+	}
+	owner := strings.ToLower(r.URL.Query().Get("owner"))
+	name := strings.ToLower(r.URL.Query().Get("repo"))
+	var out RegistryAccess
+	err = g.Pool.QueryRow(r.Context(), `
+		SELECT rp.resource_id::text, rp.owner_name, rp.name, rp.archived_at IS NOT NULL
+		FROM core.apps a
+		JOIN core.repositories rp ON rp.resource_id = a.repo_id
+		WHERE a.id = $1 AND rp.deleted_at IS NULL AND lower(rp.owner_name) = $2 AND lower(rp.name) = $3`,
+		appID, owner, name).Scan(&out.RepoID, &out.Owner, &out.Name, &out.Archived)
+	if errors.Is(err, pgx.ErrNoRows) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		g.Log.Error("ci-gateway: repo dell'app non leggibile", "err", err)
+		http.Error(w, "servizio non disponibile", http.StatusServiceUnavailable)
+		return
+	}
+	out.Workflow, out.Job, out.Packages = "app", "pull", ci.LevelRead
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(out)
+}
 
 // RegistryAccessPath è l'endpoint con cui il registry (servizio git) trasforma il
 // token del job in ciò che quel job può fare sul registry del suo repo (RG1).
@@ -33,6 +75,10 @@ type RegistryAccess struct {
 // repo del job a cui appartiene il token: ogni altro repo, anche esistente, è 404, così il
 // token non rivela nulla degli altri repo. Token non valido: 401.
 func (g *gateway) registryAccess(w http.ResponseWriter, r *http.Request) {
+	if tok := bearer(r.Header); apppull.Is(tok) {
+		g.appPullAccess(w, r, tok)
+		return
+	}
 	a, err := g.resolveJob(r.Context(), bearer(r.Header))
 	if errors.Is(err, ci.ErrJobToken) {
 		w.Header().Set("WWW-Authenticate", `Bearer realm="gitstack-ci"`)

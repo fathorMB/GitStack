@@ -235,6 +235,10 @@ func runConfigSetHost(ctx context.Context, a *App, args []string) int {
 		return ExitUnexpected
 	}
 	updateInstallConf(tlsDir, host)
+	// GIT-425: containerd deve fidarsi della CA interna anche per il nuovo host del registry.
+	if err := a.syncRegistryTrust(ctx, cfg, tlsDir, nil, host); err != nil {
+		_, _ = fmt.Fprintf(a.Stderr, "ATTENZIONE: fiducia di containerd nella CA interna per %s non aggiornata: %v\nLe app con immagini del registry del repo non partono finché non la sistemi (docs/operations.md, «Registry e CA interna»).\n", host, err)
+	}
 
 	_, _ = fmt.Fprintf(a.Stdout, "Host impostato a %s (config: %s).\n", host, path)
 	_, _ = fmt.Fprintf(a.Stdout, "ATTENZIONE: cambiano gli indirizzi di clone (%s/<owner>/<repo>.git, ssh://git@%s:%d/<owner>/<repo>.git) e i link nelle email già inviate puntano ancora al nome vecchio: aggiorna i clone esistenti con git remote set-url.\n", url, host, cfg.SSHPort)

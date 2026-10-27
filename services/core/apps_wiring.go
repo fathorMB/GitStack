@@ -74,6 +74,7 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, eg
 		logger.Error("apps: GITSTACK_CORE_APPS_GATE_IMAGE vuota, i deploy delle app saranno rifiutati finché non è impostata (GIT-422)")
 	}
 	cfg.OnDeployFailed = onDeployFailed
+	cfg.PullCredentials = apps.PullCredentialsFor(trust.ParseKeys(gatewaySecret), time.Now)
 	ctl := apps.New(st, kube, dyn, cfg)
 	go ctl.Run(ctx)
 	return append(opts, httpserver.WithAppController(ctl)), ctl, nil

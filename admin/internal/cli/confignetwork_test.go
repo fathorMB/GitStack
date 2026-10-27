@@ -210,8 +210,11 @@ func TestConfigSetNetworkApplica(t *testing.T) {
 			t.Errorf("registries.yaml senza %q:\n%s", want, reg)
 		}
 	}
-	if strings.Contains(string(reg), "ca_file") {
-		t.Errorf("ca_file con mirror http:\n%s", reg)
+	// Con il mirror http niente ca_file per il mirror; l'unico è quello della CA interna del registry
+	// di GitStack (TLS internal, GIT-425), che sta sotto un host diverso.
+	if strings.Count(string(reg), "ca_file") != 1 || !strings.Contains(string(reg), `"192.168.1.20":`) ||
+		strings.Contains(string(reg), "network"+string(os.PathSeparator)+"ca.crt") {
+		t.Errorf("ca_file inattesi con mirror http:\n%s", reg)
 	}
 	if st, _ := os.Stat(f.paths.registries()); st.Mode().Perm() != 0o600 && os.PathSeparator == '/' {
 		t.Errorf("registries.yaml con modo %v (porta una password)", st.Mode())
@@ -378,14 +381,14 @@ func TestConfigSetNetworkErrori(t *testing.T) {
 
 func TestRenderRegistriesConCA(t *testing.T) {
 	n := config.Network{RegistryMirror: "https://reg.corp:5000", CABundle: "/etc/gitstack/network/ca.crt"}
-	got := renderRegistries(n, n.CABundle)
+	got := renderRegistries(n, n.CABundle, registryTrust{})
 	want := "# Scritto da GitStack (install.sh o gitstack config set network): non modificarlo a mano.\n" +
 		"mirrors:\n  \"*\":\n    endpoint:\n      - \"https://reg.corp:5000\"\n" +
 		"configs:\n  \"reg.corp:5000\":\n    tls:\n      ca_file: \"/etc/gitstack/network/ca.crt\"\n"
 	if got != want {
 		t.Errorf("registries.yaml:\n%s\natteso:\n%s", got, want)
 	}
-	if renderRegistries(config.Network{}, "") != "" {
+	if renderRegistries(config.Network{}, "", registryTrust{}) != "" {
 		t.Error("senza mirror non si scrive niente")
 	}
 }

@@ -2636,23 +2636,54 @@ source_tarball_url() {
 # registries.yaml: il mirror vale per ogni immagine ("*"), comprese quelle di
 # sistema di k3s. Stampa niente senza mirror.
 render_registries_yaml() {
-  [ -n "${GITSTACK_REGISTRY_MIRROR}" ] || return 0
+  local trust_hosts mirror_host="" h
+  trust_hosts="$(registry_trust_hosts)"
+  { [ -n "${GITSTACK_REGISTRY_MIRROR}" ] || [ -n "${trust_hosts}" ]; } || return 0
   printf '%s\n' '# Scritto da GitStack (install.sh o gitstack config set network): non modificarlo a mano.'
-  printf 'mirrors:\n  "*":\n    endpoint:\n      - %s\n' "$(net_quote "${GITSTACK_REGISTRY_MIRROR}")"
-  local has_ca=0
-  if [ -n "${GITSTACK_CA_BUNDLE}" ]; then
-    case "${GITSTACK_REGISTRY_MIRROR}" in https://*) has_ca=1 ;; esac
-  fi
-  if [ -n "${GITSTACK_REGISTRY_USERNAME}" ] || [ "${has_ca}" -eq 1 ]; then
-    printf 'configs:\n  %s:\n' "$(net_quote "$(net_authority "${GITSTACK_REGISTRY_MIRROR}")")"
-    if [ -n "${GITSTACK_REGISTRY_USERNAME}" ]; then
-      printf '    auth:\n      username: %s\n      password: %s\n' \
-        "$(net_quote "${GITSTACK_REGISTRY_USERNAME}")" "$(net_quote "${GITSTACK_REGISTRY_PASSWORD}")"
+  local has_ca=0 wrote_configs=0
+  if [ -n "${GITSTACK_REGISTRY_MIRROR}" ]; then
+    mirror_host="$(net_authority "${GITSTACK_REGISTRY_MIRROR}")"
+    printf 'mirrors:\n  "*":\n    endpoint:\n      - %s\n' "$(net_quote "${GITSTACK_REGISTRY_MIRROR}")"
+    if [ -n "${GITSTACK_CA_BUNDLE}" ]; then
+      case "${GITSTACK_REGISTRY_MIRROR}" in https://*) has_ca=1 ;; esac
     fi
-    if [ "${has_ca}" -eq 1 ]; then
-      printf '    tls:\n      ca_file: %s\n' "$(net_quote "$(net_ca_copy_path)")"
+    if [ -n "${GITSTACK_REGISTRY_USERNAME}" ] || [ "${has_ca}" -eq 1 ]; then
+      printf 'configs:\n  %s:\n' "$(net_quote "${mirror_host}")"
+      wrote_configs=1
+      if [ -n "${GITSTACK_REGISTRY_USERNAME}" ]; then
+        printf '    auth:\n      username: %s\n      password: %s\n' \
+          "$(net_quote "${GITSTACK_REGISTRY_USERNAME}")" "$(net_quote "${GITSTACK_REGISTRY_PASSWORD}")"
+      fi
+      if [ "${has_ca}" -eq 1 ]; then
+        printf '    tls:\n      ca_file: %s\n' "$(net_quote "$(net_ca_copy_path)")"
+      fi
     fi
   fi
+  # GIT-425: containerd si fida della CA interna per il registry del repo
+  # (stesso formato di admin/internal/cli/confignetwork.go, renderRegistries).
+  while IFS= read -r h; do
+    [ -n "${h}" ] || continue
+    [ "${h}" != "${mirror_host}" ] || continue
+    if [ "${wrote_configs}" -eq 0 ]; then
+      printf 'configs:\n'
+      wrote_configs=1
+    fi
+    printf '  %s:\n    tls:\n      ca_file: %s\n' "$(net_quote "${h}")" "$(net_quote "${TLS_DIR}/ca.crt")"
+  done <<<"${trust_hosts}"
+}
+
+# Gli host del registry di GitStack per cui containerd deve fidarsi della CA
+# interna (GIT-425): host pubblico e --host, ordinati e senza doppioni, solo con
+# TLS internal (con certificato del cliente o Let's Encrypt la CA è quella di
+# sistema o --ca-bundle). `gitstack restore` e `config set host` ricalcolano lo
+# stesso elenco da cfg.Host e da HOSTS di install.conf (registrytrust.go).
+registry_trust_hosts() {
+  [ "${GITSTACK_TLS_MODE:-}" = "internal" ] || return 0
+  local h
+  {
+    printf '%s\n' "${PUBLIC_HOST:-}"
+    for h in "${HOST_ARGS[@]:-}"; do printf '%s\n' "${h}"; done
+  } | awk 'NF' | LC_ALL=C sort -u
 }
 
 # Una riga Environment= di systemd: apici doppi, % raddoppiato.
@@ -2737,7 +2768,9 @@ apply_ca_trust() {
 # registries.yaml (0600: può contenere la password) e drop-in del proxy. Va
 # fatto prima di installare k3s (parte già col mirror) e a ogni riesecuzione.
 apply_k3s_network() {
-  [ "${NETWORK_CONFIGURED}" -eq 1 ] || return 0
+  # Anche senza rete aziendale: con TLS internal containerd deve fidarsi della
+  # CA interna per il registry del repo (GIT-425).
+  { [ "${NETWORK_CONFIGURED}" -eq 1 ] || [ -n "$(registry_trust_hosts)" ]; } || return 0
   write_managed_file "${K3S_CONFIG_DIR}/registries.yaml" 0600 "$(render_registries_yaml)"
   write_managed_file "${SYSTEMD_UNIT_DIR}/k3s.service.d/${K3S_DROPIN_NAME}" 0644 "$(render_k3s_dropin)"
   if [ -n "${GITSTACK_REGISTRY_MIRROR}" ]; then
