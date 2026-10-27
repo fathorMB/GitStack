@@ -74,6 +74,8 @@ type Config struct {
 	PullCredentials func(ctx context.Context, app store.App) (*PullCredential, error)
 	// ProxyEnv passa HTTP(S)_PROXY e NO_PROXY della configurazione N9 ai pod.
 	ProxyEnv map[string]string
+	// GateImage: immagine dell'init container «gate» dei pod delle app (GIT-418), quella di core.
+	GateImage string
 	// TraefikNamespace è il namespace dell'Ingress controller k3s.
 	TraefikNamespace string
 	// EgressClusterCIDRs e EgressNodeAddresses sono gli stessi di webhook e mirror (pkg/egress):
@@ -376,7 +378,7 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 		return fmt.Errorf("volumi: %w", err)
 	}
 	deps := c.kube.AppsV1().Deployments(ns)
-	opts := BuildOptions{Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret, ProxyEnv: c.cfg.ProxyEnv}
+	opts := BuildOptions{Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret, ProxyEnv: c.cfg.ProxyEnv, GateImage: c.cfg.GateImage}
 	cur, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})
 	switch {
 	case apierrors.IsNotFound(err):

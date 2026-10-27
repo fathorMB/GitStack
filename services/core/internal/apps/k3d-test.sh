@@ -23,9 +23,15 @@ if "$k3d_bin" cluster list -o json | grep -q "\"$cluster\""; then echo "KO: clus
 "$k3d_bin" cluster create "$cluster" --image "$k3s_image" --wait --timeout 300s \
   --kubeconfig-update-default=false --kubeconfig-switch-context=false >/dev/null
 created=true
+# GIT-418: con GITSTACK_TEST_CORE_IMAGE (immagine di core gia' presente in docker) il cancello di rete
+# dei pod delle app e' quello vero (`core apps-gate`): l'immagine entra nel cluster e arriva ai test.
+if [ -n "${GITSTACK_TEST_CORE_IMAGE:-}" ]; then
+  "$k3d_bin" image import "$GITSTACK_TEST_CORE_IMAGE" -c "$cluster" >/dev/null
+  export GITSTACK_TEST_CORE_IMAGE
+fi
 "$k3d_bin" kubeconfig get "$cluster" >"$work/kubeconfig"
 
 cd "$root/services/core"
 GITSTACK_TEST_KUBECONFIG="$work/kubeconfig" go test -tags integration -count=1 -timeout 25m \
-  -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d|TestApps_SegretiKubernetesERollback|TestApps_IsolamentoSuK3d|TestApps_BarriereInUscitaSuK3d|TestApps_NomiInterniSuK3d|TestApps_VolumiSuK3d' -v ./internal/httpserver/
+  -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d|TestApps_SegretiKubernetesERollback|TestApps_IsolamentoSuK3d|TestApps_BarriereInUscitaSuK3d|TestApps_CancelloVeroSenzaPolicySuK3d|TestApps_NomiInterniSuK3d|TestApps_VolumiSuK3d' -v ./internal/httpserver/
 echo "OK: controller, segreti, isolamento, barriere in uscita, nomi interni e volumi delle app provati su k3d"
