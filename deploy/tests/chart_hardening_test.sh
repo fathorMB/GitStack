@@ -504,6 +504,39 @@ expect_line_has "CA: ConfigMap optional" "${d}" "optional: true"
 expect_lacks "CA: niente subPath (un rinnovo arriva senza riavvio)" "${d}" "subPath"
 expect_lacks "CA: con la CA interna nessun GITSTACK_CORE_CA_MODE" "${d}" "GITSTACK_CORE_CA_MODE"
 
+echo "== GIT-442: le app raggiungono l'API dalla porta interna del gateway"
+OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template apps (porta interna) fallito"; exit 1; }
+d="$(doc NetworkPolicy gitstack-gateway)"
+expect_has "app->gateway: ingresso dai namespace gestiti" "${d}" 'gitstack.io/managed-app: "true"'
+expect_eq "app->gateway: una sola regola per le app" "$(printf '%s\n' "${d}" | grep -c 'gitstack.io/managed-app')" "2"
+expect_has "app->gateway: porta interna" "${d}" "port: 8081"
+# Nel documento del gateway, la porta interna compare solo nella regola delle app.
+expect_eq "app->gateway: porta interna una volta sola" "$(printf '%s\n' "${d}" | grep -c 'port: 8081$')" "1"
+# La regola delle app non apre la porta pubblica: fra le righe della regola (da managed-app al blocco egress) c'è solo 8081.
+rule="$(printf '%s\n' "${d}" | awk '/gitstack.io\/managed-app: "true"/ {on=1} /^  egress:/ {on=0} on')"
+expect_has "app->gateway: la regola ha la porta interna" "${rule}" "port: 8081"
+expect_lacks "app->gateway: la regola non ha la porta pubblica" "${rule}" "port: 8080"
+for n in core identity git nats postgres; do
+  expect_lacks "nessuna policy di ${n} ammette le app" "$(doc NetworkPolicy "gitstack-${n}")" "gitstack.io/managed-app"
+done
+d="$(doc Deployment gitstack-gateway)"
+expect_has "gateway: GITSTACK_GATEWAY_INTERNAL_ADDR" "${d}" "GITSTACK_GATEWAY_INTERNAL_ADDR"
+expect_has "gateway: porta interna del container" "${d}" "containerPort: 8081"
+expect_has "gateway: il Service ha la porta interna" "$(doc Service gitstack-gateway)" "port: 8081"
+d="$(doc Deployment gitstack-core)"
+expect_line_has "core: namespace del gateway" "${d}" "value: \"prova-ns\""
+expect_has "core: porta interna del gateway" "${d}" "GITSTACK_CORE_APPS_GATEWAY_INTERNAL_PORT"
+expect_has "core: etichette dei pod del gateway" "${d}" "app.kubernetes.io/name=gateway,app.kubernetes.io/instance=gitstack"
+# Senza app, o con internalPort=0, nessuna porta interna e nessuna regola.
+for args in "" "--set apps.enabled=true --set apps.domain=apps.acme.test --set gateway.internalPort=0"; do
+  # shellcheck disable=SC2086
+  OUT="$(render ${args})" || { bad "helm template (senza porta interna) fallito"; exit 1; }
+  expect_lacks "senza porta interna: nessuna regola per le app" "$(doc NetworkPolicy gitstack-gateway)" "gitstack.io/managed-app"
+  expect_lacks "senza porta interna: gateway" "${OUT}" "GITSTACK_GATEWAY_INTERNAL_ADDR"
+  expect_lacks "senza porta interna: core" "${OUT}" "GITSTACK_CORE_APPS_GATEWAY_INTERNAL_PORT"
+done
+if helm_rc --set apps.enabled=true --set apps.domain=apps.acme.test --set gateway.internalPort=8080; then bad "internalPort uguale a containerPort: helm template doveva fermarsi"; else ok; fi
+
 echo
 echo "Passati: ${PASS}  Falliti: ${FAILN}"
 [ "${FAILN}" -eq 0 ]

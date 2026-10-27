@@ -114,10 +114,39 @@ type BuildOptions struct {
 	// GateImage è l'immagine (di core) dell'init container «gate» (GIT-418): l'app parte solo dopo che la
 	// NetworkPolicy è stata applicata al pod. Vuoto: nessun cancello (solo prove senza l'immagine di core).
 	GateImage string
+	// Gateway è il percorso dell'app verso l'API di GitStack (GIT-442, H16): nil = non configurato,
+	// nessuna variabile GITSTACK_API_URL.
+	Gateway *GatewayAccess
+}
+
+// GatewayAccess descrive la porta interna del gateway che le app ospitate raggiungono dentro il
+// cluster (GIT-442, H16). Viene dal chart (env di core) come TraefikNamespace; senza, la policy e il
+// Deployment restano quelli di prima. La rete apre solo il trasporto: l'autorizzazione è del token.
+type GatewayAccess struct {
+	// Namespace e PodLabels scelgono i pod del gateway; Service è il nome del suo Service nel
+	// namespace e Port la porta interna (stessa sul Service e sul container).
+	Namespace string
+	PodLabels map[string]string
+	Service   string
+	Port      int
+}
+
+// Valid dice se la configurazione è completa: tutti i campi, e una porta valida.
+func (g *GatewayAccess) Valid() bool {
+	return g != nil && g.Namespace != "" && len(g.PodLabels) > 0 && g.Service != "" && g.Port > 0 && g.Port < 65536
+}
+
+// APIURL è il valore di GITSTACK_API_URL: l'API sul Service del gateway, con il prefisso /v1 del
+// gateway (la porta interna non passa da Traefik, che toglie /api).
+func (g *GatewayAccess) APIURL() string {
+	return fmt.Sprintf("http://%s.%s.svc.cluster.local:%d/v1", g.Service, g.Namespace, g.Port)
 }
 
 // NetworkPolicyOptions sono le dipendenze d'istanza della policy H9.
 type NetworkPolicyOptions struct {
+	// Gateway: se valido, una regola di egress fissa verso i soli pod del gateway sulla porta interna
+	// (anche per le app con l'uscita ristretta). Nil: nessuna regola.
+	Gateway          *GatewayAccess
 	TraefikNamespace string
 	ProxyEnv         map[string]string
 	// ProxyIPs è la risoluzione fatta da core per un proxy nominato.
@@ -167,7 +196,7 @@ func BuildDeployment(app store.App, v store.AppVersion, o BuildOptions) *appsv1.
 		Name:            containerName,
 		Image:           ImageRef(v),
 		ImagePullPolicy: corev1.PullIfNotPresent,
-		Env:             envVars(cfg.Variables, app.Config.Port, systemEnv(v), deploymentProxyEnv(o)),
+		Env:             envVars(cfg.Variables, app.Config.Port, systemEnv(v, o), deploymentProxyEnv(o)),
 		SecurityContext: sc,
 		Resources: corev1.ResourceRequirements{
 			Requests: resourceList(cfg.Guaranteed),
@@ -295,6 +324,9 @@ const (
 	// EnvCommitSha è il commit dell'etichetta revision dell'immagine (GIT-386), letto da core al
 	// deploy e salvato nella versione: qui non si chiama nessuno.
 	EnvCommitSha = "GITSTACK_COMMIT_SHA"
+	// EnvAPIURL è l'API di GitStack dal gateway nel cluster (GIT-442): presente solo se core conosce
+	// il gateway interno.
+	EnvAPIURL = "GITSTACK_API_URL"
 )
 
 // IsReservedEnvName dice se il nome di una variabile o di un segreto dell'app usa il prefisso
@@ -307,8 +339,11 @@ func IsReservedEnvName(name string) bool {
 // dell'immagine (assente se l'immagine è solo per digest), GITSTACK_DEPLOYED_AT è l'istante della
 // versione in RFC 3339 UTC, GITSTACK_COMMIT_SHA il commit della versione (assente se nil, H14).
 // Restano uguali a ogni riavvio della stessa versione.
-func systemEnv(v store.AppVersion) map[string]string {
+func systemEnv(v store.AppVersion, o BuildOptions) map[string]string {
 	out := map[string]string{}
+	if o.Gateway.Valid() {
+		out[EnvAPIURL] = o.Gateway.APIURL()
+	}
 	if tag := imageTag(v.Image.Reference); tag != "" {
 		out[EnvAppVersion] = tag
 	}
@@ -510,6 +545,16 @@ func BuildNetworkPolicy(app store.App, options ...NetworkPolicyOptions) *network
 		dnsPort := intstr.FromInt(53)
 		dns := networkingv1.NetworkPolicyPeer{NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": "kube-system"}}, PodSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"k8s-app": "kube-dns"}}}
 		egress = append(egress, networkingv1.NetworkPolicyEgressRule{To: []networkingv1.NetworkPolicyPeer{dns}, Ports: []networkingv1.NetworkPolicyPort{{Protocol: proto(corev1.ProtocolUDP), Port: &dnsPort}, {Protocol: proto(corev1.ProtocolTCP), Port: &dnsPort}}})
+	}
+	if o.Gateway.Valid() { // GIT-442: l'API di GitStack dal gateway nel cluster, solo la porta interna
+		gwPort := intstr.FromInt(o.Gateway.Port)
+		egress = append(egress, networkingv1.NetworkPolicyEgressRule{
+			To: []networkingv1.NetworkPolicyPeer{{
+				NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": o.Gateway.Namespace}},
+				PodSelector:       &metav1.LabelSelector{MatchLabels: o.Gateway.PodLabels},
+			}},
+			Ports: []networkingv1.NetworkPolicyPort{{Protocol: proto(corev1.ProtocolTCP), Port: &gwPort}},
+		})
 	}
 	if o.Restriction != nil { // uscita ristretta (H16): solo gli indirizzi elencati, niente internet né proxy
 		endpoints = nil

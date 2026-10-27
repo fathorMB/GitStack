@@ -121,6 +121,21 @@ spec:
         - protocol: TCP
           port: {{ .Values.gateway.containerPort }}
     {{- end }}
+    {{- if include "gitstack.apps.gatewayInternalPort" . }}
+    # App ospitate (GIT-442, H16): l'API di GitStack dal cluster. Solo i pod dei namespace gestiti
+    # (etichetta LabelManaged che core mette su namespace e pod) e solo la porta interna, che serve
+    # /v1 e ignora X-Forwarded-For. Mai la porta pubblica, mai gli altri componenti.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              gitstack.io/managed-app: "true"
+          podSelector:
+            matchLabels:
+              gitstack.io/managed-app: "true"
+      ports:
+        - protocol: TCP
+          port: {{ include "gitstack.apps.gatewayInternalPort" . }}
+    {{- end }}
   egress:
     - to:
         - podSelector:

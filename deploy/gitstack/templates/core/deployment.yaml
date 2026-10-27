@@ -112,6 +112,18 @@ spec:
               value: {{ include "gitstack.apps.workloadRoleName" . | quote }}
             - name: GITSTACK_CORE_APPS_AUTH_URL
               value: {{ include "gitstack.apps.authUrl" . | quote }}
+            {{- if include "gitstack.apps.gatewayInternalPort" . }}
+            # Le app raggiungono l'API di GitStack dal gateway nel cluster (GIT-442, H16): core apre
+            # alle app solo i pod del gateway su questa porta e passa GITSTACK_API_URL.
+            - name: GITSTACK_CORE_APPS_GATEWAY_NAMESPACE
+              value: {{ .Release.Namespace | quote }}
+            - name: GITSTACK_CORE_APPS_GATEWAY_SERVICE
+              value: {{ printf "%s-gateway" (include "gitstack.fullname" .) | quote }}
+            - name: GITSTACK_CORE_APPS_GATEWAY_POD_LABELS
+              value: {{ printf "app.kubernetes.io/name=gateway,app.kubernetes.io/instance=%s" .Release.Name | quote }}
+            - name: GITSTACK_CORE_APPS_GATEWAY_INTERNAL_PORT
+              value: {{ include "gitstack.apps.gatewayInternalPort" . | quote }}
+            {{- end }}
             - name: GITSTACK_CORE_APPS_TRAEFIK_METRICS_URL
               value: {{ include "gitstack.apps.traefikMetricsUrl" . | quote }}
             # Cancello fail-closed dei pod delle app (GIT-418): init container con l'immagine di core (`core apps-gate`).
