@@ -16,7 +16,7 @@ import (
 
 // dbHint riconosce un database dal percorso di mount, dal nome del volume o dall'immagine (D19): la
 // stessa regola della UI (web/src/lib/appVolumes.ts).
-var dbHint = regexp.MustCompile(`(?i)postgres|pgdata|mysql|mariadb|mongo|redis|couchdb|influx|cassandra|clickhouse|sqlite|.db`)
+var dbHint = regexp.MustCompile(`(?i)postgres|pgdata|mysql|mariadb|mongo|redis|couchdb|influx|cassandra|clickhouse|sqlite|\.db\b`)
 
 // looksLikeDatabase è l'avviso database (D19): la copia del backup si fa con l'app accesa, quindi per
 // un database dentro un container la coerenza non è garantita.

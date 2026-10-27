@@ -10326,7 +10326,7 @@ paths:
       x-mcp:
         expose: true
         name: app_volume_update
-        destructive: false
+        destructive: true
       summary: "Include o esclude il volume dal backup"
       description: >
         Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato
