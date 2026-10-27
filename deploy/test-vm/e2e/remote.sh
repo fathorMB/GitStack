@@ -300,6 +300,9 @@ collect_diagnostics() {
   { k3s_kubectl get pods -A -o yaml || echo "kubectl get pods -o yaml non disponibile"; } \
     >"${dir}/kubectl-pods.yaml" 2>&1
 
+  { k3s_kubectl -n default logs deploy/gitstack-core --all-containers --prefix || true; } >"${dir}/core.log" 2>&1
+  { k3s_kubectl -n default logs deploy/gitstack-core --all-containers --prefix --previous || true; } >"${dir}/core-previous.log" 2>&1
+
   : >"${dir}/kubectl-describe-pods.txt"
   : >"${dir}/kubectl-logs-pods.txt"
   local ns pod

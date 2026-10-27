@@ -84,7 +84,8 @@ push() {
 pod_env() { # nome
   local v
   for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
-    if v="$(kc exec -n "$GS_APP_NS" deploy/app -- printenv "$1" 2>/dev/null)"; then printf '%s' "$v"; return 0; fi
+    # shellcheck disable=SC2016 # $1 e' il nome passato alla shell nel pod
+    if v="$(kc exec -n "$GS_APP_NS" deploy/app -- sh -c 'printenv "$1" || true' sh "$1" 2>/dev/null)"; then printf '%s' "$v"; return 0; fi
     sleep 5
   done
   return 1
@@ -97,14 +98,13 @@ compare() { # chiave valore-atteso valore-letto (vuoto = assente)
 inspect() {
   local img v s
   if ! kc get deploy app -n "$GS_APP_NS" >/dev/null 2>&1; then
-    echo "deploy=no"; echo "image="; echo "var=missing"; echo "secret=missing"
+    echo "deploy=no"; echo "image="; echo "var=exec-failed"; echo "secret=missing"; echo "volume=exec-failed"
     return 0
   fi
   echo "deploy=yes"
   img="$(kc get deploy app -n "$GS_APP_NS" -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null)"
   echo "image=${img}"
-  v="$(pod_env "$GS_VAR_NAME")" || v=""
-  compare var "$GS_VAR_VALUE" "$v"
+  if v="$(pod_env "$GS_VAR_NAME")"; then compare var "$GS_VAR_VALUE" "$v"; else echo 'var=exec-failed'; fi
   s="$(pod_env "$GS_SECRET_NAME")" || s=""
   if [ -z "$s" ]; then
     # Secret app-secrets (GIT-373) se il segreto non e' nell'env del pod.
@@ -112,11 +112,36 @@ inspect() {
   fi
   compare secret "$GS_SECRET_VALUE" "$s"
   # shellcheck disable=SC2016  # l'espansione di $(cat ...) avviene nel pod, non sull'host
-  if kc exec -n "$GS_APP_NS" deploy/app -- sh -c 'test -f /data/gitstack-e2e.txt && test "$(cat /data/gitstack-e2e.txt; printf x)" = gitstack-e2e-volume-423x' 2>/dev/null; then
-    echo 'volume=match'
+  if v="$(kc exec -n "$GS_APP_NS" deploy/app -- sh -c 'if test -f /data/gitstack-e2e.txt && test "$(cat /data/gitstack-e2e.txt; printf x)" = gitstack-e2e-volume-423x; then echo match; else echo mismatch; fi' 2>/dev/null)"; then
+    echo "volume=$v"
   else
-    echo 'volume=mismatch'
+    echo 'volume=exec-failed'
   fi
+}
+
+diagnose() {
+  local dir="$1" pod container
+  mkdir -p "$dir"
+  kc -n "$GS_APP_NS" get pods -o wide >"$dir/pods.txt" 2>&1
+  kc -n "$GS_APP_NS" describe deploy app >"$dir/deployment.txt" 2>&1
+  kc -n "$GS_APP_NS" describe pods >"$dir/describe-pods.txt" 2>&1
+  kc -n "$GS_APP_NS" get events --sort-by=.lastTimestamp >"$dir/events.txt" 2>&1
+  kc -n "$GS_APP_NS" get pvc -o wide >"$dir/pvc.txt" 2>&1
+  kc get pv -o wide >"$dir/pv.txt" 2>&1
+  : >"$dir/logs.txt"
+  while read -r pod; do
+    [ -n "$pod" ] || continue
+    for container in $(kc -n "$GS_APP_NS" get "$pod" -o jsonpath='{.spec.initContainers[*].name} {.spec.containers[*].name}'); do
+      for previous in current previous; do
+        printf '\n=== %s %s %s ===\n' "$pod" "$container" "$previous" >>"$dir/logs.txt"
+        if [ "$previous" = previous ]; then
+          kc -n "$GS_APP_NS" logs "$pod" -c "$container" --previous >>"$dir/logs.txt" 2>&1 || true
+        else
+          kc -n "$GS_APP_NS" logs "$pod" -c "$container" >>"$dir/logs.txt" 2>&1 || true
+        fi
+      done
+    done
+  done < <(kc -n "$GS_APP_NS" get pods -o name 2>>"$dir/logs.txt")
 }
 
 write_volume() {
@@ -133,6 +158,7 @@ write_volume() {
 case "${1:-}" in
   push) push ;;
   inspect) inspect ;;
+  diagnose) diagnose "$2" ;;
   write-volume) write_volume ;;
   *) echo "uso: $0 push|inspect" >&2; exit 2 ;;
 esac
