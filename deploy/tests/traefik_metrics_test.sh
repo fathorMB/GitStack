@@ -61,7 +61,9 @@ expect_lacks "metrics non esposto" "${m}" "expose"
 expect_lacks "metrics non e' un hostPort" "${m}" "hostPort"
 expect_lacks "niente resolver senza letsencrypt" "${m}" "certificatesResolvers"
 if [ -e "${OLD_ACME_MANIFEST}" ]; then bad "il vecchio file del solo Let's Encrypt va tolto (stesso oggetto traefik)"; else ok; fi
-if command -v ruby >/dev/null 2>&1; then ruby -ryaml -e 'YAML.load_file(ARGV[0]); v = YAML.load(YAML.load_file(ARGV[0])["spec"]["valuesContent"]); exit(v.dig("metrics","prometheus","entryPoint") == "metrics" ? 0 : 1)' "${TRAEFIK_MANIFEST}" && ok || bad "valuesContent non e' YAML valido"; fi
+if command -v ruby >/dev/null 2>&1; then
+  if ruby -ryaml -e 'YAML.load_file(ARGV[0]); v = YAML.load(YAML.load_file(ARGV[0])["spec"]["valuesContent"]); exit(v.dig("metrics","prometheus","entryPoint") == "metrics" ? 0 : 1)' "${TRAEFIK_MANIFEST}"; then ok; else bad "valuesContent non e' YAML valido"; fi
+fi
 
 write_traefik_manifest "${CHART}" yes >/dev/null 2>&1
 m="$(cat "${TRAEFIK_MANIFEST}")"
