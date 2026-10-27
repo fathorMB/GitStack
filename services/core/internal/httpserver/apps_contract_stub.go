@@ -38,7 +38,12 @@ func (s *apiServer) GetAdminAppsSettings(w http.ResponseWriter, r *http.Request)
 		appInternalError(w, "lettura delle impostazioni delle app", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, openapi.AppsInstanceSettings{AppsDomain: appStringPtr(s.appsDomain), AppsDomainIsDefault: appBoolPtr(s.appsDomain == ""), MaxPerApp: openapi.AppResourceAmount{CpuMillis: c.Max.CPUMillis, MemoryBytes: c.Max.MemoryBytes}, PublicAppsEnabled: false, SignedImagesOnly: false, Restricted: false, LogRetention: openapi.AppLogRetention{Days: 7, MaxBytes: 1 << 30}})
+	signedOnly, err := s.resources.AppSignedImagesOnly(r.Context())
+	if err != nil {
+		appInternalError(w, "lettura delle impostazioni delle app", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, openapi.AppsInstanceSettings{AppsDomain: appStringPtr(s.appsDomain), AppsDomainIsDefault: appBoolPtr(s.appsDomain == ""), MaxPerApp: openapi.AppResourceAmount{CpuMillis: c.Max.CPUMillis, MemoryBytes: c.Max.MemoryBytes}, PublicAppsEnabled: false, SignedImagesOnly: signedOnly, Restricted: false, LogRetention: openapi.AppLogRetention{Days: 7, MaxBytes: 1 << 30}})
 }
 
 func (s *apiServer) UpdateAdminAppsSettings(w http.ResponseWriter, r *http.Request) {
@@ -57,10 +62,6 @@ func (s *apiServer) UpdateAdminAppsSettings(w http.ResponseWriter, r *http.Reque
 		writeFieldError(w, "publicAppsEnabled", "non ancora configurabile")
 		return
 	}
-	if in.SignedImagesOnly {
-		writeFieldError(w, "signedImagesOnly", "non ancora configurabile")
-		return
-	}
 	if in.Restricted {
 		writeFieldError(w, "restricted", "non ancora configurabile")
 		return
@@ -74,17 +75,11 @@ func (s *apiServer) UpdateAdminAppsSettings(w http.ResponseWriter, r *http.Reque
 		appInternalError(w, "aggiornamento del massimo per app", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, openapi.AppsInstanceSettings{AppsDomain: appStringPtr(s.appsDomain), AppsDomainIsDefault: appBoolPtr(s.appsDomain == ""), MaxPerApp: openapi.AppResourceAmount{CpuMillis: c.Max.CPUMillis, MemoryBytes: c.Max.MemoryBytes}, PublicAppsEnabled: false, SignedImagesOnly: false, Restricted: false, LogRetention: openapi.AppLogRetention{Days: 7, MaxBytes: 1 << 30}})
-}
-
-func (s *apiServer) ListAdminAppTrustedKeys(w http.ResponseWriter, r *http.Request) {
-	notImplemented(w)
-}
-
-func (s *apiServer) AddAdminAppTrustedKey(w http.ResponseWriter, r *http.Request) {
-	notImplemented(w)
-}
-
-func (s *apiServer) DeleteAdminAppTrustedKey(w http.ResponseWriter, r *http.Request, keyId openapi.AppTrustedKeyIdParam) {
-	notImplemented(w)
+	// «Solo immagini firmate» (H10): vale dai deploy successivi, le app in esecuzione non si fermano.
+	if err := s.resources.SetAppSignedImagesOnly(r.Context(), in.SignedImagesOnly); err != nil {
+		appInternalError(w, "aggiornamento di «solo immagini firmate»", err)
+		return
+	}
+	signedOnly := in.SignedImagesOnly
+	writeJSON(w, http.StatusOK, openapi.AppsInstanceSettings{AppsDomain: appStringPtr(s.appsDomain), AppsDomainIsDefault: appBoolPtr(s.appsDomain == ""), MaxPerApp: openapi.AppResourceAmount{CpuMillis: c.Max.CPUMillis, MemoryBytes: c.Max.MemoryBytes}, PublicAppsEnabled: false, SignedImagesOnly: signedOnly, Restricted: false, LogRetention: openapi.AppLogRetention{Days: 7, MaxBytes: 1 << 30}})
 }

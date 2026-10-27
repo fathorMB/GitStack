@@ -152,6 +152,7 @@ type Handler struct {
 
 	// Impostazioni, quota e pulizia (GIT-325, RG2). settings è nil se il backend non le dà.
 	settings   *settingsCache
+	notifier   PushNotifier // nil se il backend non sa dire a core dei push dei job (GIT-349)
 	quota      atomic.Int64 // letta una volta per richiesta in guard; scritta solo da costruttore e test
 	now        func() time.Time
 	blobGrace  time.Duration
@@ -266,6 +267,9 @@ func New(cfg Config, b Backend) (h *Handler, err error) {
 	h.usageTTL = cfg.UsageTTL
 	if h.usageTTL == 0 {
 		h.usageTTL = 15 * time.Second
+	}
+	if n, ok := b.(PushNotifier); ok {
+		h.notifier = n
 	}
 	if src, ok := b.(SettingsSource); ok {
 		ttl := cfg.SettingsTTL
@@ -554,7 +558,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case cl.principal.Kind == PusherAgent:
 			p.Kind = PusherAgent
 		}
-		h.recordPusher(r.Context(), name, strings.TrimPrefix(rt.tail, "manifests/"), p)
+		pushedTag := strings.TrimPrefix(rt.tail, "manifests/")
+		h.recordPusher(r.Context(), name, pushedTag, p)
+		if cl.job && pushedManifestDigest != "" {
+			digest := rw.Header().Get("Docker-Content-Digest")
+			if digest == "" {
+				digest = pushedManifestDigest
+			}
+			h.notifyImagePushed(r.Context(), g, rt.image, pushedTag, digest)
+		}
 	}
 	if rw.status >= 500 {
 		h.log.Error("il registry ha risposto con un errore", "status", rw.status, "method", r.Method, "path", rt.tail, "repoId", g.repoID)
@@ -729,6 +741,8 @@ type authzGrant struct {
 	*grant
 	canonical string
 	jobLogin  string
+	// job è il contesto del run che pubblica (token del job), per il deploy automatico (GIT-349).
+	job JobAccessRun
 }
 
 // authorize decide l'azione su owner/repo e ritorna il permesso da passare a distribution.
@@ -828,6 +842,7 @@ func (h *Handler) authorizeJob(w http.ResponseWriter, r *http.Request, c who, ow
 	}
 	g := newGrant(ja.RepoID, action, ja.Owner, ja.Name)
 	g.jobLogin = JobLogin
+	g.job = JobAccessRun{RunID: ja.RunID, Ref: ja.Ref, Event: ja.Event, ActorID: ja.ActorID}
 	if ja.Workflow != "" && ja.Job != "" {
 		g.jobLogin = ja.Workflow + " / " + ja.Job
 	}

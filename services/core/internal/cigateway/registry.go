@@ -69,6 +69,13 @@ type RegistryAccess struct {
 	// Packages è il livello `packages` del token del job (CI4): none, read o write.
 	// Il token del job non cancella mai: l'eliminazione resta ad admin.
 	Packages string `json:"packages"`
+	// RunID, Ref, Event e ActorID descrivono il run del job (H7, GIT-349): il registry li riporta a
+	// core quando il job pubblica un'immagine, per il deploy automatico da branch. Vuoti per il
+	// token di pull di un'app. ActorID è vuoto se il run non ha un attore (schedule).
+	RunID   string `json:"runId,omitempty"`
+	Ref     string `json:"ref,omitempty"`
+	Event   string `json:"event,omitempty"`
+	ActorID string `json:"actorId,omitempty"`
 }
 
 // registryAccess risponde per il repo owner/repo (query `owner`, `repo`) solo se è il
@@ -96,12 +103,12 @@ func (g *gateway) registryAccess(w http.ResponseWriter, r *http.Request) {
 	var perms []byte
 	err = g.Pool.QueryRow(r.Context(), `
 		SELECT rp.resource_id::text, rp.owner_name, rp.name, r.workflow_name, j.name,
-		       rp.archived_at IS NOT NULL, j.permissions
+		       rp.archived_at IS NOT NULL, j.permissions, r.id::text, r.ref, r.event, COALESCE(r.actor_id::text, '')
 		FROM core.ci_jobs j
 		JOIN core.ci_runs r ON r.id = j.run_id
 		JOIN core.repositories rp ON rp.resource_id = r.repo_id
 		WHERE j.id = $1 AND rp.deleted_at IS NULL AND lower(rp.owner_name) = $2 AND lower(rp.name) = $3`,
-		a.JobID, owner, name).Scan(&out.RepoID, &out.Owner, &out.Name, &out.Workflow, &out.Job, &out.Archived, &perms)
+		a.JobID, owner, name).Scan(&out.RepoID, &out.Owner, &out.Name, &out.Workflow, &out.Job, &out.Archived, &perms, &out.RunID, &out.Ref, &out.Event, &out.ActorID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		http.NotFound(w, r)
 		return

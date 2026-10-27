@@ -39,7 +39,7 @@ func (s *apiServer) writeDeployConflict(w http.ResponseWriter, err error) bool {
 
 // DeployApp implementa POST /repos/{owner}/{repo}/apps/{app}/deploys.
 func (s *apiServer) DeployApp(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, app openapi.AppParam) {
-	repo, actor, ok := s.appRepo(w, r, owner, name, "write", true)
+	repo, actor, ok := s.deployRepo(w, r, owner, name)
 	if !ok {
 		return
 	}
@@ -57,6 +57,10 @@ func (s *apiServer) DeployApp(w http.ResponseWriter, r *http.Request, owner open
 	img, msg := s.resolveAppImage(in.Image, repo)
 	if msg != "" {
 		writeFieldError(w, "image", msg)
+		return
+	}
+	img, _, ok = s.verifyAppImage(w, r.Context(), repo, img)
+	if !ok {
 		return
 	}
 	a, ver, err := s.resources.BeginAppDeploy(r.Context(), repo.ID, app, store.NewAppDeploy{
@@ -119,6 +123,17 @@ func (s *apiServer) RollbackApp(w http.ResponseWriter, r *http.Request, owner op
 		}
 		if removed {
 			writeError(w, http.StatusConflict, "image_unavailable", "L'immagine di quella versione non c'è più nel registry (pulizia).")
+			return
+		}
+	}
+	// Con «solo immagini firmate» (H10) anche il ritorno a una versione vecchia riguarda una firma
+	// ancora valida oggi (una chiave fidata può essere stata tolta).
+	if only, err := s.resources.AppSignedImagesOnly(r.Context()); err != nil {
+		appInternalError(w, "lettura di «solo immagini firmate»", err)
+		return
+	} else if only {
+		var ok bool
+		if target.Image, _, ok = s.verifyAppImage(w, r.Context(), repo, target.Image); !ok {
 			return
 		}
 	}

@@ -31,11 +31,15 @@ func isJobIdentity(id trust.Identity) bool { return id.Username == trust.JobUser
 //
 //	POST /repos/{owner}/{repo}/releases
 //	POST /repos/{owner}/{repo}/releases/{releaseId}/assets
+//	POST /repos/{owner}/{repo}/apps/{app}/deploys (GIT-349, H7)
 func jobRouteAllowed(r *http.Request) bool {
 	if r.Method != http.MethodPost {
 		return false
 	}
 	p := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(p) == 6 && p[0] == "repos" && p[1] != "" && p[2] != "" && p[3] == "apps" && p[4] != "" && p[5] == "deploys" {
+		return true
+	}
 	if len(p) < 4 || p[0] != "repos" || p[1] == "" || p[2] == "" || p[3] != "releases" {
 		return false
 	}

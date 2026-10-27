@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -21,6 +22,69 @@ func (h *handler) mountPackages(api *http.ServeMux) {
 	api.HandleFunc("GET /internal/git/repos/{repoId}/packages/revision", h.imageRevision)
 	api.HandleFunc("GET /internal/git/repos/{repoId}/packages", h.listPackages)
 	api.HandleFunc("DELETE /internal/git/repos/{repoId}/packages", h.deletePackage)
+	if _, ok := h.Packages.(ImageVerifier); ok {
+		api.HandleFunc("POST /internal/git/repos/{repoId}/packages/verify", h.verifyImage)
+	}
+	if _, ok := h.Packages.(SigningKeyReader); ok {
+		api.HandleFunc("GET /internal/git/registry/signing-key", h.signingKey)
+	}
+}
+
+// SigningKeyReader dà la chiave pubblica con cui il registry firma le immagini della CI.
+type SigningKeyReader interface {
+	PublicKeyPEM() ([]byte, error)
+}
+
+// signingKey risponde {"publicKey":"<PEM>"}: core la mostra all'amministratore (H10).
+func (h *handler) signingKey(w http.ResponseWriter, r *http.Request) {
+	pem, err := h.Packages.(SigningKeyReader).PublicKeyPEM()
+	if err != nil {
+		writeErr(w, http.StatusServiceUnavailable, "unavailable", "Firma del registry non configurata.")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"publicKey": string(pem)})
+}
+
+// ImageVerifier è la verifica della firma cosign di un'immagine (H10, GIT-349); il registry la
+// implementa, i fake dei test no.
+type ImageVerifier interface {
+	VerifyImage(ctx context.Context, repoID, image, tag, digest, repoRef string, trusted [][]byte) (registry.SignatureCheck, error)
+}
+
+// verifyImage risponde {"digest","signer","keyIndex"} per il corpo {image, tag, digest, repo,
+// trustedKeys[]}: signer è «instance», «trusted» o vuoto. 404 se l'immagine o il tag non ci sono,
+// 400 per un nome o una chiave non validi.
+func (h *handler) verifyImage(w http.ResponseWriter, r *http.Request) {
+	id, err := repostore.NormalizeID(r.PathValue("repoId"))
+	if err != nil {
+		h.storeErr(w, "pacchetti", err)
+		return
+	}
+	var in struct {
+		Image       string   `json:"image"`
+		Tag         string   `json:"tag"`
+		Digest      string   `json:"digest"`
+		Repo        string   `json:"repo"`
+		TrustedKeys []string `json:"trustedKeys"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&in); err != nil || in.Repo == "" || (in.Tag == "" && in.Digest == "") {
+		writeErr(w, http.StatusBadRequest, "invalid_request", "Servono repo e tag o digest.")
+		return
+	}
+	keys := make([][]byte, 0, len(in.TrustedKeys))
+	for _, k := range in.TrustedKeys {
+		keys = append(keys, []byte(k))
+	}
+	res, err := h.Packages.(ImageVerifier).VerifyImage(r.Context(), id, in.Image, in.Tag, in.Digest, in.Repo, keys)
+	if errors.Is(err, registry.ErrInvalidTrustedKey) {
+		writeErr(w, http.StatusBadRequest, "invalid_request", "Chiave fidata non valida.")
+		return
+	}
+	if err != nil {
+		h.packagesErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
 }
 
 // listPackages risponde {"items":[...]} con le immagini del repo. Chi può vederle l'ha già

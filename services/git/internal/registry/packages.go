@@ -269,27 +269,33 @@ func (h *Handler) verifySignature(ctx context.Context, tags map[string]string, d
 }
 
 func (h *Handler) verifyCosign(ctx context.Context, pub *ecdsa.PublicKey, layer descriptor, subject string) bool {
+	_, ok := h.verifyCosignRef(ctx, pub, layer, subject)
+	return ok
+}
+
+// verifyCosignRef è verifyCosign e in più dà il docker-reference che la firma nomina.
+func (h *Handler) verifyCosignRef(ctx context.Context, pub *ecdsa.PublicKey, layer descriptor, subject string) (string, bool) {
 	x, ok := hexOf(layer.Digest)
 	if !ok {
-		return false
+		return "", false
 	}
 	payload, err := h.driver.GetContent(ctx, blobDataPath(x))
 	if err != nil {
-		return false
+		return "", false
 	}
 	sig, err := base64.StdEncoding.DecodeString(layer.Annotations["dev.cosignproject.cosign/signature"])
 	if err != nil {
-		return false
+		return "", false
 	}
 	sum := sha256.Sum256(payload)
 	if !ecdsa.VerifyASN1(pub, sum[:], sig) {
-		return false
+		return "", false
 	}
 	var p simpleSigning
 	if json.Unmarshal(payload, &p) != nil {
-		return false
+		return "", false
 	}
-	return p.Critical.Image.DockerManifestDigest == subject
+	return p.Critical.Identity.DockerReference, p.Critical.Image.DockerManifestDigest == subject
 }
 
 // hasSbom: c'è un SBOM o un'attestazione per quel digest.

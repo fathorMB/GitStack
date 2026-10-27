@@ -52,6 +52,8 @@ type fakeJob struct {
 	repoID        string
 	packages      string
 	workflow, job string
+	// run del job (GIT-349)
+	runID, ref, event, actor string
 }
 
 // fakeBackend è identity, core e ci-gateway.
@@ -61,6 +63,7 @@ type fakeBackend struct {
 	repos  map[string]*fakeRepo
 	jobs   map[string]fakeJob
 	calls  int
+	pushes []ImagePush
 }
 
 func newBackend() *fakeBackend {
@@ -132,7 +135,16 @@ func (b *fakeBackend) JobAccess(_ context.Context, token, owner, repo string) (a
 	if r == nil || r.deleted || r.id != j.repoID {
 		return access.JobAccess{}, access.ErrNotFound
 	}
-	return access.JobAccess{RepoID: r.id, Owner: r.owner, Name: r.name, Archived: r.archived, Packages: j.packages, Workflow: j.workflow, Job: j.job}, nil
+	return access.JobAccess{RepoID: r.id, Owner: r.owner, Name: r.name, Archived: r.archived, Packages: j.packages, Workflow: j.workflow, Job: j.job,
+		RunID: j.runID, Ref: j.ref, Event: j.event, ActorID: j.actor}, nil
+}
+
+// ImagePushed registra le notifiche di push dei job (GIT-349).
+func (b *fakeBackend) ImagePushed(_ context.Context, repoID string, p ImagePush) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.pushes = append(b.pushes, p)
+	return nil
 }
 
 func (b *fakeBackend) set(key string, f func(r *fakeRepo)) {

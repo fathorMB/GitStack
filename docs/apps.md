@@ -2,6 +2,20 @@
 
 Le applicazioni sono configurate in GitStack: ogni modifica di immagine, porta, variabili o segreti crea una nuova versione e avvia un deploy. Le variabili sono visibili a chi ha `write`; i segreti sono gestiti solo da chi ha `admin` e il loro valore non viene mai restituito dalle API.
 
+## Deploy automatico da branch e firme (H7, H10)
+
+**Firma.** La CI firma con cosign, con la chiave dell'istanza, ogni immagine che pubblica con il token del job; la chiave pubblica sta in `GET /registry/signing-key` e, per l'amministratore, in cima a `GET /admin/apps/trusted-keys`. Una versione dell'app porta `image.verified` (e `image.signedBy`): vero solo se la firma è valida. La firma della CI vale solo per **questo** repo e per **questa** immagine: la firma ricopiata da un altro repo o da un'altra immagine non conta (il riferimento firmato deve coincidere con `owner/repo[/immagine]`; se il repo viene rinominato le immagini già pubblicate risultano non verificate finché la CI non le ripubblica).
+
+**Seguire un branch.** Con `followBranch` l'app segue un branch: quando un job della CI del repo, lanciato da un push (o da `workflow_dispatch`) su quel branch, pubblica un tag della stessa immagine dell'app, GitStack mette in produzione la nuova versione (`trigger: branch_push`, `branch`, `commitSha`). Il deploy usa i permessi di chi ha fatto il push (CI4): se non ha più `write` sul repo non succede niente. Se l'avvio fallisce resta la versione precedente (H12). Non scatta, e il perché va nel log di core:
+
+- per un'immagine non firmata, firmata da un altro repo o da una chiave fidata aggiuntiva: il deploy automatico accetta **solo** la firma della CI di questo stesso repo, e `followBranch` su un'app con un'immagine così è rifiutato (422 `follow_branch_unsigned`);
+- se l'app ha il deploy automatico sospeso (`autoDeployPaused`), per esempio dopo un rollback;
+- se l'immagine è già quella dell'ultima versione (altro tag dello stesso build) o se c'è un altro deploy in corso: il prossimo push riprova.
+
+**A mano.** Il deploy a mano (UI, API, `gs app deploy`) accetta anche immagini non firmate o esterne, etichettate «non verificata». Anche un workflow lo fa con il token del job (`Authorization: Bearer $GITSTACK_TOKEN` del job) su `POST /repos/{owner}/{repo}/apps/{app}/deploys`: serve `permissions: packages: write`, vale solo per le app del proprio repo ed è solo il deploy, nient'altro; il deploy è a nome di chi ha causato il run, che deve avere ancora `write` (un run senza autore, come una schedule, non può).
+
+**Solo immagini firmate.** L'amministratore può accendere `signedImagesOnly` (`PUT /admin/apps/settings`): da quel momento creazione, deploy a mano e rollback accettano solo immagini firmate dalla CI del repo o da una **chiave fidata aggiuntiva**, altrimenti 422 `image_not_allowed` (un'immagine esterna non si può verificare, quindi è rifiutata). Le chiavi aggiuntive sono chiavi pubbliche cosign ECDSA in PEM (`POST /admin/apps/trusted-keys`; 422 `invalid_key`, 409 `key_exists`); si tolgono con `DELETE` (la chiave della CI dell'istanza no: 409 `instance_key`). Le app già in esecuzione non si fermano; i deploy successivi usano le chiavi di quel momento.
+
 ## Segreti e rollback
 
 Un Secret Kubernetes dell'app contiene i valori correnti dei soli nomi elencati dalla versione in esecuzione. Il Deployment lo riferisce con `envFrom`: i valori non compaiono nello spec del Deployment.
