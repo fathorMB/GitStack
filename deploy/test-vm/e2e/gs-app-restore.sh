@@ -199,8 +199,8 @@ probe_anon() {
 # corpo atteso GS_EXPECT. Si riprova fino a 90 s: dopo un deploy il nuovo pod e il cambio di Service
 # non sono istantanei.
 probe_auth() {
-  local code="000" i
-  for i in $(seq 1 18); do
+  local code="000"
+  for _ in $(seq 1 18); do
     code="$(app_curl "$W/auth.out" -H "Authorization: Bearer ${GS_PROBE_TOKEN}")" || code="000"
     if [ "$code" = 200 ] && grep -q "^${GS_EXPECT}\$" "$W/auth.out" 2>/dev/null; then
       echo "STEP ok serve-${GS_EXPECT}"
