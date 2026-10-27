@@ -8,7 +8,7 @@ import { AppsResourcesPage } from './AppsResourcesPage';
 vi.mock('../../lib/authApi', () => ({ fetchSession: vi.fn() }));
 vi.mock('../../lib/adminAppsApi', () => ({
   fetchAdminAppsData: vi.fn(), updateAppsReserve: vi.fn(), saveOwnerQuota: vi.fn(), resetOwnerQuota: vi.fn(),
-  fetchOwnerQuotas: vi.fn(), saveAppsSettings: vi.fn(), saveAppsEgress: vi.fn(), addTrustedKey: vi.fn(), removeTrustedKey: vi.fn(),
+  fetchOwnerQuotas: vi.fn(), fetchPublicApps: vi.fn(), saveAppsSettings: vi.fn(), saveAppsEgress: vi.fn(), addTrustedKey: vi.fn(), removeTrustedKey: vi.fn(),
 }));
 
 import { fetchSession } from '../../lib/authApi';
@@ -23,22 +23,24 @@ const data = {
   apps: [{ owner: 'acme', repo: 'handbook', name: 'web', status: 'running', copies: 2, guaranteed: { cpuMillis: 1000, memoryBytes: 1024 ** 3 }, limit: { cpuMillis: 2000, memoryBytes: 2 * 1024 ** 3 }, usage: { cpuMillis: 1240, memoryBytes: 820 * 1024 ** 2 }, verified: true, runsAsRoot: false, aboveGuaranteed: true }],
 };
 
+let publicApps: unknown[] = [];
+
 function setup(isAdmin = true, resources = data) {
   vi.mocked(fetchSession).mockResolvedValue({ user: { username: 'root', isAdmin } } as never);
   vi.mocked(api.fetchAdminAppsData).mockResolvedValue(resources as never);
+  vi.mocked(api.fetchPublicApps).mockResolvedValue(publicApps as never);
   return render(<ToastProvider><AppsResourcesPage /></ToastProvider>);
 }
 
 describe('AppsResourcesPage', { timeout: 30000 }, () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); publicApps = []; });
 
   it('mostra capacità, quote, app e impostazioni H9', async () => {
     setup();
     expect(await screen.findByRole('heading', { name: 'Apps & resources' })).toBeInTheDocument();
     expect(screen.getByText('acme/handbook/web')).toBeInTheDocument();
     expect(screen.getByText('Quotas by owner')).toBeInTheDocument();
-    expect(screen.getByText(/v3-c/)).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: 'Public apps' })).toBeDisabled();
+    expect(screen.getByRole('switch', { name: 'Public apps' })).not.toBeChecked();
     expect(screen.getByRole('switch', { name: 'Only signed images' })).not.toBeChecked();
   });
 
@@ -160,5 +162,65 @@ describe('AppsResourcesPage', { timeout: 30000 }, () => {
     await user.click(await screen.findByRole('button', { name: 'Close smtp.acme.lan:587' }));
     await waitFor(() => expect(api.saveAppsEgress).toHaveBeenCalledWith([]));
     expect(await screen.findByText(/None opened/)).toBeInTheDocument();
+  });
+
+  it('asks confirmation, explains the double consent and turns public apps on', async () => {
+    vi.mocked(api.saveAppsSettings).mockResolvedValue({ ...settings, publicAppsEnabled: true });
+    const user = userEvent.setup(); setup();
+    await user.click(await screen.findByRole('switch', { name: 'Public apps' }));
+    const dialog = screen.getByRole('dialog', { name: 'Turn on public apps' });
+    expect(within(dialog).getByText(/two consents/)).toBeInTheDocument();
+    expect(api.saveAppsSettings).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole('button', { name: 'Turn on' }));
+    await waitFor(() => expect(api.saveAppsSettings).toHaveBeenCalledWith({ publicAppsEnabled: true, signedImagesOnly: false, restricted: false, maxPerApp: settings.maxPerApp, logRetention: settings.logRetention }));
+    expect(await screen.findByRole('switch', { name: 'Public apps' })).toBeChecked();
+  });
+
+  it('cancelling the confirmation changes nothing', async () => {
+    const user = userEvent.setup(); setup();
+    await user.click(await screen.findByRole('switch', { name: 'Public apps' }));
+    await user.click(within(screen.getByRole('dialog', { name: 'Turn on public apps' })).getByRole('button', { name: 'Cancel' }));
+    expect(api.saveAppsSettings).not.toHaveBeenCalled();
+    expect(screen.getByRole('switch', { name: 'Public apps' })).not.toBeChecked();
+  });
+
+  it('shows Let’s Encrypt with port 80 not reachable', async () => {
+    const letsEncrypt = { enabled: true, acmeEmail: 'ops@acme.it', port80Reachable: false, port80Error: 'connection timed out', publicIps: ['203.0.113.5'] };
+    setup(true, { ...data, settings: { ...settings, publicAppsEnabled: true, letsEncrypt } } as never);
+    expect(await screen.findByText(/Account email: ops@acme.it/)).toBeInTheDocument();
+    expect(screen.getByText('not reachable')).toBeInTheDocument();
+    expect(screen.getByText(/connection timed out/)).toBeInTheDocument();
+  });
+
+  it('shows port 80 reachable', async () => {
+    const letsEncrypt = { enabled: true, acmeEmail: 'ops@acme.it', port80Reachable: true };
+    setup(true, { ...data, settings: { ...settings, publicAppsEnabled: true, letsEncrypt } } as never);
+    expect(await screen.findByText('reachable')).toBeInTheDocument();
+  });
+
+  it('saves the ACME email', async () => {
+    vi.mocked(api.saveAppsSettings).mockResolvedValue(settings as never);
+    const user = userEvent.setup(); setup();
+    await user.type(await screen.findByLabelText('ACME email'), 'ops@acme.it');
+    await user.click(screen.getByRole('button', { name: 'Save email' }));
+    await waitFor(() => expect(api.saveAppsSettings).toHaveBeenCalledWith(expect.objectContaining({ acmeEmail: 'ops@acme.it', publicAppsEnabled: false })));
+  });
+
+  it('shows an empty public apps list', async () => {
+    setup();
+    expect(await screen.findByText('No public apps on this instance.')).toBeInTheDocument();
+  });
+
+  it('lists public apps with domains and certificate state', async () => {
+    publicApps = [{ owner: 'acme', repo: 'handbook', name: 'web', address: null, domains: [
+      { id: 'd1', domain: 'www.acme.it', status: 'verified', certificate: { mode: 'letsencrypt', state: 'valid', validUntil: '2027-01-01T00:00:00Z' } },
+      { id: 'd2', domain: 'shop.acme.it', status: 'verified', certificate: { mode: 'letsencrypt', state: 'error', error: 'challenge failed' } },
+    ] }];
+    setup();
+    const list = (await screen.findByText('www.acme.it')).closest('section')!;
+    expect(within(list).getByText('acme/handbook/web')).toBeInTheDocument();
+    expect(within(list).getByText('valid')).toBeInTheDocument();
+    expect(within(list).getByText('shop.acme.it')).toBeInTheDocument();
+    expect(within(list).getByText(/challenge failed/)).toBeInTheDocument();
   });
 });

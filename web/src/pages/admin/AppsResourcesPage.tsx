@@ -2,8 +2,8 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button, ErrorAlert, FormField, TextInput, useToast } from '../../components';
 import { fetchSession } from '../../lib/authApi';
-import { addTrustedKey, fetchAdminAppsData, fetchOwnerQuotas, removeTrustedKey, resetOwnerQuota, saveAppsEgress, saveAppsSettings, saveOwnerQuota, updateAppsReserve } from '../../lib/adminAppsApi';
-import type { AppOwnerQuota, AppOwnerQuotaInput, AppsInstanceSettingsInput } from '../../lib/adminAppsApi';
+import { addTrustedKey, fetchAdminAppsData, fetchOwnerQuotas, fetchPublicApps, removeTrustedKey, resetOwnerQuota, saveAppsEgress, saveAppsSettings, saveOwnerQuota, updateAppsReserve } from '../../lib/adminAppsApi';
+import type { AppOwnerQuota, AppOwnerQuotaInput, AppsLetsEncryptStatus, AppsInstanceSettingsInput } from '../../lib/adminAppsApi';
 import { describeError } from '../../lib/http';
 import { useLoad } from '../../lib/useLoad';
 
@@ -30,6 +30,8 @@ function AppsResourcesConsole() {
   const [formError, setFormError] = useState('');
   const [keyName, setKeyName] = useState('');
   const [publicKey, setPublicKey] = useState('');
+  const [publicConfirm, setPublicConfirm] = useState(false);
+  const [acmeEmail, setAcmeEmail] = useState<string | null>(null);
   const [destForm, setDestForm] = useState(false);
   const [destHost, setDestHost] = useState('');
   const [destPort, setDestPort] = useState('');
@@ -42,11 +44,21 @@ function AppsResourcesConsole() {
     if (!data) return;
     setBusy(true); setFormError('');
     try {
-      const settings = await saveAppsSettings({ publicAppsEnabled: false, signedImagesOnly: data.settings.signedImagesOnly, restricted: data.settings.restricted, maxPerApp: data.settings.maxPerApp, logRetention: data.settings.logRetention, ...patch });
+      const settings = await saveAppsSettings({ publicAppsEnabled: data.settings.publicAppsEnabled, signedImagesOnly: data.settings.signedImagesOnly, restricted: data.settings.restricted, maxPerApp: data.settings.maxPerApp, logRetention: data.settings.logRetention, ...patch });
       setData((previous) => previous ? { ...previous, settings } : previous);
       toast('Instance settings saved.', 'success');
-    } catch (e) { setFormError(describeError(e)); }
+      return true;
+    } catch (e) { setFormError(describeError(e)); return false; }
     finally { setBusy(false); }
+  }
+  async function confirmPublic() {
+    if (!data) return;
+    if (await saveSettings({ publicAppsEnabled: !data.settings.publicAppsEnabled })) setPublicConfirm(false);
+  }
+  async function saveAcmeEmail(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const value = (acmeEmail ?? data?.settings.letsEncrypt?.acmeEmail ?? '').trim();
+    await saveSettings({ acmeEmail: value === '' ? null : value });
   }
   async function saveQuota(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!quotaOwner) return;
@@ -124,7 +136,8 @@ function AppsResourcesConsole() {
       <section className="card" aria-labelledby="owner-quotas"><h2 className="card-h" id="owner-quotas">Quotas by owner</h2><div className="list">{quotas.map((q) => <div className="list-row" key={q.owner}><div style={{ flex: 1 }}><b>{q.owner}</b><div className={`meter${q.warning ? ' warn' : ''}`}><i style={{ width: `${quotaPercent(q)}%` }} /></div><div className="small muted">{vcpu(q.used.cpuMillis)} / {vcpu(q.limits.cpuMillis)} · {memory(q.used.memoryBytes)} / {memory(q.limits.memoryBytes)} · disk {disk(q.used.diskBytes)} / {disk(q.limits.diskBytes)}</div></div><Button size="sm" onClick={() => setQuotaOwner(q)}>Edit</Button>{!q.isDefault ? <Button size="sm" variant="ghost" disabled={busy} onClick={() => void resetQuota(q.owner)}>Reset</Button> : null}</div>)}</div></section>
       <section className="card" aria-labelledby="instance-settings"><h2 className="card-h" id="instance-settings">Instance settings</h2><dl className="kv admin-apps-kv">
         <dt>Apps domain</dt><dd><span className="mono">{settings.appsDomain ?? 'Not configured'}</span>{settings.appsDomainIsDefault ? <span className="hint"> · default</span> : null}<span className="hint"> · separate from the GitStack domain</span></dd>
-        <dt>Public apps</dt><dd><label className="row"><input type="checkbox" role="switch" aria-label="Public apps" checked={false} disabled /> <span className="hint">Off · repository admins can&apos;t publish apps (v3-c)</span></label></dd>
+        <dt>Public apps</dt><dd><label className="row"><input type="checkbox" role="switch" aria-label="Public apps" checked={settings.publicAppsEnabled} disabled={busy} onChange={() => setPublicConfirm(true)} /> <span className="hint">{settings.publicAppsEnabled ? 'On · admins of an app can publish it on the internet' : 'Off · repository admins can’t publish apps'}</span></label><div className="hint">An app goes public only with both consents: yours here and the <code>admin</code> of the app.</div></dd>
+        <dt>Let&apos;s Encrypt</dt><dd><LetsEncryptStatus status={settings.letsEncrypt} publicEnabled={settings.publicAppsEnabled} /><form className="row small" onSubmit={saveAcmeEmail}><label>ACME email <input aria-label="ACME email" type="email" className="input" value={acmeEmail ?? settings.letsEncrypt?.acmeEmail ?? ''} onChange={(e) => setAcmeEmail(e.target.value)} /></label><Button type="submit" size="sm" disabled={busy}>Save email</Button></form></dd>
         <dt>Only signed images</dt><dd><SettingToggle label="Only signed images" checked={settings.signedImagesOnly} disabled={busy} onChange={(v) => void saveSettings({ signedImagesOnly: v })} hint={settings.signedImagesOnly ? 'Unsigned images are refused.' : 'Unsigned manual deploys show not verified.'} /></dd>
         <dt>Trusted keys</dt><dd>{keys.map((key) => <div className="row" key={key.id}><span>{key.name} <span className="mono small">{key.fingerprint}</span>{key.instanceKey ? <span className="badge">instance</span> : null}</span>{!key.instanceKey ? <Button size="sm" variant="ghost" disabled={busy} onClick={async () => { try { await removeTrustedKey(key.id); setData((previous) => previous ? { ...previous, keys: previous.keys.filter((k) => k.id !== key.id) } : previous); } catch (e) { setFormError(describeError(e)); } }}>Remove</Button> : null}</div>)}<Button size="sm" onClick={() => setKeyForm(!keyForm)}>Add key</Button></dd>
         <dt>Restricted mode</dt><dd><SettingToggle label="Restricted mode" checked={settings.restricted} disabled={busy} onChange={(v) => void saveSettings({ restricted: v })} hint={settings.restricted ? 'Apps run with restricted permissions.' : 'Off · images may run as root (baseline).'} /></dd>
@@ -133,13 +146,32 @@ function AppsResourcesConsole() {
         <dt>Max per app</dt><dd>{vcpu(settings.maxPerApp.cpuMillis)} · {memory(settings.maxPerApp.memoryBytes)} · logs {settings.logRetention.days} days / {memory(settings.logRetention.maxBytes)}</dd>
       </dl></section>
       <section className="card admin-app-list" aria-labelledby="admin-app-list-title"><h2 className="card-h" id="admin-app-list-title">Apps</h2><div className="list"><div className="list-row list-head"><span>App</span><span>Guaranteed</span><span>Using</span><span>Limit</span><span>Copies</span></div>{apps.map((app) => <div className="list-row" key={`${app.owner}/${app.repo}/${app.name}`}><span><b className="mono">{app.owner}/{app.repo}/{app.name}</b>{!app.verified ? <span className="badge badge-run">not verified</span> : null}{app.runsAsRoot ? <span className="badge">root</span> : null}{app.violatesInstanceRules ? <span className="badge badge-err">instance policy</span> : null}</span><span>{vcpu(app.guaranteed.cpuMillis)} · {memory(app.guaranteed.memoryBytes)}</span><span>{vcpu(app.usage.cpuMillis)} · {memory(app.usage.memoryBytes)}{app.aboveGuaranteed ? <span className="badge badge-run">above</span> : null}</span><span>{vcpu(app.limit.cpuMillis)} · {memory(app.limit.memoryBytes)}</span><span>{app.copies}</span></div>)}</div></section>
+      <PublicAppsList apps={apps} />
     </div>
+    {publicConfirm ? <div className="modal-back" role="presentation"><div className="modal" role="dialog" aria-label={settings.publicAppsEnabled ? 'Turn off public apps' : 'Turn on public apps'}><h2 className="modal-h">{settings.publicAppsEnabled ? 'Turn off public apps?' : 'Turn on public apps?'}</h2><div className="modal-b stack">{settings.publicAppsEnabled
+      ? <p>Apps already public stop being reachable from the internet. Each app keeps its own choice, so turning this on again restores them.</p>
+      : <p>Publishing needs two consents. This switch is yours, as installation administrator; each app also needs its own <code>admin</code> to choose “public”. Nothing becomes public until both agree. Certificates come from Let&apos;s Encrypt and need port 80 reachable from the internet.</p>}</div><div className="modal-f"><Button onClick={() => setPublicConfirm(false)}>Cancel</Button><Button variant="primary" disabled={busy} onClick={() => void confirmPublic()}>{settings.publicAppsEnabled ? 'Turn off' : 'Turn on'}</Button></div></div></div> : null}
     {quotaOwner ? <div className="modal-back" role="presentation"><form className="modal" aria-label={`Edit quota for ${quotaOwner.owner}`} onSubmit={saveQuota}><h2 className="modal-h">Edit quota · {quotaOwner.owner}</h2><div className="modal-b stack"><FormField label="Guaranteed CPU (vCPU)"><TextInput name="cpu" type="number" min="0.1" step="0.1" defaultValue={quotaOwner.limits.cpuMillis / 1000} /></FormField><FormField label="Memory (GB)"><TextInput name="memory" type="number" min="0.1" step="0.1" defaultValue={quotaOwner.limits.memoryBytes / GiB} /></FormField><FormField label="Disk (GB)"><TextInput name="disk" type="number" min="0" step="1" defaultValue={quotaOwner.limits.diskBytes / GiB} /></FormField></div><div className="modal-f"><Button onClick={() => setQuotaOwner(null)}>Cancel</Button><Button type="submit" variant="primary" disabled={busy}>Save quota</Button></div></form></div> : null}
     {destForm ? <div className="modal-back" role="presentation"><form className="modal" aria-label="Add private destination" onSubmit={addDestination}><h2 className="modal-h">Add private destination</h2><div className="modal-b stack"><FormField label="Host" hint="An IP address or a DNS name, such as db.azienda.lan."><TextInput value={destHost} onChange={(e) => setDestHost(e.target.value)} placeholder="db.azienda.lan" required /></FormField><FormField label="Port"><TextInput value={destPort} onChange={(e) => setDestPort(e.target.value)} placeholder="5432" inputMode="numeric" required /></FormField><FormField label="Note" hint="What it is for (optional)."><TextInput value={destNote} onChange={(e) => setDestNote(e.target.value)} maxLength={200} /></FormField></div><div className="modal-f"><Button onClick={() => setDestForm(false)}>Cancel</Button><Button type="submit" variant="primary" disabled={busy}>Open destination</Button></div></form></div> : null}
     {keyForm ? <div className="modal-back" role="presentation"><form className="modal" aria-label="Add trusted key" onSubmit={addKey}><h2 className="modal-h">Add trusted key</h2><div className="modal-b stack"><FormField label="Name"><TextInput value={keyName} onChange={(e) => setKeyName(e.target.value)} required /></FormField><FormField label="Public key (PEM)"><textarea className="input mono" rows={6} value={publicKey} onChange={(e) => setPublicKey(e.target.value)} required /></FormField></div><div className="modal-f"><Button onClick={() => setKeyForm(false)}>Cancel</Button><Button type="submit" variant="primary" disabled={busy}>Add key</Button></div></form></div> : null}
   </div>;
 }
 
+function LetsEncryptStatus({ status, publicEnabled }: { status?: AppsLetsEncryptStatus; publicEnabled: boolean }) {
+  if (!status) return <div className="hint">{publicEnabled ? 'Status not available yet.' : 'Off · turn on public apps to use it.'}</div>;
+  const port = status.port80Reachable;
+  return <div className="stack small" style={{ gap: 4 }}>
+    <div>{status.enabled ? <span className="badge badge-ok">active</span> : <span className="badge">inactive</span>} <span className="hint">{status.acmeEmail ? `Account email: ${status.acmeEmail}` : 'No ACME email set'}</span></div>
+    <div role="status">Port 80: {port === true ? <span className="badge badge-ok">reachable</span> : port === false ? <span className="badge badge-err">not reachable</span> : <span className="badge">not checked</span>}{port === false ? <span className="hint"> · {status.port80Error || 'HTTP-01 challenges will fail until it is open.'}</span> : null}{status.port80CheckedAt ? <span className="hint"> · checked {new Date(status.port80CheckedAt).toLocaleString()}</span> : null}</div>
+  </div>;
+}
+const certLabel: Record<string, string> = { none: 'no certificate', issuing: 'issuing', valid: 'valid', error: 'error' };
+function PublicAppsList({ apps }: { apps: { owner: string; repo: string; name: string }[] }) {
+  const { data, loading, error } = useLoad(() => fetchPublicApps(apps));
+  return <section className="card" aria-labelledby="public-apps-title"><h2 className="card-h" id="public-apps-title">Public apps</h2>
+    {loading && !data ? <p className="muted card-b">Loading…</p> : error ? <div className="card-b"><ErrorAlert message={error} /></div> : !data || data.length === 0 ? <p className="muted card-b">No public apps on this instance.</p> : <div className="list">{data.map((app) => <div className="list-row" key={`${app.owner}/${app.repo}/${app.name}`}><div style={{ flex: 1 }}><b className="mono">{app.owner}/{app.repo}/{app.name}</b>{app.domains.length === 0 ? <div className="small muted">No custom domain{app.address ? ` · ${app.address}` : ''}</div> : app.domains.map((d) => <div className="small" key={d.id}><span className="mono">{d.domain}</span> <span className={`badge${d.certificate.state === 'valid' ? ' badge-ok' : d.certificate.state === 'error' ? ' badge-err' : ''}`}>{certLabel[d.certificate.state] ?? d.certificate.state}</span>{d.certificate.validUntil ? <span className="hint"> · until {new Date(d.certificate.validUntil).toLocaleDateString()}</span> : null}{d.certificate.error ? <span className="hint"> · {d.certificate.error}</span> : null}</div>)}</div></div>)}</div>}
+  </section>;
+}
 function CapacityRow({ label, amount, total, warning = false }: { label: string; amount: { cpuMillis: number; memoryBytes: number }; total: { cpuMillis: number; memoryBytes: number }; warning?: boolean }) {
   return <div className="row small"><span style={{ width: 150 }}>{label}</span><div className={`meter${warning ? ' warn' : ''}`} style={{ flex: 1, margin: 0 }}><i style={{ width: `${Math.min(100, total.cpuMillis ? amount.cpuMillis / total.cpuMillis * 100 : 0)}%` }} /></div><span>{vcpu(amount.cpuMillis)} · {memory(amount.memoryBytes)} reserved</span></div>;
 }
