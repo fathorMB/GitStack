@@ -51,16 +51,37 @@ timeout_s = 600
 paths = ["**/*.go", "**/go.mod", "**/go.sum", "go.work", "go.work.sum"]
 
 [[check]]
-name = "go-test"
-# Tutti i moduli di go-build tranne services/git, che ha un budget dedicato
-# nel check successivo. -timeout e' per pacchetto: deve restare minore del
-# timeout del check, cosi' un blocco stampa lo stack e il test in corso.
-# I paths includono le radici di ogni modulo qui testato, piu' i file non-Go
-# letti dai test: deploy/ (admin), docs/ (pkg/events), skills/ (cli) e
-# scripts/release-readiness.go (admin/releasegate).
-run = "go test -timeout 750s ./admin/... ./api/... ./cli/... ./client/go/... ./pkg/egress/... ./pkg/events/... ./pkg/issuequery/... ./pkg/names/... ./pkg/scopes/... ./services/core/... ./services/gateway/... ./services/identity/..."
+name = "go-test-core"
+# go-test e' diviso per modulo (GIT-410): go-test-core, -cli, -admin, -resto
+# (api, client/go, pkg/*, gateway, identity) e go-test-git qui sotto, che
+# insieme coprono ogni modulo di go.work una volta sola. I paths di ognuno sono
+# le dipendenze reali dei test (go list -deps -test, piu' i file non Go che i
+# test leggono: README.md, deploy/, docs/, skills/, api/openapi.yaml,
+# scripts/release-readiness.go) e li verifica go-test-paths: non si mantengono a
+# mano, si rigenerano con `go run scripts/check-test-paths.go -suggest`.
+# -timeout e' per pacchetto e resta minore del timeout_s del check, cosi' un
+# blocco stampa lo stack e il test in corso.
+run = "go test -timeout 750s ./services/core/..."
 timeout_s = 900
-paths = ["admin/**", "api/**", "cli/**", "client/go/**", "pkg/**", "services/core/**", "services/gateway/**", "services/identity/**", "deploy/**", "docs/**", "skills/**", "scripts/release-readiness.go", "go.work", "go.work.sum"]
+paths = ["go.work", "go.work.sum", "pkg/egress/**", "pkg/events/**", "pkg/issuequery/**", "pkg/names/**", "services/core/**"]
+
+[[check]]
+name = "go-test-cli"
+run = "go test -timeout 750s ./cli/..."
+timeout_s = 900
+paths = ["README.md", "api/**", "cli/**", "client/go/**", "go.work", "go.work.sum", "skills/**"]
+
+[[check]]
+name = "go-test-admin"
+run = "go test -timeout 750s ./admin/..."
+timeout_s = 900
+paths = ["admin/**", "deploy/**", "go.work", "go.work.sum", "scripts/release-readiness.go"]
+
+[[check]]
+name = "go-test-resto"
+run = "go test -timeout 750s ./api/... ./client/go/... ./pkg/egress/... ./pkg/events/... ./pkg/issuequery/... ./pkg/names/... ./pkg/scopes/... ./services/gateway/... ./services/identity/..."
+timeout_s = 900
+paths = ["api/**", "client/go/**", "docs/**", "go.work", "go.work.sum", "pkg/egress/**", "pkg/events/**", "pkg/issuequery/**", "pkg/names/**", "pkg/scopes/**", "services/gateway/**", "services/identity/**"]
 
 [[check]]
 name = "go-test-git"
@@ -265,3 +286,12 @@ name = "go-internal-versions"
 run = "go run scripts/check-internal-versions.go"
 timeout_s = 300
 paths = ["**/go.mod", "services/*/Dockerfile", ".github/workflows/*.yml", "Makefile", "scripts/docker-local-replace.sh", "go.work", "scripts/check-internal-versions.go"]
+
+[[check]]
+name = "go-test-paths"
+# Verifica che i paths dei go-test-* coprano le dipendenze reali dei loro test
+# (go list -deps -test, file non Go letti dai test): GIT-410. Per riscrivere i
+# paths: go run scripts/check-test-paths.go -suggest
+run = "go run scripts/check-test-paths.go"
+timeout_s = 300
+paths = ["**/*.go", "**/go.mod", "**/go.sum", "go.work", "go.work.sum", ".galaxylab/checks.toml", "deploy/**", "docs/**", "skills/**", "scripts/release-readiness.go", "README.md"]
