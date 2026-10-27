@@ -79,6 +79,8 @@ type Config struct {
 	GateImage string
 	// TraefikNamespace è il namespace dell'Ingress controller k3s.
 	TraefikNamespace string
+	// Gateway è la porta interna del gateway per le app (GIT-442); nil o incompleta = non configurata.
+	Gateway *GatewayAccess
 	// EgressClusterCIDRs e EgressNodeAddresses sono gli stessi di webhook e mirror (pkg/egress):
 	// le barriere in uscita delle app (H16) li escludono da internet.
 	EgressClusterCIDRs  []string
@@ -415,7 +417,7 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 		restricted = rs != nil
 	}
 	deps := c.kube.AppsV1().Deployments(ns)
-	opts := BuildOptions{EgressRestricted: restricted, Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret, ProxyEnv: c.cfg.ProxyEnv, GateImage: c.cfg.GateImage}
+	opts := BuildOptions{EgressRestricted: restricted, Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret, ProxyEnv: c.cfg.ProxyEnv, GateImage: c.cfg.GateImage, Gateway: c.cfg.Gateway}
 	// Get+Build+Update a ogni tentativo: il deployment controller di Kubernetes aggiorna lo stesso
 	// oggetto (status, revisione, rollout precedente) e l'Update con un ResourceVersion vecchio
 	// riceve 409.
@@ -449,7 +451,7 @@ func (c *Controller) ensureNetworkPolicy(ctx context.Context, app store.App) err
 		}
 		proxyIPs[endpoint.host] = ips
 	}
-	np := NetworkPolicyOptions{TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs, ClusterCIDRs: c.cfg.EgressClusterCIDRs, NodeAddresses: c.cfg.EgressNodeAddresses, Deny: c.cfg.EgressDeny}
+	np := NetworkPolicyOptions{Gateway: c.cfg.Gateway, TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs, ClusterCIDRs: c.cfg.EgressClusterCIDRs, NodeAddresses: c.cfg.EgressNodeAddresses, Deny: c.cfg.EgressDeny}
 	// Destinazioni private aperte dall'amministratore e restrizione dell'app (H16, GIT-385): gli indirizzi
 	// si risolvono ora, a ogni applicazione della policy (deploy o modifica delle impostazioni).
 	if c.st != nil { // senza store (prove del solo cluster) nessuna apertura e nessuna restrizione

@@ -32,11 +32,20 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.gateway.containerPort }}
+            {{- if include "gitstack.apps.gatewayInternalPort" . }}
+            - name: internal
+              containerPort: {{ include "gitstack.apps.gatewayInternalPort" . }}
+            {{- end }}
           env:
             - name: GITSTACK_VERSION
               value: {{ include "gitstack.imageTag" (dict "root" $ "component" .Values.gateway) | quote }}
             - name: GITSTACK_GATEWAY_ADDR
               value: {{ printf ":%d" (.Values.gateway.containerPort | int) | quote }}
+            {{- if include "gitstack.apps.gatewayInternalPort" . }}
+            # Porta interna per le app (GIT-442): solo /v1, X-Forwarded-For ignorato.
+            - name: GITSTACK_GATEWAY_INTERNAL_ADDR
+              value: {{ printf ":%s" (include "gitstack.apps.gatewayInternalPort" .) | quote }}
+            {{- end }}
             - name: GITSTACK_CORE_URL
               value: {{ include "gitstack.core.url" . | quote }}
             {{- if and .Values.git.enabled .Values.git.registry.enabled }}

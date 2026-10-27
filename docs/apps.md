@@ -51,6 +51,7 @@ A ogni deploy GitStack passa al container alcune variabili di sistema, che l'app
 | `GITSTACK_APP_VERSION` | il tag dell'immagine, per esempio `sha-1a2b3c` o `v2`. Assente se l'immagine è indicata solo per digest, senza tag. |
 | `GITSTACK_DEPLOYED_AT` | data e ora della versione, in RFC 3339 UTC, per esempio `2026-10-26T07:30:15Z`. Resta la stessa a ogni riavvio della versione. |
 | `GITSTACK_COMMIT_SHA` | il commit dell'immagine, dall'etichetta OCI `org.opencontainers.image.revision` (se c'è). Viene letta dal registry del repo al deploy e salvata nella versione, quindi resta la stessa a ogni riavvio; una modifica di configurazione la eredita dalla versione attiva. **Assente** se l'immagine è esterna, se non ha l'etichetta o se l'etichetta non è un commit esadecimale (da 7 a 64 caratteri). |
+| `GITSTACK_API_URL` | l'API di GitStack raggiunta **dentro il cluster**, per esempio `http://gitstack-gateway.gitstack.svc.cluster.local:8081/v1` (vedi [Chiamare l'API di GitStack](#chiamare-lapi-di-gitstack-dallapp-h16)). **Assente** se l'installazione non ha la porta interna del gateway (`gateway.internalPort: 0`, o app non abilitate nel chart). |
 | `PORT` | la porta dell'app, come prima. |
 
 Il commit di ogni versione è leggibile nell'API delle versioni dell'app, nel campo `commitSha` (`null` se la versione non ne ha uno).
@@ -86,6 +87,23 @@ Le app escono con le stesse regole di webhook e mirror (`pkg/egress`, C8), appli
 - **internet** è aperto (IPv4 e IPv6; se l'istanza ha un proxy, passa da lì);
 - la **rete privata** (RFC 1918, ULA, CGNAT) è chiusa: un'app non raggiunge il database o il server di posta della tua LAN;
 - **loopback, link-local, indirizzi del cluster e del nodo e porte di Kubernetes** (6443, 10250, 10255, 2379-2380) restano bloccati sempre, anche se qualcuno li elenca.
+
+### Chiamare l'API di GitStack dall'app (H16)
+
+Su un'installazione senza proxy l'indirizzo pubblico di GitStack si risolve sul nodo, quindi è bloccato (e l'amministratore non può aprirlo: il nodo e il cluster non si aprono mai). Per questo ogni app ha un percorso fisso verso il **gateway dentro il cluster**, e solo verso quello: mai core, identity, git, Postgres o NATS.
+
+- il gateway apre una **porta interna** (`gateway.internalPort`, default 8081, `GITSTACK_GATEWAY_INTERNAL_ADDR`) che serve solo `/v1`: niente forward-auth e login delle app, niente pagine web. Non si fida mai di `X-Forwarded-For`: l'IP del client per rate limit e audit è quello del peer, quindi un'app non può falsificarlo;
+- la NetworkPolicy dell'app ha una regola di egress verso i soli pod del gateway su quella porta (anche per un'app con l'uscita ristretta, come DNS e peer del repo), e quella del gateway ammette solo i pod dei namespace delle app, solo su quella porta. Se core non conosce il gateway (variabili `GITSTACK_CORE_APPS_GATEWAY_*` non impostate dal chart) la regola non c'è e tutto resta com'era;
+- `GITSTACK_API_URL` contiene l'indirizzo, già col prefisso `/v1` del gateway (la porta interna non passa da Traefik, che toglie `/api`: `https://host/api/v1` e `GITSTACK_API_URL` sono la stessa API).
+
+La rete apre solo il trasporto: l'autorizzazione resta quella del token. Con il token di un bot:
+
+```sh
+curl -sS -H "Authorization: Bearer $BOT_TOKEN" "$GITSTACK_API_URL/meta"
+curl -sS -H "Authorization: Bearer $BOT_TOKEN" -H 'Content-Type: application/json'   -d '{"title":"Segnalazione dal tester"}' "$GITSTACK_API_URL/repos/acme/web/issues"
+```
+
+Il token (un segreto dell'app, per esempio `BOT_TOKEN`: il prefisso `GITSTACK_` è riservato) ha gli scope e i permessi del bot, nient'altro.
 
 ### Per l'amministratore: aprire una destinazione privata
 
