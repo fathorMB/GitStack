@@ -339,7 +339,7 @@ func TestAutoDeploy_DaBranchSoloImmaginiFirmateDallaCI(t *testing.T) {
 		"hand":   {digest: sigDigestC},
 		"ext":    {digest: sigDigestD, signer: "trusted", trustedPEM: trustedPEM},
 		"copy":   {digest: sigDigestE, signer: "foreign"},
-		"latest": {digest: sigDigestB, signer: "instance"},
+		"latest": {digest: sigDigestB, signer: "instance", revision: "fedcba9876543210fedcba9876543210fedcba98"}, // stesso build di sha-2
 	}
 	keyBody, _ := json.Marshal(map[string]string{"name": "CI esterna", "publicKey": trustedPEM})
 	e.want(e.do(http.MethodPost, "/admin/apps/trusted-keys", "carol", string(keyBody)), http.StatusCreated, "")
