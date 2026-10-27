@@ -67,16 +67,12 @@ func (e *Engine) handleApp(ctx context.Context, tx pgx.Tx, ev outboxEvent) error
 		if window <= 0 {
 			window = AppUnhealthyNoticeWindow
 		}
-		now := time.Now()
-		if e.Now != nil {
-			now = e.Now()
-		}
 		if err := tx.QueryRow(ctx, `SELECT EXISTS (
 			SELECT 1 FROM core.notifications
 			WHERE user_id = $1 AND repo_id = $2 AND event_name = $3
 			  AND data->>'app' = $4
-			  AND created_at >= $5
-		)`, actor, repoID, ev.name, p.AppName, now.Add(-window)).Scan(&recent); err != nil {
+			  AND created_at >= clock_timestamp() - ($5 * interval '1 millisecond')
+		)`, actor, repoID, ev.name, p.AppName, window.Milliseconds()).Scan(&recent); err != nil {
 			return err
 		}
 		if recent {

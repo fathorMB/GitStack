@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
-	"time"
 
 	"github.com/fathorMB/GitStack/services/core/internal/dbtest"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
@@ -35,12 +34,9 @@ func TestAppUnhealthyNotice_RiparteDopoLaFinestra(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	now := time.Now()
 	e := &Engine{
-		Pool:                     pool,
-		Identity:                 appNoticeIdentity{},
-		Now:                      func() time.Time { return now },
-		AppUnhealthyNoticeWindow: 5 * time.Minute,
+		Pool:     pool,
+		Identity: appNoticeIdentity{},
 	}
 	payload, err := json.Marshal(map[string]any{
 		"repo":    map[string]string{"id": repoID.String()},
@@ -85,7 +81,11 @@ func TestAppUnhealthyNotice_RiparteDopoLaFinestra(t *testing.T) {
 		t.Fatalf("unhealthy dentro la finestra: notifiche = %d, voluto 1", got)
 	}
 
-	now = now.Add(AppUnhealthyNoticeWindow + time.Second)
+	if _, err := pool.Exec(ctx, `UPDATE core.notifications
+		SET created_at = created_at - interval '6 minutes'
+		WHERE user_id = $1 AND event_name = 'app_status.unhealthy'`, actorID); err != nil {
+		t.Fatal(err)
+	}
 	addEvent()
 	process()
 	if got := countNotices(); got != 2 {
