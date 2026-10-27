@@ -240,7 +240,7 @@ export function AppOverviewPage({ repo, app, perms, onChange }: Props) {
                 <dd>
                   {app.follow ? (
                     <>
-                      follow <span className="mono">{app.follow.branch}</span>
+                      follow {app.follow.tagPattern ? 'tags ' : ''}<span className="mono">{app.follow.tagPattern ?? app.follow.branch}</span>
                       {app.follow.paused ? ' (paused)' : ' · only images signed by this repo’s CI'}
                     </>
                   ) : (

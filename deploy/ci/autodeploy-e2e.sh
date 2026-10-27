@@ -12,6 +12,8 @@
 #      crea l'app con followBranch=main su <registry>/<owner>/<repo>/web:sha-<commit>;
 #   c. un secondo push su main: il workflow pubblica un tag nuovo e, senza altro, core mette in
 #      produzione una versione nuova: trigger=branch_push, image.verified=true, stato serving;
+#   c2. (GIT-377) l'app passa alla regola sui tag v*-test.*; un terzo push pubblica tre tag e solo
+#      v9.9-test.1 crea una versione: trigger=tag_push, serving, commitSha; branch + regola: 422;
 #   d. caso negativo: un tag pubblicato con il token di un utente (nessuna firma della CI, nessuna
 #      notifica del job) NON crea una versione nuova entro NEG_WAIT secondi, e i pacchetti lo
 #      mostrano «unverified».
@@ -224,6 +226,53 @@ if ! versions | jq -e --argjson n "${n}" --arg t "${tag2}" '.items[] | select(.n
   echo "KO: la versione ${n} non e' l'immagine ${tag2}, o manca branch/commitSha: $(versions | jq -c --argjson n "${n}" '.items[] | select(.number == $n)')" >&2; exit 1
 fi
 echo "OK: deploy automatico - versione ${n} serving, trigger branch_push, verified"
+
+# --- c2. regola sui tag (GIT-377) ---------------------------------------------------------------
+# L'app passa dal branch alla regola v*-test.* (nella stessa richiesta: insieme sarebbero 422).
+# Un terzo push costruisce l'immagine e la pubblica con tre tag: sha-<commit> e v9.9 non
+# rispettano la regola, v9.9-test.1 si': la versione nuova nasce da quel tag (trigger=tag_push).
+code=$(curl -s -o "${work}/both.json" -w '%{http_code}' -H "Authorization: Bearer ${tok}" -X PATCH -H 'content-type: application/json' \
+  -d '{"followBranch":"main","followTagPattern":"v*-test.*"}' "${api}/repos/${OWNER}/${REPO}/apps/${APP}" || true)
+if [ "${code}" != 422 ] || ! jq -e '.error.code == "follow_both"' "${work}/both.json" >/dev/null; then
+  echo "KO: branch e regola sui tag insieme dovevano dare 422 follow_both, status ${code}: $(head -c 300 "${work}/both.json")" >&2; exit 1
+fi
+echo "OK: branch e regola sui tag insieme - 422 follow_both"
+code=$(curl -s -o "${work}/follow.json" -w '%{http_code}' -H "Authorization: Bearer ${tok}" -X PATCH -H 'content-type: application/json' \
+  -d '{"followBranch":null,"followTagPattern":"v*-test.*"}' "${api}/repos/${OWNER}/${REPO}/apps/${APP}" || true)
+if [ "${code}" != 200 ] || ! jq -e '.follow.tagPattern == "v*-test.*" and (.follow.branch == null)' "${work}/follow.json" >/dev/null; then
+  echo "KO: passaggio alla regola sui tag, status ${code}: $(head -c 300 "${work}/follow.json")" >&2; exit 1
+fi
+before_tag=$(versions | jq '.total')
+cat >"${src}/.gitstack/workflows/image.yml" <<'EOF'
+name: image
+on: [push]
+permissions:
+  contents: read
+  packages: write
+jobs:
+  image:
+    runs-on: gitstack-build
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          gitstack-build --name web --tag "sha-$(echo "$GITHUB_SHA" | cut -c1-7)" .
+          gitstack-build --name web --tag v9.9 .
+          gitstack-build --name web --tag v9.9-test.1 .
+EOF
+echo "versione tre" >"${src}/index.html"
+sha3=$(push "terza versione: tre tag, uno solo rispetta la regola")
+wait_run "${sha3}" "build del terzo commit"
+if ! wait_serving '.trigger == "tag_push" and .image.verified == true and .state == "serving"'; then
+  echo "KO: nessuna versione tag_push verificata e serving entro ${SERVE_TIMEOUT}s: $(versions | jq -c '[.items[]? | {number, trigger, state, stateReason, verified: .image.verified}]')" >&2; exit 1
+fi
+n=$(cat "${work}/ver")
+if ! versions | jq -e --argjson n "${n}" '.items[] | select(.number == $n) | (.image.reference | endswith("/web:v9.9-test.1")) and .branch == null and (.commitSha != null)' >/dev/null; then
+  echo "KO: la versione ${n} non nasce da v9.9-test.1, o manca il commitSha: $(versions | jq -c --argjson n "${n}" '.items[] | select(.number == $n)')" >&2; exit 1
+fi
+if [ "$(versions | jq '[.items[]? | select(.trigger == "tag_push")] | length')" != 1 ] || [ "$(versions | jq '.total')" != "$((before_tag + 1))" ]; then
+  echo "KO: i tag che non rispettano la regola hanno creato versioni: $(versions | jq -c '[.items[]? | {number, trigger, image: .image.reference}]')" >&2; exit 1
+fi
+echo "OK: regola sui tag - versione ${n} da v9.9-test.1 serving, trigger tag_push, verified; sha-* e v9.9 ignorati"
 
 # --- d. immagine non firmata -------------------------------------------------------------------
 before=$(versions | jq -r '.total')

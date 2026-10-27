@@ -82,7 +82,7 @@ func TestMigration0037_AppEnv(t *testing.T) {
 		t.Fatalf("dopo l'eliminazione dell'app restano righe: %d variabili, %d segreti", count("app_variables"), count("app_secrets"))
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 10); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 11); err != nil {
 		t.Fatalf("down 0038+0037: %v", err)
 	}
 	var n int

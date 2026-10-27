@@ -5672,7 +5672,7 @@ export const getApp = <ThrowOnError extends boolean = false>(options: Options<Ge
 /**
  * Modifica immagine di base, porta, controllo di salute e deploy automatico
  *
- * Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+ * Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `followTagPattern` segue una regola sui tag al posto del branch (mai tutte e due, 422 `follow_both`); `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
  *
  */
 export const updateApp = <ThrowOnError extends boolean = false>(options: Options<UpdateAppData, ThrowOnError>): RequestResult<UpdateAppResponses, UpdateAppErrors, ThrowOnError> => (options.client ?? client).patch<UpdateAppResponses, UpdateAppErrors, ThrowOnError>({

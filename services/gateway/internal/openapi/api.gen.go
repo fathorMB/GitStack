@@ -532,6 +532,7 @@ const (
 	AppVersionTriggerCreate     AppVersionTrigger = "create"
 	AppVersionTriggerManual     AppVersionTrigger = "manual"
 	AppVersionTriggerRollback   AppVersionTrigger = "rollback"
+	AppVersionTriggerTagPush    AppVersionTrigger = "tag_push"
 )
 
 // Valid indicates whether the value is a known member of the AppVersionTrigger enum.
@@ -546,6 +547,8 @@ func (e AppVersionTrigger) Valid() bool {
 	case AppVersionTriggerManual:
 		return true
 	case AppVersionTriggerRollback:
+		return true
+	case AppVersionTriggerTagPush:
 		return true
 	default:
 		return false
@@ -3390,9 +3393,12 @@ type AppCopyStatus struct {
 type AppCreateInput struct {
 	Copies *int `json:"copies,omitempty"`
 
-	// FollowBranch Branch da seguire (H7). Non disponibile per un'immagine esterna.
-	FollowBranch *string         `json:"followBranch,omitempty"`
-	HealthCheck  *AppHealthCheck `json:"healthCheck,omitempty"`
+	// FollowBranch Branch da seguire (H7). Non disponibile per un'immagine esterna. Non insieme a `followTagPattern` (422 `follow_both`).
+	FollowBranch *string `json:"followBranch,omitempty"`
+
+	// FollowTagPattern Regola sui tag (glob, per esempio `v*-test.*`): un'immagine firmata dalla CI con un tag che la rispetta va in produzione (H7). Non disponibile per un'immagine esterna. Non insieme a `followBranch` (422 `follow_both`).
+	FollowTagPattern *string         `json:"followTagPattern,omitempty"`
+	HealthCheck      *AppHealthCheck `json:"healthCheck,omitempty"`
 
 	// Image Riferimento dell'immagine. Per il registry del repo basta `nome:tag` o il solo tag, risolti contro `<host>/<owner>/<repo>`; altrimenti un riferimento completo a un registry esterno.
 	Image string `json:"image"`
@@ -3426,12 +3432,16 @@ type AppDeployState string
 // AppEnvName Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
 type AppEnvName = string
 
-// AppFollow Branch seguito per il deploy automatico (H7).
+// AppFollow Sorgente del deploy automatico (H7): un branch oppure una regola sui tag, mai tutte e due.
 type AppFollow struct {
-	Branch string `json:"branch"`
+	// Branch Branch seguito; assente se l'app segue una regola sui tag.
+	Branch *string `json:"branch,omitempty"`
 
 	// Paused Deploy automatici sospesi (per esempio dopo un rollback).
 	Paused bool `json:"paused"`
+
+	// TagPattern Regola sui tag (glob, per esempio `v*-test.*`); assente se l'app segue un branch.
+	TagPattern *string `json:"tagPattern,omitempty"`
 }
 
 // AppHealthCheck defines model for AppHealthCheck.
@@ -3679,11 +3689,14 @@ type AppTrustedKeyList struct {
 type AppUpdateInput struct {
 	AutoDeployPaused *bool `json:"autoDeployPaused,omitempty"`
 
-	// FollowBranch Branch da seguire; `null` torna ai deploy a mano.
-	FollowBranch *string         `json:"followBranch,omitempty"`
-	HealthCheck  *AppHealthCheck `json:"healthCheck,omitempty"`
-	Port         *int            `json:"port,omitempty"`
-	Restricted   *bool           `json:"restricted,omitempty"`
+	// FollowBranch Branch da seguire; `null` torna ai deploy a mano. Se l'app segue una regola sui tag va tolta prima (o nella stessa richiesta con `followTagPattern: null`), altrimenti 422 `follow_both`.
+	FollowBranch *string `json:"followBranch,omitempty"`
+
+	// FollowTagPattern Regola sui tag; `null` la toglie. Se l'app segue un branch va tolto prima (o nella stessa richiesta con `followBranch: null`), altrimenti 422 `follow_both`.
+	FollowTagPattern *string         `json:"followTagPattern,omitempty"`
+	HealthCheck      *AppHealthCheck `json:"healthCheck,omitempty"`
+	Port             *int            `json:"port,omitempty"`
+	Restricted       *bool           `json:"restricted,omitempty"`
 }
 
 // AppUsage Uso corrente, somma delle copie. Le richieste e gli errori ci sono solo per le app web.
@@ -3753,7 +3766,7 @@ type AppVersion struct {
 	// Summary Per `config` e `rollback`, che cosa e' cambiato, per esempio «variabile SEARCH_TIMEOUT»; i valori dei segreti non compaiono mai.
 	Summary *string `json:"summary,omitempty"`
 
-	// Trigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`.
+	// Trigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `tag_push` (e' arrivata nel registry un'immagine firmata con un tag che rispetta la regola seguita, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`.
 	Trigger AppVersionTrigger `json:"trigger"`
 }
 
@@ -3779,7 +3792,7 @@ type AppVersionList struct {
 	Total int          `json:"total"`
 }
 
-// AppVersionTrigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`.
+// AppVersionTrigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `tag_push` (e' arrivata nel registry un'immagine firmata con un tag che rispetta la regola seguita, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`.
 type AppVersionTrigger string
 
 // AppVolume Volume persistente dell'app (PVC su local-path, dimensione fissa, H3).

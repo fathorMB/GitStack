@@ -19,11 +19,12 @@ import (
 var (
 	ErrAppDeployInProgress = errors.New("c'è già un deploy in corso per l'app")
 	ErrAppVersionNotFound  = errors.New("versione dell'app non trovata")
+	ErrAppFollowBoth       = errors.New("un'app segue un branch oppure una regola sui tag, non tutte e due")
 )
 
 // NewAppDeploy è l'input di un deploy a mano o di un rollback.
 type NewAppDeploy struct {
-	Trigger    string // manual | rollback | branch_push
+	Trigger    string // manual | rollback | branch_push | tag_push
 	Image      AppImage
 	RollbackOf *int
 	Summary    *string

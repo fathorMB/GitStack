@@ -337,7 +337,7 @@ func TestSignatures_FollowBranchEPausaNonCreanoVersioni(t *testing.T) {
 	n := e.versionCount(t)
 
 	a := e.app(e.do(http.MethodPatch, base+"/w-ci", "alice", `{"followBranch":"main","autoDeployPaused":true}`))
-	if a.Follow == nil || a.Follow.Branch != "main" || !a.Follow.Paused {
+	if a.Follow == nil || a.Follow.Branch == nil || *a.Follow.Branch != "main" || !a.Follow.Paused {
 		t.Fatalf("follow: %+v", a.Follow)
 	}
 	a = e.app(e.do(http.MethodPatch, base+"/w-ci", "alice", `{"followBranch":null}`))
