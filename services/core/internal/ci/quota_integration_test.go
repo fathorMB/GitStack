@@ -178,8 +178,9 @@ func TestDispatchPods_QuotaScade(t *testing.T) {
 	waitJobConclusion(t, e, b, ci.ConclusionFailure)
 	mu.Lock()
 	defer mu.Unlock()
-	if !strings.Contains(logbuf.String(), "reason=pod_quota_timeout") {
-		t.Errorf("manca reason=pod_quota_timeout: %s", logbuf.String())
+	logged := logbuf.String()
+	if strings.Count(logged, "reason=pod_quota_timeout") != 1 || strings.Contains(logged, "reason=pod_create") {
+		t.Errorf("attesa una sola riga pod_quota_timeout e nessun pod_create: %s", logged)
 	}
 }
 
