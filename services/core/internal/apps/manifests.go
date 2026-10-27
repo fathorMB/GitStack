@@ -108,6 +108,9 @@ type BuildOptions struct {
 	// ProxyEnv è la configurazione N9 dell'istanza. Viene dal processo core e
 	// non può essere sostituita dalle variabili dichiarate dall'app.
 	ProxyEnv map[string]string
+	// GateImage è l'immagine (di core) dell'init container «gate» (GIT-418): l'app parte solo dopo che la
+	// NetworkPolicy è stata applicata al pod. Vuoto: nessun cancello (solo prove senza l'immagine di core).
+	GateImage string
 }
 
 // NetworkPolicyOptions sono le dipendenze d'istanza della policy H9.
@@ -179,6 +182,9 @@ func BuildDeployment(app store.App, v store.AppVersion, o BuildOptions) *appsv1.
 		AutomountServiceAccountToken: &f,
 		EnableServiceLinks:           &f,
 		Containers:                   []corev1.Container{c},
+	}
+	if o.GateImage != "" {
+		pod.InitContainers = []corev1.Container{GateContainer(o.GateImage, GateCommand)}
 	}
 	if o.PullSecret != "" {
 		pod.ImagePullSecrets = []corev1.LocalObjectReference{{Name: o.PullSecret}}

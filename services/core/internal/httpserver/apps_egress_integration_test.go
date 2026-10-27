@@ -96,10 +96,20 @@ func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
 			ok, ko = ko, ok
 		}
 		script := fmt.Sprintf("if nc -z -w 5 %s %d; then %s; else %s; fi", host, port, ok, ko)
-		create(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns, Labels: labels},
-			Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{
-				Name: "probe", Image: "busybox:1.36", Command: []string{"sh", "-c", script},
-				SecurityContext: &corev1.SecurityContext{RunAsUser: &root}}}}})
+		spec := corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{
+			Name: "probe", Image: "busybox:1.36", Command: []string{"sh", "-c", script},
+			SecurityContext: &corev1.SecurityContext{RunAsUser: &root}}}}
+		if ns != systemNS {
+			// GIT-418: come i pod delle app veri, il probe parte dopo il cancello. kube-router applica la
+			// NetworkPolicy dopo l'avvio del pod: nei primi secondi l'API (6443) e il kubelet (10250) del nodo
+			// erano raggiungibili anche da qui. Il cancello di core (immagine di core) qui ha lo stesso
+			// comportamento in shell: attende che l'API Kubernetes non risponda più, ed esce con errore
+			// (fail-closed) se non succede. Non si guarda nessuno dei bersagli dei negativi.
+			gate := apps.GateContainer("busybox:1.36", []string{"sh", "-c",
+				"w=0; while nc -z -w 1 \"$KUBERNETES_SERVICE_HOST\" \"$KUBERNETES_SERVICE_PORT\"; do w=$((w + 1)); if [ $w -ge 60 ]; then echo 'KO: NetworkPolicy non applicata'; exit 1; fi; sleep 1; done"})
+			spec.InitContainers = []corev1.Container{gate}
+		}
+		create(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns, Labels: labels}, Spec: spec})
 		if got := waitPodLog(t, e.kube, ns, name); got != "OK" {
 			t.Fatalf("%s: %s", name, got)
 		}
@@ -110,12 +120,14 @@ func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
 	// Senza questi, un listener che non parte o una porta che non risponde farebbero passare i negativi.
 	probe(sysNS, "ctrl-ip-nodo", nodeIP, 18080, true)
 	probe(sysNS, "ctrl-api-nodo", nodeIP, 6443, true)
+	probe(sysNS, "ctrl-kubelet-nodo", nodeIP, 10250, true)
 	probe(sysNS, "ctrl-api-servizio", kubeSvc.Spec.ClusterIP, 443, true)
 	probe(sysNS, "ctrl-pod-altro-repo", otherIP, 8080, true)
 	// Dal namespace dell'app (root): internet sì, il resto no.
 	probe(appNS, "internet-aperto", "1.1.1.1", 443, true)
 	probe(appNS, "ip-nodo-privato-lan", nodeIP, 18080, false)
 	probe(appNS, "api-kubernetes-nodo", nodeIP, 6443, false)
+	probe(appNS, "kubelet-nodo", nodeIP, 10250, false)
 	probe(appNS, "api-kubernetes-servizio", kubeSvc.Spec.ClusterIP, 443, false)
 	probe(appNS, "pod-altro-repo", otherIP, 8080, false)
 }

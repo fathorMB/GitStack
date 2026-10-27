@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/fathorMB/GitStack/pkg/egress"
+	"github.com/fathorMB/GitStack/services/core/internal/apps"
 	"github.com/fathorMB/GitStack/services/core/internal/attachments"
 	"github.com/fathorMB/GitStack/services/core/internal/ci"
 	"github.com/fathorMB/GitStack/services/core/internal/config"
@@ -47,7 +48,20 @@ const ciScheduleInterval = time.Minute
 const attachmentCleanupInterval = 15 * time.Minute
 
 func main() {
+	// `core apps-gate` (GIT-418) è l'init container dei pod delle app: niente config né database.
+	if len(os.Args) > 1 && os.Args[1] == "apps-gate" {
+		os.Exit(runAppsGate())
+	}
 	os.Exit(run(os.Args[1:]))
+}
+
+// runAppsGate aspetta che la NetworkPolicy sia applicata al pod (apps.RunGate); esce con 1 se non lo è.
+func runAppsGate() int {
+	if err := apps.RunGate(context.Background(), os.Getenv, apps.GateTimeout); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return 0
 }
 
 // run gestisce due modalità, entrambe richieste dal criterio di

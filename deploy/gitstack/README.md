@@ -290,6 +290,8 @@ Per uno sviluppo locale — cluster persistente, `web` incluso, ciclo modifica �
 
 ## Hosting delle app: `apps.enabled` (GIT-375, ADR 0002)
 
+**Cancello di rete dei pod delle app (GIT-418).** kube-router (la NetworkPolicy di k3s) applica le regole a un pod *dopo* il suo avvio: misurato su k3d, nei primi secondi un pod in un namespace app raggiunge l'API Kubernetes (6443), il kubelet (10250) e gli altri servizi sull'IP del nodo, che a regime sono chiusi (le catene INPUT e FORWARD di kube-router filtrano anche pod→nodo). Per questo il chart passa a core `GITSTACK_CORE_APPS_GATE_IMAGE` (l'immagine di core) e il Deployment di ogni app ha un init container `gate` (`core apps-gate`, utente non root, filesystem in sola lettura) che fa partire l'app solo quando l'API Kubernetes non risponde più al pod, cioè quando la policy `app-isolation` è attiva; dopo 60 s senza barriera esce con errore e l'app non parte (fail-closed). Se la variabile è vuota core lo scrive nel log e i pod partono senza cancello.
+
 Spento di default. `apps.enabled=true` richiede `apps.domain` (il dominio delle app) e imposta su core
 `GITSTACK_CORE_APPS_ENABLED`, `GITSTACK_CORE_APPS_DOMAIN`, `GITSTACK_CORE_APPS_AUTH_URL`
 (`apps.authUrl`, default: il Service del gateway + `/_appauth/verify`) e, per il RoleBinding dei namespace, `GITSTACK_CORE_APPS_CONTROLLER_SA`
