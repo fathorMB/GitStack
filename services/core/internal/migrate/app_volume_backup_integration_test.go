@@ -47,7 +47,7 @@ func TestMigration0045_AppVolumeBackup(t *testing.T) {
 	if exec(`UPDATE core.app_volumes SET include_in_backup = NULL WHERE name = 'data'`) == nil {
 		t.Error("include_in_backup non può essere NULL")
 	}
-	if err := migrate.Down(ctx, pool, dsn, 5); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 6); err != nil {
 		t.Fatalf("down 0045: %v", err)
 	}
 	var n int
