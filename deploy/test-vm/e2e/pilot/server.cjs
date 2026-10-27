@@ -4,7 +4,7 @@ const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const { verifyIdentity } = require('./identity.cjs');
 const exec = promisify(execFile);
-const gateway = process.env.PILOT_GATEWAY;
+const apiUrl = process.env.GITSTACK_API_URL?.replace(/\/+$/, '');
 const repo = process.env.PILOT_REPO;
 const marker = 'retail-pilot-381';
 
@@ -24,7 +24,7 @@ async function checked(url, options = {}) {
 }
 
 async function identity(req) {
-  const { keys } = await checked(`${gateway}/api/.well-known/gitstack-app-keys`);
+  const { keys } = await checked(new URL('/.well-known/gitstack-app-keys', apiUrl));
   return verifyIdentity(req, keys);
 }
 
@@ -47,8 +47,8 @@ async function report(req, user) {
   const auth = { Authorization: `Bearer ${process.env.BOT_TOKEN}` };
   const form = new FormData();
   form.append('file', new Blob([png], { type: 'image/png' }), 'screenshot.png');
-  const attachment = await checked(`${gateway}/api/v1/repos/${repo}/issue-attachments`, { method: 'POST', headers: auth, body: form });
-  return checked(`${gateway}/api/v1/repos/${repo}/issues`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'Segnalazione pilota', body: `Tester: ${user}`, attachmentIds: [attachment.id] }) });
+  const attachment = await checked(`${apiUrl}/repos/${repo}/issue-attachments`, { method: 'POST', headers: auth, body: form });
+  return checked(`${apiUrl}/repos/${repo}/issues`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'Segnalazione pilota', body: `Tester: ${user}`, attachmentIds: [attachment.id] }) });
 }
 
 const page = `<!doctype html><html><body><p id="data"></p><input type="file" id="screenshot" accept="image/png"><button id="send">Segnala un problema</button><p id="result"></p><script>
@@ -65,7 +65,7 @@ http.createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': 'text/plain' }).end(value);
       return;
     }
-    if (process.env.PILOT_ROLE !== 'sito' || !gateway || !repo || !process.env.BOT_TOKEN) throw new Error('missing configuration');
+    if (process.env.PILOT_ROLE !== 'sito' || !apiUrl || !repo || !process.env.BOT_TOKEN) throw new Error('missing configuration');
     const user = await identity(req);
     if (req.method === 'GET' && path === '/') { res.writeHead(200, { 'content-type': 'text/html' }).end(page); return; }
     if (req.method === 'GET' && path === '/data') {
