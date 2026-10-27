@@ -150,7 +150,7 @@ name = "go-work-sync"
 # go.work e services/git/go.sum solo per il CRLF (GIT-408, dopo GIT-406).
 run = "go run scripts/check-go-work-sync.go"
 timeout_s = 300
-paths = ["**/go.mod", "**/go.sum", "go.work*"]
+paths = ["**/go.mod", "**/go.sum", "go.work*", ".gitattributes"]
 
 [[check]]
 name = "check-api-generated"
@@ -158,7 +158,7 @@ name = "check-api-generated"
 # fallisce se i file generati differiscono dai committati (CRLF ignorato).
 run = "go run scripts/check-api-generated.go"
 timeout_s = 900
-paths = ["api/openapi.yaml", "client/**"]
+paths = ["api/openapi.yaml", "client/**", ".gitattributes"]
 
 # Lint per modulo (golangci-lint, config .golangci.yml in radice). Uno per
 # ogni modulo di go.work: aggiornare insieme a go-build/go-test.
