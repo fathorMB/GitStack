@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -151,6 +152,11 @@ func podNameFor(job JobRow) string { return "ci-" + strings.ReplaceAll(job.ID.St
 // causa nel log del job, così `gs run view --log` la mostra. Il biglietto monouso e
 // i valori dell'ambiente del pod non finiscono mai nel messaggio.
 func (c RunnerConfig) dispatchFailed(ctx context.Context, pool *pgxpool.Pool, now time.Time, job JobRow, run RunRow, pod Pod, reason string, cause error, ticket string) {
+	c.dispatchNote(ctx, pool, now, job, pod, slog.LevelError, reason, "dispatch del job CI non riuscito", cause, ticket)
+}
+
+// dispatchNote e' la riga di log di core e del job per un dispatch fallito o rinviato.
+func (c RunnerConfig) dispatchNote(ctx context.Context, pool *pgxpool.Pool, now time.Time, job JobRow, pod Pod, level slog.Level, reason, text string, cause error, ticket string) {
 	log := c.Log
 	if log == nil {
 		log = slog.Default()
@@ -163,7 +169,7 @@ func (c RunnerConfig) dispatchFailed(ctx context.Context, pool *pgxpool.Pool, no
 	if ns == "" {
 		ns = c.normal().Namespace
 	}
-	log.Error("dispatch del job CI non riuscito", "reason", reason, "job_id", job.ID, "run_id", job.RunID,
+	log.Log(ctx, level, text, "reason", reason, "job_id", job.ID, "run_id", job.RunID,
 		"job", job.Name, "namespace", ns, "pod", pod.Name, "err", msg)
 	if c.Logs == nil || c.Logs.Dir == "" {
 		return
@@ -172,7 +178,7 @@ func (c RunnerConfig) dispatchFailed(ctx context.Context, pool *pgxpool.Pool, no
 	if err := pool.QueryRow(ctx, `SELECT lines FROM core.ci_job_logs WHERE job_id = $1`, job.ID).Scan(&lines); err != nil {
 		lines = 0
 	}
-	line := LogLine{Time: now, Content: fmt.Sprintf("dispatch del job non riuscito (%s): %s [pod %s/%s]", reason, msg, ns, pod.Name)}
+	line := LogLine{Time: now, Content: fmt.Sprintf("%s (%s): %s [pod %s/%s]", strings.Replace(text, "job CI", "job", 1), reason, msg, ns, pod.Name)}
 	if _, err := c.Logs.Append(ctx, pool, now, job.ID, lines, []LogLine{line}); err != nil {
 		log.Error("causa del dispatch non scritta nel log del job", "job_id", job.ID, "err", err)
 	}
@@ -238,6 +244,22 @@ func DispatchPods(ctx context.Context, pool *pgxpool.Pool, api interface {
 				reason, cause = "pod_create", cerr
 			}
 		}
+		if cause != nil && reason == "pod_create" && IsQuotaRejection(cause) {
+			// Rifiuto transitorio (GIT-452): il posto in Kubernetes non e' ancora libero.
+			// Il job torna in coda e si riprova al prossimo giro; si esce dal ciclo, cosi'
+			// il tick di main.go (1 s) fa da backoff invece di riprovare subito.
+			requeued, qreason, qcause, rerr := cfg.requeueOnQuota(ctx, pool, now, job, pod, cause, ticket, rep)
+			if rerr != nil {
+				return started, rerr
+			}
+			if requeued {
+				return started, nil
+			}
+			// Non rimesso in coda: la riga di failure e' una sola, qui sotto, col reason giusto.
+			reason, cause = qreason, qcause
+		} else if cause == nil {
+			quotaRetries.clear(job.ID)
+		}
 		if cause != nil {
 			cfg.dispatchFailed(ctx, pool, now, job, run, pod, reason, cause, ticket)
 			if cerr := CompleteJobReported(ctx, pool, now, job.ID, ConclusionFailure, rep); cerr != nil {
@@ -250,14 +272,112 @@ func DispatchPods(ctx context.Context, pool *pgxpool.Pool, api interface {
 	}
 }
 
+// QuotaRetryTimeout e' per quanto tempo un job rifiutato dalla ResourceQuota resta in
+// coda (riprovato a ogni tick) prima di chiudersi in failure con reason pod_quota_timeout.
+// Il conteggio parte dal primo rifiuto e vive in memoria: un riavvio di core lo riazzera.
+var QuotaRetryTimeout = 5 * time.Minute
+
+// PodGoneTimeout e' l'attesa massima che un pod eliminato sparisca prima di chiudere il job.
+var PodGoneTimeout = 30 * time.Second
+
+// podGonePoll e' l'intervallo di controllo dell'eliminazione del pod.
+var podGonePoll = 250 * time.Millisecond
+
+// IsQuotaRejection dice se Create e' stata rifiutata dalla ResourceQuota (Forbidden con
+// "exceeded quota"): un errore transitorio, a differenza di ogni altro rifiuto.
+func IsQuotaRejection(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "exceeded quota") && strings.Contains(msg, "forbidden")
+}
+
+type quotaTracker struct {
+	mu    sync.Mutex
+	first map[uuid.UUID]time.Time
+}
+
+var quotaRetries = &quotaTracker{first: map[uuid.UUID]time.Time{}}
+
+// note registra un rifiuto: ritorna se e' il primo e da quando dura.
+func (q *quotaTracker) note(id uuid.UUID, now time.Time) (first bool, since time.Time) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	// Le voci di job annullati in coda dopo un rifiuto non passano da clear: si scartano
+	// qui quelle piu' vecchie di 2 x QuotaRetryTimeout.
+	for k, t := range q.first {
+		if now.Sub(t) > 2*QuotaRetryTimeout {
+			delete(q.first, k)
+		}
+	}
+	since, ok := q.first[id]
+	if !ok {
+		q.first[id] = now
+		return true, now
+	}
+	return false, since
+}
+
+func (q *quotaTracker) clear(id uuid.UUID) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	delete(q.first, id)
+}
+
+// requeueOnQuota rimette in coda il job rifiutato per quota. Se il tempo massimo e' scaduto
+// (pod_quota_timeout) o il job non e' piu' in corso (pod_quota) non scrive nulla: ritorna
+// reason e causa e il chiamante chiude il job in failure con un'unica riga di log.
+// La riga di log (reason pod_quota) c'e' solo al primo rifiuto, per non riempire il log a 1 Hz.
+func (c RunnerConfig) requeueOnQuota(ctx context.Context, pool *pgxpool.Pool, now time.Time, job JobRow, pod Pod, cause error, ticket string, rep Reporter) (requeued bool, reason string, failCause error, err error) {
+	first, since := quotaRetries.note(job.ID, now)
+	if now.Sub(since) >= QuotaRetryTimeout {
+		quotaRetries.clear(job.ID)
+		return false, "pod_quota_timeout", fmt.Errorf("posto non liberato entro %s: %w", QuotaRetryTimeout, cause), nil
+	}
+	requeued, err = RequeueJob(ctx, pool, job.ID, rep)
+	if err != nil || !requeued {
+		quotaRetries.clear(job.ID)
+		return false, "pod_quota", cause, err
+	}
+	if first {
+		c.dispatchNote(ctx, pool, now, job, pod, slog.LevelWarn, "pod_quota",
+			"dispatch rinviato, job rimesso in coda", cause, ticket)
+	}
+	return true, "", nil, nil
+}
+
+// observePod aspetta l'esito del pod e solo dopo libera il posto. Il posto e' il job
+// in_progress che ClaimNext conta, mentre la ResourceQuota ci-jobs conta il pod finche'
+// esiste: se il job fosse chiuso prima dell'eliminazione, il job successivo (needs)
+// verrebbe preso quando la quota e' ancora piena (GIT-452). Quindi: Delete, attesa che il
+// pod sparisca (se l'adattatore sa dirlo, al piu' PodGoneTimeout), poi CompleteJob.
+// Se il pod non puo' essere eliminato il job si chiude comunque: il requeue per quota
+// in DispatchPods copre il resto.
 func observePod(ctx context.Context, pool *pgxpool.Pool, api PodWatcher, pod Pod, jobID uuid.UUID, rep Reporter) {
 	conclusion, err := api.Wait(ctx, pod.Namespace, pod.Name)
 	if err != nil || (conclusion != ConclusionSuccess && conclusion != ConclusionFailure && conclusion != ConclusionTimedOut) {
 		conclusion = ConclusionFailure
 	}
-	_ = CompleteJobReported(context.WithoutCancel(ctx), pool, time.Now().UTC(), jobID, conclusion, rep)
+	bg := context.WithoutCancel(ctx)
 	if deleter, ok := api.(PodDeleter); ok {
-		_ = deleter.Delete(context.WithoutCancel(ctx), pod.Namespace, pod.Name)
+		if derr := deleter.Delete(bg, pod.Namespace, pod.Name); derr == nil {
+			if insp, ok := api.(PodInspector); ok {
+				waitPodGone(bg, insp, pod)
+			}
+		}
+	}
+	_ = CompleteJobReported(bg, pool, time.Now().UTC(), jobID, conclusion, rep)
+}
+
+func waitPodGone(ctx context.Context, insp PodInspector, pod Pod) {
+	deadline := time.Now().Add(PodGoneTimeout)
+	for time.Now().Before(deadline) {
+		exists, err := insp.Exists(ctx, pod.Namespace, pod.Name)
+		if err == nil && !exists {
+			return
+		}
+		time.Sleep(podGonePoll)
 	}
 }
 
