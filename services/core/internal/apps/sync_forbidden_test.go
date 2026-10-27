@@ -50,7 +50,7 @@ func TestSyncApp_DeploymentForbiddenRiapplicaConRoleBinding(t *testing.T) {
 		forbidden = false
 		return false, nil, nil
 	})
-	c := New(nil, kube, nil, Config{ControllerServiceAccount: "gitstack/gitstack-core", WorkloadRole: "gitstack-app-workload"})
+	c := New(nil, kube, nil, Config{GateImage: testGateImage, ControllerServiceAccount: "gitstack/gitstack-core", WorkloadRole: "gitstack-app-workload"})
 	c.versionOf = func(context.Context, store.App) (store.AppVersion, error) { return v, nil }
 
 	c.syncApp(context.Background(), app)
@@ -76,7 +76,7 @@ func TestSyncApp_DeploymentLeggibileNonRiapplica(t *testing.T) {
 		Spec:       appsv1.DeploymentSpec{Replicas: &one},
 		Status:     appsv1.DeploymentStatus{Replicas: 1, UpdatedReplicas: 1, AvailableReplicas: 1},
 	})
-	c := New(nil, kube, nil, Config{ControllerServiceAccount: "gitstack/gitstack-core", WorkloadRole: "gitstack-app-workload"})
+	c := New(nil, kube, nil, Config{GateImage: testGateImage, ControllerServiceAccount: "gitstack/gitstack-core", WorkloadRole: "gitstack-app-workload"})
 	reapplied := false
 	c.versionOf = func(context.Context, store.App) (store.AppVersion, error) { reapplied = true; return v, nil }
 
