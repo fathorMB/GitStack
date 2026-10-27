@@ -103,10 +103,6 @@ func resourcesToAPI(c store.AppConfig) openapi.AppResources {
 	return store.AppResourcesToAPI(c)
 }
 
-func imageToAPI(i store.AppImage) openapi.AppImage {
-	return store.AppImageToAPI(i)
-}
-
 func (s *apiServer) appAddress(label *string) *string {
 	if label == nil || s.appsDomain == "" {
 		return nil
