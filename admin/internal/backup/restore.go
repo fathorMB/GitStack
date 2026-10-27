@@ -1,7 +1,6 @@
 package backup
 
 import (
-	"archive/tar"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -293,7 +292,7 @@ func (o *Options) restartNATS(ctx context.Context) error {
 
 // extractVerified estrae le voci rimanenti in stage verificando che siano
 // elencate nel manifest e che dimensione e SHA-256 combacino.
-func extractVerified(tr *tar.Reader, m *Manifest, stage string) error {
+func extractVerified(tr *archiveReader, m *Manifest, stage string) error {
 	want := map[string]FileSum{}
 	for _, f := range m.Files {
 		want[f.Name] = f
@@ -340,7 +339,7 @@ func extractVerified(tr *tar.Reader, m *Manifest, stage string) error {
 			return refused("archivio incompleto: manca %s", name)
 		}
 	}
-	return nil
+	return tr.verifyEnd()
 }
 
 func restoreVolume(tarPath, dst string) error {

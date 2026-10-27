@@ -614,7 +614,7 @@ func (o *Options) prune(dest string) {
 
 // openArchive apre l'archivio (decifrandolo se serve) e restituisce il
 // lettore del tar.
-func openArchive(path string, key []byte) (*tar.Reader, func(), error) {
+func openArchive(path string, key []byte) (*archiveReader, func(), error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, nil, err
@@ -642,5 +642,22 @@ func openArchive(path string, key []byte) (*tar.Reader, func(), error) {
 		}
 		return nil, nil, refused("archivio non leggibile (non è un archivio di gitstack backup): %v", err)
 	}
-	return tar.NewReader(gz), func() { _ = gz.Close(); _ = f.Close() }, nil
+	return &archiveReader{Reader: tar.NewReader(gz), gz: gz}, func() { _ = gz.Close(); _ = f.Close() }, nil
+}
+
+// archiveReader è il lettore del tar con il gzip sotto: dopo l'EOF del tar
+// verifyEnd legge il gzip fino in fondo, così CRC32/ISIZE del trailer (e
+// l'eventuale AEAD) sono controllati anche per i byte che il tar non guarda
+// (padding, blocchi finali).
+type archiveReader struct {
+	*tar.Reader
+	gz *gzip.Reader
+}
+
+// verifyEnd consuma il resto dello stream; ogni errore è un rifiuto.
+func (a *archiveReader) verifyEnd() error {
+	if _, err := io.Copy(io.Discard, a.gz); err != nil {
+		return refused("archivio danneggiato (stream gzip): %v", err)
+	}
+	return nil
 }
