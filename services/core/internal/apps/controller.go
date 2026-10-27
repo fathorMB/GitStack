@@ -149,12 +149,16 @@ type Controller struct {
 	cfg  Config
 	// siblings dà le app di un repo (H15); nil senza store (alcuni test): niente nomi interni.
 	siblings func(context.Context, uuid.UUID) ([]store.App, error)
+	// versionOf dà la versione attiva dell'app (reapply); senza store è un seam dei test.
+	versionOf func(context.Context, store.App) (store.AppVersion, error)
 
 	kick    chan struct{}
 	mu      sync.Mutex
 	running map[uuid.UUID]bool
 	// oomSeen: ultimo riavvio per OOM già registrato, per app e copia (mu).
 	oomSeen map[uuid.UUID]map[string]int32
+	// pullChecked: ultimo controllo della rotazione del pull secret, per app (mu).
+	pullChecked map[uuid.UUID]time.Time
 }
 
 // New crea il controller. dyn può essere nil: allora non crea le rotte Traefik.
@@ -164,6 +168,9 @@ func New(st *store.Store, kube kubernetes.Interface, dyn dynamic.Interface, cfg 
 		running: map[uuid.UUID]bool{}, oomSeen: map[uuid.UUID]map[string]int32{}}
 	if st != nil {
 		c.siblings = st.ListApps
+		c.versionOf = func(ctx context.Context, a store.App) (store.AppVersion, error) {
+			return st.GetAppVersion(ctx, a.ID, a.ActiveVersion)
+		}
 	}
 	return c
 }
@@ -347,6 +354,9 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 			return fmt.Errorf("credenziali del registry: %w", err)
 		}
 		if cred != nil {
+			if cred.Server == "" {
+				cred.Server = imageHost(v.Image.Reference)
+			}
 			if err := c.ensurePullSecret(ctx, ns, app.ID, cred); err != nil {
 				return fmt.Errorf("pull secret: %w", err)
 			}
@@ -525,9 +535,10 @@ func (c *Controller) ensurePullSecret(ctx context.Context, ns string, id uuid.UU
 	cfg, _ := json.Marshal(map[string]any{"auths": map[string]any{cred.Server: map[string]string{
 		"username": cred.Username, "password": cred.Password, "auth": auth}}})
 	want := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: pullSecretName, Namespace: ns, Labels: objectLabels(id)},
-		Type:       corev1.SecretTypeDockerConfigJson,
-		Data:       map[string][]byte{corev1.DockerConfigJsonKey: cfg},
+		ObjectMeta: metav1.ObjectMeta{Name: pullSecretName, Namespace: ns, Labels: objectLabels(id),
+			Annotations: map[string]string{annotationPullIssued: c.cfg.Now().UTC().Format(time.RFC3339)}},
+		Type: corev1.SecretTypeDockerConfigJson,
+		Data: map[string][]byte{corev1.DockerConfigJsonKey: cfg},
 	}
 	secrets := c.kube.CoreV1().Secrets(ns)
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -540,6 +551,10 @@ func (c *Controller) ensurePullSecret(ctx context.Context, ns string, id uuid.UU
 			return err
 		}
 		cur.Data = want.Data
+		if cur.Annotations == nil {
+			cur.Annotations = map[string]string{}
+		}
+		cur.Annotations[annotationPullIssued] = want.Annotations[annotationPullIssued]
 		_, err = secrets.Update(ctx, cur, metav1.UpdateOptions{})
 		return err
 	})
@@ -968,9 +983,14 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 	ns := Namespace(app.ID)
 	d, err := c.kube.AppsV1().Deployments(ns).Get(ctx, WorkloadName, metav1.GetOptions{})
 	if err != nil {
-		if apierrors.IsNotFound(err) {
+		// Dopo un restore su un cluster pulito il namespace può esistere (creato dal restore per i
+		// volumi) senza il RoleBinding di core: il Get dà Forbidden, non NotFound. Anche allora si
+		// riapplica, perché apply rifà namespace e RoleBinding prima del Deployment.
+		if apierrors.IsNotFound(err) || apierrors.IsForbidden(err) {
 			c.reapply(ctx, app)
+			return
 		}
+		c.cfg.Log.Warn("apps: deployment non leggibile", "app", app.ID, "err", err)
 		return
 	}
 	// Il modo di accesso può cambiare a deploy fermo (PUT .../access): la rotta e i suoi middleware
@@ -984,6 +1004,7 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 	}
 	// H3: i volumi tolti si eliminano quando la versione in servizio non li monta più.
 	c.pruneVolumes(ctx, app)
+	c.refreshPullSecret(ctx, app)
 	if app.Status == "failed" {
 		if v, err := c.st.GetAppVersion(ctx, app.ID, app.ActiveVersion); err == nil && v.State == "failed" {
 			return // il primo deploy è fallito: l'app resta «fallita» finché non ne arriva un altro
@@ -1030,7 +1051,7 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 // restore su un cluster pulito (H4), dove le app tornano dal database (versione, configurazione,
 // immagini nel registry ripristinato).
 func (c *Controller) reapply(ctx context.Context, app store.App) {
-	v, err := c.st.GetAppVersion(ctx, app.ID, app.ActiveVersion)
+	v, err := c.versionOf(ctx, app)
 	if !shouldReapply(app, v, err) {
 		return
 	}

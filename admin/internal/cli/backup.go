@@ -327,7 +327,20 @@ func runRestore(ctx context.Context, a *App, args []string) int {
 	// Con TLS internal o custom la CA e il certificato ripristinati su disco
 	// vanno pubblicati nel cluster; con insecure e letsencrypt niente.
 	if cfg.TLS == "internal" || cfg.TLS == "custom" {
-		o.PublishTLS = func(ctx context.Context) error { return a.publishTLS(ctx, o.ConfigDir) }
+		// GIT-425: containerd si fida della CA interna per il registry (registries.yaml, ca_file sul
+		// file della CA). Dopo il restore la CA è quella del backup: se è cambiata, o se cambia
+		// registries.yaml, k3s va riavviato.
+		tlsDir := a.tlsDirFor(path)
+		caBefore, _ := os.ReadFile(filepath.Join(tlsDir, "ca.crt"))
+		o.PublishTLS = func(ctx context.Context) error {
+			if err := a.publishTLS(ctx, o.ConfigDir); err != nil {
+				return err
+			}
+			if err := a.syncRegistryTrust(ctx, cfg, tlsDir, caBefore); err != nil {
+				return fmt.Errorf("fiducia di containerd nella CA interna del registry: %w (rilancia: gitstack config set host %s)", err, cfg.Host)
+			}
+			return nil
+		}
 	}
 	o.WaitServing = func(ctx context.Context) error { return a.waitServing(ctx, cfg) }
 	if err := backup.Restore(ctx, o, archive); err != nil {

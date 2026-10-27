@@ -25,7 +25,7 @@ func TestApps_SenzaSegretiConRbacDelChartSuK3d(t *testing.T) {
 	if kc == "" {
 		t.Skip(envTestKubeconfigCore + " non impostata: serve l'RBAC del chart su k3d (internal/apps/k3d-test.sh)")
 	}
-	e := newDeployEnvAs(t, true, kc)
+	e := newDeployEnvWith(t, true, deployEnvOptions{controllerKubeconfig: kc})
 	e.repo("norbac", true)
 	base := "/repos/alice/norbac/apps"
 	const image = "docker.io/traefik/whoami:v1.10.1"

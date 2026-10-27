@@ -21,7 +21,7 @@ name: api-contract
 #   go.mod/go.sum/go.work.sum di nessun modulo del workspace.
 on:
   push:
-    branches: [main]
+    branches: [main, 'integrate/**']
   pull_request:
 
 permissions:

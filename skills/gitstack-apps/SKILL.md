@@ -65,17 +65,18 @@ gs app secret list web
 gs app volume list wiki
 gs app volume add wiki data --mount /wiki/data --size 10GB
 gs app volume remove wiki data
+gs app volume backup wiki cache --exclude   # fuori dai backup (--include lo rimette)
 printf %s "$VALORE" | gs app secret set web DB_PASSWORD
 ```
 
 - `scale` è entro la quota dell'owner: con `insufficient_capacity` (409) il messaggio dice quanto manca. Non si scala in automatico.
-- I volumi (H3) hanno dimensione fissa, contano nella quota disco dell'owner (409 `insufficient_capacity` se non ci stanno) e fanno girare l'app in una sola copia. Entrano nei backup; per un database pianifica un dump dentro un volume, perché la copia dei file a database acceso può essere incoerente. `volume remove` elimina anche i dati.
+- I volumi (H3) hanno dimensione fissa, contano nella quota disco dell'owner (409 `insufficient_capacity` se non ci stanno) e fanno girare l'app in una sola copia. Entrano nei backup e nel restore di default (anche verso S3); `volume backup --exclude` (`app_volume_update`) ne toglie uno, e il volume torna vuoto dopo un restore. L'API dà `includeInBackup` e `looksLikeDatabase`. Per un database pianifica un dump dentro un volume, perché la copia dei file a database acceso può essere incoerente. `volume remove` elimina anche i dati.
 - I segreti non si rileggono: `secret list` mostra solo i nomi. Passa il valore dallo standard input, mai in un argomento che resta nella cronologia.
 - Con `--json` ogni comando stampa JSON e gli errori escono su stderr in JSON. Codici di uscita: 0 ok, 1 errore o deploy fallito, 2 uso errato, 4 non autenticato, 5 permesso negato, 6 non trovato.
 
 ## Con MCP
 
-Gli strumenti sono gli stessi dell'API: `app_list`, `app_get`, `app_logs`, `app_deploy`, `app_rollback`, `app_restart`, `app_scale`, `app_version_list`, `app_volume_list` (lettura o `write`), mentre `app_create`, `app_delete`, `app_set_access`, `app_access_member_add` e `app_access_member_remove`, `app_volume_create` e `app_volume_delete` richiedono `admin` e sono annotati come **distruttivi**: il client può chiedere conferma. Il server non chiede conferme da solo. `app_deploy` risponde 202: leggi l'esito con `app_version_list` o `app_get` finché lo stato non è `serving` o `failed`.
+Gli strumenti sono gli stessi dell'API: `app_list`, `app_get`, `app_logs`, `app_deploy`, `app_rollback`, `app_restart`, `app_scale`, `app_version_list`, `app_volume_list` (lettura o `write`), mentre `app_create`, `app_delete`, `app_set_access`, `app_access_member_add` e `app_access_member_remove`, `app_volume_create`, `app_volume_update` e `app_volume_delete` richiedono `admin` e sono annotati come **distruttivi**: il client può chiedere conferma. Il server non chiede conferme da solo. `app_deploy` risponde 202: leggi l'esito con `app_version_list` o `app_get` finché lo stato non è `serving` o `failed`.
 
 ## Divieto di `--yes` (G8)
 

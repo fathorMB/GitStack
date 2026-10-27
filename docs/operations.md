@@ -351,6 +351,50 @@ the unique index on `apps.normalized_host` (`pkg/names`: `AppAddress`,
 
    - **curl:** `curl --cacert ca.crt https://<host>/api/healthz`
 
+#### Registry and the internal CA: how the cluster trusts it (GIT-425)
+
+Apps whose image lives in the repo's registry (`<host>/<owner>/<repo>/<image>:<tag>`)
+are pulled by containerd, the container runtime of k3s, not by a pod. With
+`--tls internal` (the default) the registry certificate is signed by the internal
+CA, which containerd does not know. Two things make the pull work with no manual
+step:
+
+- **Trust in the CA.** `install.sh` writes `/etc/rancher/k3s/registries.yaml` with,
+  for every host of the instance (`--host`, the public host), a `configs` entry
+  whose `tls.ca_file` is `/etc/gitstack/tls/ca.crt`. There is **one** CA file, on
+  disk, and containerd reads it at pull time: the trust follows the file. The same
+  `configs` section also holds the `--registry-mirror` / `--ca-bundle` entries
+  (the mirror host keeps its own `tls.ca_file`, `/etc/gitstack/network/ca.crt`).
+  With a customer certificate (`--tls-cert`) or Let's Encrypt there is nothing to
+  add: the CA is a public or system one (a corporate CA goes in with `--ca-bundle`).
+  `gitstack config set network` and `gitstack config set host` regenerate the same
+  file, so the entries are never lost; a new host restarts k3s once.
+- **Credentials.** `core` creates, for each app with a registry image, a
+  `registry-pull` Secret (`kubernetes.io/dockerconfigjson`) in the app's namespace,
+  and the Deployment references it in `imagePullSecrets`. The password is a
+  read-only token of that app, signed by `core` with the gateway service secret
+  (`GITSTACK_SERVICE_SECRET_GATEWAY`): it belongs to no user, grants `packages: read`
+  on the registry of the app's repo only (also when the repo is private), it is
+  valid 30 days and `core` renews it in the Secret after 10 days, with no
+  redeploy. It stops working when the app or its repo is deleted. Rotating the
+  gateway secret with the two-key list (`new,old`) keeps the Secrets valid until
+  the next renewal.
+
+**After a `gitstack restore`.** The restore puts back the CA of the backup in
+`/etc/gitstack/tls/ca.crt`. `registries.yaml` already points at that file, so
+containerd follows it; to be sure it picks up the new CA the restore restarts k3s
+whenever the CA on disk changed, or `registries.yaml` had to change (a different
+host), and waits for the node to be Ready. Services are already back by then, so
+apps with a registry image may need a few seconds before the next pull succeeds.
+If the restart fails, the restore says so; fix k3s (`journalctl -u k3s`) and run
+`sudo gitstack config set host <host>`, which rewrites `registries.yaml` and
+restarts k3s again. An instance installed before this change gets the entries by
+running `install.sh` again (it restarts k3s once).
+
+To check by hand on the server: `sudo grep -A3 '"<host>"' /etc/rancher/k3s/registries.yaml`
+and `sudo k3s crictl pull <host>/<owner>/<repo>/<image>:<tag>` (a private repo
+needs `--creds` from a user token with `read:registry`).
+
 ### Admin password
 
 On first startup `identity` creates the `admin` user with a randomly generated
@@ -873,10 +917,71 @@ sudo gitstack backup --dest /mnt/backup/gitstack --retention 14
 | `database.sql` | `pg_dump` of the `identity` and `core` schemas |
 | `git-data.tar` | All Git repositories (the `git-data` volume) |
 | `attachments.tar` | Issue attachments (only if the directory exists) |
+| `app-volumes/<app-id>/<volume>.tar` | One entry per persistent volume of a hosted app that is **in backups** (the default; see [Volumes and databases](#volumes-and-databases)). The manifest lists them under `app_volumes` |
 | `secrets.json` | Kubernetes secrets used by GitStack (certificate data, SSH host keys, OIDC keys, etc.) |
 | `config/` | Copy of the contents of `/etc/gitstack/` (CA certificate, CA key, configuration files) |
 
 A `gitstack-backup-*.sha256` sidecar file is written next to each archive.
+
+### Volumes and databases
+
+Persistent volumes of hosted apps (v3, rule H3) are **in the backup by default**, to the local
+destination and to S3 alike (N7, same archive, same encryption). The app keeps running while its
+volumes are copied: the read-only window only stops `gateway` and `git`.
+
+**Leaving a volume out.** Every volume has its own "In backups" switch in the app's
+*Settings → Volumes & resources* page (repository admins), or:
+
+```sh
+curl -X PATCH https://HOST/api/v1/repos/OWNER/REPO/apps/APP/volumes/VOLUME \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"includeInBackup": false}'
+```
+
+An excluded volume is not in the archive and comes back **empty** after a restore. The choice is
+about the data, not the app configuration: it creates no version, makes no deploy, and a rollback
+does not change it. `GET .../volumes` returns `includeInBackup` for each volume.
+
+**Space estimate.** Before the read-only window `gitstack backup` prints an estimate of the data
+it will copy (repositories, attachments, CI logs and, separately, the data in the app volumes) and
+the free space needed in the backup directory (twice the data: the working copy and the archive).
+If the free space is lower it prints a warning and goes on, because the figure is an upper bound
+(the archive is compressed and registry images that are not selected stay out). The sizes counted
+are the bytes used in each volume, not the size declared when the volume was created.
+
+**Databases inside a container: the copy may not be consistent.** The volume is copied while the
+app is running. For a database whose files are in a volume (PostgreSQL, MySQL, MongoDB, SQLite
+with writes in flight...) the copy can capture files from different moments and may not start
+after a restore. The UI and the API warn about it: `looksLikeDatabase` is true when the mount
+path, the volume name or the image looks like a database, and the "Volumes & resources" page shows
+"Looks like a database". The supported way to protect such data is a **dump into another volume**:
+
+1. Add a second volume to the app, for example `dumps` mounted at `/dumps`, and keep it in backups.
+2. Schedule a dump that writes into it. With PostgreSQL, a cron job or a sidecar-less loop in the
+   same image:
+
+   ```sh
+   # every night at 03:00, keep 7 days
+   0 3 * * * pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" | gzip > /dumps/db-$(date +\%F).sql.gz \
+     && find /dumps -name 'db-*.sql.gz' -mtime +7 -delete
+   ```
+
+   MySQL/MariaDB: `mysqldump --single-transaction`. MongoDB: `mongodump --archive=/dumps/db.archive --gzip`.
+   SQLite: `sqlite3 db.sqlite ".backup /dumps/db.sqlite"`.
+3. Turn **In backups** off for the volume that holds the live database files (optional: it saves
+   space, and avoids carrying an inconsistent copy), and leave it on for the one with the dumps.
+4. After a restore, start the database from the dump: restore it into a fresh data directory
+   (`psql`, `mysql`, `mongorestore`) instead of trusting the copied files.
+
+GitStack v3 has no managed databases and does not run the dump for you.
+
+**Restore.** `gitstack restore` puts each volume back where it was and the app restarts with its
+data. On a clean machine it first recreates the app's namespace, the volume and the claim (same
+labels and size as `core` would create), writes the data and lets `core` re-apply the app,
+together with the images in use that the archive carries (rule H4). An app that is running on
+the target is scaled to zero while its volume is written; `core` brings the copies back when it
+starts again. An archive with app volumes cannot be restored on a cluster that does not support
+them: the command stops before touching anything.
 
 ### Retention
 
@@ -1082,6 +1187,7 @@ services.
    ripristino del database (in una sola transazione)
    ripristino dei repo (git-data)
    ripristino degli allegati
+   ripristino dei volumi delle app (1)
    ripristino dei Secret
    ripristinati 7 file di configurazione (config.yaml resta quello della nuova installazione)
    riavvio NATS per le credenziali ripristinate
@@ -1098,6 +1204,10 @@ services.
    `kubectl rollout restart statefulset/<release>-nats`, then core and
    gateway: superseded by this fix, GIT-297). PostgreSQL is not restarted (its
    Secret is not restored) and the web reads no Secret.
+
+   With `--tls internal`, after publishing the restored CA the restore also
+   realigns containerd's trust in it (`registries.yaml`) and restarts k3s if the
+   CA or the file changed: see "Registry and the internal CA" above.
 
 4. Verify with `gitstack status` that all services are ready (exit code `0`).
 
@@ -1831,7 +1941,7 @@ so it fails as a non-root user with a permission error.
 | `/etc/gitstack/config.yaml` | Main configuration (mode `0600`) |
 | `/etc/gitstack/tls/` | CA certificate, CA key, server certificate (internal CA mode) |
 | `/etc/gitstack/network/ca.crt` | Corporate CA copy (only with `--ca-bundle`) |
-| `/etc/rancher/k3s/registries.yaml` | k3s registry mirror (mode `0600`, may hold the mirror password) |
+| `/etc/rancher/k3s/registries.yaml` | k3s registry mirror and trust in the internal CA for the registry host (mode `0600`, may hold the mirror password) |
 | `/etc/systemd/system/k3s.service.d/10-gitstack-network.conf` | Proxy for k3s and containerd |
 | `deploy/postgres-prepare.sql` | Script for the DBA: database and user for an external PostgreSQL |
 | `/etc/gitstack/backup-state.json` | Last backup status written by `gitstack backup` |
@@ -2482,3 +2592,9 @@ Il periodo è valido solo se tutti i quattro criteri valgono: nessuna perdita di
 
 *Guida operativa — install.sh (T-09 di M-08 [c_8458909a21d9035f]),
 decisioni D17–D19 [c_1d1d61aca3dea601]*
+
+## Verifica GitHub dei rami di integrazione
+
+I push su `integrate/**` avviano i workflow GitHub CI, api-contract, docs e smoke con le verifiche previste sui push a main. I job di pubblicazione e gli upload di artifact sono esclusi da questi rami. Il workflow install resta limitato ai tag, alla pianificazione e all'avvio manuale.
+
+GL-78 deve pubblicare su origin il ramo `integrate/MR-n` e attendere l'esito delle verifiche prima di `propose_merge`. Fino a quel cambiamento del motore, questi trigger non ricevono push automatici. Il giro sui runner GitHub aggiunge una stima di 30–40 minuti per reintegro.

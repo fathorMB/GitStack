@@ -13,6 +13,7 @@ vi.mock('../../../lib/appsApi', () => ({
   fetchAppVersions: vi.fn(),
   addAppVolume: vi.fn(),
   removeAppVolume: vi.fn(),
+  setVolumeInBackup: vi.fn(),
   saveAppResources: vi.fn(),
   updateApp: vi.fn(),
 }));
@@ -27,7 +28,15 @@ const quota = {
   used: { cpuMillis: 500, memoryBytes: GB, diskBytes: 15 * GB },
   warning: false,
 };
-const vol = (name: string, mountPath: string, size: number) => ({ name, mountPath, sizeBytes: size * GB, version: 3, createdAt: '2026-10-26T10:00:00Z' });
+const vol = (name: string, mountPath: string, size: number, includeInBackup = true) => ({
+  name,
+  mountPath,
+  sizeBytes: size * GB,
+  version: 3,
+  createdAt: '2026-10-26T10:00:00Z',
+  includeInBackup,
+  looksLikeDatabase: /postgres|mysql|mongo/.test(mountPath),
+});
 const list = (...items: ReturnType<typeof vol>[]): AppVolumeList => ({ items, quota });
 const withVersion = (restricted: boolean) => ({ items: [makeVersion({ number: 42, state: 'serving', config: { variables: {}, secretNames: [], resources: makeApp().resources, copies: 1, restricted } })], total: 1 });
 
@@ -68,6 +77,34 @@ describe('AppVolumesPage (H3, H9, H11)', () => {
     mount();
     expect(await screen.findByText(/Looks like a database/)).toBeInTheDocument();
     expect(screen.getByText(/Schedule a dump into the/)).toHaveTextContent('data');
+    // «How to» porta alla guida al dump di docs/operations.md (D19).
+    expect(screen.getByRole('link', { name: 'How to' })).toHaveAttribute('href', expect.stringContaining('docs/operations.md#volumes-and-databases'));
+  }, T);
+
+  it("l'avviso database viene dall'API, non dal solo percorso", async () => {
+    vi.mocked(api.fetchAppVolumes).mockResolvedValue(list({ ...vol('data', '/wiki/data', 10), looksLikeDatabase: true }));
+    mount();
+    expect(await screen.findByText(/Looks like a database/)).toBeInTheDocument();
+  }, T);
+
+  it("l'interruttore dei backup riflette includeInBackup e lo cambia (D19)", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchAppVolumes).mockResolvedValueOnce(list(vol('data', '/wiki/data', 10), vol('cache', '/cache', 1, false))).mockResolvedValue(list(vol('data', '/wiki/data', 10, false), vol('cache', '/cache', 1, false)));
+    vi.mocked(api.setVolumeInBackup).mockResolvedValue({} as never);
+    mount();
+    const rows = within(await screen.findByRole('list', { name: 'Volumes' }));
+    expect(rows.getByRole('switch', { name: 'data in backups' })).toBeChecked();
+    expect(rows.getByRole('switch', { name: 'cache in backups' })).not.toBeChecked();
+    await user.click(rows.getByRole('switch', { name: 'data in backups' }));
+    await waitFor(() => expect(api.setVolumeInBackup).toHaveBeenCalledWith('acme', 'handbook', 'web', 'data', false));
+    await waitFor(() => expect(within(screen.getByRole('list', { name: 'Volumes' })).getByRole('switch', { name: 'data in backups' })).not.toBeChecked());
+  }, T);
+
+  it("senza admin l'interruttore dei backup è bloccato", async () => {
+    vi.mocked(api.fetchAppVolumes).mockResolvedValue(list(vol('data', '/wiki/data', 10)));
+    mount(undefined, 'write');
+    const rows = within(await screen.findByRole('list', { name: 'Volumes' }));
+    expect(rows.getByRole('switch', { name: 'data in backups' })).toBeDisabled();
   }, T);
 
   it('copia unica: le copie sono fisse a 1 quando ci sono volumi', async () => {

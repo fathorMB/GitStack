@@ -33,6 +33,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/outbox"
 	"github.com/fathorMB/GitStack/services/core/internal/repopurge"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
+	"github.com/fathorMB/GitStack/services/core/internal/trust"
 	"github.com/fathorMB/GitStack/services/core/internal/webhooks"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nats-io/nats.go/jetstream"
@@ -495,7 +496,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 				Addr: cfg.CIGatewayAddr,
 				Handler: httpserver.NewCIGateway(pool, rd, httpserver.CIGatewayConfig{
 					ArchiveURL: cfg.CIGatewayURL, Logs: ciLogs, Blobs: ciBlobs, SpoolDir: cfg.CIArtifactsDir, Log: logger, Keys: keys,
-					Options: routerOpts,
+					Options: routerOpts, AppPullKeys: trust.ParseKeys(cfg.GatewaySecret),
 				}),
 				ReadHeaderTimeout: 5 * time.Second,
 			}

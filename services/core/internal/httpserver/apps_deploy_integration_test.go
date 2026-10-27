@@ -247,8 +247,18 @@ func newDeployEnv(t *testing.T) *appsDeployEnv { return newDeployEnvOpt(t, true)
 // newDeployEnvOpt: runController=false non avvia ctl.Run, per i test che creano
 // namespace gestiti fuori dal DB.
 func newDeployEnvOpt(t *testing.T, runController bool) *appsDeployEnv {
-	t.Helper()
-	return newDeployEnvAs(t, runController, "")
+	return newDeployEnvWith(t, runController, deployEnvOptions{})
+}
+
+// deployEnvOptions: ritocchi per i test che provano un pezzo del cluster in più (GIT-425).
+type deployEnvOptions struct {
+	// tune ritocca la Config del controller prima di crearlo.
+	tune func(*apps.Config)
+	// publicURL è l'URL pubblico di GitStack (e quindi l'host del registry); vuoto: git.example.com.
+	publicURL string
+	// controllerKubeconfig (GIT-424): se non è vuoto il controller (e solo lui) parla al cluster con
+	// quel kubeconfig; le asserzioni e la pulizia dei test restano con l'amministratore.
+	controllerKubeconfig string
 }
 
 // envTestKubeconfigCore (GIT-424): kubeconfig col token del ServiceAccount di core, con l'RBAC
@@ -263,10 +273,9 @@ const (
 	envTestWorkloadRole = "GITSTACK_TEST_WORKLOAD_ROLE"
 )
 
-// newDeployEnvAs: se controllerKubeconfig non è vuoto, il controller (e solo lui) parla al
-// cluster con quel kubeconfig; le asserzioni e la pulizia dei test restano con l'amministratore.
-func newDeployEnvAs(t *testing.T, runController bool, controllerKubeconfig string) *appsDeployEnv {
+func newDeployEnvWith(t *testing.T, runController bool, opt deployEnvOptions) *appsDeployEnv {
 	t.Helper()
+	controllerKubeconfig := opt.controllerKubeconfig
 	kc := os.Getenv("GITSTACK_TEST_KUBECONFIG")
 	if kc == "" {
 		t.Skip("GITSTACK_TEST_KUBECONFIG non impostata: serve un cluster k3d (internal/apps/k3d-test.sh)")
@@ -314,7 +323,7 @@ func newDeployEnvAs(t *testing.T, runController bool, controllerKubeconfig strin
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := apps.Config{
+	appsCfg := apps.Config{
 		AppsDomain: "apps.example.com", ProgressTimeout: 75 * time.Second, FailureGrace: 6 * time.Second,
 		PollInterval: 500 * time.Millisecond, LoopInterval: time.Second, SyncEvery: 2 * time.Second,
 		Secrets: keys,
@@ -324,16 +333,23 @@ func newDeployEnvAs(t *testing.T, runController bool, controllerKubeconfig strin
 	if controllerKubeconfig != "" {
 		// GIT-424: come in produzione, il controller si lega al ruolo modello nel namespace di ogni
 		// app; senza questi due campi ensureRoleBinding non crea il RoleBinding.
-		cfg.ControllerServiceAccount = os.Getenv(envTestCoreSA)
-		cfg.WorkloadRole = os.Getenv(envTestWorkloadRole)
-		if cfg.ControllerServiceAccount == "" || cfg.WorkloadRole == "" {
+		appsCfg.ControllerServiceAccount = os.Getenv(envTestCoreSA)
+		appsCfg.WorkloadRole = os.Getenv(envTestWorkloadRole)
+		if appsCfg.ControllerServiceAccount == "" || appsCfg.WorkloadRole == "" {
 			t.Fatalf("%s e %s vanno impostate insieme a %s", envTestCoreSA, envTestWorkloadRole, envTestKubeconfigCore)
 		}
 	}
-	ctl := apps.New(store.New(pool), ctlKube, ctlDyn, cfg)
+	if opt.tune != nil {
+		opt.tune(&appsCfg)
+	}
+	publicURL := opt.publicURL
+	if publicURL == "" {
+		publicURL = "https://git.example.com"
+	}
+	ctl := apps.New(store.New(pool), ctlKube, ctlDyn, appsCfg)
 	base.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
 		httpserver.WithRepoIdentity(id), httpserver.WithReadableLister(id), httpserver.WithGit(git),
-		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "https://git.example.com"}),
+		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: publicURL}),
 		httpserver.WithAppsDomain("apps.example.com"), httpserver.WithClock(clock.Now), httpserver.WithWebhooks(httpserver.WebhookConfig{Keys: keys}), httpserver.WithAppController(ctl))
 	env := &appsDeployEnv{appsEnv: &appsEnv{issuesEnv: base, clock: clock, git: git}, kube: kube, dyn: dyn}
 	ctx, cancel := context.WithCancel(context.Background())

@@ -39,6 +39,7 @@ type fakeCluster struct {
 	registryRepos  string // output della query dei repo con includeInBackup
 	inUse          string // output della query delle immagini in uso dalle app (repo|owner|repo|rif|digest)
 	dumpArgs       string // comando di pg_dump
+	appVolumes     string // output della query dei volumi delle app (app|repo|owner|repo|app|volume|byte)
 }
 
 func (f *fakeCluster) note(s string) { f.mu.Lock(); f.calls = append(f.calls, s); f.mu.Unlock() }
@@ -78,6 +79,11 @@ func (f *fakeCluster) PGExec(ctx context.Context, stdin io.Reader, stdout io.Wri
 	if strings.Contains(strings.Join(args, " "), "repo_package_settings") {
 		// Elenco dei repo con le immagini nel backup (GIT-325): una lettura, non entra nelle chiamate.
 		_, err := io.WriteString(stdout, f.registryRepos)
+		return err
+	}
+	if strings.Contains(strings.Join(args, " "), "core.app_volumes") {
+		// Volumi delle app inclusi nel backup (H3, D19): una riga per volume.
+		_, err := io.WriteString(stdout, f.appVolumes)
 		return err
 	}
 	if strings.Contains(strings.Join(args, " "), "core.app_versions") {

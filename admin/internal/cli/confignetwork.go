@@ -118,25 +118,44 @@ func q(s string) string {
 }
 
 // renderRegistries produce registries.yaml di k3s: il mirror vale per ogni
-// immagine ("*"), comprese quelle di sistema di k3s. Vuoto = nessun mirror.
-// Lo stesso formato lo scrive install.sh (write_registries_yaml).
-func renderRegistries(n config.Network, caPath string) string {
-	if n.RegistryMirror == "" {
+// immagine ("*"), comprese quelle di sistema di k3s, e (GIT-425) containerd si fida della CA
+// interna per gli host del registry di GitStack (trust). Vuoto = niente da scrivere.
+// Lo stesso formato lo scrive install.sh (render_registries_yaml).
+func renderRegistries(n config.Network, caPath string, trust registryTrust) string {
+	mirror := n.RegistryMirror
+	hosts := trust.hosts()
+	if mirror == "" && len(hosts) == 0 {
 		return ""
 	}
 	var b strings.Builder
 	b.WriteString("# Scritto da GitStack (install.sh o gitstack config set network): non modificarlo a mano.\n")
-	b.WriteString("mirrors:\n  \"*\":\n    endpoint:\n      - " + q(n.RegistryMirror) + "\n")
-	hasAuth := n.RegistryUsername != ""
-	hasCA := n.CABundle != "" && strings.HasPrefix(n.RegistryMirror, "https://")
+	mirrorHost := ""
+	if mirror != "" {
+		mirrorHost = mirrorAuthority(mirror)
+		b.WriteString("mirrors:\n  \"*\":\n    endpoint:\n      - " + q(mirror) + "\n")
+	}
+	hasAuth := mirror != "" && n.RegistryUsername != ""
+	hasCA := mirror != "" && n.CABundle != "" && strings.HasPrefix(mirror, "https://")
+	wroteConfigs := false
 	if hasAuth || hasCA {
-		b.WriteString("configs:\n  " + q(mirrorAuthority(n.RegistryMirror)) + ":\n")
+		b.WriteString("configs:\n  " + q(mirrorHost) + ":\n")
+		wroteConfigs = true
 		if hasAuth {
 			b.WriteString("    auth:\n      username: " + q(n.RegistryUsername) + "\n      password: " + q(n.RegistryPassword) + "\n")
 		}
 		if hasCA {
 			b.WriteString("    tls:\n      ca_file: " + q(caPath) + "\n")
 		}
+	}
+	for _, h := range hosts {
+		if h == mirrorHost {
+			continue // una chiave sola per host: vale la configurazione del mirror
+		}
+		if !wroteConfigs {
+			b.WriteString("configs:\n")
+			wroteConfigs = true
+		}
+		b.WriteString("  " + q(h) + ":\n    tls:\n      ca_file: " + q(trust.CAFile) + "\n")
 	}
 	return b.String()
 }
@@ -520,7 +539,7 @@ func runConfigSetNetwork(ctx context.Context, a *App, args []string) int {
 		a.errorf("config set network: CA di sistema: %v", err)
 		return ExitUnexpected
 	}
-	regCh, err := writeIfChanged(paths.registries(), renderRegistries(n, paths.caCopy()), 0o600)
+	regCh, err := writeIfChanged(paths.registries(), renderRegistries(n, paths.caCopy(), a.registryTrust(cfg, a.tlsDirFor(path))), 0o600)
 	if err != nil {
 		a.errorf("config set network: registries.yaml: %v", err)
 		return ExitUnexpected

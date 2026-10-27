@@ -94,10 +94,13 @@ type Config struct {
 	// ExternalOnly è il gateway esposto fuori dal cluster (GIT-329): FetchTask accetta solo il
 	// token di un runner registrato (gsr_), mai il biglietto di un pod interno (gsq_).
 	ExternalOnly bool
-	PollTimeout  time.Duration
-	PollEvery    time.Duration
-	Now          func() time.Time
-	Log          *slog.Logger
+	// AppPullKeys: chiavi (elenco «nuova,vecchia» del segreto del gateway) con cui si verificano i
+	// token di pull delle app (GIT-425). Vuote: quei token non valgono.
+	AppPullKeys []string
+	PollTimeout time.Duration
+	PollEvery   time.Duration
+	Now         func() time.Time
+	Log         *slog.Logger
 }
 
 type gateway struct {
