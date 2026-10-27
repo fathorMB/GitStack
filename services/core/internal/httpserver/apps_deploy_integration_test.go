@@ -205,11 +205,21 @@ func waitPodIP(t *testing.T, kube kubernetes.Interface, ns, name string) string 
 	return ""
 }
 
+// waitPodLogTimeout contiene il cancello (fino a 60 s), il pull dell'immagine e la finestra dei probe
+// positivi (probePositiveWindowSeconds, più un ultimo tentativo di al più ~6 s).
+const waitPodLogTimeout = 240 * time.Second
+
 func waitPodLog(t *testing.T, kube kubernetes.Interface, ns, name string) string {
 	t.Helper()
-	deadline := time.Now().Add(180 * time.Second)
+	deadline := time.Now().Add(waitPodLogTimeout)
 	for time.Now().Before(deadline) {
 		p, err := kube.CoreV1().Pods(ns).Get(context.Background(), name, metav1.GetOptions{})
+		if err == nil && p.Status.Phase == corev1.PodRunning {
+			// GIT-472: al primo KO di un probe positivo il dump del nodo si prende a pod ancora vivo.
+			if raw, lerr := kube.CoreV1().Pods(ns).GetLogs(name, &corev1.PodLogOptions{}).DoRaw(context.Background()); lerr == nil && strings.Contains(string(raw), probeFirstKOMarker) {
+				diagNodeRules(t, kube, ns, name)
+			}
+		}
 		if err == nil && (p.Status.Phase == corev1.PodSucceeded || p.Status.Phase == corev1.PodFailed) {
 			if p.Status.Phase != corev1.PodSucceeded {
 				log, _ := kube.CoreV1().Pods(ns).GetLogs(name, &corev1.PodLogOptions{}).DoRaw(context.Background())
@@ -224,7 +234,15 @@ func waitPodLog(t *testing.T, kube kubernetes.Interface, ns, name string) string
 			if err != nil {
 				t.Fatal(err)
 			}
-			return strings.TrimSpace(string(b))
+			var kept []string
+			for _, line := range strings.Split(string(b), "\n") {
+				if strings.HasPrefix(line, probeMarkerPrefix) {
+					t.Logf("%s/%s: %s", ns, name, strings.TrimSpace(line))
+					continue
+				}
+				kept = append(kept, line)
+			}
+			return strings.TrimSpace(strings.Join(kept, "\n"))
 		}
 		time.Sleep(time.Second)
 	}
