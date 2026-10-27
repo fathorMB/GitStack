@@ -13,11 +13,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/google/uuid"
-	openapi_types "github.com/oapi-codegen/runtime/types"
-
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
+	"github.com/google/uuid"
 )
 
 // App di un repo (v3-a, GIT-342, H5/H8): creazione, lettura, modifica, eliminazione e storico
@@ -94,29 +92,15 @@ func (a openapiActor) store() *store.AppActor {
 }
 
 func actorToAPI(a *store.AppActor) *openapi.AppActor {
-	if a == nil {
-		return nil
-	}
-	return &openapi.AppActor{Id: openapi_types.UUID(a.ID), Username: a.Username, Type: openapi.AppActorType(a.Type)}
+	return store.AppActorToAPI(a)
 }
 
 func healthToAPI(h *store.AppHealthCheck) *openapi.AppHealthCheck {
-	if h == nil {
-		return nil
-	}
-	return &openapi.AppHealthCheck{Path: h.Path, IntervalSeconds: h.IntervalSeconds, TimeoutSeconds: h.TimeoutSeconds}
+	return store.AppHealthToAPI(h)
 }
 
 func resourcesToAPI(c store.AppConfig) openapi.AppResources {
-	return openapi.AppResources{
-		Guaranteed: openapi.AppResourceAmount{CpuMillis: c.Guaranteed.CPUMillis, MemoryBytes: c.Guaranteed.MemoryBytes},
-		Limit:      openapi.AppResourceAmount{CpuMillis: c.Limit.CPUMillis, MemoryBytes: c.Limit.MemoryBytes},
-	}
-}
-
-func imageToAPI(i store.AppImage) openapi.AppImage {
-	return openapi.AppImage{Reference: i.Reference, Digest: i.Digest, Source: openapi.AppImageSource(i.Source),
-		Verified: i.Verified, SignedBy: i.SignedBy, RunsAsRoot: i.RunsAsRoot}
+	return store.AppResourcesToAPI(c)
 }
 
 func (s *apiServer) appAddress(label *string) *string {
@@ -128,23 +112,11 @@ func (s *apiServer) appAddress(label *string) *string {
 }
 
 func (s *apiServer) appToAPI(a store.App) openapi.App {
-	status, reason := a.Effective()
-	ready := a.ReadyCopies
-	if status == "stopped" {
-		ready = 0
-	}
-	out := openapi.App{
-		Id: openapi_types.UUID(a.ID), Name: a.Name, Owner: a.Owner, Repo: a.RepoName,
-		Status: openapi.AppStatus(status), Access: openapi.AppAccessMode(a.Access),
-		Address: s.appAddress(a.AddressLabel), Image: imageToAPI(a.Image), ActiveVersion: a.ActiveVersion,
-		Port: a.Config.Port, HealthCheck: healthToAPI(a.Config.HealthCheck), Copies: a.Config.Copies, ReadyCopies: ready,
-		Resources: resourcesToAPI(a.Config), CreatedAt: a.CreatedAt, CreatedBy: actorToAPI(a.CreatedBy), UpdatedAt: a.UpdatedAt,
-		Volumes: volumesToAPI(a.Volumes, a.Image.Reference),
-	}
-	if reason != nil {
-		sr := openapi.AppStoppedReason(*reason)
-		out.StoppedReason = &sr
-	}
+	out := store.AppToAPI(a)
+	out.Address = s.appAddress(a.AddressLabel)
+	out.Port = a.Config.Port
+	out.HealthCheck = healthToAPI(a.Config.HealthCheck)
+	out.Volumes = volumesToAPI(a.Volumes, a.Image.Reference)
 	if a.RunningPreviousVer {
 		t := true
 		out.RunningPreviousVersion = &t
@@ -159,20 +131,15 @@ func (s *apiServer) appToAPI(a store.App) openapi.App {
 }
 
 func (s *apiServer) versionToAPI(v store.AppVersion, active, previous int) openapi.AppVersion {
+	out := store.AppVersionToAPI(v, active, previous)
 	cfg := openapi.AppVersionConfig{
 		Port: v.Config.Port, HealthCheck: healthToAPI(v.Config.HealthCheck), Variables: v.Config.Variables,
 		Resources: resourcesToAPI(v.Config), Copies: v.Config.Copies, Restricted: &v.Config.Restricted,
 		SecretNames: []openapi.AppEnvName{}, Volumes: volumeSpecsToAPI(v.Config.Volumes),
 	}
 	cfg.SecretNames = append(cfg.SecretNames, v.Config.SecretNames...)
-	return openapi.AppVersion{
-		Number: v.Number, Trigger: openapi.AppVersionTrigger(v.Trigger), State: openapi.AppDeployState(v.State),
-		StateReason: v.StateReason, Image: imageToAPI(v.Image),
-		// Il registro dei tag non è letto qui: finché non lo dice la pulizia (RG2) l'immagine è disponibile.
-		ImageAvailable: true, InBackup: v.Number == active || v.Number == previous,
-		Branch: v.Branch, CommitSha: v.CommitSha, Summary: v.Summary, RollbackOf: v.RollbackOf,
-		Config: &cfg, CreatedAt: v.CreatedAt, CreatedBy: actorToAPI(v.CreatedBy),
-	}
+	out.Config = &cfg
+	return out
 }
 
 // previousVersion è la versione che precede l'attiva (anch'essa sempre nei backup, H4).
