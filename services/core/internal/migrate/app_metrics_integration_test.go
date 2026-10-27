@@ -66,7 +66,7 @@ func TestMigration0043_AppMetrics(t *testing.T) {
 	}
 
 	// Il down della 0043 e della 0044 (sopra di essa) toglie la tabella.
-	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
 		t.Fatalf("down 0043: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.app_metric_samples`).Scan(&n); err == nil {

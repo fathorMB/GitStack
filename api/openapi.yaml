@@ -10318,6 +10318,31 @@ paths:
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
   /repos/{owner}/{repo}/apps/{app}/volumes/{volume}:
     parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/AppParam"}, {$ref: "#/components/parameters/AppVolumeParam"}]
+    patch:
+      operationId: updateAppVolume
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: true
+        name: app_volume_update
+        destructive: false
+      summary: "Include o esclude il volume dal backup"
+      description: >
+        Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato
+        risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in
+        `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla
+        configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso
+        non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppVolumeUpdate"}}}}
+      responses:
+        "200": {description: "Volume aggiornato.", content: {application/json: {schema: {$ref: "#/components/schemas/AppVolume"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
     delete:
       operationId: deleteAppVolume
       tags: [apps]
@@ -17493,14 +17518,22 @@ components:
       type: object
       description: Volume persistente dell'app (PVC su local-path, dimensione fissa, H3).
       additionalProperties: false
-      required: [name, mountPath, sizeBytes, version, createdAt]
+      required: [name, mountPath, sizeBytes, version, createdAt, includeInBackup, looksLikeDatabase]
       properties:
         name: {$ref: "#/components/schemas/AppVolumeName"}
         mountPath: {type: string, description: "Percorso di mount nel container."}
+        includeInBackup: {type: boolean, description: "Il volume entra in `gitstack backup` (anche verso S3) e torna con `gitstack restore` (H3, D19). Di default si; si esclude con `updateAppVolume`."}
+        looksLikeDatabase: {type: boolean, description: "Avviso database (D19): il percorso di mount, il nome del volume o l'immagine dell'app fanno pensare a un database. La copia del backup si fa con l'app accesa: per un database dentro un container non e' garantita la coerenza, quindi la guida (docs/operations.md, «Volumes and databases») dice di pianificare un dump in un altro volume."}
         sizeBytes: {type: integer, format: int64, minimum: 1048576, description: "Dimensione fissa; conta nella quota disco dell'owner. local-path non la applica come limite fisico del disco."}
         version: {type: integer, minimum: 1, description: "Versione creata dall'aggiunta del volume."}
         createdAt: {type: string, format: date-time}
         createdBy: {allOf: [{$ref: "#/components/schemas/AppActor"}], nullable: true, type: object}
+    AppVolumeUpdate:
+      type: object
+      additionalProperties: false
+      required: [includeInBackup]
+      properties:
+        includeInBackup: {type: boolean, description: "`false` toglie il volume dal backup (e dal restore); `true` lo rimette."}
     AppVolumeInput:
       type: object
       additionalProperties: false

@@ -234,6 +234,18 @@ var Tools = []Tool{
 		Schema:      "{\"additionalProperties\":false,\"properties\":{\"app\":{\"description\":\"Nome dell'app dentro il repo (H5).\",\"maxLength\":30,\"minLength\":1,\"pattern\":\"^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$\",\"type\":\"string\"},\"owner\":{\"description\":\"Nome dell'utente o dell'organizzazione proprietaria (R1).\",\"maxLength\":39,\"minLength\":1,\"pattern\":\"^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$\",\"type\":\"string\"},\"repo\":{\"description\":\"Nome del repo.\",\"maxLength\":100,\"minLength\":1,\"pattern\":\"^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$\",\"type\":\"string\"}},\"required\":[\"app\",\"owner\",\"repo\"],\"type\":\"object\"}",
 	},
 	{
+		Name:        "app_volume_update",
+		Operation:   "updateAppVolume",
+		Method:      "PATCH",
+		Path:        "/repos/{owner}/{repo}/apps/{app}/volumes/{volume}",
+		Description: "Include o esclude il volume dal backup. Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e…",
+		Destructive: false,
+		PathParams:  []string{"app", "owner", "repo", "volume"},
+		QueryParams: nil,
+		Body:        true,
+		Schema:      "{\"additionalProperties\":false,\"properties\":{\"app\":{\"description\":\"Nome dell'app dentro il repo (H5).\",\"maxLength\":30,\"minLength\":1,\"pattern\":\"^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$\",\"type\":\"string\"},\"body\":{\"additionalProperties\":false,\"description\":\"Corpo JSON della richiesta.\",\"properties\":{\"includeInBackup\":{\"description\":\"`false` toglie il volume dal backup (e dal restore); `true` lo rimette.\",\"type\":\"boolean\"}},\"required\":[\"includeInBackup\"],\"type\":\"object\"},\"owner\":{\"description\":\"Nome dell'utente o dell'organizzazione proprietaria (R1).\",\"maxLength\":39,\"minLength\":1,\"pattern\":\"^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$\",\"type\":\"string\"},\"repo\":{\"description\":\"Nome del repo.\",\"maxLength\":100,\"minLength\":1,\"pattern\":\"^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$\",\"type\":\"string\"},\"volume\":{\"description\":\"Nome del volume dell'app (H3).\",\"maxLength\":30,\"minLength\":1,\"pattern\":\"^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$\",\"type\":\"string\"}},\"required\":[\"app\",\"body\",\"owner\",\"repo\",\"volume\"],\"type\":\"object\"}",
+	},
+	{
 		Name:        "code_blame",
 		Operation:   "getRepositoryBlame",
 		Method:      "GET",
