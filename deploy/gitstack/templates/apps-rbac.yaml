@@ -74,7 +74,9 @@ rules:
     verbs: ["create", "get", "list", "update", "delete"]
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["create", "get", "update"]
+    # delete: l'apply toglie app-secrets quando l'app non ha segreti (deleteAppSecret); RBAC
+    # rifiuta la richiesta prima di sapere se il Secret esiste (GIT-424).
+    verbs: ["create", "get", "update", "delete"]
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list"]

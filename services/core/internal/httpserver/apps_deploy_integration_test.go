@@ -256,10 +256,26 @@ type deployEnvOptions struct {
 	tune func(*apps.Config)
 	// publicURL è l'URL pubblico di GitStack (e quindi l'host del registry); vuoto: git.example.com.
 	publicURL string
+	// controllerKubeconfig (GIT-424): se non è vuoto il controller (e solo lui) parla al cluster con
+	// quel kubeconfig; le asserzioni e la pulizia dei test restano con l'amministratore.
+	controllerKubeconfig string
 }
+
+// envTestKubeconfigCore (GIT-424): kubeconfig col token del ServiceAccount di core, con l'RBAC
+// reso dal chart (apps-rbac.yaml). Il kubeconfig di k3d è cluster-admin: da solo non prova mai
+// i permessi del controller.
+const envTestKubeconfigCore = "GITSTACK_TEST_KUBECONFIG_CORE"
+
+// Nomi esportati da k3d-test.sh insieme al kubeconfig: ServiceAccount di core come
+// `namespace/nome` e ClusterRole modello delle app.
+const (
+	envTestCoreSA       = "GITSTACK_TEST_CORE_SA"
+	envTestWorkloadRole = "GITSTACK_TEST_WORKLOAD_ROLE"
+)
 
 func newDeployEnvWith(t *testing.T, runController bool, opt deployEnvOptions) *appsDeployEnv {
 	t.Helper()
+	controllerKubeconfig := opt.controllerKubeconfig
 	kc := os.Getenv("GITSTACK_TEST_KUBECONFIG")
 	if kc == "" {
 		t.Skip("GITSTACK_TEST_KUBECONFIG non impostata: serve un cluster k3d (internal/apps/k3d-test.sh)")
@@ -285,6 +301,19 @@ func newDeployEnvWith(t *testing.T, runController bool, opt deployEnvOptions) *a
 	if _, err := kube.SchedulingV1().PriorityClasses().Create(context.Background(), pc, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
 		t.Fatal(err)
 	}
+	ctlKube, ctlDyn := kubernetes.Interface(kube), dyn
+	if controllerKubeconfig != "" {
+		crc, err := clientcmd.BuildConfigFromFlags("", controllerKubeconfig)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ctlKube, err = kubernetes.NewForConfig(crc); err != nil {
+			t.Fatal(err)
+		}
+		if ctlDyn, err = dynamic.NewForConfig(crc); err != nil {
+			t.Fatal(err)
+		}
+	}
 	pool, _ := dbtest.NewPool(t)
 	id := &issuesIdentity{fakeIdentity: newFakeIdentity(), writers: map[uuid.UUID][]string{}}
 	base := &issuesEnv{t: t, pool: pool, id: id}
@@ -301,6 +330,15 @@ func newDeployEnvWith(t *testing.T, runController bool, opt deployEnvOptions) *a
 		// GIT-418: con GITSTACK_TEST_CORE_IMAGE i pod delle app hanno il cancello vero (immagine di core importata nel cluster).
 		GateImage: os.Getenv(envTestCoreImage),
 	}
+	if controllerKubeconfig != "" {
+		// GIT-424: come in produzione, il controller si lega al ruolo modello nel namespace di ogni
+		// app; senza questi due campi ensureRoleBinding non crea il RoleBinding.
+		appsCfg.ControllerServiceAccount = os.Getenv(envTestCoreSA)
+		appsCfg.WorkloadRole = os.Getenv(envTestWorkloadRole)
+		if appsCfg.ControllerServiceAccount == "" || appsCfg.WorkloadRole == "" {
+			t.Fatalf("%s e %s vanno impostate insieme a %s", envTestCoreSA, envTestWorkloadRole, envTestKubeconfigCore)
+		}
+	}
 	if opt.tune != nil {
 		opt.tune(&appsCfg)
 	}
@@ -308,7 +346,7 @@ func newDeployEnvWith(t *testing.T, runController bool, opt deployEnvOptions) *a
 	if publicURL == "" {
 		publicURL = "https://git.example.com"
 	}
-	ctl := apps.New(store.New(pool), kube, dyn, appsCfg)
+	ctl := apps.New(store.New(pool), ctlKube, ctlDyn, appsCfg)
 	base.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
 		httpserver.WithRepoIdentity(id), httpserver.WithReadableLister(id), httpserver.WithGit(git),
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: publicURL}),
