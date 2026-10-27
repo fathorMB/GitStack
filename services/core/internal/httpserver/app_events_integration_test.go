@@ -49,14 +49,19 @@ func TestAppEvents_AvvisiAChiHaFattoIlDeploy(t *testing.T) {
 	now := time.Now().UTC()
 	alice := uuid.MustParse(users["alice"])
 
-	countNotices := func(event string) int {
+	// GIT-404: bob è admin ma non ha fatto il deploy, carol ha solo write.
+	e.id.grants[repo] = append(e.id.grants[repo], users["bob"])
+	e.nid.grantWrite(repo, "carol")
+
+	countFor := func(user uuid.UUID, event string) int {
 		t.Helper()
 		var n int
-		if err := e.pool.QueryRow(ctx, `SELECT count(*) FROM core.notifications WHERE user_id = $1 AND event_name = $2`, alice, event).Scan(&n); err != nil {
+		if err := e.pool.QueryRow(ctx, `SELECT count(*) FROM core.notifications WHERE user_id = $1 AND event_name = $2`, user, event).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
 		return n
 	}
+	countNotices := func(event string) int { return countFor(alice, event) }
 
 	// Il primo deploy fallisce: chi l'ha fatto riceve l'avviso, con il motivo.
 	if err := st.FinishAppDeploy(ctx, app.ID, 1, "failed", "controllo di salute non superato", now); err != nil {
@@ -64,7 +69,13 @@ func TestAppEvents_AvvisiAChiHaFattoIlDeploy(t *testing.T) {
 	}
 	e.process()
 	if n := countNotices("app_deployment.failed"); n != 1 {
-		t.Fatalf("avvisi di deploy fallito a chi l'ha fatto: %d (voluto 1)", n)
+		t.Fatalf("avvisi di deploy fallito a chi l'ha fatto, admin a sua volta: %d (voluto 1, senza doppioni)", n)
+	}
+	if n := countFor(uuid.MustParse(users["bob"]), "app_deployment.failed"); n != 1 {
+		t.Fatalf("avvisi di deploy fallito a un admin non autore: %d (voluto 1)", n)
+	}
+	if n := countFor(uuid.MustParse(users["carol"]), "app_deployment.failed"); n != 0 {
+		t.Fatalf("avvisi di deploy fallito a chi ha solo write: %d (voluto 0)", n)
 	}
 	var reason string
 	if err := e.pool.QueryRow(ctx, `SELECT data->>'reason' FROM core.notifications WHERE event_name = 'app_deployment.failed'`).Scan(&reason); err != nil || reason != "controllo di salute non superato" {
@@ -88,6 +99,10 @@ func TestAppEvents_AvvisiAChiHaFattoIlDeploy(t *testing.T) {
 	}
 	if n := countNotices("app_status.unhealthy"); n != 1 {
 		t.Fatalf("avvisi di app fermata a chi ha fatto il deploy: %d (voluto 1)", n)
+	}
+	// L'app fermata resta solo per chi ha fatto il deploy: l'admin non autore non la riceve.
+	if n := countFor(uuid.MustParse(users["bob"]), "app_status.unhealthy"); n != 0 {
+		t.Fatalf("avvisi di app fermata a un admin non autore: %d (voluto 0)", n)
 	}
 }
 

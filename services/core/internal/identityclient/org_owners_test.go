@@ -48,3 +48,39 @@ func TestOrgOwners(t *testing.T) {
 		})
 	}
 }
+
+func TestResourceMembers(t *testing.T) {
+	res, a := uuid.New(), uuid.New()
+	for _, tc := range []struct {
+		name    string
+		status  int
+		body    string
+		wantErr error
+		want    int
+	}{
+		{"ok", 200, `{"userIds":["` + a.String() + `"]}`, nil, 1},
+		{"vuoto", 200, `{"userIds":[]}`, nil, 0},
+		{"errore", 500, ``, identityclient.ErrUnavailable, 0},
+		{"id_non_valido", 200, `{"userIds":["x"]}`, identityclient.ErrUnavailable, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodGet || r.URL.Path != "/internal/resources/"+res.String()+"/members" ||
+					r.URL.Query().Get("role") != "admin" || r.Header.Get("Authorization") != "Bearer sec" {
+					t.Errorf("richiesta inattesa: %s %s", r.Method, r.URL)
+				}
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			defer srv.Close()
+			u, _ := url.Parse(srv.URL)
+			got, err := identityclient.New(u, "sec", time.Second).ResourceMembers(context.Background(), res, "admin")
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("err = %v, voluto %v", err, tc.wantErr)
+			}
+			if err == nil && len(got) != tc.want {
+				t.Fatalf("utenti = %v", got)
+			}
+		})
+	}
+}
