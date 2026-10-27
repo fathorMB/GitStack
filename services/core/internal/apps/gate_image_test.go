@@ -28,6 +28,21 @@ func TestApply_SenzaImmagineDelCancelloRifiuta(t *testing.T) {
 	if r := c.rollout(context.Background(), app, v); r == "" {
 		t.Error("rollout deve riportare il motivo del rifiuto")
 	}
+	for _, a := range kube.Actions() {
+		if a.Matches("create", "deployments") || a.Matches("update", "deployments") {
+			t.Errorf("azione sui Deployment senza cancello: %v", a)
+		}
+	}
+	if err := c.Restart(context.Background(), app); !errors.Is(err, ErrGateImageMissing) {
+		t.Errorf("Restart = %v, atteso ErrGateImageMissing", err)
+	}
+	if err := c.Scale(context.Background(), app); !errors.Is(err, ErrGateImageMissing) {
+		t.Errorf("Scale a 1 copia = %v, atteso ErrGateImageMissing", err)
+	}
+	app.Config.Copies = 0
+	if err := c.Scale(context.Background(), app); errors.Is(err, ErrGateImageMissing) {
+		t.Error("fermare l'app (0 copie) deve restare permesso")
+	}
 	ns := Namespace(app.ID)
 	if _, err := kube.CoreV1().Namespaces().Get(context.Background(), ns, metav1.GetOptions{}); err == nil {
 		t.Error("nessun namespace va creato senza cancello")

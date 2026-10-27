@@ -885,6 +885,9 @@ func trim(s string) string {
 // Restart riavvia le copie una alla volta (H12): cambia l'annotazione del template, Kubernetes fa
 // l'aggiornamento graduale senza togliere copie pronte. Non crea una versione.
 func (c *Controller) Restart(ctx context.Context, app store.App) error {
+	if c.cfg.GateImage == "" {
+		return ErrGateImageMissing // il riavvio ricrea i pod: senza cancello restano aperti (GIT-422)
+	}
 	deps := c.kube.AppsV1().Deployments(Namespace(app.ID))
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		d, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})
@@ -914,6 +917,9 @@ func (c *Controller) Restart(ctx context.Context, app store.App) error {
 
 // Scale porta le repliche del Deployment alle copie dell'app (già validate e scritte dalla quota).
 func (c *Controller) Scale(ctx context.Context, app store.App) error {
+	if c.cfg.GateImage == "" && desiredReplicas(app) > 0 {
+		return ErrGateImageMissing // nuove copie = nuovi pod; fermare l'app (0 copie) resta permesso (GIT-422)
+	}
 	deps := c.kube.AppsV1().Deployments(Namespace(app.ID))
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		d, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})

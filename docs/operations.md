@@ -282,7 +282,8 @@ enforced (kube-router applies it after the pod starts). The chart sets
 `GITSTACK_CORE_APPS_GATE_IMAGE` (the `core` image) whenever `apps.enabled` is
 on. If apps are enabled but the variable is empty (a deploy outside the chart,
 a wrong configuration), `core` stays up (git and CI are not affected) and logs a
-warning at start, but **refuses to deploy any app**: the deploy ends `failed`
+`ERROR` log at start, but **refuses to deploy any app** (also restart and
+scale-up, which recreate pods; stopping an app stays allowed): the deploy ends `failed`
 with the reason «GITSTACK_CORE_APPS_GATE_IMAGE non impostata …», and nothing is
 created in the cluster (no namespace, no Deployment). Fix: set the variable to
 the `core` image and deploy again.
