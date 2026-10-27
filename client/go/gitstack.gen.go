@@ -42986,6 +42986,8 @@ type ListCredentialEventsResponse struct {
 	JSON400 *BadRequest
 	// JSON401 the response for an HTTP 401 `application/json` response
 	JSON401 *Unauthorized
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
 	// JSONDefault the response for an HTTP default `application/json` response
 	JSONDefault *UnexpectedError
 }
@@ -43003,6 +43005,11 @@ func (r ListCredentialEventsResponse) GetJSON400() *BadRequest {
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
 func (r ListCredentialEventsResponse) GetJSON401() *Unauthorized {
 	return r.JSON401
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListCredentialEventsResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
 }
 
 // GetJSONDefault returns the response for an HTTP default `application/json` response
@@ -44619,6 +44626,8 @@ type CheckPermissionResponse struct {
 	JSON401 *Unauthorized
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
 	// JSONDefault the response for an HTTP default `application/json` response
 	JSONDefault *UnexpectedError
 }
@@ -44641,6 +44650,11 @@ func (r CheckPermissionResponse) GetJSON401() *Unauthorized {
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
 func (r CheckPermissionResponse) GetJSON404() *NotFound {
 	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CheckPermissionResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
 }
 
 // GetJSONDefault returns the response for an HTTP default `application/json` response
@@ -72423,6 +72437,13 @@ func ParseListCredentialEventsResponse(rsp *http.Response) (*ListCredentialEvent
 		}
 		response.JSON401 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -73733,6 +73754,13 @@ func ParseCheckPermissionResponse(rsp *http.Response) (*CheckPermissionResponse,
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError
