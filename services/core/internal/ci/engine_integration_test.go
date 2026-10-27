@@ -975,7 +975,7 @@ func TestDispatchPods_GitstackBuild(t *testing.T) {
 type failingPods struct{ fakePods }
 
 func (f *failingPods) Create(context.Context, ci.Pod) error {
-	return errors.New("pods \"ci-x\" is forbidden: exceeded quota: ci-jobs")
+	return errors.New("pods \"ci-x\" is forbidden: violates PodSecurity \"restricted:latest\"")
 }
 
 // GIT-445: un dispatch fallito non butta la causa: va nel log di core (reason distinto)
@@ -991,7 +991,7 @@ func TestDispatchPods_CausaDelFallimento(t *testing.T) {
 		reason string
 		cause  string
 	}{
-		{"Create rifiutata", &failingPods{}, ci.RunnerConfig{Image: "runner:test", GatewayURL: "http://core:8081", Capacity: 1}, "pod_create", "exceeded quota"},
+		{"Create rifiutata", &failingPods{}, ci.RunnerConfig{Image: "runner:test", GatewayURL: "http://core:8081", Capacity: 1}, "pod_create", "violates PodSecurity"},
 		{"PodForJobTicket fallito", &fakePods{}, ci.RunnerConfig{GatewayURL: "http://core:8081", Capacity: 1}, "pod_spec", "immagine runner CI obbligatoria"},
 	}
 	for _, tc := range cases {
