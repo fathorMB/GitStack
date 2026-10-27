@@ -95,7 +95,7 @@ publish() {
     upload_blob "$W/config-$tag.json" || fail "$step" "upload della config $tag"
     printf '{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:%s","size":%s},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:%s","size":%s}]}' \
       "$(sha "$W/config-$tag.json")" "$(wc -c <"$W/config-$tag.json")" "$(sha "$W/layer-$tag.tar")" "$(wc -c <"$W/layer-$tag.tar")" >"$W/manifest-$tag.json"
-    curl -fsSL --cacert "$GS_CA" -u "token:${GS_USER_TOKEN}" -X PUT -H 'Content-Type: application/vnd.oci.image.manifest.v1+json' --data-binary "@$W/manifest-$tag.json" "$BASE/v2/${GS_IMAGE}/manifests/$tag" >/dev/null || fail push "manifest di $tag"
+    curl -fsSL --cacert "$GS_CA" -u "token:${GS_USER_TOKEN}" -X PUT -H 'Content-Type: application/vnd.oci.image.manifest.v1+json' --data-binary "@$W/manifest-$tag.json" "$BASE/v2/${GS_IMAGE}/manifests/$tag" >/dev/null || fail "$step" "manifest di $tag"
   done
   echo "STEP ok push"
 }
