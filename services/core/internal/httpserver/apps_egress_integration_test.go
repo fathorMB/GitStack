@@ -4,9 +4,12 @@ package httpserver_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -57,7 +60,7 @@ func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
 		if _, err := e.kube.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), ns.Name, metav1.DeleteOptions{}) })
+		cleanupNamespaceWithDiag(t, e.kube, ns.Name)
 	}
 	policy := apps.BuildNetworkPolicy(source, apps.NetworkPolicyOptions{})
 	if _, err := e.kube.NetworkingV1().NetworkPolicies(policy.Namespace).Create(ctx, policy, metav1.CreateOptions{}); err != nil {
@@ -69,9 +72,7 @@ func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
 	if _, err := e.kube.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: systemNS}}, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		_ = e.kube.CoreV1().Namespaces().Delete(context.Background(), systemNS, metav1.DeleteOptions{})
-	})
+	cleanupNamespaceWithDiag(t, e.kube, systemNS)
 	create := func(p *corev1.Pod) {
 		if _, err := e.kube.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
@@ -79,11 +80,11 @@ func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
 	}
 	create(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "node-listener", Namespace: systemNS},
 		Spec: corev1.PodSpec{HostNetwork: true, RestartPolicy: corev1.RestartPolicyAlways,
-			Containers: []corev1.Container{{Name: "server", Image: "busybox:1.36", Command: []string{"sh", "-c", "nc -lk -p 18080"}}}}})
+			Containers: []corev1.Container{{Name: "server", Image: "busybox:1.36", Command: []string{"sh", "-c", "httpd -f -p 18080 -h /tmp"}}}}})
 	waitPodIP(t, e.kube, systemNS, "node-listener")
 	create(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "other", Namespace: apps.Namespace(other.ID), Labels: map[string]string{apps.LabelManaged: "true"}},
 		Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyAlways,
-			Containers: []corev1.Container{{Name: "server", Image: "busybox:1.36", Command: []string{"sh", "-c", "nc -lk -p 8080"}}}}})
+			Containers: []corev1.Container{{Name: "server", Image: "busybox:1.36", Command: []string{"sh", "-c", "httpd -f -p 8080 -h /tmp"}}}}})
 	otherIP := waitPodIP(t, e.kube, apps.Namespace(other.ID), "other")
 
 	// App con root nel container: baseline lo accetta, le barriere valgono lo stesso.
@@ -140,6 +141,53 @@ func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
 	probe(appNS, "kubelet-nodo", nodeIP, 10250, false)
 	probe(appNS, "api-kubernetes-servizio", kubeSvc.Spec.ClusterIP, 443, false)
 	probe(appNS, "pod-altro-repo", otherIP, 8080, false)
+}
+
+// cleanupNamespaceWithDiag registra la cancellazione del namespace e, se il test è fallito, raccoglie
+// prima la diagnostica di rete (GIT-447): NetworkPolicy e pod del namespace, e (una volta per test)
+// le regole di kube-router sul nodo, se GITSTACK_TEST_K3D_NODE (nome del container k3d) è impostata.
+// Le Cleanup girano in ordine inverso: registrarla subito dopo la creazione del namespace la fa
+// girare prima della cancellazione, quando le risorse esistono ancora.
+func cleanupNamespaceWithDiag(t *testing.T, kube kubernetes.Interface, ns string) {
+	t.Helper()
+	t.Cleanup(func() {
+		ctx := context.Background()
+		if t.Failed() {
+			diagNamespace(t, kube, ns)
+		}
+		_ = kube.CoreV1().Namespaces().Delete(ctx, ns, metav1.DeleteOptions{})
+	})
+}
+
+var diagNodeOnce sync.Map
+
+func diagNamespace(t *testing.T, kube kubernetes.Interface, ns string) {
+	ctx := context.Background()
+	var b strings.Builder
+	fmt.Fprintf(&b, "diagnostica di rete, namespace %s (test fallito)\n", ns)
+	if nps, err := kube.NetworkingV1().NetworkPolicies(ns).List(ctx, metav1.ListOptions{}); err != nil {
+		fmt.Fprintf(&b, "NetworkPolicy: %v\n", err)
+	} else {
+		for _, np := range nps.Items {
+			js, _ := json.MarshalIndent(np.Spec, "", "  ")
+			fmt.Fprintf(&b, "NetworkPolicy %s:\n%s\n", np.Name, js)
+		}
+	}
+	if pods, err := kube.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{}); err != nil {
+		fmt.Fprintf(&b, "pod: %v\n", err)
+	} else {
+		for _, p := range pods.Items {
+			fmt.Fprintf(&b, "pod %s fase=%s ip=%s nodo=%s labels=%v\n", p.Name, p.Status.Phase, p.Status.PodIP, p.Spec.NodeName, p.Labels)
+		}
+	}
+	if node := os.Getenv("GITSTACK_TEST_K3D_NODE"); node != "" {
+		if _, done := diagNodeOnce.LoadOrStore(t.Name(), true); !done {
+			out, err := exec.Command("docker", "exec", node, "sh", "-c",
+				`iptables-save | grep -i -E "KUBE-NWPLCY|KUBE-DST|KUBE-SRC|KUBE-POD-FW"; ipset list 2>/dev/null | head -300`).CombinedOutput()
+			fmt.Fprintf(&b, "regole kube-router sul nodo (err=%v):\n%s\n", err, out)
+		}
+	}
+	t.Log(b.String())
 }
 
 // envTestCoreImage: immagine di core importata nel cluster k3d (k3d-test.sh la importa e la esporta).
