@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/util/retry"
 
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
@@ -379,19 +380,25 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 	}
 	deps := c.kube.AppsV1().Deployments(ns)
 	opts := BuildOptions{Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret, ProxyEnv: c.cfg.ProxyEnv, GateImage: c.cfg.GateImage}
-	cur, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})
-	switch {
-	case apierrors.IsNotFound(err):
-		_, err = deps.Create(ctx, BuildDeployment(app, v, opts), metav1.CreateOptions{})
+	// Get+Build+Update a ogni tentativo: il deployment controller di Kubernetes aggiorna lo stesso
+	// oggetto (status, revisione, rollout precedente) e l'Update con un ResourceVersion vecchio
+	// riceve 409.
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		cur, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})
+		switch {
+		case apierrors.IsNotFound(err):
+			_, err = deps.Create(ctx, BuildDeployment(app, v, opts), metav1.CreateOptions{})
+			return err
+		case err != nil:
+			return err
+		}
+		o := opts
+		o.RestartedAt = cur.Spec.Template.Annotations[AnnotationRestartedAt]
+		want := BuildDeployment(app, v, o)
+		want.ResourceVersion = cur.ResourceVersion
+		_, err = deps.Update(ctx, want, metav1.UpdateOptions{})
 		return err
-	case err != nil:
-		return err
-	}
-	opts.RestartedAt = cur.Spec.Template.Annotations[AnnotationRestartedAt]
-	want := BuildDeployment(app, v, opts)
-	want.ResourceVersion = cur.ResourceVersion
-	_, err = deps.Update(ctx, want, metav1.UpdateOptions{})
-	return err
+	})
 }
 
 func (c *Controller) ensureNetworkPolicy(ctx context.Context, app store.App) error {
@@ -408,17 +415,19 @@ func (c *Controller) ensureNetworkPolicy(ctx context.Context, app store.App) err
 	}
 	want := BuildNetworkPolicy(app, NetworkPolicyOptions{TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs, ClusterCIDRs: c.cfg.EgressClusterCIDRs, NodeAddresses: c.cfg.EgressNodeAddresses})
 	policies := c.kube.NetworkingV1().NetworkPolicies(want.Namespace)
-	cur, err := policies.Get(ctx, want.Name, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		_, err = policies.Create(ctx, want, metav1.CreateOptions{})
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		cur, err := policies.Get(ctx, want.Name, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			_, err = policies.Create(ctx, want.DeepCopy(), metav1.CreateOptions{})
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		cur.Labels, cur.Spec = want.Labels, want.Spec
+		_, err = policies.Update(ctx, cur, metav1.UpdateOptions{})
 		return err
-	}
-	if err != nil {
-		return err
-	}
-	cur.Labels, cur.Spec = want.Labels, want.Spec
-	_, err = policies.Update(ctx, cur, metav1.UpdateOptions{})
-	return err
+	})
 }
 
 func (c *Controller) ensureAppSecret(ctx context.Context, ns string, id uuid.UUID, values map[string]string) error {
@@ -428,19 +437,21 @@ func (c *Controller) ensureAppSecret(ctx context.Context, ns string, id uuid.UUI
 	}
 	want := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appSecretName, Namespace: ns, Labels: objectLabels(id)}, Type: corev1.SecretTypeOpaque, Data: data}
 	secrets := c.kube.CoreV1().Secrets(ns)
-	cur, err := secrets.Get(ctx, appSecretName, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		_, err = secrets.Create(ctx, want, metav1.CreateOptions{})
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		cur, err := secrets.Get(ctx, appSecretName, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			_, err = secrets.Create(ctx, want.DeepCopy(), metav1.CreateOptions{})
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		cur.Labels = want.Labels
+		cur.Type = want.Type
+		cur.Data = want.Data
+		_, err = secrets.Update(ctx, cur, metav1.UpdateOptions{})
 		return err
-	}
-	if err != nil {
-		return err
-	}
-	cur.Labels = want.Labels
-	cur.Type = want.Type
-	cur.Data = want.Data
-	_, err = secrets.Update(ctx, cur, metav1.UpdateOptions{})
-	return err
+	})
 }
 
 func (c *Controller) deleteAppSecret(ctx context.Context, ns string) error {
@@ -453,24 +464,26 @@ func (c *Controller) deleteAppSecret(ctx context.Context, ns string) error {
 
 func (c *Controller) ensureNamespace(ctx context.Context, app store.App, restricted bool) error {
 	want := BuildNamespace(app, restricted)
-	cur, err := c.kube.CoreV1().Namespaces().Get(ctx, want.Name, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		_, err = c.kube.CoreV1().Namespaces().Create(ctx, want, metav1.CreateOptions{})
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		cur, err := c.kube.CoreV1().Namespaces().Get(ctx, want.Name, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			_, err = c.kube.CoreV1().Namespaces().Create(ctx, want.DeepCopy(), metav1.CreateOptions{})
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		if cur.Labels[LabelManaged] != "true" || cur.Labels[LabelAppID] != app.ID.String() || (cur.Labels[LabelRepoID] != "" && cur.Labels[LabelRepoID] != app.RepoID.String()) {
+			return fmt.Errorf("il namespace %s esiste ma non è di questa app", want.Name)
+		}
+		if cur.Labels["pod-security.kubernetes.io/enforce"] == want.Labels["pod-security.kubernetes.io/enforce"] && cur.Labels[LabelRepoID] == app.RepoID.String() {
+			return nil
+		}
+		cur.Labels["pod-security.kubernetes.io/enforce"] = want.Labels["pod-security.kubernetes.io/enforce"]
+		cur.Labels[LabelRepoID] = app.RepoID.String()
+		_, err = c.kube.CoreV1().Namespaces().Update(ctx, cur, metav1.UpdateOptions{})
 		return err
-	}
-	if err != nil {
-		return err
-	}
-	if cur.Labels[LabelManaged] != "true" || cur.Labels[LabelAppID] != app.ID.String() || (cur.Labels[LabelRepoID] != "" && cur.Labels[LabelRepoID] != app.RepoID.String()) {
-		return fmt.Errorf("il namespace %s esiste ma non è di questa app", want.Name)
-	}
-	if cur.Labels["pod-security.kubernetes.io/enforce"] == want.Labels["pod-security.kubernetes.io/enforce"] && cur.Labels[LabelRepoID] == app.RepoID.String() {
-		return nil
-	}
-	cur.Labels["pod-security.kubernetes.io/enforce"] = want.Labels["pod-security.kubernetes.io/enforce"]
-	cur.Labels[LabelRepoID] = app.RepoID.String()
-	_, err = c.kube.CoreV1().Namespaces().Update(ctx, cur, metav1.UpdateOptions{})
-	return err
+	})
 }
 
 // RoleBindingName è il RoleBinding che dà a core i permessi sull'app dentro il suo namespace.
@@ -509,17 +522,19 @@ func (c *Controller) ensurePullSecret(ctx context.Context, ns string, id uuid.UU
 		Data:       map[string][]byte{corev1.DockerConfigJsonKey: cfg},
 	}
 	secrets := c.kube.CoreV1().Secrets(ns)
-	cur, err := secrets.Get(ctx, pullSecretName, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		_, err = secrets.Create(ctx, want, metav1.CreateOptions{})
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		cur, err := secrets.Get(ctx, pullSecretName, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			_, err = secrets.Create(ctx, want.DeepCopy(), metav1.CreateOptions{})
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		cur.Data = want.Data
+		_, err = secrets.Update(ctx, cur, metav1.UpdateOptions{})
 		return err
-	}
-	if err != nil {
-		return err
-	}
-	cur.Data = want.Data
-	_, err = secrets.Update(ctx, cur, metav1.UpdateOptions{})
-	return err
+	})
 }
 
 func (c *Controller) ensureService(ctx context.Context, app store.App, cfg store.AppConfig) error {
@@ -532,17 +547,19 @@ func (c *Controller) ensureService(ctx context.Context, app store.App, cfg store
 		}
 		return err
 	}
-	cur, err := services.Get(ctx, WorkloadName, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		_, err = services.Create(ctx, want, metav1.CreateOptions{})
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		cur, err := services.Get(ctx, WorkloadName, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			_, err = services.Create(ctx, want.DeepCopy(), metav1.CreateOptions{})
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		cur.Spec.Selector, cur.Spec.Ports, cur.Labels = want.Spec.Selector, want.Spec.Ports, want.Labels
+		_, err = services.Update(ctx, cur, metav1.UpdateOptions{})
 		return err
-	}
-	if err != nil {
-		return err
-	}
-	cur.Spec.Selector, cur.Spec.Ports, cur.Labels = want.Spec.Selector, want.Spec.Ports, want.Labels
-	_, err = services.Update(ctx, cur, metav1.UpdateOptions{})
-	return err
+	})
 }
 
 // ensureSiblingAliases porta nel namespace dell'app i nomi interni delle sorelle dello stesso repo
@@ -589,9 +606,18 @@ func (c *Controller) reconcileSiblingAliases(ctx context.Context, app store.App,
 		case cur.Labels[LabelSiblingAlias] != "true":
 			skipped = append(skipped, SiblingAlias{w.Name, "esiste già un Service con questo nome nel namespace"})
 		case cur.Spec.Type != corev1.ServiceTypeExternalName || cur.Spec.ExternalName != w.Spec.ExternalName || cur.Labels[LabelRepoID] != w.Labels[LabelRepoID]:
-			cur.Spec = corev1.ServiceSpec{Type: corev1.ServiceTypeExternalName, ExternalName: w.Spec.ExternalName}
-			cur.Labels = w.Labels
-			if _, err := services.Update(ctx, &cur, metav1.UpdateOptions{}); err != nil {
+			name, externalName, labels := w.Name, w.Spec.ExternalName, w.Labels
+			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				latest, err := services.Get(ctx, name, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+				latest.Spec = corev1.ServiceSpec{Type: corev1.ServiceTypeExternalName, ExternalName: externalName}
+				latest.Labels = labels
+				_, err = services.Update(ctx, latest, metav1.UpdateOptions{})
+				return err
+			})
+			if err != nil && !apierrors.IsNotFound(err) {
 				return skipped, err
 			}
 		}
@@ -662,20 +688,23 @@ func upsert(ctx context.Context, ri dynamic.ResourceInterface, want *unstructure
 	sum := sha256.Sum256(raw)
 	hash := hex.EncodeToString(sum[:])
 	want.SetAnnotations(map[string]string{annotationSpecHash: hash})
-	cur, err := ri.Get(ctx, want.GetName(), metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		_, err = ri.Create(ctx, want, metav1.CreateOptions{})
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		cur, err := ri.Get(ctx, want.GetName(), metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			_, err = ri.Create(ctx, want.DeepCopy(), metav1.CreateOptions{})
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		if cur.GetAnnotations()[annotationSpecHash] == hash {
+			return nil
+		}
+		upd := want.DeepCopy()
+		upd.SetResourceVersion(cur.GetResourceVersion())
+		_, err = ri.Update(ctx, upd, metav1.UpdateOptions{})
 		return err
-	}
-	if err != nil {
-		return err
-	}
-	if cur.GetAnnotations()[annotationSpecHash] == hash {
-		return nil
-	}
-	want.SetResourceVersion(cur.GetResourceVersion())
-	_, err = ri.Update(ctx, want, metav1.UpdateOptions{})
-	return err
+	})
 }
 
 // waitReady aspetta che la versione sia a regime (tutte le copie aggiornate, pronte e disponibili:
@@ -849,7 +878,7 @@ func trim(s string) string {
 // l'aggiornamento graduale senza togliere copie pronte. Non crea una versione.
 func (c *Controller) Restart(ctx context.Context, app store.App) error {
 	deps := c.kube.AppsV1().Deployments(Namespace(app.ID))
-	for attempt := 0; ; attempt++ {
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		d, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})
 		if apierrors.IsNotFound(err) {
 			return ErrNotDeployed
@@ -862,25 +891,23 @@ func (c *Controller) Restart(ctx context.Context, app store.App) error {
 		}
 		d.Spec.Template.Annotations[AnnotationRestartedAt] = c.cfg.Now().Format(time.RFC3339Nano)
 		_, err = deps.Update(ctx, d, metav1.UpdateOptions{})
-		if apierrors.IsConflict(err) && attempt < 5 {
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		if err := c.st.SetAppObserved(ctx, app.ID, "restarting", app.ReadyCopies); err != nil {
-			return err
-		}
-		c.platform(ctx, app.ID, "riavvio delle copie richiesto")
-		c.Kick()
-		return nil
+		return err
+	})
+	if err != nil {
+		return err
 	}
+	if err := c.st.SetAppObserved(ctx, app.ID, "restarting", app.ReadyCopies); err != nil {
+		return err
+	}
+	c.platform(ctx, app.ID, "riavvio delle copie richiesto")
+	c.Kick()
+	return nil
 }
 
 // Scale porta le repliche del Deployment alle copie dell'app (già validate e scritte dalla quota).
 func (c *Controller) Scale(ctx context.Context, app store.App) error {
 	deps := c.kube.AppsV1().Deployments(Namespace(app.ID))
-	for attempt := 0; ; attempt++ {
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		d, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})
 		if apierrors.IsNotFound(err) {
 			return nil // le copie si applicano al primo deploy
@@ -894,12 +921,10 @@ func (c *Controller) Scale(ctx context.Context, app store.App) error {
 		}
 		d.Spec.Replicas = &want
 		_, err = deps.Update(ctx, d, metav1.UpdateOptions{})
-		if apierrors.IsConflict(err) && attempt < 5 {
-			continue
-		}
-		c.Kick()
 		return err
-	}
+	})
+	c.Kick()
+	return err
 }
 
 // Sync allinea copie volute e stato osservato (running, restarting, unhealthy, starting) di ogni
