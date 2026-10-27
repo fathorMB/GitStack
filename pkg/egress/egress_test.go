@@ -453,6 +453,40 @@ func TestNodeAddressesAreBlockedByDefault(t *testing.T) {
 	}
 }
 
+// GIT-415: Kubernetes rifiuta gli except IPv4-mapped in un ipBlock.
+func TestNetworkExceptions_NienteIPv4Mapped(t *testing.T) {
+	p, err := NewPolicy(Config{NodeAddresses: []string{"::ffff:10.1.2.3", "::ffff:203.0.0.0/104", "::ffff:0:0/80"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	v4, v6 := p.NetworkExceptions()
+	for _, x := range append(append([]netip.Prefix{}, v4...), v6...) {
+		if x.Addr().Is4In6() {
+			t.Errorf("prefisso IPv4-mapped tra le eccezioni: %s", x)
+		}
+	}
+	has := func(list []netip.Prefix, s string) bool {
+		for _, x := range list {
+			if x == netip.MustParsePrefix(s) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, s := range []string{"10.1.2.3/32", "203.0.0.0/8", "127.0.0.0/8"} {
+		if !has(v4, s) {
+			t.Errorf("manca %s in v4", s)
+		}
+	}
+	if has(v6, "::ffff:0:0/96") {
+		t.Error("::ffff:0:0/96 va saltato")
+	}
+	// La protezione SSRF resta: gli indirizzi mapped sono ancora bloccati.
+	if p.CheckIP(netip.MustParseAddr("::ffff:127.0.0.1")) == nil {
+		t.Error("::ffff:127.0.0.1 deve restare bloccato")
+	}
+}
+
 func TestNetworkExceptions_ListeDellaPolicy(t *testing.T) {
 	p, err := NewPolicy(Config{ClusterCIDRs: []string{"10.50.0.0/16", "fd00:1::/48"}, NodeAddresses: []string{"192.168.1.10", "2001:db8::5"}})
 	if err != nil {

@@ -293,7 +293,19 @@ func (p *Policy) NetworkExceptions() (v4, v6 []netip.Prefix) {
 	seen := map[netip.Prefix]bool{}
 	add := func(pr netip.Prefix) {
 		pr = pr.Masked()
-		if !pr.IsValid() || seen[pr] {
+		if !pr.IsValid() {
+			return
+		}
+		// Kubernetes rejects IPv4-mapped CIDRs in an ipBlock. Pods do not send
+		// ::ffff: packets on the wire and IPv4 is covered by the v4 list, so
+		// ::ffff:0:0/96 is skipped and narrower mapped prefixes become IPv4.
+		if pr.Addr().Is4In6() {
+			if pr.Bits() <= 96 { // ::ffff:0:0/96 itself (would be 0.0.0.0/0) or wider
+				return
+			}
+			pr = netip.PrefixFrom(pr.Addr().Unmap(), pr.Bits()-96).Masked()
+		}
+		if seen[pr] {
 			return
 		}
 		seen[pr] = true
