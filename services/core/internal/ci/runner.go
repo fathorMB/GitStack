@@ -3,6 +3,7 @@ package ci
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -73,6 +74,10 @@ type RunnerConfig struct {
 	// namespace di build, immagine rootless di BuildKit e host:porta del gateway nel cluster
 	// (il registry /v2/). Vuoti: quei job falliscono senza creare pod.
 	BuildNamespace, BuildImage, RegistryAddr string
+	// Logs e Log: dove scrivere la causa di un dispatch fallito (log del job e log di core).
+	// Nil: solo slog.Default() e nessuna riga nel log del job.
+	Logs *LogStore
+	Log  *slog.Logger
 }
 
 func (c RunnerConfig) normal() RunnerConfig {
@@ -139,6 +144,40 @@ func PodForJobTicket(c RunnerConfig, job JobRow, run RunRow, ticket string) (Pod
 	return p, nil
 }
 
+func podNameFor(job JobRow) string { return "ci-" + strings.ReplaceAll(job.ID.String(), "-", "") }
+
+// dispatchFailed registra perché un job è stato chiuso in failure senza pod: una riga
+// di log di core (reason distinto: pod_spec, runner_type, pod_create) e la stessa
+// causa nel log del job, così `gs run view --log` la mostra. Il biglietto monouso e
+// i valori dell'ambiente del pod non finiscono mai nel messaggio.
+func (c RunnerConfig) dispatchFailed(ctx context.Context, pool *pgxpool.Pool, now time.Time, job JobRow, run RunRow, pod Pod, reason string, cause error, ticket string) {
+	log := c.Log
+	if log == nil {
+		log = slog.Default()
+	}
+	msg := cause.Error()
+	if ticket != "" {
+		msg = strings.ReplaceAll(msg, ticket, "***")
+	}
+	ns := pod.Namespace
+	if ns == "" {
+		ns = c.normal().Namespace
+	}
+	log.Error("dispatch del job CI non riuscito", "reason", reason, "job_id", job.ID, "run_id", job.RunID,
+		"job", job.Name, "namespace", ns, "pod", pod.Name, "err", msg)
+	if c.Logs == nil || c.Logs.Dir == "" {
+		return
+	}
+	var lines int64
+	if err := pool.QueryRow(ctx, `SELECT lines FROM core.ci_job_logs WHERE job_id = $1`, job.ID).Scan(&lines); err != nil {
+		lines = 0
+	}
+	line := LogLine{Time: now, Content: fmt.Sprintf("dispatch del job non riuscito (%s): %s [pod %s/%s]", reason, msg, ns, pod.Name)}
+	if _, err := c.Logs.Append(ctx, pool, now, job.ID, lines, []LogLine{line}); err != nil {
+		log.Error("causa del dispatch non scritta nel log del job", "job_id", job.ID, "err", err)
+	}
+}
+
 // DispatchOnce prende un solo job interno e ne riflette l'esito nel modello
 // della coda. I runner esterni non vengono mai assegnati a un pod interno.
 func DispatchOnce(ctx context.Context, pool *pgxpool.Pool, api interface {
@@ -150,13 +189,17 @@ func DispatchOnce(ctx context.Context, pool *pgxpool.Pool, api interface {
 		return ok, err
 	}
 	if job.RunnerType != "internal_pod" {
+		cfg.dispatchFailed(ctx, pool, now, job, run, Pod{Name: podNameFor(job)}, "runner_type",
+			fmt.Errorf("runner_type %q diverso da internal_pod", job.RunnerType), "")
 		return false, CompleteJob(ctx, pool, now, job.ID, ConclusionFailure)
 	}
 	pod, err := PodForJob(cfg, job, run)
 	if err != nil {
+		cfg.dispatchFailed(ctx, pool, now, job, run, Pod{Name: podNameFor(job)}, "pod_spec", err, "")
 		return false, CompleteJob(ctx, pool, now, job.ID, ConclusionFailure)
 	}
 	if err := api.Create(ctx, pod); err != nil {
+		cfg.dispatchFailed(ctx, pool, now, job, run, pod, "pod_create", err, "")
 		return false, CompleteJob(ctx, pool, now, job.ID, ConclusionFailure)
 	}
 	conclusion, err := api.Wait(ctx, pod.Namespace, pod.Name)
@@ -183,7 +226,20 @@ func DispatchPods(ctx context.Context, pool *pgxpool.Pool, api interface {
 			return started, err
 		}
 		pod, err := PodForJobTicket(cfg, job, run, ticket)
-		if err != nil || job.RunnerType != "internal_pod" || api.Create(ctx, pod) != nil {
+		reason, cause := "", error(nil)
+		switch {
+		case err != nil:
+			reason, cause = "pod_spec", err
+			pod.Name = podNameFor(job)
+		case job.RunnerType != "internal_pod":
+			reason, cause = "runner_type", fmt.Errorf("runner_type %q diverso da internal_pod", job.RunnerType)
+		default:
+			if cerr := api.Create(ctx, pod); cerr != nil {
+				reason, cause = "pod_create", cerr
+			}
+		}
+		if cause != nil {
+			cfg.dispatchFailed(ctx, pool, now, job, run, pod, reason, cause, ticket)
 			if cerr := CompleteJobReported(ctx, pool, now, job.ID, ConclusionFailure, rep); cerr != nil {
 				return started, cerr
 			}

@@ -5,6 +5,7 @@ package ci_test
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"sync"
 	"testing"
@@ -969,4 +970,73 @@ func TestDispatchPods_GitstackBuild(t *testing.T) {
 			t.Fatalf("nessun pod senza build configurata: %+v", pods.created)
 		}
 	})
+}
+
+type failingPods struct{ fakePods }
+
+func (f *failingPods) Create(context.Context, ci.Pod) error {
+	return errors.New("pods \"ci-x\" is forbidden: exceeded quota: ci-jobs")
+}
+
+// GIT-445: un dispatch fallito non butta la causa: va nel log di core (reason distinto)
+// e nel log del job letto dallo store dei log, e il job chiude in failure.
+func TestDispatchPods_CausaDelFallimento(t *testing.T) {
+	cases := []struct {
+		name string
+		pods interface {
+			ci.PodCreator
+			ci.PodWatcher
+		}
+		cfg    ci.RunnerConfig
+		reason string
+		cause  string
+	}{
+		{"Create rifiutata", &failingPods{}, ci.RunnerConfig{Image: "runner:test", GatewayURL: "http://core:8081", Capacity: 1}, "pod_create", "exceeded quota"},
+		{"PodForJobTicket fallito", &fakePods{}, ci.RunnerConfig{GatewayURL: "http://core:8081", Capacity: 1}, "pod_spec", "immagine runner CI obbligatoria"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEnv(t)
+			jobID := queuedInternalJob(t, e)
+			var buf strings.Builder
+			var mu sync.Mutex
+			tc.cfg.Log = slog.New(slog.NewTextHandler(&lockedWriter{mu: &mu, w: &buf}, nil))
+			tc.cfg.Logs = &ci.LogStore{Dir: t.TempDir()}
+			started, err := ci.DispatchPods(context.Background(), e.pool, tc.pods, tc.cfg, *e.clock, &captureReporter{})
+			if err != nil || started != 0 {
+				t.Fatalf("dispatch: started=%d err=%v", started, err)
+			}
+			waitJobConclusion(t, e, jobID, ci.ConclusionFailure)
+			mu.Lock()
+			logged := buf.String()
+			mu.Unlock()
+			for _, want := range []string{"reason=" + tc.reason, "job_id=" + jobID.String(), tc.cause, "namespace=gitstack-ci-jobs", "pod=ci-"} {
+				if !strings.Contains(logged, want) {
+					t.Errorf("log di core senza %q: %s", want, logged)
+				}
+			}
+			size, err := tc.cfg.Logs.LogSize(context.Background(), e.pool, jobID)
+			if err != nil || size == 0 {
+				t.Fatalf("log del job vuoto: size=%d err=%v", size, err)
+			}
+			var out strings.Builder
+			if _, err := tc.cfg.Logs.ReadFrom(jobID, 0, size, &out); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(out.String(), tc.reason) || !strings.Contains(out.String(), tc.cause) {
+				t.Errorf("log del job senza la causa: %q", out.String())
+			}
+		})
+	}
+}
+
+type lockedWriter struct {
+	mu *sync.Mutex
+	w  *strings.Builder
+}
+
+func (l *lockedWriter) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.w.Write(p)
 }
