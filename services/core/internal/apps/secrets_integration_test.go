@@ -58,7 +58,7 @@ func TestController_SegretiKubernetesCorrentiERimossi(t *testing.T) {
 		t.Fatal(err)
 	}
 	kube := kubernetesfake.NewSimpleClientset()
-	ctl := New(st, kube, fakeDynamic(), Config{Secrets: keys})
+	ctl := New(st, kube, fakeDynamic(), Config{Secrets: keys, GateImage: testGateImage})
 	ns := Namespace(app.ID)
 
 	apply := func(version store.AppVersion) {
