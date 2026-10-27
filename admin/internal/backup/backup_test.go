@@ -3,10 +3,12 @@ package backup
 import (
 	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -393,7 +395,19 @@ func TestRestoreRefusesCorrupt(t *testing.T) {
 	}
 	// Byte alterato dentro il gzip: il gzip o il checksum lo rilevano.
 	b, _ := os.ReadFile(res.Path)
-	b[len(b)/2] ^= 0xff
+	want, err := gunzipAll(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pos := len(b) / 2
+	// Salta le posizioni il cui byte alterato lascia identico il contenuto.
+	for pos < len(b) && gzipAlterationEquivalent(b, want, pos) {
+		pos++
+	}
+	if pos == len(b) {
+		t.Fatal("nessuna posizione non equivalente")
+	}
+	b[pos] ^= 0xff
 	bad := filepath.Join(t.TempDir(), "bad.tar.gz")
 	_ = os.WriteFile(bad, b, 0o600)
 	r := newEnv(t)
@@ -431,10 +445,24 @@ func TestRestoreRefusesEveryAlteredByte(t *testing.T) {
 			r := newEnv(t)
 			r.o.Key = tc.key
 			bad := filepath.Join(t.TempDir(), "bad")
-			accepted := 0
+			var want []byte
+			if tc.key == nil {
+				if want, err = gunzipAll(orig); err != nil {
+					t.Fatal(err)
+				}
+			}
+			accepted, equivalent := 0, 0
 			for i := tc.start; i < len(orig); i++ {
 				b := bytes.Clone(orig)
 				b[i] ^= 0xff
+				// Solo in chiaro: un gzip può avere byte alterabili senza
+				// cambiare il contenuto (CRC32 e ISIZE restano validi), e
+				// Restore in quel caso ripristina i dati originali. Il
+				// cifrato non ha esenzioni: l'AEAD autentica ogni byte.
+				if want != nil && gzipAlterationEquivalent(orig, want, i) {
+					equivalent++
+					continue
+				}
 				if err := os.WriteFile(bad, b, 0o600); err != nil {
 					t.Fatal(err)
 				}
@@ -447,9 +475,87 @@ func TestRestoreRefusesEveryAlteredByte(t *testing.T) {
 					t.Fatalf("byte %d: il cluster non va toccato: %v", i, r.f.calls)
 				}
 			}
-			t.Logf("%d posizioni provate, %d accettate", len(orig)-tc.start, accepted)
+			t.Logf("%d posizioni provate, %d equivalenti (contenuto gzip identico, saltate), %d accettate", len(orig)-tc.start, equivalent, accepted)
 		})
 	}
+}
+
+func gunzipAll(b []byte) ([]byte, error) {
+	zr, err := gzip.NewReader(bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
+	return io.ReadAll(zr)
+}
+
+// gzipAlterationEquivalent dice se alterare (^0xff) il byte pos dell'archivio
+// gzip orig lo lascia decomprimibile senza errori in un contenuto identico a want.
+func gzipAlterationEquivalent(orig, want []byte, pos int) bool {
+	b := bytes.Clone(orig)
+	b[pos] ^= 0xff
+	got, err := gunzipAll(b)
+	return err == nil && bytes.Equal(got, want)
+}
+
+// Seed fisso: l'helper riconosce come equivalente una posizione che lo è
+// davvero e come non equivalente una che non lo è.
+func TestGzipAlterationEquivalent(t *testing.T) {
+	for seed := int64(0); seed < 2000; seed++ {
+		rng := rand.New(rand.NewSource(seed))
+		var tb bytes.Buffer
+		tw := tar.NewWriter(&tb)
+		for n := 0; n < 1+rng.Intn(3); n++ {
+			data := make([]byte, rng.Intn(600))
+			rng.Read(data)
+			if err := tw.WriteHeader(&tar.Header{Name: "f" + strings.Repeat("x", n), Mode: 0o644, Size: int64(len(data))}); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := tw.Write(data); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := tw.Close(); err != nil {
+			t.Fatal(err)
+		}
+		var gb bytes.Buffer
+		zw := gzip.NewWriter(&gb)
+		if _, err := zw.Write(tb.Bytes()); err != nil {
+			t.Fatal(err)
+		}
+		if err := zw.Close(); err != nil {
+			t.Fatal(err)
+		}
+		arc := gb.Bytes()
+		want, err := gunzipAll(arc)
+		if err != nil || !bytes.Equal(want, tb.Bytes()) {
+			t.Fatalf("seed %d: roundtrip fallito: %v", seed, err)
+		}
+		eq := -1
+		for i := 10; i < len(arc); i++ {
+			if gzipAlterationEquivalent(arc, want, i) {
+				eq = i
+				break
+			}
+		}
+		if eq < 0 {
+			continue
+		}
+		t.Logf("seed %d: posizione equivalente nota %d/%d", seed, eq, len(arc))
+		b := bytes.Clone(arc)
+		b[eq] ^= 0xff
+		if got, err := gunzipAll(b); err != nil || !bytes.Equal(got, want) {
+			t.Fatalf("posizione %d non equivalente: %v", eq, err)
+		}
+		// Magic e CRC32 del trailer alterati non sono mai equivalenti.
+		if gzipAlterationEquivalent(arc, want, 0) {
+			t.Error("byte 0 (magic) riconosciuto equivalente")
+		}
+		if gzipAlterationEquivalent(arc, want, len(arc)-5) {
+			t.Error("byte del CRC32 riconosciuto equivalente")
+		}
+		return
+	}
+	t.Fatal("nessun seed in 0..1999 produce una posizione equivalente")
 }
 
 func TestEncryptedBackup(t *testing.T) {
