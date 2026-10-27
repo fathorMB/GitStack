@@ -627,6 +627,11 @@ type ResourceAttributesInput struct {
 	Visibility RepoVisibility `json:"visibility"`
 }
 
+// ResourceMembersResult defines model for ResourceMembersResult.
+type ResourceMembersResult struct {
+	UserIds []openapi_types.UUID `json:"userIds"`
+}
+
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
 type ResourceRole string
 
@@ -888,6 +893,11 @@ type UnexpectedError = Error
 // ListCredentialEventsParams defines parameters for ListCredentialEvents.
 type ListCredentialEventsParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ListResourceMembersParams defines parameters for ListResourceMembers.
+type ListResourceMembersParams struct {
+	Role ResourceRole `form:"role" json:"role"`
 }
 
 // AckCredentialEventsJSONRequestBody defines body for AckCredentialEvents for application/json ContentType.

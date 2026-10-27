@@ -360,3 +360,28 @@ func (s *server) GetUserAccessSources(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, out)
 }
+
+// ListResourceMembers è GET /internal/resources/{resourceId}/members?role=
+// (protetto da serviceAuth): gli utenti attivi con almeno il ruolo dato sulla
+// risorsa (v3-a, H12, GIT-404: core avvisa gli admin del repo).
+func (s *server) ListResourceMembers(w http.ResponseWriter, r *http.Request, resourceID openapi_types.UUID, p openapi.ListResourceMembersParams) {
+	if s.permissions == nil {
+		unavailable(w)
+		return
+	}
+	role := permissions.Role(p.Role)
+	if !role.Valid() {
+		validationFailed(w, map[string]string{"role": "read, write o admin"})
+		return
+	}
+	ids, err := s.permissions.UsersWithRole(r.Context(), uuid.UUID(resourceID), role)
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	out := openapi.ResourceMembersResult{UserIds: make([]openapi_types.UUID, 0, len(ids))}
+	for _, id := range ids {
+		out.UserIds = append(out.UserIds, openapi_types.UUID(id))
+	}
+	writeJSON(w, http.StatusOK, out)
+}

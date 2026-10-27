@@ -973,6 +973,11 @@ type ResourceAttributesInput struct {
 	Visibility RepoVisibility `json:"visibility"`
 }
 
+// ResourceMembersResult defines model for ResourceMembersResult.
+type ResourceMembersResult struct {
+	UserIds []openapi_types.UUID `json:"userIds"`
+}
+
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
 type ResourceRole string
 
@@ -1459,6 +1464,11 @@ type ListCredentialEventsParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// ListResourceMembersParams defines parameters for ListResourceMembers.
+type ListResourceMembersParams struct {
+	Role ResourceRole `form:"role" json:"role"`
+}
+
 // ListOrganizationsParams defines parameters for ListOrganizations.
 type ListOrganizationsParams struct {
 	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
@@ -1664,6 +1674,9 @@ type ServerInterface interface {
 	// GrantResourceCreator Assegna il ruolo admin al creatore di una risorsa
 	// (POST /internal/resources/{resourceId}/grants/creator)
 	GrantResourceCreator(w http.ResponseWriter, r *http.Request, resourceId openapi_types.UUID)
+	// ListResourceMembers Elenca gli utenti con almeno un ruolo su una risorsa (per core)
+	// (GET /internal/resources/{resourceId}/members)
+	ListResourceMembers(w http.ResponseWriter, r *http.Request, resourceId openapi_types.UUID, params ListResourceMembersParams)
 	// LookupSshKey Risolve un utente dal fingerprint di una chiave SSH
 	// (GET /internal/ssh-keys/{fingerprint})
 	LookupSshKey(w http.ResponseWriter, r *http.Request, fingerprint string)
@@ -2246,6 +2259,48 @@ func (siw *ServerInterfaceWrapper) GrantResourceCreator(w http.ResponseWriter, r
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GrantResourceCreator(w, r, resourceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListResourceMembers operation middleware
+func (siw *ServerInterfaceWrapper) ListResourceMembers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListResourceMembersParams
+
+	// ------------- Required query parameter "role" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "role", r.URL.Query(), &params.Role, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "role"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "role", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListResourceMembers(w, r, resourceId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3864,6 +3919,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/resources/{resourceId}/grants/creator", wrapper.GrantResourceCreator)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/ssh-keys/{fingerprint}", wrapper.LookupSshKey)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/internal/resources/{resourceId}/attributes", wrapper.SetResourceAttributes)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/resources/{resourceId}/members", wrapper.ListResourceMembers)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/internal/resources/{resourceId}", wrapper.PurgeResourceAccess)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/owners/{name}", wrapper.ResolveOwner)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/orgs/{orgId}/owners", wrapper.ListOrgOwners)
