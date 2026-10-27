@@ -8425,6 +8425,8 @@ paths:
                 $ref: "#/components/schemas/CheckPermissionResult"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -8683,6 +8685,8 @@ paths:
                 $ref: "#/components/schemas/ResourceMembersResult"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
         "401":
           $ref: "#/components/responses/Unauthorized"
         default:
@@ -9071,6 +9075,8 @@ paths:
                 $ref: "#/components/schemas/CredentialEventList"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
         "401":
           $ref: "#/components/responses/Unauthorized"
         default:

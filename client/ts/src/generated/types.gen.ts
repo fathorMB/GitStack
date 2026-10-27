@@ -17551,6 +17551,11 @@ export type CheckPermissionErrors = {
      */
     404: Error;
     /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
      * Errore imprevisto.
      */
     default: Error;
@@ -17781,6 +17786,11 @@ export type ListResourceMembersErrors = {
      * Token mancante o non valido.
      */
     401: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
     /**
      * Errore imprevisto.
      */
@@ -18217,6 +18227,11 @@ export type ListCredentialEventsErrors = {
      * Token mancante o non valido.
      */
     401: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
     /**
      * Errore imprevisto.
      */
