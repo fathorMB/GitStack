@@ -516,7 +516,11 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	// Porta esterna del ci-gateway (GIT-329): stesso gateway, ma FetchTask vale solo con il
 	// token di un runner registrato. Parte solo se c'e' anche la porta interna.
 	var ciExtSrv *http.Server
-	if cfg.CIExternalAddr != "" && ciSrv != nil {
+	extStart, extWarn := ciExternalListener(cfg.CIEnabled, cfg.CIExternalAddr, ciSrv != nil)
+	if extWarn {
+		logger.Warn("GITSTACK_CORE_CI_EXTERNAL_ADDR ignorato: la CI e' spenta, la porta esterna del ci-gateway non parte", "addr", cfg.CIExternalAddr)
+	}
+	if extStart {
 		rd, _ := gitAPI.(gitclient.Reader)
 		ciExtSrv = &http.Server{
 			Addr: cfg.CIExternalAddr,
