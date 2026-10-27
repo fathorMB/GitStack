@@ -61,26 +61,26 @@ name = "go-test-core"
 # mano, si rigenerano con `go run scripts/check-test-paths.go -suggest`.
 # -timeout e' per pacchetto e resta minore del timeout_s del check, cosi' un
 # blocco stampa lo stack e il test in corso.
-run = "go test -timeout 750s ./services/core/..."
-timeout_s = 900
+run = "go test -timeout 450s ./services/core/..."
+timeout_s = 600
 paths = ["go.work", "go.work.sum", "pkg/egress/**", "pkg/events/**", "pkg/issuequery/**", "pkg/names/**", "services/core/**"]
 
 [[check]]
 name = "go-test-cli"
-run = "go test -timeout 750s ./cli/..."
-timeout_s = 900
+run = "go test -timeout 450s ./cli/..."
+timeout_s = 600
 paths = ["README.md", "api/**", "cli/**", "client/go/**", "go.work", "go.work.sum", "skills/**"]
 
 [[check]]
 name = "go-test-admin"
-run = "go test -timeout 750s ./admin/..."
-timeout_s = 900
+run = "go test -timeout 450s ./admin/..."
+timeout_s = 600
 paths = ["admin/**", "deploy/**", "go.work", "go.work.sum", "scripts/release-readiness.go"]
 
 [[check]]
 name = "go-test-resto"
-run = "go test -timeout 750s ./api/... ./client/go/... ./pkg/egress/... ./pkg/events/... ./pkg/issuequery/... ./pkg/names/... ./pkg/scopes/... ./services/gateway/... ./services/identity/..."
-timeout_s = 900
+run = "go test -timeout 450s ./api/... ./client/go/... ./pkg/egress/... ./pkg/events/... ./pkg/issuequery/... ./pkg/names/... ./pkg/scopes/... ./services/gateway/... ./services/identity/..."
+timeout_s = 600
 paths = ["api/**", "client/go/**", "docs/**", "go.work", "go.work.sum", "pkg/egress/**", "pkg/events/**", "pkg/issuequery/**", "pkg/names/**", "pkg/scopes/**", "services/gateway/**", "services/identity/**"]
 
 [[check]]
