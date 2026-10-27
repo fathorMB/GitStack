@@ -112,3 +112,83 @@ function Invoke-E2ePilotMirror {
         }
     }
 }
+
+function Wait-E2ePilotServing {
+    param([string]$AppsApi, [string]$Name, [hashtable]$Headers, [int]$TimeoutSeconds = 300)
+    $until = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $until) {
+        $r = Invoke-HttpRaw -Uri "$AppsApi/$Name/versions?per_page=1" -Headers $Headers
+        if ($r.StatusCode -eq 200) {
+            $v = @(($r.Body | ConvertFrom-Json).items) | Select-Object -First 1
+            if ($v -and $v.state -eq 'serving') { return }
+            if ($v -and ($v.state -eq 'failed' -or $v.state -eq 'rolled_back')) { throw "$Name stato $($v.state): $($v.stateReason)" }
+        }
+        Start-Sleep -Seconds 5
+    }
+    throw "$Name non e serving entro $TimeoutSeconds secondi"
+}
+
+function Initialize-E2ePilotDatabase {
+    param([Parameter(Mandatory)][string]$BaseUrl, [Parameter(Mandatory)]$Context)
+    $api = "$BaseUrl/api/v1/repos/$($Context.Owner)/$($Context.Repo)/apps"
+    $headers = @{ Authorization = "Bearer $($Context.Token)" }
+    $password = 'e2e-' + [guid]::NewGuid().ToString('N')
+    $stage = 'app postgres'
+    try {
+        $db = Invoke-HttpRaw -Uri $api -Method 'POST' -Headers $headers -Body (@{ name = 'postgres'; image = 'docker.io/library/postgres:16'; port = 5432 } | ConvertTo-Json)
+        if ($db.StatusCode -ne 202) { throw "creazione postgres: status $($db.StatusCode)" }
+        $secret = Invoke-HttpRaw -Uri "$api/postgres/secrets/POSTGRES_PASSWORD" -Method 'PUT' -Headers $headers -Body (@{ value = $password } | ConvertTo-Json)
+        if ($secret.StatusCode -ne 200) { throw "segreto postgres: status $($secret.StatusCode)" }
+        Wait-E2ePilotServing -AppsApi $api -Name 'postgres' -Headers $headers
+        Add-StepResult -Name 'pilot 3a. postgres in salute con password segreta' -Ok $true -Detail ''
+
+        $stage = 'volume postgres'
+        $volume = Invoke-HttpRaw -Uri "$api/postgres/volumes" -Method 'POST' -Headers $headers -Body (@{ name = 'data'; mountPath = '/var/lib/postgresql/data'; sizeBytes = 1073741824 } | ConvertTo-Json)
+        if ($volume.StatusCode -ne 201 -and $volume.StatusCode -ne 202) { throw "volume: status $($volume.StatusCode)" }
+        Wait-E2ePilotServing -AppsApi $api -Name 'postgres' -Headers $headers
+        $volumes = Invoke-HttpRaw -Uri "$api/postgres/volumes" -Headers $headers
+        if ($volumes.StatusCode -ne 200 -or @((($volumes.Body | ConvertFrom-Json).items) | Where-Object { $_.name -eq 'data' -and $_.includeInBackup -eq $true }).Count -ne 1) { throw 'volume data non incluso nel backup' }
+        Add-StepResult -Name 'pilot 3b. postgres con volume incluso nel backup' -Ok $true -Detail ''
+
+        $stage = 'app api'
+        $created = Invoke-HttpRaw -Uri $api -Method 'POST' -Headers $headers -Body (@{ name = 'api'; image = "api:$($Context.Tag)"; port = 8080 } | ConvertTo-Json)
+        if ($created.StatusCode -ne 202) { throw "creazione api: status $($created.StatusCode)" }
+        $appId = ($created.Body | ConvertFrom-Json).app.id
+        if ($appId -notmatch '^[0-9a-f-]{36}$') { throw 'app api senza id valido' }
+        $secret = Invoke-HttpRaw -Uri "$api/api/secrets/PGPASSWORD" -Method 'PUT' -Headers $headers -Body (@{ value = $password } | ConvertTo-Json)
+        if ($secret.StatusCode -ne 200) { throw "segreto api: status $($secret.StatusCode)" }
+        Wait-E2ePilotServing -AppsApi $api -Name 'api' -Headers $headers
+        Add-StepResult -Name 'pilot 3c. api in salute con immagine del repo e password segreta' -Ok $true -Detail ''
+
+        $stage = 'scrittura PostgreSQL via api'
+        $copy = Copy-ToVm -LocalPath (Join-Path $PSScriptRoot '..\e2e\pilot-db-probe.sh') -RemotePath '/tmp/gitstack-e2e/pilot-db-probe.sh' -TimeoutSeconds 60
+        if ($copy.ExitCode -ne 0) { throw "copia probe: exit $($copy.ExitCode)" }
+        $write = Invoke-VmSsh -Command "bash /tmp/gitstack-e2e/pilot-db-probe.sh $appId write" -TimeoutSeconds 120
+        if ($write.ExitCode -ne 0 -or $write.StdOut -notmatch 'STEP ok database-write') { throw "scrittura via api: exit $($write.ExitCode)" }
+        $Context | Add-Member -NotePropertyName ApiId -NotePropertyValue $appId -Force
+        Add-StepResult -Name 'pilot 4. api scrive e rilegge PostgreSQL per nome postgres' -Ok $true -Detail ''
+        return $true
+    } catch {
+        Add-StepResult -Name "pilot: $stage" -Ok $false -Detail $_.Exception.Message
+        return $false
+    }
+}
+
+function Test-E2ePilotDatabaseAfterRestore {
+    param([Parameter(Mandatory)][string]$BaseUrl, [Parameter(Mandatory)]$Context)
+    $api = "$BaseUrl/api/v1/repos/$($Context.Owner)/$($Context.Repo)/apps"
+    $headers = @{ Authorization = "Bearer $($Context.Token)" }
+    try {
+        Wait-E2ePilotServing -AppsApi $api -Name 'postgres' -Headers $headers
+        Wait-E2ePilotServing -AppsApi $api -Name 'api' -Headers $headers
+        $id = $Context.ApiId
+        if ($id -notmatch '^[0-9a-f-]{36}$') { throw 'id api non valido' }
+        $copy = Copy-ToVm -LocalPath (Join-Path $PSScriptRoot '..\e2e\pilot-db-probe.sh') -RemotePath '/tmp/gitstack-e2e/pilot-db-probe.sh' -TimeoutSeconds 60
+        if ($copy.ExitCode -ne 0) { throw "copia probe: exit $($copy.ExitCode)" }
+        $read = Invoke-VmSsh -Command "bash /tmp/gitstack-e2e/pilot-db-probe.sh $id data" -TimeoutSeconds 120
+        if ($read.ExitCode -ne 0 -or $read.StdOut -notmatch 'STEP ok database-data') { throw "lettura dopo restore: exit $($read.ExitCode)" }
+        Add-StepResult -Name 'pilot 7. dato PostgreSQL conservato dopo backup e restore' -Ok $true -Detail ''
+    } catch {
+        Add-StepResult -Name 'pilot 7. dato PostgreSQL conservato dopo backup e restore' -Ok $false -Detail $_.Exception.Message
+    }
+}

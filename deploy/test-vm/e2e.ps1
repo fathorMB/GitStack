@@ -1461,10 +1461,12 @@ function Main {
         if (-not $SkipBackupRestore -and $script:AppsDomain) {
             if ($e12Ok -and $gitToken -and $gitUser) {
                 Invoke-E2ePilotMirror -BaseUrl $baseUrl -Owner $gitUser -Token $gitToken -Suffix $suffix -AliasIp $MirrorAliasIp -OriginPort $MirrorOriginPort
+                $script:PilotDbReady = $false
+                if ($script:PilotContext) { $script:PilotDbReady = Initialize-E2ePilotDatabase -BaseUrl $baseUrl -Context $script:PilotContext }
             } else {
                 Add-StepResult -Name 'pilot: prerequisiti CI' -Ok $false -Detail 'e12 fallito o token di prova mancante'
             }
-            Add-StepResult -Name 'pilot: app, tester e restore' -Ok $false -Detail 'fasi non ancora implementate'
+            Add-StepResult -Name 'pilot: sito, tester e issue' -Ok $false -Detail 'fasi non ancora implementate'
         }
 
         # Conserva i log prima che il passo f ricrei core e git.
@@ -1585,6 +1587,13 @@ function Main {
             Add-StepResult -Name 'h. backup e restore' -Ok $false -Detail "manca la sessione dell'admin (passo e3 fallito): impossibile creare i dati di prova"
         } else {
             Invoke-E2eBackupRestorePhase -BaseUrl $baseUrl -CaPath $caPath -AdminPassword $adminNewPassword -InstallRef $Ref
+            if ($script:AppsDomain) {
+                if ($script:PilotDbReady -and $script:PilotContext -and $script:RestoredBaseUrl) {
+                    Test-E2ePilotDatabaseAfterRestore -BaseUrl $script:RestoredBaseUrl -Context $script:PilotContext
+                } else {
+                    Add-StepResult -Name 'pilot 7. dato PostgreSQL conservato dopo backup e restore' -Ok $false -Detail 'database o restore non disponibili'
+                }
+            }
         }
 
         # --- j. upgrade dal commit precedente (GIT-148, DF/F) -------------

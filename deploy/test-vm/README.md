@@ -583,9 +583,15 @@ il run del tag sul runner integrato e le firme delle immagini `api` e `sito`.
 Ogni controllo compare nel riepilogo; l'origine e la configurazione di rete
 temporanea vengono rimosse anche se un controllo fallisce.
 
-Le fasi relative ad app, tester, issue e backup/restore sono ancora da
-completare: il riepilogo le segnala come `[FAIL]`. Questa sezione non costituisce
-una prova verde del pilota. L'accesso delle app all'API dipende da GIT-442.
+Il passo prepara PostgreSQL con un volume incluso nel backup e una password
+passata come segreto; l'API usa la stessa password come segreto e scrive un
+valore collegandosi a `postgres:5432`. Dopo h/i, il probe rilegge il valore
+dall'API ripristinata. I controlli sono eseguiti sulla VM, con una riga per
+ciascun esito.
+
+Le fasi relative a sito, tester e issue sono ancora da completare: il riepilogo
+le segnala come `[FAIL]`. Questa sezione non costituisce una prova verde del
+pilota. L'accesso delle app all'API dipende da GIT-442.
 
 ### Istruzioni per il board: passo e10 (GIT-201)
 
