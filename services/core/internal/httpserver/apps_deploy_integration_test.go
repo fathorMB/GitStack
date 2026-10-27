@@ -248,6 +248,18 @@ func newDeployEnv(t *testing.T) *appsDeployEnv { return newDeployEnvOpt(t, true)
 // namespace gestiti fuori dal DB.
 func newDeployEnvOpt(t *testing.T, runController bool) *appsDeployEnv {
 	t.Helper()
+	return newDeployEnvAs(t, runController, "")
+}
+
+// envTestKubeconfigCore (GIT-424): kubeconfig col token del ServiceAccount di core, con l'RBAC
+// reso dal chart (apps-rbac.yaml). Il kubeconfig di k3d è cluster-admin: da solo non prova mai
+// i permessi del controller.
+const envTestKubeconfigCore = "GITSTACK_TEST_KUBECONFIG_CORE"
+
+// newDeployEnvAs: se controllerKubeconfig non è vuoto, il controller (e solo lui) parla al
+// cluster con quel kubeconfig; le asserzioni e la pulizia dei test restano con l'amministratore.
+func newDeployEnvAs(t *testing.T, runController bool, controllerKubeconfig string) *appsDeployEnv {
+	t.Helper()
 	kc := os.Getenv("GITSTACK_TEST_KUBECONFIG")
 	if kc == "" {
 		t.Skip("GITSTACK_TEST_KUBECONFIG non impostata: serve un cluster k3d (internal/apps/k3d-test.sh)")
@@ -273,6 +285,19 @@ func newDeployEnvOpt(t *testing.T, runController bool) *appsDeployEnv {
 	if _, err := kube.SchedulingV1().PriorityClasses().Create(context.Background(), pc, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
 		t.Fatal(err)
 	}
+	ctlKube, ctlDyn := kubernetes.Interface(kube), dyn
+	if controllerKubeconfig != "" {
+		crc, err := clientcmd.BuildConfigFromFlags("", controllerKubeconfig)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ctlKube, err = kubernetes.NewForConfig(crc); err != nil {
+			t.Fatal(err)
+		}
+		if ctlDyn, err = dynamic.NewForConfig(crc); err != nil {
+			t.Fatal(err)
+		}
+	}
 	pool, _ := dbtest.NewPool(t)
 	id := &issuesIdentity{fakeIdentity: newFakeIdentity(), writers: map[uuid.UUID][]string{}}
 	base := &issuesEnv{t: t, pool: pool, id: id}
@@ -282,7 +307,7 @@ func newDeployEnvOpt(t *testing.T, runController bool) *appsDeployEnv {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctl := apps.New(store.New(pool), kube, dyn, apps.Config{
+	ctl := apps.New(store.New(pool), ctlKube, ctlDyn, apps.Config{
 		AppsDomain: "apps.example.com", ProgressTimeout: 75 * time.Second, FailureGrace: 6 * time.Second,
 		PollInterval: 500 * time.Millisecond, LoopInterval: time.Second, SyncEvery: 2 * time.Second,
 		Secrets: keys,

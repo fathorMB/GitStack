@@ -402,7 +402,8 @@ expect_eq "modello: Service (anche gli alias ExternalName H15, con list per togl
 expect_eq "modello: NetworkPolicy H9" "$(rules_of "${wl}" | grep '"networkpolicies"')" '"networking.k8s.io"|"networkpolicies"|"get", "create", "update"|'
 expect_eq "modello: middlewares e ingressroutes con i soli verbi del controller" "$(rules_of "${wl}" | grep '"middlewares"')" '"traefik.io"|"ingressroutes", "middlewares"|"create", "get", "update", "delete"|'
 expect_eq "modello: PVC dei volumi (v3-b, H3) senza update" "$(rules_of "${wl}" | grep '"persistentvolumeclaims"')" '""|"persistentvolumeclaims"|"create", "get", "list", "delete"|'
-expect_lacks "modello: mai delete su deployments, pods, secrets" "$(rules_of "${wl}" | grep -E '"(deployments|pods|secrets)"')" "delete"
+expect_lacks "modello: mai delete su deployments, pods" "$(rules_of "${wl}" | grep -E '"(deployments|pods)"')" "delete"
+expect_eq "modello: secrets con delete (deleteAppSecret sulle app senza segreti, GIT-424)" "$(rules_of "${wl}" | grep '"secrets"')" '""|"secrets"|"create", "get", "update", "delete"|'
 expect_lacks "modello: nessun permesso su namespaces" "${wl}" "namespaces"
 expect_lacks "modello: nessun permesso su rolebindings" "${wl}" "rolebindings"
 

@@ -31,7 +31,21 @@ if [ -n "${GITSTACK_TEST_CORE_IMAGE:-}" ]; then
 fi
 "$k3d_bin" kubeconfig get "$cluster" >"$work/kubeconfig"
 
+# GIT-424: il kubeconfig di k3d e' cluster-admin, quindi i test non provano mai i permessi del
+# controller. Si applica l'RBAC vero del chart (apps-rbac.yaml, release "gitstack" nel namespace
+# default) e si ricava un kubeconfig col token del ServiceAccount di core: il test
+# TestApps_SenzaSegretiConRbacDelChartSuK3d fa girare il controller con quello.
+sa=gitstack-core
+helm template gitstack "$root/deploy/gitstack" --namespace default --show-only templates/apps-rbac.yaml \
+  --set apps.enabled=true --set apps.domain=apps.example.com >"$work/apps-rbac.yaml"
+kubectl --kubeconfig "$work/kubeconfig" -n default apply -f "$work/apps-rbac.yaml" >/dev/null
+sa_token=$(kubectl --kubeconfig "$work/kubeconfig" -n default create token "$sa" --duration 2h)
+cp "$work/kubeconfig" "$work/kubeconfig-core"
+kubectl --kubeconfig "$work/kubeconfig-core" config set-credentials "sa-$sa" --token "$sa_token" >/dev/null
+kubectl --kubeconfig "$work/kubeconfig-core" config set-context --current --user "sa-$sa" >/dev/null
+export GITSTACK_TEST_KUBECONFIG_CORE="$work/kubeconfig-core"
+
 cd "$root/services/core"
 GITSTACK_TEST_KUBECONFIG="$work/kubeconfig" go test -tags integration -count=1 -timeout 25m \
-  -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d|TestApps_SegretiKubernetesERollback|TestApps_IsolamentoSuK3d|TestApps_BarriereInUscitaSuK3d|TestApps_CancelloVeroSenzaPolicySuK3d|TestApps_NomiInterniSuK3d|TestApps_VolumiSuK3d' -v ./internal/httpserver/
+  -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d|TestApps_SegretiKubernetesERollback|TestApps_IsolamentoSuK3d|TestApps_BarriereInUscitaSuK3d|TestApps_CancelloVeroSenzaPolicySuK3d|TestApps_NomiInterniSuK3d|TestApps_VolumiSuK3d|TestApps_SenzaSegretiConRbacDelChartSuK3d' -v ./internal/httpserver/
 echo "OK: controller, segreti, isolamento, barriere in uscita, nomi interni e volumi delle app provati su k3d"
