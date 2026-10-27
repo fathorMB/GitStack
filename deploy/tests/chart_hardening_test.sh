@@ -435,7 +435,27 @@ OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=app
 pol="$(doc ValidatingAdmissionPolicy gitstack-apps-controller-scope)"
 expect_has "policy (CI spenta): matchCondition sul ServiceAccount di core" "${pol}" 'request.userInfo.username == "system:serviceaccount:prova-ns:gitstack-core"'
 expect_has "policy (CI spenta): soggetto ammesso" "${pol}" 's.name == "gitstack-core" && s.namespace == "prova-ns"'
+# GIT-449: CI spenta, app e registry accesi: il token di pull delle app (gsj_app.) va al ci-gateway di core.
+d="$(doc Deployment gitstack-git)"
+expect_has "app senza CI: git convalida il token di pull nel ci-gateway di core" "${d}" 'value: "http://gitstack-core.prova-ns.svc:8081"'
+d="$(doc Deployment gitstack-core)"
+expect_line_has "app senza CI: core apre la porta del ci-gateway" "${d}" '- name: ci-gateway'
+expect_has "app senza CI: GITSTACK_CORE_CI_GATEWAY_ADDR" "${d}" 'GITSTACK_CORE_CI_GATEWAY_ADDR'
+expect_lacks "app senza CI: core non è CI_ENABLED (token dei job rifiutati)" "${d}" 'GITSTACK_CORE_CI_ENABLED'
+expect_lacks "app senza CI: core senza URL del ci-gateway per i pod dei job" "${d}" 'GITSTACK_CORE_CI_GATEWAY_URL'
+expect_has "app senza CI: il Service di core espone il ci-gateway" "$(doc Service gitstack-core)" 'name: ci-gateway'
+expect_has "app senza CI: git raggiunge core sulla porta del ci-gateway" "$(doc NetworkPolicy gitstack-git)" "port: 8081"
+d="$(doc NetworkPolicy gitstack-core)"
+expect_has "app senza CI: core accetta il pod git sulla porta del ci-gateway" "${d}" "port: 8081"
+expect_lacks "app senza CI: core non accetta il namespace dei job" "${d}" "gitstack-ci-jobs"
+expect_eq "app senza CI: nessuna policy dei job" "$(count 'name: ci-job-egress$')" "0"
+OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test --set git.registry.enabled=false)" || { bad "helm template apps senza registry fallito"; exit 1; }
+expect_lacks "app senza CI e senza registry: git senza ci-gateway" "$(doc Deployment gitstack-git)" "GITSTACK_GIT_CI_GATEWAY_URL"
+expect_lacks "app senza CI e senza registry: core senza porta ci-gateway" "$(doc Deployment gitstack-core)" "GITSTACK_CORE_CI_GATEWAY_ADDR"
 OUT="$(render --namespace prova-ns --set ci.enabled=true --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template con CI e apps fallito"; exit 1; }
+expect_has "CI e app: GITSTACK_CORE_CI_ENABLED invariato" "$(doc Deployment gitstack-core)" 'GITSTACK_CORE_CI_ENABLED'
+expect_eq "CI e app: una sola porta ci-gateway in core" "$(doc Deployment gitstack-core | grep -c -E '^ +- name: ci-gateway$')" "1"
+expect_eq "CI e app: un solo GITSTACK_CORE_CI_GATEWAY_ADDR" "$(doc Deployment gitstack-core | grep -c 'name: GITSTACK_CORE_CI_GATEWAY_ADDR$')" "1"
 OUT="$(render --namespace prova-ns)" || { bad "helm template di default fallito"; exit 1; }
 expect_eq "apps spento: nessuna policy del controller" "$(count 'gitstack-apps-controller-scope')" "0"
 expect_lacks "apps spento: il gateway senza chiavi di firma" "$(doc Deployment gitstack-gateway)" "GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS"

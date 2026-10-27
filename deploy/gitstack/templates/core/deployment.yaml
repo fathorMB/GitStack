@@ -86,7 +86,7 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.core.containerPort }}
-            {{- if .Values.ci.enabled }}
+            {{- if or .Values.ci.enabled (include "gitstack.ci.appPullOnly" .) }}
             - name: ci-gateway
               containerPort: {{ .Values.ci.gateway.port }}
             {{- end }}
@@ -129,6 +129,12 @@ spec:
             # Cancello fail-closed dei pod delle app (GIT-418): init container con l'immagine di core (`core apps-gate`).
             - name: GITSTACK_CORE_APPS_GATE_IMAGE
               value: {{ include "gitstack.image" (dict "root" $ "component" .Values.core) | quote }}
+            {{- end }}
+            {{- if include "gitstack.ci.appPullOnly" . }}
+            # CI spenta, app e registry accesi (GIT-449): porta del ci-gateway solo per il token di pull
+            # delle app (registry-access). Niente CI_ENABLED: i token dei job restano rifiutati.
+            - name: GITSTACK_CORE_CI_GATEWAY_ADDR
+              value: {{ printf ":%d" (.Values.ci.gateway.port | int) | quote }}
             {{- end }}
             {{- if .Values.ci.enabled }}
             - name: GITSTACK_CORE_CI_ENABLED

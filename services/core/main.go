@@ -489,6 +489,16 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	if cfg.CIGatewayAddr != "" {
 		rd, rok := gitAPI.(gitclient.Reader)
 		switch {
+		case !cfg.CIEnabled:
+			// CI spenta (GIT-449): il registry convalida solo i token di pull delle app; i
+			// token dei job non valgono e non servono né log né letture di git.
+			ciSrv = &http.Server{
+				Addr: cfg.CIGatewayAddr,
+				Handler: httpserver.NewCIGateway(pool, rd, httpserver.CIGatewayConfig{
+					Log: logger, AppPullKeys: trust.ParseKeys(cfg.GatewaySecret), AppPullOnly: true,
+				}),
+				ReadHeaderTimeout: 5 * time.Second,
+			}
 		case ciLogs == nil || !rok:
 			logger.Warn("log dei job o git non configurati: il ci-gateway non parte")
 		default:
