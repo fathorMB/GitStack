@@ -9785,7 +9785,7 @@ paths:
         Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato
         risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e
         riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne
-        crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy
+        crea una. `followBranch: null` torna ai deploy a mano; `followTagPattern` segue una regola sui tag al posto del branch (mai tutte e due, 422 `follow_both`); `autoDeployPaused` sospende il deploy
         automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie.
         422 `follow_branch_unsigned` come in `createApp`.
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppUpdateInput"}}}}
@@ -17292,11 +17292,12 @@ components:
         runsAsRoot: {type: boolean, nullable: true, description: "Vero se l'immagine gira come root (avviso baseline, H9); null se non ancora letto."}
     AppFollow:
       type: object
-      description: Branch seguito per il deploy automatico (H7).
+      description: "Sorgente del deploy automatico (H7): un branch oppure una regola sui tag, mai tutte e due."
       additionalProperties: false
-      required: [branch, paused]
+      required: [paused]
       properties:
-        branch: {type: string}
+        branch: {type: string, description: "Branch seguito; assente se l'app segue una regola sui tag."}
+        tagPattern: {type: string, description: "Regola sui tag (glob, per esempio `v*-test.*`); assente se l'app segue un branch."}
         paused: {type: boolean, description: "Deploy automatici sospesi (per esempio dopo un rollback)."}
     AppHealthCheck:
       type: object
@@ -17379,7 +17380,8 @@ components:
         image: {type: string, minLength: 1, maxLength: 512, description: "Riferimento dell'immagine. Per il registry del repo basta `nome:tag` o il solo tag, risolti contro `<host>/<owner>/<repo>`; altrimenti un riferimento completo a un registry esterno."}
         port: {type: integer, minimum: 1, maximum: 65535, description: "Assente: app senza indirizzo, che parla solo con le app dello stesso repo (H9)."}
         healthCheck: {$ref: "#/components/schemas/AppHealthCheck"}
-        followBranch: {type: string, nullable: true, description: "Branch da seguire (H7). Non disponibile per un'immagine esterna."}
+        followBranch: {type: string, nullable: true, description: "Branch da seguire (H7). Non disponibile per un'immagine esterna. Non insieme a `followTagPattern` (422 `follow_both`)."}
+        followTagPattern: {type: string, nullable: true, maxLength: 128, description: "Regola sui tag (glob, per esempio `v*-test.*`): un'immagine firmata dalla CI con un tag che la rispetta va in produzione (H7). Non disponibile per un'immagine esterna. Non insieme a `followBranch` (422 `follow_both`)."}
         resources: {$ref: "#/components/schemas/AppResourcesInput"}
         copies: {type: integer, minimum: 1, default: 1}
         restricted: {type: boolean, default: false, description: "Rifiuta immagini che girano come root (H9). L'istanza puo' imporlo comunque."}
@@ -17390,7 +17392,8 @@ components:
       properties:
         port: {type: integer, minimum: 1, maximum: 65535, nullable: true}
         healthCheck: {$ref: "#/components/schemas/AppHealthCheck"}
-        followBranch: {type: string, nullable: true, description: "Branch da seguire; `null` torna ai deploy a mano."}
+        followBranch: {type: string, nullable: true, description: "Branch da seguire; `null` torna ai deploy a mano. Se l'app segue una regola sui tag va tolta prima (o nella stessa richiesta con `followTagPattern: null`), altrimenti 422 `follow_both`."}
+        followTagPattern: {type: string, nullable: true, maxLength: 128, description: "Regola sui tag; `null` la toglie. Se l'app segue un branch va tolto prima (o nella stessa richiesta con `followBranch: null`), altrimenti 422 `follow_both`."}
         autoDeployPaused: {type: boolean}
         restricted: {type: boolean}
     AppDeployInput:
@@ -17414,8 +17417,8 @@ components:
         copies: {type: integer, minimum: 0, maximum: 50, description: "Zero ferma l'app (`stoppedReason: manual`)."}
     AppVersionTrigger:
       type: string
-      description: "`manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`."
-      enum: [create, manual, branch_push, config, rollback]
+      description: "`manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `tag_push` (e' arrivata nel registry un'immagine firmata con un tag che rispetta la regola seguita, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`."
+      enum: [create, manual, branch_push, tag_push, config, rollback]
     AppVersionConfig:
       type: object
       description: Configurazione di una versione. I segreti compaiono solo per nome (H8).

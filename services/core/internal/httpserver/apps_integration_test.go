@@ -309,7 +309,7 @@ func TestApps_OgniModificaCreaUnaVersione(t *testing.T) {
 	// Nessun cambiamento che entra in una versione: nessuna versione nuova (anche con valori uguali).
 	e.want(e.do(http.MethodPatch, base, "alice", `{"port":9090}`), http.StatusOK, "")
 	a = e.app(e.do(http.MethodPatch, base, "alice", `{"followBranch":"main","autoDeployPaused":true}`))
-	if a.Follow == nil || a.Follow.Branch != "main" || !a.Follow.Paused {
+	if a.Follow == nil || (a.Follow.Branch == nil || *a.Follow.Branch != "main") || !a.Follow.Paused {
 		t.Fatalf("follow: %+v", a.Follow)
 	}
 	a = e.app(e.do(http.MethodPatch, base, "alice", `{"followBranch":null}`))

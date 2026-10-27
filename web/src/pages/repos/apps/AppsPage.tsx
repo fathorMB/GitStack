@@ -40,7 +40,7 @@ function AppRow({ app, owner, repo }: { app: App; owner: string; repo: string })
           {app.address ? ' · ' : null}
           {app.follow ? (
             <>
-              follows <span className="mono">{app.follow.branch}</span>
+              follows {app.follow.tagPattern ? 'tags ' : ''}<span className="mono">{app.follow.tagPattern ?? app.follow.branch}</span>
               {app.follow.paused ? ' (paused)' : ''}
             </>
           ) : (

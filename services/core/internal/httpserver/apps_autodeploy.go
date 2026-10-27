@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/fathorMB/GitStack/services/core/internal/store"
@@ -25,9 +26,9 @@ type imagePushedBody struct {
 	ActorID string `json:"actorId"`
 }
 
-// registryImagePushed è il deploy automatico da branch (H7). Il servizio git (solo con la sua
+// registryImagePushed è il deploy automatico da branch o da regola sui tag (H7). Il servizio git (solo con la sua
 // chiave) riporta il tag che un job ha pubblicato, con il run che lo ha causato. Per ogni app del
-// repo che segue il branch del run, e usa la stessa immagine, core mette in produzione la nuova
+// repo che segue il branch del run (o una regola sui tag che il tag rispetta), e usa la stessa immagine, core mette in produzione la nuova
 // versione se e solo se:
 //   - chi ha fatto il push ha ancora `write` sul repo (CI4: il deploy usa i suoi permessi);
 //   - l'immagine è firmata dalla CI di questo repo (H10), non da altri e non da una chiave aggiuntiva;
@@ -62,9 +63,10 @@ func (s *apiServer) autoDeploy(r *http.Request, repoID uuid.UUID, in imagePushed
 	log := slog.Default().With("repoId", repoID, "tag", in.Tag, "ref", in.Ref)
 	branch, isBranch := strings.CutPrefix(in.Ref, "refs/heads/")
 	actorID, aerr := uuid.Parse(in.ActorID)
-	if !isBranch || branch == "" || (in.Event != "push" && in.Event != "workflow_dispatch") || aerr != nil {
-		return // un tag, una PR o una schedule senza attore non fanno deploy
+	if (in.Event != "push" && in.Event != "workflow_dispatch") || aerr != nil {
+		return // una PR o una schedule senza attore non fanno deploy
 	}
+	isBranch = isBranch && branch != ""
 	if s.appCtl == nil || s.repoIdentity == nil {
 		return
 	}
@@ -81,13 +83,28 @@ func (s *apiServer) autoDeploy(r *http.Request, repoID uuid.UUID, in imagePushed
 		log.Error("deploy automatico: elenco delle app", "err", err)
 		return
 	}
-	var candidates []store.App
+	// Ogni app segue un branch oppure una regola sui tag (mai tutte e due): il branch scatta per il
+	// ref del run, la regola per il tag dell'immagine che arriva nel registry (H7 del 2026-10-26).
+	type candidate struct {
+		app     store.App
+		trigger string
+	}
+	var candidates []candidate
 	for _, a := range apps {
-		if a.FollowBranch == nil || *a.FollowBranch != branch || a.AutoDeployPaused || a.Image.Source != "registry" {
+		if a.AutoDeployPaused || a.Image.Source != "registry" {
+			continue
+		}
+		trigger := ""
+		switch {
+		case a.FollowBranch != nil && isBranch && *a.FollowBranch == branch:
+			trigger = "branch_push"
+		case a.FollowTagPattern != nil && tagMatches(*a.FollowTagPattern, in.Tag):
+			trigger = "tag_push"
+		default:
 			continue
 		}
 		if image, _, _ := s.registryParts(a.Image.Reference, repo); image == in.Image {
-			candidates = append(candidates, a)
+			candidates = append(candidates, candidate{a, trigger})
 		}
 	}
 	if len(candidates) == 0 {
@@ -128,13 +145,18 @@ func (s *apiServer) autoDeploy(r *http.Request, repoID uuid.UUID, in imagePushed
 	by := sig.SignedBy
 	img.Verified, img.SignedBy = true, &by
 	commit := s.imageCommit(ctx, repo, img)
-	for _, a := range candidates {
+	for _, c := range candidates {
+		a := c.app
 		// Già l'immagine dell'ultima versione, anche se non è ancora partita (altro tag dello stesso build).
 		if latest, _, err := s.resources.ListAppVersions(ctx, a.ID, 1, 0); err == nil && len(latest) == 1 && latest[0].Image.Digest != nil && *latest[0].Image.Digest == in.Digest {
 			continue
 		}
+		var versionBranch *string
+		if c.trigger == "branch_push" {
+			versionBranch = &branch
+		}
 		_, ver, err := s.resources.BeginAppDeploy(ctx, repo.ID, a.Name, store.NewAppDeploy{
-			Trigger: "branch_push", Image: img, Branch: &branch, Actor: actor, CommitSha: commit,
+			Trigger: c.trigger, Image: img, Branch: versionBranch, Actor: actor, CommitSha: commit,
 		}, s.now())
 		if err != nil {
 			// Un deploy già in corso, o l'app sparita nel frattempo: il prossimo push riprova.
@@ -142,6 +164,36 @@ func (s *apiServer) autoDeploy(r *http.Request, repoID uuid.UUID, in imagePushed
 			continue
 		}
 		s.appCtl.Kick()
-		log.Info("deploy automatico avviato", "app", a.Name, "version", ver.Number, "actor", actor.Username)
+		log.Info("deploy automatico avviato", "app", a.Name, "trigger", c.trigger, "version", ver.Number, "actor", actor.Username)
 	}
+}
+
+// maxFollowTagPatternLen è la lunghezza massima di una regola sui tag (come il vincolo del database).
+const maxFollowTagPatternLen = 128
+
+// validTagPattern controlla la regola sui tag (un glob di path.Match, per esempio v*-test.*): un
+// messaggio d'errore per il campo, vuoto se va bene.
+func validTagPattern(p string) string {
+	if strings.TrimSpace(p) == "" || len(p) > maxFollowTagPatternLen {
+		return "followTagPattern: una regola sui tag di 1-128 caratteri, per esempio v*-test.*."
+	}
+	if strings.ContainsAny(p, " /") {
+		return "followTagPattern: i tag non hanno spazi né barre."
+	}
+	if _, err := path.Match(p, "x"); err != nil {
+		return "followTagPattern: regola non valida (" + err.Error() + ")."
+	}
+	return ""
+}
+
+// tagMatches dice se il tag rispetta la regola (glob: * qualsiasi sequenza, ? un carattere, [..]
+// una classe). L'intero tag deve combaciare: v*-test.* accetta v1.2-test.3 ma non v1.2.
+func tagMatches(pattern, tag string) bool {
+	ok, err := path.Match(pattern, tag)
+	return err == nil && ok
+}
+
+// writeFollowBoth rifiuta branch e regola sui tag insieme: l'app sceglie una sola sorgente (H7).
+func writeFollowBoth(w http.ResponseWriter) {
+	writeError(w, http.StatusUnprocessableEntity, "follow_both", "Un'app segue un branch oppure una regola sui tag, non tutte e due: togli followBranch o followTagPattern (null) prima di impostare l'altro.")
 }

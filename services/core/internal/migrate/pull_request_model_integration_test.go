@@ -33,7 +33,7 @@ func TestMigration0018_DatiV10_SuGiuSu(t *testing.T) {
 	ctx := context.Background()
 
 	// Stato v1.0: schema alla 0017.
-	if err := migrate.Down(ctx, pool, dsn, 28); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 29); err != nil {
 		t.Fatalf("down 0018: %v", err)
 	}
 	for _, tbl := range prModelTables {
@@ -83,7 +83,7 @@ func TestMigration0018_DatiV10_SuGiuSu(t *testing.T) {
 	wantCode(t, err, "23505")
 
 	// Giù e su ancora: i dati v1.0 sopravvivono al down.
-	if err := migrate.Down(ctx, pool, dsn, 28); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 29); err != nil {
 		t.Fatalf("secondo down: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM core.pull_requests), (SELECT count(*) FROM core.issues)`).

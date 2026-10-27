@@ -23,6 +23,8 @@ function describeTrigger(v: AppVersion, follow: string | undefined): string {
   switch (v.trigger) {
     case 'branch_push':
       return `push to ${v.branch ?? follow ?? 'the branch'}${who ? ` by ${who}` : ''}`;
+    case 'tag_push':
+      return `tag ${v.image.reference.split(':').pop() ?? ''}${who ? ` pushed by ${who}` : ''}`;
     case 'manual':
       return `manual deploy${who ? ` by ${who}` : ''}`;
     case 'config':
@@ -133,7 +135,7 @@ function VersionsLoaded({ repo, app, perms, onChange, owner, name, reload }: Pro
               <label className="row">
                 <input type="checkbox" checked={pause} onChange={(e) => setPause(e.target.checked)} />
                 <span>
-                  Pause automatic deploys from <span className="mono">{app.follow.branch}</span> (otherwise the next CI image replaces it)
+                  Pause automatic deploys from <span className="mono">{app.follow.tagPattern ?? app.follow.branch}</span> (otherwise the next CI image replaces it)
                 </span>
               </label>
             ) : null}

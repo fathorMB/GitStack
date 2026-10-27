@@ -128,6 +128,8 @@ type App struct {
 	Config             AppConfig
 	ReadyCopies        int
 	FollowBranch       *string
+	// FollowTagPattern è la regola sui tag del deploy automatico (H7): alternativa a FollowBranch.
+	FollowTagPattern *string
 	AutoDeployPaused   bool
 	ActiveVersion      int
 	Image              AppImage // dell'ultima versione attiva
@@ -169,13 +171,15 @@ type NewApp struct {
 	Image        AppImage
 	Config       AppConfig
 	FollowBranch *string
+	// FollowTagPattern: alternativa a FollowBranch, mai tutte e due (H7).
+	FollowTagPattern *string
 	Actor        *AppActor
 	// CommitSha è il commit dell'etichetta revision dell'immagine (H14); nil se non si legge.
 	CommitSha *string
 }
 
 const appCols = `a.id, a.repo_id, a.name, a.address_label, a.status, a.access_mode, a.copies, a.ready_copies, a.port,
-	a.health_check, a.follow_branch, a.auto_deploy_paused, a.restricted, a.guaranteed_cpu_millis,
+	a.health_check, a.follow_branch, a.follow_tag_pattern, a.auto_deploy_paused, a.restricted, a.guaranteed_cpu_millis,
 	a.guaranteed_memory_bytes, a.limit_cpu_millis, a.limit_memory_bytes, a.active_version, a.created_by,
 	a.created_at, a.updated_at, r.owner_name, r.name, r.archived_at, r.deleted_at`
 
@@ -183,7 +187,7 @@ func scanApp(row pgx.Row) (App, error) {
 	var a App
 	var hc, by []byte
 	err := row.Scan(&a.ID, &a.RepoID, &a.Name, &a.AddressLabel, &a.Status, &a.Access, &a.Config.Copies, &a.ReadyCopies,
-		&a.Config.Port, &hc, &a.FollowBranch, &a.AutoDeployPaused, &a.Config.Restricted, &a.Config.Guaranteed.CPUMillis,
+		&a.Config.Port, &hc, &a.FollowBranch, &a.FollowTagPattern, &a.AutoDeployPaused, &a.Config.Restricted, &a.Config.Guaranteed.CPUMillis,
 		&a.Config.Guaranteed.MemoryBytes, &a.Config.Limit.CPUMillis, &a.Config.Limit.MemoryBytes, &a.ActiveVersion, &by,
 		&a.CreatedAt, &a.UpdatedAt, &a.Owner, &a.RepoName, &a.RepoArchivedAt, &a.RepoDeletedAt)
 	if err != nil {
@@ -385,10 +389,10 @@ func (s *Store) CreateApp(ctx context.Context, in NewApp, now time.Time) (App, A
 	c := in.Config
 	_, err = tx.Exec(ctx, `INSERT INTO core.apps (id, repo_id, name, address_label, copies, port, health_check, follow_branch,
 			restricted, guaranteed_cpu_millis, guaranteed_memory_bytes, limit_cpu_millis, limit_memory_bytes,
-			active_version, next_version, created_by, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,1,2,$14,$15,$15)`,
+			active_version, next_version, created_by, created_at, updated_at, follow_tag_pattern)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,1,2,$14,$15,$15,$16)`,
 		id, in.RepoID, in.Name, in.AddressLabel, c.Copies, c.Port, healthJSON(c.HealthCheck), in.FollowBranch, c.Restricted,
-		c.Guaranteed.CPUMillis, c.Guaranteed.MemoryBytes, c.Limit.CPUMillis, c.Limit.MemoryBytes, actorJSON(in.Actor), now)
+		c.Guaranteed.CPUMillis, c.Guaranteed.MemoryBytes, c.Limit.CPUMillis, c.Limit.MemoryBytes, actorJSON(in.Actor), now, in.FollowTagPattern)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
@@ -491,6 +495,8 @@ type AppPatch struct {
 	Restricted       bool
 	SetFollow        bool
 	FollowBranch     *string
+	SetFollowTag     bool
+	FollowTagPattern *string
 	SetPaused        bool
 	AutoDeployPaused bool
 	// AddressLabel è l'etichetta da riservare se l'app non ne ha ancora una (porta data dopo la
@@ -528,9 +534,15 @@ func (s *Store) UpdateApp(ctx context.Context, repoID uuid.UUID, name string, p 
 		cfg.Restricted = p.Restricted
 		changes = append(changes, "restricted")
 	}
-	follow, paused := cur.FollowBranch, cur.AutoDeployPaused
+	follow, followTag, paused := cur.FollowBranch, cur.FollowTagPattern, cur.AutoDeployPaused
 	if p.SetFollow {
 		follow = p.FollowBranch
+	}
+	if p.SetFollowTag {
+		followTag = p.FollowTagPattern
+	}
+	if follow != nil && followTag != nil {
+		return App{}, nil, ErrAppFollowBoth
 	}
 	if p.SetPaused {
 		paused = p.AutoDeployPaused
@@ -570,8 +582,8 @@ func (s *Store) UpdateApp(ctx context.Context, repoID uuid.UUID, name string, p 
 		ver = &v
 	}
 	if _, err := tx.Exec(ctx, `UPDATE core.apps SET port = $2, health_check = $3, restricted = $4, follow_branch = $5,
-			auto_deploy_paused = $6, updated_at = $7, address_label = COALESCE(address_label, $8) WHERE id = $1`,
-		cur.ID, cfg.Port, healthJSON(cfg.HealthCheck), cfg.Restricted, follow, paused, now, p.AddressLabel); err != nil {
+			auto_deploy_paused = $6, updated_at = $7, address_label = COALESCE(address_label, $8), follow_tag_pattern = $9 WHERE id = $1`,
+		cur.ID, cfg.Port, healthJSON(cfg.HealthCheck), cfg.Restricted, follow, paused, now, p.AddressLabel, followTag); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation && pgErr.ConstraintName == "apps_address_label_key" {
 			return App{}, nil, ErrAppAddressConflict
