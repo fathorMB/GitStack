@@ -505,6 +505,32 @@ expect_has "policy di ammissione del namespace di build" "$OUT" "kind: Validatin
 if helm_rc --set ci.enabled=true --set ci.build.enabled=true --set git.registry.enabled=false; then bad "build senza registry: helm template doveva fermarsi"; else ok; fi
 if helm_rc --set ci.enabled=true --set ci.build.enabled=true --set gateway.enabled=false; then bad "build senza gateway: helm template doveva fermarsi"; else ok; fi
 
+echo "== GIT-453: gitstack-build mette l'etichetta org.opencontainers.image.revision solo con GITHUB_SHA valido"
+BT="$(mktemp -d)"
+mkdir -p "${BT}/bin" "${BT}/ctx"
+printf 'FROM scratch\n' >"${BT}/ctx/Dockerfile"
+cat >"${BT}/bin/buildctl" <<'EOF'
+#!/bin/sh
+[ "$1" = "debug" ] && exit 0
+printf 'ARG:%s\n' "$@"
+EOF
+chmod +x "${BT}/bin/buildctl"
+run_build() {
+  (cd "${BT}/ctx" && env -u GITHUB_SHA "$@" PATH="${BT}/bin:${PATH}" HOME="${BT}/home" GITSTACK_REGISTRY=reg:8080 \
+    BUILDKIT_HOST=unix:///x GITHUB_TOKEN=t GITSTACK_REPOSITORY=o/r sh "${HERE}/../ci-runner/gitstack-build" --tag 1 2>&1)
+}
+SHA40="0123456789abcdef0123456789abcdef01234567"
+o="$(run_build GITHUB_SHA="${SHA40}")" || bad "gitstack-build con sha valido fallito"
+expect_has "build: etichetta revision con sha valido" "${o}" "ARG:label:org.opencontainers.image.revision=${SHA40}"
+for v in "" "abc123" "${SHA40}0" "zzzz456789abcdef0123456789abcdef01234567"; do
+  o="$(run_build GITHUB_SHA="${v}")" || bad "gitstack-build con sha '${v}' fallito"
+  expect_lacks "build: nessuna etichetta con sha '${v}'" "${o}" "label:"
+done
+o="$(run_build)" || bad "gitstack-build senza GITHUB_SHA fallito"
+expect_lacks "build: nessuna etichetta senza GITHUB_SHA" "${o}" "label:"
+expect_has "build: senza etichetta il resto degli argomenti c'e'" "${o}" "ARG:--output"
+rm -rf "${BT}"
+
 echo "== GIT-383: core legge la CA interna (impronta per la guida dei tester)"
 OUT="$(render)" || { bad "helm template di default fallito"; exit 1; }
 d="$(doc Deployment gitstack-core)"

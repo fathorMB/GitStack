@@ -8,6 +8,9 @@
 # L'immagine e' <registry>/<owner>/<repo>[/<name>]:<tag>: il repo e' sempre quello del job (il
 # suo token non vale per altri). Variabili usate: GITSTACK_REGISTRY e BUILDKIT_HOST (le mette il
 # pod), GITSTACK_REPOSITORY (owner/nome, la mette il runner) e GITHUB_TOKEN (act).
+# Se GITHUB_SHA e' uno sha di 40 esadecimali, l'immagine riceve l'etichetta OCI
+# org.opencontainers.image.revision=<sha> (da cui GitStack ricava il commit della versione);
+# altrimenti nessuna etichetta. Un LABEL omonimo nel Dockerfile non e' un errore.
 set -eu
 
 die() { echo "gitstack-build: $*" >&2; exit 1; }
@@ -24,7 +27,7 @@ while [ $# -gt 0 ]; do
     --file) [ $# -ge 2 ] || die "--file vuole un valore"; file="$2"; shift 2 ;;
     --build-arg) [ $# -ge 2 ] || die "--build-arg vuole K=V"; args="${args}
 $2"; shift 2 ;;
-    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
     -*) die "opzione sconosciuta: $1" ;;
     *) ctx="$1"; shift ;;
   esac
@@ -68,6 +71,14 @@ for kv in ${args}; do
   [ -n "${kv}" ] && set -- "$@" --opt "build-arg:${kv}"
 done
 IFS="${oldifs}"
+# Etichetta OCI della revisione (H14, GIT-453): core ricava il commitSha del deploy automatico da
+# org.opencontainers.image.revision. Solo con GITHUB_SHA di 40 esadecimali; altrimenti niente.
+case "${GITHUB_SHA:-}" in
+  *[!0-9a-fA-F]*|"") ;;
+  *) if [ "${#GITHUB_SHA}" -eq 40 ]; then
+       set -- "$@" --opt "label:org.opencontainers.image.revision=${GITHUB_SHA}"
+     fi ;;
+esac
 # registry.insecure: il gateway nel cluster parla HTTP (nome di Service, non un host pubblico con TLS).
 set -- "$@" --output "type=image,name=${ref},push=true,registry.insecure=true"
 echo "gitstack-build: costruisco e pubblico ${ref}"
