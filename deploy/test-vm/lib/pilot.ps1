@@ -237,8 +237,10 @@ function Initialize-E2ePilotSite {
         $stage = 'deploy sito'
         $site = Invoke-HttpRaw -Uri $apps -Method 'POST' -Headers $headers -Body (@{ name = 'sito'; image = "sito:$($Context.Tag)"; port = 8080 } | ConvertTo-Json)
         if ($site.StatusCode -ne 202) { throw "creazione sito: status $($site.StatusCode)" }
+        Wait-E2ePilotServing -AppsApi $apps -Name 'sito' -Headers $headers
         $var = Invoke-HttpRaw -Uri "$apps/sito/variables/PILOT_REPO" -Method 'PUT' -Headers $headers -Body (@{ value = "$($Context.Owner)/$($Context.Repo)" } | ConvertTo-Json)
         if ($var.StatusCode -ne 200) { throw "variabile repo: status $($var.StatusCode)" }
+        Wait-E2ePilotServing -AppsApi $apps -Name 'sito' -Headers $headers
         $secret = Invoke-HttpRaw -Uri "$apps/sito/secrets/BOT_TOKEN" -Method 'PUT' -Headers $headers -Body (@{ value = $botToken } | ConvertTo-Json)
         if ($secret.StatusCode -ne 200) { throw "segreto bot: status $($secret.StatusCode)" }
         Wait-E2ePilotServing -AppsApi $apps -Name 'sito' -Headers $headers
@@ -263,10 +265,76 @@ function Initialize-E2ePilotSite {
         $actual = ([string]$info.fingerprintSha256 -replace '[^0-9a-fA-F]', '').ToLowerInvariant()
         $expected = ($CaFingerprint -replace '[^0-9a-fA-F]', '').ToLowerInvariant()
         if ($info.caMode -ne 'internal' -or $actual.Length -ne 64 -or $actual -ne $expected -or -not $info.address -or -not $info.guideUrl) { throw 'invito senza indirizzo o impronta CA diversa dalla CA scaricata' }
+        $caInfo = Invoke-HttpRaw -Uri "$BaseUrl/api/v1/instance/ca"
+        if ($caInfo.StatusCode -ne 200) { throw "CA della guida: status $($caInfo.StatusCode)" }
+        $guideFingerprint = ([string](($caInfo.Body | ConvertFrom-Json).fingerprintSha256) -replace '[^0-9a-fA-F]', '').ToLowerInvariant()
+        if ($guideFingerprint -ne $expected) { throw 'impronta della guida diversa dalla CA scaricata' }
         Add-StepResult -Name 'pilot 5d. impronta CA dell invito corrisponde alla CA scaricata' -Ok $true -Detail ''
         return [pscustomobject]@{ Address = [string]$info.address; Tester = $tester; TesterToken = $testerToken; Bot = $bot }
     } catch {
         Add-StepResult -Name "pilot: $stage" -Ok $false -Detail $_.Exception.Message
         return $null
+    }
+}
+
+function Invoke-E2ePilotTester {
+    param(
+        [Parameter(Mandatory)][string]$BaseUrl,
+        [Parameter(Mandatory)][string]$CaPath,
+        [Parameter(Mandatory)][string]$WorkDir,
+        [Parameter(Mandatory)]$Context,
+        [Parameter(Mandatory)]$Site
+    )
+    $stage = 'certificato CA e browser'
+    $added = $false
+    $certPath = $null
+    $savedEnv = @{}
+    foreach ($name in @('PILOT_SITE_URL', 'PILOT_VM_IP', 'PILOT_TESTER_TOKEN', 'PILOT_SCREENSHOT')) {
+        $savedEnv[$name] = [Environment]::GetEnvironmentVariable($name)
+    }
+    try {
+        New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
+        $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($CaPath)
+        $certPath = 'Cert:\CurrentUser\Root\' + $cert.Thumbprint
+        if (-not (Test-Path -LiteralPath $certPath)) {
+            $null = Import-Certificate -FilePath $CaPath -CertStoreLocation 'Cert:\CurrentUser\Root'
+            $added = $true
+        }
+        if (-not (Test-Path -LiteralPath $certPath)) { throw 'CA non presente nello store del tester' }
+        $screen = Join-Path $WorkDir 'screenshot.png'
+        $env:PILOT_SITE_URL = $Site.Address
+        $env:PILOT_VM_IP = $script:VmIp
+        $env:PILOT_TESTER_TOKEN = $Site.TesterToken
+        $env:PILOT_SCREENSHOT = $screen
+        $browser = Invoke-ExternalCommand -FilePath 'node' -ArgumentList @((Join-Path $PSScriptRoot '..\e2e\pilot-browser.cjs')) -TimeoutSeconds 240
+        Write-E2eText -Path (Join-Path $WorkDir 'browser.log') -Stdout $browser.StdOut -Stderr $browser.StdErr
+        if ($browser.ExitCode -ne 0 -or $browser.StdOut -notmatch 'STEP ok tester-https-data' -or $browser.StdOut -notmatch 'STEP ok tester-report' -or $browser.StdOut -notmatch '(?m)^ISSUE=([0-9]+)\s*$' -or -not (Test-Path -LiteralPath $screen)) {
+            throw "browser fallito: exit $($browser.ExitCode), log in $WorkDir"
+        }
+        $number = [int]$Matches[1]
+        Add-StepResult -Name 'pilot 5e. tester apre HTTPS con CA verificata e legge il dato' -Ok $true -Detail ''
+
+        $stage = 'issue e allegato'
+        $repoApi = "$BaseUrl/api/v1/repos/$($Context.Owner)/$($Context.Repo)"
+        $headers = @{ Authorization = "Bearer $($Context.Token)" }
+        $issue = Invoke-HttpRaw -Uri "$repoApi/issues/$number" -Headers $headers
+        if ($issue.StatusCode -ne 200) { throw "lettura issue: status $($issue.StatusCode)" }
+        $item = $issue.Body | ConvertFrom-Json
+        $attachments = @($item.attachments | Where-Object { $_.filename -eq 'screenshot.png' -and $_.contentType -eq 'image/png' })
+        if ($item.author.username -ne $Site.Bot -or $item.author.kind -ne 'agent' -or $item.body -ne "Tester: $($Site.Tester)" -or $attachments.Count -ne 1) { throw 'autore, tester o allegato inattesi' }
+        $id = $attachments[0].id
+        if ($id -notmatch '^[0-9a-f-]{36}$') { throw 'id allegato non valido' }
+        $download = Join-Path $WorkDir 'allegato.png'
+        $get = Invoke-HttpDownloadFile -Uri "$repoApi/issue-attachments/$id" -OutFile $download -Headers $headers
+        if ($get.StatusCode -ne 200 -or (Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $screen -Algorithm SHA256).Hash) { throw 'allegato diverso dallo screenshot del tester' }
+        Add-StepResult -Name 'pilot 6. issue del bot con tester e screenshot identico' -Ok $true -Detail "issue #$number"
+    } catch {
+        Add-StepResult -Name "pilot: $stage" -Ok $false -Detail $_.Exception.Message
+    } finally {
+        foreach ($name in $savedEnv.Keys) { [Environment]::SetEnvironmentVariable($name, $savedEnv[$name]) }
+        if ($added) {
+            try { Remove-Item -LiteralPath $certPath -Force -ErrorAction Stop }
+            catch { Add-StepResult -Name 'pilot: rimozione CA temporanea del tester' -Ok $false -Detail $_.Exception.Message }
+        }
     }
 }

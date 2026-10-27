@@ -6,6 +6,8 @@ $script:unsigned = $false
 $script:probeFail = $false
 $script:siteMode = $false
 $script:showIssues = $false
+$script:issueMode = $false
+$script:badAttachment = $false
 $script:cleanup = @()
 function Add-StepResult { param($Name, $Ok, $Detail) $script:rows += [pscustomobject]@{ Name = $Name; Ok = $Ok; Detail = $Detail } }
 function Start-Sleep { param($Seconds) }
@@ -24,6 +26,9 @@ function Invoke-VmSsh {
 function Invoke-RepoImportWithRetry { param($Uri, $Headers, $MaxAttempts, $DelaySeconds, $Body) [pscustomobject]@{ StatusCode = 201; Body = '{}' } }
 function Invoke-HttpRaw {
     param($Uri, $Method, $Headers, $Body, $Cookie)
+    if ($script:issueMode -and $Uri -like '*/issues/42') {
+        return [pscustomobject]@{ StatusCode = 200; Body = '{"author":{"username":"e2epilotbot123","kind":"agent"},"body":"Tester: e2etester123","attachments":[{"id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","filename":"screenshot.png","contentType":"image/png"}]}' }
+    }
     if ($script:siteMode) {
         $status = 200
         $response = if ($Uri -like '*/auth/login') { '{"ok":true}' }
@@ -36,6 +41,7 @@ function Invoke-HttpRaw {
         elseif ($Uri -like '*/access/members' -and $Method -eq 'POST') { $status = 201; '{}' }
         elseif ($Uri -like '*/access/members') { '{"items":[{"kind":"user","name":"e2etester123"}]}' }
         elseif ($Uri -like '*/access/invite') { '{"caMode":"internal","fingerprintSha256":"' + ('ab' * 32) + '","address":"https://sito.example.test","guideUrl":"https://example.test/help/ca"}' }
+        elseif ($Uri -like '*/instance/ca') { '{"mode":"internal","fingerprintSha256":"' + ('ab' * 32) + '"}' }
         elseif ($Uri -like '*/issues') { $status = if ($script:showIssues) { 200 } else { 404 }; '{}' }
         elseif ($Headers.Authorization -eq 'Bearer tester-token') { $status = 404; '{}' }
         elseif ($Uri -like '*/repos/alice/pilot') { '{"id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}' }
@@ -89,3 +95,19 @@ $script:rows = @(); $script:showIssues = $false
 $site = Initialize-E2ePilotSite -BaseUrl 'https://example.invalid' -AdminCookie 'admin' -Suffix '123' -CaFingerprint ('cd' * 32) -Context $ctx
 if ($site -or @($script:rows | Where-Object { -not $_.Ok }).Count -ne 1) { throw 'wrong CA fingerprint accepted' }
 Write-Host '[PASS] pilot site: lista, privacy e impronta CA'
+
+function New-Object { param($TypeName) [pscustomobject]@{ Thumbprint = 'CA123' } }
+function New-Item { param($ItemType, $Path, [switch]$Force) }
+function Test-Path { param($LiteralPath) return $true }
+function Invoke-ExternalCommand { param($FilePath, $ArgumentList, $TimeoutSeconds) [pscustomobject]@{ ExitCode = 0; StdOut = "STEP ok tester-https-data`nISSUE=42`nSTEP ok tester-report`n"; StdErr = '' } }
+function Write-E2eText { param($Path, $Stdout, $Stderr) }
+function Invoke-HttpDownloadFile { param($Uri, $OutFile, $Headers) [pscustomobject]@{ StatusCode = 200 } }
+function Get-FileHash { param($LiteralPath, $Algorithm) [pscustomobject]@{ Hash = $(if ($script:badAttachment -and $LiteralPath -like '*allegato.png') { 'different' } else { 'same' }) } }
+$script:VmIp = '192.0.2.1'; $script:siteMode = $false; $script:issueMode = $true; $script:rows = @()
+$site = [pscustomobject]@{ Address = 'https://sito.example.test'; Tester = 'e2etester123'; TesterToken = 'test'; Bot = 'e2epilotbot123' }
+Invoke-E2ePilotTester -BaseUrl 'https://example.invalid' -CaPath 'ca.crt' -WorkDir 'C:\pilot' -Context $ctx -Site $site
+if (@($script:rows | Where-Object { $_.Ok }).Count -ne 2 -or @($script:rows | Where-Object { -not $_.Ok }).Count -ne 0) { throw "pilot tester verification failed: $($script:rows | Out-String)" }
+$script:rows = @(); $script:badAttachment = $true
+Invoke-E2ePilotTester -BaseUrl 'https://example.invalid' -CaPath 'ca.crt' -WorkDir 'C:\pilot' -Context $ctx -Site $site
+if (@($script:rows | Where-Object { -not $_.Ok }).Count -ne 1) { throw 'different screenshot accepted' }
+Write-Host '[PASS] pilot tester: issue e confronto dello screenshot'

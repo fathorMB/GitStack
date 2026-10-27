@@ -593,9 +593,18 @@ Il passo prepara anche il sito, un bot con grant sul repo e token in un segreto,
 e un tester nella lista di accesso. Verifica che il tester riceva 404 su repo e
 issue e confronta l'impronta dell'invito con quella della CA scaricata.
 
-L'apertura HTTPS del sito e la segnalazione con screenshot non sono ancora
-verificate: il riepilogo le segnala come `[FAIL]`. Questa sezione non costituisce
-una prova verde del pilota. L'accesso delle app all'API dipende da GIT-442.
+La prova apre il sito con Chromium come tester, dopo aver installato nello store
+utente la CA la cui impronta coincide con l'invito; la CA aggiunta dalla prova
+viene rimossa alla fine. Non disabilita la verifica dei certificati. Il browser
+legge il dato, acquisisce uno screenshot e usa il pulsante di segnalazione; il
+passo confronta l'allegato della issue con lo screenshot e controlla autore e
+tester. Log e immagini sono nella cartella `pilot` dentro `-OutDir`.
+
+Per questa fase servono Node.js e, nel checkout, le dipendenze di `web/` e il
+browser Chromium di Playwright (`corepack pnpm install --frozen-lockfile` e
+`corepack pnpm exec playwright install chromium`, eseguiti da `web/`). La prova
+richiede GIT-442 su main e le relative immagini installate sulla VM. Non e stata
+ancora eseguita dall'inizio alla fine sulla VM.
 
 ### Istruzioni per il board: passo e10 (GIT-201)
 

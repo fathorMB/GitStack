@@ -7,7 +7,7 @@ case "${1:-}" in
   prepare)
     [ "$#" -eq 4 ] || fail 'prepare requires bare repository, fixture directory and new workdir'
     bare=$2; fixture=$3; work=$4
-    [ -d "$bare" ] && [ -d "$fixture" ] && [ ! -e "$work" ] || fail 'invalid paths'
+    if [ ! -d "$bare" ] || [ ! -d "$fixture" ] || [ -e "$work" ]; then fail 'invalid paths'; fi
     git clone -q "$bare" "$work" || fail 'clone'
     mkdir -p "$work/.gitstack/workflows"
     for file in Dockerfile.api Dockerfile.sito server.cjs identity.cjs; do

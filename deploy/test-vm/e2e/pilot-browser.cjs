@@ -1,0 +1,39 @@
+'use strict';
+
+// The host installs the verified CA temporarily before starting this browser.
+// Require Playwright from web/, whose installation is documented in the VM README.
+const path = require('node:path');
+const { chromium } = require(path.resolve(__dirname, '../../../web/node_modules/@playwright/test'));
+
+async function main() {
+  const address = new URL(process.env.PILOT_SITE_URL);
+  const ip = process.env.PILOT_VM_IP;
+  const token = process.env.PILOT_TESTER_TOKEN;
+  const screenshot = process.env.PILOT_SCREENSHOT;
+  if (address.protocol !== 'https:' || !ip || !token || !screenshot) throw new Error('missing pilot browser configuration');
+  const browser = await chromium.launch({ headless: true, args: [
+    '--no-proxy-server', '--host-resolver-rules=MAP ' + address.hostname + ' ' + ip
+  ] });
+  try {
+    const context = await browser.newContext({ extraHTTPHeaders: { Authorization: 'Bearer ' + token } });
+    const page = await context.newPage();
+    const response = await page.goto(address.href, { waitUntil: 'networkidle', timeout: 60000 });
+    if (!response || response.status() !== 200) throw new Error('site HTTPS response is not 200');
+    await page.locator('#data').waitFor({ state: 'visible', timeout: 30000 });
+    await page.waitForFunction(() => document.querySelector('#data').textContent === 'retail-pilot-381', null, { timeout: 60000 });
+    await page.screenshot({ path: screenshot });
+    console.log('STEP ok tester-https-data');
+    await page.locator('#screenshot').setInputFiles(screenshot);
+    await page.locator('#send').click();
+    await page.waitForFunction(() => document.querySelector('#result').textContent.length > 0, null, { timeout: 60000 });
+    const result = JSON.parse(await page.locator('#result').textContent());
+    if (!Number.isSafeInteger(result.number) || result.number < 1) throw new Error('site did not return an issue number');
+    console.log('ISSUE=' + result.number);
+    console.log('STEP ok tester-report');
+    await context.close();
+  } finally {
+    await browser.close();
+  }
+}
+
+main().catch(error => { console.error('STEP FAIL browser: ' + error.message); process.exitCode = 1; });

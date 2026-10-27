@@ -1466,10 +1466,14 @@ function Main {
                 if ($script:PilotDbReady -and $ck -and $script:CaFingerprint) {
                     $script:PilotSite = Initialize-E2ePilotSite -BaseUrl $baseUrl -AdminCookie $ck -Suffix $suffix -CaFingerprint $script:CaFingerprint -Context $script:PilotContext
                 }
+                if ($script:PilotSite) {
+                    Invoke-E2ePilotTester -BaseUrl $baseUrl -CaPath $caPath -WorkDir (Join-Path $OutDir 'pilot') -Context $script:PilotContext -Site $script:PilotSite
+                } else {
+                    Add-StepResult -Name 'pilot: HTTPS del tester e issue' -Ok $false -Detail 'sito o tester non disponibili'
+                }
             } else {
                 Add-StepResult -Name 'pilot: prerequisiti CI' -Ok $false -Detail 'e12 fallito o token di prova mancante'
             }
-            Add-StepResult -Name 'pilot: HTTPS del tester e issue' -Ok $false -Detail 'verifiche non ancora implementate'
         }
 
         # Conserva i log prima che il passo f ricrei core e git.
