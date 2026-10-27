@@ -66,15 +66,26 @@ git.registry.ciGateway, altrimenti con ci.enabled il ci-gateway di core. Vuoto =
 {{- define "gitstack.registry.ciGatewayURL" -}}
 {{- if .Values.git.registry.ciGateway.url -}}
 {{- .Values.git.registry.ciGateway.url -}}
-{{- else if .Values.ci.enabled -}}
+{{- else if or .Values.ci.enabled (include "gitstack.ci.appPullOnly" .) -}}
 {{- printf "http://%s-core.%s.svc:%d" (include "gitstack.fullname" .) .Release.Namespace (.Values.ci.gateway.port | int) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+CI spenta ma app e registry accesi (GIT-449): il cluster scarica le immagini delle app con un token
+gsj_app., che il servizio git fa convalidare al ci-gateway di core. Core allora apre la porta in
+modalità «solo pull delle app» (nessun token del job, nessun altro percorso). Stringa vuota = no.
+*/}}
+{{- define "gitstack.ci.appPullOnly" -}}
+{{- if and (not .Values.ci.enabled) .Values.core.enabled .Values.apps.enabled .Values.git.enabled .Values.git.registry.enabled (not .Values.git.registry.ciGateway.url) -}}
+true
 {{- end -}}
 {{- end -}}
 
 {{- define "gitstack.registry.ciGatewayPort" -}}
 {{- if .Values.git.registry.ciGateway.url -}}
 {{- .Values.git.registry.ciGateway.port | int -}}
-{{- else if .Values.ci.enabled -}}
+{{- else if or .Values.ci.enabled (include "gitstack.ci.appPullOnly" .) -}}
 {{- .Values.ci.gateway.port | int -}}
 {{- else -}}
 0

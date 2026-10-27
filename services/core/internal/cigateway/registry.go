@@ -52,6 +52,25 @@ func (g *gateway) appPullAccess(w http.ResponseWriter, r *http.Request, token st
 	_ = json.NewEncoder(w).Encode(out)
 }
 
+// appPullOnlyHandler è il gateway con la CI spenta (GIT-449): serve solo registry-access e solo
+// per il token di pull di un'app; il token del job (gsj_ senza app) è 401 senza toccare il
+// database, qualunque altro percorso è 404.
+func (g *gateway) appPullOnlyHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != RegistryAccessPath || r.Method != http.MethodGet {
+			http.NotFound(w, r)
+			return
+		}
+		tok := bearer(r.Header)
+		if !apppull.Is(tok) {
+			w.Header().Set("WWW-Authenticate", `Bearer realm="gitstack-ci"`)
+			http.Error(w, "token non valido", http.StatusUnauthorized)
+			return
+		}
+		g.appPullAccess(w, r, tok)
+	})
+}
+
 // RegistryAccessPath è l'endpoint con cui il registry (servizio git) trasforma il
 // token del job in ciò che quel job può fare sul registry del suo repo (RG1).
 const RegistryAccessPath = "/ci/v1/registry-access"

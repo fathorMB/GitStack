@@ -383,7 +383,9 @@ git:
     signing:
       existingSecret: ""
     # Token del job (gsj_): URL e porta del ci-gateway di core, con cui il registry lo
-    # convalida. Vuoto = solo i token personali; il ci-gateway non è ancora nel chart.
+    # convalida. Vuoto = ci-gateway di core se la CI è accesa, oppure (CI spenta, apps.enabled
+    # e registry accesi, GIT-449) la porta di core in sola modalità «pull delle app»: i token
+    # del job restano rifiutati. Altrimenti solo i token personali.
     ciGateway:
       url: ""
       port: 0

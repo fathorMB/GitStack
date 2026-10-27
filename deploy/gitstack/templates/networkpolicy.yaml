@@ -219,6 +219,16 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.core.containerPort }}
+    {{- if include "gitstack.ci.appPullOnly" . }}
+    # CI spenta, app e registry accesi (GIT-449): solo il pod git raggiunge il ci-gateway (pull delle app).
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "git") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.ci.gateway.port }}
+    {{- end }}
     {{- if .Values.ci.enabled }}
     # Il namespace CI raggiunge esclusivamente il ci-gateway di core.
     - from:
