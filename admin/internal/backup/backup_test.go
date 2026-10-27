@@ -405,6 +405,53 @@ func TestRestoreRefusesCorrupt(t *testing.T) {
 	}
 }
 
+// Ogni singolo byte alterato (dal byte 10, dopo l'header gzip, in poi) deve
+// dare un RefusedError e non toccare il cluster: anche i byte nel padding del
+// tar o nel trailer del gzip, che solo il CRC32 rileva.
+func TestRestoreRefusesEveryAlteredByte(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		key   []byte
+		start int
+	}{
+		{"in chiaro", nil, 10},
+		{"cifrato", []byte("una-chiave-di-prova-lunga-abbastanza"), 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEnv(t)
+			e.o.Key = tc.key
+			res, err := Backup(context.Background(), e.o)
+			if err != nil {
+				t.Fatal(err)
+			}
+			orig, err := os.ReadFile(res.Path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r := newEnv(t)
+			r.o.Key = tc.key
+			bad := filepath.Join(t.TempDir(), "bad")
+			accepted := 0
+			for i := tc.start; i < len(orig); i++ {
+				b := bytes.Clone(orig)
+				b[i] ^= 0xff
+				if err := os.WriteFile(bad, b, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				var ref *RefusedError
+				if err := Restore(context.Background(), r.o, bad); !errors.As(err, &ref) {
+					accepted++
+					t.Errorf("byte %d/%d: atteso RefusedError, ottenuto %v", i, len(orig), err)
+				}
+				if len(r.f.calls) != 0 {
+					t.Fatalf("byte %d: il cluster non va toccato: %v", i, r.f.calls)
+				}
+			}
+			t.Logf("%d posizioni provate, %d accettate", len(orig)-tc.start, accepted)
+		})
+	}
+}
+
 func TestEncryptedBackup(t *testing.T) {
 	e := newEnv(t)
 	e.o.Key = []byte("una-chiave-di-prova-lunga-abbastanza")
