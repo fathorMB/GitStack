@@ -122,7 +122,9 @@ func (s *apiServer) appToAPI(a store.App) openapi.App {
 		out.RunningPreviousVersion = &t
 	}
 	if a.FollowBranch != nil {
-		out.Follow = &openapi.AppFollow{Branch: *a.FollowBranch, Paused: a.AutoDeployPaused}
+		out.Follow = &openapi.AppFollow{Branch: a.FollowBranch, Paused: a.AutoDeployPaused}
+	} else if a.FollowTagPattern != nil {
+		out.Follow = &openapi.AppFollow{TagPattern: a.FollowTagPattern, Paused: a.AutoDeployPaused}
 	}
 	if d := a.LastDeploy; d != nil {
 		out.LastDeploy = &openapi.AppLastDeploy{Version: d.Version, State: openapi.AppDeployState(d.State), StartedAt: d.StartedAt, FinishedAt: d.FinishedAt, Reason: d.Reason}
@@ -234,6 +236,8 @@ func validAmounts(g, l openapi.AppResourceAmount) string {
 func (s *apiServer) writeAppConflict(w http.ResponseWriter, err error) bool {
 	var ce *store.CapacityError
 	switch {
+	case errors.Is(err, store.ErrAppFollowBoth):
+		writeFollowBoth(w)
 	case errors.Is(err, store.ErrAppNameTaken):
 		writeError(w, http.StatusConflict, "name_taken", "Il repo ha già un'app con questo nome.")
 	case errors.Is(err, store.ErrAppAddressConflict):
@@ -363,6 +367,22 @@ func (s *apiServer) CreateApp(w http.ResponseWriter, r *http.Request, owner open
 		}
 		follow = in.FollowBranch
 	}
+	var followTag *string
+	if in.FollowTagPattern != nil {
+		if msg := validTagPattern(*in.FollowTagPattern); msg != "" {
+			writeFieldError(w, "followTagPattern", msg)
+			return
+		}
+		if img.Source == "external" {
+			writeFieldError(w, "followTagPattern", "followTagPattern: non disponibile per un'immagine esterna.")
+			return
+		}
+		followTag = in.FollowTagPattern
+	}
+	if follow != nil && followTag != nil {
+		writeFollowBoth(w)
+		return
+	}
 	var label *string
 	if cfg.Port != nil {
 		l := appAddressLabel(in.Name, repo.Name, repo.OwnerName)
@@ -378,13 +398,13 @@ func (s *apiServer) CreateApp(w http.ResponseWriter, r *http.Request, owner open
 	if !ok {
 		return
 	}
-	if follow != nil && !sig.ByCI {
+	if (follow != nil || followTag != nil) && !sig.ByCI {
 		writeError(w, http.StatusUnprocessableEntity, "follow_branch_unsigned", "Il deploy automatico accetta solo immagini firmate dalla CI di questo repo: questa immagine non lo è.")
 		return
 	}
 	app, ver, err := s.resources.CreateApp(r.Context(), store.NewApp{
 		RepoID: repo.ID, Owner: repo.OwnerName, Name: in.Name, AddressLabel: label, Image: img, Config: cfg,
-		FollowBranch: follow, Actor: actor.store(), CommitSha: s.imageCommit(r.Context(), repo, img),
+		FollowBranch: follow, FollowTagPattern: followTag, Actor: actor.store(), CommitSha: s.imageCommit(r.Context(), repo, img),
 	}, s.now())
 	if err != nil {
 		if !s.writeAppConflict(w, err) {
@@ -504,6 +524,27 @@ func (s *apiServer) UpdateApp(w http.ResponseWriter, r *http.Request, owner open
 				return
 			}
 			p.FollowBranch = &v
+		case "followTagPattern":
+			p.SetFollowTag = true
+			if isNull(m) {
+				continue
+			}
+			var v string
+			if !decode(key, &v) {
+				return
+			}
+			if msg := validTagPattern(v); msg != "" {
+				writeFieldError(w, "followTagPattern", msg)
+				return
+			}
+			if cur.Image.Source == "external" {
+				writeFieldError(w, "followTagPattern", "followTagPattern: non disponibile per un'immagine esterna.")
+				return
+			}
+			if !s.requireCISigned(w, r.Context(), repo, cur.Image) {
+				return
+			}
+			p.FollowTagPattern = &v
 		case "autoDeployPaused":
 			p.SetPaused = true
 			if isNull(m) || !decode(key, &p.AutoDeployPaused) {
@@ -524,6 +565,18 @@ func (s *apiServer) UpdateApp(w http.ResponseWriter, r *http.Request, owner open
 			writeError(w, http.StatusBadRequest, "bad_request", "Corpo della richiesta non valido.")
 			return
 		}
+	}
+	// Branch e regola sui tag non convivono: vale lo stato che risulterebbe dopo la modifica.
+	branchAfter, tagAfter := cur.FollowBranch != nil, cur.FollowTagPattern != nil
+	if p.SetFollow {
+		branchAfter = p.FollowBranch != nil
+	}
+	if p.SetFollowTag {
+		tagAfter = p.FollowTagPattern != nil
+	}
+	if branchAfter && tagAfter {
+		writeFollowBoth(w)
+		return
 	}
 	// Una porta data a un'app senza indirizzo gliene dà uno (stessi controlli della creazione);
 	// togliere la porta non cambia l'etichetta già riservata.

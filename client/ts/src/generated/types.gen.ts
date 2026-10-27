@@ -3624,10 +3624,17 @@ export type AppImage = {
 };
 
 /**
- * Branch seguito per il deploy automatico (H7).
+ * Sorgente del deploy automatico (H7): un branch oppure una regola sui tag, mai tutte e due.
  */
 export type AppFollow = {
-    branch: string;
+    /**
+     * Branch seguito; assente se l'app segue una regola sui tag.
+     */
+    branch?: string;
+    /**
+     * Regola sui tag (glob, per esempio `v*-test.*`); assente se l'app segue un branch.
+     */
+    tagPattern?: string;
     /**
      * Deploy automatici sospesi (per esempio dopo un rollback).
      */
@@ -3752,9 +3759,13 @@ export type AppCreateInput = {
     port?: number;
     healthCheck?: AppHealthCheck;
     /**
-     * Branch da seguire (H7). Non disponibile per un'immagine esterna.
+     * Branch da seguire (H7). Non disponibile per un'immagine esterna. Non insieme a `followTagPattern` (422 `follow_both`).
      */
     followBranch?: string | null;
+    /**
+     * Regola sui tag (glob, per esempio `v*-test.*`): un'immagine firmata dalla CI con un tag che la rispetta va in produzione (H7). Non disponibile per un'immagine esterna. Non insieme a `followBranch` (422 `follow_both`).
+     */
+    followTagPattern?: string | null;
     resources?: AppResourcesInput;
     copies?: number;
     /**
@@ -3767,9 +3778,13 @@ export type AppUpdateInput = {
     port?: number | null;
     healthCheck?: AppHealthCheck;
     /**
-     * Branch da seguire; `null` torna ai deploy a mano.
+     * Branch da seguire; `null` torna ai deploy a mano. Se l'app segue una regola sui tag va tolta prima (o nella stessa richiesta con `followTagPattern: null`), altrimenti 422 `follow_both`.
      */
     followBranch?: string | null;
+    /**
+     * Regola sui tag; `null` la toglie. Se l'app segue un branch va tolto prima (o nella stessa richiesta con `followBranch: null`), altrimenti 422 `follow_both`.
+     */
+    followTagPattern?: string | null;
     autoDeployPaused?: boolean;
     restricted?: boolean;
 };
@@ -3797,9 +3812,9 @@ export type AppScaleInput = {
 };
 
 /**
- * `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`.
+ * `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `tag_push` (e' arrivata nel registry un'immagine firmata con un tag che rispetta la regola seguita, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`.
  */
-export type AppVersionTrigger = 'create' | 'manual' | 'branch_push' | 'config' | 'rollback';
+export type AppVersionTrigger = 'create' | 'manual' | 'branch_push' | 'tag_push' | 'config' | 'rollback';
 
 /**
  * Configurazione di una versione. I segreti compaiono solo per nome (H8).
