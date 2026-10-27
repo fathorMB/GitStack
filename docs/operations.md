@@ -2403,7 +2403,9 @@ Questa sezione dice cosa è stato provato prima di portare la CI su homehub, cos
 |---|---|---|
 | `gs workflow list`, `gs workflow run -f`, `gs run watch --exit-status` (uscita 0 e 1), `gs run view --log-failed`, `gs release create/list/upload/download` contro core, gateway, identity e git veri | `TestGsCI_RunWatchViewWorkflowReleaseSulloStack` (`services/core/internal/stackitest/gs_ci_integration_test.go`, `-tags integration`) | verde in locale (Windows, Docker Desktop) il 2026-10-25; gira anche nel job `go` di `ci.yml` |
 | Stesso ciclo con un workflow vero nel pod del runner integrato, immagine OCI nel registry, tag `v0.0.0-test.1` e release | passo e12 di `deploy/test-vm/e2e.ps1` (`e2e/gs-ci-cycle.sh`) | scritto e controllato con `bash -n`, shellcheck e il parser di PowerShell; **non ancora eseguito**: `e2e.ps1` vuole l'amministratore sull'host del board |
-| `actions/cache` sul runner integrato (primo run «Cache saved with key: …», secondo «Cache restored from key: …») e 501 di `upload-artifact@v4` | `deploy/ci/runner-e2e.sh`, sezione 1b, nel job `chart` di `ci.yml` | scritto e controllato con shellcheck; **non ancora eseguito** su un cluster. Si legge il risultato nel job `chart` del primo run di `ci.yml` dopo il merge |
+| `actions/cache` sul runner integrato e 501 di `upload-artifact@v4` | `deploy/ci/runner-e2e.sh`, sezione 1b, nel job `chart` di `ci.yml` | verde il 2026-10-27: vedi le prove sotto |
+
+Nel [job chart del run 40445593216](https://github.com/fathorMB/GitStack/actions/runs/40445593216/job/122001089887), i due run interni nello stesso cluster sono `10f3125b-e595-4f7d-8d30-70ab4b6d3c9a` e `a71942cb-c7b9-4ab9-8ed2-ea279e1ff158`: il log registra rispettivamente `Cache saved with key: e2e-cache-v1` e `Cache restored from key: e2e-cache-v1`, con contenuto ripristinato. Il secondo job `artefatto` fallisce come previsto: lo script verifica il messaggio `GitStack non supporta actions/upload-artifact@v4` e registra `ok: artefatti v4: il passo fallisce col messaggio documentato (501)`. Le due esecuzioni interne sono effimere; il link consultabile è quello del job che le ha eseguite. Anche il [job chart del run 40449947545](https://github.com/fathorMB/GitStack/actions/runs/40449947545/job/122015375756) registra gli stessi controlli verdi. Il primo run dopo GIT-291, 40210356127, aveva saltato chart per un errore nei test di migrazione.
 
 La prova contro git vero ha trovato un difetto di core, corretto in GIT-291: `GET /repos/{owner}/{repo}/workflows` e l'avvio a mano con `--ref main` risolvevano il nome del branch con `commits/{sha}/resolve`, che per git accetta solo sha. L'elenco dei workflow usciva sempre vuoto e `gs workflow run --ref main` non trovava il branch. Ora il nome si risolve col commit in testa alla ref (`commits?ref=…&perPage=1`).
 
@@ -2415,7 +2417,7 @@ La prova contro git vero ha trovato un difetto di core, corretto in GIT-291: `GE
 - job `chart` (k3d) e `install-ubuntu-22`/`e2e` (`sudo ./deploy/install.sh`): runner esterno su una macchina vera;
 - `runs-on: windows-latest` (job `pwsh`): runner esterno Windows;
 - firma keyless di cosign con `id-token: write` (job `sign`, `release`): su GitStack la firma è quella del registry, con la chiave dell'istanza;
-- `gh release …`/`gh pr …` con `secrets.GITHUB_TOKEN`: si sostituiscono con `gs release` e con un token personale o di agente (il token del job non apre `/repos/…/releases`);
+- `gh release …`/`gh pr …` con `secrets.GITHUB_TOKEN`: la release può usare `gs release` con il token del job e `contents: write` (GIT-372); le PR richiedono una verifica separata;
 - `actions/upload-artifact@v6` (usato in `ci.yml`, `install.yml`, `security.yml`) e `actions/cache`: l'artefatto v4+ riceve 501; si carica con `PUT /ci/v1/artifacts/{nome}` o si usa un runner esterno con un servizio di artefatti compatibile;
 - `actions/deploy-pages`, `environment:` (job `docs`): solo GitHub.
 
@@ -2431,13 +2433,27 @@ Il dogfooding scrive qui, per ogni workflow, se gira com'è o con quale modifica
 
 ### Runbook per il board
 
-Prima: `ci_status` di main verde (al 2026-10-25 il run `api-contract` di `c01e14b` era rosso: guardarlo), CI accesa su homehub (`sudo ./deploy/install.sh --ci --ci-build`, oppure `sudo gitstack upgrade --to <versione> --set ci.enabled=true --set ci.build.enabled=true`), un token del board (lezione dell'azienda: serve anche la CA interna, `--cacert`/`http.sslCAInfo`).
+Prima: verificare main verde e la versione installata dall'host con `curl.exe -ks --max-time 15 https://homehub.local/api/v1/meta`. Il 2026-10-27 risponde `sha-2125f83cfc84ab8c2ba975116f44ba2eabf5342d`: verificare che includa GIT-371 e GIT-372 prima della prova. Sul terminale del board entrare con `ssh -t moreno@homehub.local`, controllare `gitstack version` e configurazione CI; non ripetere upgrade alla cieca. Serve la CA interna (`--cacert`/`http.sslCAInfo`) e un login del board per le operazioni interattive.
+
+**VM e12:** su PowerShell avviato come amministratore, nella copia del repo allineata a main, eseguire `.\deploy\test-vm\e2e.ps1 -Ref 02b615bf9a4e14fbf6ffcab3274523899bd99afa -OutDir C:\gitstack-e2e\GIT-370 -SkipBackupRestore -SkipUpgrade`. Lo script ripristina il checkpoint `clean` della VM e svolge anche i passi precedenti: e12 dipende da e5 e dalla CA. Conservare `e2e.log`, `installer-ci.log` e `gs-ci-cycle.log`; riportare il `[PASS]` o `[FAIL]` di e12 e i `STEP` nel risultato, senza esporre token.
 
 1. Repo di prova su homehub (`admin/ci-dogfood`) con una copia dei workflow di GitStack: `git push` da una copia locale, con la CA e `Basic gs:<token>`.
 2. Cache: due `gs workflow run cache.yml --ref main` di fila (il workflow è in `deploy/ci/runner-e2e.sh`, sezione 1b). Il log del job `cache` deve avere «Cache saved with key: e2e-cache-v1» nel primo run e «Cache restored from key: e2e-cache-v1» nel secondo; il job `artefatto` deve fallire col messaggio «GitStack non supporta actions/upload-artifact@v4…».
 3. Workflow di GitStack: uno alla volta con `gs workflow run <file> --ref main` e `gs run watch --exit-status`; per ogni job rosso, `gs run view --log-failed` e la modifica minima fatta.
-4. Release di prova: tag `v0.0.0-test.N` sul repo di prova e `gs release create --tag v0.0.0-test.N --generate-notes --prerelease`. Le immagini si pubblicano nel registry di homehub e `gs package list` mostra `signature: verified` (il registry firma da solo). **Limite noto:** un workflow oggi non può costruire un'immagine nel pod (il tipo di job `build` del chart non è collegato a `runs-on:`) e non può creare la release col token del job: build e release del passo 4 si fanno da un runner esterno o dal terminale.
+4. Release di prova: il board sceglie un tag `v0.0.0-test.N` libero e lo invia al repo di prova. Il workflow usa `runs-on: gitstack-build`, `gitstack-build` e `packages: write` per pubblicare nel registry (GIT-371), e `contents: write` per creare la release con il token del job (GIT-372). Verificare run, release, digest e `signature: verified` con `gs package list`; registrare i link. Non sostituire il token del job con un token personale.
 5. Un riepilogo per controllo, una riga ciascuno (repo, atteso, trovato, ok/ko), senza espressioni `--jq` con spazi.
+
+Per ogni workflow, dalla copia configurata per homehub, sostituire `<file>` e `<id>` con il nome e l'identificativo restituito dal dispatch; conservare anche i fallimenti:
+
+```sh
+gs workflow list -R admin/ci-dogfood
+gs workflow run <file> -R admin/ci-dogfood --ref main
+gs run watch <id> -R admin/ci-dogfood --exit-status
+gs run view <id> -R admin/ci-dogfood --log-failed
+gs package list -R admin/ci-dogfood
+```
+
+Il workflow `cache.yml` va creato nel repo di prova copiando la definizione nella sezione 1b di `deploy/ci/runner-e2e.sh`, e lanciato due volte in sequenza. Il job artefatto fallisce intenzionalmente: leggere i log di entrambi i job, oltre alla conclusione complessiva. Registrare URL, identificativi e righe effettive nella tabella; per le righe mancanti lasciare lo stato in attesa.
 
 ### Risultati (li scrive il board)
 
