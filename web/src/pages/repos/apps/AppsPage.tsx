@@ -1,10 +1,10 @@
-import { AlertTriangle, Box, Check, Lock, Plus, Rocket, ShieldCheck, Terminal, Users, X } from 'lucide-react';
-import { useState } from 'react';
+import { AlertTriangle, Box, Check, Globe, Lock, Plus, Rocket, ShieldCheck, Terminal, Users, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ErrorAlert } from '../../../components';
-import { fetchApps } from '../../../lib/appsApi';
-import type { App, AppList } from '../../../lib/appsApi';
-import { accessLabel, formatCpu, formatMemory, shortDigest, statusBadge } from '../../../lib/appsView';
+import { fetchAppDomains, fetchApps } from '../../../lib/appsApi';
+import type { App, AppDomain, AppList } from '../../../lib/appsApi';
+import { accessLabel, formatCpu, formatMemory, listAddress, shortDigest, statusBadge } from '../../../lib/appsView';
 import { timeAgo } from '../../../lib/format';
 import type { Repository } from '../../../lib/reposApi';
 import { useAppPermissions } from '../../../lib/useAppPermissions';
@@ -18,11 +18,32 @@ function quotaText(quota: AppList['quota']): string | null {
   return `Quota ${quota.owner}: ${formatCpu(used.cpuMillis)} / ${formatCpu(limits.cpuMillis)} vCPU guaranteed · ${formatMemory(used.memoryBytes)} / ${formatMemory(limits.memoryBytes)} RAM guaranteed`;
 }
 
-function AppRow({ app, owner, repo }: { app: App; owner: string; repo: string }) {
+/** Domini propri per le app pubbliche (v3-c), letti solo da chi è admin: altrimenti null. */
+function usePublicDomains(owner: string, repo: string, apps: App[] | undefined, enabled: boolean): Record<string, AppDomain[]> {
+  const [domains, setDomains] = useState<Record<string, AppDomain[]>>({});
+  const names = enabled && apps ? apps.filter((a) => a.access === 'public').map((a) => a.name).join('\n') : '';
+  useEffect(() => {
+    if (!names) return;
+    let live = true;
+    const list = names.split('\n');
+    void Promise.all(
+      list.map(async (name) => [name, await fetchAppDomains(owner, repo, name).then((r) => r.items).catch(() => [] as AppDomain[])] as const),
+    ).then((entries) => {
+      if (live) setDomains(Object.fromEntries(entries));
+    });
+    return () => {
+      live = false;
+    };
+  }, [owner, repo, names]);
+  return domains;
+}
+
+function AppRow({ app, owner, repo, domains }: { app: App; owner: string; repo: string; domains: AppDomain[] | null }) {
   const badge = statusBadge(app.status, app.runningPreviousVersion);
   const bad = badge.tone === 'err';
   const sha = shortDigest(app.image.digest);
   const copiesText = `${app.copies} ${app.copies === 1 ? 'copy' : 'copies'}`;
+  const address = listAddress(app, domains);
   return (
     <li className="list-row hover">
       <span className={`st ${bad ? 'err' : badge.tone === 'ok' ? 'ok' : 'skip'}`}>{bad ? <X size={12} aria-hidden="true" /> : <Check size={12} aria-hidden="true" />}</span>
@@ -30,14 +51,14 @@ function AppRow({ app, owner, repo }: { app: App; owner: string; repo: string })
         <Link to={appsPath(owner, repo, app.name)} style={{ fontWeight: 600, color: 'var(--text)' }}>
           {app.name}
         </Link>{' '}
-        {app.address ? null : <span className="badge">No address</span>}
-        <span className="badge">
-          {app.access === 'login' ? <Lock size={12} aria-hidden="true" /> : <Users size={12} aria-hidden="true" />}
+        {address ? null : <span className="badge">No address</span>}
+        <span className={app.access === 'public' ? 'badge badge-accent' : 'badge'}>
+          {app.access === 'login' ? <Lock size={12} aria-hidden="true" /> : app.access === 'public' ? <Globe size={12} aria-hidden="true" /> : <Users size={12} aria-hidden="true" />}
           {accessLabel(app.access)}
         </span>
         <div className="small muted">
-          {app.address ? <span className="mono">{app.address}</span> : null}
-          {app.address ? ' · ' : null}
+          {address ? <span className="mono">{address}</span> : null}
+          {address ? ' · ' : null}
           {app.follow ? (
             <>
               follows {app.follow.tagPattern ? 'tags ' : ''}<span className="mono">{app.follow.tagPattern ?? app.follow.branch}</span>
@@ -98,6 +119,7 @@ function AppsLoaded({ repo }: { repo: Repository; reload: () => void }) {
   const perms = useAppPermissions(repo);
   const { data, loading, error } = useLoad(() => fetchApps(owner, name));
   const [filter, setFilter] = useState('');
+  const domains = usePublicDomains(owner, name, data?.items, perms.canChangeAccess);
 
   if (loading && data === null) return <p className="muted">Loading apps…</p>;
   if (error || !data) return <ErrorAlert message={error ?? 'Could not load apps.'} />;
@@ -155,7 +177,7 @@ function AppsLoaded({ repo }: { repo: Repository; reload: () => void }) {
         </div>
         <ul aria-label="Apps" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {items.map((a) => (
-            <AppRow key={a.id} app={a} owner={owner} repo={name} />
+            <AppRow key={a.id} app={a} owner={owner} repo={name} domains={a.access === 'public' && perms.canChangeAccess && domains[a.name] ? domains[a.name] : null} />
           ))}
         </ul>
         {items.length === 0 ? <p className="muted" style={{ padding: 16 }}>No app matches “{filter}”.</p> : null}

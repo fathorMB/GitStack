@@ -1,4 +1,4 @@
-import type { App, AppAccessMode, AppResourceAmount, AppStatus } from '@gitstack/api-client';
+import type { App, AppAccessMode, AppDomain, AppResourceAmount, AppStatus } from '@gitstack/api-client';
 
 /** Etichetta e tono del badge di stato (mockup H1/H3). */
 export function statusBadge(status: AppStatus, runningPreviousVersion = false): { label: string; tone: 'ok' | 'run' | 'err' | 'none' } {
@@ -51,6 +51,19 @@ export function formatAmount(a: AppResourceAmount): string {
 export function percent(value: number, of: number): number {
   if (of <= 0) return 0;
   return Math.max(0, Math.min(100, Math.round((value / of) * 100)));
+}
+
+/**
+ * Indirizzo mostrato nell'elenco (v3-c): per un'app pubblica il dominio proprio
+ * verificato, se c'e'; altrimenti l'indirizzo automatico (H2). `domains` e' null
+ * quando non si possono leggere (serve admin): allora vale l'indirizzo automatico.
+ */
+export function listAddress(app: Pick<App, 'access' | 'address'>, domains: Pick<AppDomain, 'domain' | 'status'>[] | null | undefined): string | null {
+  if (app.access === 'public') {
+    const verified = domains?.find((d) => d.status === 'verified');
+    if (verified) return verified.domain;
+  }
+  return app.address ?? null;
 }
 
 /** L'app e' raggiungibile solo se ha un indirizzo ed e' in esecuzione. */

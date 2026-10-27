@@ -25,6 +25,7 @@ import {
   deleteAppSecret as sdkDeleteAppSecret,
   deleteAppVariable as sdkDeleteAppVariable,
   deleteApp as sdkDeleteApp,
+  listAppDomains as sdkListAppDomains,
   listAppVolumes as sdkListAppVolumes,
   createAppVolume as sdkCreateAppVolume,
   deleteAppVolume as sdkDeleteAppVolume,
@@ -57,10 +58,12 @@ import type {
   AppVolumeList,
   AppResources,
   AppResourcesInput,
+  AppDomain,
+  AppDomainList,
 } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
-export type { App, AppAccess, AppAccessInvite, AppAccessMember, AppAccessMode, AppCreateInput, AppCreated, AppList, AppMetrics, AppUpdateInput, AppVersion, AppVersionList, AppLogLine, AppSecretList, AppVariableList, AppVolume, AppVolumeChange, AppVolumeList, AppResources, AppResourcesInput, AppEgress, AppEgressDestination };
+export type { App, AppAccess, AppAccessInvite, AppAccessMember, AppAccessMode, AppCreateInput, AppCreated, AppList, AppMetrics, AppUpdateInput, AppVersion, AppVersionList, AppLogLine, AppSecretList, AppVariableList, AppVolume, AppVolumeChange, AppVolumeList, AppResources, AppResourcesInput, AppEgress, AppEgressDestination, AppDomain, AppDomainList };
 
 const at = (owner: string, repo: string) => ({ baseUrl: API_BASE_URL, path: { owner, repo } });
 const atApp = (owner: string, repo: string, app: string) => ({ baseUrl: API_BASE_URL, path: { owner, repo, app } });
@@ -142,6 +145,11 @@ export async function removeAppSecret(owner: string, repo: string, app: string, 
 
 export async function removeApp(owner: string, repo: string, app: string): Promise<void> {
   unwrapEmpty(await sdkDeleteApp(atApp(owner, repo, app)));
+}
+
+/** Domini propri dell'app (v3-c). Serve `admin` sull'app: read e write ricevono 403. */
+export async function fetchAppDomains(owner: string, repo: string, app: string): Promise<AppDomainList> {
+  return unwrap(await sdkListAppDomains(atApp(owner, repo, app)));
 }
 
 export async function fetchAppAccess(owner: string, repo: string, app: string): Promise<AppAccess> {

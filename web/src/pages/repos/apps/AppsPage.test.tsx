@@ -1,14 +1,15 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppsPage } from './AppsPage';
 import { repo, makeApp, wiki, worker } from './fixtures';
 
-vi.mock('../../../lib/appsApi', () => ({ fetchApps: vi.fn() }));
+vi.mock('../../../lib/appsApi', () => ({ fetchApps: vi.fn(), fetchAppDomains: vi.fn() }));
 vi.mock('../../../lib/useAppPermissions', () => ({ useAppPermissions: vi.fn() }));
 
-import { fetchApps } from '../../../lib/appsApi';
+import { fetchAppDomains, fetchApps } from '../../../lib/appsApi';
+import type { AppDomain } from '../../../lib/appsApi';
 import { appPermissions } from '../../../lib/appsPermissions';
 import { useAppPermissions } from '../../../lib/useAppPermissions';
 
@@ -60,6 +61,65 @@ describe('AppsPage (H1)', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(1);
     expect(screen.getByRole('link', { name: 'wiki' })).toBeInTheDocument();
   }, T);
+
+  describe('v3-c: badge Public e indirizzo nella lista', () => {
+    const shop = makeApp({ id: 'a4', name: 'shop', access: 'public', address: 'shop-handbook-acme.apps.acme.it' });
+    const domain = (over: Partial<AppDomain>): AppDomain => ({
+      id: 'd1',
+      domain: 'shop.retail.it',
+      status: 'verified',
+      dns: { type: 'CNAME', name: 'shop.retail.it', value: 'shop-handbook-acme.apps.acme.it', alternatives: [] },
+      certificate: { mode: 'letsencrypt', state: 'valid' },
+      createdAt: '2026-10-20T10:00:00Z',
+      ...over,
+    });
+
+    it('app interna: badge con login e indirizzo automatico, nessun Public, nessuna lettura dei domini', async () => {
+      setup('admin', [makeApp()]);
+      const list = await screen.findByRole('list', { name: 'Apps' }, { timeout: T });
+      const row = list.querySelector('li') as HTMLElement;
+      expect(row).toHaveTextContent('Internal · GitStack login');
+      expect(row).not.toHaveTextContent('Public');
+      expect(row).toHaveTextContent('web-handbook-acme.apps.acme.it');
+      expect(fetchAppDomains).not.toHaveBeenCalled();
+    }, T);
+
+    it('app pubblica senza domini propri: badge Public e indirizzo automatico', async () => {
+      vi.mocked(fetchAppDomains).mockResolvedValue({ items: [] });
+      setup('admin', [shop]);
+      const list = await screen.findByRole('list', { name: 'Apps' }, { timeout: T });
+      const row = list.querySelector('li') as HTMLElement;
+      expect(row).toHaveTextContent('Public');
+      expect(row).toHaveTextContent('shop-handbook-acme.apps.acme.it');
+      await waitFor(() => expect(fetchAppDomains).toHaveBeenCalledWith('acme', 'handbook', 'shop'));
+      expect(row).toHaveTextContent('shop-handbook-acme.apps.acme.it');
+    }, T);
+
+    it('app pubblica con dominio proprio verificato: mostra il dominio, non quello automatico', async () => {
+      vi.mocked(fetchAppDomains).mockResolvedValue({
+        items: [domain({ domain: 'pending.retail.it', status: 'pending_dns' }), domain({})],
+      });
+      setup('admin', [shop]);
+      const list = await screen.findByRole('list', { name: 'Apps' }, { timeout: T });
+      const row = await waitFor(() => {
+        const r = list.querySelector('li') as HTMLElement;
+        expect(r).toHaveTextContent('shop.retail.it');
+        return r;
+      }, { timeout: T });
+      expect(row).toHaveTextContent('Public');
+      expect(row).not.toHaveTextContent('shop-handbook-acme.apps.acme.it');
+      expect(row).not.toHaveTextContent('pending.retail.it');
+    }, T);
+
+    it('senza admin non si chiedono i domini (403) e resta l indirizzo automatico', async () => {
+      setup('write', [shop]);
+      const list = await screen.findByRole('list', { name: 'Apps' }, { timeout: T });
+      const row = list.querySelector('li') as HTMLElement;
+      expect(row).toHaveTextContent('Public');
+      expect(row).toHaveTextContent('shop-handbook-acme.apps.acme.it');
+      expect(fetchAppDomains).not.toHaveBeenCalled();
+    }, T);
+  });
 
   it('New app solo con admin', async () => {
     setup('admin');
