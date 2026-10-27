@@ -42,7 +42,7 @@ func TestMigration0046_AppSignatures(t *testing.T) {
 	if exec(`INSERT INTO core.app_trusted_keys (id, name, fingerprint, public_key, created_at) VALUES ($1, 'x', 'non-esadecimale', 'PEM', $2)`, uuid.New(), now) == nil {
 		t.Error("l'impronta deve essere SHA-256 in esadecimale")
 	}
-	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
 		t.Fatalf("down 0046: %v", err)
 	}
 	var n int

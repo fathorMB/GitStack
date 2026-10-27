@@ -396,6 +396,13 @@ ServiceAccount di core: ci-dispatcher se la CI è accesa (stesso account, un sol
 {{- default (printf "%s/_appauth/verify" (include "gitstack.gateway.url" .)) .Values.apps.authUrl -}}
 {{- end -}}
 
+{{/* Metriche Prometheus di Traefik (GITSTACK_CORE_APPS_TRAEFIK_METRICS_URL, GIT-403): il Service headless
+     `traefik-metrics` che il chart Traefik di k3s crea con la HelmChartConfig dell'installer
+     (deploy/traefik-metrics-values.yaml), entrypoint `metrics` interno al cluster. */}}
+{{- define "gitstack.apps.traefikMetricsUrl" -}}
+{{- default (printf "http://traefik-metrics.%s.svc.cluster.local:%d/metrics" .Values.networkPolicy.ingressNamespace (.Values.apps.traefikMetrics.port | int)) .Values.apps.traefikMetrics.url -}}
+{{- end -}}
+
 {{/* Secret con le chiavi di firma del login delle app (del chart, o apps.signingKeys.existingSecret). */}}
 {{- define "gitstack.apps.signingKeysSecret" -}}
 {{- default (printf "%s-gateway-appauth-keys" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-") .Values.apps.signingKeys.existingSecret -}}

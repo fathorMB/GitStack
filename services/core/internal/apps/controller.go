@@ -95,6 +95,10 @@ type Config struct {
 	// sorgente di CPU e memoria; nil = metrics-server.
 	MetricsEvery time.Duration
 	PodMetrics   PodMetricsReader
+	// TraefikMetrics: la sorgente delle richieste e degli errori 5xx (GIT-403, H12), il testo Prometheus
+	// di Traefik; nil legge TraefikMetricsURL. Vuoti entrambi: richieste ed errori non disponibili.
+	TraefikMetrics    TraefikMetricsReader
+	TraefikMetricsURL string
 	// LogRetention: per quanto si tengono le righe (default 7 giorni); LogMaxBytes: per app (default 1 GiB).
 	LogRetention time.Duration
 	LogMaxBytes  int64
@@ -159,13 +163,15 @@ type Controller struct {
 	oomSeen map[uuid.UUID]map[string]int32
 	// pullChecked: ultimo controllo della rotazione del pull secret, per app (mu).
 	pullChecked map[uuid.UUID]time.Time
+	// traffic: ultimi contatori di Traefik letti per app (GIT-403); solo il ciclo delle metriche li usa.
+	traffic map[uuid.UUID]trafficCounters
 }
 
 // New crea il controller. dyn può essere nil: allora non crea le rotte Traefik.
 func New(st *store.Store, kube kubernetes.Interface, dyn dynamic.Interface, cfg Config) *Controller {
 	cfg.defaults()
 	c := &Controller{st: st, kube: kube, dyn: dyn, cfg: cfg, kick: make(chan struct{}, 1),
-		running: map[uuid.UUID]bool{}, oomSeen: map[uuid.UUID]map[string]int32{}}
+		running: map[uuid.UUID]bool{}, oomSeen: map[uuid.UUID]map[string]int32{}, traffic: map[uuid.UUID]trafficCounters{}}
 	if st != nil {
 		c.siblings = st.ListApps
 		c.versionOf = func(ctx context.Context, a store.App) (store.AppVersion, error) {

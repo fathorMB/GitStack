@@ -87,7 +87,47 @@ else
 fi
 kubectl --kubeconfig "$work/kubeconfig" delete namespace "$mns" --wait=false >/dev/null
 
+# GIT-403 (H12): metriche di Traefik. Si applica la stessa HelmChartConfig che scrive l'installer
+# (valori in deploy/gitstack/files/traefik-metrics-values.yaml) e si aspetta che Traefik la recepisca:
+# il Service headless traefik-metrics compare solo con i valori nuovi. Il Traefik di k3s e le sue CRD
+# arrivano dopo il nodo Ready, quindi si aspetta anche loro. L'entrypoint metrics non deve uscire dal
+# cluster: il Service LoadBalancer `traefik` non ha la porta 9100 (lo controlla anche il test Go).
+kc() { kubectl --kubeconfig "$work/kubeconfig" "$@"; }
+for i in $(seq 1 90); do
+  if kc get crd ingressroutes.traefik.io >/dev/null 2>&1 && kc -n kube-system get deploy traefik >/dev/null 2>&1; then break; fi
+  if [ "$i" = 90 ]; then echo "KO: Traefik di k3s e le sue CRD non sono comparsi in 450s"; kc -n kube-system get helmchart,job,pods 2>&1 || true; exit 1; fi
+  sleep 5
+done
+{
+  cat <<'CFG'
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+CFG
+  grep -v '^[[:space:]]*#' "$root/deploy/gitstack/files/traefik-metrics-values.yaml" | grep -v '^[[:space:]]*$' | sed 's/^/    /' | tr -d '\r'
+} >"$work/traefik-config.yaml"
+kc apply -f "$work/traefik-config.yaml" >/dev/null
+for i in $(seq 1 90); do
+  if kc -n kube-system get svc traefik-metrics >/dev/null 2>&1; then break; fi
+  if [ "$i" = 90 ]; then echo "KO: il Service traefik-metrics non e' comparso in 450s: la HelmChartConfig non e' stata applicata"; kc -n kube-system get helmchart,helmchartconfig,job,pods 2>&1 || true; exit 1; fi
+  sleep 5
+done
+kc -n kube-system rollout status deploy/traefik --timeout=300s >/dev/null
+for i in $(seq 1 60); do
+  if [ -n "$(kc -n kube-system get endpoints traefik-metrics -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null)" ]; then break; fi
+  if [ "$i" = 60 ]; then echo "KO: traefik-metrics senza endpoint pronti"; exit 1; fi
+  sleep 5
+done
+lb_ports=$(kc -n kube-system get svc traefik -o jsonpath='{.spec.ports[*].port}{" "}{.spec.ports[*].targetPort}')
+if echo " $lb_ports " | grep -q ' 9100 '; then echo "KO: l'entrypoint metrics e' esposto sul Service traefik (porte: $lb_ports)"; exit 1; fi
+echo "ok: metriche di Traefik attive su traefik-metrics:9100, non esposte dal Service traefik (porte: $lb_ports)"
+export GITSTACK_TEST_TRAEFIK_METRICS=1
+
 cd "$root/services/core"
 GITSTACK_TEST_KUBECONFIG="$work/kubeconfig" go test -tags integration -count=1 -timeout 25m \
-  -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d|TestApps_SegretiKubernetesERollback|TestApps_IsolamentoSuK3d|TestApps_BarriereInUscitaSuK3d|TestApps_CancelloVeroSenzaPolicySuK3d|TestApps_NomiInterniSuK3d|TestApps_VolumiSuK3d|TestApps_SenzaSegretiConRbacDelChartSuK3d' -v ./internal/httpserver/
-echo "OK: controller, segreti, isolamento, barriere in uscita, nomi interni e volumi delle app provati su k3d"
+  -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d|TestApps_SegretiKubernetesERollback|TestApps_IsolamentoSuK3d|TestApps_BarriereInUscitaSuK3d|TestApps_CancelloVeroSenzaPolicySuK3d|TestApps_NomiInterniSuK3d|TestApps_VolumiSuK3d|TestApps_SenzaSegretiConRbacDelChartSuK3d|TestApps_RichiesteETraefikSuK3d' -v ./internal/httpserver/
+echo "OK: controller, segreti, isolamento, barriere in uscita, nomi interni, volumi e metriche di Traefik (richieste ed errori 5xx) delle app provati su k3d"

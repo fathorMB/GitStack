@@ -1,0 +1,16 @@
+# Valori del chart Traefik di k3s per le metriche (GIT-403, H12). Sono la parte `metrics` della
+# HelmChartConfig `traefik` in kube-system: l'installer (deploy/install.sh, write_traefik_manifest) la
+# incorpora, il test k3d (services/core/internal/apps/k3d-test.sh) la applica uguale.
+# L'entrypoint `metrics` (porta 9100) resta interno al cluster: non e' esposto sul Service
+# LoadBalancer di Traefik, quindi non esce dal nodo. Lo raggiunge solo core, tramite il Service
+# headless `traefik-metrics` e la NetworkPolicy del chart (templates/networkpolicy.yaml).
+# addServicesLabels: traefik_service_requests_total ha l'etichetta `service` per ogni service.
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addServicesLabels: true
+    service:
+      enabled: true
+ports:
+  metrics:
+    port: 9100

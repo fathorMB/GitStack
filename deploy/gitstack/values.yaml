@@ -772,6 +772,15 @@ apps:
   # /_appauth/verify. authUrl è GITSTACK_CORE_APPS_AUTH_URL; vuoto = il Service del gateway della
   # release (http://<release>-gateway.<ns>.svc.cluster.local:<porta>/_appauth/verify).
   authUrl: ""
+  # Richieste ed errori 5xx delle app (H12, GIT-403): core legge traefik_service_requests_total
+  # dall'entrypoint `metrics` di Traefik, interno al cluster (abilitato dall'installer con una
+  # HelmChartConfig `traefik`, deploy/traefik-metrics-values.yaml). `port` deve coincidere con quella
+  # dell'entrypoint; `url` vuoto = http://traefik-metrics.<networkPolicy.ingressNamespace>.svc.cluster.local:<port>/metrics.
+  # Con networkPolicy.enabled il chart apre a core l'uscita solo verso i pod app.kubernetes.io/name=traefik
+  # del namespace del controller di ingresso, su questa porta.
+  traefikMetrics:
+    port: 9100
+    url: ""
   # Chiavi con cui il gateway firma le intestazioni X-GitStack-* verso le app
   # (GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS: semi Ed25519, 32 byte in base64, «nuova,vecchia»). Senza,
   # /_appauth/verify risponde 503 e nessuna app `login` passa. Il chart le genera una sola volta nel

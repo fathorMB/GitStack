@@ -11,7 +11,9 @@ import (
 // Metriche delle app (v3-a, GIT-384, H12): GET /repos/{owner}/{repo}/apps/{app}/metrics. Serve `read`
 // sul repo (H5). CPU e memoria sono la media per passo, sommata sulle copie (o di una sola se `copy`).
 // Senza un campione con CPU nell'intervallo la risposta è available=false con serie vuote, non zeri.
-// Richieste ed errori 5xx non sono raccolti in questa versione (Traefik): restano null.
+// Richieste ed errori 5xx (GIT-403) vengono dai contatori di Traefik: sono il numero di richieste
+// (e di quelle con codice 5xx) per passo. Senza un campione nell'intervallo (Traefik non risponde, o
+// core è appena partito) restano null: non zeri.
 
 // appMetricRange è la finestra e il passo di una scelta di `range`.
 type appMetricRange struct {
@@ -80,10 +82,16 @@ func (s *apiServer) GetAppMetrics(w http.ResponseWriter, r *http.Request, owner 
 		}
 		cpu.Points, mem.Points = foldMetricBuckets(buckets)
 	}
+	traffic, err := s.resources.AppTrafficBuckets(ctx, a.ID, since, spec.step)
+	if err != nil {
+		appInternalError(w, "lettura di richieste ed errori dell'app", err)
+		return
+	}
 	out := openapi.AppMetrics{
 		Available: available, Range: openapi.AppMetricsRange(rng), StepSeconds: spec.step,
 		Cpu: cpu, Memory: mem, Restarts24h: int(restarts), Copies: []openapi.AppCopyStatus{},
 	}
+	out.Requests, out.Errors5xx = foldTrafficBuckets(traffic)
 	for _, c := range copies {
 		out.Copies = append(out.Copies, openapi.AppCopyStatus{Name: c.Copy, Ready: c.Ready, Restarts: c.Restarts})
 	}
@@ -126,4 +134,18 @@ func foldMetricBuckets(buckets []store.AppMetricBucket) (cpu, mem []openapi.AppM
 		}
 	}
 	return cpu, mem
+}
+
+// foldTrafficBuckets dà le serie delle richieste e degli errori 5xx per passo; nil se non ci sono campioni.
+func foldTrafficBuckets(buckets []store.AppTrafficBucket) (requests, errors5xx *openapi.AppMetricSeries) {
+	if len(buckets) == 0 {
+		return nil, nil
+	}
+	req := openapi.AppMetricSeries{Unit: openapi.Count, Points: make([]openapi.AppMetricPoint, 0, len(buckets))}
+	errs := openapi.AppMetricSeries{Unit: openapi.Count, Points: make([]openapi.AppMetricPoint, 0, len(buckets))}
+	for _, b := range buckets {
+		req.Points = append(req.Points, openapi.AppMetricPoint{Time: b.Time, Value: float32(b.Requests)})
+		errs.Points = append(errs.Points, openapi.AppMetricPoint{Time: b.Time, Value: float32(b.Errors5xx)})
+	}
+	return &req, &errs
 }

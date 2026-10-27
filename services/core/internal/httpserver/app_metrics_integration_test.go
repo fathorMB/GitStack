@@ -14,7 +14,7 @@ import (
 )
 
 // GIT-384 (v3-a, H12): GET /apps/{app}/metrics. CPU, memoria e riavvii per copia; senza campioni con
-// CPU la risposta è available=false con serie vuote (non zeri); richieste ed errori restano null.
+// CPU la risposta è available=false con serie vuote (non zeri); richieste ed errori 5xx (Traefik, GIT-403) restano null finché non c'è un campione.
 
 func TestAppMetrics_SerieRiavvitiECopie(t *testing.T) {
 	e := newAppsEnv(t)
@@ -53,7 +53,7 @@ func TestAppMetrics_SerieRiavvitiECopie(t *testing.T) {
 		t.Errorf("copie = %+v (voluto web-1 e web-2)", m.Copies)
 	}
 	if m.Requests != nil || m.Errors5xx != nil {
-		t.Errorf("richieste ed errori non sono raccolti in questa versione: %+v %+v", m.Requests, m.Errors5xx)
+		t.Errorf("richieste ed errori senza campioni di Traefik restano null: %+v %+v", m.Requests, m.Errors5xx)
 	}
 
 	// Un'app senza campioni: non disponibile, serie vuote, nessun zero inventato.
@@ -72,5 +72,54 @@ func TestAppMetrics_SerieRiavvitiECopie(t *testing.T) {
 	// (il valore non ammesso arriva dal gestore, non dal contratto: 400 con il campo nel messaggio)
 	if rec := e.do(http.MethodGet, "/repos/alice/app/apps/web/metrics", "bob", ""); rec.Code == http.StatusOK {
 		t.Errorf("bob non legge il repo privato: %d", rec.Code)
+	}
+}
+
+// GIT-403 (H12): le differenze di richieste ed errori 5xx scritte dal controller escono come serie
+// non null, sommate per passo; un'app senza campioni di Traefik le ha null.
+func TestAppMetrics_RichiesteEdErrori5xx(t *testing.T) {
+	e := newAppsEnv(t)
+	ctx := context.Background()
+	repo := e.repo("app", false)
+	app := createTestApp(t, e.pool, repo, "alice", "web", "alice")
+	createTestApp(t, e.pool, repo, "alice", "api", "alice")
+	st := store.New(e.pool)
+	now := time.Now().UTC().Truncate(time.Second)
+	for i, d := range []struct{ req, errs int64 }{{0, 0}, {40, 3}, {25, 0}, {10, 10}} {
+		if err := st.AppendAppTrafficSample(ctx, app.ID, store.AppTrafficSample{At: now.Add(-time.Duration(4-i) * 10 * time.Second), Requests: d.req, Errors5xx: d.errs}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rec := e.do(http.MethodGet, "/repos/alice/app/apps/web/metrics?range=1h", "alice", "")
+	e.want(rec, http.StatusOK, "")
+	var m openapi.AppMetrics
+	if err := json.Unmarshal(rec.Body.Bytes(), &m); err != nil {
+		t.Fatal(err)
+	}
+	if m.Requests == nil || m.Errors5xx == nil {
+		t.Fatalf("richieste ed errori non devono essere null con campioni: %s", rec.Body.String())
+	}
+	if m.Requests.Unit != openapi.Count || m.Errors5xx.Unit != openapi.Count {
+		t.Errorf("unità: %v %v", m.Requests.Unit, m.Errors5xx.Unit)
+	}
+	var req, errs float32
+	for _, p := range m.Requests.Points {
+		req += p.Value
+	}
+	for _, p := range m.Errors5xx.Points {
+		errs += p.Value
+	}
+	if req != 75 || errs != 13 {
+		t.Errorf("totali: %v richieste (volute 75), %v errori 5xx (voluti 13)", req, errs)
+	}
+	// Senza campioni di Traefik: null, non zeri.
+	rec = e.do(http.MethodGet, "/repos/alice/app/apps/api/metrics", "alice", "")
+	e.want(rec, http.StatusOK, "")
+	var none openapi.AppMetrics
+	if err := json.Unmarshal(rec.Body.Bytes(), &none); err != nil {
+		t.Fatal(err)
+	}
+	if none.Requests != nil || none.Errors5xx != nil {
+		t.Errorf("senza campioni le serie sono null: %+v %+v", none.Requests, none.Errors5xx)
 	}
 }

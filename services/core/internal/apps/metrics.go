@@ -16,7 +16,7 @@ import (
 // Metriche minime delle app (v3-a, GIT-384, H12): CPU, memoria e riavvii per copia. CPU e memoria
 // vengono da metrics-server (metrics.k8s.io); riavvii e stato di pronto dal pod. Un campione senza
 // CPU né memoria vuol dire che metrics-server non ha risposto: l'API lo dice «non disponibile», non
-// mostra zeri. Richieste ed errori 5xx (Traefik) non sono raccolti in questa versione.
+// mostra zeri. Richieste ed errori 5xx vengono da Traefik (traffic.go, GIT-403).
 
 const defaultMetricsEvery = 30 * time.Second
 
@@ -94,6 +94,8 @@ func (c *Controller) CollectMetrics(ctx context.Context) {
 	if err != nil {
 		return
 	}
+	// Una lettura di Traefik per giro: ne escono i contatori di tutte le app.
+	traefik, terr := c.readTraefikMetrics(ctx)
 	for _, id := range ids {
 		if ctx.Err() != nil {
 			return
@@ -103,6 +105,9 @@ func (c *Controller) CollectMetrics(ctx context.Context) {
 			continue
 		}
 		c.collectAppMetrics(ctx, app)
+		if terr == nil {
+			c.collectTraffic(ctx, id, traefik, c.cfg.Now())
+		}
 	}
 }
 

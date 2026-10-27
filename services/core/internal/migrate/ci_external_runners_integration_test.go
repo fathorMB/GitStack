@@ -41,7 +41,7 @@ func TestMigration0033_RunnerEsterni(t *testing.T) {
 		AND column_name IN ('runs_on', 'runner_id')`).Scan(&n); err != nil || n != 2 {
 		t.Fatalf("colonne dei job: %d %v", n, err)
 	}
-	if err := migrate.Down(ctx, pool, dsn, 15); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 16); err != nil {
 		t.Fatalf("down 0033: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.tables WHERE table_schema = 'core'

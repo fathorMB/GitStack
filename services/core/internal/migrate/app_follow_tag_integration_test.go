@@ -56,7 +56,7 @@ func TestMigration0047_AppFollowTag(t *testing.T) {
 		VALUES ($1, 2, 'boh', 'x', 'registry', '{}'::jsonb, $2)`, byTag, now) == nil {
 		t.Error("trigger non valido accettato")
 	}
-	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
 		t.Fatalf("down 0047: %v", err)
 	}
 	var n int

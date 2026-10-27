@@ -44,7 +44,7 @@ func TestMigration0023_StatiViaToken(t *testing.T) {
 		t.Fatalf("default di una riga senza token: %d %d (%v)", nullTok, notAgent, err)
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 24); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 25); err != nil {
 		t.Fatalf("down 0023: %v", err)
 	}
 	if n := cols(); n != 0 {
