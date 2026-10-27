@@ -68,6 +68,8 @@ type Engine struct {
 	Log      *slog.Logger
 	// Now è l'orologio (iniettabile nei test); default time.Now.
 	Now func() time.Time
+	// AppUnhealthyNoticeWindow limita gli avvisi app_status.unhealthy; zero usa il default.
+	AppUnhealthyNoticeWindow time.Duration
 
 	Poll  time.Duration // default 1s
 	Batch int           // default 50

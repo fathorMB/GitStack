@@ -411,7 +411,7 @@ La rinomina e il trasferimento non esistono nella v1 (R3): niente eventi.
 | `workflow_job.queued`, `in_progress`, `completed`, `cancelled` | `workflow_job` / azione omonima | nessuna |
 | `app_deployment.started`, `succeeded`, `rolled_back` | `deployment` / azione omonima | nessuna |
 | `app_deployment.failed` | `deployment` / `failed` | `state_change` a chi ha fatto il deploy (GIT-384, H12) |
-| `app_status.unhealthy` (app in esecuzione con copie non pronte) | nessuno | `state_change` a chi ha fatto l'ultimo deploy attivo (GIT-384, H12) |
+| `app_status.unhealthy` (app in esecuzione con copie non pronte) | nessuno | `state_change` a chi ha fatto l'ultimo deploy attivo; un avviso ogni 5 minuti per app e destinatario (GIT-384, H12; GIT-400) |
 
 Chi riceve una notifica lo decide il consumer: iscritti alla issue
 (`core.issue_subscriptions`), watch del repo (`core.repo_watches`), menzioni e
