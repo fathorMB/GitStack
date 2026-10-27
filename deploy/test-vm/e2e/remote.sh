@@ -276,7 +276,7 @@ collect_ci_diagnostics() {
   : >"$dir/ci-logs.txt"
   while read -r pod; do
     [ -n "$pod" ] || continue
-    { printf '\n===== %s/%s =====\n' "$ns" "$pod"; k3s_kubectl -n "$ns" describe pod "$pod" || true; } >>"$dir/ci-describe.txt" 2>&1
+    { printf '\n===== %s/%s =====\n' "$ns" "$pod"; k3s_kubectl -n "$ns" describe "$pod" || true; } >>"$dir/ci-describe.txt" 2>&1
     { printf '\n===== %s/%s =====\n' "$ns" "$pod"; k3s_kubectl -n "$ns" logs "$pod" --all-containers --prefix --tail=5000 || true; } >>"$dir/ci-logs.txt" 2>&1
   done < <(k3s_kubectl -n "$ns" get pods -o name 2>>"$dir/ci-pods.txt")
 }
