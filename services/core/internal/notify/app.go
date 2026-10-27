@@ -53,7 +53,7 @@ func (e *Engine) handleApp(ctx context.Context, tx pgx.Tx, ev outboxEvent) error
 	hasActor := p.Actor != nil && p.Actor.ID != ""
 	failed := ev.name == domainevents.AppDeploymentFailed
 	lister, _ := e.Identity.(ResourceMemberLister)
-	if !hasActor && !(failed && lister != nil) {
+	if !hasActor && (!failed || lister == nil) {
 		return nil
 	}
 	repoID, err := uuid.Parse(p.Repo.ID)
