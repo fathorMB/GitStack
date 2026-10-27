@@ -17782,6 +17782,11 @@ export type ListResourceMembersErrors = {
      */
     401: Error;
     /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
      * Errore imprevisto.
      */
     default: Error;

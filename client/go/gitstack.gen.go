@@ -45017,6 +45017,8 @@ type ListResourceMembersResponse struct {
 	JSON400 *BadRequest
 	// JSON401 the response for an HTTP 401 `application/json` response
 	JSON401 *Unauthorized
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
 	// JSONDefault the response for an HTTP default `application/json` response
 	JSONDefault *UnexpectedError
 }
@@ -45034,6 +45036,11 @@ func (r ListResourceMembersResponse) GetJSON400() *BadRequest {
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
 func (r ListResourceMembersResponse) GetJSON401() *Unauthorized {
 	return r.JSON401
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListResourceMembersResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
 }
 
 // GetJSONDefault returns the response for an HTTP default `application/json` response
@@ -74035,6 +74042,13 @@ func ParseListResourceMembersResponse(rsp *http.Response) (*ListResourceMembersR
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError
