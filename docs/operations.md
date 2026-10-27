@@ -351,6 +351,50 @@ the unique index on `apps.normalized_host` (`pkg/names`: `AppAddress`,
 
    - **curl:** `curl --cacert ca.crt https://<host>/api/healthz`
 
+#### Registry and the internal CA: how the cluster trusts it (GIT-425)
+
+Apps whose image lives in the repo's registry (`<host>/<owner>/<repo>/<image>:<tag>`)
+are pulled by containerd, the container runtime of k3s, not by a pod. With
+`--tls internal` (the default) the registry certificate is signed by the internal
+CA, which containerd does not know. Two things make the pull work with no manual
+step:
+
+- **Trust in the CA.** `install.sh` writes `/etc/rancher/k3s/registries.yaml` with,
+  for every host of the instance (`--host`, the public host), a `configs` entry
+  whose `tls.ca_file` is `/etc/gitstack/tls/ca.crt`. There is **one** CA file, on
+  disk, and containerd reads it at pull time: the trust follows the file. The same
+  `configs` section also holds the `--registry-mirror` / `--ca-bundle` entries
+  (the mirror host keeps its own `tls.ca_file`, `/etc/gitstack/network/ca.crt`).
+  With a customer certificate (`--tls-cert`) or Let's Encrypt there is nothing to
+  add: the CA is a public or system one (a corporate CA goes in with `--ca-bundle`).
+  `gitstack config set network` and `gitstack config set host` regenerate the same
+  file, so the entries are never lost; a new host restarts k3s once.
+- **Credentials.** `core` creates, for each app with a registry image, a
+  `registry-pull` Secret (`kubernetes.io/dockerconfigjson`) in the app's namespace,
+  and the Deployment references it in `imagePullSecrets`. The password is a
+  read-only token of that app, signed by `core` with the gateway service secret
+  (`GITSTACK_SERVICE_SECRET_GATEWAY`): it belongs to no user, grants `packages: read`
+  on the registry of the app's repo only (also when the repo is private), it is
+  valid 30 days and `core` renews it in the Secret after 10 days, with no
+  redeploy. It stops working when the app or its repo is deleted. Rotating the
+  gateway secret with the two-key list (`new,old`) keeps the Secrets valid until
+  the next renewal.
+
+**After a `gitstack restore`.** The restore puts back the CA of the backup in
+`/etc/gitstack/tls/ca.crt`. `registries.yaml` already points at that file, so
+containerd follows it; to be sure it picks up the new CA the restore restarts k3s
+whenever the CA on disk changed, or `registries.yaml` had to change (a different
+host), and waits for the node to be Ready. Services are already back by then, so
+apps with a registry image may need a few seconds before the next pull succeeds.
+If the restart fails, the restore says so; fix k3s (`journalctl -u k3s`) and run
+`sudo gitstack config set host <host>`, which rewrites `registries.yaml` and
+restarts k3s again. An instance installed before this change gets the entries by
+running `install.sh` again (it restarts k3s once).
+
+To check by hand on the server: `sudo grep -A3 '"<host>"' /etc/rancher/k3s/registries.yaml`
+and `sudo k3s crictl pull <host>/<owner>/<repo>/<image>:<tag>` (a private repo
+needs `--creds` from a user token with `read:registry`).
+
 ### Admin password
 
 On first startup `identity` creates the `admin` user with a randomly generated
@@ -1099,6 +1143,10 @@ services.
    gateway: superseded by this fix, GIT-297). PostgreSQL is not restarted (its
    Secret is not restored) and the web reads no Secret.
 
+   With `--tls internal`, after publishing the restored CA the restore also
+   realigns containerd's trust in it (`registries.yaml`) and restarts k3s if the
+   CA or the file changed: see "Registry and the internal CA" above.
+
 4. Verify with `gitstack status` that all services are ready (exit code `0`).
 
 ### Exit codes
@@ -1831,7 +1879,7 @@ so it fails as a non-root user with a permission error.
 | `/etc/gitstack/config.yaml` | Main configuration (mode `0600`) |
 | `/etc/gitstack/tls/` | CA certificate, CA key, server certificate (internal CA mode) |
 | `/etc/gitstack/network/ca.crt` | Corporate CA copy (only with `--ca-bundle`) |
-| `/etc/rancher/k3s/registries.yaml` | k3s registry mirror (mode `0600`, may hold the mirror password) |
+| `/etc/rancher/k3s/registries.yaml` | k3s registry mirror and trust in the internal CA for the registry host (mode `0600`, may hold the mirror password) |
 | `/etc/systemd/system/k3s.service.d/10-gitstack-network.conf` | Proxy for k3s and containerd |
 | `deploy/postgres-prepare.sql` | Script for the DBA: database and user for an external PostgreSQL |
 | `/etc/gitstack/backup-state.json` | Last backup status written by `gitstack backup` |

@@ -119,6 +119,47 @@ expect_lacks "registries.yaml: niente ca_file con mirror http" "${OUT}" "ca_file
 OUT="$(in_install -- 'resolve_network; render_registries_yaml')"
 expect_eq "registries.yaml senza mirror: vuoto" "${OUT}" ""
 
+# GIT-425: con TLS internal containerd si fida della CA interna per il registry del repo
+# (host pubblico e --host), anche senza rete aziendale; con altre modalità niente.
+TRUST_HDR='# Scritto da GitStack (install.sh o gitstack config set network): non modificarlo a mano.'
+OUT="$(in_install -- 'resolve_network; GITSTACK_TLS_MODE=internal; PUBLIC_HOST=172.27.25.76; HOST_ARGS=(172.27.25.76 git.corp); TLS_DIR=/etc/gitstack/tls; render_registries_yaml')"
+WANT="${TRUST_HDR}"'
+configs:
+  "172.27.25.76":
+    tls:
+      ca_file: "/etc/gitstack/tls/ca.crt"
+  "git.corp":
+    tls:
+      ca_file: "/etc/gitstack/tls/ca.crt"'
+expect_eq "registries.yaml: CA interna per gli host del registry" "${OUT}" "${WANT}"
+
+OUT="$(in_install -- 'resolve_network; GITSTACK_TLS_MODE=custom; PUBLIC_HOST=172.27.25.76; render_registries_yaml')"
+expect_eq "registries.yaml: nessuna CA interna con certificato del cliente" "${OUT}" ""
+
+# Compatibile con --registry-mirror/--ca-bundle: stessa sezione configs, mirror intatto.
+OUT="$(in_install --registry-mirror https://reg.corp:5000 --ca-bundle "${CA}" \
+  -- 'resolve_network; GITSTACK_TLS_MODE=internal; PUBLIC_HOST=172.27.25.76; TLS_DIR=/etc/gitstack/tls; render_registries_yaml')"
+WANT="${TRUST_HDR}"'
+mirrors:
+  "*":
+    endpoint:
+      - "https://reg.corp:5000"
+configs:
+  "reg.corp:5000":
+    tls:
+      ca_file: "'"${WORK}"'/net/ca.crt"
+  "172.27.25.76":
+    tls:
+      ca_file: "/etc/gitstack/tls/ca.crt"'
+expect_eq "registries.yaml: mirror, CA aziendale e CA interna insieme" "${OUT}" "${WANT}"
+
+# Mirror senza auth né CA: la sezione configs la apre la CA interna.
+OUT="$(in_install --registry-mirror http://reg.corp:5000 \
+  -- 'resolve_network; GITSTACK_TLS_MODE=internal; PUBLIC_HOST=h.corp; TLS_DIR=/etc/gitstack/tls; render_registries_yaml')"
+expect_has "registries.yaml: un solo configs" "${OUT}" 'configs:
+  "h.corp":'
+case "${OUT}" in *configs:*configs:*) OUT="${OUT}"; bad "registries.yaml: configs doppio" ;; *) ok ;; esac
+
 # --- drop-in di proxy per k3s ----------------------------------------------------------------
 OUT="$(in_install --http-proxy 'http://u:p%40ss@proxy.corp:3128' --no-proxy git.corp -- 'local_addrs() { printf "10.1.0.9
 10.1.0.4

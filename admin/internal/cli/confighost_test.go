@@ -28,6 +28,8 @@ func (r *recRunner) Run(_ context.Context, env []string, name string, args ...st
 	switch {
 	case name == "getent":
 		return []byte(r.getentOut), r.getentErr
+	case name == "k3s":
+		return []byte("node1   Ready   control-plane   1d   v1\n"), nil
 	case strings.HasSuffix(name, "helm"):
 		return nil, r.helmErr
 	}
@@ -77,8 +79,13 @@ func hostApp(r *recRunner, tlsDir string) (*App, *strings.Builder, *strings.Buil
 	a.Stdout, a.Stderr = &out, &errb
 	a.Runner = r
 	a.Getenv = func(k string) string {
-		if k == "GITSTACK_TLS_DIR" {
+		switch k {
+		case "GITSTACK_TLS_DIR":
 			return tlsDir
+		case "GITSTACK_K3S_DIR": // registries.yaml (GIT-425): mai sotto /etc veri
+			return filepath.Join(filepath.Dir(tlsDir), "k3s")
+		case "GITSTACK_NETWORK_DIR":
+			return filepath.Join(filepath.Dir(tlsDir), "net")
 		}
 		return ""
 	}
@@ -156,8 +163,14 @@ func TestConfigSetHostIPAddsSAN(t *testing.T) {
 	if got := strings.Join(r.find("gitstack-tls").args, " "); got != "ensure --names  --ips 192.168.1.20,10.0.0.5" {
 		t.Errorf("args: %q", got)
 	}
-	if len(r.calls) != 2 { // niente getent per un IP
+	// niente getent per un IP: gitstack-tls, helm e (GIT-425) il riavvio di k3s con l'attesa del nodo,
+	// perché registries.yaml ha la voce della CA interna per il nuovo host.
+	if len(r.calls) != 4 || r.calls[2].name != "systemctl" || strings.Join(r.calls[2].args, " ") != "restart k3s" {
 		t.Errorf("chiamate: %+v", r.calls)
+	}
+	reg, err := os.ReadFile(filepath.Join(filepath.Dir(tlsDir), "k3s", "registries.yaml"))
+	if err != nil || !strings.Contains(string(reg), `"10.0.0.5":`) || !strings.Contains(string(reg), `"192.168.1.20":`) {
+		t.Errorf("registries.yaml senza la CA interna per il nuovo host: %v\n%s", err, reg)
 	}
 }
 
