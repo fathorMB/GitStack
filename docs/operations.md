@@ -2577,6 +2577,73 @@ Prima: `ci_status` di main verde (al 2026-10-25 il run `api-contract` di `c01e14
 | Workflow di GitStack con modifica minima (quale) | da eseguire |
 | Release di prova `v0.0.0-test.N` e immagini firmate | da eseguire (link alla release e a `gs package list`) |
 
+## Dogfooding delle app: passo e2e sulla VM e sito della documentazione su homehub (v3-a, GIT-355)
+
+Chiude il goal della v3-a. Anche qui i passi sulla VM e su homehub li fa il board: nessun agente ha una VM Hyper-V o accesso a homehub. Questa sezione dice cosa è stato provato senza, cosa scrive il board e con quali comandi.
+
+### Provato prima (senza VM e senza homehub)
+
+| Cosa | Dove | Esito |
+|---|---|---|
+| Copertura delle regole H1, H2 (parte interna), H4–H13 | `docs/rules-coverage.md` (famiglia H), controllata da `go run scripts/check-rules-coverage.go` | nessuna riga «da compilare» nella famiglia H; il check verifica che ogni test citato esista |
+| Passo e2e «ciclo dell'app» (`Test-E2eAppLifecycle` in `deploy/test-vm/lib/phases.ps1`): sei righe `h-app ciclo 1/6 … 6/6` più l'esito complessivo | `deploy/test-vm/tests/phases.Tests.ps1` (API e VM finte: esito completo, errore a v2 con diagnostica, nessun rollback né eliminazione dopo un errore) | verde in locale con Windows PowerShell 5.1 |
+| `e2e/gs-app-restore.sh` (`push-web`, `probe-anon`, `probe-auth`, `diag`) | `bash -n` | sintassi ok; **non eseguito** (serve la VM); shellcheck non era installato nell'ambiente di sviluppo, quindi **non passato** |
+| Immagine e workflow del sito | `docs-site/Dockerfile`, `deploy/dogfooding/docs-app.yml` | **mai costruiti**: la prova è il giro su homehub |
+
+### Passo e2e: deploy, login, rollback
+
+Dentro il passo h di `e2e.ps1` (con l'hosting acceso: `-AppsDomain`, di default `apps.e2e.test`, nessun DNS), dopo la preparazione dell'app di prova e prima del backup, `Test-E2eAppLifecycle` usa l'immagine `e2eweb` (busybox `httpd` sulla 8080 che serve `e2e-web-<tag>`, pubblicata da `gs-app-restore.sh push-web` nello stesso registry del repo di prova) e l'app `e2elife`:
+
+1. deploy di `v1` (`POST …/apps`, porta 8080): la versione diventa `serving` e l'app ha un indirizzo;
+2. login GitStack davanti all'app (forward-auth del gateway, H6): una richiesta all'indirizzo dell'app, risolto a mano verso Traefik della VM (`curl --resolve`), senza credenziale deve dare **401** e non il corpo dell'app;
+3. la stessa richiesta con il token dell'utente di prova (`Authorization: Bearer gst_…`, `read` sul repo) deve dare il corpo `e2e-web-v1`;
+4. deploy di `v2` (`POST …/deploys`): `serving` e corpo `e2e-web-v2`;
+5. rollback alla versione di `v1` (`POST …/rollback`): una versione nuova, più recente di quella di `v2`, `serving`, corpo di nuovo `e2e-web-v1`;
+6. eliminazione dell'app (`DELETE`, 204; l'app non ha volumi).
+
+Le righe sono `[PASS]`/`[FAIL]` come quelle di `i-app`, più `h-app ciclo. esito complessivo: N/6 controlli ok`. Al primo errore il passo si ferma, le righe dopo sono «non verificato» e `backup-restore\app-ciclo\diag.log` raccoglie i pod del namespace `gitstack-app-<id>` (stato, eventi, describe e log); l'app di prova non si elimina, per poterla guardare. Gli altri log (`push-web.log`, `probe-anon.log`, `probe-v1.log`, `probe-v2.log`, `probe-rollback.log`) sono in `backup-restore\app-ciclo\`. Si salta con `-SkipBackupRestore` (hosting spento).
+
+**Limiti noti, da leggere prima del primo giro:** (a) l'applet `httpd` deve esserci nel busybox dell'immagine `busybox:1.36` già scaricata dal chart; nel ripiego con il busybox statico dell'initramfs potrebbe mancare e il passo 3 cade con «serve-e2e-web-v1». (b) Che un token personale con `read:resource` passi dal forward-auth è previsto da `docs/apps-login.md` ma non è stato provato su un cluster da questo item. (c) Il passo non prova il login dal browser (cookie `gst_app_session`): quello è coperto dai test del gateway.
+
+#### Runbook per il board (passo e2e)
+
+Prima: `ci_status` di `main`, e si sceglie `-Ref` solo fra gli sha il cui run CI ha il job **Registry** in `success` (le immagini `sha-<Ref>` su ghcr.io le pubblica quel job; un run cancellato o rosso non le ha). La cartella `-OutDir` deve essere **nuova** (`e2e.ps1` non svuota la cartella e il log si accoda). L'host deve avere il checkout già su `-Ref` o `e2e.ps1` lo porta lui.
+
+```powershell
+# amministratore sull'host del board
+.\deploy\test-vm\e2e.ps1 -Ref <SHA di main con Registry in success> -OutDir C:\gitstack-e2e\GIT-355
+```
+
+Si guarda nel riepilogo finale: le sei righe `h-app ciclo` e l'esito complessivo `6/6`, poi le righe `i-app` (che non devono cambiare). Con un rosso, mandare `C:\gitstack-e2e\GIT-355\backup-restore\app-ciclo\` (soprattutto `diag.log`) e `e2e.log`. Criterio dell'item: «passo e2e sulla VM verde».
+
+### Dogfooding su homehub: il sito della documentazione come app
+
+Un'app interna di GitStack che segue il suo branch: il sito `docs-site/` (Docusaurus). Il workflow `deploy/dogfooding/docs-app.yml` (`runs-on: gitstack-build`) costruisce `docs-site/Dockerfile` e pubblica `docs:sha-<12 cifre>` nel registry del repo; l'app `docs` con `followBranch=main` lo mette in produzione da sola quando la CI pubblica un tag nuovo (H7), solo se l'immagine è firmata dalla CI dello stesso repo (H10). Il Dockerfile imposta l'etichetta `org.opencontainers.image.revision`, quindi `GITSTACK_COMMIT_SHA` è valorizzato (H14).
+
+Prima, sull'installazione di homehub: CI e build accesi (`--ci --ci-build`, vedi sopra) e hosting acceso con un dominio delle app. **Attenzione:** `homehub.local` è mDNS e non ha record wildcard, e un dominio `.local` per le app è rifiutato: scegliere un dominio senza `.local` (per esempio `apps.homehub.lan`) e, non potendo creare record DNS sul router, aggiungere sulla macchina da cui si guarda il sito una riga nel file hosts con l'indirizzo dell'app (`<IP di homehub> docs-<repo>-<owner>.apps.homehub.lan`). Chi guarda deve fidarsi della CA interna (`/help/ca`).
+
+```sh
+sudo gitstack config set apps on --apps-domain apps.homehub.lan   # oppure gitstack upgrade --enable-apps
+```
+
+1. Nel repo di GitStack su homehub (il mirror in pull, con la CI accesa sul mirror: CI3) o in un repo di prova con una copia, aggiungere `deploy/dogfooding/docs-app.yml` come `.github/workflows/docs-app.yml`. Un mirror in pull è di sola lettura: se il repo è il mirror, il workflow va in un repo normale (`admin/gitstack-docs`) con il contenuto di `main` spinto a mano, e si scrive nel registro quale dei due si è usato.
+2. `gs workflow run docs-app.yml --ref main`, poi `gs run watch --exit-status`: il log deve finire con l'immagine pubblicata; `gs package list` la mostra `signature: verified`.
+3. Creare l'app: `gs app create docs --image docs:sha-<12 cifre> --port 8080 --follow-branch main` (o dalla scheda Apps), attendere `serving` e aprire l'indirizzo: con il login GitStack deve comparire il sito.
+4. Aggiornamento da un push: una modifica a una pagina di `docs-site/docs/` (o a `docs/`), `git push` su `main` del repo; il workflow parte da solo, l'app prende una versione `branch_push` e il sito mostra la modifica. Evidenza per l'item: `gs app status docs` e `gs api /repos/<owner>/<repo>/apps/docs/versions` (l’elenco delle versioni) prima e dopo (numero di versione, `trigger: branch_push`, `commitSha` uguale al commit spinto), il link del run e il testo della modifica visibile nel sito.
+5. Rollback con `gs app rollback docs --to <n>` e verifica che il sito torni com'era.
+
+### Risultati (li scrive il board)
+
+| Voce | Valore |
+|---|---|
+| `-Ref` e `-OutDir` del giro e2e | da eseguire |
+| Passo e2e: righe `h-app ciclo` 1–6 e esito complessivo | da eseguire (incollare le righe) |
+| Dominio delle app di homehub e come si risolve | da eseguire |
+| Run del workflow `docs-app` | da eseguire (link al run) |
+| Versione dell'app `docs` prima e dopo il push (`trigger`, `commitSha`) | da eseguire |
+| Modifica visibile nel sito dopo il push | da eseguire |
+| Rollback | da eseguire |
+
 ## Registro del dogfooding (dalla tappa 2 di V7)
 
 Il dogfooding della v1.0 dura almeno **2 settimane dalla tappa 2** (decisione del board del 18/10/2026). Lo compila il board: la data di inizio è il giorno della tappa 2; i fatti si scrivono quando succedono, con data e orari UTC.
