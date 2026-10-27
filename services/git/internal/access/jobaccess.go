@@ -22,6 +22,9 @@ type JobAccess struct {
 	// Workflow e Job identificano il job che usa il token.
 	Workflow string
 	Job      string
+	// RunID, Ref (es. refs/heads/main), Event e ActorID descrivono il run del job: servono al
+	// deploy automatico da branch (H7, GIT-349). Vuoti per i token che non vengono da un run.
+	RunID, Ref, Event, ActorID string
 }
 
 // Jobs risolve un token del job (prefisso gsj_) nel ci-gateway di core.

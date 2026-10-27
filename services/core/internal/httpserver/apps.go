@@ -406,6 +406,15 @@ func (s *apiServer) CreateApp(w http.ResponseWriter, r *http.Request, owner open
 		}
 		label = &l
 	}
+	// Firma (H10): «non verificata» se non è della CI né di una chiave fidata; con «solo firmate» è rifiutata.
+	img, sig, ok := s.verifyAppImage(w, r.Context(), repo, img)
+	if !ok {
+		return
+	}
+	if follow != nil && !sig.ByCI {
+		writeError(w, http.StatusUnprocessableEntity, "follow_branch_unsigned", "Il deploy automatico accetta solo immagini firmate dalla CI di questo repo: questa immagine non lo è.")
+		return
+	}
 	app, ver, err := s.resources.CreateApp(r.Context(), store.NewApp{
 		RepoID: repo.ID, Owner: repo.OwnerName, Name: in.Name, AddressLabel: label, Image: img, Config: cfg,
 		FollowBranch: follow, Actor: actor.store(), CommitSha: s.imageCommit(r.Context(), repo, img),
@@ -522,6 +531,9 @@ func (s *apiServer) UpdateApp(w http.ResponseWriter, r *http.Request, owner open
 			}
 			if cur.Image.Source == "external" {
 				writeFieldError(w, "followBranch", "followBranch: non disponibile per un'immagine esterna.")
+				return
+			}
+			if !s.requireCISigned(w, r.Context(), repo, cur.Image) {
 				return
 			}
 			p.FollowBranch = &v

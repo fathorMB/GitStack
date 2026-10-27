@@ -9782,6 +9782,7 @@ paths:
       tags: [apps]
       x-required-scopes: ["write:resource"]
       x-repo-permission: write
+      x-job-token: true
       x-mcp:
         expose: true
         name: app_deploy
@@ -9796,7 +9797,8 @@ paths:
         `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409
         `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422
         `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di
-        job puo' farlo se ha `write` sul repo (H7).
+        job puo' farlo se ha `packages: write` e solo per le app del proprio repo (H7); il deploy usa i
+        permessi di chi ha causato il run (CI4), che deve avere ancora `write` sul repo.
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppDeployInput"}}}}
       responses:
         "202": {description: "Deploy avviato.", content: {application/json: {schema: {$ref: "#/components/schemas/AppVersion"}}}}

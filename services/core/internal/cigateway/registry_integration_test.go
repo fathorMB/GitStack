@@ -65,6 +65,10 @@ func TestRegistryAccess_SoloIlRepoDelJob(t *testing.T) {
 	if st != 200 || got.RepoID != repoA.String() || got.Owner != "alice" || got.Name != "uno" || got.Workflow != "due" || got.Job != "build" || got.Archived {
 		t.Fatalf("repo del job: %d %+v", st, got)
 	}
+	// GIT-349 (H7): il run del job arriva al registry, che lo riporta a core per il deploy da branch.
+	if got.RunID == "" || got.Ref != "refs/heads/main" || got.Event != "push" || got.ActorID == "" {
+		t.Errorf("contesto del run: %+v", got)
+	}
 	if got.Packages != "read" {
 		t.Errorf("senza permissions: nel workflow il default è read, trovato %q", got.Packages)
 	}
