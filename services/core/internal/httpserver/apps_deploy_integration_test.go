@@ -73,16 +73,14 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 		if _, err := e.kube.NetworkingV1().NetworkPolicies(ns.Name).Create(ctx, apps.BuildNetworkPolicy(a), metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), ns.Name, metav1.DeleteOptions{}) })
+		cleanupNamespaceWithDiag(t, e.kube, ns.Name)
 	}
 	// I servizi GitStack e il proxy sono esterni agli spazi app e senza label GitStack.
 	systemNS := "gitstack-h9-system-" + strings.ToLower(uuid.NewString()[:8])
 	if _, err := e.kube.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: systemNS}}, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		_ = e.kube.CoreV1().Namespaces().Delete(context.Background(), systemNS, metav1.DeleteOptions{})
-	})
+	cleanupNamespaceWithDiag(t, e.kube, systemNS)
 	server := func(ns, name, image string, labels map[string]string, command []string, ports []corev1.ContainerPort) string {
 		p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns, Labels: labels},
 			Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyAlways, Containers: []corev1.Container{{Name: "server", Image: image, Command: command, Ports: ports}}}}
@@ -93,13 +91,14 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 		return waitPodIP(t, e.kube, p.Namespace, p.Name)
 	}
 	appLabels := map[string]string{apps.LabelManaged: "true"}
-	peerIP := server(apps.Namespace(peer.ID), "peer", "busybox:1.36", appLabels, []string{"sh", "-c", "nc -lk -p 8080"}, []corev1.ContainerPort{{Name: "http", ContainerPort: 8080}})
-	postgresIP := server(systemNS, "postgres", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "postgres"}, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
-	natsIP := server(systemNS, "nats", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "nats"}, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
-	coreIP := server(systemNS, "core", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "core"}, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
+	// GIT-447: bersagli httpd -f (resta in ascolto per più connessioni), non `nc -lk` che esce dopo la prima.
+	peerIP := server(apps.Namespace(peer.ID), "peer", "busybox:1.36", appLabels, []string{"sh", "-c", "httpd -f -p 8080 -h /tmp"}, []corev1.ContainerPort{{Name: "http", ContainerPort: 8080}})
+	postgresIP := server(systemNS, "postgres", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "postgres"}, []string{"sh", "-c", "httpd -f -p 8080 -h /tmp"}, nil)
+	natsIP := server(systemNS, "nats", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "nats"}, []string{"sh", "-c", "httpd -f -p 8080 -h /tmp"}, nil)
+	coreIP := server(systemNS, "core", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "core"}, []string{"sh", "-c", "httpd -f -p 8080 -h /tmp"}, nil)
 	httpIP := server(systemNS, "http-target", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "http-target"}, []string{"sh", "-c", "mkdir -p /w && echo ok > /w/index.html && exec httpd -f -p 8080 -h /w"}, nil)
-	directIP := server(systemNS, "direct-target", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "direct-target"}, []string{"sh", "-c", "nc -lk -p 8081"}, nil)
-	otherIP := server(apps.Namespace(other.ID), "other", "busybox:1.36", appLabels, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
+	directIP := server(systemNS, "direct-target", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "direct-target"}, []string{"sh", "-c", "httpd -f -p 8081 -h /tmp"}, nil)
+	otherIP := server(apps.Namespace(other.ID), "other", "busybox:1.36", appLabels, []string{"sh", "-c", "httpd -f -p 8080 -h /tmp"}, nil)
 	probe := func(ns, name, ip string, port int, allowed bool, labels map[string]string) {
 		// kube-router applica la NetworkPolicy al pod appena creato in modo
 		// asincrono: un nc che passa subito dopo l'avvio non prova nulla. Una
@@ -171,9 +170,7 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 	if _, err := e.kube.CoreV1().Namespaces().Create(ctx, rns, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		_ = e.kube.CoreV1().Namespaces().Delete(context.Background(), rns.Name, metav1.DeleteOptions{})
-	})
+	cleanupNamespaceWithDiag(t, e.kube, rns.Name)
 	f := false
 	rootSC := &corev1.SecurityContext{AllowPrivilegeEscalation: &f, Capabilities: &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}}, SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}, RunAsUser: ptr(int64(0)), RunAsNonRoot: &f}
 	rejected(rns.Name, "root", corev1.PodSpec{Containers: []corev1.Container{{Name: "x", Image: "busybox:1.36", SecurityContext: rootSC}}})
@@ -490,7 +487,7 @@ func TestApps_ControllerSuK3d(t *testing.T) {
 	}
 	e.ns = apps.Namespace(uuid.UUID(created.App.Id))
 	path := base + "/web"
-	t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), e.ns, metav1.DeleteOptions{}) })
+	cleanupNamespaceWithDiag(t, e.kube, e.ns)
 
 	t.Run("la versione risulta partita solo dopo la salute ok", func(t *testing.T) {
 		e.t = t
