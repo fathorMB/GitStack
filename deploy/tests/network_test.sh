@@ -158,7 +158,7 @@ OUT="$(in_install --registry-mirror http://reg.corp:5000 \
   -- 'resolve_network; GITSTACK_TLS_MODE=internal; PUBLIC_HOST=h.corp; TLS_DIR=/etc/gitstack/tls; render_registries_yaml')"
 expect_has "registries.yaml: un solo configs" "${OUT}" 'configs:
   "h.corp":'
-case "${OUT}" in *configs:*configs:*) OUT="${OUT}"; bad "registries.yaml: configs doppio" ;; *) ok ;; esac
+case "${OUT}" in *configs:*configs:*) bad "registries.yaml: configs doppio" ;; *) ok ;; esac
 
 # --- drop-in di proxy per k3s ----------------------------------------------------------------
 OUT="$(in_install --http-proxy 'http://u:p%40ss@proxy.corp:3128' --no-proxy git.corp -- 'local_addrs() { printf "10.1.0.9
