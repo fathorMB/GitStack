@@ -83,7 +83,7 @@ func TestApps_GatewayInternoSuK3d(t *testing.T) {
 		wgetProbe := fmt.Sprintf("if [ \"$(wget -q -O- -T 5 %s 2>/dev/null)\" = ok ]; then %s; else %s; fi", url, ok, ko)
 		script := wgetProbe
 		if ns != systemNS && allowed {
-			script = fmt.Sprintf("i=0; while [ $i -lt 15 ]; do i=$((i + 1)); if [ \"$(wget -q -O- -T 5 %s 2>/dev/null)\" = ok ]; then %s; exit 0; fi; if [ $i -lt 15 ]; then sleep 1; fi; done; echo 'KO: wget non riuscito dopo 15 tentativi'; exit 1", url, ok)
+			script = retryProbeScript(fmt.Sprintf("[ \"$(wget -q -O- -T 5 %s 2>/dev/null)\" = ok ]", url), ok)
 		}
 		spec := corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{
 			Name: "probe", Image: "busybox:1.36", Command: []string{"sh", "-c", script},

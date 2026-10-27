@@ -149,7 +149,47 @@ func ncProbeScript(host string, port int, retry bool, ok, ko string) string {
 	if !retry {
 		return fmt.Sprintf("if nc -z -w 5 %s %d; then %s; else %s; fi", host, port, ok, ko)
 	}
-	return fmt.Sprintf("i=0; while [ $i -lt 15 ]; do i=$((i + 1)); if nc -z -w 1 %s %d; then %s; exit 0; fi; if [ $i -lt 15 ]; then sleep 1; fi; done; echo 'KO: nc non riuscito dopo 15 tentativi'; exit 1", host, port, ok)
+	return retryProbeScript(fmt.Sprintf("nc -z -w 1 %s %d", host, port), ok)
+}
+
+// probePositiveWindowSeconds è la finestra (in secondi) in cui un probe positivo dopo il gate può
+// ritentare (GIT-472): GIT-454 con 15 tentativi non bastava, kube-router ha rifiutato per ≥14 s.
+// I probe negativi restano a un tentativo. Con il gate (fino a 60 s) e il pull dell'immagine sta
+// dentro waitPodLogTimeout.
+const probePositiveWindowSeconds = 60
+
+// probeMarkerPrefix marca le righe di misura del probe nel log del pod: waitPodLog le toglie dal
+// risultato (resta «OK») e le scrive nel log del test.
+const probeMarkerPrefix = "PROBE: "
+
+// probeFirstKOMarker è scritto dopo il primo tentativo fallito: waitPodLog, vedendolo mentre il pod è
+// ancora Running, raccoglie una volta le regole di kube-router dal nodo.
+const probeFirstKOMarker = probeMarkerPrefix + "primo KO"
+
+// retryProbeScript ritenta check (comando di shell) per probePositiveWindowSeconds, stampa il tentativo
+// riuscito e, al KO, quanti tentativi e in quanti secondi. Dopo il primo KO aspetta 3 s (invece di 1) perché
+// il test faccia in tempo a prendere il dump dal nodo con il pod ancora vivo.
+func retryProbeScript(check, ok string) string {
+	return fmt.Sprintf(`s0=$(date +%%s); i=0; while :; do i=$((i + 1)); if %[1]s; then echo "%[3]sriuscito al tentativo $i dopo $(( $(date +%%s) - s0 )) s"; %[2]s; exit 0; fi; if [ $i -eq 1 ]; then echo '%[4]s'; sleep 3; else sleep 1; fi; if [ $(( $(date +%%s) - s0 )) -ge %[5]d ]; then echo "%[3]sKO dopo $i tentativi in $(( $(date +%%s) - s0 )) s"; exit 1; fi; done`,
+		check, ok, probeMarkerPrefix, probeFirstKOMarker, probePositiveWindowSeconds)
+}
+
+// diagNodeRules raccoglie dal nodo k3d (GITSTACK_TEST_K3D_NODE) le regole di kube-router, con IP e fase del pod.
+func diagNodeRules(t *testing.T, kube kubernetes.Interface, ns, name string) {
+	node := os.Getenv("GITSTACK_TEST_K3D_NODE")
+	if node == "" {
+		return
+	}
+	if _, done := diagNodeOnce.LoadOrStore("live/"+ns+"/"+name, true); done {
+		return
+	}
+	var phase, ip string
+	if p, err := kube.CoreV1().Pods(ns).Get(context.Background(), name, metav1.GetOptions{}); err == nil {
+		phase, ip = string(p.Status.Phase), p.Status.PodIP
+	}
+	out, err := exec.Command("docker", "exec", node, "sh", "-c",
+		`iptables-save | grep -i -E "KUBE-NWPLCY|KUBE-DST|KUBE-SRC|KUBE-POD-FW"; ipset list 2>/dev/null | head -400`).CombinedOutput()
+	t.Logf("probe %s/%s: primo KO, regole kube-router sul nodo con il pod in fase=%s ip=%s (err=%v):\n%s", ns, name, phase, ip, err, out)
 }
 
 // cleanupNamespaceWithDiag registra la cancellazione del namespace e, se il test è fallito, raccoglie
