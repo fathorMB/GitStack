@@ -4,7 +4,6 @@ package httpserver_test
 
 import (
 	"context"
-	"fmt"
 	"net/netip"
 	"strings"
 	"testing"
@@ -88,7 +87,7 @@ func TestApps_DestinazionePrivataApertaSuK3d(t *testing.T) {
 		if !allowed {
 			ok, ko = ko, ok
 		}
-		script := fmt.Sprintf("if nc -z -w 5 %s %d; then %s; else %s; fi", nodeIP, port, ok, ko)
+		script := ncProbeScript(nodeIP, port, allowed && ns != systemNS, ok, ko)
 		spec := corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{
 			Name: "probe", Image: "busybox:1.36", Command: []string{"sh", "-c", script},
 			SecurityContext: &corev1.SecurityContext{RunAsUser: &root}}}}

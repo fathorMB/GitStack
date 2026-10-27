@@ -102,7 +102,7 @@ func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
 		if !allowed {
 			ok, ko = ko, ok
 		}
-		script := fmt.Sprintf("if nc -z -w 5 %s %d; then %s; else %s; fi", host, port, ok, ko)
+		script := ncProbeScript(host, port, allowed && ns != systemNS, ok, ko)
 		spec := corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{
 			Name: "probe", Image: "busybox:1.36", Command: []string{"sh", "-c", script},
 			SecurityContext: &corev1.SecurityContext{RunAsUser: &root}}}}
@@ -141,6 +141,15 @@ func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
 	probe(appNS, "kubelet-nodo", nodeIP, 10250, false)
 	probe(appNS, "api-kubernetes-servizio", kubeSvc.Spec.ClusterIP, 443, false)
 	probe(appNS, "pod-altro-repo", otherIP, 8080, false)
+}
+
+// ncProbeScript ritenta solo i probe positivi che partono dopo il gate: kube-router
+// può aver chiuso il deny prima di installare il permesso atteso.
+func ncProbeScript(host string, port int, retry bool, ok, ko string) string {
+	if !retry {
+		return fmt.Sprintf("if nc -z -w 5 %s %d; then %s; else %s; fi", host, port, ok, ko)
+	}
+	return fmt.Sprintf("i=0; while [ $i -lt 15 ]; do i=$((i + 1)); if nc -z -w 1 %s %d; then %s; exit 0; fi; if [ $i -lt 15 ]; then sleep 1; fi; done; echo 'KO: nc non riuscito dopo 15 tentativi'; exit 1", host, port, ok)
 }
 
 // cleanupNamespaceWithDiag registra la cancellazione del namespace e, se il test è fallito, raccoglie
