@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -28,6 +29,17 @@ const GateContainerName = "gate"
 // GateTimeout è l'attesa massima del cancello: oltre, l'init container esce con errore (l'app
 // non parte; Kubernetes lo riprova) invece di far partire l'app senza barriera.
 const GateTimeout = 60 * time.Second
+
+// EnvGateTimeout (secondi) accorcia l'attesa del cancello: serve alle prove (controllo opposto su k3d).
+const EnvGateTimeout = "GITSTACK_APPS_GATE_TIMEOUT_S"
+
+// GateTimeoutFromEnv legge EnvGateTimeout; vuoto o non valido: GateTimeout.
+func GateTimeoutFromEnv(getenv func(string) string) time.Duration {
+	if n, err := strconv.Atoi(getenv(EnvGateTimeout)); err == nil && n > 0 {
+		return time.Duration(n) * time.Second
+	}
+	return GateTimeout
+}
 
 // GateCommand è il comando del cancello nell'immagine di core.
 var GateCommand = []string{"/usr/local/bin/core", "apps-gate"}

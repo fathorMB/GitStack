@@ -73,3 +73,19 @@ func TestRunGate(t *testing.T) {
 		t.Fatalf("API chiusa durante l'attesa: il cancello deve aprire: %v", err)
 	}
 }
+
+func TestGateTimeoutFromEnv(t *testing.T) {
+	get := func(v string) func(string) string {
+		return func(k string) string {
+			if k == EnvGateTimeout {
+				return v
+			}
+			return ""
+		}
+	}
+	for v, want := range map[string]time.Duration{"": GateTimeout, "x": GateTimeout, "0": GateTimeout, "-3": GateTimeout, "5": 5 * time.Second} {
+		if got := GateTimeoutFromEnv(get(v)); got != want {
+			t.Errorf("%q: %s, atteso %s", v, got, want)
+		}
+	}
+}

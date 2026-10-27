@@ -1475,6 +1475,10 @@ jobs:
           k3d cluster create gitstack-ci --image "${K3S_IMAGE}" --port "8080:80@loadbalancer" --port "2222:2222@loadbalancer" --wait --timeout 120s
 
       - name: Isolamento delle app H9 (k3d)
+        # GIT-418: l'immagine di core (costruita sopra) entra nel cluster di prova e i pod delle app
+        # usano il cancello di rete vero (`core apps-gate`).
+        env:
+          GITSTACK_TEST_CORE_IMAGE: ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-core:${{ env.IMAGE_TAG }}
         run: services/core/internal/apps/k3d-test.sh
 
       # GIT-21: "k3d cluster create --wait" sopra attende solo che il nodo

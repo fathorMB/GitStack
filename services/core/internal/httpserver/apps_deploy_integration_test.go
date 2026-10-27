@@ -282,6 +282,8 @@ func newDeployEnvOpt(t *testing.T, runController bool) *appsDeployEnv {
 		AppsDomain: "apps.example.com", ProgressTimeout: 75 * time.Second, FailureGrace: 6 * time.Second,
 		PollInterval: 500 * time.Millisecond, LoopInterval: time.Second, SyncEvery: 2 * time.Second,
 		Secrets: keys,
+		// GIT-418: con GITSTACK_TEST_CORE_IMAGE i pod delle app hanno il cancello vero (immagine di core importata nel cluster).
+		GateImage: os.Getenv(envTestCoreImage),
 	})
 	base.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
 		httpserver.WithRepoIdentity(id), httpserver.WithReadableLister(id), httpserver.WithGit(git),
@@ -465,6 +467,11 @@ func TestApps_ControllerSuK3d(t *testing.T) {
 		}
 		if _, err := e.kube.CoreV1().Services(e.ns).Get(context.Background(), apps.WorkloadName, metav1.GetOptions{}); err != nil {
 			t.Fatalf("Service: %v", err)
+		}
+		if os.Getenv(envTestCoreImage) != "" {
+			assertGatePassed(t, e.kube, e.ns)
+		} else {
+			t.Log("cancello di rete non provato: GITSTACK_TEST_CORE_IMAGE assente")
 		}
 	})
 

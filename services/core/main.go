@@ -57,7 +57,7 @@ func main() {
 
 // runAppsGate aspetta che la NetworkPolicy sia applicata al pod (apps.RunGate); esce con 1 se non lo è.
 func runAppsGate() int {
-	if err := apps.RunGate(context.Background(), os.Getenv, apps.GateTimeout); err != nil {
+	if err := apps.RunGate(context.Background(), os.Getenv, apps.GateTimeoutFromEnv(os.Getenv)); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}

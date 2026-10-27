@@ -5,12 +5,15 @@ package httpserver_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/fathorMB/GitStack/services/core/internal/apps"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
@@ -85,6 +88,9 @@ func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
 
 	// App con root nel container: baseline lo accetta, le barriere valgono lo stesso.
 	root := int64(0)
+	if os.Getenv(envTestCoreImage) == "" {
+		t.Log("cancello in shell, immagine di core assente")
+	}
 	probe := func(ns, name, host string, port int, allowed bool) {
 		t.Helper()
 		labels := map[string]string{}
@@ -107,6 +113,10 @@ func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
 			// (fail-closed) se non succede. Non si guarda nessuno dei bersagli dei negativi.
 			gate := apps.GateContainer("busybox:1.36", []string{"sh", "-c",
 				"w=0; while nc -z -w 1 \"$KUBERNETES_SERVICE_HOST\" \"$KUBERNETES_SERVICE_PORT\"; do w=$((w + 1)); if [ $w -ge 60 ]; then echo 'KO: NetworkPolicy non applicata'; exit 1; fi; sleep 1; done"})
+			if img := os.Getenv(envTestCoreImage); img != "" {
+				// Il cancello vero del prodotto (`core apps-gate`): se l'immagine non c'è nel cluster il probe non parte e il test cade.
+				gate = apps.GateContainer(img, apps.GateCommand)
+			}
 			spec.InitContainers = []corev1.Container{gate}
 		}
 		create(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns, Labels: labels}, Spec: spec})
@@ -130,4 +140,89 @@ func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
 	probe(appNS, "kubelet-nodo", nodeIP, 10250, false)
 	probe(appNS, "api-kubernetes-servizio", kubeSvc.Spec.ClusterIP, 443, false)
 	probe(appNS, "pod-altro-repo", otherIP, 8080, false)
+}
+
+// envTestCoreImage: immagine di core importata nel cluster k3d (k3d-test.sh la importa e la esporta).
+const envTestCoreImage = "GITSTACK_TEST_CORE_IMAGE"
+
+// assertGatePassed verifica che ogni pod dell'app nel namespace abbia l'init container «gate»
+// terminato con exitCode 0 e che il container dell'app sia pronto (prova anche l'ammissione PSA).
+func assertGatePassed(t *testing.T, kube kubernetes.Interface, ns string) {
+	t.Helper()
+	pods, err := kube.CoreV1().Pods(ns).List(context.Background(), metav1.ListOptions{})
+	if err != nil || len(pods.Items) == 0 {
+		t.Fatalf("pod dell'app %s: %v", ns, err)
+	}
+	for _, p := range pods.Items {
+		var found bool
+		for _, s := range p.Status.InitContainerStatuses {
+			if s.Name != apps.GateContainerName {
+				continue
+			}
+			found = true
+			if s.State.Terminated == nil || s.State.Terminated.ExitCode != 0 {
+				t.Fatalf("pod %s: gate non terminato con 0: %+v", p.Name, s.State)
+			}
+			t.Logf("OK: pod %s: gate exitCode %d (%s)", p.Name, s.State.Terminated.ExitCode, s.State.Terminated.Reason)
+		}
+		if !found {
+			t.Fatalf("pod %s senza init container gate", p.Name)
+		}
+		ready := false
+		for _, c := range p.Status.ContainerStatuses {
+			ready = ready || c.Ready
+		}
+		if !ready && p.DeletionTimestamp == nil {
+			t.Fatalf("pod %s: il container dell'app non è pronto", p.Name)
+		}
+	}
+}
+
+// TestApps_CancelloVeroSenzaPolicySuK3d è il controllo opposto del cancello del prodotto
+// (`core apps-gate`): in un namespace SENZA NetworkPolicy l'API Kubernetes resta raggiungibile, quindi
+// il gate deve terminare con exitCode 1 («ancora raggiungibile») e il container principale non
+// deve mai partire. Serve GITSTACK_TEST_CORE_IMAGE.
+func TestApps_CancelloVeroSenzaPolicySuK3d(t *testing.T) {
+	img := os.Getenv(envTestCoreImage)
+	if img == "" {
+		t.Skip("GITSTACK_TEST_CORE_IMAGE non impostata: serve l'immagine di core importata nel cluster")
+	}
+	e := newDeployEnvOpt(t, false)
+	ctx := context.Background()
+	ns := "gitstack-h16-gate-" + strings.ToLower(uuid.NewString()[:8])
+	if _, err := e.kube.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), ns, metav1.DeleteOptions{}) })
+	gate := apps.GateContainer(img, apps.GateCommand)
+	gate.Env = []corev1.EnvVar{{Name: apps.EnvGateTimeout, Value: "5"}}
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "gate-aperto", Namespace: ns},
+		Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, InitContainers: []corev1.Container{gate},
+			Containers: []corev1.Container{{Name: "main", Image: "busybox:1.36", Command: []string{"sh", "-c", "echo MAIN-PARTITO"}}}}}
+	if _, err := e.kube.CoreV1().Pods(ns).Create(ctx, pod, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(180 * time.Second)
+	for time.Now().Before(deadline) {
+		p, err := e.kube.CoreV1().Pods(ns).Get(ctx, pod.Name, metav1.GetOptions{})
+		if err == nil && len(p.Status.InitContainerStatuses) > 0 && p.Status.InitContainerStatuses[0].State.Terminated != nil {
+			term := p.Status.InitContainerStatuses[0].State.Terminated
+			if term.ExitCode != 1 {
+				t.Fatalf("gate exitCode %d, atteso 1: %+v", term.ExitCode, term)
+			}
+			log, _ := e.kube.CoreV1().Pods(ns).GetLogs(pod.Name, &corev1.PodLogOptions{Container: apps.GateContainerName}).DoRaw(ctx)
+			if !strings.Contains(string(log), "ancora raggiungibile") {
+				t.Fatalf("log del gate senza «ancora raggiungibile»: %q", log)
+			}
+			for _, c := range p.Status.ContainerStatuses {
+				if c.State.Running != nil || c.State.Terminated != nil {
+					t.Fatalf("il container principale è partito nonostante il gate fallito: %+v", c.State)
+				}
+			}
+			t.Logf("OK: gate exitCode %d, log: %s", term.ExitCode, strings.TrimSpace(string(log)))
+			return
+		}
+		time.Sleep(time.Second)
+	}
+	t.Fatal("il gate non è terminato entro 180 s")
 }
