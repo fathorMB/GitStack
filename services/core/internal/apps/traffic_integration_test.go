@@ -26,7 +26,9 @@ func TestAppMetrics_RichiesteDaTraefikConDifferenzeERiavvio(t *testing.T) {
 	}
 	var body []byte
 	var srcErr error
-	l.ctl.cfg.PodMetrics = func(context.Context, string) (map[string]PodUsage, error) { return nil, errors.New("senza metrics-server") }
+	l.ctl.cfg.PodMetrics = func(context.Context, string) (map[string]PodUsage, error) {
+		return nil, errors.New("senza metrics-server")
+	}
 	l.ctl.cfg.TraefikMetrics = func(context.Context) ([]byte, error) { return body, srcErr }
 
 	sum := func() (req, errs int64, n int) {
