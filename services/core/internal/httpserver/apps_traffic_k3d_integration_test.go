@@ -130,7 +130,10 @@ func TestApps_RichiesteETraefikSuK3d(t *testing.T) {
 	}
 	t.Log("ok: le serie requests ed errors5xx non sono null (Traefik risponde)")
 
-	// Traffico dal cluster verso Traefik: 20 GET (200) e 3 POST /health con corpo 500 (whoami risponde 500).
+	// Traffico dal cluster verso Traefik: 20 GET / (200), un POST /health con corpo 500 (whoami lo
+	// salva come stato di salute e risponde 200) e 3 GET /health, che da quel momento rispondono 500:
+	// i 5xx vengono da questi GET, non dal POST. La sonda di salute dell'app usa il path «/», quindi
+	// il 500 di /health non la tocca e l'app resta pronta.
 	traefikSvc, err := kube.CoreV1().Services("kube-system").Get(ctx, "traefik", metav1.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -143,8 +146,9 @@ func TestApps_RichiesteETraefikSuK3d(t *testing.T) {
 	script := fmt.Sprintf(`set -u
 ip=%s
 for i in $(seq 1 20); do curl -sk -o /dev/null -w 'get %%{http_code}\n' --resolve %s:443:$ip https://%s/; done
-for i in 1 2 3; do curl -sk -o /dev/null -w 'post %%{http_code}\n' -X POST -d 500 --resolve %s:443:$ip https://%s/health; done`,
-		traefikSvc.Spec.ClusterIP, host, host, host, host)
+curl -sk -o /dev/null -w 'set %%{http_code}\n' -X POST -d 500 --resolve %s:443:$ip https://%s/health
+for i in 1 2 3; do curl -sk -o /dev/null -w 'err %%{http_code}\n' --resolve %s:443:$ip https://%s/health; done`,
+		traefikSvc.Spec.ClusterIP, host, host, host, host, host, host)
 	curl := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "gs-traffic", Namespace: "default"},
 		Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{
 			Name: "curl", Image: "docker.io/curlimages/curl:8.10.1", Command: []string{"sh", "-c", script}}}}}
@@ -156,17 +160,17 @@ for i in 1 2 3; do curl -sk -o /dev/null -w 'post %%{http_code}\n' -X POST -d 50
 	})
 	out := waitPodLog(t, kube, "default", "gs-traffic")
 	t.Logf("risposte viste dal client:\n%s", out)
-	if strings.Count(out, "get 200") != 20 || strings.Count(out, "post 500") != 3 {
-		t.Fatalf("KO: il traffico non e' arrivato all'app (volute 20 risposte 200 e 3 risposte 500)")
+	if strings.Count(out, "get 200") != 20 || strings.Count(out, "set 200") != 1 || strings.Count(out, "err 500") != 3 {
+		t.Fatalf("KO: il traffico non e' arrivato all'app (volute 20 risposte get 200, 1 set 200 e 3 err 500)")
 	}
 
-	// Le serie ritrovano il traffico: almeno 23 richieste e 3 errori 5xx (il forward-auth e le sonde
-	// non passano dal service dell'app).
+	// Le serie ritrovano il traffico: almeno 24 richieste (20 GET, 1 POST, 3 GET /health) e 3 errori 5xx
+	// (il forward-auth e le sonde non passano dal service dell'app).
 	var m openapi.AppMetrics
 	deadline = time.Now().Add(90 * time.Second)
 	for {
 		m = series()
-		if total(m.Requests) >= 23 && total(m.Errors5xx) >= 3 {
+		if total(m.Requests) >= 24 && total(m.Errors5xx) >= 3 {
 			break
 		}
 		if time.Now().After(deadline) {
@@ -177,7 +181,7 @@ for i in 1 2 3; do curl -sk -o /dev/null -w 'post %%{http_code}\n' -X POST -d 50
 					lines = append(lines, l)
 				}
 			}
-			t.Fatalf("KO: dopo 23 richieste e 3 errori 5xx le serie hanno %v richieste e %v errori. Righe di Traefik per service:\n%s",
+			t.Fatalf("KO: dopo 24 richieste e 3 errori 5xx le serie hanno %v richieste e %v errori. Righe di Traefik per service:\n%s",
 				total(m.Requests), total(m.Errors5xx), strings.Join(lines, "\n"))
 		}
 		time.Sleep(time.Second)
