@@ -149,6 +149,8 @@ type Controller struct {
 	cfg  Config
 	// siblings dà le app di un repo (H15); nil senza store (alcuni test): niente nomi interni.
 	siblings func(context.Context, uuid.UUID) ([]store.App, error)
+	// versionOf dà la versione attiva dell'app (reapply); senza store è un seam dei test.
+	versionOf func(context.Context, store.App) (store.AppVersion, error)
 
 	kick    chan struct{}
 	mu      sync.Mutex
@@ -164,6 +166,9 @@ func New(st *store.Store, kube kubernetes.Interface, dyn dynamic.Interface, cfg 
 		running: map[uuid.UUID]bool{}, oomSeen: map[uuid.UUID]map[string]int32{}}
 	if st != nil {
 		c.siblings = st.ListApps
+		c.versionOf = func(ctx context.Context, a store.App) (store.AppVersion, error) {
+			return st.GetAppVersion(ctx, a.ID, a.ActiveVersion)
+		}
 	}
 	return c
 }
@@ -954,9 +959,14 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 	ns := Namespace(app.ID)
 	d, err := c.kube.AppsV1().Deployments(ns).Get(ctx, WorkloadName, metav1.GetOptions{})
 	if err != nil {
-		if apierrors.IsNotFound(err) {
+		// Dopo un restore su un cluster pulito il namespace può esistere (creato dal restore per i
+		// volumi) senza il RoleBinding di core: il Get dà Forbidden, non NotFound. Anche allora si
+		// riapplica, perché apply rifà namespace e RoleBinding prima del Deployment.
+		if apierrors.IsNotFound(err) || apierrors.IsForbidden(err) {
 			c.reapply(ctx, app)
+			return
 		}
+		c.cfg.Log.Warn("apps: deployment non leggibile", "app", app.ID, "err", err)
 		return
 	}
 	// Il modo di accesso può cambiare a deploy fermo (PUT .../access): la rotta e i suoi middleware
@@ -1016,7 +1026,7 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 // restore su un cluster pulito (H4), dove le app tornano dal database (versione, configurazione,
 // immagini nel registry ripristinato).
 func (c *Controller) reapply(ctx context.Context, app store.App) {
-	v, err := c.st.GetAppVersion(ctx, app.ID, app.ActiveVersion)
+	v, err := c.versionOf(ctx, app)
 	if !shouldReapply(app, v, err) {
 		return
 	}
