@@ -37,3 +37,13 @@ scripts/agent-trial/** text eol=lf
 # La versione di k3s provata con questa versione di GitStack (N10): una riga,
 # letta da deploy/install.sh e da `gitstack upgrade`. Sempre LF.
 deploy/k3s-version text eol=lf
+
+# Workspace Go e file generati (GIT-414): i generatori e go work sync scrivono LF;
+# con core.autocrlf=true il worktree Windows li avrebbe CRLF e i controlli
+# (go-work-sync, check-api-generated) lascerebbero file riscritti (left_behind).
+go.work text eol=lf
+go.work.sum text eol=lf
+**/go.mod text eol=lf
+**/go.sum text eol=lf
+client/ts/src/generated/** text eol=lf
+*.gen.go text eol=lf
