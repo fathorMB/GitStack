@@ -339,11 +339,11 @@ function Get-E2eBearer {
 
 # Attende che la versione piu' recente dell'app sia `serving`. Ritorna il suo numero.
 function Wait-E2eAppServing {
-    param([Parameter(Mandatory)][string]$AppsApi, [Parameter(Mandatory)][hashtable]$Headers, [int]$TimeoutSeconds = 300)
+    param([Parameter(Mandatory)][string]$AppsApi, [Parameter(Mandatory)][hashtable]$Headers, [int]$TimeoutSeconds = 300, [string]$AppName = $script:E2eAppName)
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     $last = ''
     while ((Get-Date) -lt $deadline) {
-        $r = Invoke-HttpRaw -Uri "$AppsApi/$script:E2eAppName/versions?per_page=1" -Headers $Headers
+        $r = Invoke-HttpRaw -Uri "$AppsApi/$AppName/versions?per_page=1" -Headers $Headers
         if ($r.StatusCode -eq 200) {
             $items = @(($r.Body | ConvertFrom-Json).items)
             if ($items.Count -gt 0) {
@@ -450,6 +450,119 @@ function New-E2eAppFixture {
     } catch {
         throw "[app di prova: $stage] $($_.Exception.Message)"
     }
+}
+
+# --- Ciclo dell'app (GIT-355, H1/H6/H7/H12) --------------------------------
+# App web di prova (immagine e2eweb: busybox httpd che serve "e2e-web-<tag>"):
+# deploy di v1, login GitStack davanti all'app (forward-auth del gateway: senza
+# credenziale 401, con il token l'app risponde), deploy di v2, rollback a v1,
+# eliminazione. Le righe sono STEP ok/ko; al primo errore i pod del namespace
+# dell'app finiscono in diag.log. L'app di prova si elimina solo a passo riuscito.
+# Ritorna sei oggetti {Name, Ok, Detail}, sempre.
+function Test-E2eAppLifecycle {
+    param(
+        [Parameter(Mandatory)][string]$BaseUrl,
+        [Parameter(Mandatory)][string]$CaPath,
+        [Parameter(Mandatory)]$Data,
+        [Parameter(Mandatory)]$Ctx,
+        [Parameter(Mandatory)][string]$WorkDir
+    )
+    New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
+    $appName = 'e2elife'
+    $webImage = 'e2eweb'
+    $names = @(
+        'h-app ciclo 1/6 deploy di v1: la versione e serving e l''app ha un indirizzo',
+        'h-app ciclo 2/6 login GitStack davanti all''app: senza credenziale 401, il corpo dell''app non arriva',
+        'h-app ciclo 3/6 con il token dell''utente (read sul repo) l''app risponde e serve v1',
+        'h-app ciclo 4/6 deploy di v2: la versione e serving e l''app serve v2',
+        'h-app ciclo 5/6 rollback alla versione di v1: nuova versione serving e l''app serve v1',
+        'h-app ciclo 6/6 l''app di prova e eliminata (204)'
+    )
+    $rows = @()
+    foreach ($n in $names) { $rows += [pscustomobject]@{ Name = $n; Ok = $false; Detail = 'non verificato' } }
+    $ns = ''
+    $i = 0
+    try {
+        $h = Get-E2eBearer -Data $Data
+        $appsApi = "$BaseUrl/api/v1/repos/$($Data.User)/$($Data.Repo)/apps"
+        $appUrl = "$appsApi/$appName"
+        $sshEnv = "GS_VM_IP='$script:VmIp' GS_CA=/tmp/gitstack-e2e/app-ca.crt"
+        $remoteSh = '/tmp/gitstack-e2e/gs-app-restore.sh'
+
+        # immagine web con due tag, nello stesso registry del repo di prova
+        $push = Invoke-VmSsh -Command "$sshEnv GS_USER_TOKEN='$($Ctx.RegistryToken)' GS_IMAGE='$($Data.User)/$($Data.Repo)/$webImage' bash $remoteSh push-web" -TimeoutSeconds 600
+        Write-E2eText -Path (Join-Path $WorkDir 'push-web.log') -Stdout $push.StdOut -Stderr $push.StdErr
+        if ($push.ExitCode -ne 0 -or $push.StdOut -notmatch 'STEP ok push-web') { throw "push dell'immagine web: exit $($push.ExitCode) $($push.StdOut) $($push.StdErr)" }
+
+        # 1. deploy di v1
+        $i = 0
+        $c = Invoke-HttpRaw -Uri $appsApi -Method 'POST' -Headers $h -Body (@{ name = $appName; image = "${webImage}:v1"; port = 8080 } | ConvertTo-Json) -TimeoutSec 60
+        if ($c.StatusCode -ne 202) { throw "POST apps: status $($c.StatusCode) $($c.Body) $($c.Error)" }
+        $created = $c.Body | ConvertFrom-Json
+        $ns = "gitstack-app-$($created.app.id)"
+        $v1 = [int]$created.version.number
+        [void](Wait-E2eAppServing -AppsApi $appsApi -Headers $h -AppName $appName)
+        $g = Invoke-HttpRaw -Uri $appUrl -Headers $h
+        if ($g.StatusCode -ne 200) { throw "GET app: status $($g.StatusCode)" }
+        $addr = [string](($g.Body | ConvertFrom-Json).address)
+        if (-not $addr) { throw 'l''app non ha un indirizzo (address assente)' }
+        $appHost = ([Uri]$addr).Host
+        $rows[0].Ok = $true; $rows[0].Detail = "versione $v1, indirizzo $appHost"
+
+        $probeEnv = "$sshEnv GS_APP_HOST='$appHost' GS_APP_NS='$ns'"
+        # 2. senza credenziale: 401
+        $i = 1
+        $r = Invoke-VmSsh -Command "$probeEnv bash $remoteSh probe-anon" -TimeoutSeconds 120
+        Write-E2eText -Path (Join-Path $WorkDir 'probe-anon.log') -Stdout $r.StdOut -Stderr $r.StdErr
+        if ($r.ExitCode -ne 0 -or $r.StdOut -notmatch 'STEP ok login-anon') { throw "login-anon: $($r.StdOut) $($r.StdErr)" }
+        $rows[1].Ok = $true; $rows[1].Detail = ''
+        # 3. con il token: v1
+        $i = 2
+        $r = Invoke-VmSsh -Command "$probeEnv GS_PROBE_TOKEN='$($Data.Token)' GS_EXPECT=e2e-web-v1 bash $remoteSh probe-auth" -TimeoutSeconds 300
+        Write-E2eText -Path (Join-Path $WorkDir 'probe-v1.log') -Stdout $r.StdOut -Stderr $r.StdErr
+        if ($r.ExitCode -ne 0 -or $r.StdOut -notmatch 'STEP ok serve-e2e-web-v1') { throw "serve v1: $($r.StdOut) $($r.StdErr)" }
+        $rows[2].Ok = $true; $rows[2].Detail = ''
+
+        # 4. deploy di v2
+        $i = 3
+        $d = Invoke-HttpRaw -Uri "$appUrl/deploys" -Method 'POST' -Headers $h -Body (@{ image = "${webImage}:v2" } | ConvertTo-Json) -TimeoutSec 60
+        if ($d.StatusCode -ne 202) { throw "POST deploys v2: status $($d.StatusCode) $($d.Body) $($d.Error)" }
+        $v2 = Wait-E2eAppServing -AppsApi $appsApi -Headers $h -AppName $appName
+        $r = Invoke-VmSsh -Command "$probeEnv GS_PROBE_TOKEN='$($Data.Token)' GS_EXPECT=e2e-web-v2 bash $remoteSh probe-auth" -TimeoutSeconds 300
+        Write-E2eText -Path (Join-Path $WorkDir 'probe-v2.log') -Stdout $r.StdOut -Stderr $r.StdErr
+        if ($r.ExitCode -ne 0 -or $r.StdOut -notmatch 'STEP ok serve-e2e-web-v2') { throw "serve v2: $($r.StdOut) $($r.StdErr)" }
+        $rows[3].Ok = $true; $rows[3].Detail = "versione $v2"
+
+        # 5. rollback alla versione di v1 (crea una versione nuova con l'immagine di v1)
+        $i = 4
+        $rb = Invoke-HttpRaw -Uri "$appUrl/rollback" -Method 'POST' -Headers $h -Body (@{ version = $v1 } | ConvertTo-Json) -TimeoutSec 60
+        if ($rb.StatusCode -ne 202) { throw "POST rollback alla versione ${v1}: status $($rb.StatusCode) $($rb.Body) $($rb.Error)" }
+        $v3 = Wait-E2eAppServing -AppsApi $appsApi -Headers $h -AppName $appName
+        if ($v3 -le $v2) { throw "dopo il rollback la versione serving e $v3, attesa una piu recente di $v2" }
+        $r = Invoke-VmSsh -Command "$probeEnv GS_PROBE_TOKEN='$($Data.Token)' GS_EXPECT=e2e-web-v1 bash $remoteSh probe-auth" -TimeoutSeconds 300
+        Write-E2eText -Path (Join-Path $WorkDir 'probe-rollback.log') -Stdout $r.StdOut -Stderr $r.StdErr
+        if ($r.ExitCode -ne 0 -or $r.StdOut -notmatch 'STEP ok serve-e2e-web-v1') { throw "serve v1 dopo il rollback: $($r.StdOut) $($r.StdErr)" }
+        $rows[4].Ok = $true; $rows[4].Detail = "versione $v3 con l'immagine di v1"
+
+        # 6. pulizia: l'app senza volumi si elimina senza conferma
+        $i = 5
+        $del = Invoke-HttpRaw -Uri $appUrl -Method 'DELETE' -Headers $h -TimeoutSec 60
+        if ($del.StatusCode -ne 204) { throw "DELETE app: status $($del.StatusCode) $($del.Body) $($del.Error)" }
+        $rows[5].Ok = $true; $rows[5].Detail = ''
+    } catch {
+        $msg = $_.Exception.Message
+        $rows[$i].Detail = $msg
+        foreach ($r2 in $rows) { if (-not $r2.Ok -and $r2.Detail -eq 'non verificato') { $r2.Detail = "non verificato: un passo precedente e fallito ($msg)" } }
+        if ($ns) {
+            try {
+                $dg = Invoke-VmSsh -Command "GS_APP_NS='$ns' bash /tmp/gitstack-e2e/gs-app-restore.sh diag" -TimeoutSeconds 120
+                Write-E2eText -Path (Join-Path $WorkDir 'diag.log') -Stdout $dg.StdOut -Stderr $dg.StdErr
+            } catch {
+                Write-Log "ATTENZIONE: diagnostica dei pod dell'app di prova non raccolta: $($_.Exception.Message)"
+            }
+        }
+    }
+    return , $rows
 }
 
 # Sette controlli dopo il restore. Ritorna sette oggetti {Name, Ok, Detail}, sempre.
@@ -588,6 +701,15 @@ function Invoke-E2eBackupRestorePhase {
                 $appCtx = New-E2eAppFixture -BaseUrl $BaseUrl -CaPath $CaPath -Data $data -WorkDir (Join-Path $phaseDir 'app')
             } catch {
                 $hOk = $false; $hDetails += "app di prova: $($_.Exception.Message)"
+            }
+            # ciclo dell'app (GIT-355): deploy v1, login davanti all'app, deploy v2, rollback a v1
+            if ($appCtx) {
+                $lifeRows = Test-E2eAppLifecycle -BaseUrl $BaseUrl -CaPath $CaPath -Data $data -Ctx $appCtx -WorkDir (Join-Path $phaseDir 'app-ciclo')
+                foreach ($lr in $lifeRows) { Add-StepResult -Name $lr.Name -Ok $lr.Ok -Detail $lr.Detail }
+                $lifeOk = @($lifeRows | Where-Object { $_.Ok }).Count
+                Add-StepResult -Name "h-app ciclo. esito complessivo: $lifeOk/$(@($lifeRows).Count) controlli ok" -Ok ($lifeOk -eq @($lifeRows).Count) -Detail "$(@($lifeRows).Count - $lifeOk) controlli ko (vedi le righe h-app ciclo sopra; pod in app-ciclo/diag.log)"
+            } else {
+                Add-StepResult -Name 'h-app ciclo. esito complessivo' -Ok $false -Detail 'l''app di prova non e stata preparata: ciclo non eseguito'
             }
         }
 
