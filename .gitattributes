@@ -47,3 +47,4 @@ go.work.sum text eol=lf
 **/go.sum text eol=lf
 client/ts/src/generated/** text eol=lf
 *.gen.go text eol=lf
+*_gen.go text eol=lf
