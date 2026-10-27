@@ -33,7 +33,8 @@ ok() { echo "STEP ok $1"; }
 curl -fsSLk -o "$W/install-gs.sh" "$BASE/install-gs.sh" || fail install "download di install-gs.sh"
 out="$(GS_BASE_URL="$BASE" GS_INSTALL_DIR="$W/bin" GS_CA_SHA256="$GS_CA_SHA256" sh "$W/install-gs.sh" 2>&1)" || fail install "install-gs.sh: $out"
 [ -x "$W/bin/gs" ] || fail install "gs non installato"
-CA="$(ls "$HOME"/.config/gitstack/ca-*.crt 2>/dev/null | head -n 1)"
+CA=""
+for cert in "$HOME"/.config/gitstack/ca-*.crt; do [ -f "$cert" ] && CA="$cert" && break; done
 [ -n "$CA" ] || fail install "CA non salvata dall'installer"
 ok install
 
@@ -44,6 +45,20 @@ export GS_NO_KEYRING=1
 GS="$W/bin/gs"
 REPO="${GS_USER_NAME}/${GS_REPO_NAME}"
 as_person() { GS_TOKEN="$GS_USER_TOKEN" "$GS" "$@"; }
+fail_run() {
+  local step="$1" id="$2" reason="$3" state job
+  echo "STEP FAIL $step: $reason"
+  state="$(as_person run view "$id" -R "$REPO" --json id,status,conclusion,jobs 2>&1)" || true
+  echo "===== run $id: stato dei job (max 5000 righe) ====="
+  printf '%s\n' "$state" | head -n 5000
+  echo "===== run $id: log di tutti i job (max 5000 righe per job) ====="
+  while read -r job; do
+    [ -n "$job" ] || continue
+    echo "===== job $job ====="
+    curl -fsSL --cacert "$CA" -H "Authorization: Bearer $GS_USER_TOKEN" "$BASE/api/v1/repos/$REPO/actions/jobs/$job/logs" 2>&1 | head -n 5000 || true
+  done < <(printf '%s' "$state" | python3 -c 'import json,sys; d=json.load(sys.stdin); [print(j["id"]) for j in d.get("jobs", [])]')
+  exit 1
+}
 # Il credential helper di `gs auth setup-git` legge GS_TOKEN dall'ambiente: ogni git che parla
 # col server passa da as_git (GIT-433), senza esportare il token per tutto lo script.
 as_git() { GS_TOKEN="$GS_USER_TOKEN" git "$@"; }
@@ -105,24 +120,24 @@ ok workflow_input
 # --- run riuscito ----------------------------------------------------------------------------
 rid="$(as_person workflow run image.yml -R "$REPO" --ref main -f versione=0.0.1 --json id --jq .id 2>&1)" || fail run_ok_start "$rid"
 case "$rid" in '' | *[!0-9a-f-]*) fail run_ok_start "id non valido: $rid" ;; esac
-w="$(as_person run watch "$rid" -R "$REPO" --exit-status --interval 3s 2>&1)" || fail run_watch_ok "uscita non zero: $w"
-case "$w" in *completed*success*) ;; *) fail run_watch_ok "esito inatteso: $w" ;; esac
+w="$(as_person run watch "$rid" -R "$REPO" --exit-status --interval 3s 2>&1)" || fail_run run_watch_ok "$rid" "uscita non zero: $w"
+case "$w" in *completed*success*) ;; *) fail_run run_watch_ok "$rid" "esito inatteso: $w" ;; esac
 ok run_watch_ok
 
 # --- run che fallisce: watch --exit-status non zero, view --log-failed col log del job -------
-bid="$(as_person workflow run image.yml -R "$REPO" --ref main -f versione=0.0.2 -f rompi=si --json id --jq .id 2>&1)" || fail run_bad_start "$bid"
-if as_person run watch "$bid" -R "$REPO" --exit-status --interval 3s >"$W/watch.out" 2>&1; then fail run_watch_ko "watch --exit-status è uscito 0 su un run fallito"; fi
-grep -q failure "$W/watch.out" || fail run_watch_ko "esito 'failure' assente: $(cat "$W/watch.out")"
+bid="$(as_person workflow run image.yml -R "$REPO" --ref main -f versione=0.0.2 -f rompi=si --json id --jq .id 2>&1)" || fail_run run_bad_start "$rid" "$bid"
+if as_person run watch "$bid" -R "$REPO" --exit-status --interval 3s >"$W/watch.out" 2>&1; then fail_run run_watch_ko "$bid" "watch --exit-status è uscito 0 su un run fallito"; fi
+grep -q failure "$W/watch.out" || fail_run run_watch_ko "$bid" "esito 'failure' assente: $(cat "$W/watch.out")"
 ok run_watch_ko
-lf="$(as_person run view "$bid" -R "$REPO" --log-failed 2>&1)" || fail run_log_failed "$lf"
-case "$lf" in *"E2E-ERRORE-VOLUTO"*) ;; *) fail run_log_failed "il log del job fallito manca: $lf" ;; esac
-case "$lf" in *"IMAGE-LAYER-DIGEST"*) fail run_log_failed "log-failed stampa anche il job riuscito" ;; esac
+lf="$(as_person run view "$bid" -R "$REPO" --log-failed 2>&1)" || fail_run run_log_failed "$bid" "$lf"
+case "$lf" in *"E2E-ERRORE-VOLUTO"*) ;; *) fail_run run_log_failed "$bid" "il log del job fallito manca: $lf" ;; esac
+case "$lf" in *"IMAGE-LAYER-DIGEST"*) fail_run run_log_failed "$bid" "log-failed stampa anche il job riuscito" ;; esac
 ok run_log_failed
 
 # --- immagine nel registry (token della persona), poi la release ------------------------------
 echo "versione 0.0.1" >"$W/VERSION"
 mkdir -p "$W/rootfs/app" && cp "$W/VERSION" "$W/rootfs/app/VERSION"
-tar -C "$W/rootfs" -cf "$W/layer.tar" . || fail image_push "tar"
+tar -C "$W/rootfs" -cf "$W/layer.tar" . || fail_run image_push "$bid" "tar"
 sha() { sha256sum "$1" | cut -d' ' -f1; }
 reg() { curl -fsSL --cacert "$CA" -u "token:${GS_USER_TOKEN}" "$@"; }
 IMG="${REPO}/app"
@@ -136,23 +151,23 @@ upload_blob() { # file
   reg -X PUT -H 'Content-Type: application/octet-stream' --data-binary "@$1" "$loc" >/dev/null
 }
 printf '{"architecture":"amd64","os":"linux","rootfs":{"type":"layers","diff_ids":["sha256:%s"]}}' "$(sha "$W/layer.tar")" >"$W/config.json"
-upload_blob "$W/layer.tar" || fail image_push "upload dello strato"
-upload_blob "$W/config.json" || fail image_push "upload della config"
+upload_blob "$W/layer.tar" || fail_run image_push "$bid" "upload dello strato"
+upload_blob "$W/config.json" || fail_run image_push "$bid" "upload della config"
 printf '{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:%s","size":%s},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:%s","size":%s}]}' \
   "$(sha "$W/config.json")" "$(wc -c <"$W/config.json")" "$(sha "$W/layer.tar")" "$(wc -c <"$W/layer.tar")" >"$W/manifest.json"
-reg -X PUT -H 'Content-Type: application/vnd.oci.image.manifest.v1+json' --data-binary "@$W/manifest.json" "$BASE/v2/${IMG}/manifests/v0.0.0-test.1" >/dev/null || fail image_push "push del manifest"
+reg -X PUT -H 'Content-Type: application/vnd.oci.image.manifest.v1+json' --data-binary "@$W/manifest.json" "$BASE/v2/${IMG}/manifests/v0.0.0-test.1" >/dev/null || fail_run image_push "$bid" "push del manifest"
 ok image_push
 
-pk="$(as_person package list -R "$REPO" 2>&1)" || fail package_list "$pk"
-case "$pk" in *v0.0.0-test.1*) ;; *) fail package_list "tag assente: $pk" ;; esac
+pk="$(as_person package list -R "$REPO" 2>&1)" || fail_run package_list "$bid" "$pk"
+case "$pk" in *v0.0.0-test.1*) ;; *) fail_run package_list "$bid" "tag assente: $pk" ;; esac
 ok package_list
 
 cd "$W/repo" || exit 1
-git tag v0.0.0-test.1 || fail release "git tag"
-out="$(as_git push -q origin v0.0.0-test.1 2>&1)" || fail release "push del tag: $out"
-relid="$(as_person release create -R "$REPO" --tag v0.0.0-test.1 --name "Prova 1" --generate-notes --prerelease 2>&1)" || fail release "release create: $relid"
-as_person release upload "$relid" "$W/layer.tar" -R "$REPO" >/dev/null 2>&1 || fail release "release upload"
-as_person release list -R "$REPO" 2>&1 | grep -q v0.0.0-test.1 || fail release "release list senza il tag"
+git tag v0.0.0-test.1 || fail_run release "$bid" "git tag"
+out="$(as_git push -q origin v0.0.0-test.1 2>&1)" || fail_run release "$bid" "push del tag: $out"
+relid="$(as_person release create -R "$REPO" --tag v0.0.0-test.1 --name "Prova 1" --generate-notes --prerelease 2>&1)" || fail_run release "$bid" "release create: $relid"
+as_person release upload "$relid" "$W/layer.tar" -R "$REPO" >/dev/null 2>&1 || fail_run release "$bid" "release upload"
+as_person release list -R "$REPO" 2>&1 | grep -q v0.0.0-test.1 || fail_run release "$bid" "release list senza il tag"
 ok release
 
 echo "GS-CI-CYCLE-DONE"

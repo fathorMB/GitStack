@@ -263,11 +263,30 @@ k3s_active_since() {
     || fail "impossibile leggere ActiveEnterTimestamp del servizio k3s."
 }
 
+# Snapshot prima della reinstallazione e nella diagnostica finale.
+collect_ci_diagnostics() {
+  local dir="${1:?cartella}" ns="gitstack-ci-jobs" pod service
+  mkdir -p "$dir"
+  for service in core git; do
+    { k3s_kubectl -n default logs "deployment/gitstack-${service}" --all-containers --tail=5000 || true; } >"$dir/${service}.log" 2>&1
+  done
+  { k3s_kubectl -n "$ns" get events --sort-by=.lastTimestamp || true; } >"$dir/ci-events.txt" 2>&1
+  { k3s_kubectl -n "$ns" get pods -o wide || true; } >"$dir/ci-pods.txt" 2>&1
+  : >"$dir/ci-describe.txt"
+  : >"$dir/ci-logs.txt"
+  while read -r pod; do
+    [ -n "$pod" ] || continue
+    { printf '\n===== %s/%s =====\n' "$ns" "$pod"; k3s_kubectl -n "$ns" describe pod "$pod" || true; } >>"$dir/ci-describe.txt" 2>&1
+    { printf '\n===== %s/%s =====\n' "$ns" "$pod"; k3s_kubectl -n "$ns" logs "$pod" --all-containers --prefix --tail=5000 || true; } >>"$dir/ci-logs.txt" 2>&1
+  done < <(k3s_kubectl -n "$ns" get pods -o name 2>>"$dir/ci-pods.txt")
+}
+
 # --- collect-diagnostics ---------------------------------------------------
 
 collect_diagnostics() {
   local dir="${1:?collect-diagnostics richiede la cartella di destinazione}"
   mkdir -p "${dir}"
+  collect_ci_diagnostics "${dir}"
 
   { sudo journalctl -u k3s --no-pager -n 5000 || echo "journalctl -u k3s non disponibile"; } \
     >"${dir}/journalctl-k3s.log" 2>&1
@@ -474,6 +493,7 @@ main() {
     admin-secret-state) admin_secret_state "$@" ;;
     k3s-active-since) k3s_active_since "$@" ;;
     collect-diagnostics) collect_diagnostics "$@" ;;
+    collect-ci-diagnostics) collect_ci_diagnostics "$@" ;;
     mirror-dest-start) mirror_dest_start "$@" ;;
     mirror-dest-stop) mirror_dest_stop "$@" ;;
     mirror-dest-ref) mirror_dest_ref "$@" ;;
