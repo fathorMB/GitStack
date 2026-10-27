@@ -308,14 +308,9 @@ func TestApps_OgniModificaCreaUnaVersione(t *testing.T) {
 
 	// Nessun cambiamento che entra in una versione: nessuna versione nuova (anche con valori uguali).
 	e.want(e.do(http.MethodPatch, base, "alice", `{"port":9090}`), http.StatusOK, "")
-	a = e.app(e.do(http.MethodPatch, base, "alice", `{"followBranch":"main","autoDeployPaused":true}`))
-	if a.Follow == nil || (a.Follow.Branch == nil || *a.Follow.Branch != "main") || !a.Follow.Paused {
-		t.Fatalf("follow: %+v", a.Follow)
-	}
-	a = e.app(e.do(http.MethodPatch, base, "alice", `{"followBranch":null}`))
-	if a.Follow != nil {
-		t.Fatalf("followBranch null non toglie il branch: %+v", a.Follow)
-	}
+	// Seguire un branch con un'immagine non firmata dalla CI è rifiutato e non crea versioni
+	// (il caso con immagine firmata è in apps_signatures_integration_test.go).
+	e.want(e.do(http.MethodPatch, base, "alice", `{"followBranch":"main","autoDeployPaused":true}`), http.StatusUnprocessableEntity, "follow_branch_unsigned")
 	// Validazione del corpo.
 	e.want(e.do(http.MethodPatch, base, "alice", `{}`), http.StatusBadRequest, "")
 	e.want(e.do(http.MethodPatch, base, "alice", `{"name":"altro"}`), http.StatusBadRequest, "")

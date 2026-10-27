@@ -326,6 +326,29 @@ func TestSignatures_SeguireUnBranchRichiedeLaFirmaDellaCI(t *testing.T) {
 	e.want(e.do(http.MethodPatch, base+"/w-ci", "alice", `{"followBranch":"develop"}`), http.StatusOK, "")
 }
 
+// Con un'immagine firmata dalla CI si può seguire un branch insieme a autoDeployPaused e poi toglierlo
+// con followBranch:null: nessuna delle due modifiche crea una versione (H8).
+func TestSignatures_FollowBranchEPausaNonCreanoVersioni(t *testing.T) {
+	e := newSigEnv(t)
+	e.g.tags = map[string]sigTag{"ci": {digest: sigDigestA, signer: "instance"}}
+	base := "/repos/alice/handbook/apps"
+	e.want(e.do(http.MethodPost, base, "alice", `{"name":"w-ci","image":"git.example.com/alice/handbook/web:ci","port":8080}`), http.StatusAccepted, "")
+	e.finishCommitDeploy(t, "w-ci")
+	n := e.versionCount(t)
+
+	a := e.app(e.do(http.MethodPatch, base+"/w-ci", "alice", `{"followBranch":"main","autoDeployPaused":true}`))
+	if a.Follow == nil || a.Follow.Branch == nil || *a.Follow.Branch != "main" || !a.Follow.Paused {
+		t.Fatalf("follow: %+v", a.Follow)
+	}
+	a = e.app(e.do(http.MethodPatch, base+"/w-ci", "alice", `{"followBranch":null}`))
+	if a.Follow != nil {
+		t.Fatalf("followBranch null non toglie il branch: %+v", a.Follow)
+	}
+	if got := e.versionCount(t); got != n {
+		t.Fatalf("versioni: %d, attese %d", got, n)
+	}
+}
+
 // Il deploy automatico: push → immagine firmata dalla CI → nuova versione con i permessi di chi ha
 // fatto il push, trigger branch_push, commit dell'immagine (H14). Mai per immagini non firmate o di
 // altri repo, né per chi non ha più `write`.
