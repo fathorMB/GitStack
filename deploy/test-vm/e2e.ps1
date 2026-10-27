@@ -1457,6 +1457,19 @@ function Main {
         }
         Add-StepResult -Name 'e12. CI (GIT-291): workflow con input, run watch --exit-status, view --log-failed, immagine nel registry e release' -Ok $e12Ok -Detail ($e12Details -join '; ')
 
+        # Conserva i log prima che il passo f ricrei core e git.
+        $preFDir = Join-Path $OutDir 'pre-f-diagnostics'
+        New-Item -ItemType Directory -Path $preFDir -Force | Out-Null
+        try {
+            $snapshot = Invoke-RemoteHelper -RemoteArgs @('collect-ci-diagnostics', '/tmp/gitstack-e2e/pre-f-diag') -TimeoutSeconds 120
+            if ($snapshot.ExitCode -ne 0) { throw "raccolta exit $($snapshot.ExitCode): $($snapshot.StdErr)" }
+            $pullSnapshot = Copy-FromVm -RemotePath '/tmp/gitstack-e2e/pre-f-diag/*' -LocalPath $preFDir -TimeoutSeconds 120
+            if ($pullSnapshot.ExitCode -ne 0) { throw "scp exit $($pullSnapshot.ExitCode): $($pullSnapshot.StdErr)" }
+        } catch {
+            Set-Content -LiteralPath (Join-Path $preFDir 'DIAGNOSTICA-NON-RACCOLTA.txt') -Value $_.Exception.Message -Encoding utf8
+            Write-Log "ATTENZIONE: diagnostica prima di f non raccolta: $($_.Exception.Message)"
+        }
+
         # --- f. idempotenza -----------------------------------------------
         Write-Log "==> Passo f: idempotenza (seconda esecuzione dell'installer, senza reset) ..."
         $adminStateBefore = Invoke-RemoteHelper -RemoteArgs @('admin-secret-state', 'gitstack', 'default') -TimeoutSeconds 30
