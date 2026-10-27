@@ -201,6 +201,62 @@ v3-a abbia altri writer: rinviato come difesa aggiuntiva. Immagini non firmate s
 Rischi: un admin Kubernetes può aggirare il controller finché manca l'admission policy; caching
 bundle deve gestire registry offline senza accettare risultati stantii.
 
+## App pubbliche e domini propri (v3-c)
+
+Decisioni di contratto (GIT-455); `api/openapi.yaml` ne fissa le forme (`/repos/{owner}/{repo}/apps/{app}/domains`,
+`AppsInstanceSettings.letsEncrypt`), l'implementazione arriva negli item successivi di v3-c.
+Un'app è raggiungibile da internet solo con il doppio consenso: l'amministratore ha abilitato le app
+pubbliche (`publicAppsEnabled`) e chi ha `admin` sull'app ha scelto l'accesso `public`.
+
+### Controllo del DNS
+
+Ogni dominio proprio nasce `pending_dns`. `core` risolve il dominio con il resolver di sistema
+(lookup diretto, senza cache propria) e confronta con il record atteso, che l'API restituisce in `dns`:
+
+- **CNAME** verso l'indirizzo automatico dell'app (`<app>-<repo>-<owner>.apps.<dominio-istanza>`): vale se
+  la catena di CNAME termina lì. È la forma consigliata per i sotto-domini (`shop.retail.it`).
+- **A/AAAA** verso uno degli IP pubblici dichiarati dall'amministratore (`publicIps`): vale se
+  l'insieme degli indirizzi risolti è contenuto in quelli dichiarati, senza altri IP. È l'unica forma per
+  un dominio all'apice, dove il CNAME non è ammesso. Senza IP dichiarati la forma A/AAAA non è proposta.
+
+Esiti: tutto coincide → `verified`; nessun record (NXDOMAIN, nessuna risposta, timeout) → resta
+`pending_dns`; record presenti ma diversi → `error` con `statusReason` (per esempio l'IP trovato). Il controllo
+ripete a intervalli (ogni 5 minuti, poi più radi) e su richiesta con `POST .../recheck`. Un dominio `verified` il cui DNS
+cambia torna `error` e perde la route (non il certificato); lo stato non cancella mai dati.
+La route Traefik del dominio e l'emissione del certificato partono solo da `verified`.
+Domini non ammessi: il dominio di GitStack, il dominio delle app e i suoi sotto-domini, gli indirizzi IP
+(`domain_reserved`); un dominio già legato a un'altra app o a questa (`domain_taken`, indice unico sul
+dominio normalizzato, minuscolo e senza punto finale); un'app che non ha accesso `public` non ha domini
+(`app_not_public`).
+
+### Certificato
+
+- **Indirizzo automatico di un'app pubblica**: certificato Let's Encrypt emesso per quell'host
+  (HTTP-01 sulla porta 80, via Traefik), non la CA interna di H2 che nessun visitatore da internet si
+  fida. Vale solo per le app con accesso `public`; le altre mantengono il certificato wildcard della CA interna.
+  `AppAccess.certificate` vale `lets_encrypt` per l'app pubblica e `instance_ca` per le altre. Se Let's Encrypt
+  non è utilizzabile (nessuna email ACME o porta 80 non raggiungibile), l'app pubblica resta servita col
+  certificato wildcard della CA interna, con avviso (`AppsLetsEncryptStatus`), invece di restare senza HTTPS.
+- **Domini propri**: per default `letsencrypt` (emissione e rinnovo automatici dopo `verified`, certificato
+  `none → issuing → valid | error`). Il cliente può caricare il proprio certificato con
+  `PUT .../certificate` (modalità `custom`); il rinnovo diventa suo. Il caricamento valida PEM, chiave
+  corrispondente, copertura del dominio e scadenza (`certificate_invalid`); la chiave non si rilegge.
+  `DELETE .../certificate` torna a `letsencrypt`.
+- **Stato ACME d'istanza**: email dell'account, IP pubblici dichiarati, porta 80 raggiungibile o no (con
+  data e motivo dell'ultimo controllo). Senza email ACME Let's Encrypt è spento.
+
+### Disabilitare le app pubbliche
+
+Quando l'amministratore porta `publicAppsEnabled` a `false`, le app con accesso `public` non sono più
+raggiungibili da internet: le loro route (indirizzo automatico e domini propri) sono tolte, senza
+fermare né riavviare l'app, che resta raggiungibile dentro l'installazione col login GitStack (H6)
+come `login`. La scelta `public` di ogni app, i domini propri, i certificati caricati e quelli emessi **sono
+conservati**: riabilitando le app pubbliche le route tornano come prima, senza che nessuno debba rifare
+la scelta. Nel frattempo `GET .../access` mostra `mode: public` con `publicAppsEnabled: false` e l'indirizzo
+non esposto; `setAppAccess` con `public` risponde 422 `public_apps_disabled` e i domini non si aggiungono
+(`app_not_public`) né si ricontrollano. Il rinnovo ACME è sospeso e riprende alla riabilitazione.
+
+
 ## Moduli per gli item successivi
 
 | Modulo | Responsabilità |

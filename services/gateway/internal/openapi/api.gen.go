@@ -387,6 +387,111 @@ func (e AppDeployState) Valid() bool {
 	}
 }
 
+// Defines values for AppDomainCertificateMode.
+const (
+	AppDomainCertificateModeCustom      AppDomainCertificateMode = "custom"
+	AppDomainCertificateModeLetsencrypt AppDomainCertificateMode = "letsencrypt"
+)
+
+// Valid indicates whether the value is a known member of the AppDomainCertificateMode enum.
+func (e AppDomainCertificateMode) Valid() bool {
+	switch e {
+	case AppDomainCertificateModeCustom:
+		return true
+	case AppDomainCertificateModeLetsencrypt:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppDomainCertificateState.
+const (
+	AppDomainCertificateStateError   AppDomainCertificateState = "error"
+	AppDomainCertificateStateIssuing AppDomainCertificateState = "issuing"
+	AppDomainCertificateStateNone    AppDomainCertificateState = "none"
+	AppDomainCertificateStateValid   AppDomainCertificateState = "valid"
+)
+
+// Valid indicates whether the value is a known member of the AppDomainCertificateState enum.
+func (e AppDomainCertificateState) Valid() bool {
+	switch e {
+	case AppDomainCertificateStateError:
+		return true
+	case AppDomainCertificateStateIssuing:
+		return true
+	case AppDomainCertificateStateNone:
+		return true
+	case AppDomainCertificateStateValid:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppDomainDnsRecordAlternativesType.
+const (
+	AppDomainDnsRecordAlternativesTypeA     AppDomainDnsRecordAlternativesType = "A"
+	AppDomainDnsRecordAlternativesTypeAAAA  AppDomainDnsRecordAlternativesType = "AAAA"
+	AppDomainDnsRecordAlternativesTypeCNAME AppDomainDnsRecordAlternativesType = "CNAME"
+)
+
+// Valid indicates whether the value is a known member of the AppDomainDnsRecordAlternativesType enum.
+func (e AppDomainDnsRecordAlternativesType) Valid() bool {
+	switch e {
+	case AppDomainDnsRecordAlternativesTypeA:
+		return true
+	case AppDomainDnsRecordAlternativesTypeAAAA:
+		return true
+	case AppDomainDnsRecordAlternativesTypeCNAME:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppDomainDnsRecordType.
+const (
+	AppDomainDnsRecordTypeA     AppDomainDnsRecordType = "A"
+	AppDomainDnsRecordTypeAAAA  AppDomainDnsRecordType = "AAAA"
+	AppDomainDnsRecordTypeCNAME AppDomainDnsRecordType = "CNAME"
+)
+
+// Valid indicates whether the value is a known member of the AppDomainDnsRecordType enum.
+func (e AppDomainDnsRecordType) Valid() bool {
+	switch e {
+	case AppDomainDnsRecordTypeA:
+		return true
+	case AppDomainDnsRecordTypeAAAA:
+		return true
+	case AppDomainDnsRecordTypeCNAME:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppDomainStatus.
+const (
+	AppDomainStatusError      AppDomainStatus = "error"
+	AppDomainStatusPendingDns AppDomainStatus = "pending_dns"
+	AppDomainStatusVerified   AppDomainStatus = "verified"
+)
+
+// Valid indicates whether the value is a known member of the AppDomainStatus enum.
+func (e AppDomainStatus) Valid() bool {
+	switch e {
+	case AppDomainStatusError:
+		return true
+	case AppDomainStatusPendingDns:
+		return true
+	case AppDomainStatusVerified:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for AppImageSource.
 const (
 	AppImageSourceExternal AppImageSource = "external"
@@ -3429,6 +3534,104 @@ type AppDeployInput struct {
 // AppDeployState Esito di una versione: `in_progress` (in avvio o in attesa del controllo di salute), `serving` (serve il traffico), `superseded` (sostituita da una piu' recente), `failed` (non ha superato il controllo di salute) e `rolled_back` (fallita con ritorno automatico alla versione precedente, H12).
 type AppDeployState string
 
+// AppDomain defines model for AppDomain.
+type AppDomain struct {
+	Certificate AppDomainCertificate `json:"certificate"`
+	CreatedAt   time.Time            `json:"createdAt"`
+	CreatedBy   *AppActor            `json:"createdBy,omitempty"`
+
+	// Dns Record DNS atteso. `type` e' `CNAME` verso l'indirizzo automatico dell'app, oppure `A`/`AAAA` verso l'IP pubblico dichiarato dell'istanza. Per un dominio all'apice (dove il CNAME non e' ammesso) l'unica forma e' A/AAAA.
+	Dns AppDomainDnsRecord `json:"dns"`
+
+	// Domain Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`).
+	Domain AppDomainName      `json:"domain"`
+	Id     openapi_types.UUID `json:"id"`
+
+	// LastCheckedAt Ultimo controllo del DNS.
+	LastCheckedAt *time.Time `json:"lastCheckedAt,omitempty"`
+
+	// Status Stato del dominio (v3-c): `pending_dns` il record atteso non c'e' ancora, `verified` il DNS punta a GitStack, `error` il DNS risponde altro (motivo in `statusReason`).
+	Status AppDomainStatus `json:"status"`
+
+	// StatusReason Motivo quando `status` e' `error` (es. il DNS risponde un altro IP); null altrimenti.
+	StatusReason *string    `json:"statusReason,omitempty"`
+	VerifiedAt   *time.Time `json:"verifiedAt,omitempty"`
+}
+
+// AppDomainCertificate defines model for AppDomainCertificate.
+type AppDomainCertificate struct {
+	// Error Motivo dell'ultimo errore di emissione o rinnovo; null se `state` non e' `error`.
+	Error *string `json:"error,omitempty"`
+
+	// Issuer Emittente (es. «Let's Encrypt R11» o l'emittente del certificato del cliente).
+	Issuer        *string    `json:"issuer,omitempty"`
+	LastAttemptAt *time.Time `json:"lastAttemptAt,omitempty"`
+
+	// Mode `letsencrypt` emissione e rinnovo automatici (HTTP-01 sulla porta 80), `custom` certificato caricato dal cliente.
+	Mode AppDomainCertificateMode `json:"mode"`
+
+	// State `none` nessun certificato (DNS non ancora `verified`), `issuing` emissione in corso, `valid` certificato valido (vedi `validUntil`), `error` emissione o rinnovo falliti (vedi `error`).
+	State     AppDomainCertificateState `json:"state"`
+	ValidFrom *time.Time                `json:"validFrom,omitempty"`
+
+	// ValidUntil Scadenza del certificato in uso; null se non c'e' ancora.
+	ValidUntil *time.Time `json:"validUntil,omitempty"`
+}
+
+// AppDomainCertificateInput defines model for AppDomainCertificateInput.
+type AppDomainCertificateInput struct {
+	// Certificate Certificato e catena intermedia, in PEM, foglia per prima.
+	Certificate string `json:"certificate"`
+
+	// PrivateKey Chiave privata in PEM (PKCS#8, PKCS#1 o EC), senza passphrase. Solo scrittura.
+	PrivateKey *string `json:"privateKey,omitempty"`
+}
+
+// AppDomainCertificateMode `letsencrypt` emissione e rinnovo automatici (HTTP-01 sulla porta 80), `custom` certificato caricato dal cliente.
+type AppDomainCertificateMode string
+
+// AppDomainCertificateState `none` nessun certificato (DNS non ancora `verified`), `issuing` emissione in corso, `valid` certificato valido (vedi `validUntil`), `error` emissione o rinnovo falliti (vedi `error`).
+type AppDomainCertificateState string
+
+// AppDomainDnsRecord Record DNS atteso. `type` e' `CNAME` verso l'indirizzo automatico dell'app, oppure `A`/`AAAA` verso l'IP pubblico dichiarato dell'istanza. Per un dominio all'apice (dove il CNAME non e' ammesso) l'unica forma e' A/AAAA.
+type AppDomainDnsRecord struct {
+	// Alternatives Altri record equivalenti accettati dal controllo (es. A e AAAA quando l'istanza dichiara entrambi). Vuoto se non ce ne sono.
+	Alternatives []struct {
+		Type  AppDomainDnsRecordAlternativesType `json:"type"`
+		Value string                             `json:"value"`
+	} `json:"alternatives"`
+
+	// Name Nome del record, cioe' il dominio.
+	Name string                 `json:"name"`
+	Type AppDomainDnsRecordType `json:"type"`
+
+	// Value Valore atteso: l'host dell'indirizzo automatico (CNAME) o l'IP (A/AAAA).
+	Value string `json:"value"`
+}
+
+// AppDomainDnsRecordAlternativesType defines model for AppDomainDnsRecord.Alternatives.Type.
+type AppDomainDnsRecordAlternativesType string
+
+// AppDomainDnsRecordType defines model for AppDomainDnsRecord.Type.
+type AppDomainDnsRecordType string
+
+// AppDomainInput defines model for AppDomainInput.
+type AppDomainInput struct {
+	// Domain Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`).
+	Domain AppDomainName `json:"domain"`
+}
+
+// AppDomainList defines model for AppDomainList.
+type AppDomainList struct {
+	Items []AppDomain `json:"items"`
+}
+
+// AppDomainName Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`).
+type AppDomainName = string
+
+// AppDomainStatus Stato del dominio (v3-c): `pending_dns` il record atteso non c'e' ancora, `verified` il DNS punta a GitStack, `error` il DNS risponde altro (motivo in `statusReason`).
+type AppDomainStatus string
+
 // AppEgress defines model for AppEgress.
 type AppEgress struct {
 	// AllowedPrivate Le destinazioni private aperte dall'amministratore: l'app puo' sceglierle.
@@ -3966,8 +4169,11 @@ type AppsInstanceSettings struct {
 	AppsDomain *string `json:"appsDomain"`
 
 	// AppsDomainIsDefault Senza `--apps-domain` vale il default, con avviso.
-	AppsDomainIsDefault *bool           `json:"appsDomainIsDefault,omitempty"`
-	LogRetention        AppLogRetention `json:"logRetention"`
+	AppsDomainIsDefault *bool `json:"appsDomainIsDefault,omitempty"`
+
+	// LetsEncrypt Stato di Let's Encrypt (v3-c). Assente finche' core non lo calcola.
+	LetsEncrypt  *AppsLetsEncryptStatus `json:"letsEncrypt,omitempty"`
+	LogRetention AppLogRetention        `json:"logRetention"`
 
 	// MaxPerApp CPU e memoria, per copia.
 	MaxPerApp         AppResourceAmount `json:"maxPerApp"`
@@ -3978,13 +4184,37 @@ type AppsInstanceSettings struct {
 
 // AppsInstanceSettingsInput defines model for AppsInstanceSettingsInput.
 type AppsInstanceSettingsInput struct {
-	LogRetention AppLogRetention `json:"logRetention"`
+	// AcmeEmail Email dell'account ACME (v3-c). Assente = invariata; null = la toglie.
+	AcmeEmail    *openapi_types.Email `json:"acmeEmail,omitempty"`
+	LogRetention AppLogRetention      `json:"logRetention"`
 
 	// MaxPerApp CPU e memoria, per copia.
 	MaxPerApp         AppResourceAmount `json:"maxPerApp"`
 	PublicAppsEnabled bool              `json:"publicAppsEnabled"`
-	Restricted        bool              `json:"restricted"`
-	SignedImagesOnly  bool              `json:"signedImagesOnly"`
+
+	// PublicIps IP pubblici dell'istanza (A/AAAA) per il controllo DNS (v3-c). Assente = invariati; [] li toglie. Solo IP validi e non privati: 422 altrimenti.
+	PublicIps        *[]string `json:"publicIps,omitempty"`
+	Restricted       bool      `json:"restricted"`
+	SignedImagesOnly bool      `json:"signedImagesOnly"`
+}
+
+// AppsLetsEncryptStatus Stato di Let's Encrypt sull'istanza (v3-c), in sola lettura dentro `AppsInstanceSettings`.
+type AppsLetsEncryptStatus struct {
+	// AcmeEmail Email per l'account ACME; null se non impostata.
+	AcmeEmail *openapi_types.Email `json:"acmeEmail,omitempty"`
+
+	// Enabled Let's Encrypt e' attivo: c'e' un'email ACME e le app pubbliche sono abilitate.
+	Enabled         bool       `json:"enabled"`
+	Port80CheckedAt *time.Time `json:"port80CheckedAt,omitempty"`
+
+	// Port80Error Motivo quando `port80Reachable` e' false.
+	Port80Error *string `json:"port80Error,omitempty"`
+
+	// Port80Reachable La porta 80 dell'istanza e' raggiungibile da internet (serve alla sfida HTTP-01). null = non ancora verificato.
+	Port80Reachable *bool `json:"port80Reachable"`
+
+	// PublicIps IP pubblici dichiarati dell'istanza (A/AAAA) contro cui si controlla il DNS dei domini propri.
+	PublicIps *[]string `json:"publicIps,omitempty"`
 }
 
 // AppsReserveInput CPU e memoria, per copia.
@@ -6673,6 +6903,9 @@ type WorkflowRunList struct {
 // ActionsNameParam defines model for ActionsNameParam.
 type ActionsNameParam = string
 
+// AppDomainParam Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`).
+type AppDomainParam = AppDomainName
+
 // AppEnvNameParam Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
 type AppEnvNameParam = AppEnvName
 
@@ -7482,6 +7715,12 @@ type AddAppAccessMemberJSONRequestBody = AppAccessMemberInput
 // DeployAppJSONRequestBody defines body for DeployApp for application/json ContentType.
 type DeployAppJSONRequestBody = AppDeployInput
 
+// AddAppDomainJSONRequestBody defines body for AddAppDomain for application/json ContentType.
+type AddAppDomainJSONRequestBody = AppDomainInput
+
+// UploadAppDomainCertificateJSONRequestBody defines body for UploadAppDomainCertificate for application/json ContentType.
+type UploadAppDomainCertificateJSONRequestBody = AppDomainCertificateInput
+
 // SetAppEgressJSONRequestBody defines body for SetAppEgress for application/json ContentType.
 type SetAppEgressJSONRequestBody = AppEgressInput
 
@@ -7913,6 +8152,27 @@ type ServerInterface interface {
 	// DeployApp Mette in produzione un'immagine (nuova versione)
 	// (POST /repos/{owner}/{repo}/apps/{app}/deploys)
 	DeployApp(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// ListAppDomains Elenca i domini propri dell'app (v3-c)
+	// (GET /repos/{owner}/{repo}/apps/{app}/domains)
+	ListAppDomains(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// AddAppDomain Aggiunge un dominio proprio all'app (v3-c)
+	// (POST /repos/{owner}/{repo}/apps/{app}/domains)
+	AddAppDomain(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
+	// RemoveAppDomain Toglie un dominio proprio dall'app (v3-c)
+	// (DELETE /repos/{owner}/{repo}/apps/{app}/domains/{domain})
+	RemoveAppDomain(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam)
+	// GetAppDomain Legge un dominio proprio dell'app (v3-c)
+	// (GET /repos/{owner}/{repo}/apps/{app}/domains/{domain})
+	GetAppDomain(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam)
+	// RemoveAppDomainCertificate Toglie il certificato del cliente e torna a Let's Encrypt (v3-c)
+	// (DELETE /repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate)
+	RemoveAppDomainCertificate(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam)
+	// UploadAppDomainCertificate Carica il certificato del cliente per un dominio (v3-c)
+	// (PUT /repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate)
+	UploadAppDomainCertificate(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam)
+	// RecheckAppDomain Ricontrolla il DNS di un dominio proprio (v3-c)
+	// (POST /repos/{owner}/{repo}/apps/{app}/domains/{domain}/recheck)
+	RecheckAppDomain(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam)
 	// DeleteAppEgress Toglie la restrizione di uscita dell'app
 	// (DELETE /repos/{owner}/{repo}/apps/{app}/egress)
 	DeleteAppEgress(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, app AppParam)
@@ -11376,6 +11636,359 @@ func (siw *ServerInterfaceWrapper) DeployApp(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeployApp(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAppDomains operation middleware
+func (siw *ServerInterfaceWrapper) ListAppDomains(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAppDomains(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AddAppDomain operation middleware
+func (siw *ServerInterfaceWrapper) AddAppDomain(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddAppDomain(w, r, owner, repo, app)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemoveAppDomain operation middleware
+func (siw *ServerInterfaceWrapper) RemoveAppDomain(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "domain" -------------
+	var domain AppDomainParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "domain", r.PathValue("domain"), &domain, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "domain", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveAppDomain(w, r, owner, repo, app, domain)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAppDomain operation middleware
+func (siw *ServerInterfaceWrapper) GetAppDomain(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "domain" -------------
+	var domain AppDomainParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "domain", r.PathValue("domain"), &domain, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "domain", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAppDomain(w, r, owner, repo, app, domain)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemoveAppDomainCertificate operation middleware
+func (siw *ServerInterfaceWrapper) RemoveAppDomainCertificate(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "domain" -------------
+	var domain AppDomainParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "domain", r.PathValue("domain"), &domain, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "domain", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveAppDomainCertificate(w, r, owner, repo, app, domain)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UploadAppDomainCertificate operation middleware
+func (siw *ServerInterfaceWrapper) UploadAppDomainCertificate(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "domain" -------------
+	var domain AppDomainParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "domain", r.PathValue("domain"), &domain, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "domain", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UploadAppDomainCertificate(w, r, owner, repo, app, domain)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RecheckAppDomain operation middleware
+func (siw *ServerInterfaceWrapper) RecheckAppDomain(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "app" -------------
+	var app AppParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "app", r.PathValue("app"), &app, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "app", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "domain" -------------
+	var domain AppDomainParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "domain", r.PathValue("domain"), &domain, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "domain", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RecheckAppDomain(w, r, owner, repo, app, domain)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -19493,6 +20106,13 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/access/members/{memberId}", wrapper.RemoveAppAccessMember)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/access/invite", wrapper.GetAppAccessInvite)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/apps/{appId}/access-membership", wrapper.GetAppAccessMembership)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/domains", wrapper.ListAppDomains)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/domains", wrapper.AddAppDomain)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/domains/{domain}", wrapper.RemoveAppDomain)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/domains/{domain}", wrapper.GetAppDomain)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/domains/{domain}/recheck", wrapper.RecheckAppDomain)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate", wrapper.RemoveAppDomainCertificate)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate", wrapper.UploadAppDomainCertificate)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/resources", wrapper.GetAppResources)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/resources", wrapper.SetAppResources)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/egress", wrapper.DeleteAppEgress)
