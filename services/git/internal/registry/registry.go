@@ -153,7 +153,7 @@ type Handler struct {
 	// Impostazioni, quota e pulizia (GIT-325, RG2). settings è nil se il backend non le dà.
 	settings   *settingsCache
 	notifier   PushNotifier // nil se il backend non sa dire a core dei push dei job (GIT-349)
-	quota     atomic.Int64 // letta una volta per richiesta in guard; scritta solo da costruttore e test
+	quota      atomic.Int64 // letta una volta per richiesta in guard; scritta solo da costruttore e test
 	now        func() time.Time
 	blobGrace  time.Duration
 	usageTTL   time.Duration

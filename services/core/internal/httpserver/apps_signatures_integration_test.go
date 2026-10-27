@@ -118,7 +118,9 @@ func (g *sigGit) VerifyImage(_ context.Context, _ trust.Identity, _ uuid.UUID, _
 	return out, nil
 }
 
-func (g *sigGit) InstanceSigningKey(context.Context, trust.Identity) (string, error) { return g.pem, nil }
+func (g *sigGit) InstanceSigningKey(context.Context, trust.Identity) (string, error) {
+	return g.pem, nil
+}
 
 type sigEnv struct {
 	*appsEnv
@@ -292,7 +294,6 @@ func TestSignatures_DeployManualeSoloFirmateEChiaveFidata(t *testing.T) {
 	e.signedOnly("false")
 	e.want(e.do(http.MethodPost, base+"/web/deploys", "alice", img("hand")), http.StatusAccepted, "")
 }
-
 
 // Seguire un branch vuole un'immagine firmata dalla CI di questo repo (H7, H10): non una non firmata,
 // non quella di un altro repo, non quella di una chiave fidata aggiuntiva.

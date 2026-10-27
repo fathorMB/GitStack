@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
 )
 
 func pubPEM(t *testing.T, k *ecdsa.PrivateKey) []byte {
