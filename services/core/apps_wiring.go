@@ -44,9 +44,11 @@ const (
 // startApps avvia il controller e ritorna le opzioni del router; senza abilitazione ritorna nil.
 // secrets è il portachiavi dei segreti (GITSTACK_WEBHOOK_SECRET_KEY): serve a iniettare i segreti nei
 // pod e a mascherarli nei log delle app (GIT-350). Senza, le righe delle copie non si raccolgono.
-func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, egressCluster, egressNode []string, logger *slog.Logger, secrets store.AppSealer, onDeployFailed func(context.Context, store.App, store.AppVersion, string)) ([]httpserver.Option, *apps.Controller, error) {
+func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, egressCluster, egressNode, egressDeny []string, logger *slog.Logger, secrets store.AppSealer, onDeployFailed func(context.Context, store.App, store.AppVersion, string)) ([]httpserver.Option, *apps.Controller, error) {
 	domain := strings.TrimSpace(os.Getenv(envAppsDomain))
 	opts := []httpserver.Option{}
+	// Barriere d'istanza per le destinazioni di uscita delle app (H16): le stesse di webhook e mirror.
+	opts = append(opts, httpserver.WithAppEgress(httpserver.AppEgressConfig{ClusterCIDRs: egressCluster, NodeAddresses: egressNode, Deny: egressDeny}))
 	if domain != "" {
 		opts = append(opts, httpserver.WithAppsDomain(domain))
 	}
@@ -69,7 +71,7 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, eg
 	st := store.New(pool)
 	cfg := apps.Config{AppsDomain: domain, AuthURL: strings.TrimSpace(os.Getenv(envAppsAuthURL)), AuthSecret: trust.SigningKey(gatewaySecret), Secrets: secrets, Log: logger,
 		ControllerServiceAccount: strings.TrimSpace(os.Getenv(envAppsControllerSA)), WorkloadRole: strings.TrimSpace(os.Getenv(envAppsWorkloadRole)),
-		EgressClusterCIDRs: egressCluster, EgressNodeAddresses: egressNode, ProxyEnv: apps.ProxyEnvFrom(os.Getenv), TraefikNamespace: strings.TrimSpace(os.Getenv(envAppsTraefikNamespace)), GateImage: strings.TrimSpace(os.Getenv(envAppsGateImage)),
+		EgressClusterCIDRs: egressCluster, EgressNodeAddresses: egressNode, EgressDeny: egressDeny, ProxyEnv: apps.ProxyEnvFrom(os.Getenv), TraefikNamespace: strings.TrimSpace(os.Getenv(envAppsTraefikNamespace)), GateImage: strings.TrimSpace(os.Getenv(envAppsGateImage)),
 		TraefikMetricsURL: strings.TrimSpace(os.Getenv(envAppsTraefikMetricsURL))}
 	if v, err := strconv.Atoi(strings.TrimSpace(os.Getenv(envAppsProgressTimeout))); err == nil && v > 0 {
 		cfg.ProgressTimeout = time.Duration(v) * time.Second

@@ -545,6 +545,8 @@ sudo ./install.sh --egress-allow 192.168.1.0/24,ci.example.com
 
 Entries are IPs, CIDRs, names (`hooks.example.com`) or suffixes (`*.example.com`). With a non-empty list, only what it covers is allowed (public addresses included). It is written in `egress.allow`, and like any `--set` it must be given again at every upgrade. A blocked delivery fails at once, without a retry, and the delivery log shows no response.
 
+**Hosted apps.** `--egress-allow` does not open the private network to hosted apps: by default an app reaches the internet and nothing in 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 or CGNAT. The administrator opens precise destinations (`db.azienda.lan:5432`) in *Administration → Apps & resources → Private destinations* (or `PUT /admin/apps/egress`), and a repository admin can restrict a single app to a list of destinations, never beyond what the administrator opened. The always-blocked list above applies to apps too, and `--egress-deny` refuses a destination even when it is opened. See `docs/apps.md`, "Uscita delle app".
+
 ### API rate limiting (F6)
 
 The gateway limits `/v1/*` calls with an in-memory token bucket, on two keys: the **credential** (personal token `gst_...` or `gst_session` cookie; the key is its SHA-256, the value is never logged) and the **client IP**. The IP is the real client one: `X-Forwarded-For` counts only when the connection comes from a proxy in `gateway.env.trustedProxies` (default `10.42.0.0/16`, Traefik on k3s); from any other peer it is ignored. Health probes (`/healthz`, `/readyz`) are not limited.

@@ -12,6 +12,7 @@ import { describeError } from '../../../lib/http';
 import type { Repository } from '../../../lib/reposApi';
 import { useLoad } from '../../../lib/useLoad';
 import { AppHeader } from './AppHeader';
+import { AppOutboundSection } from './AppOutboundSection';
 import { appsPath } from './appMode';
 
 interface Props {
@@ -25,7 +26,7 @@ const MIN_VOLUME = 1024 * 1024;
 
 /**
  * Volumes & resources (H3, H9, H11; mockup data-screen="volumes"): volumi con dimensione e mount, avviso database,
- * nota sulla copia unica, risorse garantite e tetto, modalità restricted. L'uscita di rete (H16) è di un altro item.
+ * nota sulla copia unica, risorse garantite e tetto, modalità restricted e uscita di rete (H16, AppOutboundSection).
  */
 export function AppVolumesPage({ repo, app, perms, onChange }: Props) {
   const owner = repo.owner.name;
@@ -243,6 +244,7 @@ export function AppVolumesPage({ repo, app, perms, onChange }: Props) {
                     ) : null}
                   </div>
                 </section>
+                <AppOutboundSection app={app} canEdit={canEdit} />
               </>
             ) : null}
           </div>

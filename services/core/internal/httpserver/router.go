@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fathorMB/GitStack/services/core/internal/apps"
 	"github.com/fathorMB/GitStack/services/core/internal/ci"
 	"github.com/fathorMB/GitStack/services/core/internal/events"
 	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
@@ -95,6 +96,7 @@ func newAPIServerWithOptions(pool *pgxpool.Pool, publisher events.Publisher, opt
 		appsDomain:   o.appsDomain,
 		appCtl:       o.appCtl,
 		appsOff:      o.appsOff,
+		appEgress:    o.appEgress,
 	}, o
 }
 
@@ -148,6 +150,7 @@ type routerOptions struct {
 	appsDomain   string
 	appCtl       AppController
 	appsOff      bool
+	appEgress    AppEgressConfig
 	grants       identityclient.CreatorGranter
 	readable     identityclient.ReadableLister
 	repoIdentity identityclient.RepoIdentity
@@ -255,6 +258,20 @@ type AppController interface {
 	Kick()
 	Restart(ctx context.Context, app store.App) error
 	Scale(ctx context.Context, app store.App) error
+}
+
+// AppEgressConfig sono le barriere d'istanza che l'API dell'uscita delle app (H16) usa per rifiutare le
+// voci vietate: gli stessi cluster e nodo di webhook e mirror. Resolver nil usa il DNS del sistema.
+type AppEgressConfig struct {
+	ClusterCIDRs  []string
+	NodeAddresses []string
+	Deny          []string
+	Resolver      apps.Resolver
+}
+
+// WithAppEgress imposta le barriere con cui si valutano le destinazioni di uscita delle app (H16).
+func WithAppEgress(c AppEgressConfig) Option {
+	return func(o *routerOptions) { o.appEgress = c }
 }
 
 // WithAppsHostingOff dichiara l'hosting delle app spento di proposito (GITSTACK_CORE_APPS_ENABLED

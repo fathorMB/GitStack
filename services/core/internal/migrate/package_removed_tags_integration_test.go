@@ -45,7 +45,7 @@ func TestMigration0035_TagRimossiDalRegistry(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.repo_package_removed_tags`).Scan(&count); err != nil || count != 0 {
 		t.Fatalf("cascata: %d %v", count, err)
 	}
-	if err := migrate.Down(ctx, pool, dsn, 13); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 14); err != nil {
 		t.Fatalf("down 0035: %v", err)
 	}
 	if err := migrate.Up(ctx, pool, dsn); err != nil {

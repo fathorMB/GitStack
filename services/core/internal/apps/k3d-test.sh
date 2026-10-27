@@ -129,5 +129,5 @@ export GITSTACK_TEST_TRAEFIK_METRICS=1
 
 cd "$root/services/core"
 GITSTACK_TEST_KUBECONFIG="$work/kubeconfig" go test -tags integration -count=1 -timeout 25m \
-  -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d|TestApps_SegretiKubernetesERollback|TestApps_IsolamentoSuK3d|TestApps_BarriereInUscitaSuK3d|TestApps_CancelloVeroSenzaPolicySuK3d|TestApps_NomiInterniSuK3d|TestApps_VolumiSuK3d|TestApps_SenzaSegretiConRbacDelChartSuK3d|TestApps_RichiesteETraefikSuK3d' -v ./internal/httpserver/
+  -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d|TestApps_SegretiKubernetesERollback|TestApps_IsolamentoSuK3d|TestApps_BarriereInUscitaSuK3d|TestApps_DestinazionePrivataApertaSuK3d|TestApps_CancelloVeroSenzaPolicySuK3d|TestApps_NomiInterniSuK3d|TestApps_VolumiSuK3d|TestApps_SenzaSegretiConRbacDelChartSuK3d|TestApps_RichiesteETraefikSuK3d' -v ./internal/httpserver/
 echo "OK: controller, segreti, isolamento, barriere in uscita, nomi interni, volumi e metriche di Traefik (richieste ed errori 5xx) delle app provati su k3d"

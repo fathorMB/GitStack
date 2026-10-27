@@ -4,6 +4,8 @@ import {
   deleteAdminAppOwnerQuota as sdkDeleteQuota,
   deleteAdminAppTrustedKey as sdkDeleteKey,
   getAdminAppsCapacity as sdkCapacity,
+  getAdminAppsEgress as sdkEgress,
+  updateAdminAppsEgress as sdkUpdateEgress,
   getAdminAppsSettings as sdkSettings,
   listAdminAppOwnerQuotas as sdkQuotas,
   listAdminAppTrustedKeys as sdkKeys,
@@ -12,17 +14,17 @@ import {
   updateAdminAppsReserve as sdkReserve,
   updateAdminAppsSettings as sdkUpdateSettings,
 } from '@gitstack/api-client';
-import type { AdminApp, AppOwnerQuota, AppOwnerQuotaInput, AppResourceAmount, AppTrustedKey, AppsCapacity, AppsInstanceSettings, AppsInstanceSettingsInput } from '@gitstack/api-client';
+import type { AdminApp, AppOwnerQuota, AppOwnerQuotaInput, AppResourceAmount, AppTrustedKey, AppsCapacity, AppsEgressSettings, AppPrivateDestination, AppPrivateDestinationInput, AppsInstanceSettings, AppsInstanceSettingsInput } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
 const at = { baseUrl: API_BASE_URL };
-export type { AdminApp, AppOwnerQuota, AppOwnerQuotaInput, AppResourceAmount, AppTrustedKey, AppsCapacity, AppsInstanceSettings, AppsInstanceSettingsInput };
+export type { AdminApp, AppOwnerQuota, AppOwnerQuotaInput, AppResourceAmount, AppTrustedKey, AppsCapacity, AppsEgressSettings, AppPrivateDestination, AppPrivateDestinationInput, AppsInstanceSettings, AppsInstanceSettingsInput };
 
 export async function fetchAdminAppsData() {
-  const [capacity, quotas, settings, keys, apps] = await Promise.all([
-    sdkCapacity(at), sdkQuotas(at), sdkSettings(at), sdkKeys(at), sdkApps(at),
+  const [capacity, quotas, settings, keys, apps, egress] = await Promise.all([
+    sdkCapacity(at), sdkQuotas(at), sdkSettings(at), sdkKeys(at), sdkApps(at), sdkEgress(at),
   ]);
-  return { capacity: unwrap(capacity), quotas: unwrap(quotas).items, settings: unwrap(settings), keys: unwrap(keys).items, apps: unwrap(apps).items };
+  return { capacity: unwrap(capacity), quotas: unwrap(quotas).items, settings: unwrap(settings), keys: unwrap(keys).items, apps: unwrap(apps).items, egress: unwrap(egress) };
 }
 
 export async function updateAppsReserve(share: AppResourceAmount): Promise<AppsCapacity> {
@@ -45,4 +47,9 @@ export async function addTrustedKey(name: string, publicKey: string): Promise<Ap
 }
 export async function removeTrustedKey(id: string): Promise<void> {
   unwrapEmpty(await sdkDeleteKey({ ...at, path: { keyId: id } }));
+}
+
+// Destinazioni private aperte all'uscita delle app (H16): l'elenco si sostituisce per intero.
+export async function saveAppsEgress(privateDestinations: AppPrivateDestinationInput[]): Promise<AppsEgressSettings> {
+  return unwrap(await sdkUpdateEgress({ ...at, body: { privateDestinations } }));
 }

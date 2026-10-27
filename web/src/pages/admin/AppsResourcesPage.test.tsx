@@ -1,3 +1,4 @@
+import { ApiError } from '../../lib/http';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,7 +8,7 @@ import { AppsResourcesPage } from './AppsResourcesPage';
 vi.mock('../../lib/authApi', () => ({ fetchSession: vi.fn() }));
 vi.mock('../../lib/adminAppsApi', () => ({
   fetchAdminAppsData: vi.fn(), updateAppsReserve: vi.fn(), saveOwnerQuota: vi.fn(), resetOwnerQuota: vi.fn(),
-  fetchOwnerQuotas: vi.fn(), saveAppsSettings: vi.fn(), addTrustedKey: vi.fn(), removeTrustedKey: vi.fn(),
+  fetchOwnerQuotas: vi.fn(), saveAppsSettings: vi.fn(), saveAppsEgress: vi.fn(), addTrustedKey: vi.fn(), removeTrustedKey: vi.fn(),
 }));
 
 import { fetchSession } from '../../lib/authApi';
@@ -17,6 +18,7 @@ const ownerQuota = { owner: 'acme', limits: { cpuMillis: 3000, memoryBytes: 6 * 
 const settings = { appsDomain: 'apps.acme.it', publicAppsEnabled: false, signedImagesOnly: false, restricted: false, maxPerApp: { cpuMillis: 4000, memoryBytes: 8 * 1024 ** 3 }, logRetention: { days: 7, maxBytes: 1024 ** 3 } };
 const data = {
   capacity: { server: { cpuMillis: 8000, memoryBytes: 16 * 1024 ** 3, profile: 'recommended' }, services: { reserved: { cpuMillis: 2000, memoryBytes: 5 * 1024 ** 3 } }, apps: { share: { cpuMillis: 4000, memoryBytes: 8 * 1024 ** 3 }, guaranteed: { cpuMillis: 3300, memoryBytes: 6 * 1024 ** 3 } }, ci: { guaranteedCpuMillis: 2000, usedCpuMillis: 1000, slots: 3 }, appsShareWarning: false },
+  egress: { privateDestinations: [{ host: 'smtp.acme.lan', port: 587, note: 'mail relay' }] },
   quotas: [ownerQuota], settings, keys: [{ id: 'k1', name: 'Instance CI key', fingerprint: 'SHA256:abc', instanceKey: true, createdAt: '2026-10-01T00:00:00Z' }],
   apps: [{ owner: 'acme', repo: 'handbook', name: 'web', status: 'running', copies: 2, guaranteed: { cpuMillis: 1000, memoryBytes: 1024 ** 3 }, limit: { cpuMillis: 2000, memoryBytes: 2 * 1024 ** 3 }, usage: { cpuMillis: 1240, memoryBytes: 820 * 1024 ** 2 }, verified: true, runsAsRoot: false, aboveGuaranteed: true }],
 };
@@ -118,5 +120,45 @@ describe('AppsResourcesPage', { timeout: 30000 }, () => {
     setup(false);
     expect(await screen.findByText('Only installation administrators can manage app resources.')).toBeInTheDocument();
     expect(api.fetchAdminAppsData).not.toHaveBeenCalled();
+  });
+  it('shows the private destinations opened for app outbound and no longer static text (H16)', async () => {
+    setup();
+    expect(await screen.findByText('smtp.acme.lan:587')).toBeInTheDocument();
+    expect(screen.getByText(/mail relay/)).toBeInTheDocument();
+    expect(screen.getByText(/private network closed/)).toBeInTheDocument();
+    expect(screen.queryByText('Configured by instance egress policy')).not.toBeInTheDocument();
+    expect(screen.queryByText('Managed in the shared egress allow-list')).not.toBeInTheDocument();
+  });
+
+  it('opens a private destination through the admin API, keeping the ones already open', async () => {
+    const saved = { privateDestinations: [{ host: 'smtp.acme.lan', port: 587, note: 'mail relay' }, { host: 'db.azienda.lan', port: 5432, note: '' }] };
+    vi.mocked(api.saveAppsEgress).mockResolvedValue(saved as never);
+    const user = userEvent.setup(); setup();
+    await user.click(await screen.findByRole('button', { name: '+ Add destination' }));
+    const dialog = screen.getByRole('form', { name: 'Add private destination' });
+    await user.type(within(dialog).getByLabelText('Host'), 'db.azienda.lan');
+    await user.type(within(dialog).getByLabelText('Port'), '5432');
+    await user.click(within(dialog).getByRole('button', { name: 'Open destination' }));
+    await waitFor(() => expect(api.saveAppsEgress).toHaveBeenCalledWith([{ host: 'smtp.acme.lan', port: 587, note: 'mail relay' }, { host: 'db.azienda.lan', port: 5432, note: '' }]));
+    expect(await screen.findByText('db.azienda.lan:5432')).toBeInTheDocument();
+  });
+
+  it('shows the API refusal for a destination that cannot be opened', async () => {
+    vi.mocked(api.saveAppsEgress).mockRejectedValue(new ApiError({ error: { code: 'destination_blocked', message: 'Destinazione non ammessa: 10.43.0.1:443 is inside the cluster network' } }, 422));
+    const user = userEvent.setup(); setup();
+    await user.click(await screen.findByRole('button', { name: '+ Add destination' }));
+    const dialog = screen.getByRole('form', { name: 'Add private destination' });
+    await user.type(within(dialog).getByLabelText('Host'), '10.43.0.1');
+    await user.type(within(dialog).getByLabelText('Port'), '443');
+    await user.click(within(dialog).getByRole('button', { name: 'Open destination' }));
+    expect(await screen.findByText(/inside the cluster network/)).toBeInTheDocument();
+  });
+
+  it('closes a private destination', async () => {
+    vi.mocked(api.saveAppsEgress).mockResolvedValue({ privateDestinations: [] } as never);
+    const user = userEvent.setup(); setup();
+    await user.click(await screen.findByRole('button', { name: 'Close smtp.acme.lan:587' }));
+    await waitFor(() => expect(api.saveAppsEgress).toHaveBeenCalledWith([]));
+    expect(await screen.findByText(/None opened/)).toBeInTheDocument();
   });
 });

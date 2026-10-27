@@ -4234,6 +4234,63 @@ export type AppsInstanceSettingsInput = {
     logRetention: AppLogRetention;
 };
 
+export type AppEgressDestination = {
+    /**
+     * Indirizzo IP o nome DNS, senza schema ne' porta.
+     */
+    host: string;
+    /**
+     * Porta TCP.
+     */
+    port: number;
+};
+
+export type AppPrivateDestination = {
+    host: string;
+    port: number;
+    /**
+     * A cosa serve (es. database del backoffice).
+     */
+    note: string;
+    createdAt?: string;
+    createdBy?: AppActor | null;
+};
+
+export type AppPrivateDestinationInput = {
+    host: string;
+    port: number;
+    note?: string;
+};
+
+export type AppsEgressSettings = {
+    privateDestinations: Array<AppPrivateDestination>;
+};
+
+export type AppsEgressSettingsInput = {
+    privateDestinations: Array<AppPrivateDestinationInput>;
+};
+
+export type AppEgress = {
+    /**
+     * L'app ha una restrizione propria.
+     */
+    restricted: boolean;
+    /**
+     * Le destinazioni della restrizione; vuoto se `restricted` e' false.
+     */
+    destinations: Array<AppEgressDestination>;
+    /**
+     * Le destinazioni private aperte dall'amministratore: l'app puo' sceglierle.
+     */
+    allowedPrivate: Array<AppPrivateDestination>;
+    updatedAt?: string;
+    updatedBy?: AppActor | null;
+};
+
+export type AppEgressInput = {
+    destinations: Array<AppEgressDestination>;
+};
+
 export type AppLogRetention = {
     days: number;
     maxBytes: number;
@@ -20481,6 +20538,164 @@ export type SetAppResourcesResponses = {
 
 export type SetAppResourcesResponse = SetAppResourcesResponses[keyof SetAppResourcesResponses];
 
+export type DeleteAppEgressData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/egress';
+};
+
+export type DeleteAppEgressErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+};
+
+export type DeleteAppEgressError = DeleteAppEgressErrors[keyof DeleteAppEgressErrors];
+
+export type DeleteAppEgressResponses = {
+    /**
+     * Restrizione tolta.
+     */
+    204: void;
+};
+
+export type DeleteAppEgressResponse = DeleteAppEgressResponses[keyof DeleteAppEgressResponses];
+
+export type GetAppEgressData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/egress';
+};
+
+export type GetAppEgressErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+};
+
+export type GetAppEgressError = GetAppEgressErrors[keyof GetAppEgressErrors];
+
+export type GetAppEgressResponses = {
+    /**
+     * Uscita dell'app.
+     */
+    200: AppEgress;
+};
+
+export type GetAppEgressResponse = GetAppEgressResponses[keyof GetAppEgressResponses];
+
+export type SetAppEgressData = {
+    body: AppEgressInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'app dentro il repo (H5).
+         */
+        app: AppName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/apps/{app}/egress';
+};
+
+export type SetAppEgressErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type SetAppEgressError = SetAppEgressErrors[keyof SetAppEgressErrors];
+
+export type SetAppEgressResponses = {
+    /**
+     * Uscita aggiornata.
+     */
+    200: AppEgress;
+};
+
+export type SetAppEgressResponse = SetAppEgressResponses[keyof SetAppEgressResponses];
+
 export type ListAppVolumesData = {
     body?: never;
     path: {
@@ -21127,6 +21342,75 @@ export type UpdateAdminAppsSettingsResponses = {
 };
 
 export type UpdateAdminAppsSettingsResponse = UpdateAdminAppsSettingsResponses[keyof UpdateAdminAppsSettingsResponses];
+
+export type GetAdminAppsEgressData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/apps/egress';
+};
+
+export type GetAdminAppsEgressErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+};
+
+export type GetAdminAppsEgressError = GetAdminAppsEgressErrors[keyof GetAdminAppsEgressErrors];
+
+export type GetAdminAppsEgressResponses = {
+    /**
+     * Destinazioni aperte.
+     */
+    200: AppsEgressSettings;
+};
+
+export type GetAdminAppsEgressResponse = GetAdminAppsEgressResponses[keyof GetAdminAppsEgressResponses];
+
+export type UpdateAdminAppsEgressData = {
+    body: AppsEgressSettingsInput;
+    path?: never;
+    query?: never;
+    url: '/admin/apps/egress';
+};
+
+export type UpdateAdminAppsEgressErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type UpdateAdminAppsEgressError = UpdateAdminAppsEgressErrors[keyof UpdateAdminAppsEgressErrors];
+
+export type UpdateAdminAppsEgressResponses = {
+    /**
+     * Destinazioni aggiornate.
+     */
+    200: AppsEgressSettings;
+};
+
+export type UpdateAdminAppsEgressResponse = UpdateAdminAppsEgressResponses[keyof UpdateAdminAppsEgressResponses];
 
 export type ListAdminAppTrustedKeysData = {
     body?: never;

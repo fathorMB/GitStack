@@ -83,6 +83,10 @@ type Config struct {
 	// le barriere in uscita delle app (H16) li escludono da internet.
 	EgressClusterCIDRs  []string
 	EgressNodeAddresses []string
+	// EgressDeny è GITSTACK_EGRESS_DENY: le destinazioni vietate non si aprono (H16).
+	EgressDeny []string
+	// Resolver risolve i nomi delle destinazioni di uscita (H16); nil usa il DNS del sistema.
+	Resolver Resolver
 	// Secrets decifra i valori correnti dei segreti dell'app: si iniettano nei pod e si usano per
 	// mascherarli nei log (GIT-348, GIT-350). Nil: le righe delle copie non si raccolgono, e nei pod
 	// non entra nessun segreto.
@@ -437,7 +441,27 @@ func (c *Controller) ensureNetworkPolicy(ctx context.Context, app store.App) err
 		}
 		proxyIPs[endpoint.host] = ips
 	}
-	want := BuildNetworkPolicy(app, NetworkPolicyOptions{TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs, ClusterCIDRs: c.cfg.EgressClusterCIDRs, NodeAddresses: c.cfg.EgressNodeAddresses})
+	np := NetworkPolicyOptions{TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs, ClusterCIDRs: c.cfg.EgressClusterCIDRs, NodeAddresses: c.cfg.EgressNodeAddresses, Deny: c.cfg.EgressDeny}
+	// Destinazioni private aperte dall'amministratore e restrizione dell'app (H16, GIT-385): gli indirizzi
+	// si risolvono ora, a ogni applicazione della policy (deploy o modifica delle impostazioni).
+	if c.st != nil { // senza store (prove del solo cluster) nessuna apertura e nessuna restrizione
+		policy := EgressPolicy(c.cfg.EgressClusterCIDRs, c.cfg.EgressNodeAddresses, c.cfg.EgressDeny)
+		openedList, err := c.st.ListAppPrivateDestinations(ctx)
+		if err != nil {
+			return fmt.Errorf("destinazioni private: %w", err)
+		}
+		opened := OpenedAddrs(ctx, policy, c.cfg.Resolver, openedList)
+		np.PrivateOpenings = sortedAddrPorts(opened)
+		restriction, err := c.st.GetAppEgressRestriction(ctx, app.ID)
+		if err != nil {
+			return fmt.Errorf("restrizione dell'uscita: %w", err)
+		}
+		if restriction != nil {
+			addrs := RestrictionAddrs(ctx, policy, c.cfg.Resolver, opened, restriction.Destinations)
+			np.Restriction = &addrs
+		}
+	}
+	want := BuildNetworkPolicy(app, np)
 	policies := c.kube.NetworkingV1().NetworkPolicies(want.Namespace)
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		cur, err := policies.Get(ctx, want.Name, metav1.GetOptions{})
@@ -452,6 +476,38 @@ func (c *Controller) ensureNetworkPolicy(ctx context.Context, app store.App) err
 		_, err = policies.Update(ctx, cur, metav1.UpdateOptions{})
 		return err
 	})
+}
+
+// RefreshEgress riapplica la NetworkPolicy di uscita (H16, GIT-385) dopo che l'amministratore ha
+// cambiato le destinazioni private o che l'app ha cambiato la sua restrizione. ids nil: tutte le app.
+// Un'app che non è ancora in cluster (nessun namespace) si salta: la policy la scrive il primo deploy.
+func (c *Controller) RefreshEgress(ctx context.Context, ids []uuid.UUID) error {
+	if ids == nil {
+		var err error
+		if ids, err = c.st.AppIDs(ctx); err != nil {
+			return err
+		}
+	}
+	var firstErr error
+	for _, id := range ids {
+		app, err := c.st.GetAppByID(ctx, id)
+		if err != nil {
+			continue
+		}
+		if _, err := c.kube.CoreV1().Namespaces().Get(ctx, Namespace(app.ID), metav1.GetOptions{}); err != nil {
+			if !apierrors.IsNotFound(err) && firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		if err := c.ensureNetworkPolicy(ctx, app); err != nil {
+			c.cfg.Log.Warn("apps: policy di rete non aggiornata", "app", app.ID, "err", err)
+			if firstErr == nil {
+				firstErr = err
+			}
+		}
+	}
+	return firstErr
 }
 
 func (c *Controller) ensureAppSecret(ctx context.Context, ns string, id uuid.UUID, values map[string]string) error {
