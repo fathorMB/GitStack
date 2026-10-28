@@ -47,6 +47,9 @@
 #   apps-run <dominio>         Hosting acceso: un'app `login` creata da API passa dal forward-auth VERO del gateway:
 #                              senza credenziali redirect/401, con un token API valido (read:resource e read sul repo)
 #                              200 dall'app, con un token falso mai 200.
+#   apps-public <dominio>      App `public` (GIT-457): senza login 200 e intestazioni X-GitStack-* del client tolte;
+#                              public → login e interruttore d'istanza spento riportano la rotta interna;
+#                              nessun Secret TLS nel namespace dell'app (ADR 0002).
 #   latest-backup              Stampa il percorso dell'archivio più recente.
 #   diagnostics <cartella>     Log del cluster e dei servizi (non fallisce mai).
 #
@@ -700,6 +703,116 @@ apps_run() {
   printf 'ok  apps-run: con un token falso %s (non 200)\n' "${code}"
 }
 
+# apps-public <dominio> (GIT-457, H1/H6/ADR 0002): un'app `public` è raggiungibile senza login, le
+# intestazioni X-GitStack-* mandate dal client non arrivano all'app, public → login e l'interruttore
+# d'istanza spento riportano la rotta interna, nessun Secret TLS nel namespace dell'app.
+apps_public() {
+  need E2E_HOST
+  load_seed
+  local domain="${1:?dominio delle app}" host ns="" deadline code="" body="" orig_on
+  local resolve="${HOST}" jar="${STATE_DIR}/admin-public.jar" settings
+
+  # Interruttore d'istanza: l'admin (cookie di sessione) legge i valori e li rimanda interi.
+  login admin "${NEW_ADMIN_PASSWORD}" "${jar}"
+  expect 200 "${CODE}" "login admin"
+  api GET /api/v1/admin/apps/settings '' -b "${jar}"
+  expect 200 "${CODE}" "lettura impostazioni delle app"
+  settings="${BODY}"
+  orig_on="$(printf '%s' "${settings}" | jq -r '.publicAppsEnabled')"
+  set_public_switch() { # <true|false>
+    api PUT /api/v1/admin/apps/settings "$(printf '%s' "${settings}" | jq --argjson on "$1" '{publicAppsEnabled:$on,signedImagesOnly,restricted,maxPerApp,logRetention}')" -b "${jar}"
+    expect 200 "${CODE}" "interruttore delle app pubbliche = $1"
+  }
+  set_mode() { # <login|public>
+    api PUT "/api/v1/repos/${CI_USER}/${CI_REPO}/apps/pub/access" "$(jq -n --arg m "$1" '{mode:$m}')" -H "Authorization: Bearer ${CI_TOKEN}"
+    expect 200 "${CODE}" "accesso dell'app pub = $1"
+  }
+  # noauth <intestazione...>: codice HTTP senza credenziali; il corpo resta in $body.
+  noauth() {
+    local out h args=()
+    for h in "$@"; do args+=(-H "${h}"); done
+    out="$(mktemp)"
+    code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" "${args[@]}" -o "${out}" -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
+    body="$(cat "${out}")"
+    rm -f "${out}"
+  }
+
+  api POST "/api/v1/repos/${CI_USER}/${CI_REPO}/apps" '{"name":"pub","image":"docker.io/traefik/whoami:v1.10","port":80,"healthCheck":{"path":"/","intervalSeconds":5}}' -H "Authorization: Bearer ${CI_TOKEN}"
+  expect 202 "${CODE}" "creazione app pub"
+  host="$(printf '%s' "${BODY}" | jq -r '.app.address // empty' | sed -E 's#^https://##')"
+  [ -n "${host}" ] || fail "l'app pub non ha un indirizzo automatico: $(printf '%s' "${BODY}" | head -c 300)"
+  case "${host}" in *".${domain}") ;; *) fail "indirizzo ${host} fuori dal dominio ${domain}" ;; esac
+
+  set_public_switch true
+  set_mode public
+
+  # a. senza credenziali, con intestazioni falsificate: 200 e nessuna arriva all'app.
+  deadline=$((SECONDS + 420))
+  while [ "${SECONDS}" -lt "${deadline}" ]; do
+    noauth 'X-GitStack-User: intruso' 'X-GitStack-Signature: falsa' 'X-GitStack-Email: x@y'
+    [ "${code}" = 200 ] && break
+    sleep 5
+  done
+  [ "${code}" = 200 ] || {
+    "${KUBECTL[@]}" get ingressroute,middleware -A -o wide || true
+    "${KUBECTL[@]}" -n default logs deployment/gitstack-core --tail=40 || true
+    fail "l'app pubblica non risponde senza login su https://${host}/ (ultimo codice '${code}')"
+  }
+  if printf '%s' "${body}" | grep -qi '^X-Gitstack-User: intruso'; then fail "X-GitStack-User del client è arrivata all'app"; fi
+  if printf '%s' "${body}" | grep -qi '^X-Gitstack-Signature: falsa'; then fail "X-GitStack-Signature del client è arrivata all'app"; fi
+  if printf '%s' "${body}" | grep -qi '^X-Gitstack-Email: x@y'; then fail "X-GitStack-Email del client è arrivata all'app"; fi
+  printf '%s' "${body}" | grep -qi '^Host:' || fail "la risposta di ${host} non è quella di whoami"
+  printf 'ok  apps-public: senza login 200, intestazioni X-GitStack-* del client tolte\n'
+
+  ns="$("${KUBECTL[@]}" get ingressroute -A -o json | jq -r --arg h "${host}" '[.items[] | select(.spec.routes[0].match | contains($h)) | .metadata.namespace][0] // empty')"
+  [ -n "${ns}" ] || fail "namespace dell'app pub non trovato (IngressRoute con ${host})"
+
+  # d. public → login: la rotta interna torna (30x o 401 senza credenziali).
+  set_mode login
+  deadline=$((SECONDS + 180))
+  while [ "${SECONDS}" -lt "${deadline}" ]; do
+    noauth
+    case "${code}" in 301 | 302 | 303 | 307 | 308 | 401) break ;; esac
+    sleep 5
+  done
+  case "${code}" in
+    301 | 302 | 303 | 307 | 308 | 401) ;;
+    *) fail "dopo public → login senza credenziali atteso 30x o 401, trovato '${code}'" ;;
+  esac
+  printf 'ok  apps-public: public → login riporta la rotta interna\n'
+
+  # e. interruttore spento con l'app ancora public: l'app non è più esposta.
+  set_mode public
+  deadline=$((SECONDS + 180))
+  while [ "${SECONDS}" -lt "${deadline}" ]; do
+    noauth
+    [ "${code}" = 200 ] && break
+    sleep 3
+  done
+  [ "${code}" = 200 ] || fail "l'app public non è tornata raggiungibile prima di spegnere l'interruttore ('${code}')"
+  set_public_switch false
+  deadline=$((SECONDS + 180))
+  while [ "${SECONDS}" -lt "${deadline}" ]; do
+    if "${KUBECTL[@]}" -n "${ns}" get ingressroute app >/dev/null 2>&1; then
+      sleep 3
+    else
+      break
+    fi
+  done
+  if "${KUBECTL[@]}" -n "${ns}" get ingressroute app >/dev/null 2>&1; then fail "interruttore spento: l'IngressRoute di un'app public esiste ancora"; fi
+  noauth
+  if [ "${code}" = 200 ]; then fail "interruttore spento: l'app risponde ancora 200 senza login"; fi
+  printf 'ok  apps-public: interruttore spento, app non esposta\n'
+
+  # f. ADR 0002: nessun Secret TLS nel namespace dell'app.
+  if "${KUBECTL[@]}" get secrets -A --field-selector type=kubernetes.io/tls -o jsonpath='{range .items[*]}{.metadata.namespace}{"\n"}{end}' | grep -qx "${ns}"; then
+    fail "Secret TLS nel namespace dell'app ${ns} (ADR 0002: i certificati restano nel namespace di Traefik)"
+  fi
+  printf 'ok  apps-public: nessun Secret TLS nel namespace dell'"'"'app (ADR 0002)\n'
+
+  set_public_switch "${orig_on}"
+}
+
 latest_backup() {
   local f
   f="$(sudo find /var/backups/gitstack -maxdepth 1 -type f -name 'gitstack-backup-*' -not -name '*.sha256' -printf '%T@ %p\n' | sort -rn | head -n1 | cut -d' ' -f2-)"
@@ -749,6 +862,7 @@ main() {
     verify-apps-hosting) verify_apps_hosting "$@" ;;
     apps-off-api) apps_off_api ;;
     apps-run) apps_run "$@" ;;
+    apps-public) apps_public "$@" ;;
     latest-backup) latest_backup ;;
     diagnostics) diagnostics "$@" ;;
     *) fail "sottocomando sconosciuto: ${cmd}" ;;

@@ -803,11 +803,14 @@ func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.A
 	host := c.routeHost(app, cfg)
 	// App pubbliche (H1): con l'interruttore d'istanza spento un'app `public` non è esposta. Il modo
 	// resta salvato; alla riaccensione la rotta torna al prossimo giro. Nel dubbio (errore di lettura)
-	// la rotta non si crea: mai esposta per sbaglio.
+	// la rotta non si crea e quella già esistente si toglie (fail-closed, GIT-457): mai esposta per
+	// sbaglio. L'errore di lettura resta al chiamante, che riprova al giro dopo.
+	var readErr error
 	if host != "" && app.Access == "public" {
 		on, err := c.publicAppsEnabled(ctx)
 		if err != nil {
-			return fmt.Errorf("lettura dell'interruttore delle app pubbliche: %w", err)
+			readErr = fmt.Errorf("lettura dell'interruttore delle app pubbliche: %w", err)
+			on = false
 		}
 		if !on {
 			host = ""
@@ -815,10 +818,13 @@ func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.A
 	}
 	if host == "" {
 		err := routes.Delete(ctx, WorkloadName, metav1.DeleteOptions{})
-		if apierrors.IsNotFound(err) {
-			return nil // niente rotta, oppure le CRD di Traefik non ci sono
+		if err != nil && !apierrors.IsNotFound(err) { // NotFound: niente rotta, oppure le CRD di Traefik non ci sono
+			if readErr != nil {
+				return errors.Join(readErr, err)
+			}
+			return err
 		}
-		return err
+		return readErr
 	}
 	login := app.Access == "login"
 	// I Middleware prima della rotta: la rotta che li cita non deve mai esistere senza.
