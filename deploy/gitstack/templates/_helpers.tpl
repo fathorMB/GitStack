@@ -440,3 +440,13 @@ ServiceAccount di core: ci-dispatcher se la CI è accesa (stesso account, un sol
 {{- define "gitstack.apps.workloadRoleName" -}}
 {{- printf "%s-app-workload" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
+
+{{/* GIT-460: il TLSStore default del chart esiste (ed e' reso) solo con TLS dell'installer. Unica fonte della condizione: vale "true" oppure e' vuoto. */}}
+{{- define "gitstack.tlsStore.enabled" -}}
+{{- if and .Values.ingress.enabled .Values.ingress.tls.enabled .Values.ingress.tls.secretName -}}true{{- end -}}
+{{- end -}}
+
+{{/* GIT-460: namespace del TLSStore default letto da Traefik, dove core scrive i Secret dei certificati del cliente. Con il TLSStore del chart (CA interna) e' quello del release, perche' in tutto il cluster ne esiste uno solo; altrimenti e' quello di Traefik. */}}
+{{- define "gitstack.tlsStoreNamespace" -}}
+{{- if include "gitstack.tlsStore.enabled" . -}}{{ .Release.Namespace }}{{- else -}}{{ .Values.networkPolicy.ingressNamespace }}{{- end -}}
+{{- end -}}

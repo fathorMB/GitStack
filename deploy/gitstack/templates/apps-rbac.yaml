@@ -58,6 +58,43 @@ roleRef:
   kind: ClusterRole
   name: {{ $controller }}
 ---
+# Certificati del cliente per i domini propri (GIT-460, ADR 0002): il Secret TLS sta SOLO nel namespace del
+# TLSStore default letto da Traefik (include "gitstack.tlsStoreNamespace"): quello del release con la CA
+# interna (il chart vi crea il TLSStore, e in tutto il cluster ne esiste uno solo), quello di Traefik
+# altrimenti; mai nei namespace delle app. Role (non ClusterRole) in quel namespace: Secret senza list (RBAC
+# non filtra una list per nome: core non deve poter elencare i Secret del namespace) e il TLSStore default
+# che li elenca. Il nome dei Secret e' gitstack-domain-<id dominio>; core toglie solo quelli che il TLSStore cita.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $controller }}-certs
+  namespace: {{ include "gitstack.tlsStoreNamespace" . }}
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "get", "update", "delete"]
+  - apiGroups: ["traefik.io"]
+    resources: ["tlsstores"]
+    verbs: ["create", "get", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $controller }}-certs
+  namespace: {{ include "gitstack.tlsStoreNamespace" . }}
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $sa }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $controller }}-certs
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
