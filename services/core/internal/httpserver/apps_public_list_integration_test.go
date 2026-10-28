@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/fathorMB/GitStack/services/core/internal/apps"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
@@ -131,6 +132,7 @@ func TestListApps_PublicAddressPerPiuApp(t *testing.T) {
 		e.t.Helper()
 		dns.set(host, appName+"-handbook-alice.apps.example.com")
 		path := base + "/" + appName + "/domains"
+		e.clock.advance(time.Second)
 		e.want(e.do(http.MethodPost, path, "alice", domainBody(host)), http.StatusCreated, "")
 		d := e.domain(e.do(http.MethodPost, path+"/"+host+"/recheck", "alice", "").Body)
 		if d.Status != openapi.AppDomainStatusVerified {
