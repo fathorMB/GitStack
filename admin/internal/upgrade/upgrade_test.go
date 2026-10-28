@@ -125,6 +125,12 @@ type fakeHelm struct {
 	// serviceAccount); lo toglie solo la patch merge con i campi a null.
 	staleSA bool
 	breakSA bool // l'upgrade ha legato core a un ServiceAccount: il rollback lo lascia
+
+	// GIT-482: la patch può non cambiare niente (campi ripopolati dal
+	// defaulting, run 40630162371): le prime ignorePatches non li tolgono.
+	ignorePatches int
+	patches       int
+	manifest      string // manifest della revisione di destinazione (vuoto: quello di prova)
 }
 
 func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...string) ([]byte, error) {
@@ -139,8 +145,22 @@ func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...strin
 				return []byte("secret/gitstack-service-secrets\n"), nil
 			}
 			return []byte("Error from server (NotFound)"), errors.New("exit 1")
+		case strings.Contains(joined, "get deployments"):
+			core := `{"metadata":{"name":"gitstack-core"},"spec":{"template":{"spec":{}}}}`
+			if h.staleSA {
+				core = `{"metadata":{"name":"gitstack-core"},"spec":{"template":{"spec":{"serviceAccountName":"ci-dispatcher","serviceAccount":"ci-dispatcher"}}}}`
+			}
+			return []byte(`{"items":[` + core + `,{"metadata":{"name":"gitstack-gateway"},"spec":{"template":{"spec":{}}}}]}`), nil
+		case strings.Contains(joined, "get serviceaccount ci-dispatcher"):
+			if h.upgraded && h.rolled {
+				return []byte("Error from server (NotFound): serviceaccounts \"ci-dispatcher\" not found"), errors.New("exit 1")
+			}
+			return []byte("serviceaccount/ci-dispatcher\n"), nil
 		case strings.Contains(joined, "patch deployment gitstack-core") && strings.Contains(joined, `"serviceAccount":null`):
-			h.staleSA = false
+			h.patches++
+			if h.patches > h.ignorePatches {
+				h.staleSA = false
+			}
 			return []byte("deployment.apps/gitstack-core patched\n"), nil
 		case strings.Contains(joined, "patch deployment"):
 			return []byte("deployment.apps/x patched (no change)\n"), nil
@@ -159,6 +179,9 @@ func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...strin
 		return []byte(`[{"revision":3,"status":"superseded"},{"revision":4,"status":"deployed"}]`), nil
 	case "get":
 		if len(args) > 1 && args[1] == "manifest" {
+			if h.manifest != "" {
+				return []byte(h.manifest), nil
+			}
 			return []byte("---\nkind: Service\nmetadata:\n  name: gitstack-core\n---\nkind: Deployment\nmetadata:\n  name: gitstack-core\nspec:\n  template:\n    spec:\n      containers: []\n---\nkind: Deployment\nmetadata:\n  name: gitstack-gateway\nspec:\n  template:\n    spec:\n      containers: []\n---\nkind: Deployment\nmetadata:\n  name: gitstack-runner\nspec:\n  template:\n    spec:\n      serviceAccountName: ci-dispatcher\n"), nil
 		}
 		if h.values != "" {
@@ -665,6 +688,89 @@ func TestGatewayOnlyBreakRollsBackWithoutRestore(t *testing.T) {
 		}
 	}
 	w.assertUntouched()
+}
+
+// GIT-482 (run 40630162371): dopo la patch i campi sono ancora al valore
+// vecchio (la patch non cambia niente). Il passo rilegge il Deployment e
+// fallisce in modo esplicito: Broken, con il Deployment e il ServiceAccount
+// nel messaggio e nel log.
+func TestStaleServiceAccountAfterPatchFailsExplicitly(t *testing.T) {
+	w := newWorld(t)
+	w.helm.breakSA = true
+	w.helm.ignorePatches = 100
+	w.helm.onUp = func() error { return errors.New("exit 1") }
+	w.healthy = func() bool { return !w.helm.upgraded }
+	var log strings.Builder
+	w.o.Log = &log
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Broken {
+		t.Fatalf("res=%+v err=%v (atteso Broken)", res, err)
+	}
+	if !strings.Contains(res.RollbackErr, "gitstack-core → ci-dispatcher") {
+		t.Errorf("errore non esplicito: %q", res.RollbackErr)
+	}
+	if w.helm.patches != 2 {
+		t.Errorf("patch tentate: %d (attese 2)", w.helm.patches)
+	}
+	for _, want := range []string{"Deployment senza ServiceAccount: gitstack-core, gitstack-gateway", "patch su gitstack-core:", "dopo la patch: Deployment gitstack-core usa il ServiceAccount ci-dispatcher, che NON esiste"} {
+		if !strings.Contains(log.String(), want) {
+			t.Errorf("manca nel log %q:\n%s", want, log.String())
+		}
+	}
+}
+
+// GIT-482: campi ripopolati dopo la prima patch (defaulting): la rilettura li
+// trova, la seconda patch li toglie, l'esito è RolledBack e il log lo dice.
+func TestRepopulatedServiceAccountIsPatchedAgain(t *testing.T) {
+	w := newWorld(t)
+	w.helm.breakSA = true
+	w.helm.ignorePatches = 1
+	w.helm.onUp = func() error { return errors.New("exit 1") }
+	w.healthy = func() bool { return !w.helm.upgraded || w.helm.rolled && !w.helm.staleSA }
+	var log strings.Builder
+	w.o.Log = &log
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != RolledBack {
+		t.Fatalf("res=%+v err=%v (atteso RolledBack)", res, err)
+	}
+	if w.helm.staleSA || w.helm.patches != 2 {
+		t.Errorf("staleSA=%v patch=%d", w.helm.staleSA, w.helm.patches)
+	}
+	for _, want := range []string{"ServiceAccount rimasti dopo la patch: gitstack-core → ci-dispatcher; riprovo", "dopo la seconda patch: Deployment gitstack-core senza ServiceAccount dedicato", "nessun Deployment legato a un ServiceAccount inesistente"} {
+		if !strings.Contains(log.String(), want) {
+			t.Errorf("manca nel log %q:\n%s", want, log.String())
+		}
+	}
+}
+
+// GIT-482: il manifest della revisione di destinazione non ha Deployment senza
+// ServiceAccount: nessuna patch, ma i Deployment vengono comunque riletti e
+// nel log. Con il campo già vuoto non si fallisce.
+func TestManifestWithoutDeploymentsToPatch(t *testing.T) {
+	w := newWorld(t)
+	w.helm.manifest = `kind: Deployment
+metadata:
+  name: gitstack-runner
+spec:
+  template:
+    spec:
+      serviceAccountName: ci-dispatcher
+`
+	w.helm.onUp = func() error { return errors.New("exit 1") }
+	var log strings.Builder
+	w.o.Log = &log
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != RolledBack {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if w.helm.patches != 0 {
+		t.Errorf("patch senza motivo: %d", w.helm.patches)
+	}
+	for _, want := range []string{"Deployment senza ServiceAccount: nessuno", "Deployment gitstack-core senza ServiceAccount dedicato"} {
+		if !strings.Contains(log.String(), want) {
+			t.Errorf("manca nel log %q:\n%s", want, log.String())
+		}
+	}
 }
 
 // Senza il ServiceAccount stantio il passo non cambia niente di osservabile.
