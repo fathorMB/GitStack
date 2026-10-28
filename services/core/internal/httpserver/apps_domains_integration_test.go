@@ -3,8 +3,11 @@
 package httpserver_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net"
 	"net/http"
 	"strings"
@@ -26,6 +29,7 @@ type fakeDNS struct {
 	cname  map[string]string
 	a      map[string][]string
 	lookup int
+	err    error
 }
 
 func newFakeDNS() *fakeDNS { return &fakeDNS{cname: map[string]string{}, a: map[string][]string{}} }
@@ -47,6 +51,9 @@ func (f *fakeDNS) LookupCNAME(_ context.Context, host string) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lookup++
+	if f.err != nil {
+		return "", f.err
+	}
 	if c, ok := f.cname[host]; ok {
 		return c + ".", nil
 	}
@@ -59,6 +66,9 @@ func (f *fakeDNS) LookupCNAME(_ context.Context, host string) (string, error) {
 func (f *fakeDNS) LookupHost(_ context.Context, host string) ([]string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.err != nil {
+		return nil, f.err
+	}
 	if ips, ok := f.a[host]; ok {
 		return ips, nil
 	}
@@ -321,4 +331,35 @@ func (e *appsEnv) domains(path string) openapi.AppDomainList {
 		e.t.Fatal(err)
 	}
 	return l
+}
+
+func TestAppDomains_RecheckLoggaErroreResolver(t *testing.T) {
+	dns := newFakeDNS()
+	e := newAppsEnv(t, httpserver.WithAppDomains(httpserver.AppDomainsConfig{
+		InstanceHost: "git.example.com", Domains: apps.DomainConfig{Resolver: dns, Grace: 1}}))
+	e.id.sysAdmin[users["carol"]] = true
+	e.repo("handbook", true)
+	e.want(e.do(http.MethodPost, "/repos/alice/handbook/apps", "alice", createWeb), http.StatusAccepted, "")
+	e.want(e.do(http.MethodPut, "/admin/apps/settings", "carol", publicSettings(true)), http.StatusOK, "")
+	e.want(e.do(http.MethodPut, "/repos/alice/handbook/apps/web/access", "alice", `{"mode":"public"}`), http.StatusOK, "")
+	base := "/repos/alice/handbook/apps/web/domains"
+	e.want(e.do(http.MethodPost, base, "alice", domainBody("resolver.retail.it")), http.StatusCreated, "")
+
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	dns.err = errors.New("resolver unavailable")
+	e.want(e.do(http.MethodPost, base+"/resolver.retail.it/recheck", "alice", ""), http.StatusOK, "")
+	if got := buf.String(); !strings.Contains(got, "apps: errore del resolver durante il controllo DNS") || !strings.Contains(got, "resolver.retail.it") {
+		t.Fatalf("log del resolver assente o senza dominio: %q", got)
+	}
+
+	// NXDOMAIN è un esito DNS, non un errore del resolver: non deve produrre quel log.
+	buf.Reset()
+	dns.err = nil
+	e.want(e.do(http.MethodPost, base+"/resolver.retail.it/recheck", "alice", ""), http.StatusOK, "")
+	if got := buf.String(); strings.Contains(got, "apps: errore del resolver durante il controllo DNS") {
+		t.Fatalf("NXDOMAIN non deve essere registrato come errore resolver: %q", got)
+	}
 }

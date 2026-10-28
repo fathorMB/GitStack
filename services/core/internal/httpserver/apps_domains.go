@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/fathorMB/GitStack/services/core/internal/apps"
@@ -184,7 +185,7 @@ func (s *apiServer) AddAppDomain(w http.ResponseWriter, r *http.Request, owner o
 	}
 	ips, _ := s.resources.PublicIPs(r.Context())
 	// Il primo controllo è sincrono, con il resolver configurato: un dominio già puntato risulta subito verified.
-	if upd, changed, err := apps.RecheckDomain(r.Context(), s.resources, s.domainConfig(), a, d, ips); err == nil {
+	if upd, changed, err := apps.RecheckDomain(r.Context(), s.resources, s.domainConfig(), a, d, ips, slog.Default()); err == nil {
 		d = upd
 		if changed {
 			s.refreshRoute(r.Context(), a)
@@ -255,7 +256,7 @@ func (s *apiServer) RecheckAppDomain(w http.ResponseWriter, r *http.Request, own
 		appInternalError(w, "lettura degli IP pubblici", err)
 		return
 	}
-	upd, changed, err := apps.RecheckDomain(r.Context(), s.resources, s.domainConfig(), a, d, ips)
+	upd, changed, err := apps.RecheckDomain(r.Context(), s.resources, s.domainConfig(), a, d, ips, slog.Default())
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "not_found", "Dominio non trovato.")
 		return

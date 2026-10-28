@@ -4,8 +4,10 @@ package httpserver_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/fathorMB/GitStack/services/core/internal/apps"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
@@ -107,5 +109,86 @@ func TestAdminPublicApps_SoloAdminEPublicAddress(t *testing.T) {
 	}
 	if p := e.publicAddressOf("bob"); p == nil || *p != auto {
 		t.Fatalf("spento: publicAddress automatico: %v", p)
+	}
+}
+
+func TestListApps_PublicAddressPerPiuApp(t *testing.T) {
+	dns := newFakeDNS()
+	e := newAppsEnv(t, httpserver.WithAppDomains(httpserver.AppDomainsConfig{
+		InstanceHost: "git.example.com", Domains: apps.DomainConfig{Resolver: dns, Grace: 1}}))
+	e.id.sysAdmin[users["carol"]] = true
+	e.repo("handbook", true)
+	e.want(e.do(http.MethodPut, "/admin/apps/settings", "carol", publicSettings(true)), http.StatusOK, "")
+	base := "/repos/alice/handbook/apps"
+	auto := map[string]string{}
+	create := func(name string) {
+		e.t.Helper()
+		body := fmt.Sprintf(`{"name":%q,"image":"sha-7f3a91c","port":8080}`, name)
+		e.want(e.do(http.MethodPost, base, "alice", body), http.StatusAccepted, "")
+		e.want(e.do(http.MethodPut, base+"/"+name+"/access", "alice", `{"mode":"public"}`), http.StatusOK, "")
+		auto[name] = "https://" + name + "-handbook-alice.apps.example.com"
+	}
+	addVerified := func(appName, host string) {
+		e.t.Helper()
+		dns.set(host, appName+"-handbook-alice.apps.example.com")
+		path := base + "/" + appName + "/domains"
+		e.clock.advance(time.Second)
+		e.want(e.do(http.MethodPost, path, "alice", domainBody(host)), http.StatusCreated, "")
+		d := e.domain(e.do(http.MethodPost, path+"/"+host+"/recheck", "alice", "").Body)
+		if d.Status != openapi.AppDomainStatusVerified {
+			e.t.Fatalf("dominio %s non verificato: %+v", host, d)
+		}
+	}
+
+	// (a) Public con un dominio verificato.
+	create("one")
+	addVerified("one", "one.retail.it")
+	// (b) Public con due domini verificati: prevale il primo creato.
+	create("two")
+	addVerified("two", "first.retail.it")
+	addVerified("two", "second.retail.it")
+	// (c) Public con un dominio pending: resta l'indirizzo automatico.
+	create("three")
+	e.want(e.do(http.MethodPost, base+"/three/domains", "alice", domainBody("pending.retail.it")), http.StatusCreated, "")
+
+	addresses := func() map[string]string {
+		e.t.Helper()
+		rec := e.do(http.MethodGet, base, "alice", "")
+		e.want(rec, http.StatusOK, "")
+		var list openapi.AppList
+		if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil {
+			e.t.Fatalf("lista non valida: %v: %s", err, rec.Body.String())
+		}
+		got := make(map[string]string, len(list.Items))
+		for _, item := range list.Items {
+			if item.PublicAddress == nil {
+				e.t.Fatalf("%s senza publicAddress", item.Name)
+			}
+			got[item.Name] = *item.PublicAddress
+			oneRec := e.do(http.MethodGet, base+"/"+item.Name, "alice", "")
+			e.want(oneRec, http.StatusOK, "")
+			var single openapi.App
+			if err := json.Unmarshal(oneRec.Body.Bytes(), &single); err != nil {
+				e.t.Fatalf("app %s non valida: %v", item.Name, err)
+			}
+			if single.PublicAddress == nil || *single.PublicAddress != *item.PublicAddress {
+				e.t.Fatalf("ListApps e GET singola per %s: %v vs %v", item.Name, item.PublicAddress, single.PublicAddress)
+			}
+		}
+		if len(got) != 3 {
+			e.t.Fatalf("attese tre app, trovate: %+v", got)
+		}
+		return got
+	}
+	got := addresses()
+	if got["one"] != "https://one.retail.it" || got["two"] != "https://first.retail.it" || got["three"] != auto["three"] {
+		t.Fatalf("publicAddress per app (verified singolo, primo verified, pending): %+v", got)
+	}
+
+	e.want(e.do(http.MethodPut, "/admin/apps/settings", "carol", publicSettings(false)), http.StatusOK, "")
+	for name, address := range addresses() {
+		if address != auto[name] {
+			t.Fatalf("interruttore spento: %s = %s, atteso %s", name, address, auto[name])
+		}
 	}
 }
