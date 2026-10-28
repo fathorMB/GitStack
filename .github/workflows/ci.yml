@@ -278,7 +278,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: shellcheck
-        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/apps_domain_test.sh deploy/tests/traefik_metrics_test.sh deploy/tests/ci_install_test.sh deploy/tests/v5_verify_test.sh deploy/tests/release_changelog_test.sh deploy/tests/network_test.sh deploy/tests/k3s_script_test.sh deploy/tests/chart_hardening_test.sh deploy/tests/apps_priority_probe.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh deploy/test-vm/e2e/gs-app-restore.sh deploy/ci/install-e2e.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh scripts/ci/retry.sh deploy/ci/runner-e2e.sh deploy/ci/autodeploy-e2e.sh deploy/ci-runner/gitstack-build
+        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/apps_domain_test.sh deploy/tests/traefik_metrics_test.sh deploy/tests/ci_install_test.sh deploy/tests/v5_verify_test.sh deploy/tests/release_changelog_test.sh deploy/tests/network_test.sh deploy/tests/k3s_script_test.sh deploy/tests/chart_hardening_test.sh deploy/tests/apps_priority_probe.sh deploy/tests/acme_pebble_k3d_test.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh deploy/test-vm/e2e/gs-app-restore.sh deploy/ci/install-e2e.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh scripts/ci/retry.sh deploy/ci/runner-e2e.sh deploy/ci/autodeploy-e2e.sh deploy/ci-runner/gitstack-build
 
       # Preflight di install.sh (GIT-144): profili minimo e consigliato di N1,
       # sistema non supportato, verifica del nome host. Senza root né VM.

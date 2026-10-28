@@ -41,6 +41,13 @@ const (
 	// Indirizzo delle metriche Prometheus di Traefik (entrypoint interno `metrics`, GIT-403): da lì
 	// vengono richieste ed errori 5xx. Vuoto: richieste ed errori restano non disponibili.
 	envAppsTraefikMetricsURL = "GITSTACK_CORE_APPS_TRAEFIK_METRICS_URL"
+	// Let's Encrypt per i domini propri (v3-c, GIT-459). La configurazione ACME è una sola, quella del
+	// resolver di Traefik scritto dall'installer: core ne sa il nome (RESOLVER; vuoto = spento),
+	// l'email dell'installazione (EMAIL, sola lettura) e dove leggere il certificato servito (TLS_ADDR,
+	// host:porta dell'entrypoint websecure di Traefik).
+	envAppsACMEResolver = "GITSTACK_CORE_APPS_ACME_RESOLVER"
+	envAppsACMEEmail    = "GITSTACK_CORE_APPS_ACME_EMAIL"
+	envAppsACMETLSAddr  = "GITSTACK_CORE_APPS_ACME_TLS_ADDR"
 	// ServiceAccount di core (`namespace/nome`) e ClusterRole modello dei permessi sull'app: con
 	// entrambi il controller crea un RoleBinding in ogni namespace delle app (ADR 0002).
 	envAppsControllerSA = "GITSTACK_CORE_APPS_CONTROLLER_SA"
@@ -82,7 +89,9 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, eg
 	cfg := apps.Config{AppsDomain: domain, AuthURL: strings.TrimSpace(os.Getenv(envAppsAuthURL)), AuthSecret: trust.SigningKey(gatewaySecret), Secrets: secrets, Log: logger,
 		ControllerServiceAccount: strings.TrimSpace(os.Getenv(envAppsControllerSA)), WorkloadRole: strings.TrimSpace(os.Getenv(envAppsWorkloadRole)),
 		EgressClusterCIDRs: egressCluster, EgressNodeAddresses: egressNode, EgressDeny: egressDeny, ProxyEnv: apps.ProxyEnvFrom(os.Getenv), TraefikNamespace: strings.TrimSpace(os.Getenv(envAppsTraefikNamespace)), GateImage: strings.TrimSpace(os.Getenv(envAppsGateImage)),
-		TraefikMetricsURL: strings.TrimSpace(os.Getenv(envAppsTraefikMetricsURL))}
+		TraefikMetricsURL: strings.TrimSpace(os.Getenv(envAppsTraefikMetricsURL)),
+		ACME: apps.ACMEConfig{Resolver: strings.TrimSpace(os.Getenv(envAppsACMEResolver)), Email: strings.TrimSpace(os.Getenv(envAppsACMEEmail)),
+			TLSAddr: strings.TrimSpace(os.Getenv(envAppsACMETLSAddr))}}
 	if v, err := strconv.Atoi(strings.TrimSpace(os.Getenv(envAppsProgressTimeout))); err == nil && v > 0 {
 		cfg.ProgressTimeout = time.Duration(v) * time.Second
 	}

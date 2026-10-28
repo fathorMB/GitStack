@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
@@ -49,7 +50,7 @@ func (s *apiServer) GetAdminAppsSettings(w http.ResponseWriter, r *http.Request)
 		appInternalError(w, "lettura delle impostazioni delle app", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, openapi.AppsInstanceSettings{AppsDomain: appStringPtr(s.appsDomain), AppsDomainIsDefault: appBoolPtr(s.appsDomain == ""), MaxPerApp: openapi.AppResourceAmount{CpuMillis: c.Max.CPUMillis, MemoryBytes: c.Max.MemoryBytes}, PublicAppsEnabled: publicOn, SignedImagesOnly: signedOnly, Restricted: false, LogRetention: openapi.AppLogRetention{Days: 7, MaxBytes: 1 << 30}})
+	writeJSON(w, http.StatusOK, openapi.AppsInstanceSettings{AppsDomain: appStringPtr(s.appsDomain), AppsDomainIsDefault: appBoolPtr(s.appsDomain == ""), MaxPerApp: openapi.AppResourceAmount{CpuMillis: c.Max.CPUMillis, MemoryBytes: c.Max.MemoryBytes}, PublicAppsEnabled: publicOn, SignedImagesOnly: signedOnly, Restricted: false, LogRetention: openapi.AppLogRetention{Days: 7, MaxBytes: 1 << 30}, LetsEncrypt: s.appsLetsEncrypt(r.Context(), publicOn)})
 }
 
 func (s *apiServer) UpdateAdminAppsSettings(w http.ResponseWriter, r *http.Request) {
@@ -64,6 +65,23 @@ func (s *apiServer) UpdateAdminAppsSettings(w http.ResponseWriter, r *http.Reque
 	if in.MaxPerApp.CpuMillis < 1 || in.MaxPerApp.MemoryBytes < 1 {
 		writeFieldError(w, "maxPerApp", "CPU e memoria devono essere positive.")
 		return
+	}
+	// Let's Encrypt (v3-c, GIT-459): l'email ACME è quella dell'installazione (la config di Traefik è
+	// una sola, quella dell'installer), quindi da qui non si cambia: un valore diverso è rifiutato.
+	if cfg, _, ok := s.acmeStatus(); in.AcmeEmail != nil && ok {
+		if !strings.EqualFold(string(*in.AcmeEmail), cfg.Email) {
+			writeFieldError(w, "acmeEmail", "l'email ACME si imposta all'installazione (--tls-email): qui è solo in lettura")
+			return
+		}
+	}
+	var publicIPs []string
+	setIPs := in.PublicIps != nil
+	if setIPs {
+		var why string
+		if publicIPs, why = validatePublicIPs(*in.PublicIps); why != "" {
+			writeFieldError(w, "publicIps", why)
+			return
+		}
 	}
 	if in.Restricted {
 		writeFieldError(w, "restricted", "non ancora configurabile")
@@ -96,9 +114,15 @@ func (s *apiServer) UpdateAdminAppsSettings(w http.ResponseWriter, r *http.Reque
 		appInternalError(w, "aggiornamento delle app pubbliche", err)
 		return
 	}
+	if setIPs {
+		if err := s.resources.SetPublicIPs(r.Context(), publicIPs); err != nil {
+			appInternalError(w, "aggiornamento degli IP pubblici", err)
+			return
+		}
+	}
 	if changed && s.appCtl != nil {
 		s.appCtl.Kick()
 	}
 	publicOn := in.PublicAppsEnabled
-	writeJSON(w, http.StatusOK, openapi.AppsInstanceSettings{AppsDomain: appStringPtr(s.appsDomain), AppsDomainIsDefault: appBoolPtr(s.appsDomain == ""), MaxPerApp: openapi.AppResourceAmount{CpuMillis: c.Max.CPUMillis, MemoryBytes: c.Max.MemoryBytes}, PublicAppsEnabled: publicOn, SignedImagesOnly: signedOnly, Restricted: false, LogRetention: openapi.AppLogRetention{Days: 7, MaxBytes: 1 << 30}})
+	writeJSON(w, http.StatusOK, openapi.AppsInstanceSettings{AppsDomain: appStringPtr(s.appsDomain), AppsDomainIsDefault: appBoolPtr(s.appsDomain == ""), MaxPerApp: openapi.AppResourceAmount{CpuMillis: c.Max.CPUMillis, MemoryBytes: c.Max.MemoryBytes}, PublicAppsEnabled: publicOn, SignedImagesOnly: signedOnly, Restricted: false, LogRetention: openapi.AppLogRetention{Days: 7, MaxBytes: 1 << 30}, LetsEncrypt: s.appsLetsEncrypt(r.Context(), publicOn)})
 }

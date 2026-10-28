@@ -85,17 +85,34 @@ func (c *Controller) RefreshRoute(ctx context.Context, app store.App) {
 // domainHosts sono gli host dei domini propri da aggiungere alla rotta dell'app: solo i domini con
 // DNS verified (anche in periodo di grazia), e solo per un'app pubblica. Chiamata solo da ensureRoute,
 // dopo il controllo dell'interruttore d'istanza.
-func (c *Controller) domainHosts(ctx context.Context, app store.App) ([]string, error) {
+//
+// Ritorna due insiemi: own, gli host che restano nella rotta dell'indirizzo automatico (certificato
+// caricato dal cliente, o tutti se Let's Encrypt è spento), e acme, gli host con certificato Let's
+// Encrypt, che vanno nella rotta col resolver (BuildDomainsRoute). Senza resolver acme è vuoto.
+func (c *Controller) domainHosts(ctx context.Context, app store.App) (own, acme []string, err error) {
 	if app.Access != "public" {
-		return nil, nil
+		return nil, nil, nil
+	}
+	if !c.cfg.ACME.Enabled() {
+		if c.domainsOf != nil {
+			own, err = c.domainsOf(ctx, app)
+		} else if c.st != nil {
+			own, err = c.st.VerifiedDomainHosts(ctx, app.ID)
+		}
+		return own, nil, err
 	}
 	if c.domainsOf != nil {
-		return c.domainsOf(ctx, app)
+		acme, err = c.domainsOf(ctx, app)
+		return nil, acme, err
 	}
 	if c.st == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
-	return c.st.VerifiedDomainHosts(ctx, app.ID)
+	if acme, err = c.st.VerifiedDomainHostsMode(ctx, app.ID, "letsencrypt"); err != nil {
+		return nil, nil, err
+	}
+	own, err = c.st.VerifiedDomainHostsMode(ctx, app.ID, "custom")
+	return own, acme, err
 }
 
 // routeMatch è la regola Traefik della rotta: l'indirizzo automatico e, in ordine, i domini propri attivi.

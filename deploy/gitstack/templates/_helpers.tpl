@@ -425,6 +425,12 @@ ServiceAccount di core: ci-dispatcher se la CI è accesa (stesso account, un sol
 {{- default (printf "http://traefik-metrics.%s.svc.cluster.local:%d/metrics" .Values.networkPolicy.ingressNamespace (.Values.apps.traefikMetrics.port | int)) .Values.apps.traefikMetrics.url -}}
 {{- end -}}
 
+{{/* Dove core legge il certificato servito da Traefik per un dominio (GITSTACK_CORE_APPS_ACME_TLS_ADDR,
+     GIT-459): il Service `traefik` del chart Traefik di k3s, porta 443 (websecure). */}}
+{{- define "gitstack.apps.acmeTLSAddr" -}}
+{{- default (printf "traefik.%s.svc.cluster.local:443" .Values.networkPolicy.ingressNamespace) .Values.apps.acme.tlsAddr -}}
+{{- end -}}
+
 {{/* Secret con le chiavi di firma del login delle app (del chart, o apps.signingKeys.existingSecret). */}}
 {{- define "gitstack.apps.signingKeysSecret" -}}
 {{- default (printf "%s-gateway-appauth-keys" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-") .Values.apps.signingKeys.existingSecret -}}

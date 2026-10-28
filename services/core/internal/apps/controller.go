@@ -108,6 +108,8 @@ type Config struct {
 	// di Traefik; nil legge TraefikMetricsURL. Vuoti entrambi: richieste ed errori non disponibili.
 	TraefikMetrics    TraefikMetricsReader
 	TraefikMetricsURL string
+	// ACME: Let's Encrypt per i domini propri (GIT-459); la configurazione vera è quella di Traefik.
+	ACME ACMEConfig
 	// LogRetention: per quanto si tengono le righe (default 7 giorni); LogMaxBytes: per app (default 1 GiB).
 	LogRetention time.Duration
 	LogMaxBytes  int64
@@ -170,8 +172,9 @@ type Controller struct {
 	// domainsOf e' il seam dei test per i domini propri attivi dell'app; nil = li legge lo store.
 	domainsOf func(context.Context, store.App) ([]string, error)
 
+	acme    acmeState
 	kick    chan struct{}
-	mu      sync.Mutex
+	mu     sync.Mutex
 	running map[uuid.UUID]bool
 	// oomSeen: ultimo riavvio per OOM già registrato, per app e copia (mu).
 	oomSeen map[uuid.UUID]map[string]int32
@@ -186,6 +189,7 @@ func New(st *store.Store, kube kubernetes.Interface, dyn dynamic.Interface, cfg 
 	cfg.defaults()
 	c := &Controller{st: st, kube: kube, dyn: dyn, cfg: cfg, kick: make(chan struct{}, 1),
 		running: map[uuid.UUID]bool{}, oomSeen: map[uuid.UUID]map[string]int32{}, traffic: map[uuid.UUID]trafficCounters{}}
+	c.acme.issuing = map[uuid.UUID]time.Time{}
 	if st != nil {
 		c.siblings = st.ListApps
 		c.versionOf = func(ctx context.Context, a store.App) (store.AppVersion, error) {
@@ -208,7 +212,7 @@ func (c *Controller) Kick() {
 func (c *Controller) Run(ctx context.Context) {
 	tick := time.NewTicker(c.cfg.LoopInterval)
 	defer tick.Stop()
-	var lastSync, lastCollect, lastLogs, lastMetrics, lastPrune, lastDomains time.Time
+	var lastSync, lastCollect, lastLogs, lastMetrics, lastPrune, lastDomains, lastCerts time.Time
 	for {
 		c.processPending(ctx)
 		if now := time.Now(); now.Sub(lastSync) >= c.cfg.SyncEvery {
@@ -230,6 +234,11 @@ func (c *Controller) Run(ctx context.Context) {
 		if now := time.Now(); now.Sub(lastDomains) >= time.Minute {
 			lastDomains = now
 			c.CheckDomains(ctx)
+			c.CheckPort80(ctx)
+		}
+		if now := time.Now(); now.Sub(lastCerts) >= certProbeEvery {
+			lastCerts = now
+			c.CheckCertificates(ctx)
 		}
 		if now := time.Now(); now.Sub(lastPrune) >= time.Minute {
 			lastPrune = now
@@ -817,8 +826,8 @@ func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.A
 		}
 	}
 	if host == "" {
-		err := routes.Delete(ctx, WorkloadName, metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsNotFound(err) { // NotFound: niente rotta, oppure le CRD di Traefik non ci sono
+		err := deleteRoutes(ctx, routes)
+		if err != nil {
 			if readErr != nil {
 				return errors.Join(readErr, err)
 			}
@@ -839,11 +848,34 @@ func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.A
 	} else if err := ns.Delete(ctx, MiddlewareAuth, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("middleware %s: %w", MiddlewareAuth, err)
 	}
-	extra, err := c.domainHosts(ctx, app)
+	extra, acmeHosts, err := c.domainHosts(ctx, app)
 	if err != nil {
 		return fmt.Errorf("lettura dei domini propri: %w", err)
 	}
-	return upsert(ctx, routes, BuildRoute(app, host, login, extra...))
+	if err := upsert(ctx, routes, BuildRoute(app, host, login, extra...)); err != nil {
+		return err
+	}
+	// Domini con certificato Let's Encrypt: una rotta propria col resolver di Traefik (GIT-459). Senza
+	// domini la rotta si toglie.
+	if len(acmeHosts) == 0 {
+		if err := routes.Delete(ctx, DomainsRouteName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}
+	return upsert(ctx, routes, BuildDomainsRoute(app, acmeHosts, login, c.cfg.ACME.Resolver))
+}
+
+// deleteRoutes toglie le rotte pubbliche dell'app (indirizzo automatico e domini propri). NotFound:
+// niente rotta, oppure le CRD di Traefik non ci sono.
+func deleteRoutes(ctx context.Context, routes dynamic.ResourceInterface) error {
+	var errs []error
+	for _, name := range []string{WorkloadName, DomainsRouteName} {
+		if err := routes.Delete(ctx, name, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // upsert crea l'oggetto o ne aggiorna lo spec e le label, solo se cambiano (il ciclo di sync lo

@@ -190,6 +190,11 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.apps.traefikMetrics.port | int }}
+        {{- if .Values.apps.acme.resolver }}
+        # Let's Encrypt dei domini propri (GIT-459): core legge il certificato servito su websecure.
+        - protocol: TCP
+          port: 443
+        {{- end }}
 {{- end }}
 {{- if .Values.core.enabled }}
 ---
