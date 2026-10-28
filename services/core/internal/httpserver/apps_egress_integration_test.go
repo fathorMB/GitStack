@@ -79,9 +79,8 @@ func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
 		}
 	}
 	create(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "node-listener", Namespace: systemNS},
-		Spec: corev1.PodSpec{HostNetwork: true, RestartPolicy: corev1.RestartPolicyAlways,
-			Containers: []corev1.Container{{Name: "server", Image: "busybox:1.36", Command: []string{"sh", "-c", "httpd -f -p 18080 -h /tmp"}}}}})
-	waitPodIP(t, e.kube, systemNS, "node-listener")
+		Spec: nodeListenerSpec(18080)})
+	waitNodeListener(t, e.kube, systemNS, 18080)
 	create(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "other", Namespace: apps.Namespace(other.ID), Labels: map[string]string{apps.LabelManaged: "true"}},
 		Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyAlways,
 			Containers: []corev1.Container{{Name: "server", Image: "busybox:1.36", Command: []string{"sh", "-c", "httpd -f -p 8080 -h /tmp"}}}}})
@@ -143,6 +142,52 @@ func TestApps_BarriereInUscitaSuK3d(t *testing.T) {
 	probe(appNS, "pod-altro-repo", otherIP, 8080, false)
 }
 
+// Ogni porta ha un container distinto: un bind fallito termina il pod e non puo
+// essere mascherato dall'altro listener. La readiness verifica la porta sul nodo.
+func nodeListenerSpec(ports ...int) corev1.PodSpec {
+	zero := int64(0)
+	spec := corev1.PodSpec{HostNetwork: true, RestartPolicy: corev1.RestartPolicyNever, TerminationGracePeriodSeconds: &zero}
+	for _, port := range ports {
+		spec.Containers = append(spec.Containers, corev1.Container{
+			Name: fmt.Sprintf("listener-%d", port), Image: "busybox:1.36",
+			Command:        []string{"sh", "-c", fmt.Sprintf("httpd -f -p %d -h /tmp || { echo 'listener non in ascolto su :%d'; exit 1; }", port, port)},
+			ReadinessProbe: &corev1.Probe{ProbeHandler: corev1.ProbeHandler{Exec: &corev1.ExecAction{Command: []string{"sh", "-c", fmt.Sprintf("nc -z -w 1 127.0.0.1 %d", port)}}}, PeriodSeconds: 1},
+		})
+	}
+	return spec
+}
+
+func waitNodeListener(t *testing.T, kube kubernetes.Interface, ns string, ports ...int) {
+	t.Helper()
+	deadline := time.Now().Add(90 * time.Second)
+	for time.Now().Before(deadline) {
+		p, err := kube.CoreV1().Pods(ns).Get(context.Background(), "node-listener", metav1.GetOptions{})
+		if err == nil {
+			ready := len(p.Status.ContainerStatuses) == len(ports)
+			for _, port := range ports {
+				name := fmt.Sprintf("listener-%d", port)
+				found := false
+				for _, status := range p.Status.ContainerStatuses {
+					if status.Name == name {
+						found = true
+						if status.State.Terminated != nil {
+							log, _ := kube.CoreV1().Pods(ns).GetLogs("node-listener", &corev1.PodLogOptions{Container: name}).DoRaw(context.Background())
+							t.Fatalf("listener non in ascolto su :%d: %s", port, strings.TrimSpace(string(log)))
+						}
+						ready = ready && status.Ready
+					}
+				}
+				ready = ready && found
+			}
+			if ready {
+				return
+			}
+		}
+		time.Sleep(time.Second)
+	}
+	t.Fatalf("listener non in ascolto su una delle porte %v (timeout)", ports)
+}
+
 // ncProbeScript ritenta solo i probe positivi che partono dopo il gate: kube-router
 // può aver chiuso il deny prima di installare il permesso atteso.
 func ncProbeScript(host string, port int, retry bool, ok, ko string) string {
@@ -184,20 +229,12 @@ func diagNodeRules(t *testing.T, kube kubernetes.Interface, ns, name, moment str
 	if _, done := diagNodeOnce.LoadOrStore("live/"+ns+"/"+name+"/"+moment, true); done {
 		return
 	}
-	var phase, ip, nodeIP string
+	var phase, ip string
 	if p, err := kube.CoreV1().Pods(ns).Get(context.Background(), name, metav1.GetOptions{}); err == nil {
 		phase, ip = string(p.Status.Phase), p.Status.PodIP
-		if n, err := kube.CoreV1().Nodes().Get(context.Background(), p.Spec.NodeName, metav1.GetOptions{}); err == nil {
-			for _, a := range n.Status.Addresses {
-				if a.Type == corev1.NodeInternalIP {
-					nodeIP = a.Address
-					break
-				}
-			}
-		}
 	}
 	out, err := exec.Command("docker", "exec", node, "sh", "-c",
-		`echo 'iptables-save -c:'; iptables-save -c | grep -i -E 'KUBE-NWPLCY|KUBE-POD-FW|KUBE-ROUTER-(INPUT|FORWARD|OUTPUT)'; echo 'ipset:'; ipset list 2>&1; echo 'conntrack:'; if [ -n "$1" ] && command -v conntrack >/dev/null 2>&1; then conntrack -L -s "$1" 2>&1; else echo 'conntrack o IP pod non disponibile'; fi; echo "listener $2:18080:"; if [ -n "$2" ]; then nc -w 1 "$2" 18080 </dev/null 2>&1; echo "nc exit=$?"; else echo 'IP nodo non disponibile'; fi`, "diag", ip, nodeIP).CombinedOutput()
+		`echo 'iptables-save -c:'; iptables-save -c | grep -i -E 'KUBE-NWPLCY|KUBE-POD-FW|KUBE-ROUTER-(INPUT|FORWARD|OUTPUT)'; echo 'ipset:'; ipset list 2>&1; echo 'conntrack:'; if [ -n "$1" ] && command -v conntrack >/dev/null 2>&1; then conntrack -L -s "$1" 2>&1; else echo 'conntrack o IP pod non disponibile'; fi`, "diag", ip).CombinedOutput()
 	t.Logf("probe %s/%s: %s, nodo con pod fase=%s ip=%s (err=%v):\n%s", ns, name, moment, phase, ip, err, out)
 }
 
