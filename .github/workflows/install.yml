@@ -434,6 +434,21 @@ jobs:
           set -uo pipefail
           extra=()
           if [ -n "${UPGRADE_UNSIGNED_FLAG}" ]; then extra+=("${UPGRADE_UNSIGNED_FLAG}"); fi
+          # GIT-482: il rollback lo esegue il binario che lancia l'upgrade, cioè quello installato
+          # dal commit PRECEDENTE (install.sh, PREV_SHA): un fix del rollback non c'è finché quel
+          # commit non lo contiene (run 40630162371: nessuna riga di clearStaleServiceAccounts).
+          # Per provare il rollback del commit in prova si installa il suo binario (stessa release
+          # che scarica l'upgrade) e alla fine si rimette quello di prima, così il passo
+          # «gitstack upgrade (con la CI)» sotto resta un vero aggiornamento vecchio → nuovo.
+          exe="$(command -v gitstack)"
+          bindir="$(mktemp -d)"
+          sudo cp -p "${exe}" "${bindir}/gitstack.prev"
+          restore_exe() { sudo cp -p "${bindir}/gitstack.prev" "${exe}"; }
+          trap restore_exe EXIT
+          gh release download "sha-${GITHUB_SHA}" --repo "${GITHUB_REPOSITORY}" --pattern 'gitstack-linux-amd64*' --dir "${bindir}" --clobber
+          (cd "${bindir}" && sha256sum -c gitstack-linux-amd64.sha256)
+          sudo install -m 0755 "${bindir}/gitstack-linux-amd64" "${exe}"
+          echo "binario in uso per il rollback: sha-${GITHUB_SHA} ($(sudo "${exe}" version 2>&1 | head -n1))"
           sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --timeout 6m             --set ci.enabled=true --set ci.capacity=1 --set gateway.env.coreTimeout=guasto-git477 "${extra[@]}"
           rc=$?
           if [ "${rc}" -ne 7 ]; then
