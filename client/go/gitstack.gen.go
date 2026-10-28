@@ -3498,6 +3498,44 @@ type AdminAppList struct {
 	Total int        `json:"total"`
 }
 
+// AdminPublicApp Riga dell'elenco admin delle app pubbliche (H1, H9, v3-c).
+type AdminPublicApp struct {
+	// Address Indirizzo automatico (H2).
+	Address *string `json:"address,omitempty"`
+
+	// Domains Domini propri, dal piu' vecchio; `verified` vuol dire dominio attivo.
+	Domains []AdminPublicAppDomain `json:"domains"`
+
+	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
+	Name  AppName `json:"name"`
+	Owner string  `json:"owner"`
+
+	// PublicAddress Indirizzo con cui l'app si apre da internet: il dominio verificato piu' vecchio, altrimenti l'indirizzo automatico.
+	PublicAddress *string `json:"publicAddress"`
+	Repo          string  `json:"repo"`
+
+	// Status Stato osservato: `starting` (nessuna copia ancora sana), `running`, `restarting`, `unhealthy` (alcune copie non sane), `failed` (nessuna versione parte), `stopped` (fermata a mano o per il repo, vedi `stoppedReason`).
+	Status AppStatus `json:"status"`
+}
+
+// AdminPublicAppDomain Dominio proprio di un'app pubblica, con stato del DNS e del certificato (v3-c).
+type AdminPublicAppDomain struct {
+	Certificate AppDomainCertificate `json:"certificate"`
+
+	// Domain Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`).
+	Domain AppDomainName `json:"domain"`
+
+	// Status Stato del dominio (v3-c): `pending_dns` il record atteso non c'e' ancora, `verified` il DNS punta a GitStack, `error` il DNS risponde altro (motivo in `statusReason`).
+	Status       AppDomainStatus `json:"status"`
+	StatusReason *string         `json:"statusReason,omitempty"`
+}
+
+// AdminPublicAppList defines model for AdminPublicAppList.
+type AdminPublicAppList struct {
+	Items []AdminPublicApp `json:"items"`
+	Total int              `json:"total"`
+}
+
 // AdminSystem Stato dell'installazione per Admin · System (mockup 16). Nessun segreto. `published` dice se l'host ha pubblicato le sue informazioni: se no, le sezioni dell'host hanno `configured: false` o stati `none`.
 type AdminSystem struct {
 	// Access Come si raggiunge GitStack. Nessun segreto.
@@ -3754,6 +3792,9 @@ type App struct {
 
 	// Port Porta del container. Null per un'app senza indirizzo (worker).
 	Port *int `json:"port,omitempty"`
+
+	// PublicAddress Indirizzo con cui l'app si apre (v3-c), visibile a chi legge l'app: il dominio proprio verificato piu' vecchio se l'app e' `public` e le app pubbliche sono abilitate, altrimenti l'indirizzo automatico. Null per un'app senza indirizzo.
+	PublicAddress *string `json:"publicAddress,omitempty"`
 
 	// ReadyCopies Copie sane.
 	ReadyCopies int    `json:"readyCopies"`
@@ -9471,6 +9512,13 @@ type ClientInterface interface {
 	// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
 	UpdateAdminAppsEgress(ctx context.Context, body UpdateAdminAppsEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListAdminPublicApps Elenca le app pubbliche dell'istanza con dominio attivo e certificato (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H1, H9): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Una sola chiamata per la console Admin · Apps & resources (v3-c): le app con accesso `public`, ciascuna con repo, indirizzo pubblico (dominio verificato o indirizzo automatico) e domini propri con stato del DNS e del certificato. Con l'interruttore d'istanza spento l'elenco e' vuoto: le app non sono esposte.
+	//
+	// Corresponds with GET /admin/apps/public (the `ListAdminPublicApps` operationId).
+	ListAdminPublicApps(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListAdminAppOwnerQuotas Elenca le quote delle app per owner (solo amministratore)
 	//
 	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Le quote contano sull'owner del repo (H5, H11): CPU e RAM garantite e disco dei volumi, con l'uso e l'avviso all'80%. Compaiono gli owner con almeno un'app o una quota impostata.
@@ -12880,6 +12928,23 @@ func (c *Client) UpdateAdminAppsEgressWithBody(ctx context.Context, contentType 
 // Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
 func (c *Client) UpdateAdminAppsEgress(ctx context.Context, body UpdateAdminAppsEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateAdminAppsEgressRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListAdminPublicApps Elenca le app pubbliche dell'istanza con dominio attivo e certificato (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H1, H9): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Una sola chiamata per la console Admin · Apps & resources (v3-c): le app con accesso `public`, ciascuna con repo, indirizzo pubblico (dominio verificato o indirizzo automatico) e domini propri con stato del DNS e del certificato. Con l'interruttore d'istanza spento l'elenco e' vuoto: le app non sono esposte.
+//
+// Corresponds with GET /admin/apps/public (the `ListAdminPublicApps` operationId).
+func (c *Client) ListAdminPublicApps(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAdminPublicAppsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -20705,6 +20770,33 @@ func NewUpdateAdminAppsEgressRequestWithBody(server string, contentType string, 
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListAdminPublicAppsRequest constructs an http.Request for the ListAdminPublicApps method
+func NewListAdminPublicAppsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps/public")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -38781,6 +38873,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
 	UpdateAdminAppsEgressWithResponse(ctx context.Context, body UpdateAdminAppsEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAdminAppsEgressResponse, error)
 
+	// ListAdminPublicAppsWithResponse Elenca le app pubbliche dell'istanza con dominio attivo e certificato (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H1, H9): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Una sola chiamata per la console Admin · Apps & resources (v3-c): le app con accesso `public`, ciascuna con repo, indirizzo pubblico (dominio verificato o indirizzo automatico) e domini propri con stato del DNS e del certificato. Con l'interruttore d'istanza spento l'elenco e' vuoto: le app non sono esposte.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/apps/public (the `ListAdminPublicApps` operationId).
+	ListAdminPublicAppsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAdminPublicAppsResponse, error)
+
 	// ListAdminAppOwnerQuotasWithResponse Elenca le quote delle app per owner (solo amministratore)
 	//
 	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Le quote contano sull'owner del repo (H5, H11): CPU e RAM garantite e disco dei volumi, con l'uso e l'avviso all'80%. Compaiono gli owner con almeno un'app o una quota impostata.
@@ -42808,6 +42909,61 @@ func (r UpdateAdminAppsEgressResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateAdminAppsEgressResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListAdminPublicAppsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminPublicAppList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAdminPublicAppsResponse) GetJSON200() *AdminPublicAppList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListAdminPublicAppsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListAdminPublicAppsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAdminPublicAppsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAdminPublicAppsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAdminPublicAppsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAdminPublicAppsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -67075,6 +67231,21 @@ func (c *ClientWithResponses) UpdateAdminAppsEgressWithResponse(ctx context.Cont
 	return ParseUpdateAdminAppsEgressResponse(rsp)
 }
 
+// ListAdminPublicAppsWithResponse Elenca le app pubbliche dell'istanza con dominio attivo e certificato (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H1, H9): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Una sola chiamata per la console Admin · Apps & resources (v3-c): le app con accesso `public`, ciascuna con repo, indirizzo pubblico (dominio verificato o indirizzo automatico) e domini propri con stato del DNS e del certificato. Con l'interruttore d'istanza spento l'elenco e' vuoto: le app non sono esposte.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/apps/public (the `ListAdminPublicApps` operationId).
+func (c *ClientWithResponses) ListAdminPublicAppsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAdminPublicAppsResponse, error) {
+	rsp, err := c.ListAdminPublicApps(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAdminPublicAppsResponse(rsp)
+}
+
 // ListAdminAppOwnerQuotasWithResponse Elenca le quote delle app per owner (solo amministratore)
 //
 // Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Le quote contano sull'owner del repo (H5, H11): CPU e RAM garantite e disco dei volumi, con l'uso e l'avviso all'80%. Compaiono gli owner con almeno un'app o una quota impostata.
@@ -73639,6 +73810,46 @@ func ParseUpdateAdminAppsEgressResponse(rsp *http.Response) (*UpdateAdminAppsEgr
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAdminPublicAppsResponse parses an HTTP response from a ListAdminPublicAppsWithResponse call
+func ParseListAdminPublicAppsResponse(rsp *http.Response) (*ListAdminPublicAppsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAdminPublicAppsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminPublicAppList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
 	}
 

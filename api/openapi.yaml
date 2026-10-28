@@ -10727,6 +10727,26 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/apps/public:
+    get:
+      operationId: listAdminPublicApps
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: admin_public_app_list
+        destructive: false
+      summary: "Elenca le app pubbliche dell'istanza con dominio attivo e certificato (solo amministratore)"
+      description: >
+        Solo l'amministratore dell'installazione (H1, H9): lo scope da solo non basta, gli altri ricevono
+        403 `forbidden`. Una sola chiamata per la console Admin · Apps & resources (v3-c): le app con
+        accesso `public`, ciascuna con repo, indirizzo pubblico (dominio verificato o indirizzo automatico)
+        e domini propri con stato del DNS e del certificato. Con l'interruttore d'istanza spento l'elenco
+        e' vuoto: le app non sono esposte.
+      responses:
+        "200": {description: "App pubbliche dell'istanza.", content: {application/json: {schema: {$ref: "#/components/schemas/AdminPublicAppList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
   /admin/apps/capacity:
     get:
       operationId: getAdminAppsCapacity
@@ -17634,6 +17654,7 @@ components:
         runningPreviousVersion: {type: boolean, description: "Il deploy dell'ultima versione e' fallito e serve ancora la precedente."}
         access: {$ref: "#/components/schemas/AppAccessMode"}
         address: {type: string, format: uri, nullable: true, description: "Indirizzo automatico (H2); assente per un'app senza indirizzo, raggiungibile solo dalle app dello stesso repo."}
+        publicAddress: {type: string, format: uri, nullable: true, readOnly: true, description: "Indirizzo con cui l'app si apre (v3-c), visibile a chi legge l'app: il dominio proprio verificato piu' vecchio se l'app e' `public` e le app pubbliche sono abilitate, altrimenti l'indirizzo automatico. Null per un'app senza indirizzo."}
         image: {$ref: "#/components/schemas/AppImage"}
         activeVersion: {type: integer, description: "Numero della versione che serve il traffico."}
         follow: {allOf: [{$ref: "#/components/schemas/AppFollow"}], nullable: true, type: object}
@@ -18249,6 +18270,36 @@ components:
         runsAsRoot: {type: boolean, nullable: true}
         aboveGuaranteed: {type: boolean, description: "Sta usando piu' della parte garantita: e' il primo a essere rallentato."}
         violatesInstanceRules: {type: boolean, description: "Non rispetta `restricted` o `signedImagesOnly` d'istanza (valgono dal deploy successivo)."}
+    AdminPublicAppDomain:
+      type: object
+      description: Dominio proprio di un'app pubblica, con stato del DNS e del certificato (v3-c).
+      additionalProperties: false
+      required: [domain, status, certificate]
+      properties:
+        domain: {$ref: "#/components/schemas/AppDomainName"}
+        status: {$ref: "#/components/schemas/AppDomainStatus"}
+        statusReason: {type: string, nullable: true}
+        certificate: {$ref: "#/components/schemas/AppDomainCertificate"}
+    AdminPublicApp:
+      type: object
+      description: Riga dell'elenco admin delle app pubbliche (H1, H9, v3-c).
+      additionalProperties: false
+      required: [owner, repo, name, status, publicAddress, domains]
+      properties:
+        owner: {type: string}
+        repo: {type: string}
+        name: {$ref: "#/components/schemas/AppName"}
+        status: {$ref: "#/components/schemas/AppStatus"}
+        address: {type: string, format: uri, nullable: true, description: "Indirizzo automatico (H2)."}
+        publicAddress: {type: string, format: uri, nullable: true, description: "Indirizzo con cui l'app si apre da internet: il dominio verificato piu' vecchio, altrimenti l'indirizzo automatico."}
+        domains: {type: array, items: {$ref: "#/components/schemas/AdminPublicAppDomain"}, description: "Domini propri, dal piu' vecchio; `verified` vuol dire dominio attivo."}
+    AdminPublicAppList:
+      type: object
+      additionalProperties: false
+      required: [items, total]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/AdminPublicApp"}}
+        total: {type: integer}
     AdminAppList:
       type: object
       additionalProperties: false

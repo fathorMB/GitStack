@@ -3105,6 +3105,44 @@ type AdminAppList struct {
 	Total int        `json:"total"`
 }
 
+// AdminPublicApp Riga dell'elenco admin delle app pubbliche (H1, H9, v3-c).
+type AdminPublicApp struct {
+	// Address Indirizzo automatico (H2).
+	Address *string `json:"address,omitempty"`
+
+	// Domains Domini propri, dal piu' vecchio; `verified` vuol dire dominio attivo.
+	Domains []AdminPublicAppDomain `json:"domains"`
+
+	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
+	Name  AppName `json:"name"`
+	Owner string  `json:"owner"`
+
+	// PublicAddress Indirizzo con cui l'app si apre da internet: il dominio verificato piu' vecchio, altrimenti l'indirizzo automatico.
+	PublicAddress *string `json:"publicAddress"`
+	Repo          string  `json:"repo"`
+
+	// Status Stato osservato: `starting` (nessuna copia ancora sana), `running`, `restarting`, `unhealthy` (alcune copie non sane), `failed` (nessuna versione parte), `stopped` (fermata a mano o per il repo, vedi `stoppedReason`).
+	Status AppStatus `json:"status"`
+}
+
+// AdminPublicAppDomain Dominio proprio di un'app pubblica, con stato del DNS e del certificato (v3-c).
+type AdminPublicAppDomain struct {
+	Certificate AppDomainCertificate `json:"certificate"`
+
+	// Domain Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`).
+	Domain AppDomainName `json:"domain"`
+
+	// Status Stato del dominio (v3-c): `pending_dns` il record atteso non c'e' ancora, `verified` il DNS punta a GitStack, `error` il DNS risponde altro (motivo in `statusReason`).
+	Status       AppDomainStatus `json:"status"`
+	StatusReason *string         `json:"statusReason,omitempty"`
+}
+
+// AdminPublicAppList defines model for AdminPublicAppList.
+type AdminPublicAppList struct {
+	Items []AdminPublicApp `json:"items"`
+	Total int              `json:"total"`
+}
+
 // AdminSystem Stato dell'installazione per Admin · System (mockup 16). Nessun segreto. `published` dice se l'host ha pubblicato le sue informazioni: se no, le sezioni dell'host hanno `configured: false` o stati `none`.
 type AdminSystem struct {
 	// Access Come si raggiunge GitStack. Nessun segreto.
@@ -3361,6 +3399,9 @@ type App struct {
 
 	// Port Porta del container. Null per un'app senza indirizzo (worker).
 	Port *int `json:"port,omitempty"`
+
+	// PublicAddress Indirizzo con cui l'app si apre (v3-c), visibile a chi legge l'app: il dominio proprio verificato piu' vecchio se l'app e' `public` e le app pubbliche sono abilitate, altrimenti l'indirizzo automatico. Null per un'app senza indirizzo.
+	PublicAddress *string `json:"publicAddress,omitempty"`
 
 	// ReadyCopies Copie sane.
 	ReadyCopies int    `json:"readyCopies"`
@@ -7900,6 +7941,9 @@ type ServerInterface interface {
 	// UpdateAdminAppsEgress Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
 	// (PUT /admin/apps/egress)
 	UpdateAdminAppsEgress(w http.ResponseWriter, r *http.Request)
+	// ListAdminPublicApps Elenca le app pubbliche dell'istanza con dominio attivo e certificato (solo amministratore)
+	// (GET /admin/apps/public)
+	ListAdminPublicApps(w http.ResponseWriter, r *http.Request)
 	// ListAdminAppOwnerQuotas Elenca le quote delle app per owner (solo amministratore)
 	// (GET /admin/apps/quotas)
 	ListAdminAppOwnerQuotas(w http.ResponseWriter, r *http.Request)
@@ -8722,6 +8766,20 @@ func (siw *ServerInterfaceWrapper) UpdateAdminAppsEgress(w http.ResponseWriter, 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateAdminAppsEgress(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAdminPublicApps operation middleware
+func (siw *ServerInterfaceWrapper) ListAdminPublicApps(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAdminPublicApps(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -20107,6 +20165,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/logs", wrapper.GetAppLogs)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/metrics", wrapper.GetAppMetrics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps", wrapper.ListAdminApps)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps/public", wrapper.ListAdminPublicApps)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps/capacity", wrapper.GetAdminAppsCapacity)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/admin/apps/reserve", wrapper.UpdateAdminAppsReserve)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps/quotas", wrapper.ListAdminAppOwnerQuotas)
