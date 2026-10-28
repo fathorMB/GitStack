@@ -124,6 +124,10 @@ spec:
             - name: GITSTACK_CORE_APPS_GATEWAY_INTERNAL_PORT
               value: {{ include "gitstack.apps.gatewayInternalPort" . | quote }}
             {{- end }}
+            # Namespace di Traefik: qui, e solo qui, core scrive i Secret TLS dei certificati del cliente
+            # e li elenca nel TLSStore default (GIT-460, ADR 0002).
+            - name: GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE
+              value: {{ .Values.networkPolicy.ingressNamespace | quote }}
             - name: GITSTACK_CORE_APPS_TRAEFIK_METRICS_URL
               value: {{ include "gitstack.apps.traefikMetricsUrl" . | quote }}
             {{- if .Values.apps.acme.resolver }}

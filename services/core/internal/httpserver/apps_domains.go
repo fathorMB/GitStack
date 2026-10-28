@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -21,6 +22,9 @@ import (
 type AppDomainsConfig struct {
 	InstanceHost string
 	Domains      apps.DomainConfig
+	// CertRoots: radici con cui si chiude la catena di un certificato del cliente; nil usa quelle di
+	// sistema (i test passano la propria CA).
+	CertRoots *x509.CertPool
 }
 
 // WithAppDomains imposta i domini propri delle app: dominio di GitStack e controllo del DNS.

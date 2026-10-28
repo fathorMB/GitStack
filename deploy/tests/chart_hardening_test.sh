@@ -384,7 +384,13 @@ expect_has "hosting acceso: core sa quale ClusterRole modello usare" "${d}" 'val
 cr="$(docs ClusterRole)"
 expect_eq "RBAC: due ClusterRole (controller e modello)" "$(printf '%s\n' "${cr}" | grep -c '^kind: ClusterRole$')" "2"
 expect_lacks "RBAC: niente caratteri jolly" "${cr}" '"*"'
-expect_eq "RBAC: nessun Role nel namespace del release" "$(docs Role | grep -c '^kind: Role$')" "0"
+# Un solo Role, nel namespace di Traefik e non in quello del release: i Secret dei certificati del cliente
+# (GIT-460, ADR 0002) stanno solo lì, e core non può elencare i Secret di quel namespace.
+role="$(docs Role)"
+expect_eq "RBAC: un solo Role (certificati del cliente)" "$(printf '%s\n' "${role}" | grep -c '^kind: Role$')" "1"
+expect_has "RBAC: il Role è nel namespace di Traefik" "${role}" "namespace: kube-system"
+expect_has "RBAC: il Role è quello dei certificati" "${role}" "name: gitstack-apps-controller-certs"
+expect_lacks "RBAC: il Role dei certificati non elenca i Secret" "${role}" '"list"'
 crb="$(docs ClusterRoleBinding)"
 expect_eq "RBAC: un solo ClusterRoleBinding" "$(printf '%s\n' "${crb}" | grep -c '^kind: ClusterRoleBinding$')" "1"
 expect_has "RBAC: il ClusterRoleBinding è del controller" "${crb}" "name: gitstack-apps-controller"
