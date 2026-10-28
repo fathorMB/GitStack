@@ -97,6 +97,7 @@ func newAPIServerWithOptions(pool *pgxpool.Pool, publisher events.Publisher, opt
 		appCtl:       o.appCtl,
 		appsOff:      o.appsOff,
 		appEgress:    o.appEgress,
+		appDomains:   o.appDomains,
 	}, o
 }
 
@@ -151,6 +152,7 @@ type routerOptions struct {
 	appCtl       AppController
 	appsOff      bool
 	appEgress    AppEgressConfig
+	appDomains   AppDomainsConfig
 	grants       identityclient.CreatorGranter
 	readable     identityclient.ReadableLister
 	repoIdentity identityclient.RepoIdentity

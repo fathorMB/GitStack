@@ -689,14 +689,14 @@ func proxyEndpoints(env map[string]string) []proxyEndpoint {
 // certificato wildcard è il TLSStore default). I Middleware sono quelli del namespace dell'app:
 // sempre gitstack-strip (le intestazioni X-GitStack-* del client non arrivano all'app) e, con
 // `login`, subito dopo gitstack-auth (il forward-auth del login GitStack, H6).
-func BuildRoute(app store.App, host string, login bool) *unstructured.Unstructured {
+func BuildRoute(app store.App, host string, login bool, extraHosts ...string) *unstructured.Unstructured {
 	mws := []any{map[string]any{"name": MiddlewareStrip}}
 	if login {
 		mws = append(mws, map[string]any{"name": MiddlewareAuth})
 	}
 	route := map[string]any{
 		"kind":  "Rule",
-		"match": fmt.Sprintf("Host(`%s`)", host),
+		"match": routeMatch(host, extraHosts),
 		"services": []any{map[string]any{
 			"name": WorkloadName,
 			"port": int64(servicePort),
