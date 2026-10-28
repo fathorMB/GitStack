@@ -216,8 +216,13 @@ func waitPodLog(t *testing.T, kube kubernetes.Interface, ns, name string) string
 		p, err := kube.CoreV1().Pods(ns).Get(context.Background(), name, metav1.GetOptions{})
 		if err == nil && p.Status.Phase == corev1.PodRunning {
 			// GIT-472: al primo KO di un probe positivo il dump del nodo si prende a pod ancora vivo.
-			if raw, lerr := kube.CoreV1().Pods(ns).GetLogs(name, &corev1.PodLogOptions{}).DoRaw(context.Background()); lerr == nil && strings.Contains(string(raw), probeFirstKOMarker) {
-				diagNodeRules(t, kube, ns, name)
+			if raw, lerr := kube.CoreV1().Pods(ns).GetLogs(name, &corev1.PodLogOptions{}).DoRaw(context.Background()); lerr == nil {
+				if strings.Contains(string(raw), probeFirstKOMarker) {
+					diagNodeRules(t, kube, ns, name, "primo KO")
+				}
+				if strings.Contains(string(raw), probeLastKOMarker) {
+					diagNodeRules(t, kube, ns, name, "fine finestra")
+				}
 			}
 		}
 		if err == nil && (p.Status.Phase == corev1.PodSucceeded || p.Status.Phase == corev1.PodFailed) {
