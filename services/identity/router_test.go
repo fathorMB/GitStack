@@ -82,6 +82,8 @@ func TestBuildRouter_SegretiPerChiamante(t *testing.T) {
 		{"git: grant del creatore", "kgit", "POST", "/internal/resources/00000000-0000-0000-0000-000000000000/grants/creator", http.StatusForbidden},
 		{"gateway: lookup utenti", "kg-nuova", "POST", "/internal/users/lookup-ids", http.StatusForbidden},
 		{"gateway, vecchia chiave: lookup utenti", "kg-vecchia", "POST", "/internal/users/lookup-ids", http.StatusForbidden},
+		{"gateway: profilo utente (forward-auth delle app)", "kg-nuova", "POST", "/internal/users/profile", http.StatusBadRequest},
+		{"git: profilo utente", "kgit", "POST", "/internal/users/profile", http.StatusForbidden},
 		{"chiave sconosciuta", "altra", "POST", "/internal/verify", http.StatusUnauthorized},
 		{"nessuna chiave", "", "POST", "/internal/verify", http.StatusUnauthorized},
 	} {

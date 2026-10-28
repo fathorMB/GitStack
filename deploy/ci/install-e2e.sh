@@ -678,14 +678,39 @@ app_namespace() {
   done
 }
 
+# apps_diagnostics <namespace>: in caso di errore di apps-run raccoglie lo stato dell'app, i log del
+# container (anche --previous, se è ripartito) e le righe appauth del gateway. Mai fatale.
+apps_diagnostics() {
+  local ns="${1:-default}" p
+  "${KUBECTL[@]}" -n "${ns}" get all,ingressroute,middleware -o wide || true
+  "${KUBECTL[@]}" -n "${ns}" describe pods | tail -60 || true
+  local pods
+  pods="$("${KUBECTL[@]}" -n "${ns}" get pods -o name 2>/dev/null || true)"
+  while IFS= read -r p; do
+    [ -n "${p}" ] || continue
+    printf '== log di %s (corrente) ==
+' "${p}" >&2
+    "${KUBECTL[@]}" -n "${ns}" logs "${p}" --all-containers --tail=60 || true
+    printf '== log di %s (--previous) ==
+' "${p}" >&2
+    "${KUBECTL[@]}" -n "${ns}" logs "${p}" --all-containers --previous --tail=60 || true
+  done <<<"${pods}"
+  printf '== gateway: righe appauth ==
+' >&2
+  "${KUBECTL[@]}" -n default logs deployment/gitstack-gateway --tail=500 | grep -i 'appauth' | tail -40 || true
+  printf '== gateway: ultime righe ==
+' >&2
+  "${KUBECTL[@]}" -n default logs deployment/gitstack-gateway --tail=20 || true
+}
+
 # apps-run <dominio>: un'app di prova creata da API risponde al suo indirizzo automatico (HTTPS con la
 # CA interna, risoluzione forzata verso l'host: il DNS wildcard non c'è sul runner).
 apps_run() {
   need E2E_HOST
   load_seed
-  local domain="${1:?dominio delle app}" host deadline code="" ns loc
+  local domain="${1:?dominio delle app}" host deadline code="" ns loc body
   local resolve="${HOST}"
-  api POST "/api/v1/repos/${CI_USER}/${CI_REPO}/apps" '{"name":"web","image":"docker.io/library/nginx:1.27-alpine","port":80,"healthCheck":{"path":"/","intervalSeconds":5}}' -H "Authorization: Bearer ${CI_TOKEN}"
+  api POST "/api/v1/repos/${CI_USER}/${CI_REPO}/apps" '{"name":"web","image":"docker.io/nginxinc/nginx-unprivileged:1.27-alpine","port":8080,"healthCheck":{"path":"/","intervalSeconds":5}}' -H "Authorization: Bearer ${CI_TOKEN}"
   expect 202 "${CODE}" "creazione app"
   host="$(printf '%s' "${BODY}" | jq -r '.app.address // empty' | sed -E 's#^https://##')"
   [ -n "${host}" ] || fail "l'app creata non ha un indirizzo automatico: $(printf '%s' "${BODY}" | head -c 300)"
@@ -706,12 +731,18 @@ apps_run() {
     sleep 5
   done
   [ "${code}" = 200 ] || {
-    "${KUBECTL[@]}" -n "${ns:-default}" get all,ingressroute,middleware -o wide || true
-    "${KUBECTL[@]}" -n "${ns:-default}" describe pods | tail -40 || true
-    "${KUBECTL[@]}" -n default logs deployment/gitstack-gateway --tail=40 || true
+    apps_diagnostics "${ns:-default}"
     fail "l'app non risponde con un token valido su https://${host}/ (ultimo codice '${code}')"
   }
-  curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -H "Authorization: Bearer ${CI_TOKEN}" "https://${host}/" | grep -qi 'nginx' || fail "la risposta di ${host} non è quella dell'app di prova"
+  body="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -H "Authorization: Bearer ${CI_TOKEN}" -D - "https://${host}/" 2>&1 || true)"
+  if ! printf '%s' "${body}" | grep -qi 'nginx'; then
+    printf 'Risposta ricevuta da %s (primi 40 righe):
+' "${host}" >&2
+    printf '%s
+' "${body}" | head -n 40 >&2
+    apps_diagnostics "${ns}"
+    fail "la risposta di ${host} non è quella dell'app di prova"
+  fi
   printf 'ok  apps-run: con un token valido https://%s/ risponde 200 (namespace %s)\n' "${host}" "${ns}"
   # Senza credenziali: redirect al login (browser) o 401 (client API), mai 200.
   code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -o /dev/null -D "${STATE_DIR}/apps-noauth.hdr" -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
