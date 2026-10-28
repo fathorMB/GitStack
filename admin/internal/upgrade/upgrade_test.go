@@ -42,7 +42,7 @@ type fakeCluster struct {
 	schema   string // risposta della query sulle migrazioni
 	dumped   string // schema al momento del pg_dump
 	restored bool
-	noSchema bool // la query sulle migrazioni fallisce
+	noSchema bool                          // la query sulle migrazioni fallisce
 	ready    func(deployment string) error // esito di WaitReady (nil: sempre pronto)
 }
 
