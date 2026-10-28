@@ -18,8 +18,10 @@ import (
 )
 
 // Certificati del cliente nel cluster (v3-c, GIT-460, ADR 0002). Il Secret TLS di un certificato del
-// cliente sta SOLO nel namespace di Traefik, e Traefik lo serve per SNI perché è elencato nel TLSStore
-// `default` di quel namespace: nel namespace dell'app non entra mai né il Secret né la chiave. Le
+// cliente sta SOLO nel namespace del TLSStore `default` letto da Traefik (TraefikNamespace: quello del
+// release con la CA interna, dove il chart crea il TLSStore, quello di Traefik altrimenti; in tutto il
+// cluster ne esiste uno solo, un secondo farebbe scartare il default a Traefik). Traefik lo serve per SNI
+// perché è elencato in quel TLSStore: nel namespace dell'app non entra mai né il Secret né la chiave. Le
 // IngressRoute del dominio dichiarano `tls: {}` come quelle dell'indirizzo automatico.
 
 const (

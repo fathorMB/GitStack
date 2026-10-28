@@ -20,6 +20,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/fathorMB/GitStack/services/core/internal/store"
@@ -221,5 +224,48 @@ func TestSyncCustomSecrets_SoloNamespaceTraefik(t *testing.T) {
 	}
 	if strings.Contains(cert.String(), "CHIAVE-SEGRETA") {
 		t.Fatal("String() non deve stampare la chiave")
+	}
+}
+
+// Con la CA interna il TLSStore `default` è quello del chart, nel namespace del release, e core è
+// configurato con quel namespace: dopo la sincronizzazione in tutto il cluster c'è UN SOLO TLSStore
+// `default`, col defaultCertificate intatto e il nostro Secret in certificates; nessun Secret altrove.
+func TestSyncCustomSecrets_UnSoloTLSStoreDefaultNelNamespaceDelChart(t *testing.T) {
+	kube := fake.NewClientset()
+	dyn := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), map[schema.GroupVersionResource]string{tlsStoreGVR: "TLSStoreList"})
+	const releaseNS = "gitstack"
+	c := &Controller{kube: kube, dyn: dyn, cfg: Config{TraefikNamespace: releaseNS, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), Now: time.Now}}
+	chartStore := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "traefik.io/v1alpha1", "kind": "TLSStore",
+		"metadata": map[string]any{"name": "default", "namespace": releaseNS},
+		"spec":     map[string]any{"defaultCertificate": map[string]any{"secretName": "gitstack-tls"}},
+	}}
+	if _, err := dyn.Resource(tlsStoreGVR).Namespace(releaseNS).Create(context.Background(), chartStore, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	cert := store.CustomCertificate{DomainID: uuid.New(), Domain: "shop.retail.it", ChainPEM: "CATENA", KeyPEM: "CHIAVE"}
+	for i := 0; i < 2; i++ { // anche una seconda sincronizzazione non ne crea altri
+		if err := c.syncCustomSecrets(context.Background(), []store.CustomCertificate{cert}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	list, err := dyn.Resource(tlsStoreGVR).Namespace(metav1.NamespaceAll).List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Items) != 1 || list.Items[0].GetName() != "default" || list.Items[0].GetNamespace() != releaseNS {
+		t.Fatalf("serve un solo TLSStore default, nel namespace del chart: %d", len(list.Items))
+	}
+	spec := list.Items[0].Object["spec"].(map[string]any)
+	if spec["defaultCertificate"].(map[string]any)["secretName"] != "gitstack-tls" {
+		t.Fatal("il defaultCertificate dell'installer non va toccato")
+	}
+	refs := spec["certificates"].([]any)
+	if len(refs) != 1 || refs[0].(map[string]any)["secretName"] != CustomCertSecretName(cert.DomainID) {
+		t.Fatalf("certificates: %v", refs)
+	}
+	all, _ := kube.CoreV1().Secrets(metav1.NamespaceAll).List(context.Background(), metav1.ListOptions{})
+	if len(all.Items) != 1 || all.Items[0].Namespace != releaseNS {
+		t.Fatalf("il Secret deve stare solo nel namespace del TLSStore: %+v", all.Items)
 	}
 }

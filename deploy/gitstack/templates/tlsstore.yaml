@@ -1,4 +1,4 @@
-{{- if and .Values.ingress.enabled .Values.ingress.tls.enabled .Values.ingress.tls.secretName -}}
+{{- if include "gitstack.tlsStore.enabled" . -}}
 # N5 (GIT-143): certificato di default di Traefik = quello dell'installer.
 # Chi apre https://<IP>/ non manda SNI (RFC 6066): Traefik allora confronta i
 # certificati con l'indirizzo locale della connessione, che con ServiceLB (DNAT)
