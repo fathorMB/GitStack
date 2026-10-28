@@ -232,6 +232,17 @@ func extractGS(md string) []ghCommand {
 	return cmds
 }
 
+// usesOwnFlag: un gruppo con un flag proprio (es. `gs app access <app> --mode public`, GIT-466) accetta
+// l'argomento posizionale quando il comando citato usa quel flag.
+func usesOwnFlag(c *cobra.Command, flags []string) bool {
+	for _, fl := range flags {
+		if c.LocalNonPersistentFlags().Lookup(strings.TrimPrefix(fl, "--")) != nil {
+			return true
+		}
+	}
+	return false
+}
+
 func TestComandiCitatiEsistono(t *testing.T) {
 	cmd, run := newRoot(t)
 	seen := map[string]bool{}
@@ -253,7 +264,7 @@ func TestComandiCitatiEsistono(t *testing.T) {
 				continue
 			}
 			// un gruppo con un argomento in più è un sottocomando sbagliato
-			if found.HasSubCommands() && len(rest) > 0 {
+			if found.HasSubCommands() && len(rest) > 0 && !usesOwnFlag(found, c.flags) {
 				t.Errorf("%s: %q: %q non è un sottocomando di `%s`", name, c.line, rest[0], found.CommandPath())
 				continue
 			}
