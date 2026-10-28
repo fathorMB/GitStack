@@ -220,9 +220,12 @@ Ogni dominio proprio nasce `pending_dns`. `core` risolve il dominio con il resol
   un dominio all'apice, dove il CNAME non è ammesso. Senza IP dichiarati la forma A/AAAA non è proposta.
 
 Esiti: tutto coincide → `verified`; nessun record (NXDOMAIN, nessuna risposta, timeout) → resta
-`pending_dns`; record presenti ma diversi → `error` con `statusReason` (per esempio l'IP trovato). Il controllo
-ripete a intervalli (ogni 5 minuti, poi più radi) e su richiesta con `POST .../recheck`. Un dominio `verified` il cui DNS
-cambia torna `error` e perde la route (non il certificato); lo stato non cancella mai dati.
+`pending_dns`; record presenti ma diversi → `error` con `statusReason` (per esempio l'IP trovato). Un errore
+del resolver locale che non è una risposta DNS del dominio (per esempio timeout, SERVFAIL o errore di rete) non
+modifica lo stato né `failing_since` di un dominio `verified` e viene registrato nel log; per `pending_dns` resta
+`pending_dns`. NXDOMAIN e record diversi seguono invece le regole sotto. Il controllo ripete a intervalli (ogni 5 minuti,
+poi più radi) e su richiesta con `POST .../recheck`; un dominio `verified` con record non coincidenti resta in grazia.
+Lo stato non cancella mai dati.
 La route Traefik del dominio e l'emissione del certificato partono solo da `verified`.
 
 Realizzazione (GIT-458): il controllo è in `services/core/internal/apps/domains.go` (resolver configurabile, policy di

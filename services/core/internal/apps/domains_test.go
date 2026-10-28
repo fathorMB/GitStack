@@ -88,8 +88,8 @@ func TestCheckDNS(t *testing.T) {
 	if r := check(stubDNS{}); r.Status != store.DomainPendingDNS || r.Reason != "" {
 		t.Errorf("NXDOMAIN = pending: %+v", r)
 	}
-	if r := check(stubDNS{err: &net.DNSError{Name: "x", IsTimeout: true}}); r.Status != store.DomainPendingDNS {
-		t.Errorf("timeout = pending: %+v", r)
+	if r := check(stubDNS{err: &net.DNSError{Name: "x", IsTimeout: true}}); r.Status != store.DomainPendingDNS || r.ResolverErr == nil {
+		t.Errorf("timeout = errore resolver: %+v", r)
 	}
 	r := check(stubDNS{hosts: map[string][]string{"shop.retail.it": {"203.0.113.9"}}}, "198.51.100.7")
 	if r.Status != store.DomainError || !strings.Contains(r.Reason, "203.0.113.9") || !strings.Contains(r.Reason, target) || !strings.Contains(r.Reason, "198.51.100.7") {
@@ -155,6 +155,11 @@ func TestApplyDNSResult_Grazia(t *testing.T) {
 	chk = c.ApplyDNSResult(d, DNSResult{Status: store.DomainPendingDNS}, t0.Add(40*time.Minute))
 	if chk.Status != store.DomainVerified || !chk.FailingSince.Equal(*d.FailingSince) {
 		t.Fatalf("ancora in grazia: %+v", chk)
+	}
+	resolverFailure := DNSResult{Status: store.DomainPendingDNS, ResolverErr: errors.New("SERVFAIL")}
+	chk = c.ApplyDNSResult(d, resolverFailure, t0.Add(2*time.Hour))
+	if chk.Status != store.DomainVerified || chk.FailingSince == nil || !chk.FailingSince.Equal(*d.FailingSince) {
+		t.Fatalf("errore resolver durante grazia: %+v", chk)
 	}
 	// Scaduta: errore con motivo; con «pending» il motivo è generico ma leggibile.
 	chk = c.ApplyDNSResult(d, bad, t0.Add(80*time.Minute))
