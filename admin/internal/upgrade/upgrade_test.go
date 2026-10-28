@@ -43,6 +43,7 @@ type fakeCluster struct {
 	dumped   string // schema al momento del pg_dump
 	restored bool
 	noSchema bool // la query sulle migrazioni fallisce
+	ready    func(deployment string) error // esito di WaitReady (nil: sempre pronto)
 }
 
 func (f *fakeCluster) note(s string) { f.mu.Lock(); f.calls = append(f.calls, s); f.mu.Unlock() }
@@ -54,7 +55,12 @@ func (f *fakeCluster) Scale(_ context.Context, d string, n int) error {
 	return nil
 }
 func (f *fakeCluster) WaitStopped(context.Context, string) error { return nil }
-func (f *fakeCluster) WaitReady(context.Context, string) error   { return nil }
+func (f *fakeCluster) WaitReady(_ context.Context, d string) error {
+	if f.ready != nil {
+		return f.ready(d)
+	}
+	return nil
+}
 func (f *fakeCluster) PGExec(_ context.Context, stdin io.Reader, stdout io.Writer, args ...string) error {
 	cmd := strings.Join(args, " ")
 	switch {
@@ -113,6 +119,12 @@ type fakeHelm struct {
 	newSecret     bool // <release>-service-secrets esiste dopo l'upgrade
 	legacyDeleted bool
 	deleteErr     error
+
+	// GIT-479: dopo helm rollback il Deployment di core resta legato al
+	// ServiceAccount che l'upgrade aveva messo (campo deprecato
+	// serviceAccount); lo toglie solo la patch merge con i campi a null.
+	staleSA bool
+	breakSA bool // l'upgrade ha legato core a un ServiceAccount: il rollback lo lascia
 }
 
 func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...string) ([]byte, error) {
@@ -127,6 +139,11 @@ func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...strin
 				return []byte("secret/gitstack-service-secrets\n"), nil
 			}
 			return []byte("Error from server (NotFound)"), errors.New("exit 1")
+		case strings.Contains(joined, "patch deployment gitstack-core") && strings.Contains(joined, `"serviceAccount":null`):
+			h.staleSA = false
+			return []byte("deployment.apps/gitstack-core patched\n"), nil
+		case strings.Contains(joined, "patch deployment"):
+			return []byte("deployment.apps/x patched (no change)\n"), nil
 		case strings.Contains(joined, "delete secret gitstack-identity-service"):
 			if h.deleteErr != nil {
 				return []byte("forbidden"), h.deleteErr
@@ -141,6 +158,9 @@ func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...strin
 	case "history":
 		return []byte(`[{"revision":3,"status":"superseded"},{"revision":4,"status":"deployed"}]`), nil
 	case "get":
+		if len(args) > 1 && args[1] == "manifest" {
+			return []byte("---\nkind: Service\nmetadata:\n  name: gitstack-core\n---\nkind: Deployment\nmetadata:\n  name: gitstack-core\nspec:\n  template:\n    spec:\n      containers: []\n---\nkind: Deployment\nmetadata:\n  name: gitstack-gateway\nspec:\n  template:\n    spec:\n      containers: []\n---\nkind: Deployment\nmetadata:\n  name: gitstack-runner\nspec:\n  template:\n    spec:\n      serviceAccountName: ci-dispatcher\n"), nil
+		}
 		if h.values != "" {
 			return []byte(h.values), nil
 		}
@@ -169,6 +189,7 @@ func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...strin
 			return []byte("rollback boom"), errors.New("exit 1")
 		}
 		h.rolled = true
+		h.staleSA = h.upgraded && h.breakSA
 		return nil, nil
 	}
 	return nil, errors.New("sottocomando inatteso " + args[0])
@@ -573,6 +594,50 @@ func TestUnreadableSchemaCountsAsTouched(t *testing.T) {
 	res, err := Run(context.Background(), w.o)
 	if err != nil || res.Outcome != RolledBack || !res.Restored {
 		t.Fatalf("res=%+v err=%v", res, err)
+	}
+}
+
+// GIT-479: l'upgrade rompe solo il gateway (valore non valido), ma ha anche
+// legato core a un ServiceAccount nuovo. Il database è toccato dalle
+// migrazioni: helm rollback + restore. Il rollback lascia core legato al
+// ServiceAccount cancellato: senza la pulizia core non ha pod, WaitReady del
+// restore scade e l'esito è Broken (exit 8). Con la pulizia: RolledBack (exit 7).
+func TestGatewayOnlyBreakRollsBackAndRestores(t *testing.T) {
+	w := newWorld(t)
+	w.helm.newSchem = "identity|5|f\ncore|12|f"
+	w.helm.breakSA = true
+	w.helm.onUp = func() error { return errors.New("exit 1") } // helm upgrade --wait: il gateway non diventa pronto
+	w.cl.ready = func(d string) error {
+		w.helm.mu.Lock()
+		defer w.helm.mu.Unlock()
+		if w.helm.staleSA && strings.HasSuffix(d, "-core") {
+			return errors.New("timed out waiting for the condition")
+		}
+		return nil
+	}
+	w.healthy = func() bool { return !w.helm.upgraded || w.helm.rolled && w.cl.restored && !w.helm.staleSA }
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != RolledBack {
+		t.Fatalf("res=%+v err=%v (atteso RolledBack, exit 7)", res, err)
+	}
+	if !res.RolledBackChart || !res.Restored || !w.cl.restored {
+		t.Errorf("rollback: chart=%v restore=%v", res.RolledBackChart, res.Restored)
+	}
+	if !w.helm.has("get manifest gitstack --revision 4") {
+		t.Errorf("manifest della revisione di destinazione non letto: %v", w.helm.calls)
+	}
+	if w.helm.staleSA {
+		t.Error("il ServiceAccount di core è rimasto")
+	}
+	w.assertUntouched()
+}
+
+// Senza il ServiceAccount stantio il passo non cambia niente di osservabile.
+func TestDeploymentsWithoutServiceAccount(t *testing.T) {
+	m := "kind: Deployment\nmetadata:\n  name: a\nspec:\n  template:\n    spec:\n      serviceAccountName: x\n---\nkind: Deployment\nmetadata:\n  name: b\nspec:\n  template:\n    spec: {}\n---\nkind: StatefulSet\nmetadata:\n  name: c\n"
+	got, err := deploymentsWithoutServiceAccount([]byte(m))
+	if err != nil || len(got) != 1 || got[0] != "b" {
+		t.Fatalf("got=%v err=%v", got, err)
 	}
 }
 

@@ -850,6 +850,9 @@ diagnostics() {
     "${KUBECTL[@]}" get events -A --sort-by=.lastTimestamp
     "${KUBECTL[@]}" describe pods -A
   } > "${d}/kubectl.txt" 2>&1 || true
+  # GIT-479: i Deployment com'erano dopo un rollback (serviceAccount, ReplicaSet) e la storia di helm.
+  { "${KUBECTL[@]}" -n default get deployments,replicasets,serviceaccounts -o yaml; } > "${d}/deployments.yaml" 2>&1 || true
+  { sudo helm history gitstack -n default --kubeconfig /etc/rancher/k3s/k3s.yaml; } > "${d}/helm-history.txt" 2>&1 || true
   { sudo journalctl -u k3s --no-pager -n 400; } > "${d}/k3s.log" 2>&1 || true
   { sudo gitstack status; } > "${d}/gitstack-status.txt" 2>&1 || true
   { sudo ls -la /var/backups/gitstack; } > "${d}/backups.txt" 2>&1 || true

@@ -827,6 +827,7 @@ func (o *Options) rollback(st *state) {
 			fail("helm rollback: %v: %s", err, tail(string(out)))
 		} else {
 			res.RolledBackChart = true
+			o.clearStaleServiceAccounts(ctx, st.prevRev)
 		}
 	}
 
