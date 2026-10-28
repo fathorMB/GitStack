@@ -78,7 +78,9 @@ spec:
           volumeMounts: [{name: cfg, mountPath: /test/config}]
         - name: challtestsrv
           image: ghcr.io/letsencrypt/pebble-challtestsrv:${pebble_ref#v}
-          args: ["-http01", "", "-https01", "", "-tlsalpn01", "", "-management", ":8055", "-dns01", ":8053"]
+          # Pebble v2.7.0 defaults defaultIPv6 to ::1; empty disables fallback AAAA answers.
+          # Source: https://github.com/letsencrypt/pebble/blob/v2.7.0/cmd/pebble-challtestsrv/main.go
+          args: ["-http01", "", "-https01", "", "-tlsalpn01", "", "-management", ":8055", "-dns01", ":8053", "-defaultIPv4", "", "-defaultIPv6", ""]
       volumes: [{name: cfg, configMap: {name: pebble-config}}]
 ---
 apiVersion: v1
