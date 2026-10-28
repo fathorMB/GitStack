@@ -703,6 +703,20 @@ apps_diagnostics() {
   "${KUBECTL[@]}" -n default logs deployment/gitstack-gateway --tail=20 || true
 }
 
+# apps_report <host> <file intestazioni> <corpo> <namespace> <messaggio> (GIT-483): in caso di errore stampa
+# la risposta ricevuta (intestazioni e primi byte del corpo), lo stato dell'app e le righe appauth del
+# gateway, poi esce. Una risposta 200 che non è dell'app (p. es. la web UI di GitStack, servita
+# dall'Ingress senza host finché Traefik non ha caricato la rotta dell'app) si riconosce da qui.
+apps_report() {
+  local host="${1}" hdr="${2}" rbody="${3}" ns="${4}" msg="${5}"
+  printf 'Risposta ricevuta da %s:\n' "${host}" >&2
+  if [ -s "${hdr}" ]; then head -n 30 "${hdr}" >&2 || true; fi
+  printf '%s\n' "${rbody}" | head -c 1500 >&2 || true
+  printf '\n' >&2
+  apps_diagnostics "${ns:-default}"
+  fail "${msg}"
+}
+
 # apps-run <dominio>: un'app di prova creata da API risponde al suo indirizzo automatico (HTTPS con la
 # CA interna, risoluzione forzata verso l'host: il DNS wildcard non c'è sul runner).
 apps_run() {
@@ -724,32 +738,32 @@ apps_run() {
   }
   # Con un token API valido (accesso `login`: read sul repo) il forward-auth del gateway ammette e
   # l'app risponde. Il DNS wildcard non c'è sul runner: la risoluzione è forzata verso l'host.
+  # GIT-483: un 200 da solo non basta. Finché Traefik non ha caricato la rotta dell'app (o il pod non è
+  # pronto) il nome dell'app cade nell'Ingress senza host della web UI di GitStack, che risponde 200 a
+  # chiunque: si aspetta la pagina vera dell'app (nginx di prova), non solo il codice.
   deadline=$((SECONDS + 420))
+  code=""
+  body=""
   while [ "${SECONDS}" -lt "${deadline}" ]; do
-    code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -H "Authorization: Bearer ${CI_TOKEN}" -o /dev/null -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
-    [ "${code}" = 200 ] && break
+    code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -H "Authorization: Bearer ${CI_TOKEN}" -o "${STATE_DIR}/apps-auth.body" -D "${STATE_DIR}/apps-auth.hdr" -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
+    body="$(head -c 4000 "${STATE_DIR}/apps-auth.body" 2>/dev/null || true)"
+    if [ "${code}" = 200 ] && printf '%s' "${body}" | grep -q 'Welcome to nginx'; then break; fi
+    code="${code:-000}"
     sleep 5
   done
-  [ "${code}" = 200 ] || {
-    apps_diagnostics "${ns:-default}"
-    fail "l'app non risponde con un token valido su https://${host}/ (ultimo codice '${code}')"
-  }
-  body="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -H "Authorization: Bearer ${CI_TOKEN}" -D - "https://${host}/" 2>&1 || true)"
-  if ! printf '%s' "${body}" | grep -qi 'nginx'; then
-    printf 'Risposta ricevuta da %s (primi 40 righe):
-' "${host}" >&2
-    printf '%s
-' "${body}" | head -n 40 >&2
-    apps_diagnostics "${ns}"
-    fail "la risposta di ${host} non è quella dell'app di prova"
+  if [ "${code}" != 200 ] || ! printf '%s' "${body}" | grep -q 'Welcome to nginx'; then
+    apps_report "${host}" "${STATE_DIR}/apps-auth.hdr" "${body}" "${ns}" "l'app non risponde con la sua pagina e un token valido su https://${host}/ (ultimo codice '${code}')"
   fi
-  printf 'ok  apps-run: con un token valido https://%s/ risponde 200 (namespace %s)\n' "${host}" "${ns}"
+  printf 'ok  apps-run: con un token valido https://%s/ risponde 200 con la pagina dell'"'"'app (namespace %s)\n' "${host}" "${ns}"
   # Senza credenziali: redirect al login (browser) o 401 (client API), mai 200.
-  code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -o /dev/null -D "${STATE_DIR}/apps-noauth.hdr" -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
+  code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -o "${STATE_DIR}/apps-noauth.body" -D "${STATE_DIR}/apps-noauth.hdr" -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
   loc="$(grep -i '^location:' "${STATE_DIR}/apps-noauth.hdr" | head -n1 | tr -d '\r' || true)"
   case "${code}" in
     301 | 302 | 303 | 307 | 308 | 401) printf 'ok  apps-run: senza credenziali %s %s\n' "${code}" "${loc}" ;;
-    *) fail "senza credenziali l'app doveva dare un redirect al login o 401, trovato '${code}'" ;;
+    *)
+      body="$(head -c 4000 "${STATE_DIR}/apps-noauth.body" 2>/dev/null || true)"
+      apps_report "${host}" "${STATE_DIR}/apps-noauth.hdr" "${body}" "${ns}" "senza credenziali l'app doveva dare un redirect al login o 401, trovato '${code}'"
+      ;;
   esac
   # Un token falso non passa.
   code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -H "Authorization: Bearer gst_falso" -o /dev/null -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
@@ -786,7 +800,7 @@ apps_public() {
     local out h args=()
     for h in "$@"; do args+=(-H "${h}"); done
     out="$(mktemp)"
-    code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" "${args[@]}" -o "${out}" -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
+    code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" "${args[@]}" -o "${out}" -D "${STATE_DIR}/apps-public.hdr" -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
     body="$(cat "${out}")"
     rm -f "${out}"
   }
@@ -801,21 +815,23 @@ apps_public() {
   set_mode public
 
   # a. senza credenziali, con intestazioni falsificate: 200 e nessuna arriva all'app.
+  # GIT-483: come in apps-run, un 200 da solo non basta (l'Ingress senza host della web UI risponde 200
+  # finché Traefik non ha caricato la rotta dell'app): si aspetta l'elenco di whoami (riga `Hostname:`).
+  ns="$(app_namespace "${host}" 180 || true)"
   deadline=$((SECONDS + 420))
   while [ "${SECONDS}" -lt "${deadline}" ]; do
     noauth 'X-GitStack-User: intruso' 'X-GitStack-Signature: falsa' 'X-GitStack-Email: x@y'
-    [ "${code}" = 200 ] && break
+    if [ "${code}" = 200 ] && printf '%s' "${body}" | grep -q '^Hostname:'; then break; fi
     sleep 5
   done
-  [ "${code}" = 200 ] || {
+  if [ "${code}" != 200 ] || ! printf '%s' "${body}" | grep -q '^Hostname:'; then
     "${KUBECTL[@]}" get ingressroute,middleware -A -o wide || true
     "${KUBECTL[@]}" -n default logs deployment/gitstack-core --tail=40 || true
-    fail "l'app pubblica non risponde senza login su https://${host}/ (ultimo codice '${code}')"
-  }
+    apps_report "${host}" "${STATE_DIR}/apps-public.hdr" "${body}" "${ns}" "la risposta di ${host} senza login non è quella di whoami (codice '${code}')"
+  fi
   if printf '%s' "${body}" | grep -qi '^X-Gitstack-User: intruso'; then fail "X-GitStack-User del client è arrivata all'app"; fi
   if printf '%s' "${body}" | grep -qi '^X-Gitstack-Signature: falsa'; then fail "X-GitStack-Signature del client è arrivata all'app"; fi
   if printf '%s' "${body}" | grep -qi '^X-Gitstack-Email: x@y'; then fail "X-GitStack-Email del client è arrivata all'app"; fi
-  printf '%s' "${body}" | grep -qi '^Host:' || fail "la risposta di ${host} non è quella di whoami"
   printf 'ok  apps-public: senza login 200, intestazioni X-GitStack-* del client tolte\n'
 
   ns="$(app_namespace "${host}" 120)" || fail "namespace dell'app pub non trovato (IngressRoute con ${host})"
