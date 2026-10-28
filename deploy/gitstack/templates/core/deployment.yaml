@@ -126,6 +126,16 @@ spec:
             {{- end }}
             - name: GITSTACK_CORE_APPS_TRAEFIK_METRICS_URL
               value: {{ include "gitstack.apps.traefikMetricsUrl" . | quote }}
+            {{- if .Values.apps.acme.resolver }}
+            # Let's Encrypt per i domini propri (GIT-459): nome del resolver di Traefik (l'unica config ACME),
+            # email dell'installazione e dove leggere il certificato servito.
+            - name: GITSTACK_CORE_APPS_ACME_RESOLVER
+              value: {{ .Values.apps.acme.resolver | quote }}
+            - name: GITSTACK_CORE_APPS_ACME_EMAIL
+              value: {{ .Values.apps.acme.email | quote }}
+            - name: GITSTACK_CORE_APPS_ACME_TLS_ADDR
+              value: {{ include "gitstack.apps.acmeTLSAddr" . | quote }}
+            {{- end }}
             # Cancello fail-closed dei pod delle app (GIT-418): init container con l'immagine di core (`core apps-gate`).
             - name: GITSTACK_CORE_APPS_GATE_IMAGE
               value: {{ include "gitstack.image" (dict "root" $ "component" .Values.core) | quote }}

@@ -690,19 +690,40 @@ func proxyEndpoints(env map[string]string) []proxyEndpoint {
 // sempre gitstack-strip (le intestazioni X-GitStack-* del client non arrivano all'app) e, con
 // `login`, subito dopo gitstack-auth (il forward-auth del login GitStack, H6).
 func BuildRoute(app store.App, host string, login bool, extraHosts ...string) *unstructured.Unstructured {
+	route := routeRule(routeMatch(host, extraHosts), login)
+	return routeObject(app, WorkloadName, []any{route}, map[string]any{})
+}
+
+// BuildDomainsRoute è la rotta dei domini propri con certificato Let's Encrypt (GIT-459): una regola
+// per dominio, così Traefik chiede un certificato per ogni nome e non uno solo con tutti i nomi (un
+// dominio che non si emette non blocca gli altri). `tls.certResolver` è il resolver ACME condiviso con
+// il TLS letsencrypt dell'host; il certificato resta nell'archivio di Traefik, mai in un Secret
+// dell'app. Stessi middleware della rotta principale (strip delle X-GitStack-*, login se previsto).
+func BuildDomainsRoute(app store.App, hosts []string, login bool, resolver string) *unstructured.Unstructured {
+	routes := make([]any, 0, len(hosts))
+	for _, h := range hosts {
+		routes = append(routes, routeRule(routeMatch(h, nil), login))
+	}
+	return routeObject(app, DomainsRouteName, routes, map[string]any{"certResolver": resolver})
+}
+
+func routeRule(match string, login bool) map[string]any {
 	mws := []any{map[string]any{"name": MiddlewareStrip}}
 	if login {
 		mws = append(mws, map[string]any{"name": MiddlewareAuth})
 	}
-	route := map[string]any{
+	return map[string]any{
 		"kind":  "Rule",
-		"match": routeMatch(host, extraHosts),
+		"match": match,
 		"services": []any{map[string]any{
 			"name": WorkloadName,
 			"port": int64(servicePort),
 		}},
 		"middlewares": mws,
 	}
+}
+
+func routeObject(app store.App, name string, routes []any, tls map[string]any) *unstructured.Unstructured {
 	labels := map[string]any{}
 	for k, v := range objectLabels(app.ID) {
 		labels[k] = v
@@ -711,12 +732,12 @@ func BuildRoute(app store.App, host string, login bool, extraHosts ...string) *u
 		"apiVersion": "traefik.io/v1alpha1",
 		"kind":       "IngressRoute",
 		"metadata": map[string]any{
-			"name": WorkloadName, "namespace": Namespace(app.ID), "labels": labels,
+			"name": name, "namespace": Namespace(app.ID), "labels": labels,
 		},
 		"spec": map[string]any{
 			"entryPoints": []any{"websecure"},
-			"routes":      []any{route},
-			"tls":         map[string]any{},
+			"routes":      routes,
+			"tls":         tls,
 		},
 	}}
 }

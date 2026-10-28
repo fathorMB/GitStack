@@ -305,5 +305,16 @@ modello per core stesso (`update` su namespaces è una deviazione dall'ADR, amme
 Sul gateway, con `apps.enabled`, `GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS` (Secret `<release>-gateway-appauth-keys`,
 generato una volta e riletto con `lookup`, oppure `apps.signingKeys.existingSecret`), `GITSTACK_GATEWAY_APPS_DOMAIN` e
 `GITSTACK_GATEWAY_PUBLIC_URL` (= `core.env.publicUrl`): senza chiavi `/_appauth/verify` risponde 503 (docs/apps-login.md).
+**Let's Encrypt per i domini propri (GIT-459).** Una sola configurazione ACME: il resolver `letsencrypt` di Traefik
+(HTTP-01 sulla porta 80, archivio `acme.json` su volume persistente in `kube-system`) che l'installer scrive nella
+HelmChartConfig `traefik`, lo stesso di `--tls letsencrypt` per l'host. L'installer lo scrive anche con TLS interno se le
+app sono accese e c'è `--tls-email` (o `GITSTACK_ACME_CA_SERVER`, per Pebble nelle prove) e passa al chart
+`apps.acme.resolver` / `apps.acme.email`: core ne conosce solo il nome (`GITSTACK_CORE_APPS_ACME_RESOLVER`), l'email
+(sola lettura) e `apps.acme.tlsAddr` (default `traefik.<networkPolicy.ingressNamespace>.svc.cluster.local:443`), da cui
+legge il certificato servito per riempire lo stato nel campo `certificate` dei domini. I domini verified con certificato
+`letsencrypt` stanno in una seconda IngressRoute dell'app (`app-domains`, una regola per dominio, `tls.certResolver`);
+l'indirizzo automatico resta sul wildcard della CA interna. Con `apps.acme.resolver` e `networkPolicy.enabled` la policy
+da core a Traefik apre anche la 443. La prova con Pebble è `deploy/tests/acme_pebble_k3d_test.sh`.
+
 Con `apps.enabled=false` (e `apps.domain` vuoto) non si rende nessuna risorsa delle app. Il test è in
 `deploy/tests/chart_hardening_test.sh`. Come accenderlo: [deploy/README.md](../README.md#hosting-delle-app-accenderlo-git-375-adr-0002).

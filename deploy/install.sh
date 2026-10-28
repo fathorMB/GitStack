@@ -259,6 +259,11 @@ GITSTACK_TLS_EMAIL="${GITSTACK_TLS_EMAIL:-}"
 # Solo per prove con Let's Encrypt staging
 # (https://acme-staging-v02.api.letsencrypt.org/directory).
 GITSTACK_ACME_CA_SERVER="${GITSTACK_ACME_CA_SERVER:-}"
+# Una sola configurazione ACME (GIT-459): il resolver di Traefik qui sotto serve sia l'host di
+# GitStack (--tls letsencrypt, ingress.tls.certResolver) sia i domini propri delle app pubbliche
+# (apps.acme.resolver di core). ACME_ENABLED (yes|no) lo calcola resolve_apps_enabled.
+ACME_RESOLVER_NAME="letsencrypt"
+ACME_ENABLED="no"
 HOST_ARGS=()
 # Dominio delle app (H2, GIT-346): le app hanno l'indirizzo <app>-<repo>-<owner>.<dominio>,
 # con un certificato wildcard *.<dominio> della CA interna. Vuoto = la scelta
@@ -2050,8 +2055,20 @@ resolve_apps_enabled() {
     *) APPS_ENABLED=0; src="predefinito" ;;
   esac
   APPS_HELM_SETS=("apps.domain=${APPS_DOMAIN}")
+  # Let's Encrypt per i domini propri delle app pubbliche (GIT-459): serve un resolver in Traefik. C'e'
+  # gia' con --tls letsencrypt; con le altre modalita' lo si scrive se le app sono accese e
+  # l'installazione ha un'email ACME (--tls-email) o un server ACME di prova (GITSTACK_ACME_CA_SERVER).
+  ACME_ENABLED="no"
+  if [ "${GITSTACK_TLS_MODE}" = "letsencrypt" ]; then
+    ACME_ENABLED="yes"
+  elif [ "${APPS_ENABLED}" = "1" ] && { [ -n "${GITSTACK_TLS_EMAIL}" ] || [ -n "${GITSTACK_ACME_CA_SERVER}" ]; }; then
+    ACME_ENABLED="yes"
+  fi
   if [ "${APPS_ENABLED}" = "1" ]; then
     APPS_HELM_SETS+=("apps.enabled=true")
+    if [ "${ACME_ENABLED}" = "yes" ]; then
+      APPS_HELM_SETS+=("apps.acme.resolver=${ACME_RESOLVER_NAME}" "apps.acme.email=${GITSTACK_TLS_EMAIL}")
+    fi
     log "Hosting delle app: acceso (${src})"
   else
     APPS_HELM_SETS+=("apps.enabled=false")
@@ -2169,7 +2186,7 @@ resolve_tls() {
           fail "--tls letsencrypt: '${PUBLIC_HOST}' non e' un nome pubblico: Let's Encrypt non emette certificati per domini locali (usa la CA interna)."
           ;;
       esac
-      TLS_HELM_SETS=("ingress.tls.enabled=true" "ingress.tls.secretName=" "ingress.tls.certResolver=letsencrypt" "ingress.tls.caConfigMap=")
+      TLS_HELM_SETS=("ingress.tls.enabled=true" "ingress.tls.secretName=" "ingress.tls.certResolver=${ACME_RESOLVER_NAME}" "ingress.tls.caConfigMap=")
       ;;
   esac
   TLS_HELM_SETS+=("core.env.publicUrl=${PUBLIC_SCHEME}://${PUBLIC_HOST}" "identity.oidc.publicUrl=${PUBLIC_SCHEME}://${PUBLIC_HOST}")
@@ -2342,9 +2359,10 @@ EOF2
       path: /data
       size: 128Mi
     certificatesResolvers:
-      letsencrypt:
-        acme:
 EOF2
+      printf '      %s:
+        acme:
+' "${ACME_RESOLVER_NAME}"
       [ -n "${email_line}" ] && printf '%s\n' "${email_line}"
       [ -n "${server_line}" ] && printf '%s\n' "${server_line}"
       cat <<'EOF2'
@@ -2357,7 +2375,7 @@ EOF2
   mv -f "${TRAEFIK_MANIFEST}.tmp" "${TRAEFIK_MANIFEST}"
   log "Traefik: scritta la configurazione in ${TRAEFIK_MANIFEST} (metriche interne al cluster)."
   if [ "${acme}" = "yes" ]; then
-    log "Let's Encrypt: resolver HTTP-01 sulla porta 80, host ${PUBLIC_HOST}."
+    log "Let's Encrypt: resolver '${ACME_RESOLVER_NAME}' HTTP-01 sulla porta 80 (host ${PUBLIC_HOST}; domini propri delle app pubbliche se accese)."
     if [ -z "${GITSTACK_TLS_EMAIL}" ]; then
       warn "--tls-email non indicata: Let's Encrypt non potra' avvisarti delle scadenze."
     fi
@@ -2371,7 +2389,7 @@ setup_tls() {
   save_tls_choices
   case "${GITSTACK_TLS_MODE}" in
     internal|custom)
-      write_traefik_manifest "${chart_dir}" no
+      write_traefik_manifest "${chart_dir}" "${ACME_ENABLED}"
       install_tls_tool "${chart_dir}"
       local args=(ensure --mode "${GITSTACK_TLS_MODE}" --names "${TLS_NAMES}" --ips "${TLS_IPS}" --apps-domain "${APPS_DOMAIN}"
         --release "${GITSTACK_RELEASE_NAME}" --namespace "${GITSTACK_NAMESPACE}" --kubeconfig "${GITSTACK_KUBECONFIG}")
@@ -2396,7 +2414,7 @@ setup_tls() {
       write_traefik_manifest "${chart_dir}" yes
       ;;
     insecure)
-      write_traefik_manifest "${chart_dir}" no
+      write_traefik_manifest "${chart_dir}" "${ACME_ENABLED}"
       disable_renew_timer
       warn "--insecure-http: GitStack parla HTTP in chiaro, password e token viaggiano senza cifratura. Solo per prove locali: la UI mostra un avviso."
       ;;

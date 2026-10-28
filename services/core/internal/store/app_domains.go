@@ -189,3 +189,50 @@ func (s *Store) ListPublicApps(ctx context.Context) ([]App, error) {
 	}
 	return out, nil
 }
+
+// VerifiedDomainHostsMode è VerifiedDomainHosts limitato a un modo di certificato (`letsencrypt` o
+// `custom`): i domini letsencrypt hanno una rotta propria col resolver ACME (GIT-459).
+func (s *Store) VerifiedDomainHostsMode(ctx context.Context, appID uuid.UUID, mode string) ([]string, error) {
+	rows, err := s.pool.Query(ctx, `SELECT normalized FROM core.app_domains WHERE app_id = $1 AND status = 'verified' AND cert_mode = $2 ORDER BY normalized`, appID, mode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []string{}
+	for rows.Next() {
+		var h string
+		if err := rows.Scan(&h); err != nil {
+			return nil, err
+		}
+		out = append(out, h)
+	}
+	return out, rows.Err()
+}
+
+// AppDomainCert è lo stato del certificato di un dominio, come lo ha osservato il controller.
+type AppDomainCert struct {
+	State       string
+	ValidFrom   *time.Time
+	ValidUntil  *time.Time
+	Issuer      *string
+	Error       *string
+	LastAttempt time.Time
+}
+
+// SaveAppDomainCert scrive lo stato del certificato (solo per i domini col modo letsencrypt: i
+// certificati caricati dal cliente non li tocca). ErrNotFound se il dominio è stato tolto o è custom.
+func (s *Store) SaveAppDomainCert(ctx context.Context, id uuid.UUID, c AppDomainCert) (AppDomain, error) {
+	return scanAppDomain(s.pool.QueryRow(ctx, `UPDATE core.app_domains SET cert_state = $2, cert_valid_from = $3, cert_valid_until = $4,
+		cert_issuer = $5, cert_error = $6, cert_last_attempt_at = $7 WHERE id = $1 AND cert_mode = 'letsencrypt' RETURNING `+appDomainCols,
+		id, c.State, c.ValidFrom, c.ValidUntil, c.Issuer, c.Error, c.LastAttempt))
+}
+
+// SetPublicIPs sostituisce gli IP pubblici dichiarati dell'istanza.
+func (s *Store) SetPublicIPs(ctx context.Context, ips []string) error {
+	if ips == nil {
+		ips = []string{}
+	}
+	_, err := s.pool.Exec(ctx, `INSERT INTO core.app_capacity_settings (singleton, public_ips, updated_at) VALUES (true, $1, now())
+		ON CONFLICT (singleton) DO UPDATE SET public_ips = EXCLUDED.public_ips`, ips)
+	return err
+}
