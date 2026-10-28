@@ -661,6 +661,23 @@ apps_off_api() {
   printf 'ok  apps-off-api: 503 apps_unavailable, nessun namespace, nessuna app nel modello\n'
 }
 
+# app_namespace <host> <secondi>: stampa il namespace dell'IngressRoute il cui match contiene l'host,
+# aspettandolo fino alla scadenza; esce 1 (senza stampare) se non compare. Nessuna lettura di
+# items[0] su una lista che può essere vuota: il filtro jq dà una stringa vuota.
+app_namespace() {
+  local h="${1:?host}" limit="${2:?secondi}" end n=""
+  end=$((SECONDS + limit))
+  while :; do
+    n="$("${KUBECTL[@]}" get ingressroute -A -o json 2>/dev/null | jq -r --arg h "${h}" '[.items[]? | select((.spec.routes[0].match // "") | contains($h)) | .metadata.namespace][0] // empty' 2>/dev/null || true)"
+    if [ -n "${n}" ]; then
+      printf '%s' "${n}"
+      return 0
+    fi
+    [ "${SECONDS}" -lt "${end}" ] || return 1
+    sleep 3
+  done
+}
+
 # apps-run <dominio>: un'app di prova creata da API risponde al suo indirizzo automatico (HTTPS con la
 # CA interna, risoluzione forzata verso l'host: il DNS wildcard non c'è sul runner).
 apps_run() {
@@ -673,7 +690,13 @@ apps_run() {
   host="$(printf '%s' "${BODY}" | jq -r '.app.address // empty' | sed -E 's#^https://##')"
   [ -n "${host}" ] || fail "l'app creata non ha un indirizzo automatico: $(printf '%s' "${BODY}" | head -c 300)"
   case "${host}" in *".${domain}") ;; *) fail "indirizzo ${host} fuori dal dominio ${domain}" ;; esac
-  ns="$("${KUBECTL[@]}" get namespaces -l gitstack.io/managed-app=true -o jsonpath='{.items[0].metadata.name}')"
+  # Il controller crea il namespace in modo asincrono dopo il 202: lo si aspetta (dall'IngressRoute
+  # dell'app, come apps_public), con un errore chiaro se non arriva.
+  ns="$(app_namespace "${host}" 180)" || {
+    "${KUBECTL[@]}" get namespaces --show-labels || true
+    "${KUBECTL[@]}" get ingressroute -A -o wide || true
+    fail "apps-run: il namespace dell'app non è comparso entro 180s (IngressRoute con ${host})"
+  }
   # Con un token API valido (accesso `login`: read sul repo) il forward-auth del gateway ammette e
   # l'app risponde. Il DNS wildcard non c'è sul runner: la risoluzione è forzata verso l'host.
   deadline=$((SECONDS + 420))
@@ -764,8 +787,7 @@ apps_public() {
   printf '%s' "${body}" | grep -qi '^Host:' || fail "la risposta di ${host} non è quella di whoami"
   printf 'ok  apps-public: senza login 200, intestazioni X-GitStack-* del client tolte\n'
 
-  ns="$("${KUBECTL[@]}" get ingressroute -A -o json | jq -r --arg h "${host}" '[.items[] | select(.spec.routes[0].match | contains($h)) | .metadata.namespace][0] // empty')"
-  [ -n "${ns}" ] || fail "namespace dell'app pub non trovato (IngressRoute con ${host})"
+  ns="$(app_namespace "${host}" 120)" || fail "namespace dell'app pub non trovato (IngressRoute con ${host})"
 
   # d. public → login: la rotta interna torna (30x o 401 senza credenziali).
   set_mode login
