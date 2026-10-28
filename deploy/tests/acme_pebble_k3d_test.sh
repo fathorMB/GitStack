@@ -122,6 +122,10 @@ k -n kube-system rollout status deployment/traefik --timeout=240s >/dev/null || 
 # --- App di prova e DNS finto: il dominio punta al Service di Traefik (porta 80 per la sfida) ------
 tr_ip=$(k -n kube-system get svc traefik -o jsonpath='{.spec.clusterIP}')
 [ -n "$tr_ip" ] || ko "Service traefik senza ClusterIP"
+# Il record A va messo prima dell'IngressRoute con certResolver: Traefik non riprova un'emissione fallita.
+k -n kube-system run dnsset --restart=Never --image=docker.io/curlimages/curl:8.10.1 --command -- \
+  curl -fsS -X POST http://challtestsrv.kube-system.svc:8055/add-a -d "{\"host\":\"${domain}\",\"addresses\":[\"${tr_ip}\"]}" >/dev/null
+k -n kube-system wait --for=jsonpath='{.status.phase}'=Succeeded pod/dnsset --timeout=120s >/dev/null || ko "DNS finto non impostato"
 k create namespace app-acme >/dev/null
 k -n app-acme apply -f - >/dev/null <<EOF
 apiVersion: apps/v1
@@ -150,9 +154,6 @@ spec:
   tls: {certResolver: letsencrypt}
 EOF
 k -n app-acme rollout status deployment/app --timeout=180s >/dev/null || ko "l'app di prova non parte"
-k -n kube-system run dnsset --restart=Never --image=docker.io/curlimages/curl:8.10.1 --command -- \
-  curl -fsS -X POST http://challtestsrv.kube-system.svc:8055/add-a -d "{\"host\":\"${domain}\",\"addresses\":[\"${tr_ip}\"]}" >/dev/null
-k -n kube-system wait --for=jsonpath='{.status.phase}'=Succeeded pod/dnsset --timeout=120s >/dev/null || ko "DNS finto non impostato"
 
 # --- Attesa del certificato: emittente di Pebble sul nome del dominio, poi risposta HTTPS ---------
 issuer=""
@@ -168,6 +169,7 @@ for _ in $(seq 1 40); do
 done
 if [ -z "$issuer" ]; then
   k -n kube-system logs deployment/traefik --tail=40 || true
+  k -n kube-system logs deployment/pebble -c pebble --tail=40 || true
   ko "nessun certificato di Pebble per $domain entro il tempo massimo"
 fi
 echo "ok: Traefik serve per $domain un certificato emesso da Pebble"
