@@ -74,12 +74,31 @@ printf %s "$VALORE" | gs app secret set web DB_PASSWORD
 - I segreti non si rileggono: `secret list` mostra solo i nomi. Passa il valore dallo standard input, mai in un argomento che resta nella cronologia.
 - Con `--json` ogni comando stampa JSON e gli errori escono su stderr in JSON. Codici di uscita: 0 ok, 1 errore o deploy fallito, 2 uso errato, 4 non autenticato, 5 permesso negato, 6 non trovato.
 
+## Pubblica → dominio → verifica → certificato (v3-c)
+
+Un'app è interna (`login`) finché un admin non la pubblica. Il giro per metterla su internet con un dominio tuo:
+
+```sh
+gs app access sito --mode public                      # 1. pubblica (chiede conferma: riscrivi il nome)
+gs app domain add sito shop.retail.it                 # 2. aggiungi il dominio: stampa il record DNS da creare
+gs app domain verify sito shop.retail.it              # 3. dopo aver creato il record, ricontrolla il DNS
+gs app domain list sito --json domain,status,certificate
+gs app domain cert upload sito shop.retail.it --cert fullchain.pem --key privkey.pem   # 4. facoltativo: certificato tuo
+gs app domain cert rm sito shop.retail.it             # torna a Let's Encrypt
+gs app domain rm sito shop.retail.it                  # toglie route e certificato
+```
+
+- `--mode` vale `login`, `none` o `public`. `public` funziona solo se l'amministratore ha abilitato le app pubbliche (H1): altrimenti 422 `public_apps_disabled`.
+- Un dominio nasce `pending_dns` con il record atteso (CNAME verso l'indirizzo automatico, oppure A/AAAA). `verify` esce 0 anche se il DNS non risponde: leggi `status` (`verified`, `pending_dns`, `error` con `statusReason`).
+- Il certificato nasce `letsencrypt` e l'emissione parte con il DNS `verified`. Con `cert upload` passa a `custom`: stato `none`, `issuing`, `valid` o `error` (vedi `validUntil` ed `error`). La chiave privata non si rilegge e non va mai stampata né messa in un argomento: usa un file.
+- Errori leggibili: 409 `app_not_public` (l'app non è pubblica), 409 `domain_taken`, 422 `domain_reserved` (dominio di GitStack, delle app o un IP), 422 `invalid_domain`, 422 `certificate_invalid` (chiave diversa, dominio non coperto, scaduto), 409 `not_custom`. Finché il server non ha le funzioni dei domini o del certificato, può rispondere 501.
+
 ## Con MCP
 
-Gli strumenti sono gli stessi dell'API: `app_list`, `app_get`, `app_logs`, `app_deploy`, `app_rollback`, `app_restart`, `app_scale`, `app_version_list`, `app_volume_list` (lettura o `write`), mentre `app_create`, `app_delete`, `app_set_access`, `app_access_member_add` e `app_access_member_remove`, `app_volume_create`, `app_volume_update` e `app_volume_delete` richiedono `admin` e sono annotati come **distruttivi**: il client può chiedere conferma. Il server non chiede conferme da solo. `app_deploy` risponde 202: leggi l'esito con `app_version_list` o `app_get` finché lo stato non è `serving` o `failed`.
+Gli strumenti sono gli stessi dell'API: `app_list`, `app_get`, `app_logs`, `app_deploy`, `app_rollback`, `app_restart`, `app_scale`, `app_version_list`, `app_volume_list`, `app_domains_list`, `app_domain_get` (lettura o `write`), mentre `app_create`, `app_delete`, `app_set_access`, `app_access_member_add` e `app_access_member_remove`, `app_volume_create`, `app_volume_update` e `app_volume_delete`, `app_domain_add`, `app_domain_remove`, `app_domain_recheck`, `app_domain_certificate_upload` e `app_domain_certificate_remove` richiedono `admin` e sono annotati come **distruttivi**: il client può chiedere conferma. Il server non chiede conferme da solo. `app_deploy` risponde 202: leggi l'esito con `app_version_list` o `app_get` finché lo stato non è `serving` o `failed`.
 
 ## Divieto di `--yes` (G8)
 
-`gs app scale --copies 0`, `gs app delete` (elimina anche i volumi e i dati), `gs app env unset`, `gs app secret rm` e `gs app volume remove` chiedono conferma. **Un agente non usa mai `--yes` su queste operazioni senza un'istruzione esplicita di una persona** che nomina quell'app, in questa conversazione. Senza terminale e senza `--yes` il comando esce con 2 e non fa nulla: è la richiesta di una conferma umana, non un errore da aggirare.
+`gs app scale --copies 0`, `gs app access --mode public` (pubblica su internet), `gs app domain rm` e `gs app domain cert rm`, `gs app delete` (elimina anche i volumi e i dati), `gs app env unset`, `gs app secret rm` e `gs app volume remove` chiedono conferma. **Un agente non usa mai `--yes` su queste operazioni senza un'istruzione esplicita di una persona** che nomina quell'app, in questa conversazione. Senza terminale e senza `--yes` il comando esce con 2 e non fa nulla: è la richiesta di una conferma umana, non un errore da aggirare.
 
 Per avere una persona nel giro dei deploy, chi amministra il repo attiva «Richiedi una Pull Request» su `main`: i deploy automatici partono solo dopo un merge approvato. Se un deploy dell'agente fallisce, gli amministratori ricevono una notifica.

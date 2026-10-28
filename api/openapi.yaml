@@ -10282,7 +10282,7 @@ paths:
       x-required-scopes: ["read:resource"]
       x-repo-permission: admin
       x-mcp:
-        expose: false
+        expose: true
         name: app_domains_list
         destructive: false
       summary: "Elenca i domini propri dell'app (v3-c)"
@@ -10304,7 +10304,7 @@ paths:
       x-required-scopes: ["write:resource"]
       x-repo-permission: admin
       x-mcp:
-        expose: false
+        expose: true
         name: app_domain_add
         destructive: true
       summary: "Aggiunge un dominio proprio all'app (v3-c)"
@@ -10338,7 +10338,7 @@ paths:
       x-required-scopes: ["read:resource"]
       x-repo-permission: admin
       x-mcp:
-        expose: false
+        expose: true
         name: app_domain_get
         destructive: false
       summary: "Legge un dominio proprio dell'app (v3-c)"
@@ -10355,7 +10355,7 @@ paths:
       x-required-scopes: ["write:resource"]
       x-repo-permission: admin
       x-mcp:
-        expose: false
+        expose: true
         name: app_domain_remove
         destructive: true
       summary: "Toglie un dominio proprio dall'app (v3-c)"
@@ -10381,7 +10381,7 @@ paths:
       x-required-scopes: ["write:resource"]
       x-repo-permission: admin
       x-mcp:
-        expose: false
+        expose: true
         name: app_domain_recheck
         destructive: true
       summary: "Ricontrolla il DNS di un dominio proprio (v3-c)"
@@ -10408,7 +10408,7 @@ paths:
       x-required-scopes: ["write:resource"]
       x-repo-permission: admin
       x-mcp:
-        expose: false
+        expose: true
         name: app_domain_certificate_upload
         destructive: true
       summary: "Carica il certificato del cliente per un dominio (v3-c)"
@@ -10434,7 +10434,7 @@ paths:
       x-required-scopes: ["write:resource"]
       x-repo-permission: admin
       x-mcp:
-        expose: false
+        expose: true
         name: app_domain_certificate_remove
         destructive: true
       summary: "Toglie il certificato del cliente e torna a Let's Encrypt (v3-c)"
