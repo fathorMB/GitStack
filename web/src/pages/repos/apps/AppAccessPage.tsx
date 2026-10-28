@@ -115,6 +115,9 @@ export function AppAccessPage({ repo, app, perms, onChange }: Props) {
                     )}
                   </div>
                   {!perms.canChangeAccess ? <p className="hint">Only admins of the repository can change who opens the app.</p> : null}
+                  <p className="hint">
+                    <a href="https://fathormb.github.io/GitStack/user/publish-an-app/" target="_blank" rel="noreferrer">Guide: publish an app on your own domain</a>
+                  </p>
                 </div>
                 {data.mode !== 'public' && perms.canChangeAccess ? <AppAccessList repo={repo} app={app} canEdit /> : null}
                 {data.mode !== 'public' && !perms.canChangeAccess ? (
