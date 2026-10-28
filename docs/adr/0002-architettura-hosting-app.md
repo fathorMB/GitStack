@@ -224,6 +224,16 @@ Esiti: tutto coincide → `verified`; nessun record (NXDOMAIN, nessuna risposta,
 ripete a intervalli (ogni 5 minuti, poi più radi) e su richiesta con `POST .../recheck`. Un dominio `verified` il cui DNS
 cambia torna `error` e perde la route (non il certificato); lo stato non cancella mai dati.
 La route Traefik del dominio e l'emissione del certificato partono solo da `verified`.
+
+Realizzazione (GIT-458): il controllo è in `services/core/internal/apps/domains.go` (resolver configurabile, policy di
+`pkg/egress` per segnalare i risultati su indirizzi interni) e gira alla richiesta e ogni minuto dal controller. Ritmo:
+`pending_dns` ed `error` ogni 5 minuti nella prima ora, ogni 30 minuti fino al giorno, poi ogni 6 ore; `verified` ogni 10 minuti
+(5 durante la grazia). **Periodo di grazia**: un `verified` il cui DNS non coincide più (anche se sparisce) resta `verified`
+e con la route per 1 ora (`failing_since`); scaduta passa a `error` col motivo e perde la route. Gli IP pubblici dichiarati sono
+in `core.app_capacity_settings.public_ips` (la scrittura arriva con le impostazioni ACME). Senza lista dei suffissi pubblici,
+«apice» vuol dire un nome di due etichette. Gli host dei domini `verified` sono aggiunti alla route dell'app da
+`domainHosts` (`controller.go`, `ensureRoute`), solo per le app `public` a interruttore acceso; togliere un dominio riscrive
+subito la route.
 Domini non ammessi: il dominio di GitStack, il dominio delle app e i suoi sotto-domini, gli indirizzi IP
 (`domain_reserved`); un dominio già legato a un'altra app o a questa (`domain_taken`, indice unico sul
 dominio normalizzato, minuscolo e senza punto finale); un'app che non ha accesso `public` non ha domini

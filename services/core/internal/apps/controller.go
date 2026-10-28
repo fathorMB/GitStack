@@ -77,6 +77,9 @@ type Config struct {
 	ProxyEnv map[string]string
 	// GateImage: immagine dell'init container «gate» dei pod delle app (GIT-418), quella di core.
 	GateImage string
+	// Domains: controllo del DNS dei domini propri delle app pubbliche (v3-c, GIT-458); AppsDomain
+	// vuoto prende quello sopra. Resolver nil = DNS di sistema.
+	Domains DomainConfig
 	// TraefikNamespace è il namespace dell'Ingress controller k3s.
 	TraefikNamespace string
 	// Gateway è la porta interna del gateway per le app (GIT-442); nil o incompleta = non configurata.
@@ -164,6 +167,8 @@ type Controller struct {
 
 	// publicOn è un seam dei test per l'interruttore delle app pubbliche; nil = lo legge lo store.
 	publicOn func(context.Context) (bool, error)
+	// domainsOf e' il seam dei test per i domini propri attivi dell'app; nil = li legge lo store.
+	domainsOf func(context.Context, store.App) ([]string, error)
 
 	kick    chan struct{}
 	mu      sync.Mutex
@@ -203,7 +208,7 @@ func (c *Controller) Kick() {
 func (c *Controller) Run(ctx context.Context) {
 	tick := time.NewTicker(c.cfg.LoopInterval)
 	defer tick.Stop()
-	var lastSync, lastCollect, lastLogs, lastMetrics, lastPrune time.Time
+	var lastSync, lastCollect, lastLogs, lastMetrics, lastPrune, lastDomains time.Time
 	for {
 		c.processPending(ctx)
 		if now := time.Now(); now.Sub(lastSync) >= c.cfg.SyncEvery {
@@ -221,6 +226,10 @@ func (c *Controller) Run(ctx context.Context) {
 		if now := time.Now(); now.Sub(lastMetrics) >= c.cfg.MetricsEvery {
 			lastMetrics = now
 			c.CollectMetrics(ctx)
+		}
+		if now := time.Now(); now.Sub(lastDomains) >= time.Minute {
+			lastDomains = now
+			c.CheckDomains(ctx)
 		}
 		if now := time.Now(); now.Sub(lastPrune) >= time.Minute {
 			lastPrune = now
@@ -824,7 +833,11 @@ func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.A
 	} else if err := ns.Delete(ctx, MiddlewareAuth, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("middleware %s: %w", MiddlewareAuth, err)
 	}
-	return upsert(ctx, routes, BuildRoute(app, host, login))
+	extra, err := c.domainHosts(ctx, app)
+	if err != nil {
+		return fmt.Errorf("lettura dei domini propri: %w", err)
+	}
+	return upsert(ctx, routes, BuildRoute(app, host, login, extra...))
 }
 
 // upsert crea l'oggetto o ne aggiorna lo spec e le label, solo se cambiano (il ciclo di sync lo
