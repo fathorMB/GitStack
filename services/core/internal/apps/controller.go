@@ -235,6 +235,9 @@ func (c *Controller) Run(ctx context.Context) {
 			lastDomains = now
 			c.CheckDomains(ctx)
 			c.CheckPort80(ctx)
+			// GIT-462: dopo un restore (o se qualcuno toglie un Secret) il namespace di Traefik non ha
+			// più i Secret dei certificati del cliente: il database li ha cifrati e qui si riscrivono.
+			c.SyncCustomCerts(ctx)
 		}
 		if now := time.Now(); now.Sub(lastCerts) >= certProbeEvery {
 			lastCerts = now
