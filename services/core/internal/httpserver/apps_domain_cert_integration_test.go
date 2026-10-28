@@ -63,6 +63,18 @@ func certPEMOf(der []byte) string {
 	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
 }
 
+func TestAppDomainCertificate_SenzaChiaveSegreti(t *testing.T) {
+	e := newAppsEnv(t)
+	e.id.sysAdmin[users["carol"]] = true
+	e.repo("handbook", true)
+	e.want(e.do(http.MethodPost, "/repos/alice/handbook/apps", "alice", createWeb), http.StatusAccepted, "")
+	e.want(e.do(http.MethodPut, "/admin/apps/settings", "carol", publicSettings(true)), http.StatusOK, "")
+	e.want(e.do(http.MethodPut, "/repos/alice/handbook/apps/web/access", "alice", `{"mode":"public"}`), http.StatusOK, "")
+	e.want(e.do(http.MethodPost, "/repos/alice/handbook/apps/web/domains", "alice", domainBody("shop.retail.it")), http.StatusCreated, "")
+	e.want(e.do(http.MethodPut, "/repos/alice/handbook/apps/web/domains/shop.retail.it/certificate", "alice",
+		`{"certificate":"certificate","privateKey":"private-key"}`), http.StatusServiceUnavailable, "app_secrets_unavailable")
+}
+
 func keyPEMOf(t *testing.T, k *ecdsa.PrivateKey) string {
 	t.Helper()
 	der, err := x509.MarshalPKCS8PrivateKey(k)

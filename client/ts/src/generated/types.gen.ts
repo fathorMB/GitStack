@@ -21082,6 +21082,10 @@ export type UploadAppDomainCertificateErrors = {
      *
      */
     422: Error;
+    /**
+     * Segreti delle app non configurati (`app_secrets_unavailable`).
+     */
+    503: Error;
 };
 
 export type UploadAppDomainCertificateError = UploadAppDomainCertificateErrors[keyof UploadAppDomainCertificateErrors];
