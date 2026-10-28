@@ -288,7 +288,16 @@ export function AppDomainsSection({ repo, app, access, canEdit }: Props) {
 /** Errori del contratto dei domini con un testo che dice cosa fare. */
 function describeDomainError(err: unknown): string {
   if (err instanceof ApiError) {
-    if (err.status === 409) return `${err.message} The domain may already be used by another app.`.trim();
+    switch (err.code) {
+      case 'domain_taken':
+        return 'This domain is already used by an app on this instance. Remove it there first.';
+      case 'archived':
+        return 'The repository is archived: domains cannot be changed.';
+      case 'app_not_public':
+        return 'Custom domains need the app to be public. Choose «Public on the internet» first.';
+      case 'not_custom':
+        return "This domain already uses Let's Encrypt.";
+    }
     if (err.status === 404) return 'This domain no longer exists. Reload the page.';
   }
   return describeError(err);

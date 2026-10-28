@@ -144,14 +144,58 @@ describe('Domini propri (H7, variante pubblica)', () => {
     expect(await screen.findByText(/Uploaded certificate · until/, undefined, { timeout: T })).toBeInTheDocument();
   }, T);
 
-  it('errore del contratto (409) con testo chiaro; 422 con il campo', async () => {
+  it('«Check now» su repo archiviato (409 archived): testo che dice il motivo', async () => {
+    vi.mocked(api.fetchAppDomains).mockResolvedValue({ items: [waiting] });
+    vi.mocked(api.recheckAppDomain).mockRejectedValue(new ApiError({ error: { code: 'archived', message: 'Repository is archived.' } }, 409));
+    mount('admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Check docs.acme.com now' }, { timeout: T }));
+    expect(await screen.findByText('The repository is archived: domains cannot be changed.', undefined, { timeout: T })).toBeInTheDocument();
+    expect(screen.queryByText(/another app/)).not.toBeInTheDocument();
+  }, T);
+
+  it('«Upload certificate» su app non pubblica (409 app_not_public)', async () => {
+    vi.mocked(api.fetchAppDomains).mockResolvedValue({ items: [verified] });
+    vi.mocked(api.uploadAppDomainCertificate).mockRejectedValue(new ApiError({ error: { code: 'app_not_public', message: 'App is not public.' } }, 409));
+    mount('admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Certificate of handbook.acme.it' }, { timeout: T }));
+    await userEvent.type(screen.getByLabelText(/Certificate and intermediate chain/), 'CERT');
+    await userEvent.type(screen.getByLabelText(/Private key/), 'KEY');
+    await userEvent.click(screen.getByRole('button', { name: 'Upload certificate' }));
+    expect((await screen.findAllByText(/Custom domains need the app to be public\. Choose «Public on the internet» first\./, undefined, { timeout: T })).length).toBeGreaterThan(0);
+  }, T);
+
+  it('certificato non valido (422 certificate_invalid): il motivo del server è nel dialog', async () => {
+    vi.mocked(api.fetchAppDomains).mockResolvedValue({ items: [verified] });
+    vi.mocked(api.uploadAppDomainCertificate).mockRejectedValue(
+      new ApiError({ error: { code: 'certificate_invalid', message: 'The private key does not match the certificate.' } }, 422),
+    );
+    mount('admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Certificate of handbook.acme.it' }, { timeout: T }));
+    await userEvent.type(screen.getByLabelText(/Certificate and intermediate chain/), 'CERT');
+    await userEvent.type(screen.getByLabelText(/Private key/), 'KEY');
+    await userEvent.click(screen.getByRole('button', { name: 'Upload certificate' }));
+    const dialog = await screen.findByRole('dialog', undefined, { timeout: T });
+    expect(await within(dialog).findByText('The private key does not match the certificate.', undefined, { timeout: T })).toBeInTheDocument();
+  }, T);
+
+  it('«Use Let’s Encrypt» su dominio già automatico (409 not_custom)', async () => {
+    const custom = { ...verified, certificate: { mode: 'custom' as const, state: 'valid' as const } };
+    vi.mocked(api.fetchAppDomains).mockResolvedValue({ items: [custom] });
+    vi.mocked(api.removeAppDomainCertificate).mockRejectedValue(new ApiError({ error: { code: 'not_custom', message: 'x' } }, 409));
+    mount('admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Certificate of handbook.acme.it' }, { timeout: T }));
+    await userEvent.click(screen.getByRole('button', { name: /Use Let's Encrypt/ }));
+    expect((await screen.findAllByText("This domain already uses Let's Encrypt.", undefined, { timeout: T })).length).toBeGreaterThan(0);
+  }, T);
+
+  it('errore del contratto: domain_taken su Add; 422 con il campo', async () => {
     vi.mocked(api.fetchAppDomains).mockResolvedValue({ items: [] });
-    vi.mocked(api.addAppDomain).mockRejectedValueOnce(new ApiError({ error: { code: 'conflict', message: 'Domain already in use.' } }, 409));
+    vi.mocked(api.addAppDomain).mockRejectedValueOnce(new ApiError({ error: { code: 'domain_taken', message: 'Domain already in use.' } }, 409));
     mount('admin');
     await userEvent.click(await screen.findByRole('button', { name: /Add domain/ }, { timeout: T }));
     await userEvent.type(screen.getByLabelText('Domain name'), 'docs.acme.com');
     await userEvent.click(screen.getByRole('button', { name: 'Add' }));
-    expect(await screen.findByText(/Domain already in use\. The domain may already be used by another app/, undefined, { timeout: T })).toBeInTheDocument();
+    expect(await screen.findByText('This domain is already used by an app on this instance. Remove it there first.', undefined, { timeout: T })).toBeInTheDocument();
     vi.mocked(api.addAppDomain).mockRejectedValueOnce(
       new ApiError({ error: { code: 'validation_failed', message: 'Invalid domain', details: { fields: { domain: 'must not be a wildcard' } } } }, 422),
     );
