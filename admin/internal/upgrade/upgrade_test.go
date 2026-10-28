@@ -190,6 +190,9 @@ func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...strin
 		}
 		h.rolled = true
 		h.staleSA = h.upgraded && h.breakSA
+		if h.staleSA && strings.Contains(strings.Join(args, " "), "--wait") {
+			return []byte("Error: timed out waiting for the condition"), errors.New("exit 1")
+		}
 		return nil, nil
 	}
 	return nil, errors.New("sottocomando inatteso " + args[0])
@@ -548,8 +551,13 @@ func TestBrokenServiceRollsBackChartOnly(t *testing.T) {
 	if !res.RolledBackChart || res.Restored || w.cl.restored {
 		t.Errorf("rollback: chart=%v restore=%v", res.RolledBackChart, res.Restored)
 	}
-	if !w.helm.has("rollback gitstack 4") || !w.helm.has("--wait") {
+	if !w.helm.has("rollback gitstack 4") {
 		t.Errorf("chiamate: %v", w.helm.calls)
+	}
+	for _, c := range w.helm.calls {
+		if strings.HasPrefix(c, "rollback") && strings.Contains(c, "--wait") {
+			t.Errorf("rollback con --wait: %s", c)
+		}
 	}
 	w.assertUntouched()
 	if !strings.Contains(strings.Join(res.Summary, "\n"), "dati intatti") {
@@ -628,6 +636,33 @@ func TestGatewayOnlyBreakRollsBackAndRestores(t *testing.T) {
 	}
 	if w.helm.staleSA {
 		t.Error("il ServiceAccount di core è rimasto")
+	}
+	w.assertUntouched()
+}
+
+// GIT-479, ramo senza restore: le migrazioni non hanno cambiato il database,
+// ma l'upgrade ha legato core a un ServiceAccount che il rollback cancella.
+// Con helm rollback --wait il rollback scadeva (exit 8); senza --wait e con la
+// pulizia dopo il rollback l'esito è RolledBack (exit 7), senza restore.
+func TestGatewayOnlyBreakRollsBackWithoutRestore(t *testing.T) {
+	w := newWorld(t)
+	w.helm.breakSA = true
+	w.helm.onUp = func() error { return errors.New("exit 1") }
+	w.healthy = func() bool { return !w.helm.upgraded || w.helm.rolled && !w.helm.staleSA }
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != RolledBack {
+		t.Fatalf("res=%+v err=%v (atteso RolledBack, exit 7)", res, err)
+	}
+	if !res.RolledBackChart || res.Restored || w.cl.restored {
+		t.Errorf("rollback: chart=%v restore=%v", res.RolledBackChart, res.Restored)
+	}
+	if w.helm.staleSA {
+		t.Error("il ServiceAccount di core è rimasto")
+	}
+	for _, c := range w.helm.calls {
+		if strings.HasPrefix(c, "rollback") && strings.Contains(c, "--wait") {
+			t.Errorf("rollback con --wait: %s", c)
+		}
 	}
 	w.assertUntouched()
 }
