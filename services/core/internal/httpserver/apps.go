@@ -284,12 +284,24 @@ func (s *apiServer) ListApps(w http.ResponseWriter, r *http.Request, owner opena
 		return
 	}
 	out := openapi.AppList{Items: []openapi.App{}}
-	for _, a := range apps {
-		ai, ok := s.appResponse(w, r, a)
-		if !ok {
+	publicOn, err := s.resources.PublicAppsEnabled(r.Context())
+	if err != nil {
+		appInternalError(w, "lettura delle app pubbliche", err)
+		return
+	}
+	byApp := map[uuid.UUID][]store.AppDomain{}
+	if publicOn {
+		all, err := s.resources.ListAppDomainsForCheck(r.Context())
+		if err != nil {
+			appInternalError(w, "lettura dei domini", err)
 			return
 		}
-		out.Items = append(out.Items, ai)
+		for _, d := range all {
+			byApp[d.AppID] = append(byApp[d.AppID], d)
+		}
+	}
+	for _, a := range apps {
+		out.Items = append(out.Items, s.appToAPIWith(a, publicOn, byApp[a.ID]))
 	}
 	limits, used, isDefault, err := s.resources.OwnerAppQuota(r.Context(), repo.OwnerName)
 	if err != nil {
