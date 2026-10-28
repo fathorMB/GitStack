@@ -829,8 +829,8 @@ func (o *Options) rollback(st *state) {
 		} else {
 			res.RolledBackChart = true
 			if err := o.clearStaleServiceAccounts(ctx, st.prevRev); err != nil {
-					fail("%v", err)
-				}
+				fail("%v", err)
+			}
 		}
 	}
 
@@ -845,13 +845,13 @@ func (o *Options) rollback(st *state) {
 			fail("restore dal backup: %v", err)
 		} else {
 			res.Restored = true
-				// Il restore ferma e riaccende i servizi: si rilegge che nessun Deployment
-				// sia tornato a un ServiceAccount inesistente.
-				if stale, err := o.staleServiceAccounts(ctx, "dopo il restore"); err != nil {
-					o.logf("    ServiceAccount dopo il restore non verificati: %v", err)
-				} else if len(stale) > 0 {
-					fail("dopo il restore restano Deployment legati a un ServiceAccount che non esiste: %s", strings.Join(stale, ", "))
-				}
+			// Il restore ferma e riaccende i servizi: si rilegge che nessun Deployment
+			// sia tornato a un ServiceAccount inesistente.
+			if stale, err := o.staleServiceAccounts(ctx, "dopo il restore"); err != nil {
+				o.logf("    ServiceAccount dopo il restore non verificati: %v", err)
+			} else if len(stale) > 0 {
+				fail("dopo il restore restano Deployment legati a un ServiceAccount che non esiste: %s", strings.Join(stale, ", "))
+			}
 		}
 	}
 
