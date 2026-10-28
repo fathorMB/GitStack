@@ -1559,6 +1559,13 @@ jobs:
           done
           echo "OK: CRD middlewares.traefik.io Established"
 
+      - name: Let's Encrypt dei domini delle app con Pebble (k3d)
+        # GIT-459 (v3-c): lo script crea un SUO cluster usa-e-getta (gs-acme-test, nessuna porta
+        # mappata, quindi niente collisioni con gitstack-ci) e lo elimina nel trap EXIT anche se
+        # fallisce, come k3d-test.sh sopra. Stampa le tre righe «ok:» che la revisione cerca nel log.
+        timeout-minutes: 20
+        run: deploy/tests/acme_pebble_k3d_test.sh
+
       - name: Importa le immagini nel cluster (nessun push su un registry per questo job)
         run: |
           docker build -f deploy/ci-runner/Dockerfile -t gitstack-ci-runner:test .

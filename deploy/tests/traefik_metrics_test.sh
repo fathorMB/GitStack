@@ -154,9 +154,11 @@ expect_has "resolver a core" "${c}" 'GITSTACK_CORE_APPS_ACME_RESOLVER'
 expect_has "email a core" "${c}" 'value: "a@example.com"'
 expect_has "indirizzo TLS di Traefik" "${c}" 'value: "traefik.kube-system.svc.cluster.local:443"'
 d="$(doc "${OUT}" NetworkPolicy gitstack-core-traefik-metrics)"
-expect_has "core legge il certificato su 443" "${d}" "port: 443"
+expect_has "core legge il certificato sulla porta del pod (websecure)" "${d}" "port: websecure"
+expect_lacks "non la porta 443 del Service" "${d}" "port: 443"
 OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template senza acme fallito"; exit 1; }
 expect_lacks "senza resolver core non riceve variabili ACME" "$(doc "${OUT}" Deployment gitstack-core)" "GITSTACK_CORE_APPS_ACME"
+expect_lacks "senza resolver la policy non apre websecure" "$(doc "${OUT}" NetworkPolicy gitstack-core-traefik-metrics)" "websecure"
 
 echo
 echo "Passati: ${PASS}  Falliti: ${FAILN}"
