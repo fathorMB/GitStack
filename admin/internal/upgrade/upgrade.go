@@ -817,16 +817,18 @@ func (o *Options) rollback(st *state) {
 		}
 
 		args := []string{"rollback", o.Cfg.Release, strconv.Itoa(st.prevRev), "-n", o.Cfg.Namespace, "--timeout", strconv.Itoa(int(o.timeout().Seconds())) + "s"}
-		if !touched {
-			// Con il database toccato, i servizi vecchi non partono: li
-			// riavvia il restore, che li ferma e li riaccende.
-			args = append(args, "--wait")
-		}
+		// Mai --wait (GIT-479): dopo il rollback il Deployment di core può
+		// essere ancora legato al ServiceAccount dell'upgrade, che il
+		// rollback ha cancellato; senza pod, helm --wait scadrebbe prima che
+		// clearStaleServiceAccounts lo sistemi. L'attesa la fa waitHealthy
+		// più sotto; con il database toccato i servizi vecchi non partono e
+		// li riavvia il restore, che li ferma e li riaccende.
 		o.logf("==> helm rollback alla revisione %d", st.prevRev)
 		if out, err := o.helmRun(ctx, args...); err != nil {
 			fail("helm rollback: %v: %s", err, tail(string(out)))
 		} else {
 			res.RolledBackChart = true
+			o.clearStaleServiceAccounts(ctx, st.prevRev)
 		}
 	}
 
