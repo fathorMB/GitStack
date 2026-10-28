@@ -170,7 +170,7 @@ func TestListApps_PublicAddressPerPiuApp(t *testing.T) {
 				e.t.Fatalf("app %s non valida: %v", item.Name, err)
 			}
 			if single.PublicAddress == nil || *single.PublicAddress != *item.PublicAddress {
-				e.Fatalf("ListApps e GET singola per %s: %v vs %v", item.Name, item.PublicAddress, single.PublicAddress)
+				e.t.Fatalf("ListApps e GET singola per %s: %v vs %v", item.Name, item.PublicAddress, single.PublicAddress)
 			}
 		}
 		if len(got) != 3 {
