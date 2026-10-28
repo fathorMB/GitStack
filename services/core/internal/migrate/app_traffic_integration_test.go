@@ -63,7 +63,7 @@ func TestMigration0048_AppTraffic(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.app_traffic_samples`).Scan(&n); err != nil || n != 0 {
 		t.Fatalf("i campioni devono uscire con l'app: %d %v", n, err)
 	}
-	if err := migrate.Down(ctx, pool, dsn, 5); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 6); err != nil {
 		t.Fatalf("down 0048: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.app_traffic_samples`).Scan(&n); err == nil {

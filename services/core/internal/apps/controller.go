@@ -239,6 +239,7 @@ func (c *Controller) Run(ctx context.Context) {
 		if now := time.Now(); now.Sub(lastCerts) >= certProbeEvery {
 			lastCerts = now
 			c.CheckCertificates(ctx)
+			c.CheckCertExpiry(ctx)
 		}
 		if now := time.Now(); now.Sub(lastPrune) >= time.Minute {
 			lastPrune = now
