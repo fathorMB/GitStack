@@ -2,6 +2,7 @@ package apps
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -50,7 +51,7 @@ func (c *Controller) CheckDomains(ctx context.Context) {
 		if err != nil {
 			continue
 		}
-		if _, changed, err := RecheckDomain(ctx, c.st, c.domainConfig(), app, d, ips); err != nil {
+		if _, changed, err := RecheckDomain(ctx, c.st, c.domainConfig(), app, d, ips, c.cfg.Log); err != nil {
 			c.cfg.Log.Warn("apps: controllo del dominio non riuscito", "domain", d.Normalized, "err", err)
 		} else if changed {
 			c.RefreshRoute(ctx, app)
@@ -61,8 +62,11 @@ func (c *Controller) CheckDomains(ctx context.Context) {
 // RecheckDomain fa il controllo del DNS di un dominio e ne salva l'esito. Ritorna il dominio
 // aggiornato e se il suo contributo alla rotta e' cambiato (entrata o uscita da verified). Lo usano il
 // ciclo periodico e POST .../recheck.
-func RecheckDomain(ctx context.Context, st *store.Store, dc DomainConfig, app store.App, d store.AppDomain, publicIPs []string) (store.AppDomain, bool, error) {
+func RecheckDomain(ctx context.Context, st *store.Store, dc DomainConfig, app store.App, d store.AppDomain, publicIPs []string, logs ...*slog.Logger) (store.AppDomain, bool, error) {
 	res := dc.CheckDNS(ctx, d.Normalized, app.AddressLabel, publicIPs)
+	if res.ResolverErr != nil && len(logs) > 0 && logs[0] != nil {
+		logs[0].Warn("apps: errore del resolver durante il controllo DNS", "domain", d.Normalized, "err", res.ResolverErr)
+	}
 	upd, err := st.SaveAppDomainCheck(ctx, d.ID, dc.ApplyDNSResult(d, res, time.Now()))
 	if err != nil {
 		return d, false, err

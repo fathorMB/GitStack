@@ -3700,6 +3700,10 @@ export type App = {
      * Indirizzo automatico (H2); assente per un'app senza indirizzo, raggiungibile solo dalle app dello stesso repo.
      */
     address?: string | null;
+    /**
+     * Indirizzo con cui l'app si apre (v3-c), visibile a chi legge l'app: il dominio proprio verificato piu' vecchio se l'app e' `public` e le app pubbliche sono abilitate, altrimenti l'indirizzo automatico. Null per un'app senza indirizzo.
+     */
+    readonly publicAddress?: string | null;
     image: AppImage;
     /**
      * Numero della versione che serve il traffico.
@@ -4486,6 +4490,43 @@ export type AdminApp = {
     violatesInstanceRules?: boolean;
 };
 
+/**
+ * Dominio proprio di un'app pubblica, con stato del DNS e del certificato (v3-c).
+ */
+export type AdminPublicAppDomain = {
+    domain: AppDomainName;
+    status: AppDomainStatus;
+    statusReason?: string | null;
+    certificate: AppDomainCertificate;
+};
+
+/**
+ * Riga dell'elenco admin delle app pubbliche (H1, H9, v3-c).
+ */
+export type AdminPublicApp = {
+    owner: string;
+    repo: string;
+    name: AppName;
+    status: AppStatus;
+    /**
+     * Indirizzo automatico (H2).
+     */
+    address?: string | null;
+    /**
+     * Indirizzo con cui l'app si apre da internet: il dominio verificato piu' vecchio, altrimenti l'indirizzo automatico.
+     */
+    publicAddress: string | null;
+    /**
+     * Domini propri, dal piu' vecchio; `verified` vuol dire dominio attivo.
+     */
+    domains: Array<AdminPublicAppDomain>;
+};
+
+export type AdminPublicAppList = {
+    items: Array<AdminPublicApp>;
+    total: number;
+};
+
 export type AdminAppList = {
     items: Array<AdminApp>;
     total: number;
@@ -4941,6 +4982,72 @@ export type BranchSettingsWritable = {
     requiredStatusContexts: Array<string>;
 };
 
+export type AppWritable = {
+    id: string;
+    name: AppName;
+    /**
+     * Owner del repo: su di lui contano le quote (H5).
+     */
+    owner: string;
+    repo: string;
+    status: AppStatus;
+    stoppedReason?: AppStoppedReason | null;
+    /**
+     * Il deploy dell'ultima versione e' fallito e serve ancora la precedente.
+     */
+    runningPreviousVersion?: boolean;
+    access: AppAccessMode;
+    /**
+     * Indirizzo automatico (H2); assente per un'app senza indirizzo, raggiungibile solo dalle app dello stesso repo.
+     */
+    address?: string | null;
+    image: AppImage;
+    /**
+     * Numero della versione che serve il traffico.
+     */
+    activeVersion: number;
+    follow?: AppFollow | null;
+    /**
+     * Porta del container. Null per un'app senza indirizzo (worker).
+     */
+    port?: number | null;
+    healthCheck?: AppHealthCheck | null;
+    /**
+     * Copie volute.
+     */
+    copies: number;
+    /**
+     * Copie sane.
+     */
+    readyCopies: number;
+    resources: AppResources;
+    /**
+     * Volumi persistenti (H3, v3-b); con almeno un volume l'app gira in una sola copia.
+     */
+    volumes?: Array<AppVolume>;
+    /**
+     * Uso corrente; null vuol dire metriche non disponibili.
+     */
+    usage?: AppUsage | null;
+    lastDeploy?: AppLastDeploy | null;
+    createdAt: string;
+    createdBy?: AppActor | null;
+    updatedAt: string;
+};
+
+export type AppListWritable = {
+    items: Array<AppWritable>;
+    /**
+     * Quota dell'owner del repo (H5, H11), per la riga sopra l'elenco.
+     */
+    quota?: AppOwnerQuota | null;
+};
+
+export type AppCreatedWritable = {
+    app: AppWritable;
+    version: AppVersion;
+};
+
 export type AppDomainCertificateInputWritable = {
     /**
      * Certificato e catena intermedia, in PEM, foglia per prima.
@@ -4950,6 +5057,22 @@ export type AppDomainCertificateInputWritable = {
      * Chiave privata in PEM (PKCS#8, PKCS#1 o EC), senza passphrase. Solo scrittura.
      */
     privateKey: string;
+};
+
+/**
+ * Payload del webhook `deployment` (H12). `action`: `started` (deploy avviato), `succeeded` (la versione e' sana), `failed` (non ha superato il controllo di salute; resta la precedente), `rolled_back` (rollback a mano riuscito). Una notifica «deploy fallito» va anche a chi l'ha fatto e agli `admin` del repo.
+ *
+ */
+export type WebhookDeploymentPayloadWritable = {
+    version: 1;
+    event: 'deployment';
+    action: 'started' | 'succeeded' | 'failed' | 'rolled_back';
+    time: string;
+    repository: WebhookRepositoryRef;
+    organization?: WebhookOrganizationRef;
+    sender: WebhookSender | null;
+    app: AppWritable;
+    deployment: AppVersion;
 };
 
 /**
@@ -21628,6 +21751,36 @@ export type ListAdminAppsResponses = {
 };
 
 export type ListAdminAppsResponse = ListAdminAppsResponses[keyof ListAdminAppsResponses];
+
+export type ListAdminPublicAppsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/apps/public';
+};
+
+export type ListAdminPublicAppsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+};
+
+export type ListAdminPublicAppsError = ListAdminPublicAppsErrors[keyof ListAdminPublicAppsErrors];
+
+export type ListAdminPublicAppsResponses = {
+    /**
+     * App pubbliche dell'istanza.
+     */
+    200: AdminPublicAppList;
+};
+
+export type ListAdminPublicAppsResponse = ListAdminPublicAppsResponses[keyof ListAdminPublicAppsResponses];
 
 export type GetAdminAppsCapacityData = {
     body?: never;

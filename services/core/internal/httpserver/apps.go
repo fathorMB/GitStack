@@ -285,7 +285,11 @@ func (s *apiServer) ListApps(w http.ResponseWriter, r *http.Request, owner opena
 	}
 	out := openapi.AppList{Items: []openapi.App{}}
 	for _, a := range apps {
-		out.Items = append(out.Items, s.appToAPI(a))
+		ai, ok := s.appResponse(w, r, a)
+		if !ok {
+			return
+		}
+		out.Items = append(out.Items, ai)
 	}
 	limits, used, isDefault, err := s.resources.OwnerAppQuota(r.Context(), repo.OwnerName)
 	if err != nil {
@@ -412,7 +416,11 @@ func (s *apiServer) CreateApp(w http.ResponseWriter, r *http.Request, owner open
 		}
 		return
 	}
-	writeJSON(w, http.StatusAccepted, openapi.AppCreated{App: s.appToAPI(app), Version: s.versionToAPI(ver, app.ActiveVersion, previousVersion(app.ActiveVersion))})
+	ai, ok := s.appResponse(w, r, app)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusAccepted, openapi.AppCreated{App: ai, Version: s.versionToAPI(ver, app.ActiveVersion, previousVersion(app.ActiveVersion))})
 }
 
 func (s *apiServer) appFor(w http.ResponseWriter, r *http.Request, repo store.Repo, name string) (store.App, bool) {
@@ -438,7 +446,9 @@ func (s *apiServer) GetApp(w http.ResponseWriter, r *http.Request, owner openapi
 	if !ok {
 		return
 	}
-	writeJSON(w, http.StatusOK, s.appToAPI(a))
+	if ai, ok := s.appResponse(w, r, a); ok {
+		writeJSON(w, http.StatusOK, ai)
+	}
 }
 
 // UpdateApp implementa PATCH /repos/{owner}/{repo}/apps/{app}: porta, controllo di salute, deploy
@@ -600,7 +610,9 @@ func (s *apiServer) UpdateApp(w http.ResponseWriter, r *http.Request, owner open
 		}
 		return
 	}
-	writeJSON(w, http.StatusOK, s.appToAPI(updated))
+	if ai, ok := s.appResponse(w, r, updated); ok {
+		writeJSON(w, http.StatusOK, ai)
+	}
 }
 
 // DeleteApp implementa DELETE /repos/{owner}/{repo}/apps/{app}. Se l'app ha volumi elimina anche i

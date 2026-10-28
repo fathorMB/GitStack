@@ -36,3 +36,7 @@ func (s *apiServer) UploadAppDomainCertificate(w http.ResponseWriter, r *http.Re
 func (s *apiServer) RemoveAppDomainCertificate(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, domain openapi.AppDomainParam) {
 	s.appsProxy(w, r)
 }
+
+func (s *apiServer) ListAdminPublicApps(w http.ResponseWriter, r *http.Request) {
+	s.appsProxy(w, r)
+}

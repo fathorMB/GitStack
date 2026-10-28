@@ -166,8 +166,9 @@ func (c DomainConfig) ExpectedRecord(domain string, addressLabel *string, public
 
 // DNSResult è l'esito di un controllo del DNS.
 type DNSResult struct {
-	Status string // store.DomainVerified | DomainPendingDNS | DomainError
-	Reason string // motivo leggibile, vuoto se verified o pending
+	Status      string // store.DomainVerified | DomainPendingDNS | DomainError
+	Reason      string // motivo leggibile, vuoto se verified o pending
+	ResolverErr error  // errore locale del resolver, non una risposta DNS del dominio
 }
 
 // CheckDNS risolve il dominio e lo confronta col record atteso (ADR 0002): il CNAME che finisce
@@ -186,8 +187,12 @@ func (c DomainConfig) CheckDNS(ctx context.Context, domain string, addressLabel 
 	}
 	addrs, hostErr := res.LookupHost(ctx, domain)
 	if hostErr != nil || len(addrs) == 0 {
-		// Nessun record, oppure un guasto del resolver (rete, SERVFAIL) che non e' la risposta del dominio:
-		// in nessuno dei due casi si accusa il dominio.
+		if hostErr != nil && !isDNSNotFound(hostErr) {
+			return DNSResult{Status: store.DomainPendingDNS, ResolverErr: hostErr}
+		}
+		if hostErr == nil && cnameErr != nil && !isDNSNotFound(cnameErr) {
+			return DNSResult{Status: store.DomainPendingDNS, ResolverErr: cnameErr}
+		}
 		return DNSResult{Status: store.DomainPendingDNS}
 	}
 	found := make([]netip.Addr, 0, len(addrs))
@@ -215,6 +220,11 @@ func (c DomainConfig) CheckDNS(ctx context.Context, domain string, addressLabel 
 		}
 	}
 	return DNSResult{Status: store.DomainError, Reason: c.mismatchReason(domain, cname, cnameErr, target, found, publicIPs)}
+}
+
+func isDNSNotFound(err error) bool {
+	var dnsErr *net.DNSError
+	return errors.As(err, &dnsErr) && dnsErr.IsNotFound
 }
 
 func (c DomainConfig) mismatchReason(domain, cname string, cnameErr error, target string, found []netip.Addr, publicIPs []string) string {
@@ -255,6 +265,11 @@ func (c DomainConfig) ApplyDNSResult(d store.AppDomain, r DNSResult, now time.Ti
 		return &s
 	}
 	switch {
+	case r.ResolverErr != nil && d.Status == store.DomainVerified:
+		out.Status = store.DomainVerified
+		out.FailingSince = d.FailingSince
+		out.StatusReason = d.StatusReason
+		return out
 	case r.Status == store.DomainVerified:
 		if d.Status != store.DomainVerified || d.VerifiedAt == nil {
 			t := now
