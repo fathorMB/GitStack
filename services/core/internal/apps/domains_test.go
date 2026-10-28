@@ -85,11 +85,14 @@ func TestCheckDNS(t *testing.T) {
 	if r := check(stubDNS{cname: map[string]string{"shop.retail.it": "WEB-handbook-alice.apps.example.com"}}); r.Status != store.DomainVerified {
 		t.Errorf("il confronto ignora le maiuscole: %+v", r)
 	}
-	if r := check(stubDNS{}); r.Status != store.DomainPendingDNS || r.Reason != "" {
+	if r := check(stubDNS{}); r.Status != store.DomainPendingDNS || r.Reason != "" || r.ResolverErr != nil {
 		t.Errorf("NXDOMAIN = pending: %+v", r)
 	}
 	if r := check(stubDNS{err: &net.DNSError{Name: "x", IsTimeout: true}}); r.Status != store.DomainPendingDNS || r.ResolverErr == nil {
 		t.Errorf("timeout = errore resolver: %+v", r)
+	}
+	if r := check(stubDNS{err: &net.DNSError{Name: "x", IsTemporary: true}}); r.Status != store.DomainPendingDNS || r.ResolverErr == nil {
+		t.Errorf("SERVFAIL = errore resolver: %+v", r)
 	}
 	r := check(stubDNS{hosts: map[string][]string{"shop.retail.it": {"203.0.113.9"}}}, "198.51.100.7")
 	if r.Status != store.DomainError || !strings.Contains(r.Reason, "203.0.113.9") || !strings.Contains(r.Reason, target) || !strings.Contains(r.Reason, "198.51.100.7") {
@@ -136,6 +139,25 @@ func TestApplyDNSResult_Grazia(t *testing.T) {
 	c := DomainConfig{Grace: time.Hour}
 	t0 := time.Date(2026, 10, 28, 10, 0, 0, 0, time.UTC)
 	d := store.AppDomain{Normalized: "shop.retail.it", Status: store.DomainPendingDNS}
+	v := store.AppDomain{Normalized: "shop.retail.it", Status: store.DomainVerified, VerifiedAt: &t0}
+	for _, resolverErr := range []error{
+		&net.DNSError{Name: "x", IsTimeout: true},
+		&net.DNSError{Name: "x", IsTemporary: true},
+	} {
+		chk := c.ApplyDNSResult(v, DNSResult{Status: store.DomainPendingDNS, ResolverErr: resolverErr}, t0.Add(10*time.Minute))
+		if chk.Status != store.DomainVerified || chk.FailingSince != nil || chk.VerifiedAt == nil || !chk.VerifiedAt.Equal(t0) {
+			t.Errorf("verified senza grazia con errore resolver %v: %+v", resolverErr, chk)
+		}
+	}
+	checkAt := t0.Add(10 * time.Minute)
+	bad := DNSResult{Status: store.DomainError, Reason: "risolve su 203.0.113.9"}
+	nxdomain := (DomainConfig{AppsDomain: "apps.example.com", Resolver: stubDNS{}}).CheckDNS(context.Background(), "shop.retail.it", nil, nil)
+	for name, result := range map[string]DNSResult{"NXDOMAIN": nxdomain, "record diversi": bad} {
+		chk := c.ApplyDNSResult(v, result, checkAt)
+		if chk.Status != store.DomainVerified || chk.FailingSince == nil || !chk.FailingSince.Equal(checkAt) {
+			t.Errorf("%s deve iniziare la grazia: %+v", name, chk)
+		}
+	}
 
 	// pending → verified: verified_at nasce.
 	chk := c.ApplyDNSResult(d, DNSResult{Status: store.DomainVerified}, t0)
@@ -145,7 +167,6 @@ func TestApplyDNSResult_Grazia(t *testing.T) {
 	d.Status, d.VerifiedAt = chk.Status, chk.VerifiedAt
 
 	// Il DNS non coincide più: resta verified, parte la grazia.
-	bad := DNSResult{Status: store.DomainError, Reason: "risolve su 203.0.113.9"}
 	chk = c.ApplyDNSResult(d, bad, t0.Add(10*time.Minute))
 	if chk.Status != store.DomainVerified || chk.FailingSince == nil || !chk.FailingSince.Equal(t0.Add(10*time.Minute)) {
 		t.Fatalf("grazia: %+v", chk)
