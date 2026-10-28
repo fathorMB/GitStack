@@ -164,7 +164,7 @@ func keyBody(pemKey string) string {
 // Il Secret del certificato sta solo nel namespace di Traefik e il TLSStore lo elenca; tolto il dominio
 // custom il Secret sparisce; nessun Secret con la chiave nel namespace dell'app.
 func TestSyncCustomSecrets_SoloNamespaceTraefik(t *testing.T) {
-	kube := fake.NewSimpleClientset()
+	kube := fake.NewClientset()
 	dyn := fakeDynamic()
 	appNS := Namespace(uuid.New())
 	if _, err := kube.CoreV1().Namespaces().Create(context.Background(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: appNS}}, metav1.CreateOptions{}); err != nil {
