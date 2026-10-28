@@ -47,7 +47,8 @@ k wait --for=condition=Established crd/ingressroutes.traefik.io --timeout=60s >/
 
 # --- Pebble (CA ACME di prova) e challtestsrv (DNS finto) in kube-system, accanto a Traefik --------
 # Il certificato di Pebble ha tra i SAN `pebble`, e la CA di prova (minica) va data a Traefik con
-# LEGO_CA_CERTIFICATES.
+# LEGO_CA_CERTIFICATES. Per questo caServer usa il nome corto `pebble` (stesso namespace di Traefik,
+# si risolve col search domain del pod), non pebble.kube-system.svc, che non è nei SAN.
 curl -fsSL "https://raw.githubusercontent.com/letsencrypt/pebble/${pebble_ref}/test/certs/pebble.minica.pem" -o "$work/minica.pem" || ko "download della CA di Pebble"
 k -n kube-system create configmap pebble-ca --from-file=pebble.minica.pem="$work/minica.pem" >/dev/null
 k apply -f - >/dev/null <<EOF
@@ -73,7 +74,7 @@ spec:
         - name: pebble
           image: ghcr.io/letsencrypt/pebble:${pebble_ref#v}
           args: ["-config", "/test/config/pebble-config.json", "-dnsserver", "challtestsrv.kube-system.svc:8053"]
-          env: [{name: PEBBLE_VA_NOSLEEP, value: "1"}]
+          env: [{name: PEBBLE_VA_NOSLEEP, value: "1"}, {name: PEBBLE_WFE_NONCEREJECT, value: "0"}]
           volumeMounts: [{name: cfg, mountPath: /test/config}]
         - name: challtestsrv
           image: ghcr.io/letsencrypt/pebble-challtestsrv:${pebble_ref#v}
@@ -110,7 +111,7 @@ spec:
       letsencrypt:
         acme:
           email: test@example.com
-          caServer: https://pebble.kube-system.svc:14000/dir
+          caServer: https://pebble:14000/dir
           storage: /data/acme.json
           httpChallenge: {entryPoint: web}
 EOF
@@ -121,6 +122,10 @@ k -n kube-system rollout status deployment/traefik --timeout=240s >/dev/null || 
 # --- App di prova e DNS finto: il dominio punta al Service di Traefik (porta 80 per la sfida) ------
 tr_ip=$(k -n kube-system get svc traefik -o jsonpath='{.spec.clusterIP}')
 [ -n "$tr_ip" ] || ko "Service traefik senza ClusterIP"
+# Il record A va messo prima dell'IngressRoute con certResolver: Traefik non riprova un'emissione fallita.
+k -n kube-system run dnsset --restart=Never --image=docker.io/curlimages/curl:8.10.1 --command -- \
+  curl -fsS -X POST http://challtestsrv.kube-system.svc:8055/add-a -d "{\"host\":\"${domain}\",\"addresses\":[\"${tr_ip}\"]}" >/dev/null
+k -n kube-system wait --for=jsonpath='{.status.phase}'=Succeeded pod/dnsset --timeout=120s >/dev/null || ko "DNS finto non impostato"
 k create namespace app-acme >/dev/null
 k -n app-acme apply -f - >/dev/null <<EOF
 apiVersion: apps/v1
@@ -149,9 +154,6 @@ spec:
   tls: {certResolver: letsencrypt}
 EOF
 k -n app-acme rollout status deployment/app --timeout=180s >/dev/null || ko "l'app di prova non parte"
-k -n kube-system run dnsset --restart=Never --image=docker.io/curlimages/curl:8.10.1 --command -- \
-  curl -fsS -X POST http://challtestsrv.kube-system.svc:8055/add-a -d "{\"host\":\"${domain}\",\"addresses\":[\"${tr_ip}\"]}" >/dev/null
-k -n kube-system wait --for=jsonpath='{.status.phase}'=Succeeded pod/dnsset --timeout=120s >/dev/null || ko "DNS finto non impostato"
 
 # --- Attesa del certificato: emittente di Pebble sul nome del dominio, poi risposta HTTPS ---------
 issuer=""
@@ -167,6 +169,7 @@ for _ in $(seq 1 40); do
 done
 if [ -z "$issuer" ]; then
   k -n kube-system logs deployment/traefik --tail=40 || true
+  k -n kube-system logs deployment/pebble -c pebble --tail=40 || true
   ko "nessun certificato di Pebble per $domain entro il tempo massimo"
 fi
 echo "ok: Traefik serve per $domain un certificato emesso da Pebble"
