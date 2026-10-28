@@ -171,7 +171,7 @@ const probeLastKOMarker = probeMarkerPrefix + "ultimo KO"
 // riuscito e, al KO, quanti tentativi e in quanti secondi. Dopo il primo KO aspetta 3 s (invece di 1) perché
 // il test faccia in tempo a prendere il dump dal nodo con il pod ancora vivo.
 func retryProbeScript(check, ok string) string {
-	return fmt.Sprintf(`s0=$(date +%%s); i=0; while :; do i=$((i + 1)); output=$(%[1]s 2>&1); rc=$?; if [ "$rc" -eq 0 ]; then echo "%[3]sriuscito al tentativo $i dopo $(( $(date +%%s) - s0 )) s"; %[2]s; exit 0; fi; if [ $i -eq 1 ]; then echo "%[4]s: exit=$rc stderr=$output"; sleep 3; fi; if [ $(( $(date +%%s) - s0 )) -ge %[5]d ]; then echo "%[6]s: exit=$rc stderr=$output"; echo "%[3]sKO dopo $i tentativi in $(( $(date +%%s) - s0 )) s"; sleep 5; exit 1; fi; sleep 1; done`,
+	return fmt.Sprintf(`s0=$(date +%%s); i=0; while :; do i=$((i + 1)); t0=$(date +%%s); output=$(%[1]s 2>&1); rc=$?; elapsed=$(( $(date +%%s) - t0 )); if [ "$rc" -eq 0 ]; then echo "%[3]sriuscito al tentativo $i dopo $(( $(date +%%s) - s0 )) s"; %[2]s; exit 0; fi; if [ "$elapsed" -lt 1 ]; then reason=rifiutata; else reason=timeout; fi; if [ $i -eq 1 ]; then echo "%[4]s: motivo=$reason durata=${elapsed}s exit=$rc stderr=$output"; sleep 3; fi; if [ $(( $(date +%%s) - s0 )) -ge %[5]d ]; then echo "%[6]s: motivo=$reason durata=${elapsed}s exit=$rc stderr=$output"; echo "%[3]sKO dopo $i tentativi in $(( $(date +%%s) - s0 )) s"; sleep 5; exit 1; fi; sleep 1; done`,
 		check, ok, probeMarkerPrefix, probeFirstKOMarker, probePositiveWindowSeconds, probeLastKOMarker)
 }
 
