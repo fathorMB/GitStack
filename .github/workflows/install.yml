@@ -487,6 +487,7 @@ jobs:
           ./deploy/ci/install-e2e.sh verify-apps-domain "${APPS_DOMAIN}"
           ./deploy/ci/install-e2e.sh verify-apps-hosting on
           ./deploy/ci/install-e2e.sh apps-run "${APPS_DOMAIN}"
+          ./deploy/ci/install-e2e.sh apps-public "${APPS_DOMAIN}"
           ./deploy/ci/install-e2e.sh verify-seed --push
 
       - name: CI attiva dopo l'upgrade e workflow di prova
@@ -499,7 +500,10 @@ jobs:
       # GIT-375: l'hosting delle app acceso dall'installer: un'app creata da API risponde al suo indirizzo.
       - name: App di prova con l'hosting acceso (installazione nuova)
         if: matrix.scenario == 'fresh'
-        run: ./deploy/ci/install-e2e.sh apps-run "${APPS_EXPECT}"
+        run: |
+          set -euo pipefail
+          ./deploy/ci/install-e2e.sh apps-run "${APPS_EXPECT}"
+          ./deploy/ci/install-e2e.sh apps-public "${APPS_EXPECT}"
 
       - name: gitstack backup (cifrato)
         run: |
