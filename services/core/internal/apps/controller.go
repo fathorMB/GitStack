@@ -174,7 +174,7 @@ type Controller struct {
 
 	acme    acmeState
 	kick    chan struct{}
-	mu     sync.Mutex
+	mu      sync.Mutex
 	running map[uuid.UUID]bool
 	// oomSeen: ultimo riavvio per OOM già registrato, per app e copia (mu).
 	oomSeen map[uuid.UUID]map[string]int32

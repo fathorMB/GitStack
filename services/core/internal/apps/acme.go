@@ -81,7 +81,6 @@ type acmeState struct {
 	port80    Port80Status
 	port80Key string
 	last80    time.Time
-	lastProbe time.Time
 }
 
 // ACMEStatus dà la configurazione ACME e l'ultimo esito sulla porta 80, per le impostazioni d'istanza.
