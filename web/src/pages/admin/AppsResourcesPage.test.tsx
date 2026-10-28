@@ -212,9 +212,9 @@ describe('AppsResourcesPage', { timeout: 30000 }, () => {
   });
 
   it('lists public apps with domains and certificate state', async () => {
-    publicApps = [{ owner: 'acme', repo: 'handbook', name: 'web', address: null, domains: [
-      { id: 'd1', domain: 'www.acme.it', status: 'verified', certificate: { mode: 'letsencrypt', state: 'valid', validUntil: '2027-01-01T00:00:00Z' } },
-      { id: 'd2', domain: 'shop.acme.it', status: 'verified', certificate: { mode: 'letsencrypt', state: 'error', error: 'challenge failed' } },
+    publicApps = [{ owner: 'acme', repo: 'handbook', name: 'web', status: 'running', address: null, publicAddress: 'https://www.acme.it', domains: [
+      { domain: 'www.acme.it', status: 'verified', certificate: { mode: 'letsencrypt', state: 'valid', validUntil: '2027-01-01T00:00:00Z' } },
+      { domain: 'shop.acme.it', status: 'verified', certificate: { mode: 'letsencrypt', state: 'error', error: 'challenge failed' } },
     ] }];
     setup();
     const list = (await screen.findByText('www.acme.it')).closest('section')!;
@@ -222,5 +222,20 @@ describe('AppsResourcesPage', { timeout: 30000 }, () => {
     expect(within(list).getByText('valid')).toBeInTheDocument();
     expect(within(list).getByText('shop.acme.it')).toBeInTheDocument();
     expect(within(list).getByText(/challenge failed/)).toBeInTheDocument();
+  });
+
+  it('loads the public apps with one call, none per app, and reloads when the switch changes', async () => {
+    publicApps = [{ owner: 'acme', repo: 'handbook', name: 'web', status: 'running', address: null, publicAddress: 'https://www.acme.it', domains: [] }];
+    vi.mocked(api.saveAppsSettings).mockResolvedValue({ ...settings, publicAppsEnabled: true });
+    const user = userEvent.setup();
+    setup();
+    expect(await screen.findByText(/No custom domain/)).toBeInTheDocument();
+    expect(api.fetchPublicApps).toHaveBeenCalledTimes(1);
+    expect(api.fetchPublicApps).toHaveBeenCalledWith();
+    vi.mocked(api.fetchPublicApps).mockResolvedValue([] as never);
+    await user.click(screen.getByRole('switch', { name: 'Public apps' }));
+    await user.click(screen.getByRole('button', { name: 'Turn on' }));
+    await waitFor(() => expect(api.fetchPublicApps).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText('No public apps on this instance.')).toBeInTheDocument();
   });
 });

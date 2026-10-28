@@ -162,3 +162,30 @@ func (s *Store) PublicIPs(ctx context.Context) ([]string, error) {
 	}
 	return ips, err
 }
+
+// ListPublicApps elenca le app con accesso `public` dei repo non eliminati, per owner, repo e nome.
+func (s *Store) ListPublicApps(ctx context.Context) ([]App, error) {
+	rows, err := s.pool.Query(ctx, `SELECT `+appCols+appFrom+` WHERE a.access_mode = 'public' AND r.deleted_at IS NULL ORDER BY r.owner_name, r.name, a.name`)
+	if err != nil {
+		return nil, err
+	}
+	var out []App
+	for rows.Next() {
+		a, err := scanApp(rows)
+		if err != nil {
+			rows.Close()
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for i := range out {
+		if err := s.fillApp(ctx, s.pool, &out[i]); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}

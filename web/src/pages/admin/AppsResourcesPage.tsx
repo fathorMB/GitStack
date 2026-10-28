@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button, ErrorAlert, FormField, TextInput, useToast } from '../../components';
 import { fetchSession } from '../../lib/authApi';
@@ -146,7 +146,7 @@ function AppsResourcesConsole() {
         <dt>Max per app</dt><dd>{vcpu(settings.maxPerApp.cpuMillis)} · {memory(settings.maxPerApp.memoryBytes)} · logs {settings.logRetention.days} days / {memory(settings.logRetention.maxBytes)}</dd>
       </dl></section>
       <section className="card admin-app-list" aria-labelledby="admin-app-list-title"><h2 className="card-h" id="admin-app-list-title">Apps</h2><div className="list"><div className="list-row list-head"><span>App</span><span>Guaranteed</span><span>Using</span><span>Limit</span><span>Copies</span></div>{apps.map((app) => <div className="list-row" key={`${app.owner}/${app.repo}/${app.name}`}><span><b className="mono">{app.owner}/{app.repo}/{app.name}</b>{!app.verified ? <span className="badge badge-run">not verified</span> : null}{app.runsAsRoot ? <span className="badge">root</span> : null}{app.violatesInstanceRules ? <span className="badge badge-err">instance policy</span> : null}</span><span>{vcpu(app.guaranteed.cpuMillis)} · {memory(app.guaranteed.memoryBytes)}</span><span>{vcpu(app.usage.cpuMillis)} · {memory(app.usage.memoryBytes)}{app.aboveGuaranteed ? <span className="badge badge-run">above</span> : null}</span><span>{vcpu(app.limit.cpuMillis)} · {memory(app.limit.memoryBytes)}</span><span>{app.copies}</span></div>)}</div></section>
-      <PublicAppsList apps={apps} />
+      <PublicAppsList enabled={settings.publicAppsEnabled} />
     </div>
     {publicConfirm ? <div className="modal-back" role="presentation"><div className="modal" role="dialog" aria-label={settings.publicAppsEnabled ? 'Turn off public apps' : 'Turn on public apps'}><h2 className="modal-h">{settings.publicAppsEnabled ? 'Turn off public apps?' : 'Turn on public apps?'}</h2><div className="modal-b stack">{settings.publicAppsEnabled
       ? <p>Apps already public stop being reachable from the internet. Each app keeps its own choice, so turning this on again restores them.</p>
@@ -166,10 +166,16 @@ function LetsEncryptStatus({ status, publicEnabled }: { status?: AppsLetsEncrypt
   </div>;
 }
 const certLabel: Record<string, string> = { none: 'no certificate', issuing: 'issuing', valid: 'valid', error: 'error' };
-function PublicAppsList({ apps }: { apps: { owner: string; repo: string; name: string }[] }) {
-  const { data, loading, error } = useLoad(() => fetchPublicApps(apps));
+function PublicAppsList({ enabled }: { enabled: boolean }) {
+  const { data, loading, error, reload } = useLoad(fetchPublicApps);
+  // L'interruttore d'istanza cambia quali app sono esposte: l'elenco si ricarica (non al primo giro).
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    void reload();
+  }, [enabled, reload]);
   return <section className="card" aria-labelledby="public-apps-title"><h2 className="card-h" id="public-apps-title">Public apps</h2>
-    {loading && !data ? <p className="muted card-b">Loading…</p> : error ? <div className="card-b"><ErrorAlert message={error} /></div> : !data || data.length === 0 ? <p className="muted card-b">No public apps on this instance.</p> : <div className="list">{data.map((app) => <div className="list-row" key={`${app.owner}/${app.repo}/${app.name}`}><div style={{ flex: 1 }}><b className="mono">{app.owner}/{app.repo}/{app.name}</b>{app.domains.length === 0 ? <div className="small muted">No custom domain{app.address ? ` · ${app.address}` : ''}</div> : app.domains.map((d) => <div className="small" key={d.id}><span className="mono">{d.domain}</span> <span className={`badge${d.certificate.state === 'valid' ? ' badge-ok' : d.certificate.state === 'error' ? ' badge-err' : ''}`}>{certLabel[d.certificate.state] ?? d.certificate.state}</span>{d.certificate.validUntil ? <span className="hint"> · until {new Date(d.certificate.validUntil).toLocaleDateString()}</span> : null}{d.certificate.error ? <span className="hint"> · {d.certificate.error}</span> : null}</div>)}</div></div>)}</div>}
+    {loading && !data ? <p className="muted card-b">Loading…</p> : error ? <div className="card-b"><ErrorAlert message={error} /></div> : !data || data.length === 0 ? <p className="muted card-b">No public apps on this instance.</p> : <div className="list">{data.map((app) => <div className="list-row" key={`${app.owner}/${app.repo}/${app.name}`}><div style={{ flex: 1 }}><b className="mono">{app.owner}/{app.repo}/{app.name}</b>{app.domains.length === 0 ? <div className="small muted">No custom domain{app.publicAddress ? ` · ${app.publicAddress}` : ''}</div> : app.domains.map((d) => <div className="small" key={d.domain}><span className="mono">{d.domain}</span> <span className={`badge${d.certificate.state === 'valid' ? ' badge-ok' : d.certificate.state === 'error' ? ' badge-err' : ''}`}>{certLabel[d.certificate.state] ?? d.certificate.state}</span>{d.certificate.validUntil ? <span className="hint"> · until {new Date(d.certificate.validUntil).toLocaleDateString()}</span> : null}{d.certificate.error ? <span className="hint"> · {d.certificate.error}</span> : null}</div>)}</div></div>)}</div>}
   </section>;
 }
 function CapacityRow({ label, amount, total, warning = false }: { label: string; amount: { cpuMillis: number; memoryBytes: number }; total: { cpuMillis: number; memoryBytes: number }; warning?: boolean }) {
