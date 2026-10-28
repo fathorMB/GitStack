@@ -47,7 +47,8 @@ k wait --for=condition=Established crd/ingressroutes.traefik.io --timeout=60s >/
 
 # --- Pebble (CA ACME di prova) e challtestsrv (DNS finto) in kube-system, accanto a Traefik --------
 # Il certificato di Pebble ha tra i SAN `pebble`, e la CA di prova (minica) va data a Traefik con
-# LEGO_CA_CERTIFICATES.
+# LEGO_CA_CERTIFICATES. Per questo caServer usa il nome corto `pebble` (stesso namespace di Traefik,
+# si risolve col search domain del pod), non pebble.kube-system.svc, che non è nei SAN.
 curl -fsSL "https://raw.githubusercontent.com/letsencrypt/pebble/${pebble_ref}/test/certs/pebble.minica.pem" -o "$work/minica.pem" || ko "download della CA di Pebble"
 k -n kube-system create configmap pebble-ca --from-file=pebble.minica.pem="$work/minica.pem" >/dev/null
 k apply -f - >/dev/null <<EOF
@@ -73,7 +74,7 @@ spec:
         - name: pebble
           image: ghcr.io/letsencrypt/pebble:${pebble_ref#v}
           args: ["-config", "/test/config/pebble-config.json", "-dnsserver", "challtestsrv.kube-system.svc:8053"]
-          env: [{name: PEBBLE_VA_NOSLEEP, value: "1"}]
+          env: [{name: PEBBLE_VA_NOSLEEP, value: "1"}, {name: PEBBLE_WFE_NONCEREJECT, value: "0"}]
           volumeMounts: [{name: cfg, mountPath: /test/config}]
         - name: challtestsrv
           image: ghcr.io/letsencrypt/pebble-challtestsrv:${pebble_ref#v}
@@ -110,7 +111,7 @@ spec:
       letsencrypt:
         acme:
           email: test@example.com
-          caServer: https://pebble.kube-system.svc:14000/dir
+          caServer: https://pebble:14000/dir
           storage: /data/acme.json
           httpChallenge: {entryPoint: web}
 EOF
