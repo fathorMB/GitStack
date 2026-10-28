@@ -1736,8 +1736,8 @@ It runs two scenarios on `ubuntu-22.04` and `ubuntu-24.04`:
 - **upgrade**: `install.sh` of the **previous commit** (latest green CI run on
   `main`, strict ancestor, with its images and binary published) with a k3s
   **one patch older** than `deploy/k3s-version` → data → a **failing**
-  `gitstack upgrade` (`--set ci.enabled=true --set gateway.containerPort=1`: the
-  gateway cannot bind, exit code 7, previous version and data back, CI off
+  `gitstack upgrade` (`--set ci.enabled=true --set gateway.env.coreTimeout=guasto-git477`: the
+  gateway exits at startup on an invalid duration, exit code 7, previous version and data back, CI off
   again) → `gitstack upgrade --set ci.enabled=true` (preventive backup → k3s
   patch → GitStack, N10) → k3s checked with `k3s --version`, `kubectl version`
   and `gitstack status --json` (`k3s_version`) → backup → more data → restore.

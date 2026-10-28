@@ -421,7 +421,11 @@ jobs:
           sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --dry-run "${extra[@]}"
 
       # Rollback con la CI: l'aggiornamento accende la CI ma il gateway non parte
-      # (gateway.containerPort=1: porta privilegiata, uid non root). gitstack upgrade deve
+      # (gateway.env.coreTimeout=guasto-git477: GITSTACK_CORE_TIMEOUT non è una durata, il gateway esce 1
+      # all'avvio, CrashLoopBackOff, mai Ready; deploy/gitstack/templates/gateway/deployment.yaml:92-93,
+      # services/gateway/internal/config/config.go:262-266, services/gateway/main.go:30-33). Passa helm template e
+      # il controllo delle immagini di upgrade (admin/internal/upgrade/upgrade.go:488-517: immagini vere, nessun
+      # Refused/6). gitstack upgrade deve
       # uscire con 7 (fallito e tornato com'era), la versione di prima, la CI di nuovo
       # spenta (revisione di partenza) e i dati del seed intatti.
       - name: gitstack upgrade guasto (rollback con la CI accesa)
@@ -430,7 +434,7 @@ jobs:
           set -uo pipefail
           extra=()
           if [ -n "${UPGRADE_UNSIGNED_FLAG}" ]; then extra+=("${UPGRADE_UNSIGNED_FLAG}"); fi
-          sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --timeout 6m             --set ci.enabled=true --set ci.capacity=1 --set gateway.containerPort=1 "${extra[@]}"
+          sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --timeout 6m             --set ci.enabled=true --set ci.capacity=1 --set gateway.env.coreTimeout=guasto-git477 "${extra[@]}"
           rc=$?
           if [ "${rc}" -ne 7 ]; then
             echo "::error::gitstack upgrade guasto: uscita ${rc}, attesa 7 (fallito e tornato com'era)" >&2
