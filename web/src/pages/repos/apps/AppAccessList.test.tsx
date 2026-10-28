@@ -8,6 +8,7 @@ import { makeApp, repo } from './fixtures';
 
 vi.mock('../../../lib/appsApi', () => ({
   fetchAppAccess: vi.fn(),
+  fetchAppDomains: vi.fn(),
   saveAppAccess: vi.fn(),
   fetchAppAccessMembers: vi.fn(),
   addAppAccessMember: vi.fn(),

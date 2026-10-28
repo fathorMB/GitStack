@@ -26,6 +26,11 @@ import {
   deleteAppVariable as sdkDeleteAppVariable,
   deleteApp as sdkDeleteApp,
   listAppDomains as sdkListAppDomains,
+  addAppDomain as sdkAddAppDomain,
+  recheckAppDomain as sdkRecheckAppDomain,
+  removeAppDomain as sdkRemoveAppDomain,
+  uploadAppDomainCertificate as sdkUploadAppDomainCertificate,
+  removeAppDomainCertificate as sdkRemoveAppDomainCertificate,
   listAppVolumes as sdkListAppVolumes,
   createAppVolume as sdkCreateAppVolume,
   deleteAppVolume as sdkDeleteAppVolume,
@@ -150,6 +155,29 @@ export async function removeApp(owner: string, repo: string, app: string): Promi
 /** Domini propri dell'app (v3-c). Serve `admin` sull'app: read e write ricevono 403. */
 export async function fetchAppDomains(owner: string, repo: string, app: string): Promise<AppDomainList> {
   return unwrap(await sdkListAppDomains(atApp(owner, repo, app)));
+}
+
+/** Aggiunge un dominio proprio (admin): risponde con il record DNS da creare. */
+export async function addAppDomain(owner: string, repo: string, app: string, domain: string): Promise<AppDomain> {
+  return unwrap(await sdkAddAppDomain({ ...atApp(owner, repo, app), body: { domain } }));
+}
+
+export async function recheckAppDomain(owner: string, repo: string, app: string, domain: string): Promise<AppDomain> {
+  return unwrap(await sdkRecheckAppDomain({ ...atApp(owner, repo, app), path: { ...atApp(owner, repo, app).path, domain } }));
+}
+
+export async function removeAppDomain(owner: string, repo: string, app: string, domain: string): Promise<void> {
+  unwrapEmpty(await sdkRemoveAppDomain({ ...atApp(owner, repo, app), path: { ...atApp(owner, repo, app).path, domain } }));
+}
+
+/** Certificato del cliente: PEM della catena (foglia per prima) e chiave privata senza passphrase. */
+export async function uploadAppDomainCertificate(owner: string, repo: string, app: string, domain: string, certificate: string, privateKey: string): Promise<AppDomain> {
+  return unwrap(await sdkUploadAppDomainCertificate({ ...atApp(owner, repo, app), path: { ...atApp(owner, repo, app).path, domain }, body: { certificate, privateKey } }));
+}
+
+/** Toglie il certificato caricato: il dominio torna a Let's Encrypt. */
+export async function removeAppDomainCertificate(owner: string, repo: string, app: string, domain: string): Promise<AppDomain> {
+  return unwrap(await sdkRemoveAppDomainCertificate({ ...atApp(owner, repo, app), path: { ...atApp(owner, repo, app).path, domain } }));
 }
 
 export async function fetchAppAccess(owner: string, repo: string, app: string): Promise<AppAccess> {

@@ -1,7 +1,7 @@
-import { Globe, HardDrive, Key, Link as LinkIcon, ShieldCheck } from 'lucide-react';
+import { Globe, HardDrive, Key } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ErrorAlert } from '../../../components';
+import { ConfirmDialog, ErrorAlert } from '../../../components';
 import { fetchAppAccess, saveAppAccess } from '../../../lib/appsApi';
 import type { App, AppAccess, AppAccessMode } from '../../../lib/appsApi';
 import type { AppPermissions } from '../../../lib/appsPermissions';
@@ -9,6 +9,7 @@ import { describeError } from '../../../lib/http';
 import type { Repository } from '../../../lib/reposApi';
 import { useLoad } from '../../../lib/useLoad';
 import { AppAccessList } from './AppAccessList';
+import { AppDomainsSection } from './AppDomainsSection';
 import { AppHeader } from './AppHeader';
 import { appsPath } from './appMode';
 
@@ -19,13 +20,14 @@ interface Props {
   onChange: (app: App) => void;
 }
 
-/** Access & domains (H7, mockup data-screen="access"), solo la variante interna: i domini propri sono della v3-c. */
+/** Access & domains (H7, mockup data-screen="access", varianti interna e «pub»): modo di accesso, lista di accesso e domini propri (v3-c). */
 export function AppAccessPage({ repo, app, perms, onChange }: Props) {
   const owner = repo.owner.name;
   const name = repo.name;
   const { data, loading, error, setData } = useLoad(() => fetchAppAccess(owner, name, app.name));
   const [saveError, setSaveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmPublic, setConfirmPublic] = useState(false);
 
   async function choose(mode: AppAccessMode) {
     if (!data || mode === data.mode) return;
@@ -48,7 +50,7 @@ export function AppAccessPage({ repo, app, perms, onChange }: Props) {
     const on = data?.mode === mode;
     return (
       <label className={`opt${on ? ' on' : ''}${off ? ' off' : ''}`}>
-        <input type="radio" name="acc" aria-label={label} checked={on} disabled={disabled || off} onChange={() => void choose(mode)} />
+        <input type="radio" name="acc" aria-label={label} checked={on} disabled={disabled || off} onChange={() => (mode === 'public' ? setConfirmPublic(true) : void choose(mode))} />
         <div>
           <b>{label}</b> {extra}
           <div className="hint">{hint}</div>
@@ -103,7 +105,10 @@ export function AppAccessPage({ repo, app, perms, onChange }: Props) {
                       publicOff ? (
                         'An installation administrator must first allow public apps in System · Apps.'
                       ) : (
-                        'Anyone on the internet can open it; GitStack login does not apply.'
+                        <>
+                          Anyone on the internet can open it; GitStack login does not apply. Allowed on this instance by <b>admin</b>
+                          {data.mode === 'public' && data.changedBy?.username ? <>; chosen by <b>{data.changedBy.username}</b>{chosenOn(data.changedAt)}</> : null}.
+                        </>
                       ),
                       publicOff ? <span className="badge">disabled by the administrator</span> : null,
                       publicOff && data.mode !== 'public',
@@ -115,32 +120,27 @@ export function AppAccessPage({ repo, app, perms, onChange }: Props) {
                 {data.mode !== 'public' && !perms.canChangeAccess ? (
                   <p className="hint">The access list is managed by admins of the repository.</p>
                 ) : null}
-                <div>
-                  <div className="sec-h">
-                    <h2>Domains</h2>
-                  </div>
-                  <div className="list">
-                    <div className="list-row">
-                      <LinkIcon size={16} className="muted" aria-hidden="true" />
-                      <span className="mono" style={{ flex: 1 }}>{data.address ?? app.address ?? 'No address'}</span>
-                      <span className="badge">automatic</span>
-                      {data.certificate === 'instance_ca' ? (
-                        <span className="badge badge-ok">
-                          <ShieldCheck size={12} aria-hidden="true" />
-                          GitStack CA
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <p className="hint" style={{ marginTop: 8 }}>
-                    Custom domains are available for public apps, or with a certificate you upload.
-                  </p>
-                </div>
+                <AppDomainsSection repo={repo} app={app} access={data} canEdit={perms.canChangeAccess} />
               </>
             ) : null}
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={confirmPublic}
+        onOpenChange={setConfirmPublic}
+        title={`Make ${app.name} public?`}
+        description="Anyone on the internet will be able to open this app; GitStack login will not apply and the access list is not used. You can switch back at any time."
+        confirmLabel="Make public"
+        destructive
+        onConfirm={() => void choose('public')}
+      />
     </>
   );
+}
+
+function chosenOn(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : ` on ${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
 }
