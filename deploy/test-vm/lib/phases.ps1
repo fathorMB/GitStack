@@ -723,8 +723,8 @@ function Wait-E2eAppDomain {
         if ($r.StatusCode -eq 200) {
             $d = $r.Body | ConvertFrom-Json
             if ($d.status -eq 'error') { throw "dominio in error: $($d.statusReason)" }
-            if ($CertState -and $d.certificate.state -eq 'error') { throw "certificato in error: $($d.certificate.error)" }
-            $last = "stato $($d.status), certificato $($d.certificate.state) ($($d.certificate.issuer))"
+            if ($CertState -and $d.certificate.state -eq 'error') { throw "certificato in error: $(Get-JsonField -Object $d.certificate -Name 'error')" }
+            $last = "stato $($d.status), certificato $($d.certificate.state) ($(Get-JsonField -Object $d.certificate -Name 'issuer'))"
             if ($d.status -eq $Status -and (-not $CertState -or $d.certificate.state -eq $CertState)) { return $d }
         } else {
             $last = "status $($r.StatusCode) $($r.Error)"
@@ -861,9 +861,9 @@ function Test-E2eAppPublic {
         # 9. certificato da Pebble
         $i = 8
         $dom = Wait-E2eAppDomain -DomainUrl $domainUrl -Headers $h -Status 'verified' -CertState 'valid' -TimeoutSeconds 540
-        if ([string]$dom.certificate.issuer -notmatch 'Pebble') { throw "emittente '$($dom.certificate.issuer)': non e Pebble" }
+        if ((Get-JsonField -Object $dom.certificate -Name 'issuer') -notmatch 'Pebble') { throw "emittente '$(Get-JsonField -Object $dom.certificate -Name 'issuer')': non e Pebble" }
         if ($dom.certificate.mode -ne 'letsencrypt') { throw "modalita del certificato '$($dom.certificate.mode)' (attesa letsencrypt)" }
-        $rows[8].Ok = $true; $rows[8].Detail = "emittente $($dom.certificate.issuer), scade $($dom.certificate.validUntil)"
+        $rows[8].Ok = $true; $rows[8].Detail = "emittente $(Get-JsonField -Object $dom.certificate -Name 'issuer'), scade $(Get-JsonField -Object $dom.certificate -Name 'validUntil')"
 
         # 10. app sul dominio senza login, catena fino alla radice di Pebble
         $i = 9
@@ -968,8 +968,8 @@ function Test-E2eAppPublicAfterRestore {
         # 2. certificato valid: core lo rilegge da Traefik (SNI), puo servire un minuto
         $i = 1
         $d = Wait-E2eAppDomain -DomainUrl $domainUrl -Headers $h -Status $found[0].status -CertState 'valid' -TimeoutSeconds 420
-        if ([string]$d.certificate.issuer -notmatch 'Pebble') { throw "emittente '$($d.certificate.issuer)': non e Pebble" }
-        $rows[1].Ok = $true; $rows[1].Detail = "scade $($d.certificate.validUntil)"
+        if ((Get-JsonField -Object $d.certificate -Name 'issuer') -notmatch 'Pebble') { throw "emittente '$(Get-JsonField -Object $d.certificate -Name 'issuer')': non e Pebble" }
+        $rows[1].Ok = $true; $rows[1].Detail = "scade $(Get-JsonField -Object $d.certificate -Name 'validUntil')"
 
         # 3. stesso certificato
         $i = 2

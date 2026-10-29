@@ -18,6 +18,7 @@ function Invoke-ExternalCommand {
     return [pscustomobject]@{ ExitCode = 0; StdOut = ''; StdErr = ''; TimedOut = $false }
 }
 . (Join-Path $PSScriptRoot '..\lib\phases.ps1')
+. (Join-Path $PSScriptRoot '..\lib\http.ps1')
 
 $failures = New-Object System.Collections.Generic.List[string]
 function Assert-That {
@@ -339,6 +340,31 @@ try { [void](Wait-E2eRestoredCaAndHealthy -BaseUrl 'https://10.0.0.9' -Ip '10.0.
 Assert-That 'dopo il restore (c): attesa fallita, errore con ultimo status e diagnosi nel log' ($err -like '*Could not establish trust*' -and (($script:LogLines -join "`n") -like '*CA ripristinata impostata sull''host*'))
 Remove-Item -LiteralPath $tmpPem, $caOut, $diagOut -ErrorAction SilentlyContinue
 Clear-GitStackCaTrust
+
+# GIT-506: Wait-E2eAppDomain legge i campi facoltativi di certificate (issuer, error, ...) anche sotto StrictMode.
+function Invoke-HttpRaw {
+    param([string]$Uri, [string]$Method = 'GET', [string]$Body, $Headers, [string]$Cookie, [int]$TimeoutSec = 20)
+    $script:DomCalls++
+    $b = $script:DomBodies[[Math]::Min($script:DomCalls, $script:DomBodies.Count) - 1]
+    return [pscustomobject]@{ StatusCode = 200; Body = $b; Error = $null }
+}
+function Start-Sleep { param([int]$Seconds) [System.Threading.Thread]::Sleep(300) }
+$issuing = '{"status":"verified","certificate":{"mode":"letsencrypt","state":"issuing"}}'
+$valid = '{"status":"verified","certificate":{"mode":"letsencrypt","state":"valid","issuer":"Pebble Intermediate CA 1","validUntil":"2027-01-01T00:00:00Z"}}'
+Set-StrictMode -Version Latest
+$script:DomCalls = 0; $script:DomBodies = @($issuing, $valid)
+$err = $null; $dom = $null
+try { $dom = Wait-E2eAppDomain -DomainUrl 'https://x/d' -Headers @{} -CertState 'valid' -TimeoutSeconds 30 } catch { $err = $_.Exception.Message }
+Assert-That 'Wait-E2eAppDomain: senza issuer poi con issuer ritorna il dominio, senza eccezioni' ($null -eq $err -and $script:DomCalls -eq 2 -and $dom.certificate.issuer -like 'Pebble*')
+$script:DomCalls = 0; $script:DomBodies = @($issuing)
+$err = $null
+try { [void](Wait-E2eAppDomain -DomainUrl 'https://x/d' -Headers @{} -CertState 'valid' -TimeoutSeconds 1) } catch { $err = $_.Exception.Message }
+Assert-That 'Wait-E2eAppDomain: scadenza senza issuer, errore leggibile con ultimo stato' ($err -like '*ultimo: stato verified, certificato issuing ()*')
+$script:DomCalls = 0; $script:DomBodies = @('{"status":"verified","certificate":{"mode":"letsencrypt","state":"error"}}')
+$err = $null
+try { [void](Wait-E2eAppDomain -DomainUrl 'https://x/d' -Headers @{} -CertState 'valid' -TimeoutSeconds 5) } catch { $err = $_.Exception.Message }
+Assert-That 'Wait-E2eAppDomain: certificato in error senza campo error, errore leggibile' ($err -eq 'certificato in error: ')
+Set-StrictMode -Off
 
 if ($failures.Count -gt 0) {
     Write-Host "FALLITE: $($failures.Count)"
