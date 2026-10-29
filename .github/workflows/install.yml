@@ -450,8 +450,10 @@ jobs:
           # Il flag N9 va deciso sul binario che esegue l'upgrade (quello nuovo), non su quello precedente.
           extra=()
           if [ "${SIGN_MODE}" = "unsigned" ] && grep -aq -- 'allow-unsigned-mirrors' "${exe}"; then extra=(--allow-unsigned-mirrors); fi
-          sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --timeout 6m             --set ci.enabled=true --set ci.capacity=1 --set gateway.env.coreTimeout=guasto-git477 "${extra[@]}"
-          rc=$?
+          # GitHub lancia il run con `bash -e {0}`: `set -uo pipefail` non toglie -e, quindi l'exit 7
+          # atteso fermerebbe lo script prima del controllo. Lo si cattura con `|| rc=$?`.
+          rc=0
+          sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --timeout 6m             --set ci.enabled=true --set ci.capacity=1 --set gateway.env.coreTimeout=guasto-git477 "${extra[@]}" || rc=$?
           if [ "${rc}" -ne 7 ]; then
             echo "::error::gitstack upgrade guasto: uscita ${rc}, attesa 7 (fallito e tornato com'era)" >&2
             exit 1
