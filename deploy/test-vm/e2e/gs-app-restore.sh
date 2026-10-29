@@ -15,6 +15,8 @@
 #              var=match|mismatch|missing
 #              secret=match|mismatch|missing   (dal pod, altrimenti dal Secret app-secrets)
 #   write-volume   Scrive il file di prova nel volume /data dell'app (GS_APP_NS).
+#   write-scratch  Scrive un file di prova nel volume /scratch, escluso dal backup (GIT-360):
+#            dopo il restore deve tornare vuoto (inspect: scratch=empty).
 #   push-web, probe-anon, probe-auth, diag   Ciclo dell'app (GIT-355, H1/H6/H7/H12):
 #            push-web pubblica l'immagine e2eweb (v1, v2: busybox httpd sulla 8080 che serve
 #            "e2e-web-<tag>"; GS_VM_IP, GS_CA, GS_USER_TOKEN, GS_IMAGE); probe-anon chiede la
@@ -118,7 +120,7 @@ compare() { # chiave valore-atteso valore-letto (vuoto = assente)
 inspect() {
   local img v s
   if ! kc get deploy app -n "$GS_APP_NS" >/dev/null 2>&1; then
-    echo "deploy=no"; echo "image="; echo "var=exec-failed"; echo "secret=missing"; echo "volume=exec-failed"
+    echo "deploy=no"; echo "image="; echo "var=exec-failed"; echo "secret=missing"; echo "volume=exec-failed"; echo "scratch=exec-failed"
     return 0
   fi
   echo "deploy=yes"
@@ -136,6 +138,12 @@ inspect() {
     echo "volume=$v"
   else
     echo 'volume=exec-failed'
+  fi
+  # volume escluso dal backup (GIT-360): montato ma vuoto (empty), mai col file di prima (present)
+  if v="$(kc exec -n "$GS_APP_NS" deploy/app -- sh -c 'if test -e /scratch/gitstack-e2e-excluded.txt; then echo present; elif test -d /scratch; then echo empty; else echo unmounted; fi' 2>/dev/null)"; then
+    echo "scratch=$v"
+  else
+    echo 'scratch=exec-failed'
   fi
 }
 
@@ -173,6 +181,16 @@ write_volume() {
     sleep 5
   done
   fail volume 'scrittura o rilettura fallita'
+}
+
+write_scratch() {
+  for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
+    if kc exec -n "$GS_APP_NS" deploy/app -- sh -c 'printf %s gitstack-e2e-excluded > /scratch/gitstack-e2e-excluded.txt && test -s /scratch/gitstack-e2e-excluded.txt' 2>/dev/null; then
+      echo 'STEP ok scratch'; return 0
+    fi
+    sleep 5
+  done
+  fail scratch 'scrittura nel volume escluso fallita'
 }
 
 # --- Ciclo dell'app (GIT-355): login davanti all'app, deploy, rollback -----------------------
@@ -233,8 +251,9 @@ case "${1:-}" in
   inspect) inspect ;;
   diagnose) diagnose "$2" ;;
   write-volume) write_volume ;;
+  write-scratch) write_scratch ;;
   probe-anon) probe_anon ;;
   probe-auth) probe_auth ;;
   diag) diag ;;
-  *) echo "uso: $0 push|push-web|inspect|write-volume|probe-anon|probe-auth|diag" >&2; exit 2 ;;
+  *) echo "uso: $0 push|push-web|inspect|write-volume|write-scratch|probe-anon|probe-auth|diag" >&2; exit 2 ;;
 esac

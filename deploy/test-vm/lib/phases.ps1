@@ -430,6 +430,16 @@ function New-E2eAppFixture {
         $write = Invoke-VmSsh -Command "GS_APP_NS='gitstack-app-$appId' bash /tmp/gitstack-e2e/gs-app-restore.sh write-volume" -TimeoutSeconds 300
         if ($write.ExitCode -ne 0 -or $write.StdOut -notmatch 'STEP ok volume') { throw "scrittura volume: $($write.StdErr)" }
 
+        # secondo volume, escluso dal backup (GIT-360): con un file dentro, dopo il restore deve tornare vuoto
+        $stage = 'volume scratch escluso dal backup'
+        $vol2 = Invoke-HttpRaw -Uri "$appsApi/$script:E2eAppName/volumes" -Method 'POST' -Headers $h -Body (@{ name = 'scratch'; mountPath = '/scratch'; sizeBytes = 1048576 } | ConvertTo-Json)
+        if ($vol2.StatusCode -ne 201 -and $vol2.StatusCode -ne 202) { throw "POST volume scratch: status $($vol2.StatusCode) $($vol2.Body)" }
+        [void](Wait-E2eAppServing -AppsApi $appsApi -Headers $h)
+        $ex = Invoke-HttpRaw -Uri "$appsApi/$script:E2eAppName/volumes/scratch" -Method 'PATCH' -Headers $h -Body (@{ includeInBackup = $false } | ConvertTo-Json)
+        if ($ex.StatusCode -ne 200) { throw "PATCH volume scratch: status $($ex.StatusCode) $($ex.Body)" }
+        $write2 = Invoke-VmSsh -Command "GS_APP_NS='gitstack-app-$appId' bash /tmp/gitstack-e2e/gs-app-restore.sh write-scratch" -TimeoutSeconds 300
+        if ($write2.ExitCode -ne 0 -or $write2.StdOut -notmatch 'STEP ok scratch') { throw "scrittura volume scratch: $($write2.StdErr)" }
+
         $stage = 'variabile e segreto'
         $varValue = "valore-var-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
         $secValue = "segreto-$([guid]::NewGuid().ToString('N'))"
@@ -922,7 +932,7 @@ function Test-E2eAppPublicAfterRestore {
     return , $rows
 }
 
-# Sette controlli dopo il restore. Ritorna sette oggetti {Name, Ok, Detail}, sempre.
+# Dieci controlli dopo il restore (sette dell'app, tre sui volumi). Ritorna dieci oggetti {Name, Ok, Detail}, sempre.
 function Test-E2eAppAfterRestore {
     param(
         [Parameter(Mandatory)][string]$BaseUrl,
@@ -941,7 +951,8 @@ function Test-E2eAppAfterRestore {
         'i-app 6/7 i tag v1 e v2 si scaricano dal registry ripristinato (manifest 200)',
         'i-app 7/7 il terzo tag non c''e (RG2: il resto del registry resta fuori)',
         'i-app volume: log del restore dei volumi',
-        'i-app volume: file data presente con contenuto invariato'
+        'i-app volume: file data presente con contenuto invariato',
+        'i-app volume escluso: scratch torna vuoto, il file scritto prima del backup non c''e (controllo negativo)'
     )
     $rows = @()
     foreach ($n in $names) { $rows += [pscustomobject]@{ Name = $n; Ok = $false; Detail = 'non verificato' } }
@@ -994,6 +1005,8 @@ function Test-E2eAppAfterRestore {
             $rows[4].Detail = if ($rows[4].Ok) { '' } else { "$script:E2eAppSecretName decifrato: $($kv['secret'])" }
             $rows[8].Ok = ($kv['volume'] -eq 'match')
             $rows[8].Detail = if ($rows[8].Ok) { '' } else { "file nel volume: $($kv['volume'])" }
+            $rows[9].Ok = ($kv['scratch'] -eq 'empty')
+            $rows[9].Detail = if ($rows[9].Ok) { '' } else { "volume scratch dopo il restore: '$($kv['scratch'])' (atteso empty: montato e senza il file)" }
         }
 
         # registry ripristinato: v1 e v2 si scaricano, v3 no
@@ -1088,6 +1101,14 @@ function Invoke-E2eBackupRestorePhase {
         if ($bk.ExitCode -ne 0) { throw "gitstack backup: exit $($bk.ExitCode) (log: $bkLog): $($bk.StdErr)" }
         $win = @(($bk.StdOut + "`n" + $bk.StdErr) -split "`r?`n" | Where-Object { $_ -match 'Finestra di sola lettura' })
         Write-Log "Finestra di sola lettura (da riportare nel README di admin): $(if ($win) { $win -join ' | ' } else { 'riga non trovata nell''output' })"
+
+        # il backup ha copiato il volume data e non lo scratch escluso (GIT-360)
+        if ($appCtx) {
+            $bkText = "$($bk.StdOut)`n$($bk.StdErr)"
+            $volCopy = "copia del volume data dell'app $($data.User)/$($data.Repo)/$script:E2eAppName"
+            $volOk = $bkText.Contains($volCopy) -and -not $bkText.Contains('copia del volume scratch')
+            Add-StepResult -Name 'h-app volume: il backup copia il volume data e non lo scratch escluso' -Ok $volOk -Detail $(if ($volOk) { '' } else { "nel log del backup manca '$volCopy' oppure compare lo scratch (log: $bkLog)" })
+        }
 
         # archivio cifrato 0600, cartella 0700, .sha256 accanto
         $ls = Invoke-VmSsh -Command "sudo find /var/backups/gitstack -maxdepth 1 -printf '%m %u %p\n'"-TimeoutSeconds $script:SshCommandTimeoutSeconds
