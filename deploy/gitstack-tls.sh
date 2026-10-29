@@ -263,9 +263,10 @@ publish_certs_copy() {
   certs_ns="${RELEASE}-certs"
   case "${certs_ns}" in gitstack-app-*) return 0 ;; esac
   kubectl_ -n "${certs_ns}" get secret "${SECRET_NAME}" >/dev/null 2>&1 || return 0
-  current="$(kubectl_ -n "${certs_ns}" get secret "${SECRET_NAME}" -o jsonpath='{.data.tls.crt}' 2>/dev/null || true)"
+  current="$(kubectl_ -n "${certs_ns}" get secret "${SECRET_NAME}" -o jsonpath='{.data.tls\.crt}' 2>/dev/null || true)"
   if [ "${current}" != "${new}" ]; then
-    kubectl_ -n "${certs_ns}" create secret tls "${SECRET_NAME}" --cert="${crt}" --key="${key}"       --dry-run=client -o yaml | kubectl_ apply -f - >/dev/null
+    kubectl_ -n "${certs_ns}" create secret tls "${SECRET_NAME}" --cert="${crt}" --key="${key}" \
+      --dry-run=client -o yaml | kubectl_ apply -f - >/dev/null
     log "Copia del Secret in ${certs_ns}/${SECRET_NAME} aggiornata (TLSStore default)."
   fi
 }

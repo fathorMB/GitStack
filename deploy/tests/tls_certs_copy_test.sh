@@ -18,12 +18,13 @@ ok() { PASS=$((PASS + 1)); }
 bad() { FAILN=$((FAILN + 1)); printf 'FALLITO: %s\n' "$1"; }
 
 # k3s finto: registra ogni chiamata in $STUB_LOG. `get secret` riesce solo se STUB_COPY=yes; con
-# -o jsonpath stampa $STUB_CURRENT (il tls.crt della copia, in base64).
+# -o jsonpath={.data.tls\.crt} (e SOLO quell'espressione) stampa $STUB_CURRENT, ogni altro jsonpath stampa vuoto.
 cat >"${WORK}/bin/k3s" <<'STUB'
 #!/bin/sh
 printf '%s\n' "$*" >>"${STUB_LOG}"
 case "$*" in
-  *"get secret"*"jsonpath"*) [ "${STUB_COPY}" = yes ] || exit 1; printf '%s' "${STUB_CURRENT}"; exit 0 ;;
+  *"get secret"*'jsonpath={.data.tls\.crt}'*) [ "${STUB_COPY}" = yes ] || exit 1; printf '%s' "${STUB_CURRENT}"; exit 0 ;;
+  *"get secret"*"jsonpath"*) [ "${STUB_COPY}" = yes ] || exit 1; exit 0 ;;
   *"get secret"*) [ "${STUB_COPY}" = yes ] || exit 1; exit 0 ;;
 esac
 exit 0
