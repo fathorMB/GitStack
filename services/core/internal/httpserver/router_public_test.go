@@ -63,9 +63,7 @@ func TestPublicPathMatchesContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	var doc struct {
-		Paths map[string]map[string]struct {
-			Security *[]any `yaml:"security"`
-		} `yaml:"paths"`
+		Paths map[string]map[string]yaml.Node `yaml:"paths"`
 	}
 	if err := yaml.Unmarshal(raw, &doc); err != nil {
 		t.Fatal(err)
@@ -77,7 +75,19 @@ func TestPublicPathMatchesContract(t *testing.T) {
 
 	public, served := 0, 0
 	for path, ops := range doc.Paths {
-		for method, op := range ops {
+		for method, node := range ops {
+			// Le chiavi che non sono metodi HTTP (parameters, summary...) non sono operazioni.
+			switch strings.ToLower(method) {
+			case "get", "put", "post", "delete", "patch", "head", "options":
+			default:
+				continue
+			}
+			var op struct {
+				Security *[]any `yaml:"security"`
+			}
+			if err := node.Decode(&op); err != nil {
+				t.Fatalf("%s %s: %v", method, path, err)
+			}
 			if op.Security == nil || len(*op.Security) != 0 {
 				continue
 			}
