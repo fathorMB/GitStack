@@ -131,7 +131,7 @@ EOF
   local args
   args="$(kc -n kube-system get deploy traefik -o jsonpath='{.spec.template.spec.containers[0].args}' 2>/dev/null)"
   case "$args" in
-    *certificatesresolvers.letsencrypt.acme.caserver=https://pebble:14000/dir*) ;;
+    *certificatesresolvers.letsencrypt.acme.caServer=https://pebble:14000/dir*) ;;
     *) fail traefik-acme "gli argomenti di Traefik non hanno il caServer di Pebble: $args" ;;
   esac
   echo "STEP ok traefik-acme"
