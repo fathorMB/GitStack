@@ -290,7 +290,7 @@ function Test-E2ePilotDatabaseAfterRestore {
         $copy = Copy-ToVm -LocalPath (Join-Path $PSScriptRoot '..\e2e\pilot-db-probe.sh') -RemotePath '/tmp/gitstack-e2e/pilot-db-probe.sh' -TimeoutSeconds 60
         if ($copy.ExitCode -ne 0) { throw "copia probe: exit $($copy.ExitCode)" }
         $read = Invoke-VmSsh -Command "bash /tmp/gitstack-e2e/pilot-db-probe.sh $id pg" -TimeoutSeconds 120
-        if ($read.ExitCode -ne 0 -or $read.StdOut -notmatch 'STEP ok database-data') { throw "lettura dopo restore: exit $($read.ExitCode)" }
+        if ($read.ExitCode -ne 0 -or $read.StdOut -notmatch 'STEP ok database-pg') { throw "lettura dopo restore: exit $($read.ExitCode)" }
         Add-StepResult -Name 'pilot 7. dato PostgreSQL conservato dopo backup e restore' -Ok $true -Detail ''
     } catch {
         Add-StepResult -Name 'pilot 7. dato PostgreSQL conservato dopo backup e restore' -Ok $false -Detail (Get-E2ePilotFailureDetail $_.Exception)

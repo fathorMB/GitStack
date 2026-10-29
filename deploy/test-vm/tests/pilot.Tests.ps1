@@ -17,6 +17,7 @@ $script:pgdataValue = $null
 $script:diagMode = ''
 $script:diagCommands = @()
 $script:delMode = $false
+$script:pgOutput = 'STEP ok database-pg'
 $script:delCalls = @()
 $script:delStatus = 204
 $script:delGone = $true
@@ -36,7 +37,7 @@ function Invoke-VmSsh {
         if ($script:diagMode -eq 'error') { throw 'ssh diagnostic error' }
         return [pscustomobject]@{ ExitCode = 0; StdOut = 'container startup error'; StdErr = '' }
     }
-    $output = if ($Command -match 'pilot-origin.sh prepare') { "$script:sha`nSTEP ok origin-prepare" } elseif ($Command -match 'pilot-origin.sh tag') { "$script:sha`nSTEP ok origin-tag" } elseif ($Command -match 'pilot-db-probe.sh .* write') { 'STEP ok database-write' } elseif ($Command -match 'pilot-db-probe.sh .* (data|pg)') { 'STEP ok database-data' } else { '' }
+    $output = if ($Command -match 'pilot-origin.sh prepare') { "$script:sha`nSTEP ok origin-prepare" } elseif ($Command -match 'pilot-origin.sh tag') { "$script:sha`nSTEP ok origin-tag" } elseif ($Command -match 'pilot-db-probe.sh .* write') { 'STEP ok database-write' } elseif ($Command -match 'pilot-db-probe.sh .* pg') { $script:pgOutput } elseif ($Command -match 'pilot-db-probe.sh .* data') { 'STEP ok database-data' } else { '' }
     $exit = if ($script:probeFail -and $Command -match 'pilot-db-probe.sh') { 1 } else { 0 }
     [pscustomobject]@{ ExitCode = $exit; StdOut = $output; StdErr = '' }
 }
@@ -157,6 +158,10 @@ if (@($script:rows | Where-Object { $_.Ok }).Count -ne 1) { throw 'restore succe
 $script:rows = @(); $script:probeFail = $true
 Test-E2ePilotDatabaseAfterRestore -BaseUrl 'https://example.invalid' -Context $ctx
 if (@($script:rows | Where-Object { -not $_.Ok }).Count -ne 1) { throw 'restore accepted failed database probe' }
+$script:rows = @(); $script:probeFail = $false; $script:pgOutput = 'STEP ok database-data'
+Test-E2ePilotDatabaseAfterRestore -BaseUrl 'https://example.invalid' -Context $ctx
+if ($script:rows.Count -ne 1 -or $script:rows[0].Ok -or $script:rows[0].Name -notmatch '^pilot 7.') { throw "restore accepted a probe that did not answer database-pg: $($script:rows | Out-String)" }
+$script:pgOutput = 'STEP ok database-pg'
 Write-Host '[PASS] pilot database: preparazione, restore e probe fallito'
 $script:siteMode = $true; $script:rows = @(); $script:showIssues = $false
 $site = Initialize-E2ePilotSite -BaseUrl 'https://example.invalid' -AdminCookie 'admin' -Suffix '123' -CaFingerprint ('ab' * 32) -Context $ctx
