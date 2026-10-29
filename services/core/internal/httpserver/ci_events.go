@@ -239,7 +239,7 @@ func (s *apiServer) ListWorkflows(w http.ResponseWriter, r *http.Request, owner 
 	if !ok {
 		return
 	}
-	_, sha, err := s.ciResolveRef(r.Context(), ia.repo.ID, ia.repo.DefaultBranch) // git risolve solo ref complete o sha (GIT-291)
+	sha, err := s.ciResolve(r.Context(), ia.repo.ID, ia.repo.DefaultBranch) // serve solo lo sha: git aggiunge i prefissi da sé
 	if err != nil {
 		if isGitNotFound(err) { // repo senza commit
 			writeJSON(w, http.StatusOK, openapi.WorkflowList{Items: []openapi.Workflow{}})
@@ -374,26 +374,76 @@ func (s *apiServer) DispatchWorkflow(w http.ResponseWriter, r *http.Request, own
 
 // ciResolveRef risolve il ref di un avvio manuale: un branch o un tag (nome
 // breve o completo) oppure uno sha. Ritorna il nome completo e lo sha.
+//
+// Il servizio git aggiunge da sé refs/heads/ e refs/tags/ (gitref.Resolve): non
+// risolve i nomi completi e un nome breve non dice di che tipo è (GIT-451). Il
+// tipo si legge quindi dagli elenchi dei branch e dei tag, con la precedenza di
+// git (vince il branch); solo uno sha esadecimale resta com'è.
 func (s *apiServer) ciResolveRef(ctx context.Context, repoID uuid.UUID, in string) (string, string, error) {
-	candidates := []string{in}
-	if !strings.HasPrefix(in, "refs/") {
-		candidates = []string{"refs/heads/" + in, "refs/tags/" + in, in}
-	}
-	var last error
-	for _, c := range candidates {
-		sha, err := s.ciResolve(ctx, repoID, c)
-		if err == nil {
-			if c == in && !strings.HasPrefix(in, "refs/") {
-				return in, sha, nil // uno sha
+	notFound := &gitclient.APIError{Status: http.StatusNotFound, Code: "not_found", Message: "Riferimento non trovato."}
+	kinds := []struct{ list, prefix string }{{"branches", "refs/heads/"}, {"tags", "refs/tags/"}}
+	if strings.HasPrefix(in, "refs/") {
+		for _, k := range kinds {
+			if name, ok := strings.CutPrefix(in, k.prefix); ok {
+				names, err := s.ciRefTips(ctx, repoID, k.list)
+				if err != nil {
+					return "", "", err
+				}
+				if sha, ok := names[name]; ok {
+					return in, sha, nil
+				}
 			}
-			return c, sha, nil
 		}
-		last = err
-		if !isGitNotFound(err) {
+		return "", "", notFound
+	}
+	for _, k := range kinds {
+		names, err := s.ciRefTips(ctx, repoID, k.list)
+		if err != nil {
 			return "", "", err
 		}
+		if sha, ok := names[in]; ok {
+			return k.prefix + in, sha, nil
+		}
 	}
-	return "", "", last
+	if len(in) >= 7 && len(in) <= 40 && isHex(in) {
+		sha, err := s.ciResolve(ctx, repoID, in)
+		if err != nil {
+			return "", "", err
+		}
+		return in, sha, nil // uno sha
+	}
+	return "", "", notFound
+}
+
+// ciRefTips legge l'elenco dei branch o dei tag (list = "branches" o "tags") e
+// ritorna nome -> sha del commit in punta.
+func (s *apiServer) ciRefTips(ctx context.Context, repoID uuid.UUID, list string) (map[string]string, error) {
+	rd, ok := s.git.(gitclient.Reader)
+	if !ok {
+		return nil, gitclient.ErrUnavailable
+	}
+	raw, err := rd.ReadJSON(ctx, ciSystemCaller, repoID, list, nil)
+	if err != nil {
+		return nil, err
+	}
+	var out struct {
+		Items []struct {
+			Name   string `json:"name"`
+			Commit struct {
+				Sha string `json:"sha"`
+			} `json:"commit"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, fmt.Errorf("risposta di git non valida")
+	}
+	tips := make(map[string]string, len(out.Items))
+	for _, it := range out.Items {
+		if len(it.Commit.Sha) == 40 {
+			tips[it.Name] = it.Commit.Sha
+		}
+	}
+	return tips, nil
 }
 
 func runAPI(r ci.RunRow) openapi.WorkflowRun {

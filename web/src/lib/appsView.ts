@@ -53,6 +53,15 @@ export function percent(value: number, of: number): number {
   return Math.max(0, Math.min(100, Math.round((value / of) * 100)));
 }
 
+/**
+ * Indirizzo mostrato nell'elenco (v3-c): `publicAddress` lo calcola core (dominio proprio
+ * verificato di un'app pubblica, altrimenti l'indirizzo automatico, H2) e lo manda a chiunque
+ * legga l'app: non serve essere admin.
+ */
+export function listAddress(app: Pick<App, 'address' | 'publicAddress'>): string | null {
+  return app.publicAddress ?? app.address ?? null;
+}
+
 /** L'app e' raggiungibile solo se ha un indirizzo ed e' in esecuzione. */
 export function canOpen(app: Pick<App, 'address' | 'status'>): boolean {
   return Boolean(app.address) && app.status === 'running';

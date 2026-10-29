@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/fathorMB/GitStack/services/core/internal/dbtest"
@@ -26,8 +27,18 @@ type hexGit struct {
 }
 
 func (g *hexGit) ReadJSON(ctx context.Context, c trust.Identity, repo uuid.UUID, path string, q url.Values) (json.RawMessage, error) {
+	if path == "branches" {
+		items := ""
+		for r := range g.refs {
+			if items != "" {
+				items += ","
+			}
+			items += `{"name":"` + strings.TrimPrefix(r, "refs/heads/") + `","commit":{"sha":"` + ciHeadSHA + `"}}`
+		}
+		return json.RawMessage(`{"items":[` + items + `]}`), nil
+	}
 	if path == "commits" && q.Get("perPage") == "1" {
-		if g.refs[q.Get("ref")] {
+		if g.refs[q.Get("ref")] || g.refs["refs/heads/"+q.Get("ref")] { // git aggiunge refs/heads/ da sé
 			return json.RawMessage(`{"items":[{"sha":"` + ciHeadSHA + `","subject":"s"}],"page":1,"perPage":1}`), nil
 		}
 		return nil, &gitclient.APIError{Status: 404, Code: "not_found", Message: "Riferimento non trovato."}

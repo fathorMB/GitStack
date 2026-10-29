@@ -128,7 +128,7 @@ Il chart parla HTTP di default (job k3d della CI, `helm install` a mano); l'inst
 |---|---|
 | `ingress.tls.enabled` | UI, API e git solo su `websecure` (443); senza `secretName` né `certResolver` il chart si ferma con un errore |
 | `ingress.tls.secretName` | Secret `kubernetes.io/tls` creato dall'installer (`gitstack-tls`): CA interna o certificato del cliente |
-| (TLSStore `default`) | con `secretName` il chart crea un `TLSStore` Traefik `default` nel namespace della release che punta a quel Secret: il certificato dell'installer vale anche per chi si collega per IP (senza SNI, Traefik altrimenti serve il suo "TRAEFIK DEFAULT CERT" perche' con ServiceLB l'indirizzo locale e' quello del pod). Non si crea con `certResolver` (`templates/tlsstore.yaml`) |
+| (TLSStore `default`) | con `secretName` il chart crea un `TLSStore` Traefik `default` (nel namespace della release; con `apps.enabled` in `<release>-certs`, con una copia del Secret) che punta a quel Secret: il certificato dell'installer vale anche per chi si collega per IP (senza SNI, Traefik altrimenti serve il suo "TRAEFIK DEFAULT CERT" perche' con ServiceLB l'indirizzo locale e' quello del pod). Non si crea con `certResolver` (`templates/tlsstore.yaml`) |
 | `ingress.tls.certResolver` | resolver ACME di Traefik (Let's Encrypt), nessun Secret |
 | `ingress.tls.redirect` (`true`) / `redirectPort` | su `web` (80) un `IngressRoute` + `Middleware redirectScheme` (redirect permanente: 301 per GET/HEAD, 308 per gli altri metodi (Traefik redirectScheme)) manda tutto a https (`templates/ingress-redirect.yaml`) |
 | `ingress.tls.caConfigMap` | ConfigMap con `ca.crt`: il pod `web` lo monta in `/etc/gitstack/ca` e nginx lo serve su `/downloads/ca.crt` (i binari di `gs` stanno nell'immagine, vedi sotto), e la 80 serve `/downloads/ca.crt` senza redirect (serve a fidarsi di HTTPS) |
@@ -305,5 +305,16 @@ modello per core stesso (`update` su namespaces è una deviazione dall'ADR, amme
 Sul gateway, con `apps.enabled`, `GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS` (Secret `<release>-gateway-appauth-keys`,
 generato una volta e riletto con `lookup`, oppure `apps.signingKeys.existingSecret`), `GITSTACK_GATEWAY_APPS_DOMAIN` e
 `GITSTACK_GATEWAY_PUBLIC_URL` (= `core.env.publicUrl`): senza chiavi `/_appauth/verify` risponde 503 (docs/apps-login.md).
+**Let's Encrypt per i domini propri (GIT-459).** Una sola configurazione ACME: il resolver `letsencrypt` di Traefik
+(HTTP-01 sulla porta 80, archivio `acme.json` su volume persistente in `kube-system`) che l'installer scrive nella
+HelmChartConfig `traefik`, lo stesso di `--tls letsencrypt` per l'host. L'installer lo scrive anche con TLS interno se le
+app sono accese e c'è `--tls-email` (o `GITSTACK_ACME_CA_SERVER`, per Pebble nelle prove) e passa al chart
+`apps.acme.resolver` / `apps.acme.email`: core ne conosce solo il nome (`GITSTACK_CORE_APPS_ACME_RESOLVER`), l'email
+(sola lettura) e `apps.acme.tlsAddr` (default `traefik.<networkPolicy.ingressNamespace>.svc.cluster.local:443`), da cui
+legge il certificato servito per riempire lo stato nel campo `certificate` dei domini. I domini verified con certificato
+`letsencrypt` stanno in una seconda IngressRoute dell'app (`app-domains`, una regola per dominio, `tls.certResolver`);
+l'indirizzo automatico resta sul wildcard della CA interna. Con `apps.acme.resolver` e `networkPolicy.enabled` la policy
+da core a Traefik apre anche la 443. La prova con Pebble è `deploy/tests/acme_pebble_k3d_test.sh`.
+
 Con `apps.enabled=false` (e `apps.domain` vuoto) non si rende nessuna risorsa delle app. Il test è in
 `deploy/tests/chart_hardening_test.sh`. Come accenderlo: [deploy/README.md](../README.md#hosting-delle-app-accenderlo-git-375-adr-0002).

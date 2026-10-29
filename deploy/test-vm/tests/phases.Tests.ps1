@@ -104,6 +104,39 @@ $script:Mock.V1 = 401; $script:Mock.V2 = 401; $script:Mock.V3 = 401
 $rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'd')
 Assert-That 'app dopo il restore: 401 sui manifest, 6 e 7 ko con lo status e i permessi' ((-not $rows[5].Ok) -and (-not $rows[6].Ok) -and $rows[5].Detail -like '*401*' -and $rows[6].Detail -like '*401*' -and $rows[6].Detail -like '*permessi*')
 Assert-That 'app dopo il restore: il token del registry e quello del contesto' ($script:LastAuth -eq ('Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes('token:regtok'))))
+
+# Test-E2eAppLifecycle (GIT-355): sei righe sempre, API e VM finte.
+$script:Life = @{ Serving = 1; Calls = @(); Cmds = @(); FailProbe = ''; Rollback = '' }
+function Invoke-HttpRaw {
+    param([string]$Uri, [string]$Method = 'GET', [string]$Body, [hashtable]$Headers, [string]$Cookie, [int]$TimeoutSec = 20)
+    $script:Life.Calls += "$Method $Uri"
+    if ($Uri -like '*/versions?per_page=1') { return [pscustomobject]@{ StatusCode = 200; Body = (@{ items = @(@{ number = $script:Life.Serving; state = 'serving' }) } | ConvertTo-Json -Depth 4) } }
+    if ($Method -eq 'POST' -and $Uri -like '*/apps') { return [pscustomobject]@{ StatusCode = 202; Body = (@{ app = @{ id = 'a1' }; version = @{ number = 1 } } | ConvertTo-Json -Depth 4) } }
+    if ($Method -eq 'POST' -and $Uri -like '*/deploys') { $script:Life.Serving = 2; return [pscustomobject]@{ StatusCode = 202; Body = '{}' } }
+    if ($Method -eq 'POST' -and $Uri -like '*/rollback') { $script:Life.Serving = 3; $script:Life.Rollback = $Body; return [pscustomobject]@{ StatusCode = 202; Body = '{}' } }
+    if ($Method -eq 'DELETE') { return [pscustomobject]@{ StatusCode = 204; Body = '' } }
+    return [pscustomobject]@{ StatusCode = 200; Body = (@{ address = 'https://e2elife-r1-u1.apps.e2e.test' } | ConvertTo-Json) }
+}
+function Invoke-VmSsh {
+    param($Command, $TimeoutSeconds)
+    $script:Life.Cmds += $Command
+    if ($script:Life.FailProbe -and $Command -like "*$($script:Life.FailProbe)*") { return [pscustomobject]@{ ExitCode = 1; StdOut = 'STEP FAIL x: finto'; StdErr = '' } }
+    $out = 'STEP ok x'
+    if ($Command -like '*push-web*') { $out = 'STEP ok push-web' }
+    elseif ($Command -like '*probe-anon*') { $out = 'STEP ok login-anon' }
+    elseif ($Command -like '*GS_EXPECT=e2e-web-v1*') { $out = 'STEP ok serve-e2e-web-v1' }
+    elseif ($Command -like '*GS_EXPECT=e2e-web-v2*') { $out = 'STEP ok serve-e2e-web-v2' }
+    return [pscustomobject]@{ ExitCode = 0; StdOut = $out; StdErr = '' }
+}
+$ctxLife = [pscustomobject]@{ RegistryToken = 'regtok' }
+$rows = Test-E2eAppLifecycle -BaseUrl 'https://10.0.0.9' -CaPath 'C:\ca\ca.crt' -Data $data -Ctx $ctxLife -WorkDir (Join-Path $script:OutDir 'life')
+Assert-That 'ciclo: sei righe, tutte ok' (@($rows).Count -eq 6 -and @($rows | Where-Object { -not $_.Ok }).Count -eq 0)
+Assert-That 'ciclo: il rollback torna alla versione 1 e l''app si elimina' (($script:Life.Rollback | ConvertFrom-Json).version -eq 1 -and ($script:Life.Calls | Where-Object { $_ -like 'DELETE *e2elife' }).Count -eq 1)
+Assert-That 'ciclo: l''indirizzo dell''app arriva alle sonde' (@($script:Life.Cmds | Where-Object { $_ -like "*GS_APP_HOST='e2elife-r1-u1.apps.e2e.test'*" }).Count -eq 4)
+$script:Life = @{ Serving = 1; Calls = @(); Cmds = @(); FailProbe = 'GS_EXPECT=e2e-web-v2'; Rollback = '' }
+$rows = Test-E2eAppLifecycle -BaseUrl 'https://10.0.0.9' -CaPath 'C:\ca\ca.crt' -Data $data -Ctx $ctxLife -WorkDir (Join-Path $script:OutDir 'life-ko')
+Assert-That 'ciclo: v2 non servita, riga 4 ko, 5 e 6 non verificate, nessun rollback ne eliminazione' ($rows[2].Ok -and -not $rows[3].Ok -and -not $rows[4].Ok -and -not $rows[5].Ok -and $rows[3].Detail -like '*serve v2*' -and $rows[4].Detail -like 'non verificato*' -and $script:Life.Rollback -eq '' -and @($script:Life.Calls | Where-Object { $_ -like 'DELETE *' }).Count -eq 0)
+Assert-That 'ciclo: al primo errore parte la diagnostica dei pod' (@($script:Life.Cmds | Where-Object { $_ -like "*GS_APP_NS='gitstack-app-a1'*bash*diag" }).Count -eq 1)
 Remove-Item -LiteralPath $script:OutDir -Recurse -Force -ErrorAction SilentlyContinue
 
 if ($failures.Count -gt 0) {

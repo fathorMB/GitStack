@@ -38,7 +38,7 @@ fi
 sa=gitstack-core
 helm template gitstack "$root/deploy/gitstack" --namespace default --show-only templates/apps-rbac.yaml \
   --set apps.enabled=true --set apps.domain=apps.example.com >"$work/apps-rbac.yaml"
-kubectl --kubeconfig "$work/kubeconfig" -n default apply -f "$work/apps-rbac.yaml" >/dev/null
+kubectl --kubeconfig "$work/kubeconfig" apply -f "$work/apps-rbac.yaml" >/dev/null
 sa_token=$(kubectl --kubeconfig "$work/kubeconfig" -n default create token "$sa" --duration 2h)
 cp "$work/kubeconfig" "$work/kubeconfig-core"
 kubectl --kubeconfig "$work/kubeconfig-core" config set-credentials "sa-$sa" --token "$sa_token" >/dev/null
@@ -51,6 +51,35 @@ export GITSTACK_TEST_WORKLOAD_ROLE=gitstack-app-workload
 answer=$(kubectl --kubeconfig "$work/kubeconfig-core" auth can-i delete secrets -n kube-system 2>&1 || true)
 if [ "$answer" != "no" ]; then echo "KO: il SA di core può cancellare secrets fuori dai namespace delle app (can-i: $answer)"; exit 1; fi
 echo "ok: il SA di core non può cancellare secrets in kube-system"
+# GIT-494 (regressione di GIT-460): il Role dei certificati del cliente sta SOLO nel namespace dedicato
+# <release>-certs. Nessun verbo sui Secret di kube-system (k3s-serving) né del release ("default" qui:
+# Postgres, NATS, service secret, gitstack-tls); nel namespace dei certificati core gestisce i Secret ma
+# non li elenca.
+for verb in get create update delete list; do
+  for ns in kube-system default; do
+    answer=$(kubectl --kubeconfig "$work/kubeconfig-core" auth can-i "$verb" secrets -n "$ns" 2>&1 || true)
+    if [ "$answer" != "no" ]; then echo "KO: il SA di core può fare $verb sui secrets di $ns (can-i: $answer)"; exit 1; fi
+  done
+done
+echo "ok: il SA di core non ha nessun verbo sui secrets di kube-system né del namespace del release"
+for verb in get create update delete; do
+  answer=$(kubectl --kubeconfig "$work/kubeconfig-core" auth can-i "$verb" secrets -n gitstack-certs 2>&1 || true)
+  if [ "$answer" != "yes" ]; then echo "KO: il SA di core non può fare $verb sui secrets di gitstack-certs (can-i: $answer)"; exit 1; fi
+done
+answer=$(kubectl --kubeconfig "$work/kubeconfig-core" auth can-i list secrets -n gitstack-certs 2>&1 || true)
+if [ "$answer" != "no" ]; then echo "KO: il SA di core può elencare i secrets di gitstack-certs (can-i: $answer)"; exit 1; fi
+echo "ok: il SA di core gestisce i secrets dei certificati solo in gitstack-certs, senza list"
+# GIT-494: la VAP del chart limita i Secret scrivibili da core in gitstack-certs a gitstack-domain-*
+# (la copia di gitstack-tls, defaultCertificate del TLSStore, non e' sostituibile da core). dry-run=server
+# passa da RBAC e admission senza creare niente.
+if kubectl --kubeconfig "$work/kubeconfig-core" create secret generic prova -n gitstack-certs --dry-run=server >/dev/null 2>&1; then
+  echo "KO: il SA di core può creare in gitstack-certs un Secret che non è gitstack-domain-*"; exit 1
+fi
+echo "ok: il SA di core non può creare Secret fuori da gitstack-domain-* in gitstack-certs"
+if ! kubectl --kubeconfig "$work/kubeconfig-core" create secret generic gitstack-domain-prova -n gitstack-certs --dry-run=server >/dev/null 2>"$work/vap-domain.err"; then
+  echo "KO: il SA di core non può creare gitstack-domain-prova in gitstack-certs ($(cat "$work/vap-domain.err"))"; exit 1
+fi
+echo "ok: il SA di core può creare gitstack-domain-* in gitstack-certs"
 # GIT-427: readPodMetrics (metrics.go) fa List su metrics.k8s.io/v1beta1 pods nel namespace
 # dell'app. Il permesso sta nel ruolo modello, legato per namespace: si crea un namespace di prova
 # col RoleBinding che crea il controller e si chiede a Kubernetes (SubjectAccessReview).
@@ -128,6 +157,9 @@ echo "ok: metriche di Traefik attive su traefik-metrics:9100, non esposte dal Se
 export GITSTACK_TEST_TRAEFIK_METRICS=1
 
 cd "$root/services/core"
+# GIT-447: i test H9/H16 raccolgono la diagnostica prima di cancellare i namespace; il nodo serve per le regole di kube-router.
+export GITSTACK_TEST_K3D_NODE="k3d-$cluster-server-0"
+# GIT-447: la diagnostica dei test H9/H16 viene raccolta nei t.Cleanup prima che i namespace siano eliminati.
 GITSTACK_TEST_KUBECONFIG="$work/kubeconfig" go test -tags integration -count=1 -timeout 25m \
-  -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d|TestApps_SegretiKubernetesERollback|TestApps_IsolamentoSuK3d|TestApps_BarriereInUscitaSuK3d|TestApps_DestinazionePrivataApertaSuK3d|TestApps_CancelloVeroSenzaPolicySuK3d|TestApps_NomiInterniSuK3d|TestApps_VolumiSuK3d|TestApps_SenzaSegretiConRbacDelChartSuK3d|TestApps_RichiesteETraefikSuK3d' -v ./internal/httpserver/
+  -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d|TestApps_SegretiKubernetesERollback|TestApps_IsolamentoSuK3d|TestApps_BarriereInUscitaSuK3d|TestApps_GatewayInternoSuK3d|TestApps_DestinazionePrivataApertaSuK3d|TestApps_CancelloVeroSenzaPolicySuK3d|TestApps_NomiInterniSuK3d|TestApps_VolumiSuK3d|TestApps_SenzaSegretiConRbacDelChartSuK3d|TestApps_RichiesteETraefikSuK3d' -v ./internal/httpserver/
 echo "OK: controller, segreti, isolamento, barriere in uscita, nomi interni, volumi e metriche di Traefik (richieste ed errori 5xx) delle app provati su k3d"

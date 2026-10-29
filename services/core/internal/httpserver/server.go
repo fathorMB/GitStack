@@ -64,6 +64,8 @@ type apiServer struct {
 	appsOff bool
 	// appEgress: barriere d'istanza per le destinazioni di uscita delle app (H16).
 	appEgress AppEgressConfig
+	// appDomains: domini propri delle app pubbliche (v3-c, GIT-458).
+	appDomains AppDomainsConfig
 }
 
 var _ openapi.ServerInterface = (*apiServer)(nil)

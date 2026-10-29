@@ -156,7 +156,7 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 		if err := downloadArchive(ctx, cfg.HTTP, archiveURL, token, ws); err != nil {
 			return fmt.Errorf("download del codice: %w", err)
 		}
-		if err := writeGitHead(ws, runSHA); err != nil {
+		if err := writeGitHead(ws, runSHA, runRef); err != nil {
 			return fmt.Errorf("sha del run: %w", err)
 		}
 		if err := writeEventFile(filepath.Join(cfg.WorkDir, "workflow", eventFileName), cx); err != nil {
@@ -262,11 +262,27 @@ const eventFileName = "event.json"
 
 var sha1Hex = regexp.MustCompile(`^[0-9a-f]{40}$`)
 
+// branchName: solo caratteri sicuri per un percorso sotto .git/refs/heads (niente «..», niente
+// componenti vuoti o che iniziano con un punto).
+var branchName = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_./-]*$`)
+
+func validBranchRef(b string) bool {
+	if !branchName.MatchString(b) || strings.Contains(b, "..") || strings.Contains(b, "//") ||
+		strings.Contains(b, "/.") || strings.HasSuffix(b, "/") || strings.HasSuffix(b, ".lock") {
+		return false
+	}
+	return true
+}
+
 // writeGitHead da' al workspace (un archivio, senza .git) un repo git minimo con HEAD staccato
 // sullo sha del run: e' da li' che act ricava github.sha e GITHUB_SHA. Senza, act li lascia
 // vuoti (v0.2.89 non li legge ne' dal file evento ne' dall'ambiente). Uno sha non valido non
 // scrive nulla; un .git gia' presente nell'archivio resta com'e'.
-func writeGitHead(ws, sha string) error {
+//
+// Per un ref di ramo (refs/heads/x) HEAD e' simbolico e il ramo punta allo sha: act ricava
+// GITHUB_REF da li' (con HEAD staccato lo lasciava senza il ramo, e il job vedeva un valore
+// non completo, GIT-448). Per tag, sha o ref vuoto HEAD resta staccato.
+func writeGitHead(ws, sha, ref string) error {
 	if !sha1Hex.MatchString(sha) {
 		return nil
 	}
@@ -281,6 +297,15 @@ func writeGitHead(ws, sha string) error {
 	}
 	if err := os.WriteFile(filepath.Join(dir, "config"), []byte("[core]\n\trepositoryformatversion = 0\n"), 0o640); err != nil {
 		return err
+	}
+	if branch, ok := strings.CutPrefix(ref, "refs/heads/"); ok && validBranchRef(branch) {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, "refs", "heads", filepath.FromSlash(branch))), 0o750); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dir, "refs", "heads", filepath.FromSlash(branch)), []byte(sha+"\n"), 0o640); err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(dir, "HEAD"), []byte("ref: refs/heads/"+branch+"\n"), 0o640)
 	}
 	return os.WriteFile(filepath.Join(dir, "HEAD"), []byte(sha+"\n"), 0o640)
 }

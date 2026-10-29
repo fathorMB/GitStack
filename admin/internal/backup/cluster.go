@@ -403,8 +403,62 @@ func (k *KubectlCluster) EnsureAppVolume(ctx context.Context, v AppVolumeRef, ba
 	return dir, nil
 }
 
+// Traefik di k3s: HelmChart `traefik` in kube-system, con volume persistente `traefik` per acme.json.
+const (
+	traefikNamespace = "kube-system"
+	traefikName      = "traefik"
+)
+
+// ACMEPath implementa TraefikCluster.
+func (k *KubectlCluster) ACMEPath(ctx context.Context) (string, error) {
+	return k.volumePath(ctx, traefikNamespace, traefikName)
+}
+
+// StopTraefik implementa TraefikCluster.
+func (k *KubectlCluster) StopTraefik(ctx context.Context) (int, error) {
+	var b bytes.Buffer
+	if err := k.runIn(ctx, traefikNamespace, nil, &b, "get", "deployment", traefikName, "--ignore-not-found", "-o", "jsonpath={.spec.replicas}"); err != nil {
+		return 0, err
+	}
+	s := strings.TrimSpace(b.String())
+	if s == "" {
+		o, err := k.outIn(ctx, traefikNamespace, "get", "deployment", traefikName, "--ignore-not-found", "-o", "name")
+		if err != nil {
+			return 0, err
+		}
+		if strings.TrimSpace(string(o)) == "" {
+			return 0, nil
+		}
+		s = "1"
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("repliche di Traefik non leggibili: %q", s)
+	}
+	if n == 0 {
+		return 0, nil
+	}
+	if err := k.runIn(ctx, traefikNamespace, nil, io.Discard, "scale", "deployment", traefikName, "--replicas=0"); err != nil {
+		return 0, err
+	}
+	err = k.runIn(ctx, traefikNamespace, nil, io.Discard, "wait", "--for=delete", "pod", "-l", "app.kubernetes.io/name=traefik", "--timeout=180s")
+	return n, err
+}
+
+// StartTraefik implementa TraefikCluster.
+func (k *KubectlCluster) StartTraefik(ctx context.Context, n int) error {
+	if n <= 0 {
+		return nil
+	}
+	if err := k.runIn(ctx, traefikNamespace, nil, io.Discard, "scale", "deployment", traefikName, fmt.Sprintf("--replicas=%d", n)); err != nil {
+		return err
+	}
+	return k.runIn(ctx, traefikNamespace, nil, io.Discard, "rollout", "status", "deployment/"+traefikName, "--timeout=300s")
+}
+
 // Verifica a compile time.
 var (
+	_ TraefikCluster   = (*KubectlCluster)(nil)
 	_ Cluster          = (*KubectlCluster)(nil)
 	_ AppVolumeCluster = (*KubectlCluster)(nil)
 )

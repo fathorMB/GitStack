@@ -63,6 +63,13 @@ gateway:
   containerPort: 8080
   service:
     port: 8080
+  # Porta interna per le app ospitate (GIT-442, H16; GITSTACK_GATEWAY_INTERNAL_ADDR), solo con
+  # apps.enabled: serve esclusivamente /v1 (niente forward-auth, login e pagine web) e non si fida mai
+  # di X-Forwarded-For, quindi un'app non può falsificare l'IP del client. È l'unica porta del gateway
+  # che la NetworkPolicy apre ai namespace delle app, e quella di GITSTACK_API_URL. Stessa porta sul
+  # Service e sul container; deve differire da containerPort. 0 = nessuna porta interna (le app non
+  # raggiungono l'API di GitStack dal cluster).
+  internalPort: 8081
   # GITSTACK_CORE_URL e GITSTACK_IDENTITY_URL (questa solo con
   # identity.enabled) sono calcolate dal nome dei Service (vedi
   # templates/gateway/deployment.yaml): non serve impostarle qui.
@@ -376,7 +383,9 @@ git:
     signing:
       existingSecret: ""
     # Token del job (gsj_): URL e porta del ci-gateway di core, con cui il registry lo
-    # convalida. Vuoto = solo i token personali; il ci-gateway non è ancora nel chart.
+    # convalida. Vuoto = ci-gateway di core se la CI è accesa, oppure (CI spenta, apps.enabled
+    # e registry accesi, GIT-449) la porta di core in sola modalità «pull delle app»: i token
+    # del job restano rifiutati. Altrimenti solo i token personali.
     ciGateway:
       url: ""
       port: 0
@@ -767,6 +776,9 @@ apps:
   # Dominio delle app (H2, lo stesso di --apps-domain e di config.yaml apps_domain): l'indirizzo
   # di un'app è <app>-<repo>-<owner>.<dominio>. Obbligatorio con apps.enabled=true.
   domain: ""
+  # Certificati del cliente (GIT-494): il namespace e' sempre <release>-certs (nessuna manopola: chart,
+  # `gitstack upgrade` e gitstack-tls lo calcolano allo stesso modo). Il chart si ferma se il nome
+  # comincia con gitstack-app- (perimetro dei namespace delle app).
   # Forward-auth del login (H6, GIT-347, docs/apps-login.md): core crea da solo nel namespace di
   # ogni app i Middleware Traefik `gitstack-strip` e `gitstack-auth`, che chiama il gateway su
   # /_appauth/verify. authUrl è GITSTACK_CORE_APPS_AUTH_URL; vuoto = il Service del gateway della
@@ -781,6 +793,16 @@ apps:
   traefikMetrics:
     port: 9100
     url: ""
+  # Let's Encrypt per i domini propri delle app pubbliche (v3-c, GIT-459). La configurazione ACME e'
+  # una sola, quella del resolver di Traefik che scrive l'installer (HelmChartConfig `traefik`, la
+  # stessa di --tls letsencrypt): qui core ne conosce solo il nome. `resolver` vuoto = spento (le
+  # rotte dei domini propri restano senza resolver). `email` e' quella dell'installazione
+  # (--tls-email), solo informativa per core. `tlsAddr` e' dove core legge il certificato servito
+  # (host:porta dell'entrypoint websecure di Traefik); vuoto = traefik.<ingressNamespace>:443.
+  acme:
+    resolver: ""
+    email: ""
+    tlsAddr: ""
   # Chiavi con cui il gateway firma le intestazioni X-GitStack-* verso le app
   # (GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS: semi Ed25519, 32 byte in base64, «nuova,vecchia»). Senza,
   # /_appauth/verify risponde 503 e nessuna app `login` passa. Il chart le genera una sola volta nel

@@ -60,6 +60,9 @@ func TestStrumentiMCPDelleAppConLeAnnotazioniGiuste(t *testing.T) {
 		"app_access_member_add": "destructive", "app_access_member_remove": "destructive",
 		// GIT-359 (H3): volumi persistenti, dal contratto di GIT-356.
 		"app_volume_list": "read", "app_volume_create": "destructive", "app_volume_delete": "destructive",
+		// GIT-466 (v3-c): domini propri e certificato. Pubblicazione (app_set_access) e rimozione dominio sono distruttivi (H13).
+		"app_domains_list": "read", "app_domain_get": "read", "app_domain_add": "destructive", "app_domain_remove": "destructive",
+		"app_domain_recheck": "destructive", "app_domain_certificate_upload": "destructive", "app_domain_certificate_remove": "destructive",
 	}
 	for name, kind := range want {
 		i, ok := by[name]

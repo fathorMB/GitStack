@@ -430,7 +430,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		}
 		runnerCfg := ci.RunnerConfig{Namespace: cfg.CINamespace, Image: cfg.CIImage, GatewayURL: cfg.CIGatewayURL, GateInternalAddr: cfg.CIGateInternalAddr, ActionMirror: cfg.CIActionMirror, Capacity: cfg.CICapacity,
 			ProxyEnv: ci.ProxyEnvFrom(os.Getenv), CAConfigMap: os.Getenv("GITSTACK_CORE_CI_CA_CONFIGMAP"),
-			BuildNamespace: cfg.CIBuildNamespace, BuildImage: cfg.CIBuildImage, RegistryAddr: cfg.CIRegistryAddr}
+			BuildNamespace: cfg.CIBuildNamespace, BuildImage: cfg.CIBuildImage, RegistryAddr: cfg.CIRegistryAddr, Logs: ciLogs, Log: logger}
 		if runnerCfg.Image == "" || runnerCfg.GatewayURL == "" {
 			logger.Error("dispatcher CI non avviato", "err", "GITSTACK_CORE_CI_IMAGE e GITSTACK_CORE_CI_GATEWAY_URL obbligatorie")
 			return 1
@@ -489,6 +489,16 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	if cfg.CIGatewayAddr != "" {
 		rd, rok := gitAPI.(gitclient.Reader)
 		switch {
+		case !cfg.CIEnabled:
+			// CI spenta (GIT-449): il registry convalida solo i token di pull delle app; i
+			// token dei job non valgono e non servono né log né letture di git.
+			ciSrv = &http.Server{
+				Addr: cfg.CIGatewayAddr,
+				Handler: httpserver.NewCIGateway(pool, rd, httpserver.CIGatewayConfig{
+					Log: logger, AppPullKeys: trust.ParseKeys(cfg.GatewaySecret), AppPullOnly: true,
+				}),
+				ReadHeaderTimeout: 5 * time.Second,
+			}
 		case ciLogs == nil || !rok:
 			logger.Warn("log dei job o git non configurati: il ci-gateway non parte")
 		default:
@@ -506,7 +516,11 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	// Porta esterna del ci-gateway (GIT-329): stesso gateway, ma FetchTask vale solo con il
 	// token di un runner registrato. Parte solo se c'e' anche la porta interna.
 	var ciExtSrv *http.Server
-	if cfg.CIExternalAddr != "" && ciSrv != nil {
+	extStart, extWarn := ciExternalListener(cfg.CIEnabled, cfg.CIExternalAddr, ciSrv != nil)
+	if extWarn {
+		logger.Warn("GITSTACK_CORE_CI_EXTERNAL_ADDR ignorato: la CI e' spenta, la porta esterna del ci-gateway non parte", "addr", cfg.CIExternalAddr)
+	}
+	if extStart {
 		rd, _ := gitAPI.(gitclient.Reader)
 		ciExtSrv = &http.Server{
 			Addr: cfg.CIExternalAddr,

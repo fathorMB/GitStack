@@ -47,6 +47,9 @@
 #   apps-run <dominio>         Hosting acceso: un'app `login` creata da API passa dal forward-auth VERO del gateway:
 #                              senza credenziali redirect/401, con un token API valido (read:resource e read sul repo)
 #                              200 dall'app, con un token falso mai 200.
+#   apps-public <dominio>      App `public` (GIT-457): senza login 200 e intestazioni X-GitStack-* del client tolte;
+#                              public → login e interruttore d'istanza spento riportano la rotta interna;
+#                              nessun Secret TLS nel namespace dell'app (ADR 0002).
 #   latest-backup              Stampa il percorso dell'archivio più recente.
 #   diagnostics <cartella>     Log del cluster e dei servizi (non fallisce mai).
 #
@@ -648,7 +651,7 @@ apps_off_api() {
   before="$("${KUBECTL[@]}" get namespaces -l gitstack.io/managed-app=true -o name | wc -l)"
   api POST "/api/v1/repos/${CI_USER}/${CI_REPO}/apps" '{"name":"web","image":"docker.io/library/nginx:1.27-alpine","port":80}' -H "Authorization: Bearer ${CI_TOKEN}"
   expect 503 "${CODE}" "creazione app con l'hosting spento"
-  printf '%s' "${BODY}" | jq -e '.code == "apps_unavailable"' >/dev/null || fail "503 senza il codice apps_unavailable"
+  printf '%s' "${BODY}" | jq -e '.error.code == "apps_unavailable"' >/dev/null || fail "503 senza il codice apps_unavailable (schema {error:{code}}); BODY: ${BODY:0:500}"
   sleep 5
   after="$("${KUBECTL[@]}" get namespaces -l gitstack.io/managed-app=true -o name | wc -l)"
   [ "${before}" = "${after}" ] || fail "con l'hosting spento sono comparsi namespace delle app (${before} -> ${after})"
@@ -658,46 +661,266 @@ apps_off_api() {
   printf 'ok  apps-off-api: 503 apps_unavailable, nessun namespace, nessuna app nel modello\n'
 }
 
+# app_namespace <host> <secondi>: stampa il namespace dell'IngressRoute il cui match contiene l'host,
+# aspettandolo fino alla scadenza; esce 1 (senza stampare) se non compare. Nessuna lettura di
+# items[0] su una lista che può essere vuota: il filtro jq dà una stringa vuota.
+app_namespace() {
+  local h="${1:?host}" limit="${2:?secondi}" end n=""
+  end=$((SECONDS + limit))
+  while :; do
+    n="$("${KUBECTL[@]}" get ingressroute -A -o json 2>/dev/null | jq -r --arg h "${h}" '[.items[]? | select((.spec.routes[0].match // "") | contains($h)) | .metadata.namespace][0] // empty' 2>/dev/null || true)"
+    if [ -n "${n}" ]; then
+      printf '%s' "${n}"
+      return 0
+    fi
+    [ "${SECONDS}" -lt "${end}" ] || return 1
+    sleep 3
+  done
+}
+
+# apps_diagnostics <namespace>: in caso di errore di apps-run raccoglie lo stato dell'app, i log del
+# container (anche --previous, se è ripartito) e le righe appauth del gateway. Mai fatale.
+apps_diagnostics() {
+  local ns="${1:-default}" p
+  "${KUBECTL[@]}" -n "${ns}" get all,ingressroute,middleware -o wide || true
+  "${KUBECTL[@]}" -n "${ns}" describe pods | tail -60 || true
+  printf '== NetworkPolicy di %s ==\n' "${ns}" >&2
+  "${KUBECTL[@]}" -n "${ns}" get networkpolicy -o yaml || true
+  local pods
+  pods="$("${KUBECTL[@]}" -n "${ns}" get pods -o name 2>/dev/null || true)"
+  while IFS= read -r p; do
+    [ -n "${p}" ] || continue
+    printf '== log di %s (corrente) ==
+' "${p}" >&2
+    "${KUBECTL[@]}" -n "${ns}" logs "${p}" --all-containers --tail=60 || true
+    printf '== log di %s (--previous) ==
+' "${p}" >&2
+    "${KUBECTL[@]}" -n "${ns}" logs "${p}" --all-containers --previous --tail=60 || true
+  done <<<"${pods}"
+  printf '== gateway: righe appauth ==
+' >&2
+  "${KUBECTL[@]}" -n default logs deployment/gitstack-gateway --tail=500 | grep -i 'appauth' | tail -40 || true
+  printf '== gateway: ultime righe ==
+' >&2
+  "${KUBECTL[@]}" -n default logs deployment/gitstack-gateway --tail=20 || true
+}
+
+# apps_report <host> <file intestazioni> <corpo> <namespace> <messaggio> (GIT-483): in caso di errore stampa
+# la risposta ricevuta (intestazioni e primi byte del corpo), lo stato dell'app e le righe appauth del
+# gateway, poi esce. Una risposta 200 che non è dell'app (p. es. la web UI di GitStack, servita
+# dall'Ingress senza host finché Traefik non ha caricato la rotta dell'app) si riconosce da qui.
+apps_report() {
+  local host="${1}" hdr="${2}" rbody="${3}" ns="${4}" msg="${5}"
+  printf 'Risposta ricevuta da %s:\n' "${host}" >&2
+  if [ -s "${hdr}" ]; then head -n 30 "${hdr}" >&2 || true; fi
+  printf '%s\n' "${rbody}" | head -c 1500 >&2 || true
+  printf '\n' >&2
+  apps_diagnostics "${ns:-default}"
+  fail "${msg}"
+}
+
 # apps-run <dominio>: un'app di prova creata da API risponde al suo indirizzo automatico (HTTPS con la
 # CA interna, risoluzione forzata verso l'host: il DNS wildcard non c'è sul runner).
 apps_run() {
   need E2E_HOST
   load_seed
-  local domain="${1:?dominio delle app}" host deadline code="" ns loc
+  local domain="${1:?dominio delle app}" host deadline code="" ns loc body
   local resolve="${HOST}"
-  api POST "/api/v1/repos/${CI_USER}/${CI_REPO}/apps" '{"name":"web","image":"docker.io/library/nginx:1.27-alpine","port":80,"healthCheck":{"path":"/","intervalSeconds":5}}' -H "Authorization: Bearer ${CI_TOKEN}"
+  api POST "/api/v1/repos/${CI_USER}/${CI_REPO}/apps" '{"name":"web","image":"docker.io/nginxinc/nginx-unprivileged:1.27-alpine","port":8080,"healthCheck":{"path":"/","intervalSeconds":5}}' -H "Authorization: Bearer ${CI_TOKEN}"
   expect 202 "${CODE}" "creazione app"
   host="$(printf '%s' "${BODY}" | jq -r '.app.address // empty' | sed -E 's#^https://##')"
   [ -n "${host}" ] || fail "l'app creata non ha un indirizzo automatico: $(printf '%s' "${BODY}" | head -c 300)"
   case "${host}" in *".${domain}") ;; *) fail "indirizzo ${host} fuori dal dominio ${domain}" ;; esac
-  ns="$("${KUBECTL[@]}" get namespaces -l gitstack.io/managed-app=true -o jsonpath='{.items[0].metadata.name}')"
+  # Il controller crea il namespace in modo asincrono dopo il 202: lo si aspetta (dall'IngressRoute
+  # dell'app, come apps_public), con un errore chiaro se non arriva.
+  ns="$(app_namespace "${host}" 180)" || {
+    "${KUBECTL[@]}" get namespaces --show-labels || true
+    "${KUBECTL[@]}" get ingressroute -A -o wide || true
+    fail "apps-run: il namespace dell'app non è comparso entro 180s (IngressRoute con ${host})"
+  }
   # Con un token API valido (accesso `login`: read sul repo) il forward-auth del gateway ammette e
   # l'app risponde. Il DNS wildcard non c'è sul runner: la risoluzione è forzata verso l'host.
+  # GIT-483: un 200 da solo non basta. Finché Traefik non ha caricato la rotta dell'app (o il pod non è
+  # pronto) il nome dell'app cade nell'Ingress senza host della web UI di GitStack, che risponde 200 a
+  # chiunque: si aspetta la pagina vera dell'app (nginx di prova), non solo il codice.
   deadline=$((SECONDS + 420))
+  code=""
+  body=""
   while [ "${SECONDS}" -lt "${deadline}" ]; do
-    code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -H "Authorization: Bearer ${CI_TOKEN}" -o /dev/null -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
-    [ "${code}" = 200 ] && break
+    code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -H "Authorization: Bearer ${CI_TOKEN}" -o "${STATE_DIR}/apps-auth.body" -D "${STATE_DIR}/apps-auth.hdr" -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
+    body="$(head -c 4000 "${STATE_DIR}/apps-auth.body" 2>/dev/null || true)"
+    if [ "${code}" = 200 ] && printf '%s' "${body}" | grep -q 'Welcome to nginx'; then break; fi
+    code="${code:-000}"
     sleep 5
   done
-  [ "${code}" = 200 ] || {
-    "${KUBECTL[@]}" -n "${ns:-default}" get all,ingressroute,middleware -o wide || true
-    "${KUBECTL[@]}" -n "${ns:-default}" describe pods | tail -40 || true
-    "${KUBECTL[@]}" -n default logs deployment/gitstack-gateway --tail=40 || true
-    fail "l'app non risponde con un token valido su https://${host}/ (ultimo codice '${code}')"
-  }
-  curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -H "Authorization: Bearer ${CI_TOKEN}" "https://${host}/" | grep -qi 'nginx' || fail "la risposta di ${host} non è quella dell'app di prova"
-  printf 'ok  apps-run: con un token valido https://%s/ risponde 200 (namespace %s)\n' "${host}" "${ns}"
+  if [ "${code}" != 200 ] || ! printf '%s' "${body}" | grep -q 'Welcome to nginx'; then
+    apps_report "${host}" "${STATE_DIR}/apps-auth.hdr" "${body}" "${ns}" "l'app non risponde con la sua pagina e un token valido su https://${host}/ (ultimo codice '${code}')"
+  fi
+  printf 'ok  apps-run: con un token valido https://%s/ risponde 200 con la pagina dell'"'"'app (namespace %s)\n' "${host}" "${ns}"
   # Senza credenziali: redirect al login (browser) o 401 (client API), mai 200.
-  code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -o /dev/null -D "${STATE_DIR}/apps-noauth.hdr" -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
+  code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -o "${STATE_DIR}/apps-noauth.body" -D "${STATE_DIR}/apps-noauth.hdr" -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
   loc="$(grep -i '^location:' "${STATE_DIR}/apps-noauth.hdr" | head -n1 | tr -d '\r' || true)"
   case "${code}" in
     301 | 302 | 303 | 307 | 308 | 401) printf 'ok  apps-run: senza credenziali %s %s\n' "${code}" "${loc}" ;;
-    *) fail "senza credenziali l'app doveva dare un redirect al login o 401, trovato '${code}'" ;;
+    *)
+      body="$(head -c 4000 "${STATE_DIR}/apps-noauth.body" 2>/dev/null || true)"
+      apps_report "${host}" "${STATE_DIR}/apps-noauth.hdr" "${body}" "${ns}" "senza credenziali l'app doveva dare un redirect al login o 401, trovato '${code}'"
+      ;;
   esac
   # Un token falso non passa.
   code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" -H "Authorization: Bearer gst_falso" -o /dev/null -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
   if [ "${code}" = 200 ]; then fail "un token falso ha passato il forward-auth (200)"; fi
   printf 'ok  apps-run: con un token falso %s (non 200)\n' "${code}"
+}
+
+# apps-public <dominio> (GIT-457, H1/H6/ADR 0002): un'app `public` è raggiungibile senza login, le
+# intestazioni X-GitStack-* mandate dal client non arrivano all'app, public → login e l'interruttore
+# d'istanza spento lasciano l'app interna col login (ADR 0002), nessun Secret TLS nel namespace dell'app.
+apps_public() {
+  need E2E_HOST
+  load_seed
+  local domain="${1:?dominio delle app}" host ns="" deadline code="" body="" orig_on mws
+  local resolve="${HOST}" jar="${STATE_DIR}/admin-public.jar" settings
+
+  # Interruttore d'istanza: l'admin (cookie di sessione) legge i valori e li rimanda interi.
+  login admin "${NEW_ADMIN_PASSWORD}" "${jar}"
+  expect 200 "${CODE}" "login admin"
+  api GET /api/v1/admin/apps/settings '' -b "${jar}"
+  expect 200 "${CODE}" "lettura impostazioni delle app"
+  settings="${BODY}"
+  orig_on="$(printf '%s' "${settings}" | jq -r '.publicAppsEnabled')"
+  set_public_switch() { # <true|false>
+    api PUT /api/v1/admin/apps/settings "$(printf '%s' "${settings}" | jq --argjson on "$1" '{publicAppsEnabled:$on,signedImagesOnly,restricted,maxPerApp,logRetention}')" -b "${jar}"
+    expect 200 "${CODE}" "interruttore delle app pubbliche = $1"
+  }
+  set_mode() { # <login|public>
+    api PUT "/api/v1/repos/${CI_USER}/${CI_REPO}/apps/pub/access" "$(jq -n --arg m "$1" '{mode:$m}')" -H "Authorization: Bearer ${CI_TOKEN}"
+    expect 200 "${CODE}" "accesso dell'app pub = $1"
+  }
+  # noauth <intestazione...>: codice HTTP senza credenziali; il corpo resta in $body.
+  noauth() {
+    local out h args=()
+    for h in "$@"; do args+=(-H "${h}"); done
+    out="$(mktemp)"
+    code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${host}:443:${resolve}" "${args[@]}" -o "${out}" -D "${STATE_DIR}/apps-public.hdr" -w '%{http_code}' "https://${host}/" 2>/dev/null || true)"
+    body="$(cat "${out}")"
+    rm -f "${out}"
+  }
+
+  api POST "/api/v1/repos/${CI_USER}/${CI_REPO}/apps" '{"name":"pub","image":"docker.io/traefik/whoami:v1.10","port":80,"healthCheck":{"path":"/","intervalSeconds":5}}' -H "Authorization: Bearer ${CI_TOKEN}"
+  expect 202 "${CODE}" "creazione app pub"
+  host="$(printf '%s' "${BODY}" | jq -r '.app.address // empty' | sed -E 's#^https://##')"
+  [ -n "${host}" ] || fail "l'app pub non ha un indirizzo automatico: $(printf '%s' "${BODY}" | head -c 300)"
+  case "${host}" in *".${domain}") ;; *) fail "indirizzo ${host} fuori dal dominio ${domain}" ;; esac
+
+  set_public_switch true
+  set_mode public
+
+  # a. senza credenziali, con intestazioni falsificate: 200 e nessuna arriva all'app.
+  # GIT-483: come in apps-run, un 200 da solo non basta (l'Ingress senza host della web UI risponde 200
+  # finché Traefik non ha caricato la rotta dell'app): si aspetta l'elenco di whoami (riga `Hostname:`).
+  ns="$(app_namespace "${host}" 180 || true)"
+  deadline=$((SECONDS + 420))
+  while [ "${SECONDS}" -lt "${deadline}" ]; do
+    noauth 'X-GitStack-User: intruso' 'X-GitStack-Signature: falsa' 'X-GitStack-Email: x@y'
+    if [ "${code}" = 200 ] && printf '%s' "${body}" | grep -q '^Hostname:'; then break; fi
+    sleep 5
+  done
+  if [ "${code}" != 200 ] || ! printf '%s' "${body}" | grep -q '^Hostname:'; then
+    "${KUBECTL[@]}" get ingressroute,middleware -A -o wide || true
+    "${KUBECTL[@]}" -n default logs deployment/gitstack-core --tail=40 || true
+    apps_report "${host}" "${STATE_DIR}/apps-public.hdr" "${body}" "${ns}" "la risposta di ${host} senza login non è quella di whoami (codice '${code}')"
+  fi
+  if printf '%s' "${body}" | grep -qi '^X-Gitstack-User: intruso'; then fail "X-GitStack-User del client è arrivata all'app"; fi
+  if printf '%s' "${body}" | grep -qi '^X-Gitstack-Signature: falsa'; then fail "X-GitStack-Signature del client è arrivata all'app"; fi
+  if printf '%s' "${body}" | grep -qi '^X-Gitstack-Email: x@y'; then fail "X-GitStack-Email del client è arrivata all'app"; fi
+  printf 'ok  apps-public: senza login 200, intestazioni X-GitStack-* del client tolte\n'
+
+  # a2. GIT-489: un nome sotto il dominio delle app senza nessuna app dietro cade nella route di riserva
+  # e risponde 404 «App non disponibile», non la web UI. Con qualche tentativo: Traefik può essere in ritardo.
+  local missing_out missing_host="nessuna.${domain}"
+  missing_out="$(mktemp)"
+  deadline=$((SECONDS + 60))
+  while :; do
+    code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${missing_host}:443:${resolve}" -o "${missing_out}" -w '%{http_code}' "https://${missing_host}/" 2>/dev/null || true)"
+    if [ "${code}" = 404 ] && grep -q 'App non disponibile' "${missing_out}"; then break; fi
+    [ "${SECONDS}" -lt "${deadline}" ] || break
+    sleep 3
+  done
+  if [ "${code}" != 404 ] || ! grep -q 'App non disponibile' "${missing_out}"; then
+    printf 'ERRORE: https://%s/ doveva dare 404 «App non disponibile», trovato %s\n' "${missing_host}" "${code:-nessuna risposta}" >&2
+    head -c 500 "${missing_out}" >&2 || true
+    rm -f "${missing_out}"
+    exit 1
+  fi
+  rm -f "${missing_out}"
+  printf 'ok  apps-fallback: %s → 404 App non disponibile\n' "${missing_host}"
+
+  ns="$(app_namespace "${host}" 120)" || fail "namespace dell'app pub non trovato (IngressRoute con ${host})"
+
+  # d. public → login: la rotta interna torna (30x o 401 senza credenziali).
+  set_mode login
+  deadline=$((SECONDS + 180))
+  while [ "${SECONDS}" -lt "${deadline}" ]; do
+    noauth
+    case "${code}" in 301 | 302 | 303 | 307 | 308 | 401) break ;; esac
+    sleep 5
+  done
+  case "${code}" in
+    301 | 302 | 303 | 307 | 308 | 401) ;;
+    *) fail "dopo public → login senza credenziali atteso 30x o 401, trovato '${code}'" ;;
+  esac
+  printf 'ok  apps-public: public → login riporta la rotta interna\n'
+
+  # e. interruttore spento con l'app ancora public: non è più esposta, ma resta raggiungibile col login
+  # (IngressRoute `app` con forward-auth, nessuna rotta dei domini propri).
+  set_mode public
+  deadline=$((SECONDS + 180))
+  while [ "${SECONDS}" -lt "${deadline}" ]; do
+    noauth
+    [ "${code}" = 200 ] && break
+    sleep 3
+  done
+  [ "${code}" = 200 ] || fail "l'app public non è tornata raggiungibile prima di spegnere l'interruttore ('${code}')"
+  set_public_switch false
+  deadline=$((SECONDS + 180))
+  while [ "${SECONDS}" -lt "${deadline}" ]; do
+    noauth
+    case "${code}" in 301 | 302 | 303 | 307 | 308 | 401) break ;; esac
+    sleep 5
+  done
+  if [ "${code}" = 200 ]; then fail "interruttore spento: l'app risponde ancora 200 senza login"; fi
+  case "${code}" in
+    301 | 302 | 303 | 307 | 308 | 401) ;;
+    *) fail "interruttore spento: senza credenziali atteso 30x o 401, trovato '${code}'" ;;
+  esac
+  mws="$("${KUBECTL[@]}" -n "${ns}" get ingressroute app -o jsonpath='{.spec.routes[*].middlewares[*].name}')" || fail "interruttore spento: IngressRoute app assente"
+  case " ${mws} " in
+    *" gitstack-auth "*) ;;
+    *) fail "interruttore spento: la rotta app non ha il forward-auth (${mws})" ;;
+  esac
+  if "${KUBECTL[@]}" -n "${ns}" get ingressroute app-domains >/dev/null 2>&1; then fail "interruttore spento: esiste ancora la rotta dei domini propri"; fi
+  printf 'ok  apps-public: interruttore spento, app interna col login (ADR 0002)\n'
+
+  # f. ADR 0002: nessun Secret TLS nel namespace dell'app.
+  if "${KUBECTL[@]}" get secrets -A --field-selector type=kubernetes.io/tls -o jsonpath='{range .items[*]}{.metadata.namespace}{"\n"}{end}' | grep -qx "${ns}"; then
+    fail "Secret TLS nel namespace dell'app ${ns} (ADR 0002: i certificati restano nel namespace di Traefik)"
+  fi
+  printf 'ok  apps-public: nessun Secret TLS nel namespace dell'"'"'app (ADR 0002)\n'
+
+  set_public_switch "${orig_on}"
+  # Riaccensione: le route pubbliche tornano da sole, senza azioni dell'utente.
+  if [ "${orig_on}" = true ]; then
+    deadline=$((SECONDS + 180))
+    while [ "${SECONDS}" -lt "${deadline}" ]; do
+      noauth
+      if [ "${code}" = 200 ] && printf '%s' "${body}" | grep -q '^Hostname:'; then break; fi
+      sleep 5
+    done
+    if [ "${code}" != 200 ] || ! printf '%s' "${body}" | grep -q '^Hostname:'; then
+      fail "riaccensione: l'app public non è tornata raggiungibile senza login (codice '${code}')"
+    fi
+  fi
 }
 
 latest_backup() {
@@ -715,6 +938,11 @@ diagnostics() {
     "${KUBECTL[@]}" get events -A --sort-by=.lastTimestamp
     "${KUBECTL[@]}" describe pods -A
   } > "${d}/kubectl.txt" 2>&1 || true
+  # GIT-479: i Deployment com'erano dopo un rollback (serviceAccount, ReplicaSet) e la storia di helm.
+  { "${KUBECTL[@]}" -n default get deployments,replicasets,serviceaccounts -o yaml; } > "${d}/deployments.yaml" 2>&1 || true
+  { sudo helm history gitstack -n default --kubeconfig /etc/rancher/k3s/k3s.yaml; } > "${d}/helm-history.txt" 2>&1 || true
+  # GIT-482: ServiceAccount di ogni Deployment (campo e campo deprecato) e manifest della revisione in uso.
+  { "${KUBECTL[@]}" -n default get deployments -o custom-columns='NOME:.metadata.name,SA:.spec.template.spec.serviceAccountName,SA_DEPRECATO:.spec.template.spec.serviceAccount,GEN:.metadata.generation'; sudo helm get manifest gitstack -n default --kubeconfig /etc/rancher/k3s/k3s.yaml; } > "${d}/deployments-sa.txt" 2>&1 || true
   { sudo journalctl -u k3s --no-pager -n 400; } > "${d}/k3s.log" 2>&1 || true
   { sudo gitstack status; } > "${d}/gitstack-status.txt" 2>&1 || true
   { sudo ls -la /var/backups/gitstack; } > "${d}/backups.txt" 2>&1 || true
@@ -749,6 +977,7 @@ main() {
     verify-apps-hosting) verify_apps_hosting "$@" ;;
     apps-off-api) apps_off_api ;;
     apps-run) apps_run "$@" ;;
+    apps-public) apps_public "$@" ;;
     latest-backup) latest_backup ;;
     diagnostics) diagnostics "$@" ;;
     *) fail "sottocomando sconosciuto: ${cmd}" ;;

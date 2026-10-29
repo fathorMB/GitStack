@@ -77,8 +77,18 @@ type Config struct {
 	ProxyEnv map[string]string
 	// GateImage: immagine dell'init container «gate» dei pod delle app (GIT-418), quella di core.
 	GateImage string
-	// TraefikNamespace è il namespace dell'Ingress controller k3s.
+	// Domains: controllo del DNS dei domini propri delle app pubbliche (v3-c, GIT-458); AppsDomain
+	// vuoto prende quello sopra. Resolver nil = DNS di sistema.
+	Domains DomainConfig
+	// TraefikNamespace è il namespace dei pod dell'Ingress controller k3s: la NetworkPolicy delle app
+	// ammette l'ingresso solo da lì.
 	TraefikNamespace string
+	// TLSStoreNamespace è il namespace dei certificati del cliente (GIT-494: <release>-certs, creato dal chart):
+	// ci stanno i Secret TLS e il TLSStore default letto da Traefik. Il chart lo passa sempre; vuoto = TraefikNamespace
+	// (solo test: in un cluster vero core non ha verbi sui Secret di quel namespace).
+	TLSStoreNamespace string
+	// Gateway è la porta interna del gateway per le app (GIT-442); nil o incompleta = non configurata.
+	Gateway *GatewayAccess
 	// EgressClusterCIDRs e EgressNodeAddresses sono gli stessi di webhook e mirror (pkg/egress):
 	// le barriere in uscita delle app (H16) li escludono da internet.
 	EgressClusterCIDRs  []string
@@ -103,6 +113,8 @@ type Config struct {
 	// di Traefik; nil legge TraefikMetricsURL. Vuoti entrambi: richieste ed errori non disponibili.
 	TraefikMetrics    TraefikMetricsReader
 	TraefikMetricsURL string
+	// ACME: Let's Encrypt per i domini propri (GIT-459); la configurazione vera è quella di Traefik.
+	ACME ACMEConfig
 	// LogRetention: per quanto si tengono le righe (default 7 giorni); LogMaxBytes: per app (default 1 GiB).
 	LogRetention time.Duration
 	LogMaxBytes  int64
@@ -160,6 +172,12 @@ type Controller struct {
 	// versionOf dà la versione attiva dell'app (reapply); senza store è un seam dei test.
 	versionOf func(context.Context, store.App) (store.AppVersion, error)
 
+	// publicOn è un seam dei test per l'interruttore delle app pubbliche; nil = lo legge lo store.
+	publicOn func(context.Context) (bool, error)
+	// domainsOf e' il seam dei test per i domini propri attivi dell'app; nil = li legge lo store.
+	domainsOf func(context.Context, store.App) ([]string, error)
+
+	acme    acmeState
 	kick    chan struct{}
 	mu      sync.Mutex
 	running map[uuid.UUID]bool
@@ -176,6 +194,7 @@ func New(st *store.Store, kube kubernetes.Interface, dyn dynamic.Interface, cfg 
 	cfg.defaults()
 	c := &Controller{st: st, kube: kube, dyn: dyn, cfg: cfg, kick: make(chan struct{}, 1),
 		running: map[uuid.UUID]bool{}, oomSeen: map[uuid.UUID]map[string]int32{}, traffic: map[uuid.UUID]trafficCounters{}}
+	c.acme.issuing = map[uuid.UUID]time.Time{}
 	if st != nil {
 		c.siblings = st.ListApps
 		c.versionOf = func(ctx context.Context, a store.App) (store.AppVersion, error) {
@@ -198,7 +217,7 @@ func (c *Controller) Kick() {
 func (c *Controller) Run(ctx context.Context) {
 	tick := time.NewTicker(c.cfg.LoopInterval)
 	defer tick.Stop()
-	var lastSync, lastCollect, lastLogs, lastMetrics, lastPrune time.Time
+	var lastSync, lastCollect, lastLogs, lastMetrics, lastPrune, lastDomains, lastCerts time.Time
 	for {
 		c.processPending(ctx)
 		if now := time.Now(); now.Sub(lastSync) >= c.cfg.SyncEvery {
@@ -216,6 +235,19 @@ func (c *Controller) Run(ctx context.Context) {
 		if now := time.Now(); now.Sub(lastMetrics) >= c.cfg.MetricsEvery {
 			lastMetrics = now
 			c.CollectMetrics(ctx)
+		}
+		if now := time.Now(); now.Sub(lastDomains) >= time.Minute {
+			lastDomains = now
+			c.CheckDomains(ctx)
+			c.CheckPort80(ctx)
+			// GIT-462: dopo un restore (o se qualcuno toglie un Secret) il namespace di Traefik non ha
+			// più i Secret dei certificati del cliente: il database li ha cifrati e qui si riscrivono.
+			c.SyncCustomCerts(ctx)
+		}
+		if now := time.Now(); now.Sub(lastCerts) >= certProbeEvery {
+			lastCerts = now
+			c.CheckCertificates(ctx)
+			c.CheckCertExpiry(ctx)
 		}
 		if now := time.Now(); now.Sub(lastPrune) >= time.Minute {
 			lastPrune = now
@@ -415,7 +447,7 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 		restricted = rs != nil
 	}
 	deps := c.kube.AppsV1().Deployments(ns)
-	opts := BuildOptions{EgressRestricted: restricted, Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret, ProxyEnv: c.cfg.ProxyEnv, GateImage: c.cfg.GateImage}
+	opts := BuildOptions{EgressRestricted: restricted, Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret, ProxyEnv: c.cfg.ProxyEnv, GateImage: c.cfg.GateImage, Gateway: c.cfg.Gateway}
 	// Get+Build+Update a ogni tentativo: il deployment controller di Kubernetes aggiorna lo stesso
 	// oggetto (status, revisione, rollout precedente) e l'Update con un ResourceVersion vecchio
 	// riceve 409.
@@ -449,7 +481,7 @@ func (c *Controller) ensureNetworkPolicy(ctx context.Context, app store.App) err
 		}
 		proxyIPs[endpoint.host] = ips
 	}
-	np := NetworkPolicyOptions{TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs, ClusterCIDRs: c.cfg.EgressClusterCIDRs, NodeAddresses: c.cfg.EgressNodeAddresses, Deny: c.cfg.EgressDeny}
+	np := NetworkPolicyOptions{Gateway: c.cfg.Gateway, TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs, ClusterCIDRs: c.cfg.EgressClusterCIDRs, NodeAddresses: c.cfg.EgressNodeAddresses, Deny: c.cfg.EgressDeny}
 	// Destinazioni private aperte dall'amministratore e restrizione dell'app (H16, GIT-385): gli indirizzi
 	// si risolvono ora, a ogni applicazione della policy (deploy o modifica delle impostazioni).
 	if c.st != nil { // senza store (prove del solo cluster) nessuna apertura e nessuna restrizione
@@ -764,6 +796,18 @@ func (c *Controller) routeHost(app store.App, cfg store.AppConfig) string {
 	return *app.AddressLabel + "." + c.cfg.AppsDomain
 }
 
+// publicAppsEnabled legge l'interruttore d'istanza delle app pubbliche (H1); senza store (test) è
+// il seam publicOn, e senza nemmeno quello vale spento.
+func (c *Controller) publicAppsEnabled(ctx context.Context) (bool, error) {
+	if c.publicOn != nil {
+		return c.publicOn(ctx)
+	}
+	if c.st == nil {
+		return false, nil
+	}
+	return c.st.PublicAppsEnabled(ctx)
+}
+
 // authConfigured: il forward-auth del login (H6) ha indirizzo e segreto.
 func (c *Controller) authConfigured() bool {
 	return c.cfg.AuthURL != "" && c.cfg.AuthSecret != ""
@@ -775,14 +819,39 @@ func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.A
 	}
 	routes := c.dyn.Resource(routeGVR).Namespace(Namespace(app.ID))
 	host := c.routeHost(app, cfg)
-	if host == "" {
-		err := routes.Delete(ctx, WorkloadName, metav1.DeleteOptions{})
-		if apierrors.IsNotFound(err) {
-			return nil // niente rotta, oppure le CRD di Traefik non ci sono
-		}
-		return err
-	}
+	// App pubbliche (H1): con l'interruttore d'istanza spento un'app `public` non è esposta. Il modo
+	// resta salvato; alla riaccensione la rotta torna al prossimo giro. Nel dubbio (errore di lettura)
+	// la rotta non si crea e quella già esistente si toglie (fail-closed, GIT-457): mai esposta per
+	// sbaglio. L'errore di lettura resta al chiamante, che riprova al giro dopo.
+	// Interruttore spento (lettura riuscita): ADR 0002, l'app resta raggiungibile dentro l'installazione
+	// con la rotta dell'accesso `login` (forward-auth) sul dominio delle app, senza domini propri.
+	var readErr error
 	login := app.Access == "login"
+	degraded := false
+	if host != "" && app.Access == "public" {
+		on, err := c.publicAppsEnabled(ctx)
+		if err != nil {
+			readErr = fmt.Errorf("lettura dell'interruttore delle app pubbliche: %w", err)
+			on = false
+		}
+		if !on {
+			if readErr == nil && c.authConfigured() {
+				login, degraded = true, true
+			} else {
+				host = ""
+			}
+		}
+	}
+	if host == "" {
+		err := deleteRoutes(ctx, routes)
+		if err != nil {
+			if readErr != nil {
+				return errors.Join(readErr, err)
+			}
+			return err
+		}
+		return readErr
+	}
 	// I Middleware prima della rotta: la rotta che li cita non deve mai esistere senza.
 	ns := c.dyn.Resource(middlewareGVR).Namespace(Namespace(app.ID))
 	if err := upsert(ctx, ns, BuildStripMiddleware(app.ID)); err != nil {
@@ -795,7 +864,37 @@ func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.A
 	} else if err := ns.Delete(ctx, MiddlewareAuth, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("middleware %s: %w", MiddlewareAuth, err)
 	}
-	return upsert(ctx, routes, BuildRoute(app, host, login))
+	var extra, acmeHosts []string
+	if !degraded {
+		var err error
+		if extra, acmeHosts, err = c.domainHosts(ctx, app); err != nil {
+			return fmt.Errorf("lettura dei domini propri: %w", err)
+		}
+	}
+	if err := upsert(ctx, routes, BuildRoute(app, host, login, extra...)); err != nil {
+		return err
+	}
+	// Domini con certificato Let's Encrypt: una rotta propria col resolver di Traefik (GIT-459). Senza
+	// domini la rotta si toglie.
+	if len(acmeHosts) == 0 {
+		if err := routes.Delete(ctx, DomainsRouteName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}
+	return upsert(ctx, routes, BuildDomainsRoute(app, acmeHosts, login, c.cfg.ACME.Resolver))
+}
+
+// deleteRoutes toglie le rotte pubbliche dell'app (indirizzo automatico e domini propri). NotFound:
+// niente rotta, oppure le CRD di Traefik non ci sono.
+func deleteRoutes(ctx context.Context, routes dynamic.ResourceInterface) error {
+	var errs []error
+	for _, name := range []string{WorkloadName, DomainsRouteName} {
+		if err := routes.Delete(ctx, name, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // upsert crea l'oggetto o ne aggiorna lo spec e le label, solo se cambiano (il ciclo di sync lo

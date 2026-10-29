@@ -1,10 +1,10 @@
-import { AlertTriangle, Box, Check, Lock, Plus, Rocket, ShieldCheck, Terminal, Users, X } from 'lucide-react';
+import { AlertTriangle, Box, Check, Globe, Lock, Plus, Rocket, ShieldCheck, Terminal, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ErrorAlert } from '../../../components';
 import { fetchApps } from '../../../lib/appsApi';
 import type { App, AppList } from '../../../lib/appsApi';
-import { accessLabel, formatCpu, formatMemory, shortDigest, statusBadge } from '../../../lib/appsView';
+import { accessLabel, formatCpu, formatMemory, listAddress, shortDigest, statusBadge } from '../../../lib/appsView';
 import { timeAgo } from '../../../lib/format';
 import type { Repository } from '../../../lib/reposApi';
 import { useAppPermissions } from '../../../lib/useAppPermissions';
@@ -23,6 +23,7 @@ function AppRow({ app, owner, repo }: { app: App; owner: string; repo: string })
   const bad = badge.tone === 'err';
   const sha = shortDigest(app.image.digest);
   const copiesText = `${app.copies} ${app.copies === 1 ? 'copy' : 'copies'}`;
+  const address = listAddress(app);
   return (
     <li className="list-row hover">
       <span className={`st ${bad ? 'err' : badge.tone === 'ok' ? 'ok' : 'skip'}`}>{bad ? <X size={12} aria-hidden="true" /> : <Check size={12} aria-hidden="true" />}</span>
@@ -30,14 +31,14 @@ function AppRow({ app, owner, repo }: { app: App; owner: string; repo: string })
         <Link to={appsPath(owner, repo, app.name)} style={{ fontWeight: 600, color: 'var(--text)' }}>
           {app.name}
         </Link>{' '}
-        {app.address ? null : <span className="badge">No address</span>}
-        <span className="badge">
-          {app.access === 'login' ? <Lock size={12} aria-hidden="true" /> : <Users size={12} aria-hidden="true" />}
+        {address ? null : <span className="badge">No address</span>}
+        <span className={app.access === 'public' ? 'badge badge-accent' : 'badge'}>
+          {app.access === 'login' ? <Lock size={12} aria-hidden="true" /> : app.access === 'public' ? <Globe size={12} aria-hidden="true" /> : <Users size={12} aria-hidden="true" />}
           {accessLabel(app.access)}
         </span>
         <div className="small muted">
-          {app.address ? <span className="mono">{app.address}</span> : null}
-          {app.address ? ' · ' : null}
+          {address ? <span className="mono">{address}</span> : null}
+          {address ? ' · ' : null}
           {app.follow ? (
             <>
               follows {app.follow.tagPattern ? 'tags ' : ''}<span className="mono">{app.follow.tagPattern ?? app.follow.branch}</span>

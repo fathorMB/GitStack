@@ -270,6 +270,9 @@ func (e *Engine) handle(ctx context.Context, tx pgx.Tx, ev outboxEvent) error {
 	if isAppNotice(ev.name) {
 		return e.handleApp(ctx, tx, ev)
 	}
+	if isAppDomainNotice(ev.name) {
+		return e.handleAppDomain(ctx, tx, ev)
+	}
 	switch ev.name {
 	case domainevents.IssueCreated, domainevents.IssueEdited, domainevents.IssueClosed,
 		domainevents.IssueReopened, domainevents.IssueAssigned:

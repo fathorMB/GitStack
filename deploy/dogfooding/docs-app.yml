@@ -1,0 +1,23 @@
+# Workflow del dogfooding della v3-a (GIT-355): costruisce il sito della documentazione come
+# immagine OCI nel registry del repo e lo pubblica col token del job. L'app `docs` del repo, che
+# segue il branch `main`, lo mette in produzione da sola (H7, H10).
+#
+# NON e' in .github/workflows: su GitHub `runs-on: gitstack-build` non esiste e il job resterebbe
+# in coda. Si copia a mano come `.github/workflows/docs-app.yml` nel repo di homehub (vedi
+# docs/operations.md, «Dogfooding delle app su homehub»).
+name: docs-app
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  image:
+    runs-on: gitstack-build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Costruisce e pubblica l'immagine del sito
+        run: |
+          tag="sha-$(printf '%.12s' "${GITHUB_SHA}")"
+          gitstack-build --name docs --tag "${tag}" --file docs-site/Dockerfile \
+            --build-arg "COMMIT=${GITHUB_SHA}" .

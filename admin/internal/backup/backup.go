@@ -289,6 +289,10 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 	if err != nil {
 		return nil, err
 	}
+	acmePath, err := o.locateACME(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var est estimate
 	est.CoreBytes = dirSize(gitPath)
 	if hasAtt {
@@ -434,6 +438,10 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 			return nil, fmt.Errorf("copia del volume %s dell'app %s: %w", v.ref.Name, v.ref.App, e)
 		}
 		appRefs = append(appRefs, v.ref)
+	}
+
+	if e := o.stageACME(st, acmePath); e != nil {
+		return nil, e
 	}
 
 	if e := restoreReplicas(); e != nil {

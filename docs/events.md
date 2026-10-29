@@ -412,6 +412,14 @@ La rinomina e il trasferimento non esistono nella v1 (R3): niente eventi.
 | `app_deployment.started`, `succeeded`, `rolled_back` | `deployment` / azione omonima | nessuna |
 | `app_deployment.failed` | `deployment` / `failed` | `state_change` a chi ha fatto il deploy (GIT-384, H12) |
 | `app_status.unhealthy` (app in esecuzione con copie non pronte) | nessuno | `state_change` a chi ha fatto l'ultimo deploy attivo; un avviso ogni 5 minuti per app e destinatario (GIT-384, H12; GIT-400) |
+| `app_domain.dns_failed` (dominio proprio che non supera la verifica del DNS o smette di puntare all'istanza) | `app_domain` / `dns_failed` | `state_change` agli admin dell'app e dell'istanza; un solo avviso per guasto, riparte dopo un rientro (GIT-461, v3-c) |
+| `app_certificate.renewal_failed` (emissione o rinnovo Let's Encrypt fallito) | `app_domain` / `certificate_renewal_failed` | `state_change` agli admin dell'app e dell'istanza; un solo avviso per passaggio a errore (GIT-461) |
+| `app_certificate.expiring` (certificato del cliente che scade entro 14 giorni) | `app_domain` / `certificate_expiring` | `state_change` agli admin dell'app e dell'istanza; un solo avviso per scadenza, un certificato nuovo riparte (GIT-461) |
+
+Gli eventi `app_domain.*` e `app_certificate.*` escono anche come webhook `app_domain` (GIT-492), per repo
+(quello dell'app) come `deployment`, dallo stesso evento da cui nasce la notifica: un solo invio per guasto o
+scadenza, con payload `WebhookAppDomainPayload` (nome dell'app, dominio, stato, motivo, scadenza; mai chiavi
+né contenuto dei certificati).
 
 Chi riceve una notifica lo decide il consumer: iscritti alla issue
 (`core.issue_subscriptions`), watch del repo (`core.repo_watches`), menzioni e

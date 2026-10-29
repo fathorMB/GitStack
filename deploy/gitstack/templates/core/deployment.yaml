@@ -86,7 +86,7 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.core.containerPort }}
-            {{- if .Values.ci.enabled }}
+            {{- if or .Values.ci.enabled (include "gitstack.ci.appPullOnly" .) }}
             - name: ci-gateway
               containerPort: {{ .Values.ci.gateway.port }}
             {{- end }}
@@ -112,11 +112,47 @@ spec:
               value: {{ include "gitstack.apps.workloadRoleName" . | quote }}
             - name: GITSTACK_CORE_APPS_AUTH_URL
               value: {{ include "gitstack.apps.authUrl" . | quote }}
+            {{- if include "gitstack.apps.gatewayInternalPort" . }}
+            # Le app raggiungono l'API di GitStack dal gateway nel cluster (GIT-442, H16): core apre
+            # alle app solo i pod del gateway su questa porta e passa GITSTACK_API_URL.
+            - name: GITSTACK_CORE_APPS_GATEWAY_NAMESPACE
+              value: {{ .Release.Namespace | quote }}
+            - name: GITSTACK_CORE_APPS_GATEWAY_SERVICE
+              value: {{ printf "%s-gateway" (include "gitstack.fullname" .) | quote }}
+            - name: GITSTACK_CORE_APPS_GATEWAY_POD_LABELS
+              value: {{ printf "app.kubernetes.io/name=gateway,app.kubernetes.io/instance=%s" .Release.Name | quote }}
+            - name: GITSTACK_CORE_APPS_GATEWAY_INTERNAL_PORT
+              value: {{ include "gitstack.apps.gatewayInternalPort" . | quote }}
+            {{- end }}
+            # Namespace dei pod di Traefik: lo usa la NetworkPolicy di ogni app per ammettere l'ingresso (GIT-486).
+            - name: GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE
+              value: {{ .Values.networkPolicy.ingressNamespace | quote }}
+            # Namespace dei certificati del cliente (GIT-494): qui, e solo qui, core scrive i Secret TLS e il
+            # TLSStore default che li elenca (GIT-460, ADR 0002). Namespace dedicato creato dal chart: core non
+            # ha verbi sui Secret di kube-system né del release.
+            - name: GITSTACK_CORE_APPS_TLSSTORE_NAMESPACE
+              value: {{ include "gitstack.tlsStoreNamespace" . | quote }}
             - name: GITSTACK_CORE_APPS_TRAEFIK_METRICS_URL
               value: {{ include "gitstack.apps.traefikMetricsUrl" . | quote }}
+            {{- if .Values.apps.acme.resolver }}
+            # Let's Encrypt per i domini propri (GIT-459): nome del resolver di Traefik (l'unica config ACME),
+            # email dell'installazione e dove leggere il certificato servito.
+            - name: GITSTACK_CORE_APPS_ACME_RESOLVER
+              value: {{ .Values.apps.acme.resolver | quote }}
+            - name: GITSTACK_CORE_APPS_ACME_EMAIL
+              value: {{ .Values.apps.acme.email | quote }}
+            - name: GITSTACK_CORE_APPS_ACME_TLS_ADDR
+              value: {{ include "gitstack.apps.acmeTLSAddr" . | quote }}
+            {{- end }}
             # Cancello fail-closed dei pod delle app (GIT-418): init container con l'immagine di core (`core apps-gate`).
             - name: GITSTACK_CORE_APPS_GATE_IMAGE
               value: {{ include "gitstack.image" (dict "root" $ "component" .Values.core) | quote }}
+            {{- end }}
+            {{- if include "gitstack.ci.appPullOnly" . }}
+            # CI spenta, app e registry accesi (GIT-449): porta del ci-gateway solo per il token di pull
+            # delle app (registry-access). Niente CI_ENABLED: i token dei job restano rifiutati.
+            - name: GITSTACK_CORE_CI_GATEWAY_ADDR
+              value: {{ printf ":%d" (.Values.ci.gateway.port | int) | quote }}
             {{- end }}
             {{- if .Values.ci.enabled }}
             - name: GITSTACK_CORE_CI_ENABLED

@@ -15,6 +15,7 @@ instance.
 | Review and merge code, commit statuses | [Pull requests](./pull-requests.md) |
 | Run workflows, watch runs, use the cache | [CI, workflows and runs](./ci.md) |
 | Publish images, cut releases | [Container registry and releases](./registry-and-releases.md) |
+| Publish an app on your own domain | [Publish an app](./publish-an-app.md) |
 | Authenticate Git | [Tokens and SSH keys](./tokens-and-ssh.md) |
 | React to events | [Webhooks](./webhooks.md) |
 | Work from the terminal or with an agent | [gs and skills for agents](./gs-and-agents.md) |

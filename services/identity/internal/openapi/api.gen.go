@@ -488,6 +488,9 @@ type AddSshKeyInput struct {
 	Title     string `json:"title"`
 }
 
+// AppDomainName Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`).
+type AppDomainName = string
+
 // AppEnvName Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
 type AppEnvName = string
 
@@ -1288,6 +1291,9 @@ type VerifyCredentialResult struct {
 
 // ActionsNameParam defines model for ActionsNameParam.
 type ActionsNameParam = string
+
+// AppDomainParam Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`).
+type AppDomainParam = AppDomainName
 
 // AppEnvNameParam Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
 type AppEnvNameParam = AppEnvName

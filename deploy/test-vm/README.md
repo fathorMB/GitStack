@@ -532,6 +532,7 @@ Cosa controlla ciascun passo:
   il passo h e rosso e i controlli dell'app non partono. Non provato senza
   VM: i pezzi puri (`Test-E2eAppAfterRestore` con HTTP e VM finti, anche 401 sul registry, il comando
   d'installazione) sono in `tests/phases.Tests.ps1`.
+- **h-app ciclo.** (GIT-355, H1/H6/H7/H12) dopo la preparazione di `e2eapp` e prima del backup, `Test-E2eAppLifecycle` pubblica `e2eweb` (v1, v2: busybox httpd sulla 8080, `gs-app-restore.sh push-web`) e crea l’app `e2elife`: 1 deploy di v1 `serving` con indirizzo; 2 senza credenziale 401 (`probe-anon`); 3 con il token dell’utente il corpo `e2e-web-v1` (`probe-auth`); 4 deploy di v2, corpo `e2e-web-v2`; 5 rollback alla versione di v1, versione nuova, corpo `e2e-web-v1`; 6 eliminazione (204). Al primo errore i pod del namespace dell’app vanno in `backup-restore\app-ciclo\diag.log` e l’app resta. Pezzi puri in `tests/phases.Tests.ps1`; non provato senza VM. Dettagli e runbook: `docs/operations.md`.
 - **j.** (GIT-148, DF/F) reset, installazione del **commit precedente**
   (`installer-precedente.log`), admin e dati di prova su quella versione,
   poi: `gitstack restore` dell'archivio della fase h (versione diversa) deve

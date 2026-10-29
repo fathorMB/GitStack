@@ -284,8 +284,24 @@ func (s *apiServer) ListApps(w http.ResponseWriter, r *http.Request, owner opena
 		return
 	}
 	out := openapi.AppList{Items: []openapi.App{}}
+	publicOn, err := s.resources.PublicAppsEnabled(r.Context())
+	if err != nil {
+		appInternalError(w, "lettura delle app pubbliche", err)
+		return
+	}
+	byApp := map[uuid.UUID][]store.AppDomain{}
+	if publicOn {
+		all, err := s.resources.ListAppDomainsForCheck(r.Context())
+		if err != nil {
+			appInternalError(w, "lettura dei domini", err)
+			return
+		}
+		for _, d := range all {
+			byApp[d.AppID] = append(byApp[d.AppID], d)
+		}
+	}
 	for _, a := range apps {
-		out.Items = append(out.Items, s.appToAPI(a))
+		out.Items = append(out.Items, s.appToAPIWith(a, publicOn, byApp[a.ID]))
 	}
 	limits, used, isDefault, err := s.resources.OwnerAppQuota(r.Context(), repo.OwnerName)
 	if err != nil {
@@ -412,7 +428,11 @@ func (s *apiServer) CreateApp(w http.ResponseWriter, r *http.Request, owner open
 		}
 		return
 	}
-	writeJSON(w, http.StatusAccepted, openapi.AppCreated{App: s.appToAPI(app), Version: s.versionToAPI(ver, app.ActiveVersion, previousVersion(app.ActiveVersion))})
+	ai, ok := s.appResponse(w, r, app)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusAccepted, openapi.AppCreated{App: ai, Version: s.versionToAPI(ver, app.ActiveVersion, previousVersion(app.ActiveVersion))})
 }
 
 func (s *apiServer) appFor(w http.ResponseWriter, r *http.Request, repo store.Repo, name string) (store.App, bool) {
@@ -438,7 +458,9 @@ func (s *apiServer) GetApp(w http.ResponseWriter, r *http.Request, owner openapi
 	if !ok {
 		return
 	}
-	writeJSON(w, http.StatusOK, s.appToAPI(a))
+	if ai, ok := s.appResponse(w, r, a); ok {
+		writeJSON(w, http.StatusOK, ai)
+	}
 }
 
 // UpdateApp implementa PATCH /repos/{owner}/{repo}/apps/{app}: porta, controllo di salute, deploy
@@ -600,7 +622,9 @@ func (s *apiServer) UpdateApp(w http.ResponseWriter, r *http.Request, owner open
 		}
 		return
 	}
-	writeJSON(w, http.StatusOK, s.appToAPI(updated))
+	if ai, ok := s.appResponse(w, r, updated); ok {
+		writeJSON(w, http.StatusOK, ai)
+	}
 }
 
 // DeleteApp implementa DELETE /repos/{owner}/{repo}/apps/{app}. Se l'app ha volumi elimina anche i

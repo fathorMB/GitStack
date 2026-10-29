@@ -122,6 +122,9 @@
          v2 scaricabili dal registry ripristinato (200), 7 il terzo tag no
          (404, RG2). Si salta con -SkipBackupRestore (e allora l'hosting resta
          spento, come prima).
+      h-app ciclo. (GIT-355) prima del backup: app web e2elife, deploy di v1, login
+         GitStack davanti all app (401 senza credenziale, corpo con il token), deploy
+         di v2, rollback a v1, eliminazione: sei righe PASS/FAIL, pod in app-ciclo/diag.log.
       j. (GIT-148, DF/F) reset, installazione del commit precedente
          (-PreviousRef, default: il primo genitore di -Ref), dati, restore
          di un archivio di un'altra versione rifiutato (exit 6), `gitstack

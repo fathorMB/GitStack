@@ -22,15 +22,69 @@ var AccessFields = []string{"id", "kind", "name", "email", "memberCount", "added
 var InviteFields = []string{"guideUrl", "fingerprintSha256", "address", "caMode", "text"}
 
 func newAccessCmd(f *cmdutil.Factory) *cobra.Command {
+	var jo output.JSONOptions
+	var mode string
+	var yes bool
 	cmd := &cobra.Command{
-		Use:   "access",
-		Short: "Gestisci la lista di accesso di un'app",
-		Long: "La lista di accesso (H6) dice chi, oltre a chi ha read sul repo, può aprire l'app: utenti e team " +
+		Use:   "access [<app> --mode login|none|public]",
+		Short: "Imposta chi apre un'app e gestisci la lista di accesso",
+		Long: "Con `<app> --mode` imposta chi può aprire l'app: `login` (default, login GitStack), `none` (senza login) o " +
+			"`public` (su internet, H1: solo se l'amministratore ha abilitato le app pubbliche). Pubblicare chiede conferma " +
+			"(G8, H13): riscrivi il nome dell'app, o --yes senza terminale. " +
+			"I sottocomandi gestiscono la lista di accesso (H6): chi, oltre a chi ha read sul repo, può aprire l'app: utenti e team " +
 			"GitStack, mai accesso anonimo. Chi entra solo dalla lista apre l'app e nient'altro: non vede " +
 			"codice, issues o la scheda Apps e non riceve nessun ruolo sul repo. Serve il permesso admin sul repo.",
-		Args: cmdutil.NoArgs,
-		RunE: cmdutil.GroupRun,
+		Example: "  gs app access sito --mode public\n  gs app access sito --mode login\n  gs app access list sito",
+		Args:    cobra.ArbitraryArgs,
+		RunE: func(c *cobra.Command, args []string) error {
+			if !c.Flags().Changed("mode") {
+				return cmdutil.GroupRun(c, args)
+			}
+			if len(args) != 1 {
+				return cmdutil.UsageErrorf("--mode vuole il nome dell'app: gs app access <app> --mode %s", mode)
+			}
+			app, err := appName(args)
+			if err != nil {
+				return err
+			}
+			m := gitstack.AppAccessMode(strings.ToLower(strings.TrimSpace(mode)))
+			if !m.Valid() {
+				return cmdutil.UsageErrorf("--mode %q non valido: usa login, none o public", mode)
+			}
+			e, err := newEnv(f)
+			if err != nil {
+				return err
+			}
+			if m == gitstack.AppAccessModePublic {
+				prompt := fmt.Sprintf("Pubblicare %s su internet: chiunque potrà aprirla senza login. Riscrivi `%s` per confermare:", app, app)
+				if err := cmdutil.ConfirmOrYes(f.IO, yes, prompt, app); err != nil {
+					return err
+				}
+			}
+			resp, err := e.gen.SetAppAccessWithResponse(c.Context(), gitstack.RepoOwnerParam(e.owner), gitstack.RepoNameParam(e.repo), gitstack.AppParam(app),
+				gitstack.SetAppAccessJSONRequestBody{Mode: m})
+			if err != nil {
+				return err
+			}
+			if err := e.check(resp.StatusCode(), resp.Body); err != nil {
+				return err
+			}
+			if resp.JSON200 == nil {
+				return unexpected(resp.StatusCode())
+			}
+			if jo.Enabled() {
+				return jo.Write(f.IO.Out, resp.JSON200, f.IO.OutTTY)
+			}
+			_, _ = fmt.Fprintf(f.IO.Out, "accesso di %s: %s\n", app, resp.JSON200.Mode)
+			if resp.JSON200.Address != nil && *resp.JSON200.Address != "" {
+				_, _ = fmt.Fprintf(f.IO.Out, "indirizzo: %s\n", *resp.JSON200.Address)
+			}
+			return nil
+		},
 	}
+	cmd.Flags().StringVar(&mode, "mode", "", "Chi apre l'app: login, none o public")
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Conferma la pubblicazione senza chiedere (obbligatorio senza terminale)")
+	output.AddJSONFlags(cmd, &jo, AccessModeFields)
 	cmd.AddCommand(newAccessListCmd(f), newAccessAddCmd(f), newAccessRemoveCmd(f), newAccessInviteCmd(f))
 	return cmd
 }

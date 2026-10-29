@@ -191,7 +191,9 @@ func (s *apiServer) RestartApp(w http.ResponseWriter, r *http.Request, owner ope
 		appInternalError(w, "lettura dell'app", err)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, s.appToAPI(out))
+	if ai, ok := s.appResponse(w, r, out); ok {
+		writeJSON(w, http.StatusAccepted, ai)
+	}
 }
 
 // ScaleApp implementa PUT /repos/{owner}/{repo}/apps/{app}/scale: scala a mano entro la quota.
@@ -228,5 +230,7 @@ func (s *apiServer) ScaleApp(w http.ResponseWriter, r *http.Request, owner opena
 	if err := ctl.Scale(r.Context(), out); err != nil {
 		slog.Default().Warn("scala dell'app sul cluster non riuscita", "app", out.ID, "err", err)
 	}
-	writeJSON(w, http.StatusOK, s.appToAPI(out))
+	if ai, ok := s.appResponse(w, r, out); ok {
+		writeJSON(w, http.StatusOK, ai)
+	}
 }
