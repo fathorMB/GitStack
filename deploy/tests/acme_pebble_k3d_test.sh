@@ -43,7 +43,15 @@ for _ in $(seq 1 60); do
   sleep 3
 done
 k get crd ingressroutes.traefik.io >/dev/null 2>&1 || ko "CRD di Traefik assenti"
-k wait --for=condition=Established crd/ingressroutes.traefik.io --timeout=60s >/dev/null
+established=false
+for _ in $(seq 1 60); do
+  if [ "$(k get crd ingressroutes.traefik.io --request-timeout=5s -o jsonpath='{.status.conditions[?(@.type=="Established")].status}' 2>/dev/null)" = True ]; then
+    established=true
+    break
+  fi
+  sleep 1
+done
+"$established" || ko "CRD di Traefik non Established"
 
 # --- Pebble (CA ACME di prova) e challtestsrv (DNS finto) in kube-system, accanto a Traefik --------
 # Il certificato di Pebble ha tra i SAN `pebble`, e la CA di prova (minica) va data a Traefik con
