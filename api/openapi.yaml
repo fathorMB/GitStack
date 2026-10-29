@@ -6866,6 +6866,25 @@ paths:
                   description: Consegnato (qualunque 2xx).
                 "4XX":
                   description: Rifiutato dal ricevitore; un 410 ferma le consegne, gli altri 4xx non si ritentano (C7).
+        app_domain:
+          "{$request.body#/url}":
+            post:
+              summary: Consegna dell'evento app_domain (dominio o certificato di un'app, v3-c)
+              description: >
+                POST con `X-GitStack-Event: app_domain` quando un dominio proprio non supera la verifica del DNS
+                (`dns_failed`), il rinnovo Let's Encrypt fallisce (`certificate_renewal_failed`) o il certificato
+                del cliente sta per scadere (`certificate_expiring`). Un solo invio per guasto o scadenza.
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: "#/components/schemas/WebhookAppDomainPayload"
+              responses:
+                "200":
+                  description: Consegnato (qualunque 2xx).
+                "4XX":
+                  description: Rifiutato dal ricevitore; un 410 ferma le consegne, gli altri 4xx non si ritentano (C7).
         workflow_job:
           "{$request.body#/url}":
             post:
@@ -15615,8 +15634,9 @@ components:
         (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in
         docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e
         `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato
-        indietro, payload `WebhookDeploymentPayload`.
-      enum: [push, issues, issue_comment, repository, pull_request, pull_request_review, commit_status, workflow_run, workflow_job, release, deployment]
+        indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS,
+        rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`.
+      enum: [push, issues, issue_comment, repository, pull_request, pull_request_review, commit_status, workflow_run, workflow_job, release, deployment, app_domain]
     RepoMirrorState:
       type: string
       description: >
@@ -18331,6 +18351,33 @@ components:
         sender: {allOf: [{$ref: "#/components/schemas/WebhookSender"}], nullable: true, type: object}
         app: {$ref: "#/components/schemas/App"}
         deployment: {$ref: "#/components/schemas/AppVersion"}
+    WebhookAppDomainPayload:
+      type: object
+      description: >
+        Payload del webhook `app_domain` (v3-c), per repo (quello dell'app) come `deployment`. `action`:
+        `dns_failed` (il dominio non supera la verifica o non punta piu' all'istanza), `certificate_renewal_failed`
+        (emissione o rinnovo Let's Encrypt fallito), `certificate_expiring` (certificato del cliente in scadenza
+        entro 14 giorni). Un solo invio per guasto o scadenza. Nessun segreto: ne' chiavi ne' contenuto del certificato.
+      additionalProperties: false
+      required: [version, event, action, time, repository, sender, app, domain, status]
+      properties:
+        version: {type: integer, enum: [1]}
+        event: {type: string, enum: [app_domain]}
+        action: {type: string, enum: [dns_failed, certificate_renewal_failed, certificate_expiring]}
+        time: {type: string, format: date-time}
+        repository: {$ref: "#/components/schemas/WebhookRepositoryRef"}
+        organization: {$ref: "#/components/schemas/WebhookOrganizationRef"}
+        sender: {allOf: [{$ref: "#/components/schemas/WebhookSender"}], nullable: true, type: object, description: "Sempre null: e' un evento del sistema."}
+        app:
+          type: object
+          additionalProperties: false
+          required: [name]
+          properties:
+            name: {type: string}
+        domain: {type: string, description: "Dominio proprio, normalizzato."}
+        status: {type: string, enum: [dns_failed, renewal_failed, expiring], description: "Stato che ha prodotto l'evento."}
+        reason: {type: string, description: "Motivo del guasto (DNS o emissione), se c'e'."}
+        validUntil: {type: string, format: date-time, description: "Scadenza del certificato, solo per `certificate_expiring`."}
 
   headers:
     ContentTypeOptions:

@@ -36,7 +36,7 @@ func TestMigration0051_AppDomains(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_indexes WHERE schemaname = 'core' AND indexname = 'app_domains_normalized_uniq'`).Scan(&n); err != nil || n != 1 {
 		t.Fatalf("indice unico sul dominio normalizzato: %d %v", n, err)
 	}
-	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 4); err != nil {
 		t.Fatalf("down 0051: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.tables WHERE table_schema = 'core' AND table_name = 'app_domains'`).Scan(&n); err != nil || n != 0 {
