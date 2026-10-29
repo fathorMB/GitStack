@@ -45,6 +45,13 @@ server {
         return 200 "ok";
     }
 
+    # Route di riserva per host del dominio app senza una route caricata.
+    # Traefik riscrive il path prima di arrivare qui; return evita il fallback SPA.
+    location = /__gitstack-app-unavailable {
+        default_type text/html;
+        return 404 '<!doctype html><html lang="it"><meta charset="utf-8"><title>App non disponibile · GitStack</title><h1>App non disponibile</h1><p>Questa app non è disponibile.</p></html>';
+    }
+
     # Distribuzione di gs (GIT-171, G6) e certificato della CA (N5, GIT-143).
     # Pubblico: servono per fare login, prima di avere un token. I file stanno
     # DENTRO l'immagine (build-gs-dist.sh, stage gs del Dockerfile): niente

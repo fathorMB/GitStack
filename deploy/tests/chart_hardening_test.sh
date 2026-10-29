@@ -263,6 +263,24 @@ expect_eq "registry spento: nessuna IngressRoute" "$(count 'name: gitstack-regis
 expect_lacks "registry spento: gateway senza GITSTACK_REGISTRY_URL" "$(doc Deployment gitstack-gateway)" "GITSTACK_REGISTRY_URL"
 expect_line_has "registry spento: git lo spegne" "$(doc Deployment gitstack-git)" "- name: GITSTACK_GIT_REGISTRY"
 
+echo "== GIT-489: host senza route del dominio app restituisce 404"
+OUT="$(render --set ingress.enabled=true --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template apps fallback fallito"; exit 1; }
+d="$(doc IngressRoute gitstack-apps-fallback)"
+if [ -n "${d}" ]; then ok; else bad "IngressRoute gitstack-apps-fallback non renderizzata"; fi
+# shellcheck disable=SC2016 # i backtick sono la sintassi letterale della regola Traefik
+expect_has "apps fallback: HostRegexp del dominio" "${d}" 'HostRegexp(`^.+\.apps\.acme\.test$`)'
+expect_has "apps fallback: priorità tra UI e route app" "${d}" "priority: 16"
+expect_has "apps fallback: backend web" "${d}" "name: gitstack-web"
+expect_has "apps fallback: middleware dedicato" "${d}" "name: gitstack-apps-unavailable"
+expect_has "apps fallback: riscrittura al path 404" "$(doc Middleware gitstack-apps-unavailable)" "path: /__gitstack-app-unavailable"
+# L'Ingress della UI resta senza host e non cambia servizio o path.
+d="$(doc Ingress gitstack)"
+expect_lacks "UI: nessun host wildcard delle app" "${d}" "apps.acme.test"
+expect_has "UI: resta il backend web" "${d}" "name: gitstack-web"
+expect_has "UI: location dedicata restituisce 404 HTML" "$(<"${REPO}/web/deploy/nginx.conf.template")" \
+  "return 404 '<!doctype html><html lang=\"it\"><meta charset=\"utf-8\"><title>App non disponibile · GitStack</title>"
+expect_has "UI: messaggio app non disponibile" "$(<"${REPO}/web/deploy/nginx.conf.template")" "<h1>App non disponibile</h1>"
+
 OUT="$(render --set git.registry.s3.enabled=true --set git.registry.s3.bucket=img --set git.registry.s3.endpoint=http://minio:9000 \
   --set git.registry.s3.pathStyle=true --set git.registry.s3.existingSecret=s3keys \
   --set git.registry.ciGateway.url=http://gitstack-core:9090 --set git.registry.ciGateway.port=9090)"

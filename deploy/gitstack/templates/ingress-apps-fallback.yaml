@@ -1,0 +1,49 @@
+{{- if and .Values.ingress.enabled .Values.apps.enabled .Values.web.enabled -}}
+{{- $fullname := include "gitstack.fullname" . -}}
+{{- $appsDomainRegex := replace "." "\\." .Values.apps.domain -}}
+# Host del dominio delle app senza una IngressRoute caricata (app in avvio,
+# ferma o rimossa): la route a priorità minima impedisce il fallback
+# all'Ingress senza host della UI. Il path riscritto ha una risposta 404
+# dedicata nell'nginx di web, senza caricare la SPA.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ $fullname }}-apps-unavailable
+  labels:
+    {{- include "gitstack.labels" . | nindent 4 }}
+spec:
+  replacePath:
+    path: /__gitstack-app-unavailable
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ $fullname }}-apps-fallback
+  labels:
+    {{- include "gitstack.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.ingress.tls.enabled }}
+  entryPoints:
+    - websecure
+  {{- end }}
+  routes:
+    - kind: Rule
+      priority: 16
+      match: HostRegexp(`^.+\.{{ $appsDomainRegex }}$`)
+      middlewares:
+        - name: {{ $fullname }}-apps-unavailable
+      services:
+        - name: {{ $fullname }}-web
+          port: {{ .Values.web.service.port }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    options:
+      name: {{ $fullname }}-tls
+    {{- if .Values.ingress.tls.secretName }}
+    secretName: {{ .Values.ingress.tls.secretName }}
+    {{- end }}
+    {{- with .Values.ingress.tls.certResolver }}
+    certResolver: {{ . | quote }}
+    {{- end }}
+  {{- end }}
+{{- end }}
