@@ -2748,3 +2748,91 @@ dei certificati ai soli Secret `gitstack-domain-*`: core non può sostituire né
 (il certificato servito a chi si collega per IP). Il `get` però resta aperto, perché il nome dei Secret dei clienti non
 è noto a priori e RBAC non filtra per prefisso: core può quindi leggere la copia del certificato e della chiave del
 server in `<release>-certs` (non i Secret di kube-system né del release).
+
+---
+
+## Prova su homehub: un'app con un volume sopravvive a backup e restore (v3-b, GIT-360)
+
+La lancia il **board**, non un agente: serve `ssh -t` a mano (sudo chiede la password) e un token admin. Si prova che i dati di un'app con un volume persistente (per esempio un wiki interno) tornano dopo `gitstack backup` e `gitstack restore`, senza toccare il resto di homehub. Come per la [condizione 2](#condizione-2-ripristino-di-prova-su-una-macchina-nuova), il restore si fa su una **VM pulita**, mai su homehub. Se un passo dà un esito diverso da quello atteso ci si ferma e si annotano comando, output e ora. L'esito va scritto nell'item GIT-360 solo dopo averlo ottenuto.
+
+**Stato letto il 2026-10-29 dall'host di sviluppo** (non dal board): `curl.exe -ks https://homehub.local/api/v1/meta` → `server_version` `sha-02b615bf9a4e14fbf6ffcab3274523899bd99afa` (commit del 2026-10-27, «Integra GIT-421»). Quel commit **non contiene GIT-357**: `git merge-base --is-ancestor` dà exit 1 per `ecb5aebe` (feat dei volumi nel backup), `be6d902c` (Integra GIT-357) e `7b50df7d` (GIT-423). È invece un antenato di `origin/main` (242 commit più indietro). Quindi **su homehub un volume oggi non entra nel backup**: prima si fa l'upgrade (passo 0), altrimenti la prova non prova niente. Non è stato provato né l'upgrade né nessuno dei passi qui sotto.
+
+**Prerequisiti.** L'hosting delle app acceso su homehub (`--enable-apps`, vedi [Apps domain and wildcard DNS](#apps-domain-and-wildcard-dns-v3-h2) se manca), un token admin in `$TOKEN` sull'host, una VM Ubuntu pulita raggiungibile via SSH (come nella condizione 2). Le variabili usate sotto:
+
+```powershell
+$H = "https://homehub.local/api/v1"
+$TOKEN = "<token admin di homehub>"
+$REPO = "<owner>/<repo>"        # un repo di prova, per esempio admin/wiki-prova
+$IMG  = "<immagine>"            # un'immagine con una shell che resta in esecuzione, per esempio nginx:alpine
+```
+
+**Passo 0. Portare homehub a una versione con GIT-357**
+
+```sh
+ssh -t gitstack@homehub.local
+sudo gitstack upgrade --dry-run          # exit 0, mostra la versione di arrivo
+sudo gitstack upgrade                    # backup preventivo, migrazioni, controllo di salute
+gitstack version
+sudo gitstack status; echo "exit=$?"     # Stato: sano
+```
+
+Dall'host: `curl.exe -ks https://homehub.local/api/v1/meta` deve mostrare un `server_version` diverso da `sha-02b615bf…`; annotalo come `<VERSIONE>` e verifica con `git merge-base --is-ancestor be6d902c <sha>` (exit 0) che contenga GIT-357. Se l'upgrade torna indietro da solo (rollback automatico) ci si ferma qui.
+
+**Passo 1. Creare l'app con un volume e scriverci un file noto** (dall'host)
+
+```powershell
+curl.exe -ks -X POST "$H/repos/$REPO/apps" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "{\"name\":\"wiki\",\"image\":\"$IMG\"}"
+# 202 con app.id: annotalo come <APP_ID>; attendi status running:
+curl.exe -ks "$H/repos/$REPO/apps/wiki" -H "Authorization: Bearer $TOKEN"
+curl.exe -ks -X POST "$H/repos/$REPO/apps/wiki/volumes" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "{\"name\":\"data\",\"mountPath\":\"/data\",\"sizeBytes\":1048576}"
+# 201/202; l'app riparte con il volume: ripeti il GET finché status è running
+curl.exe -ks "$H/repos/$REPO/apps/wiki/volumes" -H "Authorization: Bearer $TOKEN"
+# atteso: il volume data con includeInBackup true
+```
+
+Poi su homehub, il file di prova (contenuto esatto, senza a capo):
+
+```sh
+ssh -t gitstack@homehub.local
+sudo k3s kubectl exec -n gitstack-app-<APP_ID> deploy/app -- sh -c 'printf %s homehub-wiki-prova-1 > /data/prova.txt && sha256sum /data/prova.txt'
+# annota lo SHA-256 stampato: è <SHA_PRIMA>
+```
+
+**Passo 2. Backup su homehub**
+
+```sh
+ssh -t gitstack@homehub.local
+sudo gitstack backup --key-file /etc/gitstack/backup.key
+# nel log: «copia del volume data dell'app <owner>/<repo>/wiki …»
+sudo ls -l /var/backups/gitstack
+```
+
+Esito atteso: exit 0, la riga di copia del volume nel log, un nuovo `gitstack-backup-*.tar.gz.enc` (0600) con il suo `.sha256`. Poi porta archivio e chiave sulla VM come al passo 1 della condizione 2 (`scp`).
+
+**Passo 3. Installare la VM alla stessa versione e ripristinare**
+
+Come ai passi 2 e 3 della condizione 2, con `<VERSIONE>` del passo 0 e **con l'hosting delle app acceso** (`--enable-apps`, con lo stesso `--apps-domain` di homehub):
+
+```sh
+sudo ./deploy/install.sh --image-tag <VERSIONE> --host <ip-vm> --enable-apps --apps-domain <dominio-app>
+sudo gitstack restore --key-file /tmp/backup.key /tmp/gitstack-backup-<data>-<VERSIONE>.tar.gz.enc
+# nel log: «ripristino dei volumi delle app (1)» e «ripristino del volume data dell'app <owner>/<repo>/wiki»
+sudo gitstack status; echo "exit=$?"
+```
+
+**Passo 4. Il file c'è, uguale** (sulla VM, con `ssh -t`; e dall'host per l'API)
+
+```sh
+sudo k3s kubectl get pods -n gitstack-app-<APP_ID>        # il pod dell'app in Running (può volerci qualche minuto)
+sudo k3s kubectl exec -n gitstack-app-<APP_ID> deploy/app -- sh -c 'cat /data/prova.txt; echo; sha256sum /data/prova.txt'
+```
+
+```powershell
+curl.exe -ks "https://<ip-vm>/api/v1/repos/$REPO/apps/wiki" -H "Authorization: Bearer $TOKEN"
+```
+
+Esito atteso: il contenuto è `homehub-wiki-prova-1`, lo SHA-256 è `<SHA_PRIMA>`, `status` è `running`. Se il namespace non è `gitstack-app-<APP_ID>` perché l'id dell'app è cambiato, cerca con `sudo k3s kubectl get ns | grep gitstack-app`. Qualsiasi altro esito (file assente, SHA diverso) è un difetto da segnalare con l'output di `sudo gitstack restore`.
+
+**Pulizia.** La VM si spegne e si cancella, con la copia della chiave (`shred -u /tmp/backup.key`). Su homehub l'app di prova si elimina con `curl.exe -ks -X DELETE "$H/repos/$REPO/apps/wiki" -H "Authorization: Bearer $TOKEN"` (elimina anche il volume e i suoi dati); il backup della prova resta fra quelli della retention. Nessun passo scrive su homehub oltre alla creazione e all'eliminazione dell'app di prova, al backup e all'upgrade del passo 0.
+
+**Controllo negativo (facoltativo).** Per vedere che l'esclusione funziona, ripeti con un secondo volume `scratch` escluso (`curl.exe -ks -X PATCH "$H/repos/$REPO/apps/wiki/volumes/scratch" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "{\"includeInBackup\":false}"`): dopo il restore il volume è montato ma vuoto.

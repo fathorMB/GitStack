@@ -70,7 +70,7 @@ Assert-That 'install: con dominio accende l''hosting' ($cmdApps -like '*bash -s 
 # Test-E2eAppAfterRestore: sette righe sempre, con HTTP e VM finti.
 $script:OutDir = Join-Path ([IO.Path]::GetTempPath()) 'gs-phases-tests'
 $script:SshCommandTimeoutSeconds = 5
-$script:Mock = @{ Status = 'running'; V1 = 200; V2 = 200; V3 = 404; Inspect = "deploy=yes`nimage=10.0.0.9/u1/r1/e2eimg:v2`nvar=match`nsecret=match`nvolume=match`n" }
+$script:Mock = @{ Status = 'running'; V1 = 200; V2 = 200; V3 = 404; Inspect = "deploy=yes`nimage=10.0.0.9/u1/r1/e2eimg:v2`nvar=match`nsecret=match`nvolume=match`nscratch=empty`n" }
 function Start-Sleep { param([int]$Seconds) }
 function Copy-ToVm { param($LocalPath, $RemotePath, $TimeoutSeconds) return [pscustomobject]@{ ExitCode = 0; StdOut = ''; StdErr = '' } }
 function Invoke-VmSsh { param($Command, $TimeoutSeconds) return [pscustomobject]@{ ExitCode = 0; StdOut = $script:Mock.Inspect; StdErr = '' } }
@@ -84,18 +84,24 @@ function Invoke-HttpRaw {
 }
 $ctx = [pscustomobject]@{ Namespace = 'gitstack-app-x'; ActiveVersion = 4; ActiveRef = '10.0.0.5/u1/r1/e2eimg:v2'; VarValue = 'a'; SecretValue = 'b'; ImagePath = 'u1/r1/e2eimg'; RegistryToken = 'regtok' }
 $rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'a') -RestoreLog "ripristino dei volumi delle app (1) ripristino del volume data dell'app u1/r1/e2eapp"
-Assert-That 'app dopo il restore: nove righe' (@($rows).Count -eq 9)
+Assert-That 'app dopo il restore: dieci righe' (@($rows).Count -eq 10)
 Assert-That 'app dopo il restore: tutte ok (host del registry diverso ammesso)' (@($rows | Where-Object { -not $_.Ok }).Count -eq 0)
 $rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'log') -RestoreLog 'ripristino dei volumi delle app (1)'
 Assert-That 'volume: il log parziale non basta' (-not $rows[7].Ok -and $rows[8].Ok)
-$script:Mock.Inspect = "deploy=yes`nimage=10.0.0.9/u1/r1/e2eimg:v2`nvar=match`nsecret=match`nvolume=mismatch`n"
+$script:Mock.Inspect = "deploy=yes`nimage=10.0.0.9/u1/r1/e2eimg:v2`nvar=match`nsecret=match`nvolume=mismatch`nscratch=empty`n"
 $rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'volume') -RestoreLog "ripristino dei volumi delle app (1) ripristino del volume data dell'app u1/r1/e2eapp"
 Assert-That 'volume: contenuto diverso fallisce anche con log corretto' ($rows[7].Ok -and -not $rows[8].Ok)
+$script:Mock.Inspect = "deploy=yes`nimage=10.0.0.9/u1/r1/e2eimg:v2`nvar=match`nsecret=match`nvolume=match`nscratch=present`n"
+$rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'scratch') -RestoreLog "ripristino dei volumi delle app (1) ripristino del volume data dell'app u1/r1/e2eapp"
+Assert-That 'volume escluso: il file ancora presente dopo il restore fallisce, il resto ok' ($rows[8].Ok -and -not $rows[9].Ok -and $rows[9].Detail -like '*present*')
+$script:Mock.Inspect = "deploy=yes`nimage=10.0.0.9/u1/r1/e2eimg:v2`nvar=match`nsecret=match`nvolume=match`nscratch=unmounted`n"
+$rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'scratch2') -RestoreLog "ripristino dei volumi delle app (1) ripristino del volume data dell'app u1/r1/e2eapp"
+Assert-That 'volume escluso: non montato non vale come vuoto' (-not $rows[9].Ok)
 $script:Mock.V3 = 200; $script:Mock.V1 = 404; $script:Mock.Status = 'starting'
 $script:Mock.Inspect = "deploy=yes`nimage=10.0.0.9/u1/r1/e2eimg:v1`nvar=missing`nsecret=mismatch`n"
 $rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'b')
 $ko = @($rows | Where-Object { -not $_.Ok } | ForEach-Object { $_.Name.Substring(0, 10) })
-Assert-That 'app dopo il restore: ko su 2, 3, 4, 5, 6 e 7, ok su 1; volume e log ko' (@($rows).Count -eq 9 -and $rows[0].Ok -and $ko.Count -eq 8 -and -not $rows[7].Ok -and -not $rows[8].Ok)
+Assert-That 'app dopo il restore: ko su 2, 3, 4, 5, 6 e 7, ok su 1; volume e log ko' (@($rows).Count -eq 10 -and $rows[0].Ok -and $ko.Count -eq 9 -and -not $rows[7].Ok -and -not $rows[8].Ok -and -not $rows[9].Ok)
 $script:Mock.Inspect = "deploy=no`nimage=`nvar=missing`nsecret=missing`n"
 $rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'c')
 Assert-That 'app dopo il restore: senza Deployment la riga 1 e ko' (-not $rows[0].Ok -and -not $rows[1].Ok)
