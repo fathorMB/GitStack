@@ -127,19 +127,63 @@ function Invoke-E2ePilotMirror {
     }
 }
 
+function Get-E2ePilotFailureDetail {
+    param($Exception)
+    $detail = $Exception.Message
+    if ($Exception.Data.Contains('PilotPrevious')) { $detail += ' | logs previous: ' + $Exception.Data['PilotPrevious'] }
+    return $detail
+}
+
+function Save-E2ePilotDiagnostics {
+    param([string]$AppsApi, [string]$Name, [hashtable]$Headers)
+    $dir = Join-Path (Join-Path $script:OutDir 'pilot') "$Name-diag"
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $app = $null
+    foreach ($entry in @(@('app.json', "$AppsApi/$Name"), @('versions.json', "$AppsApi/$Name/versions?per_page=3"))) {
+        try {
+            $response = Invoke-HttpRaw -Uri $entry[1] -Headers $Headers
+            Set-Content -LiteralPath (Join-Path $dir $entry[0]) -Value $response.Body -Encoding utf8
+            if ($entry[0] -eq 'app.json' -and $response.StatusCode -eq 200) { $app = $response.Body | ConvertFrom-Json }
+        } catch { Write-Log "pilot diagnostica $($entry[0]): $($_.Exception.Message)" }
+    }
+    if (-not $app -or $app.id -notmatch '^[0-9a-f-]{36}$') { Write-Log 'pilot diagnostica: id app non valido'; return '' }
+    $namespace = 'gitstack-app-' + $app.id
+    $previous = ''
+    foreach ($entry in @(@('pods.txt', 'get pods -o wide'), @('describe.txt', 'describe pods'), @('events.txt', 'get events --sort-by=.lastTimestamp'), @('previous.txt', 'logs deploy/app --all-containers --previous --tail=200'), @('current.txt', 'logs deploy/app --all-containers --tail=200'))) {
+        try {
+            $result = Invoke-VmSsh -Command "sudo kubectl -n $namespace $($entry[1])" -TimeoutSeconds 60
+            Set-Content -LiteralPath (Join-Path $dir $entry[0]) -Value $result.StdOut -Encoding utf8
+            if ($result.StdErr) { Add-Content -LiteralPath (Join-Path $dir $entry[0]) -Value $result.StdErr -Encoding utf8 }
+            if ($result.ExitCode -ne 0) { Write-Log "pilot diagnostica $($entry[0]): exit $($result.ExitCode)" }
+            if ($entry[0] -eq 'previous.txt' -and $result.StdOut) {
+                $previous = (@($result.StdOut -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 5) -join ' ')
+                if ($previous.Length -gt 400) { $previous = $previous.Substring(0, 400) }
+            }
+        } catch { Write-Log "pilot diagnostica $($entry[0]): $($_.Exception.Message)" }
+    }
+    return $previous
+}
+
 function Wait-E2ePilotServing {
     param([string]$AppsApi, [string]$Name, [hashtable]$Headers, [int]$TimeoutSeconds = 300)
     $until = (Get-Date).AddSeconds($TimeoutSeconds)
+    $failure = ''
     while ((Get-Date) -lt $until) {
         $r = Invoke-HttpRaw -Uri "$AppsApi/$Name/versions?per_page=1" -Headers $Headers
         if ($r.StatusCode -eq 200) {
             $v = @(($r.Body | ConvertFrom-Json).items) | Select-Object -First 1
             if ($v -and $v.state -eq 'serving') { return }
-            if ($v -and ($v.state -eq 'failed' -or $v.state -eq 'rolled_back')) { throw "$Name stato $($v.state): $($v.stateReason)" }
+            if ($v -and ($v.state -eq 'failed' -or $v.state -eq 'rolled_back')) { $failure = "$Name stato $($v.state): $($v.stateReason)"; break }
         }
         Start-Sleep -Seconds 5
     }
-    throw "$Name non e serving entro $TimeoutSeconds secondi"
+    if (-not $failure) { $failure = "$Name non e serving entro $TimeoutSeconds secondi" }
+    $exception = [System.Exception]::new($failure)
+    try {
+        $previous = Save-E2ePilotDiagnostics -AppsApi $AppsApi -Name $Name -Headers $Headers
+        if ($previous) { $exception.Data['PilotPrevious'] = $previous }
+    } catch { Write-Log "pilot diagnostica: $($_.Exception.Message)" }
+    throw $exception
 }
 
 function Initialize-E2ePilotDatabase {
@@ -185,7 +229,7 @@ function Initialize-E2ePilotDatabase {
         Add-StepResult -Name 'pilot 4. api scrive e rilegge PostgreSQL per nome postgres' -Ok $true -Detail ''
         return $true
     } catch {
-        Add-StepResult -Name "pilot: $stage" -Ok $false -Detail $_.Exception.Message
+        Add-StepResult -Name "pilot: $stage" -Ok $false -Detail (Get-E2ePilotFailureDetail $_.Exception)
         return $false
     }
 }
@@ -205,7 +249,7 @@ function Test-E2ePilotDatabaseAfterRestore {
         if ($read.ExitCode -ne 0 -or $read.StdOut -notmatch 'STEP ok database-data') { throw "lettura dopo restore: exit $($read.ExitCode)" }
         Add-StepResult -Name 'pilot 7. dato PostgreSQL conservato dopo backup e restore' -Ok $true -Detail ''
     } catch {
-        Add-StepResult -Name 'pilot 7. dato PostgreSQL conservato dopo backup e restore' -Ok $false -Detail $_.Exception.Message
+        Add-StepResult -Name 'pilot 7. dato PostgreSQL conservato dopo backup e restore' -Ok $false -Detail (Get-E2ePilotFailureDetail $_.Exception)
     }
 }
 
@@ -292,7 +336,7 @@ function Initialize-E2ePilotSite {
         Add-StepResult -Name 'pilot 5d. impronta CA dell invito corrisponde alla CA scaricata' -Ok $true -Detail ''
         return [pscustomobject]@{ Address = [string]$info.address; Tester = $tester; TesterToken = $testerToken; Bot = $bot }
     } catch {
-        Add-StepResult -Name "pilot: $stage" -Ok $false -Detail $_.Exception.Message
+        Add-StepResult -Name "pilot: $stage" -Ok $false -Detail (Get-E2ePilotFailureDetail $_.Exception)
         return $null
     }
 }
