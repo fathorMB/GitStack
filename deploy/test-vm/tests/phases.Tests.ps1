@@ -219,6 +219,32 @@ Assert-That 'dopo il restore: certificato servito diverso, riga 3 ko e la 4 non 
 
 Remove-Item -LiteralPath $script:OutDir -Recurse -Force -ErrorAction SilentlyContinue
 
+# GIT-498: il marcatore che phases.ps1 si aspetta dal push deve essere quello che
+# gs-app-restore.sh stampa davvero (il mock di Invoke-VmSsh se lo inventa).
+$shSrc = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\e2e\gs-app-restore.sh') -Raw
+$psLines = @(Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\lib\phases.ps1'))
+# passi: funzioni che chiamano publish <passo> (es. push() { publish push sleep v1 v2 v3; })
+$pubSteps = @{}
+foreach ($m in [regex]::Matches($shSrc, '(?m)^(?<fn>[a-z_]+)\(\)\s*\{\s*publish\s+(?<step>[a-z-]+)\s')) { $pubSteps[$m.Groups['fn'].Value.Replace('_', '-')] = $m.Groups['step'].Value }
+# riga echo "STEP ok ..." dentro publish()
+$pubBody = [regex]::Match($shSrc, '(?s)\npublish\(\)\s*\{.*?\n\}\n').Value
+$okLine = [regex]::Match($pubBody, '(?m)^\s*echo\s+"(?<m>STEP ok [^"]*)"\s*$').Groups['m'].Value
+Assert-That 'gs-app-restore.sh: push e push-web chiamano publish, con una riga STEP ok in publish' ($pubSteps.ContainsKey('push') -and $pubSteps.ContainsKey('push-web') -and $okLine -ne '')
+$pending = $null; $checked = 0; $mismatch = New-Object System.Collections.Generic.List[string]
+foreach ($ln in $psLines) {
+    $c = [regex]::Match($ln, '(?:gs-app-restore\.sh|\$remoteSh) (?<cmd>push(?:-web)?)"')
+    if ($c.Success) { $pending = $c.Groups['cmd'].Value; continue }
+    $e = [regex]::Match($ln, "notmatch '(?<exp>STEP ok [^']+)'")
+    if ($pending -and $e.Success) {
+        $printed = $okLine.Replace('${step}', $pubSteps[$pending]).Replace('$step', $pubSteps[$pending])
+        $checked++
+        if ($printed -notmatch [regex]::Escape($e.Groups['exp'].Value)) { $mismatch.Add("$pending stampa '$printed', phases.ps1 cerca '$($e.Groups['exp'].Value)'") }
+        $pending = $null
+    }
+}
+if ($mismatch.Count -gt 0) { Write-Host ($mismatch -join '; ') }
+Assert-That 'marcatore del push: quello atteso da phases.ps1 e quello stampato da gs-app-restore.sh combaciano (almeno 3 controlli)' ($checked -ge 3 -and $mismatch.Count -eq 0)
+
 if ($failures.Count -gt 0) {
     Write-Host "FALLITE: $($failures.Count)"
     exit 1
