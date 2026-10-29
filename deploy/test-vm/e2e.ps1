@@ -237,6 +237,10 @@ param(
 
 $script:StepResults = New-Object System.Collections.Generic.List[object]
 $script:LogFile = $null
+$script:PilotDbReady = $false
+$script:PilotContext = $null
+$script:PilotSite = $null
+$script:RestoredBaseUrl = $null
 
 function Write-Log {
     param([string]$Message)
@@ -1474,7 +1478,6 @@ function Main {
         if (-not $SkipBackupRestore -and $script:AppsDomain) {
             if ($e12Ok -and $gitToken -and $gitUser) {
                 Invoke-E2ePilotMirror -BaseUrl $baseUrl -Owner $gitUser -Token $gitToken -Suffix $suffix -AliasIp $MirrorAliasIp -OriginPort $MirrorOriginPort
-                $script:PilotDbReady = $false
                 if ($script:PilotContext) { $script:PilotDbReady = Initialize-E2ePilotDatabase -BaseUrl $baseUrl -Context $script:PilotContext }
                 if ($script:PilotDbReady -and $ck -and $script:CaFingerprint) {
                     $script:PilotSite = Initialize-E2ePilotSite -BaseUrl $baseUrl -AdminCookie $ck -Suffix $suffix -CaFingerprint $script:CaFingerprint -Context $script:PilotContext
