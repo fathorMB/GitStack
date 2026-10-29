@@ -1,6 +1,8 @@
 -- Torna all'elenco della 0044 (senza app_domain). Le consegne di app_domain si tolgono e i webhook che
--- restavano solo con questo evento non passano il vincolo: si tolgono gli eventi.
+-- restavano solo con questo evento vengono eliminati.
 DELETE FROM core.webhook_deliveries WHERE event = 'app_domain';
+DELETE FROM core.webhooks
+	WHERE events = ARRAY['app_domain']::TEXT[];
 UPDATE core.webhooks SET events = array_remove(events, 'app_domain')
 	WHERE events && ARRAY['app_domain']::TEXT[];
 ALTER TABLE core.webhook_deliveries DROP CONSTRAINT IF EXISTS webhook_deliveries_event_check;
