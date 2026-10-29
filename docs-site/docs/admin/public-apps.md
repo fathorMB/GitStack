@@ -71,10 +71,12 @@ are on.
 For a domain at the apex (`retail.it`, where a CNAME is not allowed) the DNS
 check compares the `A`/`AAAA` records with the **public IPs of the installation
 that you declare**. Without them only the CNAME form is offered. The port 80
-check uses the same list. There is no field for them in the console yet: set
-them with the API (only public, non-private addresses are accepted, otherwise
-`422`). `PUT /admin/apps/settings` replaces all required fields, so read the
-current ones first:
+check uses the same list. Set them in the console, in **Administration → Apps &
+resources → Instance settings → Public IPs**: add or remove each address and
+press *Save public IPs*. The same list can be set with the API (only public,
+non-private addresses are accepted, otherwise `422`, which the console shows as
+an error and keeps the list you were editing). `PUT /admin/apps/settings`
+replaces all required fields, so read the current ones first:
 
 ```sh
 gs api /admin/apps/settings

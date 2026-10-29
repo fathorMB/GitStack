@@ -32,6 +32,7 @@ function AppsResourcesConsole() {
   const [publicKey, setPublicKey] = useState('');
   const [publicConfirm, setPublicConfirm] = useState(false);
   const [acmeEmail, setAcmeEmail] = useState<string | null>(null);
+  const [ipDraft, setIpDraft] = useState<string[] | null>(null);
   const [destForm, setDestForm] = useState(false);
   const [destHost, setDestHost] = useState('');
   const [destPort, setDestPort] = useState('');
@@ -59,6 +60,12 @@ function AppsResourcesConsole() {
     event.preventDefault();
     const value = (acmeEmail ?? data?.settings.letsEncrypt?.acmeEmail ?? '').trim();
     await saveSettings({ acmeEmail: value === '' ? null : value });
+  }
+  async function savePublicIps() {
+    if (!data) return;
+    // Senza bozza si salva la lista letta dal server; [] la toglie. Il 422 del server arriva in formError.
+    const ips = ipDraft ?? data.settings.letsEncrypt?.publicIps ?? [];
+    if (await saveSettings({ publicIps: ips })) setIpDraft(null);
   }
   async function saveQuota(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!quotaOwner) return;
@@ -121,6 +128,7 @@ function AppsResourcesConsole() {
 
   const { capacity, quotas, settings, keys, apps } = data;
   const privateDestinations = data.egress?.privateDestinations ?? [];
+  const publicIps = ipDraft ?? settings.letsEncrypt?.publicIps ?? [];
   const cpuPercent = (n: number, total: number) => Math.min(100, total ? n / total * 100 : 0);
   return <div>
     <div className="row page-h"><h1>Apps &amp; resources</h1><span className="sp" /><span className="small muted">Server: {vcpu(capacity.server.cpuMillis)} · {memory(capacity.server.memoryBytes)}{capacity.server.profile ? ` · ${capacity.server.profile} profile` : ''}</span></div>
@@ -138,6 +146,7 @@ function AppsResourcesConsole() {
         <dt>Apps domain</dt><dd><span className="mono">{settings.appsDomain ?? 'Not configured'}</span>{settings.appsDomainIsDefault ? <span className="hint"> · default</span> : null}<span className="hint"> · separate from the GitStack domain</span></dd>
         <dt>Public apps</dt><dd><label className="row"><input type="checkbox" role="switch" aria-label="Public apps" checked={settings.publicAppsEnabled} disabled={busy} onChange={() => setPublicConfirm(true)} /> <span className="hint">{settings.publicAppsEnabled ? 'On · admins of an app can publish it on the internet' : 'Off · repository admins can’t publish apps'}</span></label><div className="hint">An app goes public only with both consents: yours here and the <code>admin</code> of the app. <a href="https://fathormb.github.io/GitStack/admin/public-apps/" target="_blank" rel="noreferrer">Guide: public apps</a></div></dd>
         <dt>Let&apos;s Encrypt</dt><dd><LetsEncryptStatus status={settings.letsEncrypt} publicEnabled={settings.publicAppsEnabled} /><form className="row small" onSubmit={saveAcmeEmail}><label>ACME email <input aria-label="ACME email" type="email" className="input" value={acmeEmail ?? settings.letsEncrypt?.acmeEmail ?? ''} onChange={(e) => setAcmeEmail(e.target.value)} /></label><Button type="submit" size="sm" disabled={busy}>Save email</Button></form></dd>
+        <dt>Public IPs</dt><dd><PublicIpsField ips={publicIps} busy={busy} onAdd={(ip) => setIpDraft([...publicIps, ip])} onRemove={(ip) => setIpDraft(publicIps.filter((x) => x !== ip))} onSave={() => void savePublicIps()} /></dd>
         <dt>Only signed images</dt><dd><SettingToggle label="Only signed images" checked={settings.signedImagesOnly} disabled={busy} onChange={(v) => void saveSettings({ signedImagesOnly: v })} hint={settings.signedImagesOnly ? 'Unsigned images are refused.' : 'Unsigned manual deploys show not verified.'} /></dd>
         <dt>Trusted keys</dt><dd>{keys.map((key) => <div className="row" key={key.id}><span>{key.name} <span className="mono small">{key.fingerprint}</span>{key.instanceKey ? <span className="badge">instance</span> : null}</span>{!key.instanceKey ? <Button size="sm" variant="ghost" disabled={busy} onClick={async () => { try { await removeTrustedKey(key.id); setData((previous) => previous ? { ...previous, keys: previous.keys.filter((k) => k.id !== key.id) } : previous); } catch (e) { setFormError(describeError(e)); } }}>Remove</Button> : null}</div>)}<Button size="sm" onClick={() => setKeyForm(!keyForm)}>Add key</Button></dd>
         <dt>Restricted mode</dt><dd><SettingToggle label="Restricted mode" checked={settings.restricted} disabled={busy} onChange={(v) => void saveSettings({ restricted: v })} hint={settings.restricted ? 'Apps run with restricted permissions.' : 'Off · images may run as root (baseline).'} /></dd>
@@ -163,6 +172,22 @@ function LetsEncryptStatus({ status, publicEnabled }: { status?: AppsLetsEncrypt
   return <div className="stack small" style={{ gap: 4 }}>
     <div>{status.enabled ? <span className="badge badge-ok">active</span> : <span className="badge">inactive</span>} <span className="hint">{status.acmeEmail ? `Account email: ${status.acmeEmail}` : 'No ACME email set'}</span></div>
     <div role="status">Port 80: {port === true ? <span className="badge badge-ok">reachable</span> : port === false ? <span className="badge badge-err">not reachable</span> : <span className="badge">not checked</span>}{port === false ? <span className="hint"> · {status.port80Error || 'HTTP-01 challenges will fail until it is open.'}</span> : null}{status.port80CheckedAt ? <span className="hint"> · checked {new Date(status.port80CheckedAt).toLocaleString()}</span> : null}</div>
+  </div>;
+}
+// IP pubblici dell'istanza per il controllo DNS dei domini propri e della porta 80 (v3-c).
+function PublicIpsField({ ips, busy, onAdd, onRemove, onSave }: { ips: string[]; busy: boolean; onAdd: (ip: string) => void; onRemove: (ip: string) => void; onSave: () => void }) {
+  const [value, setValue] = useState('');
+  function add(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const ip = value.trim();
+    if (ip !== '' && !ips.includes(ip)) onAdd(ip);
+    setValue('');
+  }
+  return <div className="stack small" style={{ gap: 6 }}>
+    <div className="hint">Public addresses (A/AAAA) of this installation, used for the DNS check of apex domains and the port 80 check. Private addresses are refused.</div>
+    {ips.length === 0 ? <div className="hint">No public IPs declared.</div> : <ul aria-label="Public IPs" className="row small" style={{ listStyle: 'none', padding: 0, gap: 8, flexWrap: 'wrap' }}>{ips.map((ip) => <li key={ip} className="row"><span className="mono">{ip}</span><Button size="sm" aria-label={`Remove ${ip}`} disabled={busy} onClick={() => onRemove(ip)}>Remove</Button></li>)}</ul>}
+    <form className="row small" aria-label="Add public IP" onSubmit={add}><FormField label="Public IP"><TextInput value={value} onChange={(e) => setValue(e.target.value)} placeholder="203.0.113.10" /></FormField><Button type="submit" size="sm" disabled={busy}>Add IP</Button></form>
+    <div className="row"><Button size="sm" variant="primary" disabled={busy} onClick={onSave}>Save public IPs</Button></div>
   </div>;
 }
 const certLabel: Record<string, string> = { none: 'no certificate', issuing: 'issuing', valid: 'valid', error: 'error' };
