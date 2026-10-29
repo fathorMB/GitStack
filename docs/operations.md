@@ -886,6 +886,11 @@ reports them with the final `UpdateTask` and core saves them on the job
 characters, values up to 64 KiB (what exceeds is dropped); a value that contains
 a secret or the job token is masked like the logs. The extra step needs `bash`
 in the runner image (the official image has it).
+An external runner (`gitstack-runner` on Windows or macOS) needs `bash` in its `PATH`:
+without it the outputs of the job stay empty and the job does not fail (the step
+is `continue-on-error`). The Gitea `act_runner` sends the outputs in its periodic
+reports, even before the result: core saves them as they arrive, merges partial
+reports and confirms every received name (`SentOutputs`).
 
 ### Backup and restore with the CI logs
 

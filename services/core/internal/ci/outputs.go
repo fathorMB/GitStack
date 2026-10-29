@@ -3,9 +3,12 @@ package ci
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -17,22 +20,50 @@ const (
 	MaxOutputValueLen = 64 << 10
 )
 
-// SetJobOutputs salva gli outputs riportati dal runner sul job (ancora in corso). Una riscrittura
-// sostituisce la precedente; i nomi e i valori fuori dai limiti sono scartati.
+// SetJobOutputs unisce gli outputs riportati dal runner a quelli gia' salvati sul job (ancora in
+// corso): act_runner di Gitea li manda a piu' riprese, e un invio parziale non cancella il
+// precedente. Una chiave gia' presente si sovrascrive; il limite di MaxJobOutputs vale sul
+// totale, quindi una chiave nuova oltre il limite, un nome o un valore fuori misura si scartano.
 func SetJobOutputs(ctx context.Context, pool *pgxpool.Pool, jobID uuid.UUID, outputs map[string]string) error {
-	kept := make(map[string]string, len(outputs))
-	for k, v := range outputs {
-		if k == "" || len(k) > MaxOutputNameLen || len(v) > MaxOutputValueLen || len(kept) >= MaxJobOutputs {
-			continue
-		}
-		kept[k] = v
-	}
-	b, err := json.Marshal(kept)
+	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
-	_, err = pool.Exec(ctx, `UPDATE core.ci_jobs SET outputs = $2 WHERE id = $1 AND status = 'in_progress'`, jobID, b)
-	return err
+	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	var raw []byte
+	if err := tx.QueryRow(ctx, `SELECT outputs FROM core.ci_jobs WHERE id = $1 AND status = 'in_progress' FOR UPDATE`, jobID).Scan(&raw); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+	merged := map[string]string{}
+	if err := json.Unmarshal(raw, &merged); err != nil {
+		return fmt.Errorf("outputs del job %s: %w", jobID, err)
+	}
+	keys := make([]string, 0, len(outputs))
+	for k := range outputs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys) // quali chiavi cadono oltre il limite non dipende dall'ordine della mappa
+	for _, k := range keys {
+		v := outputs[k]
+		if k == "" || len(k) > MaxOutputNameLen || len(v) > MaxOutputValueLen {
+			continue
+		}
+		if _, ok := merged[k]; !ok && len(merged) >= MaxJobOutputs {
+			continue
+		}
+		merged[k] = v
+	}
+	b, err := json.Marshal(merged)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE core.ci_jobs SET outputs = $2 WHERE id = $1`, jobID, b); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 // JobNeed e' l'esito e gli outputs di un job a monte (needs) per il task di un job a valle.

@@ -207,32 +207,36 @@ func (r *rpc) UpdateTask(ctx context.Context, req *connect.Request[runnerv1.Upda
 		g.Log.Error("ci-gateway: passi non registrati", "job", a.JobID, "err", err)
 		return nil, unavailable(errors.New("servizio non disponibile"))
 	}
-	if concl := resultName(st.GetResult()); concl != "" {
-		// Gli outputs arrivano con l'esito finale e si salvano prima di chiudere il job: i job a valle
-		// promossi dalla chiusura li trovano gia' al loro dispatch. I valori passano dal masker dei
-		// segreti del job, come i log.
-		if outs := req.Msg.GetOutputs(); len(outs) > 0 {
-			mask, err := g.maskerFor(ctx, a, bearer(req.Header()))
-			if err != nil {
-				g.Log.Error("ci-gateway: segreti del job non caricati", "job", a.JobID, "err", err)
-				return nil, unavailable(errors.New("servizio non disponibile"))
-			}
-			masked := make(map[string]string, len(outs))
-			for k, v := range outs {
-				masked[k] = mask.Mask(v)
-			}
-			if err := ci.SetJobOutputs(ctx, g.Pool, a.JobID, masked); err != nil {
-				g.Log.Error("ci-gateway: outputs non salvati", "job", a.JobID, "err", err)
-				return nil, unavailable(errors.New("servizio non disponibile"))
-			}
+	// Gli outputs si salvano appena arrivano, con o senza esito (act_runner di Gitea li manda nei
+	// ReportState periodici e poi solo quelli non confermati): prima della chiusura, cosi' i job a
+	// valle promossi la trovano gia' al dispatch. I valori passano dal masker dei segreti del job,
+	// come i log. SentOutputs conferma tutte le chiavi ricevute, anche quelle scartate per i
+	// limiti: act_runner altrimenti le rimanda e alla chiusura non termina.
+	var sent []string
+	if outs := req.Msg.GetOutputs(); len(outs) > 0 {
+		mask, err := g.maskerFor(ctx, a, bearer(req.Header()))
+		if err != nil {
+			g.Log.Error("ci-gateway: segreti del job non caricati", "job", a.JobID, "err", err)
+			return nil, unavailable(errors.New("servizio non disponibile"))
 		}
+		masked := make(map[string]string, len(outs))
+		for k, v := range outs {
+			masked[k] = mask.Mask(v)
+			sent = append(sent, k)
+		}
+		if err := ci.SetJobOutputs(ctx, g.Pool, a.JobID, masked); err != nil {
+			g.Log.Error("ci-gateway: outputs non salvati", "job", a.JobID, "err", err)
+			return nil, unavailable(errors.New("servizio non disponibile"))
+		}
+	}
+	if concl := resultName(st.GetResult()); concl != "" {
 		if err := ci.CompleteJobReported(ctx, g.Pool, g.Now(), a.JobID, concl, g.Reporter); err != nil {
 			g.Log.Error("ci-gateway: chiusura del job non riuscita", "job", a.JobID, "err", err)
 			return nil, unavailable(errors.New("servizio non disponibile"))
 		}
 		g.maskers.drop(a.JobID)
 	}
-	return connect.NewResponse(&runnerv1.UpdateTaskResponse{State: &runnerv1.TaskState{Id: a.TaskID, Result: st.GetResult()}}), nil
+	return connect.NewResponse(&runnerv1.UpdateTaskResponse{State: &runnerv1.TaskState{Id: a.TaskID, Result: st.GetResult()}, SentOutputs: sent}), nil
 }
 
 // UpdateLog scrive le righe del job (idempotente per indice) e ritorna l'indice successivo atteso.
