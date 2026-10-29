@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	corev1 "k8s.io/api/core/v1"
@@ -14,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/util/retry"
 
+	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
 
@@ -225,4 +227,17 @@ func sameRefs(a, b []any) bool {
 		}
 	}
 	return true
+}
+
+// CheckCertExpiry accoda l'avviso agli admin per i certificati del cliente che scadono entro
+// CertExpiryNoticeDays giorni (GIT-461). Una scadenza si avvisa una volta sola (lo stato è nello store);
+// un certificato nuovo ha un'altra scadenza e l'avviso può ripartire.
+func (c *Controller) CheckCertExpiry(ctx context.Context) {
+	if c.st == nil {
+		return
+	}
+	within := time.Duration(domainevents.CertExpiryNoticeDays) * 24 * time.Hour
+	if _, err := c.st.NoticeCustomCertsExpiring(ctx, c.cfg.Now(), within); err != nil && ctx.Err() == nil {
+		c.cfg.Log.Warn("apps: avviso di scadenza dei certificati del cliente non scritto", "err", err)
+	}
 }

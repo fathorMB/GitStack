@@ -20,7 +20,7 @@ func TestMigration0052_AppDomainCustomCert(t *testing.T) {
 			t.Fatalf("colonna %s: %d %v", col, n, err)
 		}
 	}
-	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
 		t.Fatalf("down 0052: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM information_schema.columns WHERE table_schema = 'core' AND table_name = 'app_domains' AND column_name IN ('cert_pem','cert_key_ciphertext','cert_key_nonce','cert_key_id')`).Scan(&n); err != nil || n != 0 {

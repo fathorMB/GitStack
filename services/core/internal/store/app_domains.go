@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -125,8 +126,32 @@ type AppDomainCheck struct {
 
 // SaveAppDomainCheck scrive lo stato del controllo. ErrNotFound se il dominio è stato tolto nel frattempo.
 func (s *Store) SaveAppDomainCheck(ctx context.Context, id uuid.UUID, c AppDomainCheck) (AppDomain, error) {
-	return scanAppDomain(s.pool.QueryRow(ctx, `UPDATE core.app_domains SET status = $2, status_reason = $3, last_checked_at = $4,
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return AppDomain{}, err
+	}
+	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	var oldStatus string
+	var oldFailing *time.Time
+	if err := tx.QueryRow(ctx, `SELECT status, failing_since FROM core.app_domains WHERE id = $1 FOR UPDATE`, id).Scan(&oldStatus, &oldFailing); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return AppDomain{}, ErrNotFound
+		}
+		return AppDomain{}, err
+	}
+	d, err := scanAppDomain(tx.QueryRow(ctx, `UPDATE core.app_domains SET status = $2, status_reason = $3, last_checked_at = $4,
 		verified_at = $5, failing_since = $6 WHERE id = $1 RETURNING `+appDomainCols, id, c.Status, c.StatusReason, c.CheckedAt, c.VerifiedAt, c.FailingSince))
+	if err != nil {
+		return AppDomain{}, err
+	}
+	// Avviso agli admin solo nel passaggio a guasto (GIT-461): un dominio che resta guasto non lo ripete.
+	if !domainFailing(oldStatus, oldFailing) && domainFailing(d.Status, d.FailingSince) {
+		why := deref(d.StatusReason, d.Normalized+" non punta più all'istanza: la rotta resta durante il periodo di grazia")
+		if err := enqueueAppDomainEvent(ctx, tx, d.AppID, domainevents.AppDomainDNSFailed, d.Normalized, why, nil); err != nil {
+			return AppDomain{}, err
+		}
+	}
+	return d, tx.Commit(ctx)
 }
 
 // ListAppDomainsForCheck dà tutti i domini delle app, per decidere quali ricontrollare.
@@ -222,9 +247,32 @@ type AppDomainCert struct {
 // SaveAppDomainCert scrive lo stato del certificato (solo per i domini col modo letsencrypt: i
 // certificati caricati dal cliente non li tocca). ErrNotFound se il dominio è stato tolto o è custom.
 func (s *Store) SaveAppDomainCert(ctx context.Context, id uuid.UUID, c AppDomainCert) (AppDomain, error) {
-	return scanAppDomain(s.pool.QueryRow(ctx, `UPDATE core.app_domains SET cert_state = $2, cert_valid_from = $3, cert_valid_until = $4,
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return AppDomain{}, err
+	}
+	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	var oldState string
+	if err := tx.QueryRow(ctx, `SELECT cert_state FROM core.app_domains WHERE id = $1 AND cert_mode = 'letsencrypt' FOR UPDATE`, id).Scan(&oldState); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return AppDomain{}, ErrNotFound
+		}
+		return AppDomain{}, err
+	}
+	d, err := scanAppDomain(tx.QueryRow(ctx, `UPDATE core.app_domains SET cert_state = $2, cert_valid_from = $3, cert_valid_until = $4,
 		cert_issuer = $5, cert_error = $6, cert_last_attempt_at = $7 WHERE id = $1 AND cert_mode = 'letsencrypt' RETURNING `+appDomainCols,
 		id, c.State, c.ValidFrom, c.ValidUntil, c.Issuer, c.Error, c.LastAttempt))
+	if err != nil {
+		return AppDomain{}, err
+	}
+	// Avviso agli admin solo nel passaggio a «error» (GIT-461): emissione o rinnovo falliti.
+	if c.State == "error" && oldState != "error" {
+		if err := enqueueAppDomainEvent(ctx, tx, d.AppID, domainevents.AppCertificateRenewalFailed, d.Normalized,
+			deref(d.CertError, "Let's Encrypt non ha emesso il certificato"), nil); err != nil {
+			return AppDomain{}, err
+		}
+	}
+	return d, tx.Commit(ctx)
 }
 
 // SetPublicIPs sostituisce gli IP pubblici dichiarati dell'istanza.
