@@ -98,9 +98,45 @@ function Wait-E2eHealthy {
     return "/api/healthz non ok dopo ${TimeoutSeconds}s (ultimo: $last)"
 }
 
+# Dopo il restore (GIT-505): prende la CA ripristinata dalla VM, riprovando ogni $CaRetrySeconds fino a
+# $CaTimeoutSeconds (subito dopo il restore /downloads/ca.crt puo dare 502, GIT-177, o avere ancora
+# l'impronta vecchia), poi aspetta /api/healthz. Qualunque errore (CA o attesa) scrive la diagnosi TLS
+# (log + file) e rilancia con il suo testo. Se la CA non si e potuta prendere, l'host verifica ancora
+# con la CA della nuova installazione e il log lo dice. Ritorna l'impronta della CA ripristinata.
+function Wait-E2eRestoredCaAndHealthy {
+    param(
+        [Parameter(Mandatory)][string]$BaseUrl, [Parameter(Mandatory)][string]$Ip,
+        [Parameter(Mandatory)][string]$CaPath, [string]$DiagPath,
+        [int]$CaTimeoutSeconds = 120, [int]$CaRetrySeconds = 5, [int]$HealthTimeoutSeconds = 300
+    )
+    $fp = $null
+    $caTaken = $false
+    try {
+        $deadline = (Get-Date).AddSeconds($CaTimeoutSeconds)
+        $lastErr = ''
+        while ($true) {
+            try { $fp = Set-E2eCaFromVm -CaPath $CaPath; $caTaken = $true; break } catch { $lastErr = $_.Exception.Message }
+            if ((Get-Date) -ge $deadline) { break }
+            Start-Sleep -Seconds $CaRetrySeconds
+        }
+        if (-not $caTaken) { throw "CA ripristinata non presa dalla VM dopo ${CaTimeoutSeconds}s (ultimo errore: $lastErr)" }
+        $w = Wait-E2eHealthy -BaseUrl $BaseUrl -TimeoutSeconds $HealthTimeoutSeconds
+        if ($w) { throw $w }
+        return $fp
+    } catch {
+        $msg = $_.Exception.Message
+        $diag = Get-E2eTlsDiagnosis -Ip $Ip -Path $DiagPath
+        $note = if ($caTaken) { 'CA ripristinata impostata sull''host' } else { 'ATTENZIONE: la CA ripristinata non e stata presa, l''host verifica ancora con la CA della nuova installazione' }
+        Write-Log "Diagnosi TLS dopo il restore ($msg; $note):`n$diag"
+        $short = ($diag -replace '\s+', ' ')
+        if ($short.Length -gt 1500) { $short = $short.Substring(0, 1500) + '...' }
+        throw "dopo il restore: $msg (diagnosi TLS in diagnosi-tls-dopo-restore.txt: $short)"
+    }
+}
+
 # Diagnosi della fiducia TLS (GIT-505): quando HTTPS dall'host non si fida, dice quale certificato
-# serve davvero la 443 (issuer, subject, SAN, impronta; senza SNI come un client per IP e con il nome
-# dell'host), quale CA ha in mano l'host per verificare, e quale certificato c'e nel Secret
+# serve davvero la 443 (issuer, subject, SAN, impronta; senza SNI come un client per IP e con SNI =
+# IP della VM; l'e2e non ha un nome), quale CA ha in mano l'host per verificare, e quale certificato c'e nel Secret
 # <release>-tls. Non lancia mai: ritorna il testo (anche per un errore di ssh).
 function Get-E2eTlsDiagnosis {
     param([Parameter(Mandatory)][string]$Ip, [string]$Namespace = 'gitstack', [string]$SecretName = 'gitstack-tls', [string]$Path)
@@ -1227,15 +1263,7 @@ function Invoke-E2eBackupRestorePhase {
         # server ora e firmato da lei, non da quella della nuova installazione di cui l'host si fidava
         # (GIT-505, ipotesi c): la CA si scarica dalla VM (porta 80) PRIMA dell'attesa su HTTPS.
         $caPath3 = Join-Path $phaseDir 'ca-dopo-restore.crt'
-        $fpAfter = Set-E2eCaFromVm -CaPath $caPath3
-        $w = Wait-E2eHealthy -BaseUrl $baseUrl2 -TimeoutSeconds 300
-        if ($w) {
-            $diag = Get-E2eTlsDiagnosis -Ip $script:VmIp -Path (Join-Path $phaseDir 'diagnosi-tls-dopo-restore.txt')
-            Write-Log "Diagnosi TLS dopo il restore (attesa fallita: $w):`n$diag"
-            $short = ($diag -replace '\s+', ' ')
-            if ($short.Length -gt 1500) { $short = $short.Substring(0, 1500) + '...' }
-            throw "dopo il restore: $w (diagnosi TLS in diagnosi-tls-dopo-restore.txt: $short)"
-        }
+        $fpAfter = Wait-E2eRestoredCaAndHealthy -BaseUrl $baseUrl2 -Ip $script:VmIp -CaPath $caPath3 -DiagPath (Join-Path $phaseDir 'diagnosi-tls-dopo-restore.txt')
         if ($fpAfter -ne $fpBefore) {
             $iOk = $false; $iDetails += "la CA dopo il restore ($fpAfter) non e quella del backup ($fpBefore): i client che si fidavano della CA dovrebbero rifare la fiducia"
         }

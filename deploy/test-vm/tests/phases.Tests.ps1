@@ -249,7 +249,8 @@ Assert-That 'marcatore del push: quello atteso da phases.ps1 e quello stampato d
 . (Join-Path $PSScriptRoot '..\lib\tls.ps1')
 $rsa = [System.Security.Cryptography.RSA]::Create(2048)
 $req = New-Object System.Security.Cryptography.X509Certificates.CertificateRequest -ArgumentList 'CN=CA di prova GIT-505', $rsa, ([System.Security.Cryptography.HashAlgorithmName]::SHA256), ([System.Security.Cryptography.RSASignaturePadding]::Pkcs1)
-[GitStackCaTrust]::Ca = $req.CreateSelfSigned([DateTimeOffset]::UtcNow.AddDays(-1), [DateTimeOffset]::UtcNow.AddDays(30))
+$testCert = $req.CreateSelfSigned([DateTimeOffset]::UtcNow.AddDays(-1), [DateTimeOffset]::UtcNow.AddDays(30))
+[GitStackCaTrust]::Ca = $testCert
 $script:DiagCmds = New-Object System.Collections.Generic.List[string]
 function Invoke-VmSsh {
     param($Command, $TimeoutSeconds)
@@ -278,10 +279,66 @@ Clear-GitStackCaTrust
 # l'ordine nel passo i: la CA ripristinata si scarica PRIMA dell'attesa su HTTPS, e la diagnosi parte se l'attesa fallisce
 $phSrc = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\lib\phases.ps1') -Raw
 $iBlock = [regex]::Match($phSrc, '(?s)gitstack restore --key-file.*?\$fpAfter -ne \$fpBefore').Value
-$posCa = $iBlock.IndexOf('$fpAfter = Set-E2eCaFromVm')
-$posWait = $iBlock.IndexOf('Wait-E2eHealthy')
-Assert-That 'passo i: dopo il restore la CA si prende dalla VM prima di Wait-E2eHealthy' ($posCa -gt 0 -and $posWait -gt $posCa)
-Assert-That 'passo i: attesa fallita dopo il restore -> Get-E2eTlsDiagnosis' ($iBlock -like '*Get-E2eTlsDiagnosis*')
+Assert-That 'passo i: dopo il restore tutto (CA + attesa) passa da Wait-E2eRestoredCaAndHealthy' ($iBlock -like '*$fpAfter = Wait-E2eRestoredCaAndHealthy*' -and $iBlock -notlike '*Set-E2eCaFromVm*' -and $iBlock -notlike '*Wait-E2eHealthy -BaseUrl*')
+$fnBody = [regex]::Match($phSrc, '(?s)function Wait-E2eRestoredCaAndHealthy \{.*?\r?\n\}\r?\n').Value
+$posTry = $fnBody.IndexOf('try {'); $posCa = $fnBody.IndexOf('Set-E2eCaFromVm'); $posWait2 = $fnBody.IndexOf('Wait-E2eHealthy'); $posCatch = $fnBody.IndexOf('} catch {', $posWait2); $posDiag = $fnBody.IndexOf('Get-E2eTlsDiagnosis', $posCatch)
+Assert-That 'funzione: Set-E2eCaFromVm e Wait-E2eHealthy stanno dentro il try, la diagnosi nel catch' ($posTry -gt 0 -and $posCa -gt $posTry -and $posWait2 -gt $posCa -and $posCatch -gt $posWait2 -and $posDiag -gt $posCatch)
+
+# GIT-505 r1: ripresa della CA e diagnosi su qualunque errore del blocco «dopo il restore»
+$pem = "-----BEGIN CERTIFICATE-----`n" + [Convert]::ToBase64String($testCert.RawData, 'InsertLineBreaks') + "`n-----END CERTIFICATE-----`n"
+$tmpPem = Join-Path ([IO.Path]::GetTempPath()) ("ca-" + [guid]::NewGuid().ToString('N') + '.crt')
+Set-Content -LiteralPath $tmpPem -Value $pem -Encoding ascii
+$pemFp = Get-CertSha256Fingerprint -Path $tmpPem
+$script:VmIp = '10.0.0.9'
+$script:LogLines = New-Object System.Collections.Generic.List[string]
+function Write-Log { param([string]$Message) $script:LogLines.Add($Message) }
+$caOut = Join-Path ([IO.Path]::GetTempPath()) ("ca-out-" + [guid]::NewGuid().ToString('N') + '.crt')
+$diagOut = Join-Path ([IO.Path]::GetTempPath()) ("diag-out-" + [guid]::NewGuid().ToString('N') + '.txt')
+
+# (a) ca.crt risponde 502 per due chiamate e poi 200: il passo prosegue e ritorna l'impronta
+$script:CaCalls = 0
+function Invoke-HttpRaw {
+    param([string]$Uri, [string]$Method = 'GET', [string]$Body, $Headers, [string]$Cookie, [int]$TimeoutSec = 20)
+    if ($Uri -like '*/downloads/ca.crt') {
+        $script:CaCalls++
+        if ($script:CaCalls -le 2) { return [pscustomobject]@{ StatusCode = 502; Body = ''; Error = 'bad gateway' } }
+        return [pscustomobject]@{ StatusCode = 200; Body = $pem; Error = $null }
+    }
+    return [pscustomobject]@{ StatusCode = 200; Body = '{"status":"ok"}'; Error = $null }
+}
+function Invoke-VmSsh {
+    param($Command, $TimeoutSeconds)
+    if ($Command -eq 'sudo gitstack-tls fingerprint') { return [pscustomobject]@{ ExitCode = 0; StdOut = $script:VmCaFp; StdErr = '' } }
+    return [pscustomobject]@{ ExitCode = 0; StdOut = 'issuer=O = GitStack'; StdErr = '' }
+}
+$script:VmCaFp = $pemFp
+$fpRet = Wait-E2eRestoredCaAndHealthy -BaseUrl 'https://10.0.0.9' -Ip '10.0.0.9' -CaPath $caOut -DiagPath $diagOut -CaTimeoutSeconds 30 -CaRetrySeconds 0
+Assert-That 'dopo il restore (a): ca.crt 502 per due chiamate poi 200, il passo prosegue con l''impronta' ($fpRet -eq $pemFp -and $script:CaCalls -eq 3 -and -not (Test-Path -LiteralPath $diagOut))
+
+# (b) impronta del ca.crt servito diversa da `gitstack-tls fingerprint` per tutta la scadenza: diagnosi nel log, errore con l'impronta
+$script:CaCalls = 100
+$script:VmCaFp = 'FF:EE:DD'
+$script:LogLines.Clear()
+$err = $null
+try { [void](Wait-E2eRestoredCaAndHealthy -BaseUrl 'https://10.0.0.9' -Ip '10.0.0.9' -CaPath $caOut -DiagPath $diagOut -CaTimeoutSeconds 1 -CaRetrySeconds 0) } catch { $err = $_.Exception.Message }
+$logAll = $script:LogLines -join "`n"
+Assert-That 'dopo il restore (b): l''errore cita le due impronte e la scadenza' ($err -like 'dopo il restore: CA ripristinata non presa*' -and $err -like '*non e quella della VM*' -and $err -like '*FF:EE:DD*' -and $err -like "*$pemFp*")
+Assert-That 'dopo il restore (b): nel log c''e la diagnosi TLS e l''avviso che l''host verifica con la CA vecchia' ($logAll -like '*Diagnosi TLS dopo il restore*' -and $logAll -like '*CA con cui l''host verifica*' -and $logAll -like '*ancora con la CA della nuova installazione*')
+Assert-That 'dopo il restore (b): file di diagnosi scritto' ((Test-Path -LiteralPath $diagOut) -and ((Get-Content -LiteralPath $diagOut -Raw) -like '*issuer=O = GitStack*'))
+
+# (c) CA presa, ma /api/healthz mai ok: diagnosi e errore con l'ultimo status
+function Invoke-HttpRaw {
+    param([string]$Uri, [string]$Method = 'GET', [string]$Body, $Headers, [string]$Cookie, [int]$TimeoutSec = 20)
+    if ($Uri -like '*/downloads/ca.crt') { return [pscustomobject]@{ StatusCode = 200; Body = $pem; Error = $null } }
+    return [pscustomobject]@{ StatusCode = 0; Body = ''; Error = 'Could not establish trust relationship' }
+}
+$script:VmCaFp = $pemFp
+$script:LogLines.Clear()
+$err = $null
+try { [void](Wait-E2eRestoredCaAndHealthy -BaseUrl 'https://10.0.0.9' -Ip '10.0.0.9' -CaPath $caOut -DiagPath $diagOut -CaTimeoutSeconds 5 -CaRetrySeconds 0 -HealthTimeoutSeconds 1) } catch { $err = $_.Exception.Message }
+Assert-That 'dopo il restore (c): attesa fallita, errore con ultimo status e diagnosi nel log' ($err -like '*Could not establish trust*' -and (($script:LogLines -join "`n") -like '*CA ripristinata impostata sull''host*'))
+Remove-Item -LiteralPath $tmpPem, $caOut, $diagOut -ErrorAction SilentlyContinue
+Clear-GitStackCaTrust
 
 if ($failures.Count -gt 0) {
     Write-Host "FALLITE: $($failures.Count)"
