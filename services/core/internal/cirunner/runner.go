@@ -175,6 +175,9 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 		if err != nil {
 			return err
 		}
+		if payload, err = withoutNeeds(payload, jobKey); err != nil {
+			return err
+		}
 		return os.WriteFile(wf, payload, 0o640)
 	}
 	if err := prepare(); err != nil {
