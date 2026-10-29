@@ -207,6 +207,25 @@ func TestBuildNetworkPolicy_IsolaAppEConsenteSoloStessoRepo(t *testing.T) {
 	}
 }
 
+// GIT-486: con la CA interna il TLSStore sta nel namespace del release, ma i pod di Traefik restano in
+// kube-system: la policy di ogni app ammette Traefik da TraefikNamespace, mai dal namespace del TLSStore.
+func TestEnsureNetworkPolicy_TraefikDalSuoNamespaceConCAInterna(t *testing.T) {
+	app, _ := testApp()
+	kube := kubernetesfake.NewClientset()
+	c := &Controller{kube: kube, cfg: Config{TraefikNamespace: "kube-system", TLSStoreNamespace: "gitstack"}}
+	if err := c.ensureNetworkPolicy(context.Background(), app); err != nil {
+		t.Fatal(err)
+	}
+	p, err := kube.NetworkingV1().NetworkPolicies(Namespace(app.ID)).Get(context.Background(), "app-isolation", metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	from := p.Spec.Ingress[1].From[0]
+	if from.NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"] != "kube-system" || from.PodSelector.MatchLabels["app.kubernetes.io/name"] != "traefik" {
+		t.Fatalf("ingresso Traefik: %+v", p.Spec.Ingress[1])
+	}
+}
+
 func TestBuildNetworkPolicy_ProxyIPApriSoloPortaProxy(t *testing.T) {
 	app, _ := testApp()
 	p := BuildNetworkPolicy(app, NetworkPolicyOptions{ProxyEnv: map[string]string{"HTTPS_PROXY": "http://10.0.0.5:3128"}})

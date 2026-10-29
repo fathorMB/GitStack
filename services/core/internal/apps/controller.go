@@ -80,8 +80,12 @@ type Config struct {
 	// Domains: controllo del DNS dei domini propri delle app pubbliche (v3-c, GIT-458); AppsDomain
 	// vuoto prende quello sopra. Resolver nil = DNS di sistema.
 	Domains DomainConfig
-	// TraefikNamespace è il namespace dell'Ingress controller k3s.
+	// TraefikNamespace è il namespace dei pod dell'Ingress controller k3s: la NetworkPolicy delle app
+	// ammette l'ingresso solo da lì.
 	TraefikNamespace string
+	// TLSStoreNamespace è il namespace del TLSStore default letto da Traefik: dove stanno i Secret dei
+	// certificati del cliente (GIT-460). Vuoto = TraefikNamespace.
+	TLSStoreNamespace string
 	// Gateway è la porta interna del gateway per le app (GIT-442); nil o incompleta = non configurata.
 	Gateway *GatewayAccess
 	// EgressClusterCIDRs e EgressNodeAddresses sono gli stessi di webhook e mirror (pkg/egress):

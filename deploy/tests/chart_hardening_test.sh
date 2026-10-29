@@ -397,7 +397,9 @@ expect_lacks "RBAC: il Role dei certificati non elenca i Secret" "${role}" '"lis
 # STESSO namespace, altrimenti core ne creerebbe un secondo in kube-system e Traefik scarterebbe il default.
 SAVED_OUT="${OUT}"
 traefik_ns_env() { printf '%s
-' "${OUT}" | grep -A1 'name: GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE' | tail -n 1 | tr -d ' '; }
+' "${OUT}" | grep -A1 'name: GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE$' | tail -n 1 | tr -d ' '; }
+tlsstore_ns_env() { printf '%s
+' "${OUT}" | grep -A1 'name: GITSTACK_CORE_APPS_TLSSTORE_NAMESPACE$' | tail -n 1 | tr -d ' '; }
 certs_role_ns() { docs Role | grep -E '^  namespace: ' | head -n 1 | tr -d ' '; }
 certs_rb_ns() { docs RoleBinding | grep -E '^  namespace: ' | head -n 1 | tr -d ' '; }
 # (a) valori di default: nessun TLSStore del chart, Role ed env in kube-system.
@@ -406,12 +408,14 @@ if [ "$(count '^kind: TLSStore$')" = "0" ]; then ok; else bad "TLSStore: di defa
 if [ "$(certs_role_ns)" = "namespace:kube-system" ]; then ok; else bad "TLSStore (default): il Role -certs deve stare in kube-system"; fi
 if [ "$(certs_rb_ns)" = "namespace:kube-system" ]; then ok; else bad "TLSStore (default): il RoleBinding -certs deve stare in kube-system"; fi
 if [ "$(traefik_ns_env)" = 'value:"kube-system"' ]; then ok; else bad "TLSStore (default): GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE deve essere kube-system"; fi
+if [ "$(tlsstore_ns_env)" = 'value:"kube-system"' ]; then ok; else bad "TLSStore (default): GITSTACK_CORE_APPS_TLSSTORE_NAMESPACE deve essere kube-system"; fi
 # (b) CA interna: il TLSStore del chart c'è, uno solo, e Role ed env sono nel namespace del release.
 OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test --set ingress.enabled=true --set ingress.tls.enabled=true --set ingress.tls.secretName=gitstack-tls)" || { bad "helm template (TLSStore, CA interna) fallito"; exit 1; }
 if [ "$(count '^kind: TLSStore$')" = "1" ]; then ok; else bad "TLSStore (CA interna): ne serve esattamente uno in tutto l'output"; fi
 if [ "$(certs_role_ns)" = "namespace:prova-ns" ]; then ok; else bad "TLSStore (CA interna): il Role -certs deve stare nel namespace del release"; fi
 if [ "$(certs_rb_ns)" = "namespace:prova-ns" ]; then ok; else bad "TLSStore (CA interna): il RoleBinding -certs deve stare nel namespace del release"; fi
-if [ "$(traefik_ns_env)" = 'value:"prova-ns"' ]; then ok; else bad "TLSStore (CA interna): GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE deve essere il namespace del release"; fi
+if [ "$(traefik_ns_env)" = 'value:"kube-system"' ]; then ok; else bad "TLSStore (CA interna): GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE deve restare kube-system (NetworkPolicy delle app)"; fi
+if [ "$(tlsstore_ns_env)" = 'value:"prova-ns"' ]; then ok; else bad "TLSStore (CA interna): GITSTACK_CORE_APPS_TLSSTORE_NAMESPACE deve essere il namespace del release"; fi
 if printf '%s
 ' "$(docs Role)" | grep -q 'namespace: kube-system'; then bad "TLSStore (CA interna): nessun Role in kube-system"; else ok; fi
 OUT="${SAVED_OUT}"
