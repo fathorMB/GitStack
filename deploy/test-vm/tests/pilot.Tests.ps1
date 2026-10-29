@@ -194,6 +194,32 @@ Invoke-E2ePilotTester -BaseUrl 'https://example.invalid' -CaPath 'ca.crt' -WorkD
 if (@($script:rows | Where-Object { -not $_.Ok }).Count -ne 1) { throw 'different screenshot accepted' }
 Write-Host '[PASS] pilot tester: issue e confronto dello screenshot'
 
+$script:badAttachment = $false
+$script:certInStore = $false; $script:elevated = $true; $script:importStores = @(); $script:removePaths = @()
+function Test-E2eElevated { return $script:elevated }
+function Test-Path { param($LiteralPath) if ($LiteralPath -like 'Cert:*') { return $script:certInStore }; return $true }
+function Import-Certificate { param($FilePath, $CertStoreLocation) $script:importStores += $CertStoreLocation; $script:certInStore = $true }
+function Remove-Item { param($LiteralPath, [switch]$Force, $ErrorAction) $script:removePaths += $LiteralPath; $script:certInStore = $false }
+# CA assente, processo elevato: import e rimozione sullo store LocalMachine\Root
+$script:rows = @()
+Invoke-E2ePilotTester -BaseUrl 'https://example.invalid' -CaPath 'ca.crt' -WorkDir 'C:\pilot' -Context $ctx -Site $site
+if (@($script:importStores).Count -ne 1 -or $script:importStores[0] -ne 'Cert:\LocalMachine\Root') { throw "import store: $($script:importStores -join ',')" }
+if (@($script:removePaths).Count -ne 1 -or $script:removePaths[0] -ne 'Cert:\LocalMachine\Root\CA123') { throw "remove path: $($script:removePaths -join ',')" }
+if (@($script:rows | Where-Object { -not $_.Ok }).Count -ne 0) { throw "elevated run failed: $($script:rows | Out-String)" }
+# CA già presente: né import né rimozione
+$script:rows = @(); $script:importStores = @(); $script:removePaths = @(); $script:certInStore = $true
+Invoke-E2ePilotTester -BaseUrl 'https://example.invalid' -CaPath 'ca.crt' -WorkDir 'C:\pilot' -Context $ctx -Site $site
+if (@($script:importStores).Count -ne 0 -or @($script:removePaths).Count -ne 0) { throw 'CA già presente importata o rimossa' }
+# non elevato e CA assente: nessun import, riga Ok=false che parla di amministratore
+$script:rows = @(); $script:certInStore = $false; $script:elevated = $false
+Invoke-E2ePilotTester -BaseUrl 'https://example.invalid' -CaPath 'ca.crt' -WorkDir 'C:\pilot' -Context $ctx -Site $site
+$failed = @($script:rows | Where-Object { -not $_.Ok })
+if (@($script:importStores).Count -ne 0 -or @($script:removePaths).Count -ne 0 -or $failed.Count -ne 1 -or $failed[0].Detail -notmatch 'amministratore') { throw "non elevato: $($script:rows | Out-String)" }
+Write-Host '[PASS] pilot tester: CA in LocalMachine\Root e controllo di elevazione'
+$script:certInStore = $true; $script:elevated = $true
+Microsoft.PowerShell.Management\Remove-Item Function:\Remove-Item, Function:\Import-Certificate, Function:\Test-Path
+function Test-Path { param($LiteralPath) return $true }
+
 $script:rows = @(); $script:delMode = $true
 $ctx2 = [pscustomobject]@{ Owner = 'alice'; Repo = 'pilot'; Token = 'test'; CreatedApps = [System.Collections.ArrayList]@('api', 'sito') }
 Remove-E2ePilotApps -BaseUrl 'https://example.invalid' -Context $ctx2
