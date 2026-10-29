@@ -10,7 +10,7 @@ case "${1:-}" in
     if [ ! -d "$bare" ] || [ ! -d "$fixture" ] || [ -e "$work" ]; then fail 'invalid paths'; fi
     git clone -q "$bare" "$work" || fail 'clone'
     mkdir -p "$work/.gitstack/workflows"
-    for file in Dockerfile.api Dockerfile.sito server.cjs identity.cjs; do
+    for file in Dockerfile.api Dockerfile.sito Dockerfile.db server.cjs identity.cjs; do
       [ -f "$fixture/$file" ] || fail "missing $file"
       cp "$fixture/$file" "$work/$file"
     done

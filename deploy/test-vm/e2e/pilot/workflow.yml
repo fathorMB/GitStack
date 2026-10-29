@@ -16,3 +16,4 @@ jobs:
           tag="${GITHUB_REF#refs/tags/}"
           gitstack-build --name api --tag "$tag" --file Dockerfile.api .
           gitstack-build --name sito --tag "$tag" --file Dockerfile.sito .
+          gitstack-build --name db --tag "$tag" --file Dockerfile.db .

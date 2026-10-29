@@ -24,7 +24,7 @@ if ! jq -e --arg ref "refs/tags/$tag" --arg sha "$commit" '
 fi
 echo 'STEP ok run-tag'
 
-for name in api sito; do
+for name in api sito db; do
   if ! jq -e --arg name "$name" --arg tag "$tag" '
     [.items[] | select(.name == $name) | .tagDetails[]?
       | select(.name == $tag and .signature == "verified" and .pushedBy.kind == "job"

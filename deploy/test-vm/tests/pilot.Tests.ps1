@@ -10,6 +10,8 @@ $script:issueMode = $false
 $script:badAttachment = $false
 $script:publicApps = $false
 $script:cleanup = @()
+$script:dbCreate = $null
+$script:pgdataValue = $null
 function Add-StepResult { param($Name, $Ok, $Detail) $script:rows += [pscustomobject]@{ Name = $Name; Ok = $Ok; Detail = $Detail } }
 function Start-Sleep { param($Seconds) }
 function Copy-ToVm { param($LocalPath, $RemotePath, $TimeoutSeconds) [pscustomobject]@{ ExitCode = 0 } }
@@ -27,6 +29,8 @@ function Invoke-VmSsh {
 function Invoke-RepoImportWithRetry { param($Uri, $Headers, $MaxAttempts, $DelaySeconds, $Body) [pscustomobject]@{ StatusCode = 201; Body = '{}' } }
 function Invoke-HttpRaw {
     param($Uri, $Method, $Headers, $Body, $Cookie)
+    if ($Uri -like '*/apps' -and $Method -eq 'POST' -and $Body -match '"postgres"') { $script:dbCreate = $Body | ConvertFrom-Json }
+    if ($Uri -like '*/postgres/variables/PGDATA') { $script:pgdataValue = ($Body | ConvertFrom-Json).value }
     if ($script:issueMode -and $Uri -like '*/issues/42') {
         return [pscustomobject]@{ StatusCode = 200; Body = '{"author":{"username":"e2epilotbot123","kind":"agent"},"body":"Tester: e2etester123","attachments":[{"id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","filename":"screenshot.png","contentType":"image/png"}]}' }
     }
@@ -64,13 +68,13 @@ function Invoke-HttpRaw {
     elseif ($Uri -like '*/actions/runs') { '{"items":[{"id":"run1","event":"push","ref":"refs/tags/v1.0.0","sha":"' + $script:sha + '","status":"completed","conclusion":"success","jobs":[{"runnerType":"internal_pod","status":"completed","conclusion":"success"}]}]}' }
     elseif ($Uri -like '*/packages') {
         $signature = if ($script:unsigned) { 'unverified' } else { 'verified' }
-        '{"items":[{"name":"api","tagDetails":[{"name":"v1.0.0","signature":"verified","pushedBy":{"kind":"job"},"digest":"sha256:' + $script:digest + '"}]},{"name":"sito","tagDetails":[{"name":"v1.0.0","signature":"' + $signature + '","pushedBy":{"kind":"job"},"digest":"sha256:' + $script:digest + '"}]}]}'
+        '{"items":[{"name":"api","tagDetails":[{"name":"v1.0.0","signature":"verified","pushedBy":{"kind":"job"},"digest":"sha256:' + $script:digest + '"}]},{"name":"sito","tagDetails":[{"name":"v1.0.0","signature":"verified","pushedBy":{"kind":"job"},"digest":"sha256:' + $script:digest + '"}]},{"name":"db","tagDetails":[{"name":"v1.0.0","signature":"' + $signature + '","pushedBy":{"kind":"job"},"digest":"sha256:' + $script:digest + '"}]}]}'
     } else { '{"visibility":"private"}' }
     [pscustomobject]@{ StatusCode = $status; Body = $response }
 }
 . (Join-Path $PSScriptRoot '..\lib\pilot.ps1')
 Invoke-E2ePilotMirror -BaseUrl 'https://example.invalid' -Owner 'alice' -Token 'test' -Suffix '123' -AliasIp '192.168.250.10' -OriginPort 8443
-if (-not $script:PilotContext -or @($script:rows | Where-Object { -not $_.Ok }).Count -ne 0 -or @($script:rows).Count -ne 7) { throw "pilot mirror success: $($script:rows | Out-String)" }
+if (-not $script:PilotContext -or @($script:rows | Where-Object { -not $_.Ok }).Count -ne 0 -or @($script:rows).Count -ne 8) { throw "pilot mirror success: $($script:rows | Out-String)" }
 if ($script:cleanup -notcontains 'mirror-disable' -or $script:cleanup -notcontains 'mirror-dest-stop') { throw 'pilot cleanup missing' }
 $script:rows = @(); $script:cleanup = @(); $script:unsigned = $true
 Invoke-E2ePilotMirror -BaseUrl 'https://example.invalid' -Owner 'alice' -Token 'test' -Suffix '123' -AliasIp '192.168.250.10' -OriginPort 8443
@@ -80,6 +84,7 @@ Write-Host '[PASS] pilot mirror: successo, immagine non firmata e pulizia'
 $script:rows = @(); $script:probeFail = $false
 $ctx = [pscustomobject]@{ Owner = 'alice'; Repo = 'pilot'; Tag = 'v1'; Token = 'test' }
 if (-not (Initialize-E2ePilotDatabase -BaseUrl 'https://example.invalid' -Context $ctx)) { throw 'pilot database setup failed' }
+if ($script:dbCreate.name -ne 'postgres' -or $script:dbCreate.image -ne 'db:v1' -or $script:pgdataValue -ne '/var/lib/postgresql/data/pgdata') { throw 'pilot database image or PGDATA incorrect' }
 if (-not $ctx.ApiId -or @($script:rows | Where-Object { -not $_.Ok }).Count -ne 0) { throw 'pilot database setup missing result' }
 $script:rows = @()
 Test-E2ePilotDatabaseAfterRestore -BaseUrl 'https://example.invalid' -Context $ctx

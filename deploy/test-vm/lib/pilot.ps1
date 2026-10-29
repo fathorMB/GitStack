@@ -22,7 +22,7 @@ function Invoke-E2ePilotMirror {
     try {
         $mk = Invoke-VmSsh -Command 'mkdir -p /tmp/gitstack-e2e/pilot-fixture' -TimeoutSeconds 60
         if ($mk.ExitCode -ne 0) { throw 'cartella fixture sulla VM non creata' }
-        foreach ($file in @('Dockerfile.api', 'Dockerfile.sito', 'server.cjs', 'identity.cjs', 'workflow.yml')) {
+        foreach ($file in @('Dockerfile.api', 'Dockerfile.sito', 'Dockerfile.db', 'server.cjs', 'identity.cjs', 'workflow.yml')) {
             $copy = Copy-ToVm -LocalPath (Join-Path $PSScriptRoot "..\e2e\pilot\$file") -RemotePath "/tmp/gitstack-e2e/pilot-fixture/$file" -TimeoutSeconds 60
             if ($copy.ExitCode -ne 0) { throw "copia fixture ${file}: exit $($copy.ExitCode)" }
         }
@@ -92,7 +92,7 @@ function Invoke-E2ePilotMirror {
         $packages = Invoke-HttpRaw -Uri "$api/packages" -Headers $headers
         if ($packages.StatusCode -ne 200) { throw "packages: status $($packages.StatusCode)" }
         $items = @(($packages.Body | ConvertFrom-Json).items)
-        foreach ($name in @('api', 'sito')) {
+        foreach ($name in @('api', 'sito', 'db')) {
             $image = @($items | Where-Object { $_.name -eq $name })
             $signed = @($image | ForEach-Object { $_.tagDetails } | Where-Object { $_.name -eq $tag -and $_.signature -eq 'verified' -and $_.pushedBy.kind -eq 'job' -and $_.digest -match '^sha256:[0-9a-f]{64}$' })
             if ($signed.Count -lt 1) { throw "$name $tag non firmata dal job" }
@@ -135,8 +135,10 @@ function Initialize-E2ePilotDatabase {
     $password = 'e2e-' + [guid]::NewGuid().ToString('N')
     $stage = 'app postgres'
     try {
-        $db = Invoke-HttpRaw -Uri $api -Method 'POST' -Headers $headers -Body (@{ name = 'postgres'; image = 'docker.io/library/postgres:16'; port = 5432 } | ConvertTo-Json)
+        $db = Invoke-HttpRaw -Uri $api -Method 'POST' -Headers $headers -Body (@{ name = 'postgres'; image = "db:$($Context.Tag)"; port = 5432 } | ConvertTo-Json)
         if ($db.StatusCode -ne 202) { throw "creazione postgres: status $($db.StatusCode)" }
+        $pgdata = Invoke-HttpRaw -Uri "$api/postgres/variables/PGDATA" -Method 'PUT' -Headers $headers -Body (@{ value = '/var/lib/postgresql/data/pgdata' } | ConvertTo-Json)
+        if ($pgdata.StatusCode -ne 200) { throw "variabile PGDATA: status $($pgdata.StatusCode)" }
         $secret = Invoke-HttpRaw -Uri "$api/postgres/secrets/POSTGRES_PASSWORD" -Method 'PUT' -Headers $headers -Body (@{ value = $password } | ConvertTo-Json)
         if ($secret.StatusCode -ne 200) { throw "segreto postgres: status $($secret.StatusCode)" }
         Wait-E2ePilotServing -AppsApi $api -Name 'postgres' -Headers $headers
