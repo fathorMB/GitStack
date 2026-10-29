@@ -2677,8 +2677,34 @@ GL-78 deve pubblicare su origin il ramo `integrate/MR-n` e attendere l'esito del
 
 I domini propri delle app e i certificati caricati dal cliente stanno nel database, quindi entrano nel backup
 (la chiave privata del cliente vi è cifrata con il keyring di core, che sta nei Secret). Dopo il restore core
-riscrive i Secret TLS nel namespace del TLSStore di Traefik entro un minuto. L'archivio ACME di Traefik
+riscrive i Secret TLS nel namespace dedicato `<release>-certs` entro un minuto (il backup non salva né ripristina quel namespace: i Secret nascono dal database). L'archivio ACME di Traefik
 (`acme.json`, certificati Let's Encrypt) entra come `traefik-acme.tar` se esiste il volume persistente
 `traefik` in `kube-system` (installazione con Let's Encrypt); il restore lo rimette al suo posto con Traefik
 fermo e con i permessi originali (0600). Se la nuova installazione non ha quel volume, l'archivio ACME si salta
 con un avviso e Traefik riemette i certificati. L'archivio contiene la chiave dell'account ACME: cifra i backup (`--key-file`).
+
+#### Namespace dei certificati del cliente (GIT-494)
+
+Con le app accese il chart crea il namespace `<release>-certs` (di default `gitstack-certs`, valore `apps.certs.namespace`).
+Lì, e solo lì, core ha dei verbi sui Secret: vi scrive i Secret TLS `gitstack-domain-<id>` e il `TLSStore` `default`
+che li elenca (in tutto il cluster ne esiste uno solo). Su `kube-system` e sul namespace del release core non ha nessun
+verbo sui Secret. Con la CA interna il `defaultCertificate` del TLSStore è una copia del Secret `<release>-tls` che il chart
+crea da quello dell'installer (`lookup`) e che `gitstack-tls` tiene aggiornata a ogni rinnovo.
+
+Chi aveva già caricato certificati con una versione precedente (GIT-460, mai in una release) ha i Secret
+`gitstack-domain-*` nel namespace vecchio (quello del release con la CA interna, `kube-system` con Let's Encrypt).
+`gitstack upgrade` li sposta da solo: al primo giro core ricrea i Secret in `<release>-certs` dal database, poi
+l'upgrade cancella le copie vecchie, ma solo quelle che già esistono nel namespace nuovo, e il `TLSStore` `default` di
+`kube-system` se lo ha creato core (nessun `defaultCertificate`, solo certificati `gitstack-domain-*`). Il riepilogo
+elenca quello che resta. Se core non ha ancora ricreato un Secret, si rilancia `gitstack upgrade` dopo qualche minuto
+(è idempotente) oppure si cancella a mano quando il Secret compare nel namespace nuovo:
+
+```sh
+k3s kubectl -n <release>-certs get secrets -l gitstack.io/custom-domain-cert=true
+k3s kubectl -n <namespace-vecchio> delete secret <nome>
+k3s kubectl -n kube-system delete tlsstore default   # solo se non ha defaultCertificate e cita solo gitstack-domain-*
+```
+
+Se un `TLSStore` `default` resta in due namespace Traefik ne sceglie uno a caso e i certificati dei clienti smettono di
+servirsi: controlla con `k3s kubectl get tlsstores -A`. Il backup non salva né ripristina `<release>-certs`: dopo un
+restore core ricrea i Secret dal database.

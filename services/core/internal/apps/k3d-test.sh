@@ -51,6 +51,24 @@ export GITSTACK_TEST_WORKLOAD_ROLE=gitstack-app-workload
 answer=$(kubectl --kubeconfig "$work/kubeconfig-core" auth can-i delete secrets -n kube-system 2>&1 || true)
 if [ "$answer" != "no" ]; then echo "KO: il SA di core può cancellare secrets fuori dai namespace delle app (can-i: $answer)"; exit 1; fi
 echo "ok: il SA di core non può cancellare secrets in kube-system"
+# GIT-494 (regressione di GIT-460): il Role dei certificati del cliente sta SOLO nel namespace dedicato
+# <release>-certs. Nessun verbo sui Secret di kube-system (k3s-serving) né del release ("default" qui:
+# Postgres, NATS, service secret, gitstack-tls); nel namespace dei certificati core gestisce i Secret ma
+# non li elenca.
+for verb in get create update delete list; do
+  for ns in kube-system default; do
+    answer=$(kubectl --kubeconfig "$work/kubeconfig-core" auth can-i "$verb" secrets -n "$ns" 2>&1 || true)
+    if [ "$answer" != "no" ]; then echo "KO: il SA di core può fare $verb sui secrets di $ns (can-i: $answer)"; exit 1; fi
+  done
+done
+echo "ok: il SA di core non ha nessun verbo sui secrets di kube-system né del namespace del release"
+for verb in get create update delete; do
+  answer=$(kubectl --kubeconfig "$work/kubeconfig-core" auth can-i "$verb" secrets -n gitstack-certs 2>&1 || true)
+  if [ "$answer" != "yes" ]; then echo "KO: il SA di core non può fare $verb sui secrets di gitstack-certs (can-i: $answer)"; exit 1; fi
+done
+answer=$(kubectl --kubeconfig "$work/kubeconfig-core" auth can-i list secrets -n gitstack-certs 2>&1 || true)
+if [ "$answer" != "no" ]; then echo "KO: il SA di core può elencare i secrets di gitstack-certs (can-i: $answer)"; exit 1; fi
+echo "ok: il SA di core gestisce i secrets dei certificati solo in gitstack-certs, senza list"
 # GIT-427: readPodMetrics (metrics.go) fa List su metrics.k8s.io/v1beta1 pods nel namespace
 # dell'app. Il permesso sta nel ruolo modello, legato per namespace: si crea un namespace di prova
 # col RoleBinding che crea il controller e si chiede a Kubernetes (SubjectAccessReview).

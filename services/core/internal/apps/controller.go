@@ -83,8 +83,9 @@ type Config struct {
 	// TraefikNamespace è il namespace dei pod dell'Ingress controller k3s: la NetworkPolicy delle app
 	// ammette l'ingresso solo da lì.
 	TraefikNamespace string
-	// TLSStoreNamespace è il namespace del TLSStore default letto da Traefik: dove stanno i Secret dei
-	// certificati del cliente (GIT-460). Vuoto = TraefikNamespace.
+	// TLSStoreNamespace è il namespace dei certificati del cliente (GIT-494: <release>-certs, creato dal chart):
+	// ci stanno i Secret TLS e il TLSStore default letto da Traefik. Il chart lo passa sempre; vuoto = TraefikNamespace
+	// (solo test: in un cluster vero core non ha verbi sui Secret di quel namespace).
 	TLSStoreNamespace string
 	// Gateway è la porta interna del gateway per le app (GIT-442); nil o incompleta = non configurata.
 	Gateway *GatewayAccess

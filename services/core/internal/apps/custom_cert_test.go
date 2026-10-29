@@ -227,8 +227,8 @@ func TestSyncCustomSecrets_SoloNamespaceTraefik(t *testing.T) {
 	}
 }
 
-// Con la CA interna il TLSStore `default` è quello del chart, nel namespace del release, e core è
-// configurato con quel namespace: dopo la sincronizzazione in tutto il cluster c'è UN SOLO TLSStore
+// Con la CA interna il TLSStore `default` è quello del chart, nel namespace dei certificati (GIT-494:
+// <release>-certs), e core è configurato con quel namespace: dopo la sincronizzazione in tutto il cluster c'è UN SOLO TLSStore
 // `default`, col defaultCertificate intatto e il nostro Secret in certificates; nessun Secret altrove.
 func TestSyncCustomSecrets_UnSoloTLSStoreDefaultNelNamespaceDelChart(t *testing.T) {
 	kube := fake.NewClientset()

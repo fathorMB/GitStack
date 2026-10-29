@@ -58,17 +58,30 @@ roleRef:
   kind: ClusterRole
   name: {{ $controller }}
 ---
-# Certificati del cliente per i domini propri (GIT-460, ADR 0002): il Secret TLS sta SOLO nel namespace del
-# TLSStore default letto da Traefik (include "gitstack.tlsStoreNamespace"): quello del release con la CA
-# interna (il chart vi crea il TLSStore, e in tutto il cluster ne esiste uno solo), quello di Traefik
-# altrimenti; mai nei namespace delle app. Role (non ClusterRole) in quel namespace: Secret senza list (RBAC
-# non filtra una list per nome: core non deve poter elencare i Secret del namespace) e il TLSStore default
-# che li elenca. Il nome dei Secret e' gitstack-domain-<id dominio>; core toglie solo quelli che il TLSStore cita.
+# Certificati del cliente per i domini propri (GIT-460, GIT-494, ADR 0002): il Secret TLS sta SOLO nel
+# namespace dedicato <release>-certs (include "gitstack.certsNamespace"), creato qui, dove sta anche il TLSStore
+# default letto da Traefik (in tutto il cluster ne esiste uno solo); mai nei namespace delle app, e mai in
+# kube-system o nel namespace del release: li' core non ha nessun verbo sui Secret (regressione di GIT-460, in cui
+# il Role stava nel namespace del TLSStore e dava a core i Secret di Postgres, NATS e k3s-serving).
+# Role (non ClusterRole) nel namespace dedicato: Secret senza list (RBAC non filtra una list per nome) e il
+# TLSStore default che li elenca. Il nome dei Secret e' gitstack-domain-<id dominio> e non e' noto a priori,
+# quindi niente resourceNames: il perimetro e' il namespace, che contiene solo certificati (i Secret di
+# gitstack-domain-* e la copia pubblica+chiave del certificato dell'installer, tls-copy-secret.yaml).
+# core toglie solo i Secret che il TLSStore cita. Il namespace non e' un namespace app: la
+# ValidatingAdmissionPolicy sotto impedisce a core di modificarlo o eliminarlo.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "gitstack.certsNamespace" . }}
+  labels:
+    {{- include "gitstack.labels" . | nindent 4 }}
+    gitstack.io/certs: "true"
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: {{ $controller }}-certs
-  namespace: {{ include "gitstack.tlsStoreNamespace" . }}
+  namespace: {{ include "gitstack.certsNamespace" . }}
   labels:
     {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
 rules:
@@ -83,7 +96,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: {{ $controller }}-certs
-  namespace: {{ include "gitstack.tlsStoreNamespace" . }}
+  namespace: {{ include "gitstack.certsNamespace" . }}
   labels:
     {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
 subjects:

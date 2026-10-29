@@ -776,6 +776,13 @@ apps:
   # Dominio delle app (H2, lo stesso di --apps-domain e di config.yaml apps_domain): l'indirizzo
   # di un'app è <app>-<repo>-<owner>.<dominio>. Obbligatorio con apps.enabled=true.
   domain: ""
+  # Certificati del cliente per i domini propri (v3-c, GIT-460, GIT-494): namespace dedicato, creato dal
+  # chart, in cui core scrive i Secret TLS gitstack-domain-<id> e il TLSStore `default` che li elenca
+  # (in tutto il cluster ne esiste uno solo). E' l'unico namespace in cui core ha dei verbi sui Secret:
+  # mai kube-system e mai il namespace del release. Vuoto = <release>-certs. Non puo' iniziare con
+  # gitstack-app- (perimetro dei namespace delle app).
+  certs:
+    namespace: ""
   # Forward-auth del login (H6, GIT-347, docs/apps-login.md): core crea da solo nel namespace di
   # ogni app i Middleware Traefik `gitstack-strip` e `gitstack-auth`, che chiama il gateway su
   # /_appauth/verify. authUrl è GITSTACK_CORE_APPS_AUTH_URL; vuoto = il Service del gateway della
