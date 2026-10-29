@@ -115,8 +115,10 @@ gs app domain rm sito shop.retail.it
 gs app access sito --mode login
 ```
 
-If the administrator turns **Public apps** off, your app keeps running but is
-no longer reachable (its routes are removed) and it keeps its `public` choice,
-domains and certificates; everything comes back when the switch is turned on
-again. In the meantime `gs app access sito --mode login` makes it reachable
-again behind the GitStack login.
+If the administrator turns **Public apps** off, your app keeps running and is
+no longer reachable from the internet (the automatic public address and your
+custom domains are removed). Inside the installation it stays reachable at its
+usual address, but behind the GitStack login, as if its mode were `login`. It
+keeps its `public` choice, domains and certificates; the public routes and the
+domains come back by themselves when the switch is turned on again, with
+nothing for you to do.

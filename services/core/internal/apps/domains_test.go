@@ -288,3 +288,55 @@ func TestEnsureRoute_HostDeiDominiPropri(t *testing.T) {
 		t.Fatalf("interruttore spento: nessuna rotta, trovata %s", got)
 	}
 }
+
+// GIT-488 (ADR 0002): con l'interruttore spento l'app public resta raggiungibile col login solo
+// sull'indirizzo automatico; i domini propri non ci sono, e tornano da soli alla riaccensione.
+func TestEnsureRoute_InterruttoreSpentoTogliDominiPropriEPoiTornano(t *testing.T) {
+	ctx := context.Background()
+	app, ver := testApp()
+	app.Access = "public"
+	dyn := fakeDynamic()
+	on := true
+	c := &Controller{dyn: dyn, cfg: Config{AppsDomain: "apps.example.com", AuthURL: "http://gw/_appauth/verify", AuthSecret: "s"},
+		publicOn:  func(context.Context) (bool, error) { return on, nil },
+		domainsOf: func(context.Context, store.App) ([]string, error) { return []string{"shop.retail.it"}, nil }}
+	ns := Namespace(app.ID)
+	state := func() (string, []string) {
+		t.Helper()
+		u, err := dyn.Resource(routeGVR).Namespace(ns).Get(ctx, WorkloadName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		routes, _, _ := unstructured.NestedSlice(u.Object, "spec", "routes")
+		r := routes[0].(map[string]any)
+		var mws []string
+		for _, m := range r["middlewares"].([]any) {
+			mws = append(mws, m.(map[string]any)["name"].(string))
+		}
+		return r["match"].(string), mws
+	}
+	auto := "Host(`" + *app.AddressLabel + ".apps.example.com`)"
+	if err := c.ensureRoute(ctx, app, ver.Config); err != nil {
+		t.Fatal(err)
+	}
+	if m, mws := state(); m != auto+" || Host(`shop.retail.it`)" || len(mws) != 1 {
+		t.Fatalf("acceso: %s %v", m, mws)
+	}
+	on = false
+	if err := c.ensureRoute(ctx, app, ver.Config); err != nil {
+		t.Fatal(err)
+	}
+	if m, mws := state(); m != auto || len(mws) != 2 || mws[1] != MiddlewareAuth {
+		t.Fatalf("spento: solo indirizzo automatico con forward-auth, trovato %s %v", m, mws)
+	}
+	if _, err := dyn.Resource(routeGVR).Namespace(ns).Get(ctx, DomainsRouteName, metav1.GetOptions{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("spento: niente rotta dei domini propri: %v", err)
+	}
+	on = true
+	if err := c.ensureRoute(ctx, app, ver.Config); err != nil {
+		t.Fatal(err)
+	}
+	if m, mws := state(); m != auto+" || Host(`shop.retail.it`)" || len(mws) != 1 {
+		t.Fatalf("riacceso: dominio e rotta pubblica tornano, trovato %s %v", m, mws)
+	}
+}

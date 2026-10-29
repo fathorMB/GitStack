@@ -122,9 +122,10 @@ Switch **Public apps** off and confirm:
 - public apps stop being reachable from the internet: their routes (automatic
   address and custom domains) are removed, **without stopping or restarting
   the apps**;
-- the apps keep running but have **no route at all** (also not inside the
-  installation) until you turn the switch on again, or the repository admin
-  switches the app back to `login`;
+- the apps keep running and stay reachable **inside the installation**, behind
+  the GitStack login (as with the `login` mode), at their automatic address.
+  If the GitStack login for apps is not configured, or the switch cannot be
+  read, they have no route at all: the apps are never exposed by mistake;
 - every app keeps its `public` choice, its custom domains and its
   certificates, uploaded or issued. Turning the switch on again brings
   everything back without anyone redoing the setup;

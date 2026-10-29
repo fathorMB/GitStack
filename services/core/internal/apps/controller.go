@@ -822,7 +822,11 @@ func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.A
 	// resta salvato; alla riaccensione la rotta torna al prossimo giro. Nel dubbio (errore di lettura)
 	// la rotta non si crea e quella già esistente si toglie (fail-closed, GIT-457): mai esposta per
 	// sbaglio. L'errore di lettura resta al chiamante, che riprova al giro dopo.
+	// Interruttore spento (lettura riuscita): ADR 0002, l'app resta raggiungibile dentro l'installazione
+	// con la rotta dell'accesso `login` (forward-auth) sul dominio delle app, senza domini propri.
 	var readErr error
+	login := app.Access == "login"
+	degraded := false
 	if host != "" && app.Access == "public" {
 		on, err := c.publicAppsEnabled(ctx)
 		if err != nil {
@@ -830,7 +834,11 @@ func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.A
 			on = false
 		}
 		if !on {
-			host = ""
+			if readErr == nil && c.authConfigured() {
+				login, degraded = true, true
+			} else {
+				host = ""
+			}
 		}
 	}
 	if host == "" {
@@ -843,7 +851,6 @@ func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.A
 		}
 		return readErr
 	}
-	login := app.Access == "login"
 	// I Middleware prima della rotta: la rotta che li cita non deve mai esistere senza.
 	ns := c.dyn.Resource(middlewareGVR).Namespace(Namespace(app.ID))
 	if err := upsert(ctx, ns, BuildStripMiddleware(app.ID)); err != nil {
@@ -856,9 +863,12 @@ func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.A
 	} else if err := ns.Delete(ctx, MiddlewareAuth, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("middleware %s: %w", MiddlewareAuth, err)
 	}
-	extra, acmeHosts, err := c.domainHosts(ctx, app)
-	if err != nil {
-		return fmt.Errorf("lettura dei domini propri: %w", err)
+	var extra, acmeHosts []string
+	if !degraded {
+		var err error
+		if extra, acmeHosts, err = c.domainHosts(ctx, app); err != nil {
+			return fmt.Errorf("lettura dei domini propri: %w", err)
+		}
 	}
 	if err := upsert(ctx, routes, BuildRoute(app, host, login, extra...)); err != nil {
 		return err
