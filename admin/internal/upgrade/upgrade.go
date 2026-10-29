@@ -602,6 +602,7 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 	res.Outcome = Upgraded
 	res.add("Aggiornato da %s a %s: tutti i servizi sono sani.", o.Cfg.ImageTag, t.Tag)
 	o.removeLegacyServiceSecret(ctx, res, userServiceSecret)
+	o.migrateCustomCerts(ctx, res)
 	res.add("Backup preventivo conservato: %s", br.Path)
 	return res, nil
 }
@@ -644,6 +645,7 @@ func (o *Options) hardenOnly(ctx context.Context, res *Result, tag string) (*Res
 		// ha cancellato il Secret condiviso: lo si toglie ora (idempotente).
 		if !o.DryRun {
 			o.removeLegacyServiceSecret(ctx, res, "")
+			o.migrateCustomCerts(ctx, res)
 		}
 		return res, nil
 	}

@@ -56,7 +56,7 @@ con trattini possono infatti produrre la stessa label. La forma evita solo le co
 omonimi di owner diversi. Il controller crea una
 `IngressRoute` Traefik `websecure` verso il Service; chart e installer distribuiscono un
 wildcard `*.apps.<dominio-istanza>` firmato dalla CA interna. Il Secret TLS resta solo nel
-namespace Traefik, come `TLSStore` `default`; le IngressRoute dichiarano `tls: {}` e non ne
+namespace dedicato `<release>-certs` (GIT-494, non kube-system né il namespace del release), come `TLSStore` `default`; le IngressRoute dichiarano `tls: {}` e non ne
 ricevono una copia. La chiave CA resta sull'host, come nel TLS esistente. La prova k3d esercita
 esattamente questo percorso.
 
