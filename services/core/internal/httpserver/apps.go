@@ -254,6 +254,19 @@ func (s *apiServer) writeAppConflict(w http.ResponseWriter, err error) bool {
 		msg := "La quota delle app dell'owner non basta per le parti garantite."
 		if _, disk := ce.Missing["diskBytes"]; disk {
 			msg = "La quota disco dell'owner non basta per questo volume: mancano " + fmt.Sprint(ce.Missing["diskBytes"]) + " byte."
+		} else {
+			_, ownerCPU := ce.Missing["cpuMillis"]
+			_, ownerMemory := ce.Missing["memoryBytes"]
+			_, serverCPU := ce.Missing["reserveCpuMillis"]
+			_, serverMemory := ce.Missing["reserveMemoryBytes"]
+			ownerMissing := ownerCPU || ownerMemory
+			serverMissing := serverCPU || serverMemory
+			switch {
+			case serverMissing && !ownerMissing:
+				msg = "La riserva delle app del server non basta per le parti garantite."
+			case serverMissing && ownerMissing:
+				msg = "La quota delle app dell'owner e la riserva delle app del server non bastano per le parti garantite."
+			}
 		}
 		writeErrorDetails(w, http.StatusConflict, "insufficient_capacity", msg, map[string]any{
 			"owner":   ce.Owner,
