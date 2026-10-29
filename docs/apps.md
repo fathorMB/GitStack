@@ -81,9 +81,24 @@ deploy, riavvio o modifica. Ogni aggiunta o rimozione di un volume crea una nuov
 I volumi sono dati, non configurazione: un rollback ripristina immagine, variabili e nomi dei segreti ma non
 toglie né rimette volumi. GitStack non fa il dump di un database: per questo resta la procedura di chi lo gestisce.
 
+## Contesto di sicurezza e immagini PostgreSQL
+
+Ogni container di un'app perde tutte le capability (`drop: ALL`), non può aumentare i propri privilegi (`allowPrivilegeEscalation: false`) e usa il profilo seccomp `RuntimeDefault`. Per default può girare come root, ma sempre senza capability; con `restricted` è richiesto anche `runAsNonRoot`.
+
+Le immagini ufficiali come `postgres:16` e `postgis/postgis` possono partire come root e tentare poi `chmod` e il cambio utente con `gosu` o `su-exec`. Senza le capability necessarie il container può uscire subito con codice 1, entrare in `CrashLoopBackOff` e mostrare errori di `chmod` o messaggi come `failed switching to 'postgres': operation not permitted`.
+
+Per PostgreSQL costruisci nel repo un'immagine derivata che parta direttamente come utente `postgres`:
+
+```dockerfile
+FROM postgres:16
+USER postgres
+```
+
+Per PostGIS usa la corrispondente immagine `postgis/postgis` come base. Costruisci l'immagine con la CI del repo su `runs-on: gitstack-build` e pubblicala nel registry del repo: la CI la firma. Monta il volume su `/var/lib/postgresql/data` e imposta la variabile dell'app `PGDATA=/var/lib/postgresql/data/pgdata`: la radice del volume `local-path` non si può modificare con `chmod`, mentre PostgreSQL può creare e gestire la sottocartella. Un esempio completo è il passo del pilota in `deploy/test-vm/e2e/pilot/`, con `Dockerfile.db` e `workflow.yml` (GIT-381).
+
 ## Uscita delle app: internet aperto, rete privata chiusa (H16)
 
-Le app escono con le stesse regole di webhook e mirror (`pkg/egress`, C8), applicate dalla NetworkPolicy `app-isolation` del namespace dell'app, quindi valgono anche per un'immagine che gira come root:
+Le app escono con le stesse regole di webhook e mirror (`pkg/egress`, C8), applicate dalla NetworkPolicy `app-isolation` del namespace dell'app, quindi valgono anche per un'immagine che gira come root (vedi [contesto di sicurezza](#contesto-di-sicurezza-e-immagini-postgresql)):
 
 - **internet** è aperto (IPv4 e IPv6; se l'istanza ha un proxy, passa da lì);
 - la **rete privata** (RFC 1918, ULA, CGNAT) è chiusa: un'app non raggiunge il database o il server di posta della tua LAN;
