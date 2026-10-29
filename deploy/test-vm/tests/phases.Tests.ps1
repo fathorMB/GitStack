@@ -143,6 +143,80 @@ $script:Life = @{ Serving = 1; Calls = @(); Cmds = @(); FailProbe = 'GS_EXPECT=e
 $rows = Test-E2eAppLifecycle -BaseUrl 'https://10.0.0.9' -CaPath 'C:\ca\ca.crt' -Data $data -Ctx $ctxLife -WorkDir (Join-Path $script:OutDir 'life-ko')
 Assert-That 'ciclo: v2 non servita, riga 4 ko, 5 e 6 non verificate, nessun rollback ne eliminazione' ($rows[2].Ok -and -not $rows[3].Ok -and -not $rows[4].Ok -and -not $rows[5].Ok -and $rows[3].Detail -like '*serve v2*' -and $rows[4].Detail -like 'non verificato*' -and $script:Life.Rollback -eq '' -and @($script:Life.Calls | Where-Object { $_ -like 'DELETE *' }).Count -eq 0)
 Assert-That 'ciclo: al primo errore parte la diagnostica dei pod' (@($script:Life.Cmds | Where-Object { $_ -like "*GS_APP_NS='gitstack-app-a1'*bash*diag" }).Count -eq 1)
+
+# Installer con Pebble (GIT-468): server ACME e email passano all'installer come variabili d'ambiente.
+$cmdAcme = Get-E2eInstallCommand -InstallRef 'abc123' -AppsDomain 'apps.e2e.test' -AcmeCaServer 'https://pebble:14000/dir'
+Assert-That 'install: con Pebble passa GITSTACK_ACME_CA_SERVER e l''email prima di bash' ($cmdAcme -like '*GITSTACK_ADMIN_REQUIRED=1 GITSTACK_ACME_CA_SERVER=https://pebble:14000/dir GITSTACK_TLS_EMAIL=e2e@example.test bash -s -- --enable-apps --apps-domain apps.e2e.test')
+Assert-That 'install: senza Pebble il comando e quello di prima' ($cmdApps -notlike '*ACME*')
+
+# Test-E2eAppPublic e Test-E2eAppPublicAfterRestore (GIT-468): API e VM finte.
+$script:AppsDomain = 'apps.e2e.test'
+$script:VmIp = '10.0.0.9'
+$script:Pub = @{ On = $false; Calls = @(); Cmds = @(); DomainStatus = 'verified'; CertState = 'valid'; Issuer = 'Pebble Intermediate CA 1a2b'; Fp = 'AA:BB:CC'; Running = 'running' }
+function Copy-FromVm {
+    param($RemotePath, $LocalPath, $TimeoutSeconds)
+    Set-Content -LiteralPath (Join-Path $LocalPath 'pebble-root.pem') -Value '-----BEGIN CERTIFICATE-----' -Encoding ascii
+    return [pscustomobject]@{ ExitCode = 0; StdOut = ''; StdErr = '' }
+}
+function Invoke-HttpRaw {
+    param([string]$Uri, [string]$Method = 'GET', [string]$Body, [hashtable]$Headers, [string]$Cookie, [int]$TimeoutSec = 20)
+    $script:Pub.Calls += "$Method $Uri"
+    $json = { param($o) [pscustomobject]@{ StatusCode = 200; Body = ($o | ConvertTo-Json -Depth 6) } }
+    $settings = { @{ publicAppsEnabled = $script:Pub.On; signedImagesOnly = $false; restricted = $false; maxPerApp = @{ cpuMillis = 2000; memoryBytes = 1073741824 }; logRetention = @{ days = 7; maxBytes = 1073741824 }; letsEncrypt = @{ enabled = $script:Pub.On; acmeEmail = 'e2e@example.test' } } }
+    if ($Uri -like '*/api/healthz') { return [pscustomobject]@{ StatusCode = 200; Body = '{"status":"ok"}' } }
+    if ($Uri -like '*/auth/login') { return [pscustomobject]@{ StatusCode = 200; Cookie = 'gst_session=x'; Body = '{"mustChangePassword":false}' } }
+    if ($Uri -like '*/admin/apps/settings') {
+        if ($Method -eq 'PUT') { $script:Pub.On = [bool](($Body | ConvertFrom-Json).publicAppsEnabled) }
+        return (& $json (& $settings))
+    }
+    if ($Uri -like '*/versions?per_page=1') { return (& $json @{ items = @(@{ number = 1; state = 'serving' }) }) }
+    if ($Method -eq 'POST' -and $Uri -like '*/apps') { return [pscustomobject]@{ StatusCode = 202; Body = '{"app":{"id":"p1"},"version":{"number":1}}' } }
+    if ($Method -eq 'PUT' -and $Uri -like '*/access') {
+        if (-not $script:Pub.On) { return [pscustomobject]@{ StatusCode = 422; Body = '{"code":"public_apps_disabled"}' } }
+        return (& $json @{ mode = 'public'; publicAppsEnabled = $true })
+    }
+    if ($Method -eq 'GET' -and $Uri -like '*/access') { return (& $json @{ mode = 'public'; publicAppsEnabled = $script:Pub.On }) }
+    if ($Method -eq 'POST' -and $Uri -like '*/domains') { return [pscustomobject]@{ StatusCode = 201; Body = (@{ domain = 'shop-pub.e2e.test'; status = 'pending_dns'; dns = @{ type = 'CNAME'; value = 'e2epub-r1-u1.apps.e2e.test' } } | ConvertTo-Json -Depth 4) } }
+    if ($Method -eq 'POST' -and $Uri -like '*/recheck') { return (& $json @{ status = 'verified' }) }
+    if ($Uri -like '*/domains/shop-pub.e2e.test') { return (& $json @{ domain = 'shop-pub.e2e.test'; status = $script:Pub.DomainStatus; certificate = @{ mode = 'letsencrypt'; state = $script:Pub.CertState; issuer = $script:Pub.Issuer; validUntil = '2031-01-01T00:00:00Z' } }) }
+    if ($Uri -like '*/domains') { return (& $json @{ items = @(@{ domain = 'shop-pub.e2e.test'; status = 'verified' }) }) }
+    if ($Uri -like '*/apps/e2epub') { return (& $json @{ address = 'https://e2epub-r1-u1.apps.e2e.test'; status = $script:Pub.Running }) }
+    return [pscustomobject]@{ StatusCode = 404; Body = '' }
+}
+function Invoke-VmSsh {
+    param($Command, $TimeoutSeconds)
+    $script:Pub.Cmds += $Command
+    if ($Command -like '*cert-info*') { return [pscustomobject]@{ ExitCode = 0; StdOut = "fp=$($script:Pub.Fp)`nissuer=CN=Pebble Intermediate CA 1a2b`nsan=DNS:shop-pub.e2e.test`n"; StdErr = '' } }
+    $out = 'STEP ok x'
+    foreach ($s in 'pebble-up', 'traefik-acme', 'dns-set', 'pebble-root', 'domain-open', 'domain-closed', 'address-open') { if ($Command -like "*gs-app-public.sh $s") { $out = "STEP ok $s" } }
+    if ($Command -like '*push-web*') { $out = 'STEP ok push-web' }
+    elseif ($Command -like '*probe-anon*') { $out = 'STEP ok login-anon' }
+    elseif ($Command -like '*probe-auth*') { $out = 'STEP ok serve-e2e-web-v1' }
+    return [pscustomobject]@{ ExitCode = 0; StdOut = $out; StdErr = '' }
+}
+$ctxPub = [pscustomobject]@{ RegistryToken = 'regtok' }
+$dataPub = [pscustomobject]@{ User = 'u1'; Repo = 'r1'; Token = 'tok' }
+$script:E2eAcmeOn = $false
+$rows = Test-E2eAppPublic -BaseUrl 'https://10.0.0.9' -Data $dataPub -Ctx $ctxPub -AdminPassword 'pw' -InstallRef 'abc123' -WorkDir (Join-Path $script:OutDir 'pub')
+Assert-That 'pubblica: tredici righe, tutte ok' (@($rows).Count -eq 13 -and @($rows | Where-Object { -not $_.Ok }).Count -eq 0)
+Assert-That 'pubblica: l''installer rilanciato ha Pebble e il restore lo rifara' ($script:E2eAcmeOn -and $script:E2ePubCtx.Fingerprint -eq 'AA:BB:CC' -and $script:E2ePubCtx.Domain -eq 'shop-pub.e2e.test')
+Assert-That 'pubblica: public rifiutato a interruttore spento e poi accettato' (@($script:Pub.Calls | Where-Object { $_ -like 'PUT *e2epub/access' }).Count -eq 2)
+Assert-That 'pubblica: l''interruttore va spento, acceso, spento, acceso' ((@($script:Pub.Calls | Where-Object { $_ -like 'PUT *admin/apps/settings' }).Count) -eq 4 -and $script:Pub.On)
+Assert-That 'pubblica: la zona DNS di prova riceve etichetta, dominio delle app e dominio proprio' (@($script:Pub.Cmds | Where-Object { $_ -like "*GS_APPS_DOMAIN='apps.e2e.test' GS_APP_LABEL='e2epub-r1-u1' GS_PUB_DOMAIN='shop-pub.e2e.test'*dns-set" }).Count -eq 1)
+
+$script:Pub = @{ On = $false; Calls = @(); Cmds = @(); DomainStatus = 'verified'; CertState = 'error'; Issuer = 'Pebble'; Fp = 'AA:BB:CC'; Running = 'running' }
+$rows = Test-E2eAppPublic -BaseUrl 'https://10.0.0.9' -Data $dataPub -Ctx $ctxPub -AdminPassword 'pw' -InstallRef 'abc123' -WorkDir (Join-Path $script:OutDir 'pub-ko')
+Assert-That 'pubblica: certificato in error, riga 9 ko, 1-8 ok, 10-13 non verificate e nessuno spegnimento' ($rows[7].Ok -and -not $rows[8].Ok -and $rows[8].Detail -like '*certificato in error*' -and -not $rows[9].Ok -and $rows[12].Detail -like 'non verificato*' -and @($script:Pub.Calls | Where-Object { $_ -like 'PUT *admin/apps/settings' }).Count -eq 2)
+Assert-That 'pubblica: al primo errore parte la diagnostica di Pebble, Traefik e CoreDNS' (@($script:Pub.Cmds | Where-Object { $_ -like '*gs-app-public.sh diag' }).Count -eq 1)
+
+$script:Pub = @{ On = $true; Calls = @(); Cmds = @(); DomainStatus = 'verified'; CertState = 'valid'; Issuer = 'Pebble Intermediate CA 1a2b'; Fp = 'AA:BB:CC'; Running = 'running' }
+$ctxAfter = [pscustomobject]@{ AppName = 'e2epub'; Domain = 'shop-pub.e2e.test'; Label = 'e2epub-r1-u1'; Fingerprint = 'AA:BB:CC'; RootLocal = (Join-Path $script:OutDir 'pub\pebble-root.pem'); Expect = 'e2e-web-v1' }
+$rows = Test-E2eAppPublicAfterRestore -BaseUrl 'https://10.0.0.9' -Data $dataPub -Ctx $ctxAfter -WorkDir (Join-Path $script:OutDir 'pub-dopo')
+Assert-That 'dopo il restore: quattro righe, tutte ok' (@($rows).Count -eq 4 -and @($rows | Where-Object { -not $_.Ok }).Count -eq 0)
+$script:Pub.Fp = 'DD:EE:FF'
+$rows = Test-E2eAppPublicAfterRestore -BaseUrl 'https://10.0.0.9' -Data $dataPub -Ctx $ctxAfter -WorkDir (Join-Path $script:OutDir 'pub-dopo-ko')
+Assert-That 'dopo il restore: certificato servito diverso, riga 3 ko e la 4 non verificata' ($rows[1].Ok -and -not $rows[2].Ok -and $rows[2].Detail -like '*diversa*' -and -not $rows[3].Ok)
+
 Remove-Item -LiteralPath $script:OutDir -Recurse -Force -ErrorAction SilentlyContinue
 
 if ($failures.Count -gt 0) {
