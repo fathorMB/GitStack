@@ -4,7 +4,7 @@
 # esiste gia', altrimenti un `kubectl apply` la lascerebbe senza i metadati di helm e il successivo
 # `helm upgrade` fallirebbe con «invalid ownership metadata».
 # Uso: ./deploy/tests/tls_certs_copy_test.sh
-# shellcheck disable=SC2034,SC1090,SC2317,SC2329
+# shellcheck disable=SC2034,SC1090,SC1091,SC2317,SC2329
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TLS="${HERE}/../gitstack-tls.sh"
