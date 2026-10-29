@@ -817,7 +817,7 @@ function Main {
             if ($uLogin.StatusCode -ne 200 -or -not $uLogin.Cookie) { throw "login utente di prova: status $($uLogin.StatusCode) $($uLogin.Body)" }
             $uck = $uLogin.Cookie
             $expires = (Get-Date).ToUniversalTime().AddHours(2).ToString('yyyy-MM-ddTHH:mm:ssZ')
-            $mkTok = Invoke-HttpRaw -Uri "$baseUrl/api/v1/user/tokens" -Method 'POST' -Cookie $uck -Body (@{ name = 'e2e'; scopes = @('read:resource', 'write:resource'); expiresAt = $expires } | ConvertTo-Json)
+            $mkTok = Invoke-HttpRaw -Uri "$baseUrl/api/v1/user/tokens" -Method 'POST' -Cookie $uck -Body (@{ name = 'e2e'; scopes = @('read:resource', 'write:resource', 'read:registry', 'write:registry'); expiresAt = $expires } | ConvertTo-Json)
             if ($mkTok.StatusCode -ne 201) { throw "creazione token: status $($mkTok.StatusCode) $($mkTok.Body)" }
             $gitToken = ($mkTok.Body | ConvertFrom-Json).token
             if (-not $gitToken) { throw "creazione token: risposta senza 'token'" }
