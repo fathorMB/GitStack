@@ -16,6 +16,17 @@ function Get-JsonField {
     return [string]$prop.Value
 }
 
+# Legge un campo testuale (StdOut, Body...) di un risultato senza lanciare se il
+# risultato o il campo sono $null: ritorna il testo senza spazi ai bordi, '' se
+# manca (GIT-509: ref assente -> uscita vuota -> StdOut $null, e .Trim() lanciava).
+function Get-TrimmedText {
+    param($Result, [string]$Property = 'StdOut')
+    if ($null -eq $Result) { return '' }
+    $prop = $Result.PSObject.Properties[$Property]
+    if ($null -eq $prop -or $null -eq $prop.Value) { return '' }
+    return ([string]$prop.Value).Trim()
+}
+
 # Aspetta che una richiesta che passa dal servizio git (GET dei branch del
 # repo, letti da core sul servizio git) risponda 200: dopo mirror-enable e
 # mirror-disable git e core sono in rollout, e una sonda che tocca solo core e

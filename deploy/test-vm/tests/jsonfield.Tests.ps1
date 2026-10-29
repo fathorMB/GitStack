@@ -84,6 +84,18 @@ $msg = ''
 try { Wait-GitServing -BaseUrl 'http://x' -Owner 'o' -Repo 'r' -TimeoutSeconds 1 -IntervalSeconds 0 } catch { $msg = $_.Exception.Message }
 Assert-That ($msg -match 'dopo 1 secondi' -and $msg -match 'ultimo status 503') "Wait-GitServing: timeout nel messaggio con timeout e ultimo status: '$msg'"
 
+# Get-TrimmedText (GIT-509): StdOut $null, poi vuoto, poi lo SHA, come nel ciclo di attesa di e9.
+$sha = '5db811500000000000000000000000000000abcd'
+$seq = @([pscustomobject]@{ ExitCode = 1; StdOut = $null }, [pscustomobject]@{ ExitCode = 0; StdOut = '' }, [pscustomobject]@{ ExitCode = 0; StdOut = "$sha`n" })
+$got = @(); foreach ($r in $seq) { $got += (Get-TrimmedText -Result $r) }
+Assert-That ($got[0] -eq '' -and $got[1] -eq '' -and $got[2] -eq $sha) "Get-TrimmedText: StdOut null -> '', vuoto -> '', SHA -> SHA senza a capo"
+Assert-That ((Get-TrimmedText -Result $null) -eq '') "Get-TrimmedText: risultato null -> ''"
+Assert-That ((Get-TrimmedText -Result ([pscustomobject]@{ A = 1 })) -eq '') "Get-TrimmedText: campo mancante -> ''"
+Assert-That ((Get-TrimmedText -Result ([pscustomobject]@{ Body = $null }) -Property 'Body').Contains('x') -eq $false) "Get-TrimmedText: Body null -> '' e .Contains non lancia"
+$loopOk = $false; $n = 0
+foreach ($r in $seq) { $n++; if ((Get-TrimmedText -Result $r) -eq $sha) { $loopOk = $true; break } }
+Assert-That ($loopOk -and $n -eq 3) "ciclo di attesa: continua su null e vuoto, esce allo SHA"
+
 if ($failures -gt 0) { Write-Host "$failures verifiche fallite"; exit 1 }
 Write-Host 'OK: tutte le verifiche passate'
 exit 0

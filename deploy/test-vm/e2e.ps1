@@ -1144,7 +1144,7 @@ function Main {
             $destUrl = "https://${MirrorAliasIp}:$e9Port/mirror.git"
             $mkMirror = Invoke-HttpRaw -Uri $mirrorsUrl -Method 'POST' -Headers $e9Bearer -Body (@{ url = $destUrl; username = $destUser; token = $destToken } | ConvertTo-Json)
             if ($mkMirror.StatusCode -ne 201) { throw "POST /mirrors: status $($mkMirror.StatusCode), corpo '$($mkMirror.Body)' $($mkMirror.Error)" }
-            if ($mkMirror.Body.Contains($destToken)) { throw "il token della destinazione compare nella risposta del POST /mirrors" }
+            if ((Get-TrimmedText -Result $mkMirror -Property 'Body').Contains($destToken)) { throw "il token della destinazione compare nella risposta del POST /mirrors" }
             $e9MirrorId = ($mkMirror.Body | ConvertFrom-Json).id
             if (-not $e9MirrorId) { throw "POST /mirrors: risposta senza 'id'" }
             $e9MirrorUrl = "$mirrorsUrl/$e9MirrorId"
@@ -1164,9 +1164,9 @@ function Main {
             }
             if ($mirrorState -ne 'in_sync') { throw "stato del mirror '$mirrorState' (atteso in_sync) dopo il primo push: $mirrorErr" }
             $lsMain = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('ls-remote', $httpsUrl, 'refs/heads/main')) -TimeoutSeconds 60
-            if ($lsMain.ExitCode -ne 0 -or $lsMain.StdOut.Trim() -notmatch '^([0-9a-f]{40})\s') { throw "ls-remote del repo sorgente: exit $($lsMain.ExitCode) $($lsMain.StdOut) $($lsMain.StdErr)" }
+            if ($lsMain.ExitCode -ne 0 -or (Get-TrimmedText -Result $lsMain) -notmatch '^([0-9a-f]{40})\s') { throw "ls-remote del repo sorgente: exit $($lsMain.ExitCode) $($lsMain.StdOut) $($lsMain.StdErr)" }
             $srcMain = $Matches[1]
-            $dstMain = (Invoke-RemoteHelper -RemoteArgs @('mirror-dest-ref', 'refs/heads/main') -TimeoutSeconds 30).StdOut.Trim()
+            $dstMain = Get-TrimmedText -Result (Invoke-RemoteHelper -RemoteArgs @('mirror-dest-ref', 'refs/heads/main') -TimeoutSeconds 30)
             if ($dstMain -ne $srcMain) { throw "main sulla destinazione '$dstMain', sulla sorgente '$srcMain'" }
 
             $e9Stage = 'push nuovo con un tag (via git.push)'
@@ -1179,21 +1179,26 @@ function Main {
                 $r = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + $g) -TimeoutSeconds 120
                 if ($r.ExitCode -ne 0) { throw "git $($g[2]) per il mirror: exit $($r.ExitCode) $($r.StdOut) $($r.StdErr)" }
             }
-            $newMain = (Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('-C', $w1, 'rev-parse', 'HEAD')) -TimeoutSeconds 30).StdOut.Trim()
-            $newTag = (Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('-C', $w1, 'rev-parse', 'refs/tags/v-e2e-mirror')) -TimeoutSeconds 30).StdOut.Trim()
+            $newMain = Get-TrimmedText -Result (Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('-C', $w1, 'rev-parse', 'HEAD')) -TimeoutSeconds 30)
+            $newTag = Get-TrimmedText -Result (Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('-C', $w1, 'rev-parse', 'refs/tags/v-e2e-mirror')) -TimeoutSeconds 30)
             if ($newMain -notmatch '^[0-9a-f]{40}$' -or $newTag -notmatch '^[0-9a-f]{40}$') { throw "SHA locali non leggibili: main '$newMain', tag '$newTag'" }
             $arrived = $false
             $dstMain2 = ''
             $dstTag2 = ''
             for ($i = 1; $i -le 24; $i++) {
-                $dstMain2 = (Invoke-RemoteHelper -RemoteArgs @('mirror-dest-ref', 'refs/heads/main') -TimeoutSeconds 30).StdOut.Trim()
-                $dstTag2 = (Invoke-RemoteHelper -RemoteArgs @('mirror-dest-ref', 'refs/tags/v-e2e-mirror') -TimeoutSeconds 30).StdOut.Trim()
+                # Ref assente o errore transitorio del helper: uscita vuota, si riprova.
+                try {
+                    $dstMain2 = Get-TrimmedText -Result (Invoke-RemoteHelper -RemoteArgs @('mirror-dest-ref', 'refs/heads/main') -TimeoutSeconds 30)
+                    $dstTag2 = Get-TrimmedText -Result (Invoke-RemoteHelper -RemoteArgs @('mirror-dest-ref', 'refs/tags/v-e2e-mirror') -TimeoutSeconds 30)
+                } catch {
+                    $dstMain2 = ''; $dstTag2 = ''
+                }
                 if ($dstMain2 -eq $newMain -and $dstTag2 -eq $newTag) { $arrived = $true; break }
                 Start-Sleep -Seconds 5
             }
             if (-not $arrived) { throw "dopo 2 minuti la destinazione ha main '$dstMain2' e tag '$dstTag2'; attesi '$newMain' e '$newTag'" }
             $finalMirror = Invoke-HttpRaw -Uri $e9MirrorUrl -Headers $e9Bearer
-            if ($finalMirror.StatusCode -ne 200 -or $finalMirror.Body.Contains($destToken)) { throw "GET del mirror: status $($finalMirror.StatusCode) oppure il token compare nel corpo" }
+            if ($finalMirror.StatusCode -ne 200 -or (Get-TrimmedText -Result $finalMirror -Property 'Body').Contains($destToken)) { throw "GET del mirror: status $($finalMirror.StatusCode) oppure il token compare nel corpo" }
         } catch {
             $e9Ok = $false
             $e9Details += "[$e9Stage] $($_.Exception.Message)"
