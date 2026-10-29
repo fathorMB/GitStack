@@ -241,15 +241,19 @@ address_open() {
   open_probe address-open "$GS_APP_HOST" "$GS_EXPECT" --cacert "$GS_CA"
 }
 
-# domain-closed: dopo lo spegnimento la rotta del dominio sparisce (Traefik risponde 404 col certificato di
-# default, quindi -k): ritenta finche' non c'e' piu' ne' 200 ne' il corpo dell'app, fino a 120 s.
+# domain-closed: dopo lo spegnimento la rotta del dominio sparisce e l'host ricade sull'ingress di GitStack
+# (certificato di default, quindi -k), che risponde 200 con la SPA di GitStack: e' ammesso. Il requisito e'
+# che il dominio non esponga piu' l'app, quindi passa quando il corpo non contiene GS_EXPECT, qualunque sia
+# lo status; ritenta fino a 120 s finche' il corpo contiene ancora l'app.
 domain_closed() {
-  local code="000" _
+  local code="000" _ kind
   if [ -z "${GS_DOMAIN:-}" ] || [ -z "${GS_EXPECT:-}" ]; then fail domain-closed "servono GS_DOMAIN e GS_EXPECT"; fi
   for _ in $(seq 1 24); do
     code="$(curl_to "$W/closed.out" "$GS_DOMAIN" -k)" || code="000"
-    if [ "$code" != 200 ] && ! grep -q "${GS_EXPECT}" "$W/closed.out" 2>/dev/null; then
-      echo "STEP ok domain-closed HTTP ${code}"
+    if ! grep -q "${GS_EXPECT}" "$W/closed.out" 2>/dev/null; then
+      kind="altro corpo"
+      if grep -q '<title>GitStack</title>' "$W/closed.out" 2>/dev/null; then kind="SPA di GitStack"; fi
+      echo "STEP ok domain-closed HTTP ${code} (${kind})"
       return 0
     fi
     sleep 5

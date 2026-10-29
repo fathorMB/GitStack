@@ -768,6 +768,8 @@ function Test-E2eAppPublic {
     foreach ($n in $names) { $rows += [pscustomobject]@{ Name = $n; Ok = $false; Detail = 'non verificato' } }
     $script:E2ePubCtx = $null
     $i = 0
+    $switchOff = $false
+    $adminCk = $null
     try {
         $apps = [string]$script:AppsDomain
         if (-not $apps -or $apps.IndexOf('.') -lt 1) { throw "dominio delle app '$apps' non utilizzabile per la zona di prova" }
@@ -883,6 +885,7 @@ function Test-E2eAppPublic {
 
         # 11. interruttore spento: dominio non esposto
         $i = 10
+        $switchOff = $true
         $offAgain = Set-E2ePublicAppsSwitch -BaseUrl $BaseUrl -AdminCookie $adminCk -On $false
         if ($offAgain.StatusCode -ne 200 -or ($offAgain.Body | ConvertFrom-Json).publicAppsEnabled) { throw "PUT admin/apps/settings (spento): status $($offAgain.StatusCode) $($offAgain.Body)" }
         [void](Invoke-E2ePubVm -VmEnv "GS_DOMAIN='$pubDomain' GS_EXPECT=$expectBody" -Sub 'domain-closed' -Marker 'STEP ok domain-closed' -LogPath (Join-Path $WorkDir 'domain-closed.log') -TimeoutSeconds 300)
@@ -908,6 +911,7 @@ function Test-E2eAppPublic {
         $i = 12
         $reOn = Set-E2ePublicAppsSwitch -BaseUrl $BaseUrl -AdminCookie $adminCk -On $true
         if ($reOn.StatusCode -ne 200 -or -not ($reOn.Body | ConvertFrom-Json).publicAppsEnabled) { throw "PUT admin/apps/settings (riacceso): status $($reOn.StatusCode) $($reOn.Body)" }
+        $switchOff = $false
         $dom = Wait-E2eAppDomain -DomainUrl $domainUrl -Headers $h -Status 'verified' -CertState 'valid' -TimeoutSeconds 180
         [void](Invoke-E2ePubVm -VmEnv "GS_DOMAIN='$pubDomain' GS_ROOT=$rootRemote GS_EXPECT=$expectBody" -Sub 'domain-open' -Marker 'STEP ok domain-open' -LogPath (Join-Path $WorkDir 'domain-open-riacceso.log') -TimeoutSeconds 300)
         $ci2 = Invoke-E2ePubVm -VmEnv "GS_DOMAIN='$pubDomain'" -Sub 'cert-info' -Marker 'fp=' -LogPath (Join-Path $WorkDir 'cert-info-riacceso.log')
@@ -922,6 +926,17 @@ function Test-E2eAppPublic {
             Write-E2eText -Path (Join-Path $WorkDir 'diag.log') -Stdout $dg.StdOut -Stderr $dg.StdErr
         } catch {
             Write-Log "ATTENZIONE: diagnostica di Pebble/Traefik/CoreDNS non raccolta: $($_.Exception.Message)"
+        }
+    } finally {
+        # i-pub dipende dall'interruttore acceso: se e stato spento al passo 11 e il passo si e fermato
+        # prima del 13, lo si riaccende. Un errore qui va nel log e non copre quello originale.
+        if ($switchOff) {
+            try {
+                $back = Set-E2ePublicAppsSwitch -BaseUrl $BaseUrl -AdminCookie $adminCk -On $true
+                if ($back.StatusCode -ne 200) { Write-Log "ATTENZIONE: interruttore delle app pubbliche non riacceso: status $($back.StatusCode) $($back.Body)" }
+            } catch {
+                Write-Log "ATTENZIONE: interruttore delle app pubbliche non riacceso: $($_.Exception.Message)"
+            }
         }
     }
     return , $rows
@@ -1034,8 +1049,13 @@ function Test-E2eAppAfterRestore {
     $rows = @()
     foreach ($n in $names) { $rows += [pscustomobject]@{ Name = $n; Ok = $false; Detail = 'non verificato' } }
     $expectedVolume = "ripristino del volume data dell'app $($Data.User)/$($Data.Repo)/$script:E2eAppName"
-    $rows[7].Ok = $RestoreLog.Contains('ripristino dei volumi delle app (1)') -and $RestoreLog.Contains($expectedVolume)
-    $rows[7].Detail = if ($rows[7].Ok) { '' } else { 'mancano le righe del restore del volume nel log' }
+    $hasCount = [regex]::IsMatch([string]$RestoreLog, 'ripristino dei volumi delle app \(([1-9][0-9]*)\)')
+    $hasVolume = ([string]$RestoreLog).Contains($expectedVolume)
+    $rows[7].Ok = $hasCount -and $hasVolume
+    $missing = @()
+    if (-not $hasCount) { $missing += "manca la riga 'ripristino dei volumi delle app (N)' con N>=1" }
+    if (-not $hasVolume) { $missing += "manca la riga '$expectedVolume'" }
+    $rows[7].Detail = if ($rows[7].Ok) { '' } else { "log del restore: $($missing -join '; ')" }
     try {
         $h = Get-E2eBearer -Data $Data
         $appUrl = "$BaseUrl/api/v1/repos/$($Data.User)/$($Data.Repo)/apps/$script:E2eAppName"

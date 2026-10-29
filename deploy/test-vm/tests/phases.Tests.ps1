@@ -98,6 +98,15 @@ Assert-That 'volume escluso: il file ancora presente dopo il restore fallisce, i
 $script:Mock.Inspect = "deploy=yes`nimage=10.0.0.9/u1/r1/e2eimg:v2`nvar=match`nsecret=match`nvolume=match`nscratch=unmounted`n"
 $rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'scratch2') -RestoreLog "ripristino dei volumi delle app (1) ripristino del volume data dell'app u1/r1/e2eapp"
 Assert-That 'volume escluso: non montato non vale come vuoto' (-not $rows[9].Ok)
+$script:Mock.Inspect = "deploy=yes`nimage=10.0.0.9/u1/r1/e2eimg:v2`nvar=match`nsecret=match`nvolume=match`nscratch=empty`n"
+$rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'vol2') -RestoreLog "ripristino dei volumi delle app (2)`nripristino del volume data dell'app u1/r1/e2eapp"
+Assert-That 'volume: il conteggio (2) passa' ($rows[7].Ok)
+$rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'vol0') -RestoreLog "ripristino del volume data dell'app u1/r1/e2eapp"
+Assert-That 'volume: senza la riga del conteggio ko, il Detail la nomina' (-not $rows[7].Ok -and $rows[7].Detail -like '*(N)*' -and $rows[7].Detail -notlike '*ripristino del volume data*')
+$rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'vol3') -RestoreLog 'ripristino dei volumi delle app (2)'
+Assert-That 'volume: senza la riga del volume ko, il Detail la nomina' (-not $rows[7].Ok -and $rows[7].Detail -like '*ripristino del volume data*' -and $rows[7].Detail -notlike '*(N)*')
+$rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'vol4') -RestoreLog "ripristino dei volumi delle app (0)`nripristino del volume data dell'app u1/r1/e2eapp"
+Assert-That 'volume: conteggio (0) non basta' (-not $rows[7].Ok)
 $script:Mock.V3 = 200; $script:Mock.V1 = 404; $script:Mock.Status = 'starting'
 $script:Mock.Inspect = "deploy=yes`nimage=10.0.0.9/u1/r1/e2eimg:v1`nvar=missing`nsecret=mismatch`n"
 $rows = Test-E2eAppAfterRestore -BaseUrl 'https://10.0.0.9' -Data $data -Ctx $ctx -WorkDir (Join-Path $script:OutDir 'b')
@@ -188,6 +197,7 @@ function Invoke-VmSsh {
     param($Command, $TimeoutSeconds)
     $script:Pub.Cmds += $Command
     if ($Command -like '*cert-info*') { return [pscustomobject]@{ ExitCode = 0; StdOut = "fp=$($script:Pub.Fp)`nissuer=CN=Pebble Intermediate CA 1a2b`nsan=DNS:shop-pub.e2e.test`n"; StdErr = '' } }
+    if ($script:Pub.FailClosed -and $Command -like '*gs-app-public.sh domain-closed') { return [pscustomobject]@{ ExitCode = 1; StdOut = 'STEP FAIL domain-closed: finto'; StdErr = '' } }
     $out = 'STEP ok x'
     foreach ($s in 'pebble-up', 'traefik-acme', 'dns-set', 'pebble-root', 'domain-open', 'domain-closed', 'address-open') { if ($Command -like "*gs-app-public.sh $s") { $out = "STEP ok $s" } }
     if ($Command -like '*push-web*') { $out = 'STEP ok push-web' }
@@ -217,6 +227,30 @@ Assert-That 'dopo il restore: quattro righe, tutte ok' (@($rows).Count -eq 4 -an
 $script:Pub.Fp = 'DD:EE:FF'
 $rows = Test-E2eAppPublicAfterRestore -BaseUrl 'https://10.0.0.9' -Data $dataPub -Ctx $ctxAfter -WorkDir (Join-Path $script:OutDir 'pub-dopo-ko')
 Assert-That 'dopo il restore: certificato servito diverso, riga 3 ko e la 4 non verificata' ($rows[1].Ok -and -not $rows[2].Ok -and $rows[2].Detail -like '*diversa*' -and -not $rows[3].Ok)
+
+# GIT-508: se il passo 11 spegne l'interruttore e poi un passo 11-13 fallisce, l'interruttore si riaccende.
+$script:SwitchCalls = @()
+$script:SwitchReOnThrows = $false
+function Set-E2ePublicAppsSwitch {
+    param([string]$BaseUrl, [string]$AdminCookie, [bool]$On)
+    $script:SwitchCalls += $On
+    $script:Pub.On = $On
+    if ($On -and $script:SwitchReOnThrows -and $script:SwitchCalls.Count -ge 3) { throw 'riaccensione finta fallita' }
+    return [pscustomobject]@{ StatusCode = 200; Body = (@{ publicAppsEnabled = $On; letsEncrypt = @{ enabled = $true; acmeEmail = 'e2e@example.test' } } | ConvertTo-Json -Depth 4) }
+}
+$script:Pub = @{ On = $false; Calls = @(); Cmds = @(); DomainStatus = 'verified'; CertState = 'valid'; Issuer = 'Pebble Intermediate CA 1a2b'; Fp = 'AA:BB:CC'; Running = 'running'; FailClosed = $true }
+$rows = Test-E2eAppPublic -BaseUrl 'https://10.0.0.9' -Data $dataPub -Ctx $ctxPub -AdminPassword 'pw' -InstallRef 'abc123' -WorkDir (Join-Path $script:OutDir 'pub-finally')
+Assert-That 'pubblica: errore al passo 11, riga 11 ko con l''errore originale' (-not $rows[10].Ok -and $rows[10].Detail -like '*domain-closed*')
+Assert-That 'pubblica: errore al passo 11, l''interruttore e riacceso come ultima chiamata (-On $true)' ($script:SwitchCalls.Count -ge 2 -and $script:SwitchCalls[-1] -eq $true -and $script:SwitchCalls[-2] -eq $false)
+$script:SwitchCalls = @()
+$script:SwitchReOnThrows = $true
+$rows = Test-E2eAppPublic -BaseUrl 'https://10.0.0.9' -Data $dataPub -Ctx $ctxPub -AdminPassword 'pw' -InstallRef 'abc123' -WorkDir (Join-Path $script:OutDir 'pub-finally2')
+Assert-That 'pubblica: se la riaccensione fallisce l''errore originale resta nel Detail' (-not $rows[10].Ok -and $rows[10].Detail -like '*domain-closed*' -and $rows[10].Detail -notlike '*riaccensione*' -and $script:SwitchCalls[-1] -eq $true)
+$script:Pub.FailClosed = $false
+$script:SwitchCalls = @()
+$script:SwitchReOnThrows = $false
+$rows = Test-E2eAppPublic -BaseUrl 'https://10.0.0.9' -Data $dataPub -Ctx $ctxPub -AdminPassword 'pw' -InstallRef 'abc123' -WorkDir (Join-Path $script:OutDir 'pub-finally3')
+Assert-That 'pubblica: esito pieno, nessuna riaccensione in piu (acceso, spento, acceso)' (@($rows | Where-Object { -not $_.Ok }).Count -eq 0 -and ($script:SwitchCalls -join ',') -eq 'False,True,False,True')
 
 Remove-Item -LiteralPath $script:OutDir -Recurse -Force -ErrorAction SilentlyContinue
 
