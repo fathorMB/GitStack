@@ -149,7 +149,7 @@ function Save-E2ePilotDiagnostics {
     if (-not $app -or $app.id -notmatch '^[0-9a-f-]{36}$') { Write-Log 'pilot diagnostica: id app non valido'; return '' }
     $namespace = 'gitstack-app-' + $app.id
     $previous = ''
-    foreach ($entry in @(@('pods.txt', 'get pods -o wide'), @('describe.txt', 'describe pods'), @('events.txt', 'get events --sort-by=.lastTimestamp'), @('previous.txt', 'logs deploy/app --all-containers --previous --tail=200'), @('current.txt', 'logs deploy/app --all-containers --tail=200'))) {
+    foreach ($entry in @(@('pods.txt', 'get pods -o wide'), @('describe.txt', 'describe pods'), @('events.txt', 'get events --sort-by=.lastTimestamp'), @('previous.txt', 'logs deploy/app -c app --previous --tail=200'), @('current.txt', 'logs deploy/app --all-containers --tail=200'))) {
         try {
             $result = Invoke-VmSsh -Command "sudo kubectl -n $namespace $($entry[1])" -TimeoutSeconds 60
             Set-Content -LiteralPath (Join-Path $dir $entry[0]) -Value $result.StdOut -Encoding utf8
