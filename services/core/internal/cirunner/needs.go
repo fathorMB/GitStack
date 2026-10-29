@@ -290,7 +290,7 @@ func exprEnd(s string) int {
 	return -1
 }
 
-// skipString ritorna la posizione dopo la stringa 'literal' che inizia in i ('' e' un apice).
+// skipString ritorna la posizione dopo la stringa 'literal' che inizia in i (due apici di fila sono un apice).
 func skipString(s string, i int) int {
 	for j := i + 1; j < len(s); j++ {
 		if s[j] != '\'' {
