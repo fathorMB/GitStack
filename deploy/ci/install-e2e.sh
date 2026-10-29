@@ -775,11 +775,11 @@ apps_run() {
 
 # apps-public <dominio> (GIT-457, H1/H6/ADR 0002): un'app `public` è raggiungibile senza login, le
 # intestazioni X-GitStack-* mandate dal client non arrivano all'app, public → login e l'interruttore
-# d'istanza spento riportano la rotta interna, nessun Secret TLS nel namespace dell'app.
+# d'istanza spento lasciano l'app interna col login (ADR 0002), nessun Secret TLS nel namespace dell'app.
 apps_public() {
   need E2E_HOST
   load_seed
-  local domain="${1:?dominio delle app}" host ns="" deadline code="" body="" orig_on
+  local domain="${1:?dominio delle app}" host ns="" deadline code="" body="" orig_on mws
   local resolve="${HOST}" jar="${STATE_DIR}/admin-public.jar" settings
 
   # Interruttore d'istanza: l'admin (cookie di sessione) legge i valori e li rimanda interi.
@@ -852,7 +852,8 @@ apps_public() {
   esac
   printf 'ok  apps-public: public → login riporta la rotta interna\n'
 
-  # e. interruttore spento con l'app ancora public: l'app non è più esposta.
+  # e. interruttore spento con l'app ancora public: non è più esposta, ma resta raggiungibile col login
+  # (IngressRoute `app` con forward-auth, nessuna rotta dei domini propri).
   set_mode public
   deadline=$((SECONDS + 180))
   while [ "${SECONDS}" -lt "${deadline}" ]; do
@@ -864,16 +865,22 @@ apps_public() {
   set_public_switch false
   deadline=$((SECONDS + 180))
   while [ "${SECONDS}" -lt "${deadline}" ]; do
-    if "${KUBECTL[@]}" -n "${ns}" get ingressroute app >/dev/null 2>&1; then
-      sleep 3
-    else
-      break
-    fi
+    noauth
+    case "${code}" in 301 | 302 | 303 | 307 | 308 | 401) break ;; esac
+    sleep 5
   done
-  if "${KUBECTL[@]}" -n "${ns}" get ingressroute app >/dev/null 2>&1; then fail "interruttore spento: l'IngressRoute di un'app public esiste ancora"; fi
-  noauth
   if [ "${code}" = 200 ]; then fail "interruttore spento: l'app risponde ancora 200 senza login"; fi
-  printf 'ok  apps-public: interruttore spento, app non esposta\n'
+  case "${code}" in
+    301 | 302 | 303 | 307 | 308 | 401) ;;
+    *) fail "interruttore spento: senza credenziali atteso 30x o 401, trovato '${code}'" ;;
+  esac
+  mws="$("${KUBECTL[@]}" -n "${ns}" get ingressroute app -o jsonpath='{.spec.routes[*].middlewares[*].name}')" || fail "interruttore spento: IngressRoute app assente"
+  case " ${mws} " in
+    *" gitstack-auth "*) ;;
+    *) fail "interruttore spento: la rotta app non ha il forward-auth (${mws})" ;;
+  esac
+  if "${KUBECTL[@]}" -n "${ns}" get ingressroute app-domains >/dev/null 2>&1; then fail "interruttore spento: esiste ancora la rotta dei domini propri"; fi
+  printf 'ok  apps-public: interruttore spento, app interna col login (ADR 0002)\n'
 
   # f. ADR 0002: nessun Secret TLS nel namespace dell'app.
   if "${KUBECTL[@]}" get secrets -A --field-selector type=kubernetes.io/tls -o jsonpath='{range .items[*]}{.metadata.namespace}{"\n"}{end}' | grep -qx "${ns}"; then
@@ -882,6 +889,18 @@ apps_public() {
   printf 'ok  apps-public: nessun Secret TLS nel namespace dell'"'"'app (ADR 0002)\n'
 
   set_public_switch "${orig_on}"
+  # Riaccensione: le route pubbliche tornano da sole, senza azioni dell'utente.
+  if [ "${orig_on}" = true ]; then
+    deadline=$((SECONDS + 180))
+    while [ "${SECONDS}" -lt "${deadline}" ]; do
+      noauth
+      if [ "${code}" = 200 ] && printf '%s' "${body}" | grep -q '^Hostname:'; then break; fi
+      sleep 5
+    done
+    if [ "${code}" != 200 ] || ! printf '%s' "${body}" | grep -q '^Hostname:'; then
+      fail "riaccensione: l'app public non è tornata raggiungibile senza login (codice '${code}')"
+    fi
+  fi
 }
 
 latest_backup() {
