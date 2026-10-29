@@ -125,6 +125,16 @@
       h-app ciclo. (GIT-355) prima del backup: app web e2elife, deploy di v1, login
          GitStack davanti all app (401 senza credenziale, corpo con il token), deploy
          di v2, rollback a v1, eliminazione: sei righe PASS/FAIL, pod in app-ciclo/diag.log.
+      h-pub, i-pub. (GIT-468, H1/H2) prima del backup, app pubblica e dominio proprio con
+         Pebble come server ACME e un resolver DNS di prova (zona nel CoreDNS del cluster,
+         e2e/gs-app-public.sh): l installer e rilanciato con GITSTACK_ACME_CA_SERVER, si
+         accende l interruttore delle app pubbliche, e2epub diventa public, si aggiunge e si
+         verifica un dominio, Pebble emette il certificato, l app risponde senza login sul
+         dominio; spento l interruttore il dominio non espone piu l app (l indirizzo
+         automatico chiede il login, ADR 0002), riacceso tutto torna. Tredici righe PASS/FAIL
+         (h-pub) e, dopo `gitstack restore`, quattro (i-pub): dominio, certificato e impronta
+         ancora quelli di prima, app raggiungibile. Log di Pebble/Traefik/CoreDNS in
+         app-pubblica/diag.log.
       j. (GIT-148, DF/F) reset, installazione del commit precedente
          (-PreviousRef, default: il primo genitore di -Ref), dati, restore
          di un archivio di un'altra versione rifiutato (exit 6), `gitstack
