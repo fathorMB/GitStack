@@ -2685,7 +2685,7 @@ con un avviso e Traefik riemette i certificati. L'archivio contiene la chiave de
 
 #### Namespace dei certificati del cliente (GIT-494)
 
-Con le app accese il chart crea il namespace `<release>-certs` (di default `gitstack-certs`, valore `apps.certs.namespace`).
+Con le app accese il chart crea il namespace `<release>-certs` (`gitstack-certs` con la release di default; il nome non è configurabile e non può cominciare con `gitstack-app-`).
 Lì, e solo lì, core ha dei verbi sui Secret: vi scrive i Secret TLS `gitstack-domain-<id>` e il `TLSStore` `default`
 che li elenca (in tutto il cluster ne esiste uno solo). Su `kube-system` e sul namespace del release core non ha nessun
 verbo sui Secret. Con la CA interna il `defaultCertificate` del TLSStore è una copia del Secret `<release>-tls` che il chart
@@ -2708,3 +2708,9 @@ k3s kubectl -n kube-system delete tlsstore default   # solo se non ha defaultCer
 Se un `TLSStore` `default` resta in due namespace Traefik ne sceglie uno a caso e i certificati dei clienti smettono di
 servirsi: controlla con `k3s kubectl get tlsstores -A`. Il backup non salva né ripristina `<release>-certs`: dopo un
 restore core ricrea i Secret dal database.
+
+**Rischio residuo.** Una ValidatingAdmissionPolicy del chart limita create, update e delete di core nel namespace
+dei certificati ai soli Secret `gitstack-domain-*`: core non può sostituire né cancellare la copia di `<release>-tls`
+(il certificato servito a chi si collega per IP). Il `get` però resta aperto, perché il nome dei Secret dei clienti non
+è noto a priori e RBAC non filtra per prefisso: core può quindi leggere la copia del certificato e della chiave del
+server in `<release>-certs` (non i Secret di kube-system né del release).

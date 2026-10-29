@@ -136,3 +136,13 @@ func TestMigrateCustomCerts_SenzaNamespaceNuovoNonFaNiente(t *testing.T) {
 		t.Fatalf("attesa una sola chiamata, trovate: %v", k.calls)
 	}
 }
+
+func TestMigrateCustomCerts_ReleaseGitstackAppNonFaNiente(t *testing.T) {
+	k := &certsKube{nsExists: true, secrets: map[string]bool{"default/gitstack-domain-a": true}}
+	o := newCertsOpts(k)
+	o.Cfg.Release = "gitstack-app-x"
+	o.migrateCustomCerts(context.Background(), &Result{})
+	if len(k.calls) != 0 || !k.secrets["default/gitstack-domain-a"] {
+		t.Fatalf("il namespace gitstack-app-* è il perimetro delle app: nessuna chiamata, trovate %v", k.calls)
+	}
+}

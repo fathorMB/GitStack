@@ -254,17 +254,18 @@ ensure_namespace() {
 }
 
 # GIT-494: con le app accese il TLSStore default sta nel namespace <release>-certs (creato dal chart) e il suo
-# defaultCertificate deve stare nello stesso namespace: si tiene li' una copia del Secret, aggiornata a ogni
-# rinnovo. Se il namespace non c'e' (app spente, o chart non ancora applicato) non si fa niente: il chart
-# crea la copia da solo con lookup.
+# defaultCertificate deve stare nello stesso namespace. La copia del Secret la CREA il chart (lookup): qui si
+# aggiorna a ogni rinnovo SOLO se esiste gia'. Crearla con kubectl apply la lascerebbe senza i metadati di
+# helm e il successivo `helm upgrade` fallirebbe con «invalid ownership metadata». Il nome del namespace e'
+# lo stesso del chart (gitstack.certsNamespace): sempre <release>-certs.
 publish_certs_copy() {
   local crt="$1" key="$2" new="$3" certs_ns current
-  certs_ns="${CERTS_NAMESPACE:-${RELEASE}-certs}"
-  kubectl_ get namespace "${certs_ns}" >/dev/null 2>&1 || return 0
-  current="$(kubectl_ -n "${certs_ns}" get secret "${SECRET_NAME}" -o jsonpath='{.data.tls\.crt}' 2>/dev/null || true)"
+  certs_ns="${RELEASE}-certs"
+  case "${certs_ns}" in gitstack-app-*) return 0 ;; esac
+  kubectl_ -n "${certs_ns}" get secret "${SECRET_NAME}" >/dev/null 2>&1 || return 0
+  current="$(kubectl_ -n "${certs_ns}" get secret "${SECRET_NAME}" -o jsonpath='{.data.tls.crt}' 2>/dev/null || true)"
   if [ "${current}" != "${new}" ]; then
-    kubectl_ -n "${certs_ns}" create secret tls "${SECRET_NAME}" --cert="${crt}" --key="${key}" \
-      --dry-run=client -o yaml | kubectl_ apply -f - >/dev/null
+    kubectl_ -n "${certs_ns}" create secret tls "${SECRET_NAME}" --cert="${crt}" --key="${key}"       --dry-run=client -o yaml | kubectl_ apply -f - >/dev/null
     log "Copia del Secret in ${certs_ns}/${SECRET_NAME} aggiornata (TLSStore default)."
   fi
 }

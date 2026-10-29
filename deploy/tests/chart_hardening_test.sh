@@ -429,9 +429,15 @@ if [ "$(certs_rb_ns)" = "namespace:gitstack-certs" ]; then ok; else bad "TLSStor
 if [ -z "$(no_secret_verbs_outside gitstack-certs)" ]; then ok; else bad "TLSStore (CA interna): nessun Role fuori da gitstack-certs (né prova-ns né kube-system)"; fi
 if [ "$(traefik_ns_env)" = 'value:"kube-system"' ]; then ok; else bad "TLSStore (CA interna): GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE deve restare kube-system (NetworkPolicy delle app)"; fi
 if [ "$(tlsstore_ns_env)" = 'value:"gitstack-certs"' ]; then ok; else bad "TLSStore (CA interna): GITSTACK_CORE_APPS_TLSSTORE_NAMESPACE deve essere gitstack-certs"; fi
-# (c) namespace scelto dal cliente (apps.certs.namespace): lo seguono TLSStore, Role ed env.
-OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test --set apps.certs.namespace=altri-certs --set ingress.enabled=true --set ingress.tls.enabled=true --set ingress.tls.secretName=gitstack-tls)" || { bad "helm template (apps.certs.namespace) fallito"; exit 1; }
-if [ "$(docs TLSStore | grep -E '^  namespace: ' | tr -d ' ')" = "namespace:altri-certs" ] && [ "$(certs_role_ns)" = "namespace:altri-certs" ] && [ "$(tlsstore_ns_env)" = 'value:"altri-certs"' ]; then ok; else bad "apps.certs.namespace: TLSStore, Role ed env devono seguire il namespace scelto"; fi
+# (c) il namespace dei certificati non e' configurabile e non puo' cominciare con gitstack-app-
+# (perimetro dei namespace delle app): una release gitstack-app-x si ferma.
+if helm template gitstack-app-x "${CHART}" --set apps.enabled=true --set apps.domain=apps.acme.test >/dev/null 2>&1; then bad "release gitstack-app-x: il chart doveva fermarsi"; else ok; fi
+expect_has "release gitstack-app-x: messaggio del guard" "$(helm template gitstack-app-x "${CHART}" --set apps.enabled=true --set apps.domain=apps.acme.test 2>&1)" "non puo' iniziare con gitstack-app-"
+# (c2) la ValidatingAdmissionPolicy limita i Secret di core nel namespace dei certificati a gitstack-domain-*.
+vap="$(docs ValidatingAdmissionPolicy)"
+expect_has "VAP: regola sui Secret" "${vap}" "resources: [\"secrets\"]"
+expect_has "VAP: i Secret nel namespace dei certificati sono solo gitstack-domain-*" "${vap}" "startsWith('gitstack-domain-')"
+expect_has "VAP: l'espressione cita il namespace dei certificati" "${vap}" 'request.namespace != "gitstack-certs"'
 # (d) app spente: nessun namespace dei certificati e nessun Role; il TLSStore dell'installer resta nel namespace del release.
 OUT="$(render --namespace prova-ns --set ingress.enabled=true --set ingress.tls.enabled=true --set ingress.tls.secretName=gitstack-tls)" || { bad "helm template (app spente) fallito"; exit 1; }
 if [ "$(docs TLSStore | grep -E '^  namespace: ' | tr -d ' ')" = "namespace:prova-ns" ] && [ -z "$(docs Namespace)" ]; then ok; else bad "app spente: il TLSStore resta nel namespace del release e il chart non crea namespace"; fi

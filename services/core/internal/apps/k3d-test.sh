@@ -69,6 +69,17 @@ done
 answer=$(kubectl --kubeconfig "$work/kubeconfig-core" auth can-i list secrets -n gitstack-certs 2>&1 || true)
 if [ "$answer" != "no" ]; then echo "KO: il SA di core può elencare i secrets di gitstack-certs (can-i: $answer)"; exit 1; fi
 echo "ok: il SA di core gestisce i secrets dei certificati solo in gitstack-certs, senza list"
+# GIT-494: la VAP del chart limita i Secret scrivibili da core in gitstack-certs a gitstack-domain-*
+# (la copia di gitstack-tls, defaultCertificate del TLSStore, non e' sostituibile da core). dry-run=server
+# passa da RBAC e admission senza creare niente.
+if kubectl --kubeconfig "$work/kubeconfig-core" create secret generic prova -n gitstack-certs --dry-run=server >/dev/null 2>&1; then
+  echo "KO: il SA di core può creare in gitstack-certs un Secret che non è gitstack-domain-*"; exit 1
+fi
+echo "ok: il SA di core non può creare Secret fuori da gitstack-domain-* in gitstack-certs"
+if ! kubectl --kubeconfig "$work/kubeconfig-core" create secret generic gitstack-domain-prova -n gitstack-certs --dry-run=server >/dev/null 2>"$work/vap-domain.err"; then
+  echo "KO: il SA di core non può creare gitstack-domain-prova in gitstack-certs ($(cat "$work/vap-domain.err"))"; exit 1
+fi
+echo "ok: il SA di core può creare gitstack-domain-* in gitstack-certs"
 # GIT-427: readPodMetrics (metrics.go) fa List su metrics.k8s.io/v1beta1 pods nel namespace
 # dell'app. Il permesso sta nel ruolo modello, legato per namespace: si crea un namespace di prova
 # col RoleBinding che crea il controller e si chiede a Kubernetes (SubjectAccessReview).

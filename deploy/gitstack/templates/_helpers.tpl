@@ -448,7 +448,9 @@ ServiceAccount di core: ci-dispatcher se la CI è accesa (stesso account, un sol
 
 {{/* GIT-494: namespace dedicato ai certificati del cliente (apps.enabled): ci stanno solo il TLSStore default e i Secret TLS (gitstack-domain-<id>, più la copia del certificato dell'installer per il defaultCertificate). Core ha i verbi sui Secret solo qui, mai in kube-system né nel namespace del release. Non deve iniziare con gitstack-app-: è il perimetro dei namespace delle app. */}}
 {{- define "gitstack.certsNamespace" -}}
-{{- default (printf "%s-certs" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-") .Values.apps.certs.namespace -}}
+{{- $ns := printf "%s-certs" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- if hasPrefix "gitstack-app-" $ns }}{{ fail (printf "il namespace dei certificati (%s) non puo' iniziare con gitstack-app-: e' il perimetro dei namespace delle app, scegli un altro nome di release" $ns) }}{{- end -}}
+{{- $ns -}}
 {{- end -}}
 
 {{/* GIT-460, GIT-494: namespace del TLSStore default letto da Traefik (in tutto il cluster ne esiste uno solo). Con le app accese è il namespace dei certificati, dove il chart crea il TLSStore (TLS dell'installer) o core (Let's Encrypt); con le app spente è il namespace del release e nessuno scrive Secret. */}}

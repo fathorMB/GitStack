@@ -159,6 +159,7 @@ rules:
 # modello in kube-system o cambiare le label di un namespace di sistema. La policy restringe SOLO
 # il ServiceAccount di core (matchCondition) ai namespace delle app: nome gitstack-app-* e label
 # gitstack.io/managed-app=true (sull'oggetto in CREATE/UPDATE, sul vecchio oggetto in UPDATE/DELETE).
+# GIT-494: nel namespace dei certificati core scrive solo Secret gitstack-domain-*.
 # I RoleBinding ammessi: solo nei namespace delle app, solo verso il ruolo modello, solo per il
 # ServiceAccount di core. Richiede Kubernetes >= 1.30 (ValidatingAdmissionPolicy GA, come ci-build).
 apiVersion: admissionregistration.k8s.io/v1
@@ -185,6 +186,10 @@ spec:
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE"]
         resources: ["services"]
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["secrets"]
   matchConditions:
     - name: solo-il-serviceaccount-di-core
       expression: >-
@@ -215,6 +220,13 @@ spec:
         (request.namespace.startsWith('gitstack-app-') && has(namespaceObject.metadata.labels) &&
          'gitstack.io/managed-app' in namespaceObject.metadata.labels && namespaceObject.metadata.labels['gitstack.io/managed-app'] == 'true')
       message: "core può creare Service solo nei namespace gitstack-app-* marcati gitstack.io/managed-app=true"
+    # GIT-494: nel namespace dei certificati core gestisce SOLO i Secret gitstack-domain-*: la copia del
+    # certificato dell'installer (defaultCertificate del TLSStore) non e' scrivibile da core. Il get resta
+    # aperto (il nome dei Secret non e' noto a priori): rischio residuo documentato in operations.md.
+    - expression: >-
+        request.resource.resource != 'secrets' || request.namespace != {{ include "gitstack.certsNamespace" . | quote }} ||
+        (request.operation == 'DELETE' ? oldObject.metadata.name : object.metadata.name).startsWith('gitstack-domain-')
+      message: "nel namespace dei certificati core può scrivere solo Secret gitstack-domain-*"
     # H15: l'unico ExternalName ammesso è l'alias di un'app sorella, cioè il Service `app` di un altro
     # namespace gitstack-app-* e non un nome esterno (niente uscita verso host a scelta via DNS).
     - expression: >-

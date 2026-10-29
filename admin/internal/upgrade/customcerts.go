@@ -28,13 +28,25 @@ const (
 	traefikNS        = "kube-system"
 )
 
-func (o *Options) certsNamespace() string { return o.Cfg.Release + "-certs" }
+// certsNamespace è lo stesso nome del chart (gitstack.certsNamespace) e di gitstack-tls.sh: sempre
+// <release>-certs, senza manopole. Con un nome che comincia con gitstack-app- (perimetro delle app, il chart
+// si ferma) ritorna "" e la migrazione non fa niente.
+func (o *Options) certsNamespace() string {
+	ns := o.Cfg.Release + "-certs"
+	if strings.HasPrefix(ns, "gitstack-app-") {
+		return ""
+	}
+	return ns
+}
 
 // migrateCustomCerts toglie i Secret e il TLSStore dei certificati del cliente rimasti nei namespace
 // vecchi. Non è mai fatale e non fa niente se non c'è niente da togliere.
 func (o *Options) migrateCustomCerts(ctx context.Context, res *Result) {
 	env := []string{"KUBECONFIG=" + o.Cfg.Kubeconfig}
 	newNS := o.certsNamespace()
+	if newNS == "" {
+		return
+	}
 	kc := func(args ...string) (string, error) {
 		out, err := o.Runner.Run(ctx, env, "k3s", append([]string{"kubectl"}, args...)...)
 		return string(out), err
