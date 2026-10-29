@@ -836,6 +836,26 @@ apps_public() {
   if printf '%s' "${body}" | grep -qi '^X-Gitstack-Email: x@y'; then fail "X-GitStack-Email del client è arrivata all'app"; fi
   printf 'ok  apps-public: senza login 200, intestazioni X-GitStack-* del client tolte\n'
 
+  # a2. GIT-489: un nome sotto il dominio delle app senza nessuna app dietro cade nella route di riserva
+  # e risponde 404 «App non disponibile», non la web UI. Con qualche tentativo: Traefik può essere in ritardo.
+  local missing_out missing_host="nessuna.${domain}"
+  missing_out="$(mktemp)"
+  deadline=$((SECONDS + 60))
+  while :; do
+    code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${missing_host}:443:${resolve}" -o "${missing_out}" -w '%{http_code}' "https://${missing_host}/" 2>/dev/null || true)"
+    if [ "${code}" = 404 ] && grep -q 'App non disponibile' "${missing_out}"; then break; fi
+    [ "${SECONDS}" -lt "${deadline}" ] || break
+    sleep 3
+  done
+  if [ "${code}" != 404 ] || ! grep -q 'App non disponibile' "${missing_out}"; then
+    printf 'ERRORE: https://%s/ doveva dare 404 «App non disponibile», trovato %s\n' "${missing_host}" "${code:-nessuna risposta}" >&2
+    head -c 500 "${missing_out}" >&2 || true
+    rm -f "${missing_out}"
+    exit 1
+  fi
+  rm -f "${missing_out}"
+  printf 'ok  apps-public: nome senza app %s -> 404 App non disponibile\n' "${missing_host}"
+
   ns="$(app_namespace "${host}" 120)" || fail "namespace dell'app pub non trovato (IngressRoute con ${host})"
 
   # d. public → login: la rotta interna torna (30x o 401 senza credenziali).
