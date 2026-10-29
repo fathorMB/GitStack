@@ -91,11 +91,25 @@ function Invoke-E2ePilotMirror {
         $stage = 'immagini firmate'
         $packages = Invoke-HttpRaw -Uri "$api/packages" -Headers $headers
         if ($packages.StatusCode -ne 200) { throw "packages: status $($packages.StatusCode)" }
+        # GIT-507: la risposta grezza resta nella cartella del giro per la diagnosi.
+        $outVar = Get-Variable -Name OutDir -Scope Script -ErrorAction SilentlyContinue
+        if ($outVar -and $outVar.Value) {
+            try { Set-Content -LiteralPath (Join-Path $outVar.Value 'pilot-packages.json') -Value $packages.Body -Encoding utf8 } catch { }
+        }
         $items = @(($packages.Body | ConvertFrom-Json).items)
         foreach ($name in @('api', 'sito', 'db')) {
-            $image = @($items | Where-Object { $_.name -eq $name })
+            # GIT-507: core dà name = owner/repo/immagine (packageToAPI), non il solo nome dell'immagine.
+            $fullName = "$Owner/$repo/$name"
+            $image = @($items | Where-Object { $_.name -eq $fullName })
             $signed = @($image | ForEach-Object { $_.tagDetails } | Where-Object { $_.name -eq $tag -and $_.signature -eq 'verified' -and $_.pushedBy.kind -eq 'job' -and $_.digest -match '^sha256:[0-9a-f]{64}$' })
-            if ($signed.Count -lt 1) { throw "$name $tag non firmata dal job" }
+            if ($signed.Count -lt 1) {
+                if ($image.Count -eq 0) {
+                    $present = (@($items | ForEach-Object { $_.name }) -join ', ')
+                    throw "$name $tag non firmata dal job: immagine $fullName assente, name presenti: [$present]"
+                }
+                $rowsText = @($image | ForEach-Object { $_.tagDetails } | ForEach-Object { "name=$($_.name) digest=$($_.digest) signature=$($_.signature) pushedBy.kind=$($_.pushedBy.kind)" }) -join '; '
+                throw "$name $tag non firmata dal job: tagDetails [$rowsText]"
+            }
             Add-StepResult -Name "pilot 2c. immagine $name firmata dal job" -Ok $true -Detail $signed[0].digest
         }
         $script:PilotContext = [pscustomobject]@{ Owner = $Owner; Repo = $repo; Tag = $tag; Sha = $sha; Token = $Token }

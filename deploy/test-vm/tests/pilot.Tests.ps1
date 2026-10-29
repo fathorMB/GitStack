@@ -3,6 +3,8 @@ $script:rows = @()
 $script:sha = 'a' * 40
 $script:digest = 'b' * 64
 $script:unsigned = $false
+$script:pusherKind = 'job'
+$script:imagePrefix = 'alice/pilot-123/'
 $script:probeFail = $false
 $script:siteMode = $false
 $script:showIssues = $false
@@ -68,7 +70,8 @@ function Invoke-HttpRaw {
     elseif ($Uri -like '*/actions/runs') { '{"items":[{"id":"run1","event":"push","ref":"refs/tags/v1.0.0","sha":"' + $script:sha + '","status":"completed","conclusion":"success","jobs":[{"runnerType":"internal_pod","status":"completed","conclusion":"success"}]}]}' }
     elseif ($Uri -like '*/packages') {
         $signature = if ($script:unsigned) { 'unverified' } else { 'verified' }
-        '{"items":[{"name":"api","tagDetails":[{"name":"v1.0.0","signature":"verified","pushedBy":{"kind":"job"},"digest":"sha256:' + $script:digest + '"}]},{"name":"sito","tagDetails":[{"name":"v1.0.0","signature":"verified","pushedBy":{"kind":"job"},"digest":"sha256:' + $script:digest + '"}]},{"name":"db","tagDetails":[{"name":"v1.0.0","signature":"' + $signature + '","pushedBy":{"kind":"job"},"digest":"sha256:' + $script:digest + '"}]}]}'
+        $p = $script:imagePrefix
+        '{"items":[{"name":"' + $p + 'api","tagDetails":[{"name":"v1.0.0","signature":"verified","pushedBy":{"kind":"job"},"digest":"sha256:' + $script:digest + '"}]},{"name":"' + $p + 'sito","tagDetails":[{"name":"v1.0.0","signature":"verified","pushedBy":{"kind":"job"},"digest":"sha256:' + $script:digest + '"}]},{"name":"' + $p + 'db","tagDetails":[{"name":"v1.0.0","signature":"' + $signature + '","pushedBy":{"kind":"' + $script:pusherKind + '"},"digest":"sha256:' + $script:digest + '"}]}]}'
     } else { '{"visibility":"private"}' }
     [pscustomobject]@{ StatusCode = $status; Body = $response }
 }
@@ -80,7 +83,26 @@ $script:rows = @(); $script:cleanup = @(); $script:unsigned = $true
 Invoke-E2ePilotMirror -BaseUrl 'https://example.invalid' -Owner 'alice' -Token 'test' -Suffix '123' -AliasIp '192.168.250.10' -OriginPort 8443
 if ($script:PilotContext -or @($script:rows | Where-Object { -not $_.Ok -and $_.Name -eq 'pilot: immagini firmate' }).Count -ne 1) { throw 'unsigned image accepted' }
 if ($script:cleanup -notcontains 'mirror-disable' -or $script:cleanup -notcontains 'mirror-dest-stop') { throw 'pilot cleanup missing after failure' }
-Write-Host '[PASS] pilot mirror: successo, immagine non firmata e pulizia'
+$unsignedRow = @($script:rows | Where-Object { $_.Name -eq 'pilot: immagini firmate' })[0]
+if ($unsignedRow.Detail -notmatch 'db v1.0.0' -or $unsignedRow.Detail -notmatch 'name=v1.0.0' -or $unsignedRow.Detail -notmatch 'signature=unverified' -or $unsignedRow.Detail -notmatch 'pushedBy.kind=job' -or $unsignedRow.Detail -notmatch ('digest=sha256:' + $script:digest)) { throw "unsigned detail: $($unsignedRow.Detail)" }
+$script:rows = @(); $script:unsigned = $false; $script:pusherKind = 'user'
+Invoke-E2ePilotMirror -BaseUrl 'https://example.invalid' -Owner 'alice' -Token 'test' -Suffix '123' -AliasIp '192.168.250.10' -OriginPort 8443
+$userRow = @($script:rows | Where-Object { -not $_.Ok })[0]
+if ($script:PilotContext -or $userRow.Detail -notmatch 'signature=verified' -or $userRow.Detail -notmatch 'pushedBy.kind=user') { throw "pushedBy user detail: $($userRow.Detail)" }
+$script:rows = @(); $script:pusherKind = 'job'; $script:imagePrefix = 'altro/repo/'
+Invoke-E2ePilotMirror -BaseUrl 'https://example.invalid' -Owner 'alice' -Token 'test' -Suffix '123' -AliasIp '192.168.250.10' -OriginPort 8443
+$missingRow = @($script:rows | Where-Object { -not $_.Ok })[0]
+if ($script:PilotContext -or $missingRow.Detail -notmatch 'assente' -or $missingRow.Detail -notmatch 'altro/repo/api') { throw "missing image detail: $($missingRow.Detail)" }
+$script:imagePrefix = 'alice/pilot-123/'
+$script:OutDir = Join-Path ([System.IO.Path]::GetTempPath()) ('pilot-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $script:OutDir | Out-Null
+$script:rows = @()
+Invoke-E2ePilotMirror -BaseUrl 'https://example.invalid' -Owner 'alice' -Token 'test' -Suffix '123' -AliasIp '192.168.250.10' -OriginPort 8443
+$saved = Join-Path $script:OutDir 'pilot-packages.json'
+if (-not $script:PilotContext -or -not (Test-Path -LiteralPath $saved) -or (Get-Content -LiteralPath $saved -Raw) -notmatch 'alice/pilot-123/api') { throw 'pilot-packages.json not saved' }
+Remove-Item -LiteralPath $script:OutDir -Recurse -Force
+Remove-Variable -Name OutDir -Scope Script
+Write-Host '[PASS] pilot mirror: successo, immagine non firmata, pushedBy user, immagine assente, pilot-packages.json e pulizia'
 $script:rows = @(); $script:probeFail = $false
 $ctx = [pscustomobject]@{ Owner = 'alice'; Repo = 'pilot'; Tag = 'v1'; Token = 'test' }
 if (-not (Initialize-E2ePilotDatabase -BaseUrl 'https://example.invalid' -Context $ctx)) { throw 'pilot database setup failed' }
