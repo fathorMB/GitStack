@@ -25,26 +25,39 @@ func TestMigration0044_WebhookDeploymentEvent(t *testing.T) {
 	if _, err := pool.Exec(ctx, `INSERT INTO core.repositories (resource_id, owner_type, owner_id, name) VALUES ($1, 'user', $2, 'w')`, repo, owner); err != nil {
 		t.Fatal(err)
 	}
-	insert := func(events ...string) error {
+	insert := func(events ...string) (uuid.UUID, error) {
+		id := uuid.New()
 		_, err := pool.Exec(ctx, `INSERT INTO core.webhooks (id, scope, repo_id, url, events, created_by)
-			VALUES ($1, 'repo', $2, 'https://hooks.example.com/x', $3, $4)`, uuid.New(), repo, events, owner)
-		return err
+			VALUES ($1, 'repo', $2, 'https://hooks.example.com/x', $3, $4)`, id, repo, events, owner)
+		return id, err
 	}
-	if err := insert("deployment", "push"); err != nil {
+	retained, err := insert("deployment", "push")
+	if err != nil {
 		t.Fatalf("il webhook deployment deve essere accettato: %v", err)
 	}
-	if err := insert("deploy"); err == nil {
+	singleEvent, err := insert("deployment")
+	if err != nil {
+		t.Fatalf("il webhook con il solo evento deployment deve essere accettato: %v", err)
+	}
+	if _, err := insert("deploy"); err == nil {
 		t.Error("un evento sconosciuto deve essere rifiutato")
 	}
 
 	if err := migrate.Down(ctx, pool, dsn, 11); err != nil {
 		t.Fatalf("down 0044: %v", err)
 	}
-	if err := insert("deployment"); err == nil {
+	if _, err := insert("deployment"); err == nil {
 		t.Error("dopo il down 0044 il webhook deployment non è più ammesso")
 	}
-	var n int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.webhooks WHERE 'deployment' = ANY(events)`).Scan(&n); err != nil || n != 0 {
-		t.Fatalf("il down deve togliere deployment dai webhook: %d %v", n, err)
+	var exists bool
+	if err := pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM core.webhooks WHERE id = $1)`, singleEvent).Scan(&exists); err != nil || exists {
+		t.Fatalf("il down deve eliminare il webhook iscritto solo a deployment: exists=%v err=%v", exists, err)
+	}
+	var events []string
+	if err := pool.QueryRow(ctx, `SELECT events FROM core.webhooks WHERE id = $1`, retained).Scan(&events); err != nil {
+		t.Fatalf("il webhook con più eventi deve restare: %v", err)
+	}
+	if len(events) != 1 || events[0] != "push" {
+		t.Fatalf("il webhook deve conservare solo push, eventi: %v", events)
 	}
 }

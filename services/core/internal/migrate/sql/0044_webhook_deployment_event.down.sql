@@ -1,6 +1,8 @@
 -- Torna all'elenco della 0030 (senza deployment). Come per la 0030, le consegne di deployment si tolgono
--- e i webhook che restavano solo con questo evento non passano il vincolo: si tolgono gli eventi.
+-- e i webhook che restavano solo con questo evento vengono eliminati.
 DELETE FROM core.webhook_deliveries WHERE event = 'deployment';
+DELETE FROM core.webhooks
+	WHERE events = ARRAY['deployment']::TEXT[];
 UPDATE core.webhooks SET events = array_remove(events, 'deployment')
 	WHERE events && ARRAY['deployment']::TEXT[];
 ALTER TABLE core.webhook_deliveries DROP CONSTRAINT IF EXISTS webhook_deliveries_event_check;
