@@ -14,6 +14,9 @@ $script:publicApps = $false
 $script:cleanup = @()
 $script:dbCreate = $null
 $script:pgdataValue = $null
+$script:diagMode = ''
+$script:diagCommands = @()
+function Write-Log { param($Message) }
 function Add-StepResult { param($Name, $Ok, $Detail) $script:rows += [pscustomobject]@{ Name = $Name; Ok = $Ok; Detail = $Detail } }
 function Start-Sleep { param($Seconds) }
 function Copy-ToVm { param($LocalPath, $RemotePath, $TimeoutSeconds) [pscustomobject]@{ ExitCode = 0 } }
@@ -24,6 +27,11 @@ function Invoke-RemoteHelper {
 }
 function Invoke-VmSsh {
     param($Command, $TimeoutSeconds)
+    if ($script:diagMode -and $Command -match 'kubectl') {
+        $script:diagCommands += $Command
+        if ($script:diagMode -eq 'error') { throw 'ssh diagnostic error' }
+        return [pscustomobject]@{ ExitCode = 0; StdOut = 'container startup error'; StdErr = '' }
+    }
     $output = if ($Command -match 'pilot-origin.sh prepare') { "$script:sha`nSTEP ok origin-prepare" } elseif ($Command -match 'pilot-origin.sh tag') { "$script:sha`nSTEP ok origin-tag" } elseif ($Command -match 'pilot-db-probe.sh .* write') { 'STEP ok database-write' } elseif ($Command -match 'pilot-db-probe.sh .* data') { 'STEP ok database-data' } else { '' }
     $exit = if ($script:probeFail -and $Command -match 'pilot-db-probe.sh') { 1 } else { 0 }
     [pscustomobject]@{ ExitCode = $exit; StdOut = $output; StdErr = '' }
@@ -31,6 +39,11 @@ function Invoke-VmSsh {
 function Invoke-RepoImportWithRetry { param($Uri, $Headers, $MaxAttempts, $DelaySeconds, $Body) [pscustomobject]@{ StatusCode = 201; Body = '{}' } }
 function Invoke-HttpRaw {
     param($Uri, $Method, $Headers, $Body, $Cookie)
+    if ($script:diagMode) {
+        if ($Uri -like '*/versions?per_page=1') { return [pscustomobject]@{ StatusCode = 200; Body = '{"items":[{"state":"failed","stateReason":"exit 1"}]}' } }
+        if ($Uri -like '*/versions?per_page=3') { return [pscustomobject]@{ StatusCode = 200; Body = '{"items":[]}' } }
+        if ($Uri -like '*/apps/api' -or $Uri -like '*/apps/postgres') { return [pscustomobject]@{ StatusCode = 200; Body = '{"id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}' } }
+    }
     if ($Uri -like '*/apps' -and $Method -eq 'POST' -and $Body -match '"postgres"') { $script:dbCreate = $Body | ConvertFrom-Json }
     if ($Uri -like '*/postgres/variables/PGDATA') { $script:pgdataValue = ($Body | ConvertFrom-Json).value }
     if ($script:issueMode -and $Uri -like '*/issues/42') {
@@ -76,6 +89,28 @@ function Invoke-HttpRaw {
     [pscustomobject]@{ StatusCode = $status; Body = $response }
 }
 . (Join-Path $PSScriptRoot '..\lib\pilot.ps1')
+$script:OutDir = Join-Path ([System.IO.Path]::GetTempPath()) ('pilot-diag-' + [guid]::NewGuid().ToString('N'))
+$script:diagMode = 'ok'
+try { Wait-E2ePilotServing -AppsApi 'https://example.invalid/apps' -Name 'api' -Headers @{}; throw 'failure not raised' } catch {
+    if ($_.Exception.Message -ne 'api stato failed: exit 1' -or (Get-E2ePilotFailureDetail $_.Exception) -notmatch 'container startup error') { throw 'original failure or previous log missing' }
+}
+$diag = Join-Path $script:OutDir 'pilot\api-diag'
+foreach ($file in @('app.json', 'versions.json', 'pods.txt', 'describe.txt', 'events.txt', 'previous.txt', 'current.txt')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $diag $file))) { throw "diagnostic file missing: $file" }
+}
+if ($script:diagCommands.Count -ne 5 -or @($script:diagCommands | Where-Object { $_ -notmatch 'kubectl -n gitstack-app-aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa ' }).Count -ne 0 -or @($script:diagCommands | Where-Object { $_ -match 'logs deploy/app --all-containers --previous --tail=200' }).Count -ne 1) { throw 'diagnostic commands incorrect' }
+$script:rows = @()
+Test-E2ePilotDatabaseAfterRestore -BaseUrl 'https://example.invalid' -Context ([pscustomobject]@{ Owner = 'alice'; Repo = 'pilot'; Token = 'test' })
+if ($script:rows.Count -ne 1 -or $script:rows[0].Ok -or $script:rows[0].Detail -notmatch 'postgres stato failed: exit 1.*container startup error') { throw 'pilot FAIL detail missing previous log' }
+$script:diagMode = 'error'
+try { Wait-E2ePilotServing -AppsApi 'https://example.invalid/apps' -Name 'api' -Headers @{}; throw 'failure not raised' } catch { if ($_.Exception.Message -ne 'api stato failed: exit 1') { throw 'diagnostic error masked original' } }
+$script:diagMode = 'ok'; $script:diagCommands = @()
+try { Wait-E2ePilotServing -AppsApi 'https://example.invalid/apps' -Name 'api' -Headers @{} -TimeoutSeconds 0; throw 'timeout not raised' } catch { if ($_.Exception.Message -ne 'api non e serving entro 0 secondi' -or $script:diagCommands.Count -ne 5) { throw 'timeout diagnostics failed' } }
+Remove-Item -LiteralPath $script:OutDir -Recurse -Force
+Remove-Variable -Name OutDir -Scope Script
+$script:diagMode = ''
+$script:rows = @()
+Write-Host '[PASS] pilot diagnostics: failed, timeout and collection error'
 Invoke-E2ePilotMirror -BaseUrl 'https://example.invalid' -Owner 'alice' -Token 'test' -Suffix '123' -AliasIp '192.168.250.10' -OriginPort 8443
 if (-not $script:PilotContext -or @($script:rows | Where-Object { -not $_.Ok }).Count -ne 0 -or @($script:rows).Count -ne 8) { throw "pilot mirror success: $($script:rows | Out-String)" }
 if ($script:cleanup -notcontains 'mirror-disable' -or $script:cleanup -notcontains 'mirror-dest-stop') { throw 'pilot cleanup missing' }
