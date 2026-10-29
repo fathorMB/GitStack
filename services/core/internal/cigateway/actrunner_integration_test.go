@@ -126,7 +126,9 @@ func TestActRunner_Compat(t *testing.T) {
 		line(true, "token di registrazione monouso: secondo uso rifiutato", "")
 	}
 
+	daemonStart := time.Now()
 	out, err = run(120*time.Second, "daemon", "--once")
+	daemonTook := time.Since(daemonStart)
 	t.Logf("--- uscita di gitea-runner daemon --once ---\n%s", out)
 	line(err == nil, "daemon --once termina dopo un job", err2s(err))
 
@@ -145,6 +147,9 @@ func TestActRunner_Compat(t *testing.T) {
 	}
 	line(strings.Contains(outs, "sha256:compat"), "outputs del job salvati: "+outs, outs)
 	line(!strings.Contains(out, "outputs that have not been sent"), "act_runner non ha outputs non confermati", out)
+	// Senza SentOutputs act_runner rimanda gli outputs finche' non scade il suo tempo di chiusura
+	// (misurato: ~32 s contro ~5 s) pur finendo il job in success: la durata lo rivela.
+	line(daemonTook < 20*time.Second, "act_runner chiude senza attese per outputs non confermati", daemonTook.String())
 
 	size, err := e.logs.LogSize(context.Background(), e.pool, jobID)
 	if err != nil {
