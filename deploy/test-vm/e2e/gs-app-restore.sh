@@ -7,6 +7,7 @@
 #            /TAG diverso per tag, Entrypoint `sleep`. v1 e v2 le usera' l'app, v3 no.
 #            Variabili: GS_VM_IP, GS_CA (file della CA), GS_USER_TOKEN, GS_IMAGE
 #            (<owner>/<repo>/<nome>). Stampa "STEP ok push" o "STEP FAIL push: ...".
+#            Con push-web (ciclo dell'app) il marcatore e' "STEP ok push-web": "STEP ok <passo>".
 #   inspect  Dopo il restore, guarda il Deployment "app" nel namespace dell'app.
 #            Variabili: GS_APP_NS, GS_VAR_NAME, GS_VAR_VALUE, GS_SECRET_NAME,
 #            GS_SECRET_VALUE. Stampa una riga per chiave, mai il valore del segreto:
@@ -99,7 +100,7 @@ publish() {
       "$(sha "$W/config-$tag.json")" "$(wc -c <"$W/config-$tag.json")" "$(sha "$W/layer-$tag.tar")" "$(wc -c <"$W/layer-$tag.tar")" >"$W/manifest-$tag.json"
     curl -fsSL --cacert "$GS_CA" -u "token:${GS_USER_TOKEN}" -X PUT -H 'Content-Type: application/vnd.oci.image.manifest.v1+json' --data-binary "@$W/manifest-$tag.json" "$BASE/v2/${GS_IMAGE}/manifests/$tag" >/dev/null || fail "$step" "manifest di $tag"
   done
-  echo "STEP ok push"
+  echo "STEP ok ${step}"
 }
 
 # printenv nel container "app": il pod puo' essere ancora in avvio dopo il restore, si riprova.
