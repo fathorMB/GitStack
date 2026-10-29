@@ -651,7 +651,7 @@ apps_off_api() {
   before="$("${KUBECTL[@]}" get namespaces -l gitstack.io/managed-app=true -o name | wc -l)"
   api POST "/api/v1/repos/${CI_USER}/${CI_REPO}/apps" '{"name":"web","image":"docker.io/library/nginx:1.27-alpine","port":80}' -H "Authorization: Bearer ${CI_TOKEN}"
   expect 503 "${CODE}" "creazione app con l'hosting spento"
-  printf '%s' "${BODY}" | jq -e '.code == "apps_unavailable"' >/dev/null || fail "503 senza il codice apps_unavailable"
+  printf '%s' "${BODY}" | jq -e '.error.code == "apps_unavailable"' >/dev/null || fail "503 senza il codice apps_unavailable (schema {error:{code}}); BODY: ${BODY:0:500}"
   sleep 5
   after="$("${KUBECTL[@]}" get namespaces -l gitstack.io/managed-app=true -o name | wc -l)"
   [ "${before}" = "${after}" ] || fail "con l'hosting spento sono comparsi namespace delle app (${before} -> ${after})"
@@ -835,6 +835,26 @@ apps_public() {
   if printf '%s' "${body}" | grep -qi '^X-Gitstack-Signature: falsa'; then fail "X-GitStack-Signature del client è arrivata all'app"; fi
   if printf '%s' "${body}" | grep -qi '^X-Gitstack-Email: x@y'; then fail "X-GitStack-Email del client è arrivata all'app"; fi
   printf 'ok  apps-public: senza login 200, intestazioni X-GitStack-* del client tolte\n'
+
+  # a2. GIT-489: un nome sotto il dominio delle app senza nessuna app dietro cade nella route di riserva
+  # e risponde 404 «App non disponibile», non la web UI. Con qualche tentativo: Traefik può essere in ritardo.
+  local missing_out missing_host="nessuna.${domain}"
+  missing_out="$(mktemp)"
+  deadline=$((SECONDS + 60))
+  while :; do
+    code="$(curl -sS -m 10 --cacert "${STATE_DIR}/ca.crt" --resolve "${missing_host}:443:${resolve}" -o "${missing_out}" -w '%{http_code}' "https://${missing_host}/" 2>/dev/null || true)"
+    if [ "${code}" = 404 ] && grep -q 'App non disponibile' "${missing_out}"; then break; fi
+    [ "${SECONDS}" -lt "${deadline}" ] || break
+    sleep 3
+  done
+  if [ "${code}" != 404 ] || ! grep -q 'App non disponibile' "${missing_out}"; then
+    printf 'ERRORE: https://%s/ doveva dare 404 «App non disponibile», trovato %s\n' "${missing_host}" "${code:-nessuna risposta}" >&2
+    head -c 500 "${missing_out}" >&2 || true
+    rm -f "${missing_out}"
+    exit 1
+  fi
+  rm -f "${missing_out}"
+  printf 'ok  apps-fallback: %s → 404 App non disponibile\n' "${missing_host}"
 
   ns="$(app_namespace "${host}" 120)" || fail "namespace dell'app pub non trovato (IngressRoute con ${host})"
 
