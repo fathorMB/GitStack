@@ -245,6 +245,44 @@ foreach ($ln in $psLines) {
 if ($mismatch.Count -gt 0) { Write-Host ($mismatch -join '; ') }
 Assert-That 'marcatore del push: quello atteso da phases.ps1 e quello stampato da gs-app-restore.sh combaciano (almeno 3 controlli)' ($checked -ge 3 -and $mismatch.Count -eq 0)
 
+# GIT-505: diagnosi TLS dopo il restore. Mock di Invoke-VmSsh che risponde in base al comando.
+. (Join-Path $PSScriptRoot '..\lib\tls.ps1')
+$rsa = [System.Security.Cryptography.RSA]::Create(2048)
+$req = New-Object System.Security.Cryptography.X509Certificates.CertificateRequest -ArgumentList 'CN=CA di prova GIT-505', $rsa, ([System.Security.Cryptography.HashAlgorithmName]::SHA256), ([System.Security.Cryptography.RSASignaturePadding]::Pkcs1)
+[GitStackCaTrust]::Ca = $req.CreateSelfSigned([DateTimeOffset]::UtcNow.AddDays(-1), [DateTimeOffset]::UtcNow.AddDays(30))
+$script:DiagCmds = New-Object System.Collections.Generic.List[string]
+function Invoke-VmSsh {
+    param($Command, $TimeoutSeconds)
+    $script:DiagCmds.Add($Command)
+    if ($Command -like '*s_client*' -and $Command -notlike '*-servername*') { return [pscustomobject]@{ ExitCode = 0; StdOut = "issuer=CN = TRAEFIK DEFAULT CERT`nsubject=CN = TRAEFIK DEFAULT CERT`nsha256 Fingerprint=AA:11"; StdErr = '' } }
+    if ($Command -like '*s_client*') { return [pscustomobject]@{ ExitCode = 0; StdOut = "issuer=O = GitStack, CN = GitStack CA`nsubject=CN = 10.0.0.9`nX509v3 Subject Alternative Name:`n    IP Address:10.0.0.9`nsha256 Fingerprint=BB:22"; StdErr = '' } }
+    if ($Command -like '*kubectl*') { return [pscustomobject]@{ ExitCode = 0; StdOut = "issuer=O = GitStack, CN = GitStack CA`nsubject=CN = 10.0.0.9`nsha256 Fingerprint=CC:33"; StdErr = '' } }
+    if ($Command -like '*fingerprint*') { return [pscustomobject]@{ ExitCode = 0; StdOut = 'DD:44'; StdErr = '' } }
+    return [pscustomobject]@{ ExitCode = 1; StdOut = ''; StdErr = 'no' }
+}
+$diagFile = Join-Path ([IO.Path]::GetTempPath()) ("diag-" + [guid]::NewGuid().ToString('N') + '.txt')
+$diag = Get-E2eTlsDiagnosis -Ip '10.0.0.9' -Path $diagFile
+Write-Host $diag
+Assert-That 'diagnosi TLS: certificato servito senza SNI (issuer, subject, impronta)' ($diag -like '*TRAEFIK DEFAULT CERT*' -and $diag -like '*Fingerprint=AA:11*')
+Assert-That 'diagnosi TLS: certificato servito con SNI, con i SAN' ($diag -like '*IP Address:10.0.0.9*' -and $diag -like '*Fingerprint=BB:22*')
+Assert-That 'diagnosi TLS: certificato del Secret gitstack-tls e CA su disco' ($diag -like '*Secret gitstack/gitstack-tls*' -and $diag -like '*Fingerprint=CC:33*' -and $diag -like '*DD:44*')
+Assert-That 'diagnosi TLS: CA con cui l''host verifica (subject e impronta)' ($diag -like '*CA di prova GIT-505*' -and $diag -match 'impronta SHA-256 ([0-9A-F]{2}:){31}[0-9A-F]{2}')
+Assert-That 'diagnosi TLS: scritta anche su file' ((Test-Path -LiteralPath $diagFile) -and ((Get-Content -LiteralPath $diagFile -Raw) -like '*TRAEFIK DEFAULT CERT*'))
+Assert-That 'diagnosi TLS: cinque comandi sulla VM' ($script:DiagCmds.Count -eq 5)
+Remove-Item -LiteralPath $diagFile -ErrorAction SilentlyContinue
+function Invoke-VmSsh { param($Command, $TimeoutSeconds) throw 'ssh giu' }
+$diag2 = Get-E2eTlsDiagnosis -Ip '10.0.0.9'
+Assert-That 'diagnosi TLS: con ssh in errore non lancia e lo dice' ($diag2 -like '*ssh non riuscito*ssh giu*')
+Clear-GitStackCaTrust
+
+# l'ordine nel passo i: la CA ripristinata si scarica PRIMA dell'attesa su HTTPS, e la diagnosi parte se l'attesa fallisce
+$phSrc = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\lib\phases.ps1') -Raw
+$iBlock = [regex]::Match($phSrc, '(?s)gitstack restore --key-file.*?\$fpAfter -ne \$fpBefore').Value
+$posCa = $iBlock.IndexOf('$fpAfter = Set-E2eCaFromVm')
+$posWait = $iBlock.IndexOf('Wait-E2eHealthy')
+Assert-That 'passo i: dopo il restore la CA si prende dalla VM prima di Wait-E2eHealthy' ($posCa -gt 0 -and $posWait -gt $posCa)
+Assert-That 'passo i: attesa fallita dopo il restore -> Get-E2eTlsDiagnosis' ($iBlock -like '*Get-E2eTlsDiagnosis*')
+
 if ($failures.Count -gt 0) {
     Write-Host "FALLITE: $($failures.Count)"
     exit 1
