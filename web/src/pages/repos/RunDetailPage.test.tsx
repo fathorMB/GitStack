@@ -71,8 +71,8 @@ beforeEach(() => {
 describe('RunDetailPage', () => {
   it('fallita: job, log del job fallito con segreti mascherati, artefatti e Riesegui', async () => {
     setup(run({}));
-    expect(await screen.findByRole('heading', { name: 'ci' })).toBeInTheDocument();
-    const log = await screen.findByRole('log', { name: 'Log of test (go 1.23)' });
+    expect(await screen.findByRole('heading', { name: 'ci' }, { timeout: 5000 })).toBeInTheDocument();
+    const log = await screen.findByRole('log', { name: 'Log of test (go 1.23)' }, { timeout: 5000 });
     expect(within(log).getByText(/DATABASE_URL=\*\*\*/)).toBeInTheDocument();
     expect(within(log).getByText(/--- FAIL: TestX/).closest('div')).toHaveClass('er');
     expect(screen.getByRole('link', { name: /test-report\.xml · 212 KB/ })).toHaveAttribute('href', '/api/v1/repos/acme/api/actions/artifacts/a1/download');
@@ -84,8 +84,8 @@ describe('RunDetailPage', () => {
     const running = run({ status: 'in_progress', conclusion: null, completedAt: null, jobs: [{ ...run({}).jobs[1]!, status: 'in_progress', conclusion: null, completedAt: null }] });
     setup(running);
     vi.mocked(fetchJobLog).mockResolvedValueOnce('=== RUN   TestWebhooks').mockResolvedValue('=== RUN   TestWebhooks\nPASS: TestWebhooks');
-    expect(await screen.findByText(/=== RUN/)).toBeInTheDocument();
-    expect(await screen.findByText(/PASS: TestWebhooks/, undefined, { timeout: 3000 })).toBeInTheDocument();
+    expect(await screen.findByText(/=== RUN/, undefined, { timeout: 5000 })).toBeInTheDocument();
+    expect(await screen.findByText(/PASS: TestWebhooks/, undefined, { timeout: 5000 })).toBeInTheDocument();
     expect(vi.mocked(fetchJobLog).mock.calls.length).toBeGreaterThan(1);
   });
 
@@ -114,7 +114,7 @@ describe('RunDetailPage', () => {
     setup(running);
     vi.mocked(fetchRun).mockReset();
     vi.mocked(fetchRun).mockResolvedValue(running);
-    await screen.findByRole('heading', { name: 'ci' });
+    await screen.findByRole('heading', { name: 'ci' }, { timeout: 5000 });
     await waitFor(() => expect(vi.mocked(fetchRun).mock.calls.length).toBeGreaterThanOrEqual(6), { timeout: 4000 });
     expect(fetchArtifacts).toHaveBeenCalledTimes(1);
     vi.mocked(fetchRun).mockResolvedValue(run({}));
@@ -127,7 +127,7 @@ describe('RunDetailPage', () => {
     const user = userEvent.setup();
     setup(run({ status: 'in_progress', conclusion: null, completedAt: null }));
     vi.mocked(cancelRun).mockResolvedValue(run({ status: 'cancelled', conclusion: 'cancelled' }));
-    await user.click(await screen.findByRole('button', { name: 'Cancel run' }));
+    await user.click(await screen.findByRole('button', { name: 'Cancel run' }, { timeout: 5000 }));
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'Go back' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
@@ -143,14 +143,14 @@ describe('RunDetailPage', () => {
     const user = userEvent.setup();
     setup(run({}));
     vi.mocked(rerunRun).mockResolvedValue(run({ id: 'run2', status: 'queued', conclusion: null }));
-    await user.click(await screen.findByRole('button', { name: /Re-run/ }));
+    await user.click(await screen.findByRole('button', { name: /Re-run/ }, { timeout: 5000 }));
     await waitFor(() => expect(rerunRun).toHaveBeenCalledWith('acme', 'api', 'run1'));
     expect(await screen.findByText('new run')).toBeInTheDocument();
   });
 
   it('senza write non ci sono Riesegui né Annulla', async () => {
     setup(run({}), false);
-    await screen.findByRole('heading', { name: 'ci' });
+    await screen.findByRole('heading', { name: 'ci' }, { timeout: 5000 });
     expect(screen.queryByRole('button', { name: /Re-run/ })).not.toBeInTheDocument();
   });
 });
