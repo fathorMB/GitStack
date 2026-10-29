@@ -121,7 +121,8 @@ func fakeActPlan(wf []byte, args []string) int {
 	}
 	var doc struct {
 		Jobs map[string]struct {
-			Needs any `yaml:"needs"`
+			Needs any    `yaml:"needs"`
+			If    string `yaml:"if"`
 		} `yaml:"jobs"`
 	}
 	if err := yaml.Unmarshal(wf, &doc); err != nil {
@@ -150,6 +151,11 @@ func fakeActPlan(wf []byte, args []string) int {
 	}
 	visit(target)
 	for _, k := range order {
+		if strings.Contains(doc.Jobs[k].If, "needs.") && doc.Jobs[k].Needs == nil {
+			// act: se needs e' stato tolto il contesto needs e' vuoto e la condizione e' falsa.
+			fmt.Printf("[image/%s] ⏭  Job skipped (if: %s)\n", k, doc.Jobs[k].If)
+			continue
+		}
 		fmt.Printf("[image/%s] ⭐ Run Set up job\n", k)
 		fmt.Printf("[image/%s]   ✅  Success - Set up job\n", k)
 		fmt.Printf("[image/%s] ⭐ Run Main passo di %s\n", k, k)
@@ -483,6 +489,34 @@ func TestRun_JobConNeedsNonRieseguePrecedente(t *testing.T) {
 	}
 	if !strings.Contains(log, "[image/test]") {
 		t.Errorf("il log del job test non ha le sue righe:\n%s", log)
+	}
+}
+
+// TestRun_IfSuNeedsResultGira (GIT-500): il job deploy ha `if: needs.build.result == 'success'`.
+// Tolti i needs (GIT-499) il contesto di act e' vuoto e il job verrebbe saltato: il runner scrive
+// 'success' al posto di needs.build.result, senza rieseguire build.
+func TestRun_IfSuNeedsResultGira(t *testing.T) {
+	wf := "name: image\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo build\n" +
+		"  deploy:\n    needs: build\n    if: needs.build.result == 'success'\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo deploy\n"
+	g := &fakeGateway{workflow: wf, archive: tarball(t, map[string]string{"README.md": "x"}),
+		extra: map[string]any{"job": "deploy"}}
+	cfg := cfgFor(t, start(t, g))
+	t.Setenv("CIRUNNER_FAKE_ACT_PLAN", "1")
+	res, err := cirunner.Run(context.Background(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	log := strings.Join(g.rows, "\n")
+	if res.Conclusion != runnerv1.Result_RESULT_SUCCESS {
+		t.Fatalf("esito %v\n%s", res.Conclusion, log)
+	}
+	if strings.Contains(log, "[image/build]") {
+		t.Errorf("il log del job deploy contiene righe del build:\n%s", log)
+	}
+	if strings.Contains(log, "skipped") || !strings.Contains(log, "Success - Main passo di deploy") {
+		t.Errorf("il job deploy non e' girato:\n%s", log)
 	}
 }
 

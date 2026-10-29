@@ -864,6 +864,19 @@ revision and the database schemas: a CI that was switched on by the failed
 upgrade is **off again**, because the previous revision had no `ci.*` values.
 Switch it on again after fixing the cause.
 
+### Jobs with `needs`: what the runner passes to `act` (GIT-499, GIT-500)
+
+Each job runs in its own pod, so the runner removes `needs` from the job it
+hands to `act -j` (the upstream jobs are not run again). Inside `act` the
+`needs` context is therefore empty. The server starts a job only after all its
+`needs` succeeded, so the runner rewrites `needs.<job>.result` to `'success'`
+in the job's expressions: `if: needs.build.result == 'success'` keeps working.
+
+**Limit:** `needs.<job>.outputs.<name>` is **not** passed (the runner.v1
+protocol has no field for job outputs): it evaluates to an empty string.
+Expressions like `contains(needs.*.result, 'failure')` are not rewritten either.
+A follow-up item covers the outputs.
+
 ### Backup and restore with the CI logs
 
 `gitstack backup` includes the job logs (`ci-logs.tar`, from the `logs/` folder
