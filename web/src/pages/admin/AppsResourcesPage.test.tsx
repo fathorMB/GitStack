@@ -206,6 +206,42 @@ describe('AppsResourcesPage', { timeout: 30000 }, () => {
     await waitFor(() => expect(api.saveAppsSettings).toHaveBeenCalledWith(expect.objectContaining({ acmeEmail: 'ops@acme.it', publicAppsEnabled: false })));
   });
 
+  it('reads the public IPs of the installation', async () => {
+    const letsEncrypt = { enabled: true, acmeEmail: 'ops@acme.it', port80Reachable: true, publicIps: ['203.0.113.5'] };
+    setup(true, { ...data, settings: { ...settings, letsEncrypt } } as never);
+    const list = await screen.findByRole('list', { name: 'Public IPs' });
+    expect(within(list).getByText('203.0.113.5')).toBeInTheDocument();
+  }, 30000);
+
+  it('adds and removes public IPs, then saves the whole list', { timeout: 30000 }, async () => {
+    const letsEncrypt = { enabled: true, acmeEmail: 'ops@acme.it', port80Reachable: true, publicIps: ['203.0.113.5'] };
+    vi.mocked(api.saveAppsSettings).mockResolvedValue({ ...settings, letsEncrypt: { ...letsEncrypt, publicIps: ['198.51.100.7'] } } as never);
+    const user = userEvent.setup();
+    setup(true, { ...data, settings: { ...settings, letsEncrypt } } as never);
+    const addForm = await screen.findByRole('form', { name: 'Add public IP' });
+    await user.type(within(addForm).getByLabelText('Public IP'), '198.51.100.7');
+    await user.click(within(addForm).getByRole('button', { name: 'Add IP' }));
+    await user.click(screen.getByRole('button', { name: 'Remove 203.0.113.5' }));
+    const list = screen.getByRole('list', { name: 'Public IPs' });
+    expect(within(list).getByText('198.51.100.7')).toBeInTheDocument();
+    expect(within(list).queryByText('203.0.113.5')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save public IPs' }));
+    await waitFor(() => expect(api.saveAppsSettings).toHaveBeenCalledWith(expect.objectContaining({ publicIps: ['198.51.100.7'], publicAppsEnabled: false })));
+  });
+
+  it('shows the server 422 when a public IP is not valid', { timeout: 30000 }, async () => {
+    const letsEncrypt = { enabled: false, port80Reachable: null, publicIps: [] };
+    vi.mocked(api.saveAppsSettings).mockRejectedValue(new ApiError({ error: { code: 'invalid_public_ip', message: 'IP pubblico non valido: 10.0.0.5' } }, 422));
+    const user = userEvent.setup();
+    setup(true, { ...data, settings: { ...settings, letsEncrypt } } as never);
+    const addForm = await screen.findByRole('form', { name: 'Add public IP' });
+    await user.type(within(addForm).getByLabelText('Public IP'), '10.0.0.5');
+    await user.click(within(addForm).getByRole('button', { name: 'Add IP' }));
+    await user.click(screen.getByRole('button', { name: 'Save public IPs' }));
+    expect(await screen.findByText(/IP pubblico non valido: 10\.0\.0\.5/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove 10.0.0.5' })).toBeInTheDocument();
+  });
+
   it('shows an empty public apps list', async () => {
     setup();
     expect(await screen.findByText('No public apps on this instance.')).toBeInTheDocument();
