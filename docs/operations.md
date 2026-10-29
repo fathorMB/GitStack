@@ -1192,6 +1192,7 @@ services.
    ripristino dei repo (git-data)
    ripristino degli allegati
    ripristino dei volumi delle app (1)
+   ripristino dell'archivio ACME di Traefik
    ripristino dei Secret
    ripristinati 7 file di configurazione (config.yaml resta quello della nuova installazione)
    riavvio NATS per le credenziali ripristinate
@@ -2671,3 +2672,13 @@ decisioni D17–D19 [c_1d1d61aca3dea601]*
 I push su `integrate/**` avviano i workflow GitHub CI, api-contract, docs e smoke con le verifiche previste sui push a main. I job di pubblicazione e gli upload di artifact sono esclusi da questi rami. Il workflow install resta limitato ai tag, alla pianificazione e all'avvio manuale.
 
 GL-78 deve pubblicare su origin il ramo `integrate/MR-n` e attendere l'esito delle verifiche prima di `propose_merge`. Fino a quel cambiamento del motore, questi trigger non ricevono push automatici. Il giro sui runner GitHub aggiunge una stima di 30–40 minuti per reintegro.
+
+### Domini propri, certificati e archivio ACME nel backup (v3-c, GIT-462)
+
+I domini propri delle app e i certificati caricati dal cliente stanno nel database, quindi entrano nel backup
+(la chiave privata del cliente vi è cifrata con il keyring di core, che sta nei Secret). Dopo il restore core
+riscrive i Secret TLS nel namespace del TLSStore di Traefik entro un minuto. L'archivio ACME di Traefik
+(`acme.json`, certificati Let's Encrypt) entra come `traefik-acme.tar` se esiste il volume persistente
+`traefik` in `kube-system` (installazione con Let's Encrypt); il restore lo rimette al suo posto con Traefik
+fermo e con i permessi originali (0600). Se la nuova installazione non ha quel volume, l'archivio ACME si salta
+con un avviso e Traefik riemette i certificati. L'archivio contiene la chiave dell'account ACME: cifra i backup (`--key-file`).

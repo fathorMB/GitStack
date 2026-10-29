@@ -203,6 +203,12 @@ func Restore(ctx context.Context, o *Options, archive string) (err error) {
 		}
 	}
 
+	if has[ACMEName] {
+		if e := o.restoreACME(ctx, stage); e != nil {
+			return failed(e)
+		}
+	}
+
 	o.logf("ripristino dei Secret")
 	if e := o.restoreSecrets(ctx, filepath.Join(stage, SecretsName)); e != nil {
 		return failed(e)
