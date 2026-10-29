@@ -575,6 +575,42 @@ Alla fine: il riepilogo, il percorso dello zip `<OutDir>.zip` (log +
 diagnostica, **sempre creato**) e `RISULTATO: VERDE` o `RISULTATO: ROSSO`.
 Il codice di uscita e' diverso da zero se un passo e' fallito.
 
+### Pilota retail.it (GIT-381, in sviluppo)
+
+Con l'hosting acceso e senza `-SkipBackupRestore`, dopo e12 il passo `pilot`
+prepara un'origine Git HTTPS sulla VM, importa un repo privato come mirror,
+abilita la CI, crea un tag sull'origine e richiede la sincronizzazione. Verifica
+il run del tag sul runner integrato e le firme delle immagini `api`, `sito` e `db`.
+Ogni controllo compare nel riepilogo; l'origine e la configurazione di rete
+temporanea vengono rimosse anche se un controllo fallisce.
+
+Il passo prepara PostgreSQL con un volume incluso nel backup e una password
+passata come segreto; l'API usa la stessa password come segreto e scrive un
+valore collegandosi a `postgres:5432`. Dopo h/i, il probe rilegge il valore
+dall'API ripristinata. I controlli sono eseguiti sulla VM, con una riga per
+ciascun esito.
+
+L'immagine `db` parte come utente `postgres`, senza capability aggiuntive;
+`PGDATA` punta a una sottocartella del volume creata da quell'utente. Questo
+vincolo vale anche per l'immagine PostgreSQL con PostGIS del pilota reale.
+
+Il passo prepara anche il sito, un bot con grant sul repo e token in un segreto,
+e un tester nella lista di accesso. Verifica che il tester riceva 404 su repo e
+issue e confronta l'impronta dell'invito con quella della CA scaricata.
+
+La prova apre il sito con Chromium come tester, dopo aver installato nello store
+utente la CA la cui impronta coincide con l'invito; la CA aggiunta dalla prova
+viene rimossa alla fine. Non disabilita la verifica dei certificati. Il browser
+legge il dato, acquisisce uno screenshot e usa il pulsante di segnalazione; il
+passo confronta l'allegato della issue con lo screenshot e controlla autore e
+tester. Log e immagini sono nella cartella `pilot` dentro `-OutDir`.
+
+Per questa fase servono Node.js e, nel checkout, le dipendenze di `web/` e il
+browser Chromium di Playwright (`corepack pnpm install --frozen-lockfile` e
+`corepack pnpm exec playwright install chromium`, eseguiti da `web/`). La prova
+richiede GIT-442 e GIT-444 su main e le relative immagini installate sulla VM. Non e stata
+ancora eseguita dall'inizio alla fine sulla VM.
+
 ### Istruzioni per il board: passo e10 (GIT-201)
 
 Dopo il reintegro di GIT-201, da PowerShell come amministratore, dalla radice

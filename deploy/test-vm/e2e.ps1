@@ -221,6 +221,7 @@ param(
 . (Join-Path $PSScriptRoot 'lib\http.ps1')
 . (Join-Path $PSScriptRoot 'lib\tls.ps1')
 . (Join-Path $PSScriptRoot 'lib\phases.ps1')
+. (Join-Path $PSScriptRoot 'lib\pilot.ps1')
 
 # --- Stato globale (risultati dei passi, file di log) ----------------------
 
@@ -1460,6 +1461,24 @@ function Main {
         }
         Add-StepResult -Name 'e12. CI (GIT-291): workflow con input, run watch --exit-status, view --log-failed, immagine nel registry e release' -Ok $e12Ok -Detail ($e12Details -join '; ')
 
+        if (-not $SkipBackupRestore -and $script:AppsDomain) {
+            if ($e12Ok -and $gitToken -and $gitUser) {
+                Invoke-E2ePilotMirror -BaseUrl $baseUrl -Owner $gitUser -Token $gitToken -Suffix $suffix -AliasIp $MirrorAliasIp -OriginPort $MirrorOriginPort
+                $script:PilotDbReady = $false
+                if ($script:PilotContext) { $script:PilotDbReady = Initialize-E2ePilotDatabase -BaseUrl $baseUrl -Context $script:PilotContext }
+                if ($script:PilotDbReady -and $ck -and $script:CaFingerprint) {
+                    $script:PilotSite = Initialize-E2ePilotSite -BaseUrl $baseUrl -AdminCookie $ck -Suffix $suffix -CaFingerprint $script:CaFingerprint -Context $script:PilotContext
+                }
+                if ($script:PilotSite) {
+                    Invoke-E2ePilotTester -BaseUrl $baseUrl -CaPath $caPath -WorkDir (Join-Path $OutDir 'pilot') -Context $script:PilotContext -Site $script:PilotSite
+                } else {
+                    Add-StepResult -Name 'pilot: HTTPS del tester e issue' -Ok $false -Detail 'sito o tester non disponibili'
+                }
+            } else {
+                Add-StepResult -Name 'pilot: prerequisiti CI' -Ok $false -Detail 'e12 fallito o token di prova mancante'
+            }
+        }
+
         # Conserva i log prima che il passo f ricrei core e git.
         $preFDir = Join-Path $OutDir 'pre-f-diagnostics'
         New-Item -ItemType Directory -Path $preFDir -Force | Out-Null
@@ -1578,6 +1597,13 @@ function Main {
             Add-StepResult -Name 'h. backup e restore' -Ok $false -Detail "manca la sessione dell'admin (passo e3 fallito): impossibile creare i dati di prova"
         } else {
             Invoke-E2eBackupRestorePhase -BaseUrl $baseUrl -CaPath $caPath -AdminPassword $adminNewPassword -InstallRef $Ref
+            if ($script:AppsDomain) {
+                if ($script:PilotDbReady -and $script:PilotContext -and $script:RestoredBaseUrl) {
+                    Test-E2ePilotDatabaseAfterRestore -BaseUrl $script:RestoredBaseUrl -Context $script:PilotContext
+                } else {
+                    Add-StepResult -Name 'pilot 7. dato PostgreSQL conservato dopo backup e restore' -Ok $false -Detail 'database o restore non disponibili'
+                }
+            }
         }
 
         # --- j. upgrade dal commit precedente (GIT-148, DF/F) -------------
