@@ -112,7 +112,7 @@ function Invoke-E2ePilotMirror {
             }
             Add-StepResult -Name "pilot 2c. immagine $name firmata dal job" -Ok $true -Detail $signed[0].digest
         }
-        $script:PilotContext = [pscustomobject]@{ Owner = $Owner; Repo = $repo; Tag = $tag; Sha = $sha; Token = $Token }
+        $script:PilotContext = [pscustomobject]@{ Owner = $Owner; Repo = $repo; Tag = $tag; Sha = $sha; Token = $Token; CreatedApps = ([System.Collections.ArrayList]::new()) }
     } catch {
         Add-StepResult -Name "pilot: $stage" -Ok $false -Detail $_.Exception.Message
     } finally {
@@ -195,6 +195,9 @@ function Initialize-E2ePilotDatabase {
     try {
         $db = Invoke-HttpRaw -Uri $api -Method 'POST' -Headers $headers -Body (@{ name = 'postgres'; image = "db:$($Context.Tag)"; port = 5432 } | ConvertTo-Json)
         if ($db.StatusCode -ne 202) { throw "creazione postgres: status $($db.StatusCode)" }
+        $pgId = ($db.Body | ConvertFrom-Json).app.id
+        if ($pgId -notmatch '^[0-9a-f-]{36}$') { throw 'app postgres senza id valido' }
+        $Context | Add-Member -NotePropertyName PostgresId -NotePropertyValue $pgId -Force
         $pgdata = Invoke-HttpRaw -Uri "$api/postgres/variables/PGDATA" -Method 'PUT' -Headers $headers -Body (@{ value = '/var/lib/postgresql/data/pgdata' } | ConvertTo-Json)
         if ($pgdata.StatusCode -ne 200) { throw "variabile PGDATA: status $($pgdata.StatusCode)" }
         $secret = Invoke-HttpRaw -Uri "$api/postgres/secrets/POSTGRES_PASSWORD" -Method 'PUT' -Headers $headers -Body (@{ value = $password } | ConvertTo-Json)
@@ -213,6 +216,7 @@ function Initialize-E2ePilotDatabase {
         $stage = 'app api'
         $created = Invoke-HttpRaw -Uri $api -Method 'POST' -Headers $headers -Body (@{ name = 'api'; image = "api:$($Context.Tag)"; port = 8080 } | ConvertTo-Json)
         if ($created.StatusCode -ne 202) { throw "creazione api: status $($created.StatusCode)" }
+        Register-E2ePilotApp -Context $Context -Name 'api'
         $appId = ($created.Body | ConvertFrom-Json).app.id
         if ($appId -notmatch '^[0-9a-f-]{36}$') { throw 'app api senza id valido' }
         $secret = Invoke-HttpRaw -Uri "$api/api/secrets/PGPASSWORD" -Method 'PUT' -Headers $headers -Body (@{ value = $password } | ConvertTo-Json)
@@ -234,18 +238,58 @@ function Initialize-E2ePilotDatabase {
     }
 }
 
+# GIT-514: ricorda le app create dal pilot (api, sito), cosi la pulizia toglie solo quelle.
+function Register-E2ePilotApp {
+    param([Parameter(Mandatory)]$Context, [Parameter(Mandatory)][string]$Name)
+    if (-not $Context.PSObject.Properties['CreatedApps']) { $Context | Add-Member -NotePropertyName CreatedApps -NotePropertyValue ([System.Collections.ArrayList]::new()) -Force }
+    if ($Context.CreatedApps -notcontains $Name) { $null = $Context.CreatedApps.Add($Name) }
+}
+
+# GIT-514: dopo il tester il pilot toglie le app api e sito (500m garantiti ciascuna),
+# cosi h-app e h-pub trovano la riserva CPU del server libera. postgres resta: serve a pilot 7.
+function Remove-E2ePilotApps {
+    param([Parameter(Mandatory)][string]$BaseUrl, [Parameter(Mandatory)]$Context, [int]$TimeoutSeconds = 180)
+    $created = @()
+    if ($Context.PSObject.Properties['CreatedApps']) { $created = @($Context.CreatedApps | Where-Object { $_ -eq 'api' -or $_ -eq 'sito' }) }
+    $api = "$BaseUrl/api/v1/repos/$($Context.Owner)/$($Context.Repo)/apps"
+    $headers = @{ Authorization = "Bearer $($Context.Token)" }
+    $errors = @()
+    $removed = @()
+    foreach ($name in $created) {
+        try {
+            $del = Invoke-HttpRaw -Uri "$api/$name" -Method 'DELETE' -Headers $headers
+            if ($del.StatusCode -ne 202 -and $del.StatusCode -ne 204 -and $del.StatusCode -ne 404) { throw "DELETE: status $($del.StatusCode) $($del.Body) $($del.Error)" }
+            $until = (Get-Date).AddSeconds($TimeoutSeconds)
+            $gone = $false
+            $last = 0
+            do {
+                $get = Invoke-HttpRaw -Uri "$api/$name" -Headers $headers
+                $last = $get.StatusCode
+                if ($last -eq 404) { $gone = $true; break }
+                Start-Sleep -Seconds 3
+            } while ((Get-Date) -lt $until)
+            if (-not $gone) { throw "ancora presente dopo $TimeoutSeconds secondi (ultimo GET: status $last)" }
+            $removed += $name
+        } catch {
+            $errors += "${name}: $($_.Exception.Message)"
+        }
+    }
+    $detail = if ($errors.Count -gt 0) { $errors -join '; ' } elseif ($removed.Count -gt 0) { 'eliminate: ' + ($removed -join ', ') } else { 'nessuna app da eliminare' }
+    Add-StepResult -Name 'pilot: eliminazione delle app api e sito' -Ok ($errors.Count -eq 0) -Detail $detail
+}
+
 function Test-E2ePilotDatabaseAfterRestore {
     param([Parameter(Mandatory)][string]$BaseUrl, [Parameter(Mandatory)]$Context)
     $api = "$BaseUrl/api/v1/repos/$($Context.Owner)/$($Context.Repo)/apps"
     $headers = @{ Authorization = "Bearer $($Context.Token)" }
     try {
+        # GIT-514: api e sito sono stati eliminati prima del backup; il dato si rilegge dal pod di postgres.
         Wait-E2ePilotServing -AppsApi $api -Name 'postgres' -Headers $headers
-        Wait-E2ePilotServing -AppsApi $api -Name 'api' -Headers $headers
-        $id = $Context.ApiId
-        if ($id -notmatch '^[0-9a-f-]{36}$') { throw 'id api non valido' }
+        $id = $Context.PostgresId
+        if ($id -notmatch '^[0-9a-f-]{36}$') { throw 'id postgres non valido' }
         $copy = Copy-ToVm -LocalPath (Join-Path $PSScriptRoot '..\e2e\pilot-db-probe.sh') -RemotePath '/tmp/gitstack-e2e/pilot-db-probe.sh' -TimeoutSeconds 60
         if ($copy.ExitCode -ne 0) { throw "copia probe: exit $($copy.ExitCode)" }
-        $read = Invoke-VmSsh -Command "bash /tmp/gitstack-e2e/pilot-db-probe.sh $id data" -TimeoutSeconds 120
+        $read = Invoke-VmSsh -Command "bash /tmp/gitstack-e2e/pilot-db-probe.sh $id pg" -TimeoutSeconds 120
         if ($read.ExitCode -ne 0 -or $read.StdOut -notmatch 'STEP ok database-data') { throw "lettura dopo restore: exit $($read.ExitCode)" }
         Add-StepResult -Name 'pilot 7. dato PostgreSQL conservato dopo backup e restore' -Ok $true -Detail ''
     } catch {
@@ -297,6 +341,7 @@ function Initialize-E2ePilotSite {
         $stage = 'deploy sito'
         $site = Invoke-HttpRaw -Uri $apps -Method 'POST' -Headers $headers -Body (@{ name = 'sito'; image = "sito:$($Context.Tag)"; port = 8080 } | ConvertTo-Json)
         if ($site.StatusCode -ne 202) { throw "creazione sito: status $($site.StatusCode)" }
+        Register-E2ePilotApp -Context $Context -Name 'sito'
         Wait-E2ePilotServing -AppsApi $apps -Name 'sito' -Headers $headers
         $var = Invoke-HttpRaw -Uri "$apps/sito/variables/PILOT_REPO" -Method 'PUT' -Headers $headers -Body (@{ value = "$($Context.Owner)/$($Context.Repo)" } | ConvertTo-Json)
         if ($var.StatusCode -ne 200) { throw "variabile repo: status $($var.StatusCode)" }

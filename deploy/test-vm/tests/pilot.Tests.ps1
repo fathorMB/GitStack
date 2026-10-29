@@ -16,6 +16,10 @@ $script:dbCreate = $null
 $script:pgdataValue = $null
 $script:diagMode = ''
 $script:diagCommands = @()
+$script:delMode = $false
+$script:delCalls = @()
+$script:delStatus = 204
+$script:delGone = $true
 function Write-Log { param($Message) }
 function Add-StepResult { param($Name, $Ok, $Detail) $script:rows += [pscustomobject]@{ Name = $Name; Ok = $Ok; Detail = $Detail } }
 function Start-Sleep { param($Seconds) }
@@ -32,13 +36,17 @@ function Invoke-VmSsh {
         if ($script:diagMode -eq 'error') { throw 'ssh diagnostic error' }
         return [pscustomobject]@{ ExitCode = 0; StdOut = 'container startup error'; StdErr = '' }
     }
-    $output = if ($Command -match 'pilot-origin.sh prepare') { "$script:sha`nSTEP ok origin-prepare" } elseif ($Command -match 'pilot-origin.sh tag') { "$script:sha`nSTEP ok origin-tag" } elseif ($Command -match 'pilot-db-probe.sh .* write') { 'STEP ok database-write' } elseif ($Command -match 'pilot-db-probe.sh .* data') { 'STEP ok database-data' } else { '' }
+    $output = if ($Command -match 'pilot-origin.sh prepare') { "$script:sha`nSTEP ok origin-prepare" } elseif ($Command -match 'pilot-origin.sh tag') { "$script:sha`nSTEP ok origin-tag" } elseif ($Command -match 'pilot-db-probe.sh .* write') { 'STEP ok database-write' } elseif ($Command -match 'pilot-db-probe.sh .* (data|pg)') { 'STEP ok database-data' } else { '' }
     $exit = if ($script:probeFail -and $Command -match 'pilot-db-probe.sh') { 1 } else { 0 }
     [pscustomobject]@{ ExitCode = $exit; StdOut = $output; StdErr = '' }
 }
 function Invoke-RepoImportWithRetry { param($Uri, $Headers, $MaxAttempts, $DelaySeconds, $Body) [pscustomobject]@{ StatusCode = 201; Body = '{}' } }
 function Invoke-HttpRaw {
     param($Uri, $Method, $Headers, $Body, $Cookie)
+    if ($script:delMode) {
+        if ($Method -eq 'DELETE') { $script:delCalls += $Uri; return [pscustomobject]@{ StatusCode = $script:delStatus; Body = ''; Error = '' } }
+        return [pscustomobject]@{ StatusCode = $(if ($script:delGone) { 404 } else { 200 }); Body = '{}'; Error = '' }
+    }
     if ($script:diagMode) {
         if ($Uri -like '*/versions?per_page=1') { return [pscustomobject]@{ StatusCode = 200; Body = '{"items":[{"state":"failed","stateReason":"exit 1"}]}' } }
         if ($Uri -like '*/versions?per_page=3') { return [pscustomobject]@{ StatusCode = 200; Body = '{"items":[]}' } }
@@ -142,7 +150,7 @@ $script:rows = @(); $script:probeFail = $false
 $ctx = [pscustomobject]@{ Owner = 'alice'; Repo = 'pilot'; Tag = 'v1'; Token = 'test' }
 if (-not (Initialize-E2ePilotDatabase -BaseUrl 'https://example.invalid' -Context $ctx)) { throw 'pilot database setup failed' }
 if ($script:dbCreate.name -ne 'postgres' -or $script:dbCreate.image -ne 'db:v1' -or $script:pgdataValue -ne '/var/lib/postgresql/data/pgdata') { throw 'pilot database image or PGDATA incorrect' }
-if (-not $ctx.ApiId -or @($script:rows | Where-Object { -not $_.Ok }).Count -ne 0) { throw 'pilot database setup missing result' }
+if (-not $ctx.ApiId -or $ctx.PostgresId -notmatch '^[0-9a-f-]{36}$' -or (@($ctx.CreatedApps) -join ',') -ne 'api' -or @($script:rows | Where-Object { -not $_.Ok }).Count -ne 0) { throw 'pilot database setup missing result' }
 $script:rows = @()
 Test-E2ePilotDatabaseAfterRestore -BaseUrl 'https://example.invalid' -Context $ctx
 if (@($script:rows | Where-Object { $_.Ok }).Count -ne 1) { throw 'restore success missing' }
@@ -180,3 +188,23 @@ $script:rows = @(); $script:badAttachment = $true
 Invoke-E2ePilotTester -BaseUrl 'https://example.invalid' -CaPath 'ca.crt' -WorkDir 'C:\pilot' -Context $ctx -Site $site
 if (@($script:rows | Where-Object { -not $_.Ok }).Count -ne 1) { throw 'different screenshot accepted' }
 Write-Host '[PASS] pilot tester: issue e confronto dello screenshot'
+
+$script:rows = @(); $script:delMode = $true
+$ctx2 = [pscustomobject]@{ Owner = 'alice'; Repo = 'pilot'; Token = 'test'; CreatedApps = [System.Collections.ArrayList]@('api', 'sito') }
+Remove-E2ePilotApps -BaseUrl 'https://example.invalid' -Context $ctx2
+if ($script:delCalls.Count -ne 2 -or @($script:delCalls | Where-Object { $_ -like '*/apps/api' }).Count -ne 1 -or @($script:delCalls | Where-Object { $_ -like '*/apps/sito' }).Count -ne 1 -or @($script:delCalls | Where-Object { $_ -like '*postgres*' }).Count -ne 0) { throw "pilot cleanup deletes: $($script:delCalls -join ',')" }
+if ($script:rows.Count -ne 1 -or -not $script:rows[0].Ok -or $script:rows[0].Name -ne 'pilot: eliminazione delle app api e sito') { throw "pilot cleanup row: $($script:rows | Out-String)" }
+$script:rows = @(); $script:delCalls = @()
+Remove-E2ePilotApps -BaseUrl 'https://example.invalid' -Context ([pscustomobject]@{ Owner = 'alice'; Repo = 'pilot'; Token = 'test'; CreatedApps = [System.Collections.ArrayList]@('sito') })
+if ($script:delCalls.Count -ne 1 -or $script:delCalls[0] -notlike '*/apps/sito' -or -not $script:rows[0].Ok) { throw 'cleanup must delete only created apps' }
+$script:rows = @(); $script:delCalls = @()
+Remove-E2ePilotApps -BaseUrl 'https://example.invalid' -Context ([pscustomobject]@{ Owner = 'alice'; Repo = 'pilot'; Token = 'test' })
+if ($script:delCalls.Count -ne 0 -or -not $script:rows[0].Ok -or $script:rows[0].Detail -notmatch 'nessuna app') { throw 'cleanup without created apps must not delete' }
+$script:rows = @(); $script:delCalls = @(); $script:delStatus = 500
+Remove-E2ePilotApps -BaseUrl 'https://example.invalid' -Context $ctx2
+if ($script:delCalls.Count -ne 2 -or $script:rows[0].Ok -or $script:rows[0].Detail -notmatch 'api: DELETE: status 500' -or $script:rows[0].Detail -notmatch 'sito: DELETE: status 500') { throw "cleanup error detail: $($script:rows | Out-String)" }
+$script:rows = @(); $script:delStatus = 204; $script:delGone = $false
+Remove-E2ePilotApps -BaseUrl 'https://example.invalid' -Context $ctx2 -TimeoutSeconds 0
+if ($script:rows[0].Ok -or $script:rows[0].Detail -notmatch 'ancora presente') { throw "cleanup must wait for 404: $($script:rows | Out-String)" }
+$script:delMode = $false; $script:delGone = $true; $script:rows = @()
+Write-Host '[PASS] pilot cleanup: DELETE di api e sito, mai postgres, attesa del 404 e dettaglio errori'
