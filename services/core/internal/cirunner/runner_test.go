@@ -106,8 +106,44 @@ func fakeAct(args []string) int {
 		}
 		fmt.Printf("[wf/build]   ✅  Success - Main Passo %d [1.5ms]\n", i+1)
 	}
+	fakeActOutputs(b)
 	fmt.Println("[wf/build] 🏁  Job succeeded")
 	return 0
+}
+
+// fakeActOutputs imita il passo di raccolta degli outputs aggiunto dal runner: act valuta le
+// espressioni in env (qui da CIRUNNER_FAKE_ACT_EXPR, JSON espressione -> valore) e lo script
+// scrive un file per output in GITSTACK_OUTPUTS_DIR. Il passo stampa le sue righe come ogni passo.
+func fakeActOutputs(wf []byte) {
+	var doc struct {
+		Jobs map[string]struct {
+			Steps []struct {
+				Name string            `yaml:"name"`
+				Env  map[string]string `yaml:"env"`
+			} `yaml:"steps"`
+		} `yaml:"jobs"`
+	}
+	if yaml.Unmarshal(wf, &doc) != nil {
+		return
+	}
+	var exprs map[string]string
+	_ = json.Unmarshal([]byte(os.Getenv("CIRUNNER_FAKE_ACT_EXPR")), &exprs)
+	for _, j := range doc.Jobs {
+		for _, st := range j.Steps {
+			if st.Name != cirunner.OutputsStepName {
+				continue
+			}
+			fmt.Println("[wf/build] ⭐ Run Main " + st.Name)
+			fmt.Println("[wf/build]   | scrivo gli outputs")
+			for k, v := range st.Env {
+				v = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(strings.TrimSpace(v), "${{"), "}}"))
+				if val, ok := exprs[v]; ok {
+					_ = os.WriteFile(filepath.Join(os.Getenv("GITSTACK_OUTPUTS_DIR"), strings.TrimPrefix(k, "GITSTACK_OUT_")), []byte(val), 0o600)
+				}
+			}
+			fmt.Println("[wf/build]   ✅  Success - Main " + st.Name + " [1.5ms]")
+		}
+	}
 }
 
 // fakeActPlan imita la pianificazione di `act -j <job>`: prima i job da cui il job dipende
@@ -171,6 +207,8 @@ type fakeGateway struct {
 	mu       sync.Mutex
 	workflow string
 	extra    map[string]any // campi in piu' del contesto del task
+	needs    map[string]*runnerv1.TaskNeed
+	outputs  map[string]string // outputs riportati con l'esito
 	taken    bool
 	rows     []string
 	result   runnerv1.Result
@@ -195,7 +233,7 @@ func (g *fakeGateway) FetchTask(_ context.Context, req *connect.Request[runnerv1
 	}
 	cx, _ := structpb.NewStruct(fields)
 	return connect.NewResponse(&runnerv1.FetchTaskResponse{Task: &runnerv1.Task{
-		Id: 42, WorkflowPayload: []byte(g.workflow), Context: cx, Secrets: map[string]string{"GITHUB_TOKEN": jobToken},
+		Id: 42, WorkflowPayload: []byte(g.workflow), Context: cx, Secrets: map[string]string{"GITHUB_TOKEN": jobToken}, Needs: g.needs,
 	}}), nil
 }
 
@@ -238,6 +276,9 @@ func (g *fakeGateway) UpdateTask(_ context.Context, req *connect.Request[runnerv
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("task"))
 	}
 	g.steps = st.GetSteps()
+	if len(req.Msg.GetOutputs()) > 0 {
+		g.outputs = req.Msg.GetOutputs()
+	}
 	if st.GetResult() != runnerv1.Result_RESULT_UNSPECIFIED {
 		g.result = st.GetResult()
 	}
