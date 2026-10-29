@@ -19,7 +19,7 @@ const maxExtractBytes = 4 << 30
 // un link verso l'esterno non deve poter scrivere fuori dal workspace.
 //
 // I modi seguono la semantica di git checkout, non quelli del tar: file 0644 (0755 se il tar
-// ha un bit di esecuzione) e cartelle 0755, prima della umask del processo. Devono essere
+// ha un bit di esecuzione) e cartelle (radice compresa) 0755, prima della umask del processo. Devono essere
 // leggibili da altri utenti: act copia il workspace conservando i modi e BuildKit li manda
 // com'è, quindi un Dockerfile con COPY e poi USER non root (immagini del pilot, GIT-510,
 // e2e MR-393-r1) cadrebbe con EACCES su file 0640 di proprietà di root.
@@ -29,7 +29,7 @@ func extractTarGz(r io.Reader, dest string) error {
 		return err
 	}
 	defer func() { _ = zr.Close() }()
-	if err := os.MkdirAll(dest, 0o750); err != nil {
+	if err := os.MkdirAll(dest, 0o755); err != nil {
 		return err
 	}
 	root, err := filepath.Abs(dest)

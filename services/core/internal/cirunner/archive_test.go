@@ -57,6 +57,7 @@ func TestExtractTarGzModes(t *testing.T) {
 		t.Fatal(err)
 	}
 	for p, want := range map[string]os.FileMode{
+		".":          0o755,
 		"server.cjs": 0o644,
 		"run.sh":     0o755,
 		"sub":        0o755,
