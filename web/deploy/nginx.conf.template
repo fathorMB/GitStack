@@ -49,6 +49,10 @@ server {
     # Traefik riscrive il path prima di arrivare qui; return evita il fallback SPA.
     location = /__gitstack-app-unavailable {
         default_type text/html;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Referrer-Policy "no-referrer" always;
         return 404 '<!doctype html><html lang="it"><meta charset="utf-8"><title>App non disponibile · GitStack</title><h1>App non disponibile</h1><p>Questa app non è disponibile.</p></html>';
     }
 

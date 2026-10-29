@@ -1,10 +1,11 @@
 {{- if and .Values.ingress.enabled .Values.apps.enabled .Values.web.enabled -}}
 {{- $fullname := include "gitstack.fullname" . -}}
+{{- if lt (len .Values.apps.domain) 6 }}{{ fail "apps.domain deve contenere almeno 6 caratteri per la route di riserva" }}{{ end -}}
 {{- $appsDomainRegex := replace "." "\\." .Values.apps.domain -}}
-# Host del dominio delle app senza una IngressRoute caricata (app in avvio,
-# ferma o rimossa): la route a priorità minima impedisce il fallback
-# all'Ingress senza host della UI. Il path riscritto ha una risposta 404
-# dedicata nell'nginx di web, senza caricare la SPA.
+# PathPrefix(`/`) e PathPrefix(`/api`) dell'Ingress UI hanno priorità 15 e 18;
+# questa regola ha priorità 19. Le route app hanno priorità
+# len("Host(`<label>.<dominio>`)") >= 14+len(dominio), quindi almeno 20 con
+# dominio di 6 caratteri.
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -28,7 +29,7 @@ spec:
   {{- end }}
   routes:
     - kind: Rule
-      priority: 16
+      priority: 19
       match: HostRegexp(`^.+\.{{ $appsDomainRegex }}$`)
       middlewares:
         - name: {{ $fullname }}-apps-unavailable
@@ -39,11 +40,5 @@ spec:
   tls:
     options:
       name: {{ $fullname }}-tls
-    {{- if .Values.ingress.tls.secretName }}
-    secretName: {{ .Values.ingress.tls.secretName }}
-    {{- end }}
-    {{- with .Values.ingress.tls.certResolver }}
-    certResolver: {{ . | quote }}
-    {{- end }}
   {{- end }}
 {{- end }}
