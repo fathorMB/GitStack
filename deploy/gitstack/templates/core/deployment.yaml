@@ -124,10 +124,13 @@ spec:
             - name: GITSTACK_CORE_APPS_GATEWAY_INTERNAL_PORT
               value: {{ include "gitstack.apps.gatewayInternalPort" . | quote }}
             {{- end }}
+            # Namespace dei pod di Traefik: lo usa la NetworkPolicy di ogni app per ammettere l'ingresso (GIT-486).
+            - name: GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE
+              value: {{ .Values.networkPolicy.ingressNamespace | quote }}
             # Namespace del TLSStore default letto da Traefik: qui, e solo qui, core scrive i Secret TLS dei
             # certificati del cliente e li elenca in quel TLSStore (GIT-460, ADR 0002). E' quello del release con
             # la CA interna (il chart vi crea il TLSStore), quello di Traefik altrimenti.
-            - name: GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE
+            - name: GITSTACK_CORE_APPS_TLSSTORE_NAMESPACE
               value: {{ include "gitstack.tlsStoreNamespace" . | quote }}
             - name: GITSTACK_CORE_APPS_TRAEFIK_METRICS_URL
               value: {{ include "gitstack.apps.traefikMetricsUrl" . | quote }}

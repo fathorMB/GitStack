@@ -31,8 +31,10 @@ const (
 	envAppsDomain           = "GITSTACK_CORE_APPS_DOMAIN"
 	envAppsAuthURL          = "GITSTACK_CORE_APPS_AUTH_URL"
 	envAppsTraefikNamespace = "GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE"
-	envAppsProgressTimeout  = "GITSTACK_CORE_APPS_PROGRESS_TIMEOUT"
-	envAppsGateImage        = "GITSTACK_CORE_APPS_GATE_IMAGE"
+	// GIT-486: namespace del TLSStore default (Secret dei certificati del cliente), distinto da quello di Traefik.
+	envAppsTLSStoreNamespace = "GITSTACK_CORE_APPS_TLSSTORE_NAMESPACE"
+	envAppsProgressTimeout   = "GITSTACK_CORE_APPS_PROGRESS_TIMEOUT"
+	envAppsGateImage         = "GITSTACK_CORE_APPS_GATE_IMAGE"
 	// GIT-442: porta interna del gateway per le app (impostate dal chart; tutte o nessuna).
 	envAppsGatewayNamespace = "GITSTACK_CORE_APPS_GATEWAY_NAMESPACE"
 	envAppsGatewayService   = "GITSTACK_CORE_APPS_GATEWAY_SERVICE"
@@ -88,7 +90,7 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, eg
 	st := store.New(pool)
 	cfg := apps.Config{AppsDomain: domain, AuthURL: strings.TrimSpace(os.Getenv(envAppsAuthURL)), AuthSecret: trust.SigningKey(gatewaySecret), Secrets: secrets, Log: logger,
 		ControllerServiceAccount: strings.TrimSpace(os.Getenv(envAppsControllerSA)), WorkloadRole: strings.TrimSpace(os.Getenv(envAppsWorkloadRole)),
-		EgressClusterCIDRs: egressCluster, EgressNodeAddresses: egressNode, EgressDeny: egressDeny, ProxyEnv: apps.ProxyEnvFrom(os.Getenv), TraefikNamespace: strings.TrimSpace(os.Getenv(envAppsTraefikNamespace)), GateImage: strings.TrimSpace(os.Getenv(envAppsGateImage)),
+		EgressClusterCIDRs: egressCluster, EgressNodeAddresses: egressNode, EgressDeny: egressDeny, ProxyEnv: apps.ProxyEnvFrom(os.Getenv), TraefikNamespace: strings.TrimSpace(os.Getenv(envAppsTraefikNamespace)), TLSStoreNamespace: strings.TrimSpace(os.Getenv(envAppsTLSStoreNamespace)), GateImage: strings.TrimSpace(os.Getenv(envAppsGateImage)),
 		TraefikMetricsURL: strings.TrimSpace(os.Getenv(envAppsTraefikMetricsURL)),
 		ACME: apps.ACMEConfig{Resolver: strings.TrimSpace(os.Getenv(envAppsACMEResolver)), Email: strings.TrimSpace(os.Getenv(envAppsACMEEmail)),
 			TLSAddr: strings.TrimSpace(os.Getenv(envAppsACMETLSAddr))}}

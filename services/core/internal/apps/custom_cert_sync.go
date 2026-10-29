@@ -43,6 +43,9 @@ var tlsStoreGVR = schema.GroupVersionResource{Group: "traefik.io", Version: "v1a
 func CustomCertSecretName(domainID uuid.UUID) string { return secretNamePrefix + domainID.String() }
 
 func (c *Controller) traefikNamespace() string {
+	if ns := strings.TrimSpace(c.cfg.TLSStoreNamespace); ns != "" {
+		return ns
+	}
 	if ns := strings.TrimSpace(c.cfg.TraefikNamespace); ns != "" {
 		return ns
 	}

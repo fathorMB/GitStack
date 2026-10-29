@@ -38,7 +38,7 @@ fi
 sa=gitstack-core
 helm template gitstack "$root/deploy/gitstack" --namespace default --show-only templates/apps-rbac.yaml \
   --set apps.enabled=true --set apps.domain=apps.example.com >"$work/apps-rbac.yaml"
-kubectl --kubeconfig "$work/kubeconfig" -n default apply -f "$work/apps-rbac.yaml" >/dev/null
+kubectl --kubeconfig "$work/kubeconfig" apply -f "$work/apps-rbac.yaml" >/dev/null
 sa_token=$(kubectl --kubeconfig "$work/kubeconfig" -n default create token "$sa" --duration 2h)
 cp "$work/kubeconfig" "$work/kubeconfig-core"
 kubectl --kubeconfig "$work/kubeconfig-core" config set-credentials "sa-$sa" --token "$sa_token" >/dev/null

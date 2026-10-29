@@ -684,6 +684,8 @@ apps_diagnostics() {
   local ns="${1:-default}" p
   "${KUBECTL[@]}" -n "${ns}" get all,ingressroute,middleware -o wide || true
   "${KUBECTL[@]}" -n "${ns}" describe pods | tail -60 || true
+  printf '== NetworkPolicy di %s ==\n' "${ns}" >&2
+  "${KUBECTL[@]}" -n "${ns}" get networkpolicy -o yaml || true
   local pods
   pods="$("${KUBECTL[@]}" -n "${ns}" get pods -o name 2>/dev/null || true)"
   while IFS= read -r p; do

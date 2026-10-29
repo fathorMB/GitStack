@@ -234,7 +234,7 @@ func TestSyncCustomSecrets_UnSoloTLSStoreDefaultNelNamespaceDelChart(t *testing.
 	kube := fake.NewClientset()
 	dyn := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), map[schema.GroupVersionResource]string{tlsStoreGVR: "TLSStoreList"})
 	const releaseNS = "gitstack"
-	c := &Controller{kube: kube, dyn: dyn, cfg: Config{TraefikNamespace: releaseNS, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), Now: time.Now}}
+	c := &Controller{kube: kube, dyn: dyn, cfg: Config{TraefikNamespace: "kube-system", TLSStoreNamespace: releaseNS, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), Now: time.Now}}
 	chartStore := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": "traefik.io/v1alpha1", "kind": "TLSStore",
 		"metadata": map[string]any{"name": "default", "namespace": releaseNS},
