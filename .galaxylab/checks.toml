@@ -63,7 +63,7 @@ name = "go-test-core"
 # blocco stampa lo stack e il test in corso.
 run = "go test -timeout 450s ./services/core/..."
 timeout_s = 600
-paths = ["go.work", "go.work.sum", "pkg/egress/**", "pkg/events/**", "pkg/issuequery/**", "pkg/names/**", "services/core/**"]
+paths = ["api/openapi.yaml", "go.work", "go.work.sum", "pkg/egress/**", "pkg/events/**", "pkg/issuequery/**", "pkg/names/**", "services/core/**"]
 
 [[check]]
 name = "go-test-cli"

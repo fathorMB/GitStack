@@ -101,11 +101,13 @@ func newAPIServerWithOptions(pool *pgxpool.Pool, publisher events.Publisher, opt
 	}, o
 }
 
-// publicPath sono le rotte raggiungibili senza identità: probe k8s e
-// /health, dichiarata `security: []` nel contratto.
+// publicPath sono le rotte raggiungibili senza identità: le probe k8s e le
+// rotte di core che il contratto dichiara `security: []` (il gateway le lascia
+// passare senza identità firmata, quindi anche core deve). Path esatti, nessun
+// prefisso. TestPublicPathMatchesContract fa cadere i disallineamenti.
 func publicPath(r *http.Request) bool {
 	switch r.URL.Path {
-	case "/healthz", "/readyz", "/health":
+	case "/healthz", "/readyz", "/health", "/meta", "/instance/ca":
 		return true
 	}
 	return false
