@@ -1323,6 +1323,40 @@ Environment variables: `GITSTACK_REPO` (default `fathorMB/GitStack`),
 | `8` | **Broken** — the upgrade failed and the rollback also failed; manual intervention required |
 | `70` | Unexpected error (backup, network, or other unrecoverable failure) |
 
+### Who runs the rollback: the new binary (GIT-490)
+
+The rollback logic changes from version to version (for example GIT-479/GIT-482, which clear
+the stale ServiceAccount of `core` after `helm rollback`). The installed binary is replaced only
+after the health check, so a failing upgrade used to roll back with the *old* logic. Now the
+installed binary, once the target binary is downloaded and verified, runs the cluster part of the
+rollback (helm rollback, ServiceAccount cleanup, restore, health check) and the post-upgrade
+steps (service Secrets, customer certificates) by running the **target** binary:
+`<target> upgrade --reexec-request F --reexec-reply F` (internal flags). Local files (binary, chart
+copy, config) are always restored by the running binary. If the target does not support it (older
+than GIT-490) or does not start, the running binary falls back to its own logic and says so in the log.
+
+**Limit.** The re-exec exists only in binaries that contain GIT-490. An upgrade *launched from* an
+older version (v1.0 included) still rolls back with that version's logic: with the CI on, after a
+rollback `core` may stay bound to the deleted `ci-dispatcher` ServiceAccount (no pod, gateway not
+ready, exit `8` instead of `7`). To repair it by hand:
+
+```sh
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+# 1. is core bound to a ServiceAccount that no longer exists?
+k3s kubectl -n gitstack get deploy gs-core -o jsonpath='{.spec.template.spec.serviceAccountName}{" "}{.spec.template.spec.serviceAccount}{"\n"}'
+k3s kubectl -n gitstack get sa
+# 2. clear both fields (adjust namespace and Deployment name to your release)
+k3s kubectl -n gitstack patch deploy gs-core --type merge \
+  -p '{"spec":{"template":{"spec":{"serviceAccountName":null,"serviceAccount":null}}}}'
+# 3. wait for it and check
+k3s kubectl -n gitstack rollout status deploy/gs-core
+gitstack status
+```
+
+Do this for every Deployment that was bound to a ServiceAccount the previous revision does not have.
+The upgrade that installs the first binary containing GIT-490 is still launched by the old binary and
+is therefore exposed to the limit; every upgrade after it is not.
+
 ### Upgrading k3s (rule N10)
 
 Each GitStack version declares the k3s version it was tested with in
