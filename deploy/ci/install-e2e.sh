@@ -854,7 +854,7 @@ apps_public() {
     exit 1
   fi
   rm -f "${missing_out}"
-  printf 'ok  apps-public: nome senza app %s -> 404 App non disponibile\n' "${missing_host}"
+  printf 'ok  apps-fallback: %s → 404 App non disponibile\n' "${missing_host}"
 
   ns="$(app_namespace "${host}" 120)" || fail "namespace dell'app pub non trovato (IngressRoute con ${host})"
 
