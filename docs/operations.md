@@ -864,18 +864,33 @@ revision and the database schemas: a CI that was switched on by the failed
 upgrade is **off again**, because the previous revision had no `ci.*` values.
 Switch it on again after fixing the cause.
 
-### Jobs with `needs`: what the runner passes to `act` (GIT-499, GIT-500)
+### Jobs with `needs`: what the runner passes to `act` (GIT-499, GIT-500, GIT-501)
 
 Each job runs in its own pod, so the runner removes `needs` from the job it
-hands to `act -j` (the upstream jobs are not run again). Inside `act` the
-`needs` context is therefore empty. The server starts a job only after all its
-`needs` succeeded, so the runner rewrites `needs.<job>.result` to `'success'`
-in the job's expressions: `if: needs.build.result == 'success'` keeps working.
+hands to `act -j` (the upstream jobs are not run again, and their lines are not
+in the log of the downstream job). The server starts a job only after all its
+`needs` finished, and the task (`runner.v1` `Task.needs`, the same field the
+Gitea runner uses) carries, for each upstream job, its result and its outputs.
+The runner puts that real `needs` context into the job's expressions: in `if:`
+and in `${{ }}` the forms `needs.build.result`, `needs['build'].result`,
+`needs.build.outputs.digest`, `needs['build'].outputs['digest']` and
+`contains(needs.*.result, 'failure')` have the right value. Only expressions
+are rewritten: a literal `needs.build.result` in the text of a `run:` outside
+`${{ }}` stays as it is.
 
-**Limit:** `needs.<job>.outputs.<name>` is **not** passed (the runner.v1
-protocol has no field for job outputs): it evaluates to an empty string.
-Expressions like `contains(needs.*.result, 'failure')` are not rewritten either.
-A follow-up item covers the outputs.
+The outputs come from `jobs.<id>.outputs` of the upstream job: act does not
+print them, so the runner adds a last hidden step (`if: always()`, not shown in
+the log or in the steps) that evaluates them and writes them to files; the runner
+reports them with the final `UpdateTask` and core saves them on the job
+(`core.ci_jobs.outputs`). Limits: at most 50 outputs per job, names up to 128
+characters, values up to 64 KiB (what exceeds is dropped); a value that contains
+a secret or the job token is masked like the logs. The extra step needs `bash`
+in the runner image (the official image has it).
+An external runner (`gitstack-runner` on Windows or macOS) needs `bash` in its `PATH`:
+without it the outputs of the job stay empty and the job does not fail (the step
+is `continue-on-error`). The Gitea `act_runner` sends the outputs in its periodic
+reports, even before the result: core saves them as they arrive, merges partial
+reports and confirms every received name (`SentOutputs`).
 
 ### Backup and restore with the CI logs
 

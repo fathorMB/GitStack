@@ -43,7 +43,7 @@ func TestMigration0054_WebhookAppDomainEvent(t *testing.T) {
 		t.Error("un evento sconosciuto deve essere rifiutato")
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
 		t.Fatalf("down 0054: %v", err)
 	}
 	if _, err := insert("app_domain"); err == nil {

@@ -10,6 +10,7 @@ import (
 	"code.gitea.io/actions-proto-go/runner/v1/runnerv1connect"
 	"connectrpc.com/connect"
 	"github.com/fathorMB/GitStack/services/core/internal/ci"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -102,13 +103,50 @@ func (g *gateway) buildTask(ctx context.Context, job ci.JobRow, run ci.RunRow, t
 	// Il token del job vince su un segreto omonimo.
 	secrets["GITHUB_TOKEN"] = token
 	g.maskers.put(job.ID, ci.NewMasker(maskValues(secrets)...))
+	needs, err := taskNeeds(ctx, g.Pool, job)
+	if err != nil {
+		return nil, fmt.Errorf("needs: %w", err)
+	}
 	return &runnerv1.Task{
 		Id:              job.TaskID,
 		WorkflowPayload: payload,
 		Context:         cx,
 		Secrets:         secrets,
 		Vars:            vars,
+		Needs:           needs,
 	}, nil
+}
+
+// resultOf e' l'inverso di resultName: l'esito di un job concluso come Result di runner.v1.
+func resultOf(conclusion string) runnerv1.Result {
+	switch conclusion {
+	case ci.ConclusionSuccess:
+		return runnerv1.Result_RESULT_SUCCESS
+	case ci.ConclusionFailure:
+		return runnerv1.Result_RESULT_FAILURE
+	case ci.ConclusionCancelled:
+		return runnerv1.Result_RESULT_CANCELLED
+	case ci.ConclusionSkipped:
+		return runnerv1.Result_RESULT_SKIPPED
+	}
+	return runnerv1.Result_RESULT_UNSPECIFIED
+}
+
+// taskNeeds e' il campo needs del task (GIT-501): per ogni job da cui dipende, esito e outputs
+// salvati alla chiusura. Il runner li mette nel contesto needs senza rieseguire i job a monte.
+func taskNeeds(ctx context.Context, pool *pgxpool.Pool, job ci.JobRow) (map[string]*runnerv1.TaskNeed, error) {
+	rows, err := ci.JobNeeds(ctx, pool, job.RunID, job.Needs)
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	out := make(map[string]*runnerv1.TaskNeed, len(rows))
+	for _, n := range rows {
+		out[n.Key] = &runnerv1.TaskNeed{Result: resultOf(n.Conclusion), Outputs: n.Outputs}
+	}
+	return out, nil
 }
 
 // taskContext è il contesto `github` minimo del task. Per un workflow_dispatch contiene anche
@@ -169,6 +207,28 @@ func (r *rpc) UpdateTask(ctx context.Context, req *connect.Request[runnerv1.Upda
 		g.Log.Error("ci-gateway: passi non registrati", "job", a.JobID, "err", err)
 		return nil, unavailable(errors.New("servizio non disponibile"))
 	}
+	// Gli outputs si salvano appena arrivano, con o senza esito (act_runner di Gitea li manda nei
+	// ReportState periodici e poi solo quelli non confermati): prima della chiusura, cosi' i job a
+	// valle promossi la trovano gia' al dispatch. I valori passano dal masker dei segreti del job,
+	// come i log. SentOutputs conferma tutte le chiavi ricevute, anche quelle scartate per i
+	// limiti: act_runner altrimenti le rimanda e alla chiusura non termina.
+	var sent []string
+	if outs := req.Msg.GetOutputs(); len(outs) > 0 {
+		mask, err := g.maskerFor(ctx, a, bearer(req.Header()))
+		if err != nil {
+			g.Log.Error("ci-gateway: segreti del job non caricati", "job", a.JobID, "err", err)
+			return nil, unavailable(errors.New("servizio non disponibile"))
+		}
+		masked := make(map[string]string, len(outs))
+		for k, v := range outs {
+			masked[k] = mask.Mask(v)
+			sent = append(sent, k)
+		}
+		if err := ci.SetJobOutputs(ctx, g.Pool, a.JobID, masked); err != nil {
+			g.Log.Error("ci-gateway: outputs non salvati", "job", a.JobID, "err", err)
+			return nil, unavailable(errors.New("servizio non disponibile"))
+		}
+	}
 	if concl := resultName(st.GetResult()); concl != "" {
 		if err := ci.CompleteJobReported(ctx, g.Pool, g.Now(), a.JobID, concl, g.Reporter); err != nil {
 			g.Log.Error("ci-gateway: chiusura del job non riuscita", "job", a.JobID, "err", err)
@@ -176,7 +236,7 @@ func (r *rpc) UpdateTask(ctx context.Context, req *connect.Request[runnerv1.Upda
 		}
 		g.maskers.drop(a.JobID)
 	}
-	return connect.NewResponse(&runnerv1.UpdateTaskResponse{State: &runnerv1.TaskState{Id: a.TaskID, Result: st.GetResult()}}), nil
+	return connect.NewResponse(&runnerv1.UpdateTaskResponse{State: &runnerv1.TaskState{Id: a.TaskID, Result: st.GetResult()}, SentOutputs: sent}), nil
 }
 
 // UpdateLog scrive le righe del job (idempotente per indice) e ritorna l'indice successivo atteso.

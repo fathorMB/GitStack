@@ -151,6 +151,10 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 	if runRef != "" {
 		cfg.ActEnv = append(cfg.ActEnv, "GITHUB_REF="+runRef)
 	}
+	// Gli outputs del job (jobs.<id>.outputs) li scrive un passo aggiunto in coda (needs.go).
+	var outputNames []string
+	outputsDir := filepath.Join(cfg.WorkDir, "outputs")
+	cfg.ActEnv = append(cfg.ActEnv, outputsDirEnv+"="+outputsDir)
 	prepare := func() error {
 		ws := filepath.Join(cfg.WorkDir, "workspace")
 		if err := downloadArchive(ctx, cfg.HTTP, archiveURL, token, ws); err != nil {
@@ -175,8 +179,13 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 		if err != nil {
 			return err
 		}
-		if payload, err = withoutNeeds(payload, jobKey); err != nil {
+		if payload, outputNames, err = prepareJob(payload, jobKey, needsFromTask(task)); err != nil {
 			return err
+		}
+		if len(outputNames) > 0 {
+			if err := os.MkdirAll(outputsDir, 0o750); err != nil {
+				return err
+			}
 		}
 		return os.WriteFile(wf, payload, 0o640)
 	}
@@ -187,6 +196,9 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 	}
 	conclusion = runAct(ctx, cfg, rep, event, jobKey, token)
 	res.Conclusion = conclusion
+	if len(outputNames) > 0 {
+		rep.outputs = readOutputs(outputsDir, outputNames)
+	}
 	if err := rep.flush(ctx, conclusion, true); err != nil {
 		return res, fmt.Errorf("esito non riportato: %w", err)
 	}
@@ -421,6 +433,9 @@ type reporter struct {
 	total   int64              // righe prodotte
 	steps   []*runnerv1.StepState
 	current *runnerv1.StepState
+	// hidden: act sta eseguendo il passo di raccolta degli outputs, che non va nel log.
+	hidden  bool
+	outputs map[string]string // riportati con l'esito finale
 }
 
 func (r *reporter) line(s string) {
@@ -440,6 +455,17 @@ func (r *reporter) appendLocked(s string) {
 func (r *reporter) actLine(s string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if m := stepStart.FindStringSubmatch(s); m != nil && strings.TrimSpace(m[1]) == OutputsStepName {
+		r.closeCurrentLocked(runnerv1.Result_RESULT_UNSPECIFIED)
+		r.hidden = true
+		return
+	}
+	if r.hidden {
+		if stepResult.MatchString(s) {
+			r.hidden = false
+		}
+		return
+	}
 	if m := stepStart.FindStringSubmatch(s); m != nil {
 		r.closeCurrentLocked(runnerv1.Result_RESULT_UNSPECIFIED)
 		r.current = &runnerv1.StepState{Id: int64(len(r.steps)), StartedAt: timestamppb.Now(), LogIndex: r.total}
@@ -479,6 +505,10 @@ func (r *reporter) flush(ctx context.Context, result runnerv1.Result, final bool
 	}
 	rows := append([]*runnerv1.LogRow(nil), r.rows...)
 	base := r.base
+	var outputs map[string]string
+	if final {
+		outputs = r.outputs
+	}
 	steps := make([]*runnerv1.StepState, len(r.steps))
 	for i, s := range r.steps {
 		steps[i] = &runnerv1.StepState{Id: s.Id, Result: s.Result, StartedAt: s.StartedAt, StoppedAt: s.StoppedAt, LogIndex: s.LogIndex, LogLength: s.LogLength}
@@ -499,7 +529,7 @@ func (r *reporter) flush(ctx context.Context, result runnerv1.Result, final bool
 			case <-time.After(time.Duration(i) * 500 * time.Millisecond):
 			}
 		}
-		if err = r.send(ctx, base, rows, steps, result); err == nil {
+		if err = r.send(ctx, base, rows, steps, result, outputs); err == nil {
 			return nil
 		}
 		if connect.CodeOf(err) == connect.CodeUnauthenticated || connect.CodeOf(err) == connect.CodePermissionDenied {
@@ -509,7 +539,7 @@ func (r *reporter) flush(ctx context.Context, result runnerv1.Result, final bool
 	return err
 }
 
-func (r *reporter) send(ctx context.Context, base int64, rows []*runnerv1.LogRow, steps []*runnerv1.StepState, result runnerv1.Result) error {
+func (r *reporter) send(ctx context.Context, base int64, rows []*runnerv1.LogRow, steps []*runnerv1.StepState, result runnerv1.Result, outputs map[string]string) error {
 	if len(rows) > 0 || result != runnerv1.Result_RESULT_UNSPECIFIED {
 		for len(rows) > 0 {
 			chunk := rows
@@ -539,7 +569,7 @@ func (r *reporter) send(ctx context.Context, base int64, rows []*runnerv1.LogRow
 		}
 	}
 	_, err := r.client.UpdateTask(ctx, withToken(&runnerv1.UpdateTaskRequest{
-		State: &runnerv1.TaskState{Id: r.taskID, Result: result, Steps: steps}}, r.token))
+		State: &runnerv1.TaskState{Id: r.taskID, Result: result, Steps: steps}, Outputs: outputs}, r.token))
 	return err
 }
 
