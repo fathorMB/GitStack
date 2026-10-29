@@ -9,10 +9,22 @@
 
 # --- Piccoli aiuti ---------------------------------------------------------
 
+# Server ACME di prova (Pebble, passo h-pub di GIT-468): il nome corto `pebble` e il Service in kube-system,
+# nei SAN del suo certificato. L'email serve perche' core dia Let's Encrypt per acceso (letsEncrypt.enabled).
+$script:E2eAcmeCaServer = 'https://pebble:14000/dir'
+$script:E2eAcmeEmail = 'e2e@example.test'
+# $true da quando il passo h-pub rilancia l'installer con Pebble: anche l'installer del restore deve
+# averlo, altrimenti Traefik non ha il volume di acme.json e il backup dell'archivio ACME non si ripristina.
+$script:E2eAcmeOn = $false
+$script:E2ePubCtx = $null
+
 function Get-E2eInstallCommand {
     # -AppsDomain: accende l'hosting delle app (GIT-375, --enable-apps) con quel dominio.
-    param([Parameter(Mandatory)][string]$InstallRef, [string]$AppsDomain)
-    $cmd = "curl -fsSL https://raw.githubusercontent.com/$script:GitStackRepo/$InstallRef/deploy/install.sh | sudo GITSTACK_REF=$InstallRef GITSTACK_ADMIN_REQUIRED=1 bash"
+    # -AcmeCaServer: resolver ACME di Traefik verso quel server (GITSTACK_ACME_CA_SERVER, Pebble nelle prove).
+    param([Parameter(Mandatory)][string]$InstallRef, [string]$AppsDomain, [string]$AcmeCaServer)
+    $acmeEnv = ''
+    if ($AcmeCaServer) { $acmeEnv = " GITSTACK_ACME_CA_SERVER=$AcmeCaServer GITSTACK_TLS_EMAIL=$script:E2eAcmeEmail" }
+    $cmd = "curl -fsSL https://raw.githubusercontent.com/$script:GitStackRepo/$InstallRef/deploy/install.sh | sudo GITSTACK_REF=$InstallRef GITSTACK_ADMIN_REQUIRED=1$acmeEnv bash"
     if ($AppsDomain) { $cmd += " -s -- --enable-apps --apps-domain $AppsDomain" }
     return $cmd
 }
@@ -46,8 +58,8 @@ function Invoke-E2eVmReset {
 
 # Installer di GIT-9 al commit indicato. Ritorna $null se ok, altrimenti il motivo.
 function Invoke-E2eInstall {
-    param([Parameter(Mandatory)][string]$InstallRef, [Parameter(Mandatory)][string]$LogName, [string]$AppsDomain)
-    $r = Invoke-VmSsh -Command (Get-E2eInstallCommand -InstallRef $InstallRef -AppsDomain $AppsDomain) -TimeoutSeconds $script:InstallTimeoutSeconds
+    param([Parameter(Mandatory)][string]$InstallRef, [Parameter(Mandatory)][string]$LogName, [string]$AppsDomain, [string]$AcmeCaServer)
+    $r = Invoke-VmSsh -Command (Get-E2eInstallCommand -InstallRef $InstallRef -AppsDomain $AppsDomain -AcmeCaServer $AcmeCaServer) -TimeoutSeconds $script:InstallTimeoutSeconds
     $log = Join-Path $script:OutDir $LogName
     Write-E2eText -Path $log -Stdout $r.StdOut -Stderr $r.StdErr
     if ($r.ExitCode -ne 0) { return "installer di ${InstallRef}: exit $($r.ExitCode) (log: $log)" }
@@ -575,6 +587,351 @@ function Test-E2eAppLifecycle {
     return , $rows
 }
 
+# --- App pubbliche e domini propri con Pebble (GIT-468, H1/H2) -------------
+# Pebble come server ACME e un resolver DNS di prova (zona nel CoreDNS del cluster) sulla VM, script in
+# e2e/gs-app-public.sh. Sequenza: interruttore delle app pubbliche acceso, un'app resa pubblica, un
+# dominio aggiunto e verificato, certificato da Pebble, app raggiunta senza login; interruttore spento e
+# app non piu esposta senza login (resta raggiungibile col login, ADR 0002); riacceso. Dopo il restore
+# (Test-E2eAppPublicAfterRestore) dominio e certificato sono ancora li.
+
+# Esegue un comando di gs-app-public.sh sulla VM; lancia se manca il marcatore "STEP ok ...".
+function Invoke-E2ePubVm {
+    param(
+        [string]$VmEnv = '',
+        [Parameter(Mandatory)][string]$Sub,
+        [Parameter(Mandatory)][string]$Marker,
+        [Parameter(Mandatory)][string]$LogPath,
+        [int]$TimeoutSeconds = 300
+    )
+    $r = Invoke-VmSsh -Command "$VmEnv bash /tmp/gitstack-e2e/gs-app-public.sh $Sub" -TimeoutSeconds $TimeoutSeconds
+    Write-E2eText -Path $LogPath -Stdout $r.StdOut -Stderr $r.StdErr
+    if ($r.ExitCode -ne 0 -or $r.StdOut -notmatch $Marker) { throw "${Sub}: exit $($r.ExitCode) $($r.StdOut) $($r.StdErr)" }
+    return $r
+}
+
+# Interruttore d'istanza delle app pubbliche (PUT /admin/apps/settings, solo admin): rilegge le impostazioni e
+# le rimanda con il solo publicAppsEnabled cambiato. Ritorna la risposta di Invoke-HttpRaw.
+function Set-E2ePublicAppsSwitch {
+    param([Parameter(Mandatory)][string]$BaseUrl, [Parameter(Mandatory)][string]$AdminCookie, [Parameter(Mandatory)][bool]$On)
+    $uri = "$BaseUrl/api/v1/admin/apps/settings"
+    $g = Invoke-HttpRaw -Uri $uri -Cookie $AdminCookie
+    if ($g.StatusCode -ne 200) { throw "GET admin/apps/settings: status $($g.StatusCode) $($g.Body) $($g.Error)" }
+    $s = $g.Body | ConvertFrom-Json
+    $body = @{
+        publicAppsEnabled = $On
+        signedImagesOnly  = [bool]$s.signedImagesOnly
+        restricted        = [bool]$s.restricted
+        maxPerApp         = @{ cpuMillis = [long]$s.maxPerApp.cpuMillis; memoryBytes = [long]$s.maxPerApp.memoryBytes }
+        logRetention      = @{ days = [int]$s.logRetention.days; maxBytes = [long]$s.logRetention.maxBytes }
+    }
+    return (Invoke-HttpRaw -Uri $uri -Method 'PUT' -Cookie $AdminCookie -Body ($body | ConvertTo-Json -Depth 5) -TimeoutSec 60)
+}
+
+# Aspetta che il dominio abbia lo stato (e, se indicato, il certificato) voluto. Ritorna l'oggetto del dominio.
+# Lancia se il dominio va in error o se il tempo scade.
+function Wait-E2eAppDomain {
+    param(
+        [Parameter(Mandatory)][string]$DomainUrl,
+        [Parameter(Mandatory)][hashtable]$Headers,
+        [string]$Status = 'verified',
+        [string]$CertState = '',
+        [int]$TimeoutSeconds = 120,
+        [string]$Recheck = ''
+    )
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $last = ''
+    while ((Get-Date) -lt $deadline) {
+        if ($Recheck) { [void](Invoke-HttpRaw -Uri $Recheck -Method 'POST' -Headers $Headers -TimeoutSec 60) }
+        $r = Invoke-HttpRaw -Uri $DomainUrl -Headers $Headers
+        if ($r.StatusCode -eq 200) {
+            $d = $r.Body | ConvertFrom-Json
+            if ($d.status -eq 'error') { throw "dominio in error: $($d.statusReason)" }
+            if ($CertState -and $d.certificate.state -eq 'error') { throw "certificato in error: $($d.certificate.error)" }
+            $last = "stato $($d.status), certificato $($d.certificate.state) ($($d.certificate.issuer))"
+            if ($d.status -eq $Status -and (-not $CertState -or $d.certificate.state -eq $CertState)) { return $d }
+        } else {
+            $last = "status $($r.StatusCode) $($r.Error)"
+        }
+        Start-Sleep -Seconds 10
+    }
+    throw "dopo ${TimeoutSeconds}s il dominio non e arrivato a $Status$(if ($CertState) { "/$CertState" }) (ultimo: $last)"
+}
+
+# Tredici controlli prima del backup. Ritorna tredici oggetti {Name, Ok, Detail}, sempre. Al primo errore il
+# passo si ferma e i log di Pebble, Traefik e CoreDNS finiscono in diag.log. Lascia l'app, il dominio e il
+# certificato dov'e' (devono entrare nel backup) e imposta $script:E2ePubCtx per i controlli dopo il restore.
+function Test-E2eAppPublic {
+    param(
+        [Parameter(Mandatory)][string]$BaseUrl,
+        [Parameter(Mandatory)]$Data,
+        [Parameter(Mandatory)]$Ctx,
+        [Parameter(Mandatory)][string]$AdminPassword,
+        [Parameter(Mandatory)][string]$InstallRef,
+        [Parameter(Mandatory)][string]$WorkDir
+    )
+    New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
+    $appName = 'e2epub'
+    $webImage = 'e2eweb'
+    $names = @(
+        'h-pub 1/13 Pebble (ACME di prova) pronto e Traefik col resolver su Pebble: installer rilanciato con GITSTACK_ACME_CA_SERVER, CA di Pebble data a Traefik',
+        'h-pub 2/13 app e2epub creata; con l''interruttore spento la scelta public e rifiutata (422 public_apps_disabled)',
+        'h-pub 3/13 interruttore delle app pubbliche acceso dall''amministratore e Let''s Encrypt acceso nelle impostazioni',
+        'h-pub 4/13 chi ha admin sull''app sceglie public (doppio consenso)',
+        'h-pub 5/13 app pubblica: l''indirizzo automatico risponde senza login',
+        'h-pub 6/13 resolver DNS di prova: il dominio proprio risolve dal cluster verso Traefik (CNAME sull''indirizzo automatico)',
+        'h-pub 7/13 dominio proprio aggiunto: 201 con il record CNAME atteso',
+        'h-pub 8/13 dominio verificato (DNS verified)',
+        'h-pub 9/13 certificato ottenuto da Pebble (valid, emittente Pebble)',
+        'h-pub 10/13 app raggiunta senza login sul dominio, catena fino alla radice di Pebble',
+        'h-pub 11/13 interruttore spento: il dominio non espone piu l''app',
+        'h-pub 12/13 interruttore spento: l''indirizzo automatico chiede il login (401) e col token l''app risponde',
+        'h-pub 13/13 interruttore riacceso: dominio e certificato conservati, app di nuovo senza login sul dominio'
+    )
+    $rows = @()
+    foreach ($n in $names) { $rows += [pscustomobject]@{ Name = $n; Ok = $false; Detail = 'non verificato' } }
+    $script:E2ePubCtx = $null
+    $i = 0
+    try {
+        $apps = [string]$script:AppsDomain
+        if (-not $apps -or $apps.IndexOf('.') -lt 1) { throw "dominio delle app '$apps' non utilizzabile per la zona di prova" }
+        $apex = $apps.Substring($apps.IndexOf('.') + 1)
+        $pubDomain = "shop-pub.$apex"
+        $h = Get-E2eBearer -Data $Data
+        $appsApi = "$BaseUrl/api/v1/repos/$($Data.User)/$($Data.Repo)/apps"
+        $appUrl = "$appsApi/$appName"
+        $domainUrl = "$appUrl/domains/$pubDomain"
+        $rootRemote = '/tmp/gitstack-e2e/pebble-root.pem'
+        $caRemote = '/tmp/gitstack-e2e/app-ca.crt'
+        $expectBody = 'e2e-web-v1'
+
+        # 1. Pebble, installer con il resolver su Pebble, Traefik si fida della CA di prova
+        $i = 0
+        $cp = Copy-ToVm -LocalPath (Join-Path (Split-Path -Parent $PSScriptRoot) 'e2e\gs-app-public.sh') -RemotePath '/tmp/gitstack-e2e/gs-app-public.sh' -TimeoutSeconds $script:SshCommandTimeoutSeconds
+        if ($cp.ExitCode -ne 0) { throw "scp di gs-app-public.sh: exit $($cp.ExitCode) $($cp.StdErr)" }
+        [void](Invoke-E2ePubVm -Sub 'pebble-up' -Marker 'STEP ok pebble-up' -LogPath (Join-Path $WorkDir 'pebble-up.log') -TimeoutSeconds 600)
+        $script:E2eAcmeOn = $true
+        $why = Invoke-E2eInstall -InstallRef $InstallRef -LogName 'installer-acme.log' -AppsDomain $apps -AcmeCaServer $script:E2eAcmeCaServer
+        if ($why) { throw $why }
+        $w = Wait-E2eHealthy -BaseUrl $BaseUrl -TimeoutSeconds 300
+        if ($w) { throw "dopo il rilancio dell'installer: $w" }
+        [void](Invoke-E2ePubVm -Sub 'traefik-acme' -Marker 'STEP ok traefik-acme' -LogPath (Join-Path $WorkDir 'traefik-acme.log') -TimeoutSeconds 900)
+        $adminCk = Get-E2eAdminCookie -BaseUrl $BaseUrl -Password $AdminPassword
+        $rows[0].Ok = $true; $rows[0].Detail = ''
+
+        # 2. l'app, e con l'interruttore spento public e rifiutato
+        $i = 1
+        $off = Set-E2ePublicAppsSwitch -BaseUrl $BaseUrl -AdminCookie $adminCk -On $false
+        if ($off.StatusCode -ne 200) { throw "PUT admin/apps/settings (spento): status $($off.StatusCode) $($off.Body)" }
+        $push = Invoke-VmSsh -Command "GS_VM_IP='$script:VmIp' GS_CA=$caRemote GS_USER_TOKEN='$($Ctx.RegistryToken)' GS_IMAGE='$($Data.User)/$($Data.Repo)/$webImage' bash /tmp/gitstack-e2e/gs-app-restore.sh push-web" -TimeoutSeconds 600
+        Write-E2eText -Path (Join-Path $WorkDir 'push-web.log') -Stdout $push.StdOut -Stderr $push.StdErr
+        if ($push.ExitCode -ne 0 -or $push.StdOut -notmatch 'STEP ok push-web') { throw "push dell'immagine web: exit $($push.ExitCode) $($push.StdOut) $($push.StdErr)" }
+        $c = Invoke-HttpRaw -Uri $appsApi -Method 'POST' -Headers $h -Body (@{ name = $appName; image = "${webImage}:v1"; port = 8080 } | ConvertTo-Json) -TimeoutSec 60
+        if ($c.StatusCode -ne 202) { throw "POST apps: status $($c.StatusCode) $($c.Body) $($c.Error)" }
+        [void](Wait-E2eAppServing -AppsApi $appsApi -Headers $h -AppName $appName)
+        $g = Invoke-HttpRaw -Uri $appUrl -Headers $h
+        if ($g.StatusCode -ne 200) { throw "GET app: status $($g.StatusCode)" }
+        $addr = [string](($g.Body | ConvertFrom-Json).address)
+        if (-not $addr) { throw 'l''app non ha un indirizzo (address assente)' }
+        $appHost = ([Uri]$addr).Host
+        if (-not $appHost.EndsWith(".$apps")) { throw "l'indirizzo $appHost non sta sotto il dominio delle app $apps" }
+        $label = $appHost.Substring(0, $appHost.Length - $apps.Length - 1)
+        $deny = Invoke-HttpRaw -Uri "$appUrl/access" -Method 'PUT' -Headers $h -Body (@{ mode = 'public' } | ConvertTo-Json) -TimeoutSec 60
+        if ($deny.StatusCode -ne 422 -or $deny.Body -notmatch 'public_apps_disabled') { throw "PUT access public a interruttore spento: status $($deny.StatusCode) $($deny.Body) (atteso 422 public_apps_disabled)" }
+        $rows[1].Ok = $true; $rows[1].Detail = "indirizzo $appHost"
+
+        # 3. interruttore acceso
+        $i = 2
+        $on = Set-E2ePublicAppsSwitch -BaseUrl $BaseUrl -AdminCookie $adminCk -On $true
+        if ($on.StatusCode -ne 200) { throw "PUT admin/apps/settings (acceso): status $($on.StatusCode) $($on.Body)" }
+        $set = $on.Body | ConvertFrom-Json
+        if (-not $set.publicAppsEnabled) { throw 'la risposta non ha publicAppsEnabled' }
+        if (-not $set.letsEncrypt -or -not $set.letsEncrypt.enabled) { throw "Let's Encrypt non acceso nelle impostazioni (letsEncrypt: $($set.letsEncrypt | ConvertTo-Json -Compress)): core non ha il resolver o l'email ACME" }
+        $rows[2].Ok = $true; $rows[2].Detail = "email ACME $($set.letsEncrypt.acmeEmail)"
+
+        # 4. public
+        $i = 3
+        $pub = Invoke-HttpRaw -Uri "$appUrl/access" -Method 'PUT' -Headers $h -Body (@{ mode = 'public' } | ConvertTo-Json) -TimeoutSec 60
+        if ($pub.StatusCode -ne 200) { throw "PUT access public: status $($pub.StatusCode) $($pub.Body)" }
+        $acc = $pub.Body | ConvertFrom-Json
+        if ($acc.mode -ne 'public' -or -not $acc.publicAppsEnabled) { throw "accesso dopo la scelta: mode '$($acc.mode)', publicAppsEnabled '$($acc.publicAppsEnabled)'" }
+        $rows[3].Ok = $true; $rows[3].Detail = ''
+
+        # 5. indirizzo automatico senza login
+        $i = 4
+        [void](Invoke-E2ePubVm -VmEnv "GS_APP_HOST='$appHost' GS_CA=$caRemote GS_EXPECT=$expectBody" -Sub 'address-open' -Marker 'STEP ok address-open' -LogPath (Join-Path $WorkDir 'address-open.log') -TimeoutSeconds 300)
+        $rows[4].Ok = $true; $rows[4].Detail = ''
+
+        # 6. il resolver DNS di prova
+        $i = 5
+        [void](Invoke-E2ePubVm -VmEnv "GS_APPS_DOMAIN='$apps' GS_APP_LABEL='$label' GS_PUB_DOMAIN='$pubDomain'" -Sub 'dns-set' -Marker 'STEP ok dns-set' -LogPath (Join-Path $WorkDir 'dns-set.log') -TimeoutSeconds 600)
+        $rows[5].Ok = $true; $rows[5].Detail = "$pubDomain -> $label.$apps"
+
+        # 7. il dominio proprio
+        $i = 6
+        $ad = Invoke-HttpRaw -Uri "$appUrl/domains" -Method 'POST' -Headers $h -Body (@{ domain = $pubDomain } | ConvertTo-Json) -TimeoutSec 60
+        if ($ad.StatusCode -ne 201) { throw "POST domains: status $($ad.StatusCode) $($ad.Body) $($ad.Error)" }
+        $dom = $ad.Body | ConvertFrom-Json
+        if ($dom.domain -ne $pubDomain -or $dom.dns.type -ne 'CNAME' -or $dom.dns.value -ne $appHost) {
+            throw "dominio aggiunto: dominio '$($dom.domain)', record atteso $($dom.dns.type) '$($dom.dns.value)' (atteso CNAME verso $appHost)"
+        }
+        $rows[6].Ok = $true; $rows[6].Detail = "stato $($dom.status)"
+
+        # 8. DNS verified
+        $i = 7
+        $dom = Wait-E2eAppDomain -DomainUrl $domainUrl -Headers $h -Status 'verified' -TimeoutSeconds 180 -Recheck "$domainUrl/recheck"
+        $rows[7].Ok = $true; $rows[7].Detail = ''
+
+        # 9. certificato da Pebble
+        $i = 8
+        $dom = Wait-E2eAppDomain -DomainUrl $domainUrl -Headers $h -Status 'verified' -CertState 'valid' -TimeoutSeconds 540
+        if ([string]$dom.certificate.issuer -notmatch 'Pebble') { throw "emittente '$($dom.certificate.issuer)': non e Pebble" }
+        if ($dom.certificate.mode -ne 'letsencrypt') { throw "modalita del certificato '$($dom.certificate.mode)' (attesa letsencrypt)" }
+        $rows[8].Ok = $true; $rows[8].Detail = "emittente $($dom.certificate.issuer), scade $($dom.certificate.validUntil)"
+
+        # 10. app sul dominio senza login, catena fino alla radice di Pebble
+        $i = 9
+        [void](Invoke-E2ePubVm -VmEnv "GS_ROOT_OUT=$rootRemote" -Sub 'pebble-root' -Marker 'STEP ok pebble-root' -LogPath (Join-Path $WorkDir 'pebble-root.log'))
+        $pull = Copy-FromVm -RemotePath $rootRemote -LocalPath $WorkDir -TimeoutSeconds $script:SshCommandTimeoutSeconds
+        if ($pull.ExitCode -ne 0) { throw "scp della radice di Pebble: exit $($pull.ExitCode) $($pull.StdErr)" }
+        $rootLocal = Join-Path $WorkDir 'pebble-root.pem'
+        if (-not (Test-Path -LiteralPath $rootLocal)) { throw 'la radice di Pebble non e arrivata sull''host' }
+        [void](Invoke-E2ePubVm -VmEnv "GS_DOMAIN='$pubDomain' GS_ROOT=$rootRemote GS_EXPECT=$expectBody" -Sub 'domain-open' -Marker 'STEP ok domain-open' -LogPath (Join-Path $WorkDir 'domain-open.log') -TimeoutSeconds 300)
+        $ci = Invoke-E2ePubVm -VmEnv "GS_DOMAIN='$pubDomain'" -Sub 'cert-info' -Marker 'fp=' -LogPath (Join-Path $WorkDir 'cert-info.log')
+        $fpm = [regex]::Match($ci.StdOut, '(?m)^fp=(\S+)')
+        if (-not $fpm.Success) { throw 'cert-info senza impronta' }
+        if ($ci.StdOut -notmatch 'Pebble') { throw "il certificato servito non e di Pebble: $($ci.StdOut)" }
+        if ($ci.StdOut -notmatch [regex]::Escape($pubDomain)) { throw "il certificato servito non ha $pubDomain nei SAN: $($ci.StdOut)" }
+        $script:E2ePubCtx = [pscustomobject]@{ AppName = $appName; Domain = $pubDomain; Label = $label; Fingerprint = $fpm.Groups[1].Value; RootLocal = $rootLocal; Expect = $expectBody }
+        $rows[9].Ok = $true; $rows[9].Detail = "impronta $($fpm.Groups[1].Value)"
+
+        # 11. interruttore spento: dominio non esposto
+        $i = 10
+        $offAgain = Set-E2ePublicAppsSwitch -BaseUrl $BaseUrl -AdminCookie $adminCk -On $false
+        if ($offAgain.StatusCode -ne 200 -or ($offAgain.Body | ConvertFrom-Json).publicAppsEnabled) { throw "PUT admin/apps/settings (spento): status $($offAgain.StatusCode) $($offAgain.Body)" }
+        [void](Invoke-E2ePubVm -VmEnv "GS_DOMAIN='$pubDomain' GS_EXPECT=$expectBody" -Sub 'domain-closed' -Marker 'STEP ok domain-closed' -LogPath (Join-Path $WorkDir 'domain-closed.log') -TimeoutSeconds 300)
+        $rows[10].Ok = $true; $rows[10].Detail = ''
+
+        # 12. spento: l'indirizzo automatico resta raggiungibile col login (ADR 0002)
+        $i = 11
+        $probeEnv = "GS_VM_IP='$script:VmIp' GS_CA=$caRemote GS_APP_HOST='$appHost'"
+        $anon = $null
+        for ($try = 0; $try -lt 6; $try++) {
+            $anon = Invoke-VmSsh -Command "$probeEnv bash /tmp/gitstack-e2e/gs-app-restore.sh probe-anon" -TimeoutSeconds 120
+            if ($anon.ExitCode -eq 0 -and $anon.StdOut -match 'STEP ok login-anon') { break }
+            Start-Sleep -Seconds 10
+        }
+        Write-E2eText -Path (Join-Path $WorkDir 'probe-anon-spento.log') -Stdout $anon.StdOut -Stderr $anon.StdErr
+        if ($anon.ExitCode -ne 0 -or $anon.StdOut -notmatch 'STEP ok login-anon') { throw "senza credenziale, a interruttore spento: $($anon.StdOut) $($anon.StdErr)" }
+        $auth = Invoke-VmSsh -Command "$probeEnv GS_PROBE_TOKEN='$($Data.Token)' GS_EXPECT=$expectBody bash /tmp/gitstack-e2e/gs-app-restore.sh probe-auth" -TimeoutSeconds 300
+        Write-E2eText -Path (Join-Path $WorkDir 'probe-auth-spento.log') -Stdout $auth.StdOut -Stderr $auth.StdErr
+        if ($auth.ExitCode -ne 0 -or $auth.StdOut -notmatch "STEP ok serve-$expectBody") { throw "col token, a interruttore spento: $($auth.StdOut) $($auth.StdErr)" }
+        $rows[11].Ok = $true; $rows[11].Detail = ''
+
+        # 13. riacceso: tutto conservato
+        $i = 12
+        $reOn = Set-E2ePublicAppsSwitch -BaseUrl $BaseUrl -AdminCookie $adminCk -On $true
+        if ($reOn.StatusCode -ne 200 -or -not ($reOn.Body | ConvertFrom-Json).publicAppsEnabled) { throw "PUT admin/apps/settings (riacceso): status $($reOn.StatusCode) $($reOn.Body)" }
+        $dom = Wait-E2eAppDomain -DomainUrl $domainUrl -Headers $h -Status 'verified' -CertState 'valid' -TimeoutSeconds 180
+        [void](Invoke-E2ePubVm -VmEnv "GS_DOMAIN='$pubDomain' GS_ROOT=$rootRemote GS_EXPECT=$expectBody" -Sub 'domain-open' -Marker 'STEP ok domain-open' -LogPath (Join-Path $WorkDir 'domain-open-riacceso.log') -TimeoutSeconds 300)
+        $ci2 = Invoke-E2ePubVm -VmEnv "GS_DOMAIN='$pubDomain'" -Sub 'cert-info' -Marker 'fp=' -LogPath (Join-Path $WorkDir 'cert-info-riacceso.log')
+        if ($ci2.StdOut -notmatch [regex]::Escape($script:E2ePubCtx.Fingerprint)) { throw "il certificato servito e cambiato dopo lo spegnimento: $($ci2.StdOut)" }
+        $rows[12].Ok = $true; $rows[12].Detail = ''
+    } catch {
+        $msg = $_.Exception.Message
+        $rows[$i].Detail = $msg
+        foreach ($r2 in $rows) { if (-not $r2.Ok -and $r2.Detail -eq 'non verificato') { $r2.Detail = "non verificato: un passo precedente e fallito ($msg)" } }
+        try {
+            $dg = Invoke-VmSsh -Command 'bash /tmp/gitstack-e2e/gs-app-public.sh diag' -TimeoutSeconds 120
+            Write-E2eText -Path (Join-Path $WorkDir 'diag.log') -Stdout $dg.StdOut -Stderr $dg.StdErr
+        } catch {
+            Write-Log "ATTENZIONE: diagnostica di Pebble/Traefik/CoreDNS non raccolta: $($_.Exception.Message)"
+        }
+    }
+    return , $rows
+}
+
+# Quattro controlli dopo il restore: dominio e certificato ci sono ancora e l'app risponde sul dominio.
+# Ritorna quattro oggetti {Name, Ok, Detail}, sempre. Pebble non c'e piu (la VM e stata ripristinata): il
+# certificato e quello di prima perche' l'archivio ACME di Traefik e tornato col backup.
+function Test-E2eAppPublicAfterRestore {
+    param(
+        [Parameter(Mandatory)][string]$BaseUrl,
+        [Parameter(Mandatory)]$Data,
+        [Parameter(Mandatory)]$Ctx,
+        [Parameter(Mandatory)][string]$WorkDir
+    )
+    New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
+    $names = @(
+        'i-pub 1/4 dopo il restore il dominio proprio e ancora dell''app e2epub (modo public)',
+        'i-pub 2/4 il certificato del dominio e ancora valid (emittente Pebble)',
+        'i-pub 3/4 Traefik serve lo stesso certificato di prima (impronta SHA-256 uguale: archivio ACME ripristinato)',
+        'i-pub 4/4 l''app risponde senza login sul dominio, catena fino alla radice di Pebble di prima'
+    )
+    $rows = @()
+    foreach ($n in $names) { $rows += [pscustomobject]@{ Name = $n; Ok = $false; Detail = 'non verificato' } }
+    $i = 0
+    try {
+        $h = Get-E2eBearer -Data $Data
+        $appUrl = "$BaseUrl/api/v1/repos/$($Data.User)/$($Data.Repo)/apps/$($Ctx.AppName)"
+        $domainUrl = "$appUrl/domains/$($Ctx.Domain)"
+        $rootRemote = '/tmp/gitstack-e2e/pebble-root.pem'
+
+        # 1. dominio e modo
+        $i = 0
+        $acc = Invoke-HttpRaw -Uri "$appUrl/access" -Headers $h
+        if ($acc.StatusCode -ne 200) { throw "GET access: status $($acc.StatusCode) $($acc.Body) $($acc.Error)" }
+        $access = $acc.Body | ConvertFrom-Json
+        if ($access.mode -ne 'public' -or -not $access.publicAppsEnabled) { throw "accesso dopo il restore: mode '$($access.mode)', publicAppsEnabled '$($access.publicAppsEnabled)'" }
+        $list = Invoke-HttpRaw -Uri "$appUrl/domains" -Headers $h
+        if ($list.StatusCode -ne 200) { throw "GET domains: status $($list.StatusCode) $($list.Body)" }
+        $found = @(($list.Body | ConvertFrom-Json).items | Where-Object { $_.domain -eq $Ctx.Domain })
+        if ($found.Count -ne 1) { throw "il dominio $($Ctx.Domain) non e nell'elenco dopo il restore" }
+        $rows[0].Ok = $true; $rows[0].Detail = "stato $($found[0].status)"
+
+        # 2. certificato valid: core lo rilegge da Traefik (SNI), puo servire un minuto
+        $i = 1
+        $d = Wait-E2eAppDomain -DomainUrl $domainUrl -Headers $h -Status $found[0].status -CertState 'valid' -TimeoutSeconds 420
+        if ([string]$d.certificate.issuer -notmatch 'Pebble') { throw "emittente '$($d.certificate.issuer)': non e Pebble" }
+        $rows[1].Ok = $true; $rows[1].Detail = "scade $($d.certificate.validUntil)"
+
+        # 3. stesso certificato
+        $i = 2
+        $cp = Copy-ToVm -LocalPath (Join-Path (Split-Path -Parent $PSScriptRoot) 'e2e\gs-app-public.sh') -RemotePath '/tmp/gitstack-e2e/gs-app-public.sh' -TimeoutSeconds $script:SshCommandTimeoutSeconds
+        if ($cp.ExitCode -ne 0) { throw "scp di gs-app-public.sh sulla VM nuova: exit $($cp.ExitCode) $($cp.StdErr)" }
+        $ci = Invoke-E2ePubVm -VmEnv "GS_DOMAIN='$($Ctx.Domain)'" -Sub 'cert-info' -Marker 'fp=' -LogPath (Join-Path $WorkDir 'cert-info.log')
+        if ($ci.StdOut -notmatch [regex]::Escape($Ctx.Fingerprint)) { throw "impronta del certificato servito diversa da quella di prima ($($Ctx.Fingerprint)): $($ci.StdOut)" }
+        $rows[2].Ok = $true; $rows[2].Detail = $Ctx.Fingerprint
+
+        # 4. l'app sul dominio (le app ripartono dopo il restore: si aspetta running)
+        $i = 3
+        $status = ''
+        for ($attempt = 0; $attempt -lt 42; $attempt++) {
+            $a = Invoke-HttpRaw -Uri $appUrl -Headers $h
+            if ($a.StatusCode -eq 200) {
+                $status = [string](($a.Body | ConvertFrom-Json).status)
+                if ($status -eq 'running') { break }
+            }
+            Start-Sleep -Seconds 10
+        }
+        if ($status -ne 'running') { throw "l'app e2epub non e running dopo il restore (stato '$status')" }
+        $cr = Copy-ToVm -LocalPath $Ctx.RootLocal -RemotePath $rootRemote -TimeoutSeconds $script:SshCommandTimeoutSeconds
+        if ($cr.ExitCode -ne 0) { throw "scp della radice di Pebble sulla VM nuova: exit $($cr.ExitCode) $($cr.StdErr)" }
+        [void](Invoke-E2ePubVm -VmEnv "GS_DOMAIN='$($Ctx.Domain)' GS_ROOT=$rootRemote GS_EXPECT=$($Ctx.Expect)" -Sub 'domain-open' -Marker 'STEP ok domain-open' -LogPath (Join-Path $WorkDir 'domain-open.log') -TimeoutSeconds 300)
+        $rows[3].Ok = $true; $rows[3].Detail = ''
+    } catch {
+        $msg = $_.Exception.Message
+        $rows[$i].Detail = $msg
+        foreach ($r2 in $rows) { if (-not $r2.Ok -and $r2.Detail -eq 'non verificato') { $r2.Detail = "non verificato: un passo precedente e fallito ($msg)" } }
+        try {
+            $dg = Invoke-VmSsh -Command 'bash /tmp/gitstack-e2e/gs-app-public.sh diag' -TimeoutSeconds 120
+            Write-E2eText -Path (Join-Path $WorkDir 'diag.log') -Stdout $dg.StdOut -Stderr $dg.StdErr
+        } catch {
+            Write-Log "ATTENZIONE: diagnostica dopo il restore non raccolta: $($_.Exception.Message)"
+        }
+    }
+    return , $rows
+}
+
 # Dieci controlli dopo il restore (sette dell'app, tre sui volumi). Ritorna dieci oggetti {Name, Ok, Detail}, sempre.
 function Test-E2eAppAfterRestore {
     param(
@@ -724,6 +1081,16 @@ function Invoke-E2eBackupRestorePhase {
             } else {
                 Add-StepResult -Name 'h-app ciclo. esito complessivo' -Ok $false -Detail 'l''app di prova non e stata preparata: ciclo non eseguito'
             }
+
+            # app pubblica e dominio proprio con Pebble (GIT-468): prima del backup, cosi' entrano nell'archivio
+            if ($appCtx) {
+                $pubRows = Test-E2eAppPublic -BaseUrl $BaseUrl -Data $data -Ctx $appCtx -AdminPassword $AdminPassword -InstallRef $InstallRef -WorkDir (Join-Path $phaseDir 'app-pubblica')
+                foreach ($pr in $pubRows) { Add-StepResult -Name $pr.Name -Ok $pr.Ok -Detail $pr.Detail }
+                $pubOk = @($pubRows | Where-Object { $_.Ok }).Count
+                Add-StepResult -Name "h-pub. esito complessivo: $pubOk/$(@($pubRows).Count) controlli ok" -Ok ($pubOk -eq @($pubRows).Count) -Detail "$(@($pubRows).Count - $pubOk) controlli ko (vedi le righe h-pub sopra; log di Pebble, Traefik e CoreDNS in app-pubblica\diag.log)"
+            } else {
+                Add-StepResult -Name 'h-pub. esito complessivo' -Ok $false -Detail 'l''app di prova non e stata preparata: passo non eseguito'
+            }
         }
 
         $gen = Invoke-VmSsh -Command 'umask 077; mkdir -p /tmp/gitstack-e2e/backup && openssl rand -base64 32 > /tmp/gitstack-e2e/backup/chiave' -TimeoutSeconds $script:SshCommandTimeoutSeconds
@@ -790,7 +1157,10 @@ function Invoke-E2eBackupRestorePhase {
         $why = Invoke-E2eVmReset -Label 'restore'
         if ($why) { throw "reset: $why" }
         Write-Log "IP della VM dopo il reset: $script:VmIp (prima: $oldIp)"
-        $why = Invoke-E2eInstall -InstallRef $InstallRef -LogName 'installer-restore.log' -AppsDomain $script:AppsDomain
+        # con Pebble nel passo h-pub: il resolver ACME (e il volume di acme.json) deve esserci anche qui,
+        # altrimenti l'archivio ACME del backup non ha dove tornare
+        $acmeServer = if ($script:E2eAcmeOn) { $script:E2eAcmeCaServer } else { '' }
+        $why = Invoke-E2eInstall -InstallRef $InstallRef -LogName 'installer-restore.log' -AppsDomain $script:AppsDomain -AcmeCaServer $acmeServer
         if ($why) { throw $why }
         $baseUrl2 = "https://$script:VmIp"
         $caPath2 = Join-Path $phaseDir 'ca-nuova-installazione.crt'
@@ -838,6 +1208,21 @@ function Invoke-E2eBackupRestorePhase {
         $iOk = $false; $iDetails += $_.Exception.Message
     }
     Add-StepResult -Name 'i. reset, reinstallazione della stessa versione, gitstack restore: CA e admin come prima, utente/token/org/repo/issue/allegato intatti, clone HTTPS e SSH identici (host key invariata), status sano' -Ok $iOk -Detail ($iDetails -join '; ')
+
+    # --- i-pub. dominio e certificato dopo il restore (GIT-468): quattro righe ok/ko e l'esito ---
+    if ($script:E2ePubCtx) {
+        Write-Log "==> Passo i-pub: dominio proprio e certificato dopo il restore (quattro controlli) ..."
+        if (-not $script:RestoredBaseUrl -or $script:RestoredBaseUrl -ne "https://$script:VmIp") {
+            Add-StepResult -Name 'i-pub. dominio e certificato dopo il restore' -Ok $false -Detail 'il restore non e arrivato in fondo (passo i fallito): controlli non eseguiti'
+        } else {
+            $pubAfter = Test-E2eAppPublicAfterRestore -BaseUrl $script:RestoredBaseUrl -Data $data -Ctx $script:E2ePubCtx -WorkDir (Join-Path $phaseDir 'app-pubblica-dopo-restore')
+            foreach ($pr in $pubAfter) { Add-StepResult -Name $pr.Name -Ok $pr.Ok -Detail $pr.Detail }
+            $pubAfterOk = @($pubAfter | Where-Object { $_.Ok }).Count
+            Add-StepResult -Name "i-pub. esito complessivo: $pubAfterOk/$(@($pubAfter).Count) controlli ok" -Ok ($pubAfterOk -eq @($pubAfter).Count) -Detail "$(@($pubAfter).Count - $pubAfterOk) controlli ko (vedi le righe i-pub sopra)"
+        }
+    } elseif ($script:E2eAcmeOn) {
+        Add-StepResult -Name 'i-pub. dominio e certificato dopo il restore' -Ok $false -Detail 'il passo h-pub non e arrivato al certificato: niente da verificare dopo il restore'
+    }
 
     # --- i-app. l'app col suo stato dopo il restore (GIT-388): sette righe ok/ko e l'esito ---
     if ($appCtx) {
