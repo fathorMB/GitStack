@@ -52,3 +52,33 @@ func TestKubectlCluster_PGExecEsternoUsaIlPodClient(t *testing.T) {
 }
 
 func join(a []string) string { return strings.Join(a, " ") }
+
+// GIT-494: i Secret dei certificati del cliente stanno in <release>-certs, che il backup non legge né
+// riscrive: Secrets() guarda solo il namespace del release (label part-of=gitstack) e ApplySecret scrive
+// lì. Dopo un restore è core a ricreare i Secret nel namespace dei certificati dal database.
+func TestKubectlCluster_SecretsSoloNelNamespaceDelRelease(t *testing.T) {
+	var got [][]string
+	k := &KubectlCluster{Bin: "kubectl", Namespace: "ns", Release: "gs",
+		Exec: func(_ context.Context, _ []string, _ io.Reader, out io.Writer, name string, args ...string) error {
+			got = append(got, append([]string{name}, args...))
+			if out != nil {
+				_, _ = out.Write([]byte(`{"items":[]}`))
+			}
+			return nil
+		}}
+	if _, err := k.Secrets(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if err := k.ApplySecret(context.Background(), Secret{Name: "x", Raw: []byte(`{}`)}); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("chiamate attese 2, trovate %v", got)
+	}
+	for _, c := range got {
+		s := join(c)
+		if !strings.HasPrefix(s, "kubectl -n ns ") || strings.Contains(s, "certs") || strings.Contains(s, "--all-namespaces") || strings.Contains(s, " -A") {
+			t.Errorf("il backup deve restare nel namespace del release: %q", s)
+		}
+	}
+}

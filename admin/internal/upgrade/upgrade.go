@@ -126,6 +126,10 @@ type Options struct {
 	// V5 è la verifica delle firme cosign (binario, chart, immagini). Il
 	// valore zero verifica: si salta solo con V5.AllowUnsigned (N9).
 	V5 V5Config
+	// Reexec esegue un passo (rollback, passi dopo l'upgrade) con il binario di
+	// destinazione già scaricato (GIT-490). nil = sempre la logica di questo
+	// binario; ErrNoReexec = il binario di destinazione non lo supporta.
+	Reexec func(ctx context.Context, staged string, req *ReexecRequest) (*ReexecReply, error)
 }
 
 func (o *Options) client() *http.Client {
@@ -591,7 +595,7 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 	}
 
 	// 3. Chart e salute.
-	st := &state{o: o, res: res, prevRev: prevRev, before: before, beforeErr: beforeErr, backupPath: br.Path}
+	st := &state{o: o, res: res, prevRev: prevRev, before: before, beforeErr: beforeErr, backupPath: br.Path, staged: staged}
 	if err := o.apply(ctx, t, st, newChart, chartDir, staged, valuesFile, &chartKept); err != nil {
 		res.Reason = err.Error()
 		o.logf("!! Aggiornamento fallito: %v", err)
@@ -601,7 +605,7 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 	}
 	res.Outcome = Upgraded
 	res.add("Aggiornato da %s a %s: tutti i servizi sono sani.", o.Cfg.ImageTag, t.Tag)
-	o.removeLegacyServiceSecret(ctx, res, userServiceSecret)
+	o.postUpgrade(ctx, res, staged, userServiceSecret)
 	res.add("Backup preventivo conservato: %s", br.Path)
 	return res, nil
 }
@@ -644,6 +648,7 @@ func (o *Options) hardenOnly(ctx context.Context, res *Result, tag string) (*Res
 		// ha cancellato il Secret condiviso: lo si toglie ora (idempotente).
 		if !o.DryRun {
 			o.removeLegacyServiceSecret(ctx, res, "")
+			o.migrateCustomCerts(ctx, res)
 		}
 		return res, nil
 	}
@@ -689,6 +694,8 @@ type state struct {
 	backupPath string
 	helmRan    bool
 	undo       []func() error
+	// staged è il binario di destinazione, già verificato (re-exec, GIT-490).
+	staged string
 }
 
 func (o *Options) apply(ctx context.Context, t *Target, st *state, newChart, chartDir, staged, valuesFile string, chartKept *bool) error {
@@ -785,7 +792,50 @@ func tail(s string) string {
 
 // rollback riporta il sistema com'era. Usa un contesto nuovo: anche con
 // Ctrl-C a metà l'aggiornamento deve tornare indietro.
+//
+// GIT-490: i file locali si ripristinano qui; la parte sul cluster (helm
+// rollback, ServiceAccount, restore, salute) la esegue il binario di
+// destinazione, se supporta il re-exec, così la correzione vale anche per chi
+// aggiorna da una versione che non la contiene.
 func (o *Options) rollback(st *state) {
+	res := st.res
+	var fileErrs []string
+	for i := len(st.undo) - 1; i >= 0; i-- {
+		if err := st.undo[i](); err != nil {
+			msg := fmt.Sprintf("ripristino di un file locale: %v", err)
+			o.logf("!! %s", msg)
+			fileErrs = append(fileErrs, msg)
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(context.Background()), 3*o.timeout()+10*time.Minute)
+	defer cancel()
+	req := &ReexecRequest{
+		Mode: ReexecRollback, From: res.From, To: res.To, Reason: res.Reason, PrevRev: st.prevRev,
+		Before: st.before, BackupPath: st.backupPath, HelmRan: st.helmRan,
+	}
+	if st.beforeErr != nil {
+		req.BeforeErr = st.beforeErr.Error()
+	}
+	reply, ok := o.reexec(ctx, st.staged, req)
+	if !ok {
+		o.rollbackCluster(st)
+	} else {
+		res.Outcome = reply.Outcome
+		res.RolledBackChart = reply.RolledBackChart
+		res.Restored = reply.Restored
+		res.RollbackErr = reply.RollbackErr
+		res.Summary = append(res.Summary, reply.Summary...)
+	}
+	if len(fileErrs) > 0 {
+		res.Outcome = Broken
+		res.RollbackErr = strings.Trim(strings.Join(append(fileErrs, res.RollbackErr), "; "), "; ")
+		res.add("Ripristino dei file locali NON riuscito: %s", strings.Join(fileErrs, "; "))
+	}
+}
+
+// rollbackCluster è la parte del rollback sul cluster: la esegue questo
+// processo o, con il re-exec, il binario di destinazione (RunReexec).
+func (o *Options) rollbackCluster(st *state) {
 	res := st.res
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(context.Background()), 3*o.timeout()+10*time.Minute)
 	defer cancel()
@@ -794,12 +844,6 @@ func (o *Options) rollback(st *state) {
 		msg := fmt.Sprintf(format, a...)
 		o.logf("!! %s", msg)
 		errs = append(errs, msg)
-	}
-
-	for i := len(st.undo) - 1; i >= 0; i-- {
-		if err := st.undo[i](); err != nil {
-			fail("ripristino di un file locale: %v", err)
-		}
 	}
 
 	touched := false

@@ -14,7 +14,7 @@ import (
 // riemettere tutti i certificati (con il rischio dei limiti di Let's Encrypt). Entra nell'archivio come
 // traefik-acme.tar, con i permessi dei file (acme.json vuole 0600) e solo se la cartella esiste.
 // I domini propri stanno nel database; i certificati del cliente stanno nel database con la chiave
-// cifrata (keyring di core, nei Secret): core riscrive i Secret TLS nel namespace del TLSStore.
+// cifrata (keyring di core, nei Secret): core riscrive i Secret TLS nel namespace dei certificati (<release>-certs, GIT-494), che il backup non tocca.
 
 // ACMEName è la voce dell'archivio con la cartella ACME di Traefik.
 const ACMEName = "traefik-acme.tar"

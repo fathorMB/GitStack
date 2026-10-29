@@ -6,10 +6,13 @@
 # e servirebbe il suo "TRAEFIK DEFAULT CERT". Con questo TLSStore il certificato
 # del Secret vale per qualsiasi nome o IP. Il Secret sta nello stesso namespace
 # del TLSStore. Con certResolver (Let's Encrypt) non serve e non si crea.
+# GIT-494: con le app accese il TLSStore sta nel namespace dei certificati (gli unici Secret su cui core
+# ha dei verbi), e il defaultCertificate e' la copia del Secret dell'installer (tls-copy-secret.yaml).
 apiVersion: traefik.io/v1alpha1
 kind: TLSStore
 metadata:
   name: default
+  namespace: {{ include "gitstack.tlsStoreNamespace" . }}
   labels:
     {{- include "gitstack.labels" . | nindent 4 }}
 spec:

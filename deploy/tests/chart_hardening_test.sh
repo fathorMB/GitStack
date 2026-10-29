@@ -417,17 +417,20 @@ expect_has "hosting acceso: core sa quale ClusterRole modello usare" "${d}" 'val
 cr="$(docs ClusterRole)"
 expect_eq "RBAC: due ClusterRole (controller e modello)" "$(printf '%s\n' "${cr}" | grep -c '^kind: ClusterRole$')" "2"
 expect_lacks "RBAC: niente caratteri jolly" "${cr}" '"*"'
-# Un solo Role (di default nel namespace di Traefik; con la CA interna in quello del release, vedi sotto): i Secret dei certificati del cliente
-# (GIT-460, ADR 0002) stanno solo lì, e core non può elencare i Secret di quel namespace.
+# GIT-494 (regressione di GIT-460): i Secret dei certificati del cliente stanno in un namespace DEDICATO,
+# <release>-certs, creato dal chart. Il Role -certs è solo lì: mai in kube-system né nel namespace del release,
+# dove core avrebbe i Secret di Postgres, NATS, k3s-serving.
 role="$(docs Role)"
 expect_eq "RBAC: un solo Role (certificati del cliente)" "$(printf '%s\n' "${role}" | grep -c '^kind: Role$')" "1"
-expect_has "RBAC: il Role è nel namespace di Traefik" "${role}" "namespace: kube-system"
+expect_has "RBAC: il Role è nel namespace dei certificati" "${role}" "namespace: gitstack-certs"
+expect_lacks "RBAC: il Role non è in kube-system" "${role}" "namespace: kube-system"
 expect_has "RBAC: il Role è quello dei certificati" "${role}" "name: gitstack-apps-controller-certs"
 expect_lacks "RBAC: il Role dei certificati non elenca i Secret" "${role}" '"list"'
 
-# GIT-460: in tutto il cluster esiste al massimo un TLSStore default. Con la CA interna (ingress.tls.secretName)
-# lo crea il chart nel namespace del release: il Role dei certificati del cliente e l'env di core puntano allo
-# STESSO namespace, altrimenti core ne creerebbe un secondo in kube-system e Traefik scarterebbe il default.
+# GIT-460, GIT-494: in tutto il cluster esiste al massimo un TLSStore default, nel namespace dei certificati
+# (l'unico in cui core ha verbi sui Secret). Con la CA interna (ingress.tls.secretName) lo crea il chart lì,
+# con il defaultCertificate copiato; con Let's Encrypt lo crea core lì. Role ed env di core puntano allo
+# STESSO namespace, altrimenti core ne creerebbe un secondo e Traefik scarterebbe il default.
 SAVED_OUT="${OUT}"
 traefik_ns_env() { printf '%s
 ' "${OUT}" | grep -A1 'name: GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE$' | tail -n 1 | tr -d ' '; }
@@ -435,22 +438,42 @@ tlsstore_ns_env() { printf '%s
 ' "${OUT}" | grep -A1 'name: GITSTACK_CORE_APPS_TLSSTORE_NAMESPACE$' | tail -n 1 | tr -d ' '; }
 certs_role_ns() { docs Role | grep -E '^  namespace: ' | head -n 1 | tr -d ' '; }
 certs_rb_ns() { docs RoleBinding | grep -E '^  namespace: ' | head -n 1 | tr -d ' '; }
-# (a) valori di default: nessun TLSStore del chart, Role ed env in kube-system.
-OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template (TLSStore, default) fallito"; exit 1; }
-if [ "$(count '^kind: TLSStore$')" = "0" ]; then ok; else bad "TLSStore: di default il chart non ne crea"; fi
-if [ "$(certs_role_ns)" = "namespace:kube-system" ]; then ok; else bad "TLSStore (default): il Role -certs deve stare in kube-system"; fi
-if [ "$(certs_rb_ns)" = "namespace:kube-system" ]; then ok; else bad "TLSStore (default): il RoleBinding -certs deve stare in kube-system"; fi
-if [ "$(traefik_ns_env)" = 'value:"kube-system"' ]; then ok; else bad "TLSStore (default): GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE deve essere kube-system"; fi
-if [ "$(tlsstore_ns_env)" = 'value:"kube-system"' ]; then ok; else bad "TLSStore (default): GITSTACK_CORE_APPS_TLSSTORE_NAMESPACE deve essere kube-system"; fi
-# (b) CA interna: il TLSStore del chart c'è, uno solo, e Role ed env sono nel namespace del release.
+certs_namespace_names() { docs Namespace | grep -E '^  name: ' | tr -d ' ' | tr '\n' ','; }
+no_secret_verbs_outside() {
+  # Nessun Role/RoleBinding fuori da $1 (il chart non dà verbi sui Secret in altri namespace).
+  docs Role | grep -E '^  namespace: ' | grep -v -F "namespace: $1" || true
+}
+# (a) Let's Encrypt / nessun TLS dell'installer: nessun TLSStore del chart; Role, Namespace ed env nel namespace dei certificati.
+OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template (TLSStore, Let's Encrypt) fallito"; exit 1; }
+if [ "$(count '^kind: TLSStore$')" = "0" ]; then ok; else bad "TLSStore (Let's Encrypt): il chart non ne crea, lo crea core"; fi
+if [ "$(certs_namespace_names)" = "name:gitstack-certs," ]; then ok; else bad "TLSStore (Let's Encrypt): il chart deve creare il namespace gitstack-certs (trovati: $(certs_namespace_names))"; fi
+if [ "$(certs_role_ns)" = "namespace:gitstack-certs" ]; then ok; else bad "TLSStore (Let's Encrypt): il Role -certs deve stare in gitstack-certs"; fi
+if [ "$(certs_rb_ns)" = "namespace:gitstack-certs" ]; then ok; else bad "TLSStore (Let's Encrypt): il RoleBinding -certs deve stare in gitstack-certs"; fi
+if [ -z "$(no_secret_verbs_outside gitstack-certs)" ]; then ok; else bad "TLSStore (Let's Encrypt): nessun Role fuori da gitstack-certs"; fi
+if [ "$(traefik_ns_env)" = 'value:"kube-system"' ]; then ok; else bad "TLSStore (Let's Encrypt): GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE deve essere kube-system"; fi
+if [ "$(tlsstore_ns_env)" = 'value:"gitstack-certs"' ]; then ok; else bad "TLSStore (Let's Encrypt): GITSTACK_CORE_APPS_TLSSTORE_NAMESPACE deve essere gitstack-certs"; fi
+# (b) CA interna: il TLSStore del chart c'è, uno solo, nel namespace dei certificati; Role ed env lì, niente nel namespace del release.
 OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test --set ingress.enabled=true --set ingress.tls.enabled=true --set ingress.tls.secretName=gitstack-tls)" || { bad "helm template (TLSStore, CA interna) fallito"; exit 1; }
 if [ "$(count '^kind: TLSStore$')" = "1" ]; then ok; else bad "TLSStore (CA interna): ne serve esattamente uno in tutto l'output"; fi
-if [ "$(certs_role_ns)" = "namespace:prova-ns" ]; then ok; else bad "TLSStore (CA interna): il Role -certs deve stare nel namespace del release"; fi
-if [ "$(certs_rb_ns)" = "namespace:prova-ns" ]; then ok; else bad "TLSStore (CA interna): il RoleBinding -certs deve stare nel namespace del release"; fi
+if [ "$(docs TLSStore | grep -E '^  namespace: ' | tr -d ' ')" = "namespace:gitstack-certs" ]; then ok; else bad "TLSStore (CA interna): il TLSStore deve stare in gitstack-certs"; fi
+if [ "$(certs_namespace_names)" = "name:gitstack-certs," ]; then ok; else bad "TLSStore (CA interna): il chart deve creare il namespace gitstack-certs (trovati: $(certs_namespace_names))"; fi
+if [ "$(certs_role_ns)" = "namespace:gitstack-certs" ]; then ok; else bad "TLSStore (CA interna): il Role -certs deve stare in gitstack-certs"; fi
+if [ "$(certs_rb_ns)" = "namespace:gitstack-certs" ]; then ok; else bad "TLSStore (CA interna): il RoleBinding -certs deve stare in gitstack-certs"; fi
+if [ -z "$(no_secret_verbs_outside gitstack-certs)" ]; then ok; else bad "TLSStore (CA interna): nessun Role fuori da gitstack-certs (né prova-ns né kube-system)"; fi
 if [ "$(traefik_ns_env)" = 'value:"kube-system"' ]; then ok; else bad "TLSStore (CA interna): GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE deve restare kube-system (NetworkPolicy delle app)"; fi
-if [ "$(tlsstore_ns_env)" = 'value:"prova-ns"' ]; then ok; else bad "TLSStore (CA interna): GITSTACK_CORE_APPS_TLSSTORE_NAMESPACE deve essere il namespace del release"; fi
-if printf '%s
-' "$(docs Role)" | grep -q 'namespace: kube-system'; then bad "TLSStore (CA interna): nessun Role in kube-system"; else ok; fi
+if [ "$(tlsstore_ns_env)" = 'value:"gitstack-certs"' ]; then ok; else bad "TLSStore (CA interna): GITSTACK_CORE_APPS_TLSSTORE_NAMESPACE deve essere gitstack-certs"; fi
+# (c) il namespace dei certificati non e' configurabile e non puo' cominciare con gitstack-app-
+# (perimetro dei namespace delle app): una release gitstack-app-x si ferma.
+if helm template gitstack-app-x "${CHART}" --set apps.enabled=true --set apps.domain=apps.acme.test >/dev/null 2>&1; then bad "release gitstack-app-x: il chart doveva fermarsi"; else ok; fi
+expect_has "release gitstack-app-x: messaggio del guard" "$(helm template gitstack-app-x "${CHART}" --set apps.enabled=true --set apps.domain=apps.acme.test 2>&1)" "non puo' iniziare con gitstack-app-"
+# (c2) la ValidatingAdmissionPolicy limita i Secret di core nel namespace dei certificati a gitstack-domain-*.
+vap="$(docs ValidatingAdmissionPolicy)"
+expect_has "VAP: regola sui Secret" "${vap}" "resources: [\"secrets\"]"
+expect_has "VAP: i Secret nel namespace dei certificati sono solo gitstack-domain-*" "${vap}" "startsWith('gitstack-domain-')"
+expect_has "VAP: l'espressione cita il namespace dei certificati" "${vap}" 'request.namespace != "gitstack-certs"'
+# (d) app spente: nessun namespace dei certificati e nessun Role; il TLSStore dell'installer resta nel namespace del release.
+OUT="$(render --namespace prova-ns --set ingress.enabled=true --set ingress.tls.enabled=true --set ingress.tls.secretName=gitstack-tls)" || { bad "helm template (app spente) fallito"; exit 1; }
+if [ "$(docs TLSStore | grep -E '^  namespace: ' | tr -d ' ')" = "namespace:prova-ns" ] && [ -z "$(docs Namespace)" ]; then ok; else bad "app spente: il TLSStore resta nel namespace del release e il chart non crea namespace"; fi
 OUT="${SAVED_OUT}"
 crb="$(docs ClusterRoleBinding)"
 expect_eq "RBAC: un solo ClusterRoleBinding" "$(printf '%s\n' "${crb}" | grep -c '^kind: ClusterRoleBinding$')" "1"

@@ -1323,6 +1323,40 @@ Environment variables: `GITSTACK_REPO` (default `fathorMB/GitStack`),
 | `8` | **Broken** — the upgrade failed and the rollback also failed; manual intervention required |
 | `70` | Unexpected error (backup, network, or other unrecoverable failure) |
 
+### Who runs the rollback: the new binary (GIT-490)
+
+The rollback logic changes from version to version (for example GIT-479/GIT-482, which clear
+the stale ServiceAccount of `core` after `helm rollback`). The installed binary is replaced only
+after the health check, so a failing upgrade used to roll back with the *old* logic. Now the
+installed binary, once the target binary is downloaded and verified, runs the cluster part of the
+rollback (helm rollback, ServiceAccount cleanup, restore, health check) and the post-upgrade
+steps (service Secrets, customer certificates) by running the **target** binary:
+`<target> upgrade --reexec-request F --reexec-reply F` (internal flags). Local files (binary, chart
+copy, config) are always restored by the running binary. If the target does not support it (older
+than GIT-490) or does not start, the running binary falls back to its own logic and says so in the log.
+
+**Limit.** The re-exec exists only in binaries that contain GIT-490. An upgrade *launched from* an
+older version (v1.0 included) still rolls back with that version's logic: with the CI on, after a
+rollback `core` may stay bound to the deleted `ci-dispatcher` ServiceAccount (no pod, gateway not
+ready, exit `8` instead of `7`). To repair it by hand:
+
+```sh
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+# 1. is core bound to a ServiceAccount that no longer exists?
+k3s kubectl -n gitstack get deploy gs-core -o jsonpath='{.spec.template.spec.serviceAccountName}{" "}{.spec.template.spec.serviceAccount}{"\n"}'
+k3s kubectl -n gitstack get sa
+# 2. clear both fields (adjust namespace and Deployment name to your release)
+k3s kubectl -n gitstack patch deploy gs-core --type merge \
+  -p '{"spec":{"template":{"spec":{"serviceAccountName":null,"serviceAccount":null}}}}'
+# 3. wait for it and check
+k3s kubectl -n gitstack rollout status deploy/gs-core
+gitstack status
+```
+
+Do this for every Deployment that was bound to a ServiceAccount the previous revision does not have.
+The upgrade that installs the first binary containing GIT-490 is still launched by the old binary and
+is therefore exposed to the limit; every upgrade after it is not.
+
 ### Upgrading k3s (rule N10)
 
 Each GitStack version declares the k3s version it was tested with in
@@ -2677,8 +2711,40 @@ GL-78 deve pubblicare su origin il ramo `integrate/MR-n` e attendere l'esito del
 
 I domini propri delle app e i certificati caricati dal cliente stanno nel database, quindi entrano nel backup
 (la chiave privata del cliente vi è cifrata con il keyring di core, che sta nei Secret). Dopo il restore core
-riscrive i Secret TLS nel namespace del TLSStore di Traefik entro un minuto. L'archivio ACME di Traefik
+riscrive i Secret TLS nel namespace dedicato `<release>-certs` entro un minuto (il backup non salva né ripristina quel namespace: i Secret nascono dal database). L'archivio ACME di Traefik
 (`acme.json`, certificati Let's Encrypt) entra come `traefik-acme.tar` se esiste il volume persistente
 `traefik` in `kube-system` (installazione con Let's Encrypt); il restore lo rimette al suo posto con Traefik
 fermo e con i permessi originali (0600). Se la nuova installazione non ha quel volume, l'archivio ACME si salta
 con un avviso e Traefik riemette i certificati. L'archivio contiene la chiave dell'account ACME: cifra i backup (`--key-file`).
+
+#### Namespace dei certificati del cliente (GIT-494)
+
+Con le app accese il chart crea il namespace `<release>-certs` (`gitstack-certs` con la release di default; il nome non è configurabile e non può cominciare con `gitstack-app-`).
+Lì, e solo lì, core ha dei verbi sui Secret: vi scrive i Secret TLS `gitstack-domain-<id>` e il `TLSStore` `default`
+che li elenca (in tutto il cluster ne esiste uno solo). Su `kube-system` e sul namespace del release core non ha nessun
+verbo sui Secret. Con la CA interna il `defaultCertificate` del TLSStore è una copia del Secret `<release>-tls` che il chart
+crea da quello dell'installer (`lookup`) e che `gitstack-tls` tiene aggiornata a ogni rinnovo.
+
+Chi aveva già caricato certificati con una versione precedente (GIT-460, mai in una release) ha i Secret
+`gitstack-domain-*` nel namespace vecchio (quello del release con la CA interna, `kube-system` con Let's Encrypt).
+`gitstack upgrade` li sposta da solo: al primo giro core ricrea i Secret in `<release>-certs` dal database, poi
+l'upgrade cancella le copie vecchie, ma solo quelle che già esistono nel namespace nuovo, e il `TLSStore` `default` di
+`kube-system` se lo ha creato core (nessun `defaultCertificate`, solo certificati `gitstack-domain-*`). Il riepilogo
+elenca quello che resta. Se core non ha ancora ricreato un Secret, si rilancia `gitstack upgrade` dopo qualche minuto
+(è idempotente) oppure si cancella a mano quando il Secret compare nel namespace nuovo:
+
+```sh
+k3s kubectl -n <release>-certs get secrets -l gitstack.io/custom-domain-cert=true
+k3s kubectl -n <namespace-vecchio> delete secret <nome>
+k3s kubectl -n kube-system delete tlsstore default   # solo se non ha defaultCertificate e cita solo gitstack-domain-*
+```
+
+Se un `TLSStore` `default` resta in due namespace Traefik ne sceglie uno a caso e i certificati dei clienti smettono di
+servirsi: controlla con `k3s kubectl get tlsstores -A`. Il backup non salva né ripristina `<release>-certs`: dopo un
+restore core ricrea i Secret dal database.
+
+**Rischio residuo.** Una ValidatingAdmissionPolicy del chart limita create, update e delete di core nel namespace
+dei certificati ai soli Secret `gitstack-domain-*`: core non può sostituire né cancellare la copia di `<release>-tls`
+(il certificato servito a chi si collega per IP). Il `get` però resta aperto, perché il nome dei Secret dei clienti non
+è noto a priori e RBAC non filtra per prefisso: core può quindi leggere la copia del certificato e della chiave del
+server in `<release>-certs` (non i Secret di kube-system né del release).
