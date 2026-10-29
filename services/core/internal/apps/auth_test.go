@@ -174,6 +174,23 @@ func TestEnsureRoute_PubblicaSoloConInterruttore(t *testing.T) {
 	c := &Controller{dyn: dyn, cfg: Config{AppsDomain: "apps.example.com", AuthURL: "http://gw/_appauth/verify", AuthSecret: "s"},
 		publicOn: func(context.Context) (bool, error) { return on, nil }}
 	ns := Namespace(app.ID)
+	// hasAuth: la rotta principale cita il Middleware di forward-auth.
+	hasAuth := func() bool {
+		r, err := dyn.Resource(routeGVR).Namespace(ns).Get(ctx, WorkloadName, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			return false
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		routes, _, _ := unstructured.NestedSlice(r.Object, "spec", "routes")
+		for _, m := range routes[0].(map[string]any)["middlewares"].([]any) {
+			if m.(map[string]any)["name"] == MiddlewareAuth {
+				return true
+			}
+		}
+		return false
+	}
 	hasRoute := func() bool {
 		_, err := dyn.Resource(routeGVR).Namespace(ns).Get(ctx, WorkloadName, metav1.GetOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
@@ -184,8 +201,8 @@ func TestEnsureRoute_PubblicaSoloConInterruttore(t *testing.T) {
 	if err := c.ensureRoute(ctx, app, ver.Config); err != nil {
 		t.Fatal(err)
 	}
-	if hasRoute() {
-		t.Fatal("interruttore spento: un'app public non deve avere la rotta")
+	if !hasRoute() || !hasAuth() {
+		t.Fatal("interruttore spento: l'app public ha la rotta interna con forward-auth (ADR 0002)")
 	}
 	on = true
 	if err := c.ensureRoute(ctx, app, ver.Config); err != nil {
@@ -194,22 +211,22 @@ func TestEnsureRoute_PubblicaSoloConInterruttore(t *testing.T) {
 	if !hasRoute() {
 		t.Fatal("interruttore acceso: la rotta dell'app public deve esserci")
 	}
-	if _, err := dyn.Resource(middlewareGVR).Namespace(ns).Get(ctx, MiddlewareAuth, metav1.GetOptions{}); !apierrors.IsNotFound(err) {
-		t.Fatalf("un'app public non ha il forward-auth: %v", err)
+	if hasAuth() {
+		t.Fatal("un'app public non ha il forward-auth")
 	}
 	on = false
 	if err := c.ensureRoute(ctx, app, ver.Config); err != nil {
 		t.Fatal(err)
 	}
-	if hasRoute() {
-		t.Fatal("interruttore spento di nuovo: la rotta deve sparire")
+	if !hasAuth() {
+		t.Fatal("interruttore spento di nuovo: torna la rotta con forward-auth")
 	}
 	on = true
 	if err := c.ensureRoute(ctx, app, ver.Config); err != nil {
 		t.Fatal(err)
 	}
-	if !hasRoute() {
-		t.Fatal("la riaccensione deve ripristinare la rotta")
+	if !hasRoute() || hasAuth() {
+		t.Fatal("la riaccensione deve ripristinare la rotta pubblica, senza forward-auth")
 	}
 	// Errore di lettura dell'interruttore (GIT-457, fail-closed): errore al chiamante e la rotta
 	// public già esistente viene tolta, non lasciata esposta.
