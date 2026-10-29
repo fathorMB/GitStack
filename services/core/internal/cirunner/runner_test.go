@@ -24,6 +24,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/fathorMB/GitStack/services/core/internal/cirunner"
 	"google.golang.org/protobuf/types/known/structpb"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -90,6 +91,9 @@ func fakeAct(args []string) int {
 		fmt.Println("Error: workspace vuoto")
 		return 1
 	}
+	if os.Getenv("CIRUNNER_FAKE_ACT_PLAN") == "1" {
+		return fakeActPlan(b, args)
+	}
 	fmt.Println("[wf/build]   ✅  Success - Set up job")
 	for i, m := range runRe.FindAllStringSubmatch(string(b), -1) {
 		fmt.Printf("[wf/build] ⭐ Run Main Passo %d\n", i+1)
@@ -103,6 +107,55 @@ func fakeAct(args []string) int {
 		fmt.Printf("[wf/build]   ✅  Success - Main Passo %d [1.5ms]\n", i+1)
 	}
 	fmt.Println("[wf/build] 🏁  Job succeeded")
+	return 0
+}
+
+// fakeActPlan imita la pianificazione di `act -j <job>`: prima i job da cui il job dipende
+// (needs, ricorsivo), poi il job. Ogni job stampa le sue righe col prefisso [wf/<job>].
+func fakeActPlan(wf []byte, args []string) int {
+	var target string
+	for i, a := range args {
+		if a == "-j" && i+1 < len(args) {
+			target = args[i+1]
+		}
+	}
+	var doc struct {
+		Jobs map[string]struct {
+			Needs any `yaml:"needs"`
+		} `yaml:"jobs"`
+	}
+	if err := yaml.Unmarshal(wf, &doc); err != nil {
+		fmt.Println("Error:", err)
+		return 1
+	}
+	var order []string
+	seen := map[string]bool{}
+	var visit func(string)
+	visit = func(k string) {
+		if seen[k] {
+			return
+		}
+		seen[k] = true
+		switch n := doc.Jobs[k].Needs.(type) {
+		case string:
+			visit(n)
+		case []any:
+			for _, d := range n {
+				if s, ok := d.(string); ok {
+					visit(s)
+				}
+			}
+		}
+		order = append(order, k)
+	}
+	visit(target)
+	for _, k := range order {
+		fmt.Printf("[image/%s] ⭐ Run Set up job\n", k)
+		fmt.Printf("[image/%s]   ✅  Success - Set up job\n", k)
+		fmt.Printf("[image/%s] ⭐ Run Main passo di %s\n", k, k)
+		fmt.Printf("[image/%s]   ✅  Success - Main passo di %s [1.5ms]\n", k, k)
+		fmt.Printf("[image/%s] 🏁  Job succeeded\n", k)
+	}
 	return 0
 }
 
@@ -402,6 +455,34 @@ func TestRun_SenzaJobEcredenziale(t *testing.T) {
 	cfg.Secret = "sbagliato"
 	if _, err := cirunner.Run(context.Background(), cfg); err == nil || errors.Is(err, cirunner.ErrNoTask) {
 		t.Errorf("segreto sbagliato: %v", err)
+	}
+}
+
+// TestRun_JobConNeedsNonRieseguePrecedente (GIT-499): il job test, preso da un pod dopo un rinvio
+// pod_quota, ha nel workflow `needs: build`. act -j test riesegue anche build (con un altro
+// digest): il log del job test non deve contenere righe [image/build].
+func TestRun_JobConNeedsNonRieseguePrecedente(t *testing.T) {
+	wf := "name: image\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo build\n" +
+		"  test:\n    needs: build\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n"
+	g := &fakeGateway{workflow: wf, archive: tarball(t, map[string]string{"README.md": "x"}),
+		extra: map[string]any{"job": "test"}}
+	cfg := cfgFor(t, start(t, g))
+	t.Setenv("CIRUNNER_FAKE_ACT_PLAN", "1")
+	res, err := cirunner.Run(context.Background(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	log := strings.Join(g.rows, "\n")
+	if res.Conclusion != runnerv1.Result_RESULT_SUCCESS {
+		t.Fatalf("esito %v\n%s", res.Conclusion, log)
+	}
+	if strings.Contains(log, "[image/build]") {
+		t.Errorf("il log del job test contiene righe del build:\n%s", log)
+	}
+	if !strings.Contains(log, "[image/test]") {
+		t.Errorf("il log del job test non ha le sue righe:\n%s", log)
 	}
 }
 
