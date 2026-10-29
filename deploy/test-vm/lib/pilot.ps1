@@ -386,6 +386,12 @@ function Initialize-E2ePilotSite {
     }
 }
 
+function Test-E2eElevated {
+    <# True se il processo gira come amministratore (stessa logica di Assert-Administrator, ma restituisce bool). #>
+    $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
 function Invoke-E2ePilotTester {
     param(
         [Parameter(Mandatory)][string]$BaseUrl,
@@ -404,9 +410,12 @@ function Invoke-E2ePilotTester {
     try {
         New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
         $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($CaPath)
-        $certPath = 'Cert:\CurrentUser\Root\' + $cert.Thumbprint
+        $certPath = 'Cert:\LocalMachine\Root\' + $cert.Thumbprint
         if (-not (Test-Path -LiteralPath $certPath)) {
-            $null = Import-Certificate -FilePath $CaPath -CertStoreLocation 'Cert:\CurrentUser\Root'
+            if (-not (Test-E2eElevated)) {
+                throw 'processo non elevato: lancia e2e.ps1 da PowerShell come amministratore (la CA va in Cert:\LocalMachine\Root)'
+            }
+            $null = Import-Certificate -FilePath $CaPath -CertStoreLocation 'Cert:\LocalMachine\Root'
             $added = $true
         }
         if (-not (Test-Path -LiteralPath $certPath)) { throw 'CA non presente nello store del tester' }
