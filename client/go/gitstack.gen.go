@@ -2316,6 +2316,78 @@ func (e WebhookDisabledReason) Valid() bool {
 	}
 }
 
+// Defines values for WebhookAppDomainPayloadAction.
+const (
+	WebhookAppDomainPayloadActionCertificateExpiring      WebhookAppDomainPayloadAction = "certificate_expiring"
+	WebhookAppDomainPayloadActionCertificateRenewalFailed WebhookAppDomainPayloadAction = "certificate_renewal_failed"
+	WebhookAppDomainPayloadActionDnsFailed                WebhookAppDomainPayloadAction = "dns_failed"
+)
+
+// Valid indicates whether the value is a known member of the WebhookAppDomainPayloadAction enum.
+func (e WebhookAppDomainPayloadAction) Valid() bool {
+	switch e {
+	case WebhookAppDomainPayloadActionCertificateExpiring:
+		return true
+	case WebhookAppDomainPayloadActionCertificateRenewalFailed:
+		return true
+	case WebhookAppDomainPayloadActionDnsFailed:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookAppDomainPayloadEvent.
+const (
+	WebhookAppDomainPayloadEventAppDomain WebhookAppDomainPayloadEvent = "app_domain"
+)
+
+// Valid indicates whether the value is a known member of the WebhookAppDomainPayloadEvent enum.
+func (e WebhookAppDomainPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookAppDomainPayloadEventAppDomain:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookAppDomainPayloadStatus.
+const (
+	WebhookAppDomainPayloadStatusDnsFailed     WebhookAppDomainPayloadStatus = "dns_failed"
+	WebhookAppDomainPayloadStatusExpiring      WebhookAppDomainPayloadStatus = "expiring"
+	WebhookAppDomainPayloadStatusRenewalFailed WebhookAppDomainPayloadStatus = "renewal_failed"
+)
+
+// Valid indicates whether the value is a known member of the WebhookAppDomainPayloadStatus enum.
+func (e WebhookAppDomainPayloadStatus) Valid() bool {
+	switch e {
+	case WebhookAppDomainPayloadStatusDnsFailed:
+		return true
+	case WebhookAppDomainPayloadStatusExpiring:
+		return true
+	case WebhookAppDomainPayloadStatusRenewalFailed:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookAppDomainPayloadVersion.
+const (
+	WebhookAppDomainPayloadVersionN1 WebhookAppDomainPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookAppDomainPayloadVersion enum.
+func (e WebhookAppDomainPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookAppDomainPayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WebhookCommitStatusPayloadAction.
 const (
 	WebhookCommitStatusPayloadActionCreated WebhookCommitStatusPayloadAction = "created"
@@ -2441,6 +2513,7 @@ func (e WebhookDeploymentPayloadVersion) Valid() bool {
 
 // Defines values for WebhookEvent.
 const (
+	WebhookEventAppDomain         WebhookEvent = "app_domain"
 	WebhookEventCommitStatus      WebhookEvent = "commit_status"
 	WebhookEventDeployment        WebhookEvent = "deployment"
 	WebhookEventIssueComment      WebhookEvent = "issue_comment"
@@ -2457,6 +2530,8 @@ const (
 // Valid indicates whether the value is a known member of the WebhookEvent enum.
 func (e WebhookEvent) Valid() bool {
 	switch e {
+	case WebhookEventAppDomain:
+		return true
 	case WebhookEventCommitStatus:
 		return true
 	case WebhookEventDeployment:
@@ -7757,6 +7832,46 @@ type Webhook struct {
 // WebhookDisabledReason defines model for Webhook.DisabledReason.
 type WebhookDisabledReason string
 
+// WebhookAppDomainPayload Payload del webhook `app_domain` (v3-c), per repo (quello dell'app) come `deployment`. `action`: `dns_failed` (il dominio non supera la verifica o non punta piu' all'istanza), `certificate_renewal_failed` (emissione o rinnovo Let's Encrypt fallito), `certificate_expiring` (certificato del cliente in scadenza entro 14 giorni). Un solo invio per guasto o scadenza. Nessun segreto: ne' chiavi ne' contenuto del certificato.
+type WebhookAppDomainPayload struct {
+	Action WebhookAppDomainPayloadAction `json:"action"`
+	App    struct {
+		Name string `json:"name"`
+	} `json:"app"`
+
+	// Domain Dominio proprio, normalizzato.
+	Domain       string                       `json:"domain"`
+	Event        WebhookAppDomainPayloadEvent `json:"event"`
+	Organization *WebhookOrganizationRef      `json:"organization,omitempty"`
+
+	// Reason Motivo del guasto (DNS o emissione), se c'e'.
+	Reason     *string              `json:"reason,omitempty"`
+	Repository WebhookRepositoryRef `json:"repository"`
+
+	// Sender Sempre null: e' un evento del sistema.
+	Sender *WebhookSender `json:"sender"`
+
+	// Status Stato che ha prodotto l'evento.
+	Status WebhookAppDomainPayloadStatus `json:"status"`
+	Time   time.Time                     `json:"time"`
+
+	// ValidUntil Scadenza del certificato, solo per `certificate_expiring`.
+	ValidUntil *time.Time                     `json:"validUntil,omitempty"`
+	Version    WebhookAppDomainPayloadVersion `json:"version"`
+}
+
+// WebhookAppDomainPayloadAction defines model for WebhookAppDomainPayload.Action.
+type WebhookAppDomainPayloadAction string
+
+// WebhookAppDomainPayloadEvent defines model for WebhookAppDomainPayload.Event.
+type WebhookAppDomainPayloadEvent string
+
+// WebhookAppDomainPayloadStatus Stato che ha prodotto l'evento.
+type WebhookAppDomainPayloadStatus string
+
+// WebhookAppDomainPayloadVersion defines model for WebhookAppDomainPayload.Version.
+type WebhookAppDomainPayloadVersion int
+
 // WebhookCommitStatusPayload Corpo di una consegna con `X-GitStack-Event: commit_status` (PR11).
 type WebhookCommitStatusPayload struct {
 	// Action `created`: un sistema esterno ha inviato uno stato (PR9).
@@ -7802,7 +7917,7 @@ type WebhookDeliveryDetail struct {
 	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
 	Error *string `json:"error,omitempty"`
 
-	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`.
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS, rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`.
 	Event WebhookEvent `json:"event"`
 
 	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
@@ -7863,7 +7978,7 @@ type WebhookDeliverySummary struct {
 	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
 	Error *string `json:"error,omitempty"`
 
-	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`.
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS, rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`.
 	Event WebhookEvent `json:"event"`
 
 	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
@@ -7900,7 +8015,7 @@ type WebhookDeploymentPayloadEvent string
 // WebhookDeploymentPayloadVersion defines model for WebhookDeploymentPayload.Version.
 type WebhookDeploymentPayloadVersion int
 
-// WebhookEvent Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`.
+// WebhookEvent Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS, rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`.
 type WebhookEvent string
 
 // WebhookList defines model for WebhookList.
@@ -9377,6 +9492,9 @@ type ChangePasswordJSONRequestBody = ChangePasswordInput
 
 // CreateUserTokenJSONRequestBody defines body for CreateUserToken for application/json ContentType.
 type CreateUserTokenJSONRequestBody = CreateTokenInput
+
+// AppDomainJSONRequestBody defines body for AppDomain for application/json ContentType.
+type AppDomainJSONRequestBody = WebhookAppDomainPayload
 
 // CommitStatusJSONRequestBody defines body for CommitStatus for application/json ContentType.
 type CommitStatusJSONRequestBody = WebhookCommitStatusPayload
@@ -93534,6 +93652,11 @@ func (p *CallbackInitiator) applyCallbackEditors(ctx context.Context, req *http.
 
 // CallbackInitiatorInterface is the interface specification for the callback initiator.
 type CallbackInitiatorInterface interface {
+	// AppDomainWithBody fires the app_domain callback with any body
+	AppDomainWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	AppDomain(ctx context.Context, targetURL string, body AppDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CommitStatusWithBody fires the commit_status callback with any body
 	CommitStatusWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -93568,6 +93691,30 @@ type CallbackInitiatorInterface interface {
 	WorkflowRunWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	WorkflowRun(ctx context.Context, targetURL string, body WorkflowRunJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (p *CallbackInitiator) AppDomainWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAppDomainCallbackRequestWithBody(targetURL, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) AppDomain(ctx context.Context, targetURL string, body AppDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAppDomainCallbackRequest(targetURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
 }
 
 func (p *CallbackInitiator) CommitStatusWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -93736,6 +93883,37 @@ func (p *CallbackInitiator) WorkflowRun(ctx context.Context, targetURL string, b
 		return nil, err
 	}
 	return p.Client.Do(req)
+}
+
+// NewAppDomainCallbackRequest builds a application/json POST request for the app_domain callback
+func NewAppDomainCallbackRequest(targetURL string, body AppDomainJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAppDomainCallbackRequestWithBody(targetURL, "application/json", bodyReader)
+}
+
+// NewAppDomainCallbackRequestWithBody builds a POST request for the app_domain callback with any body
+func NewAppDomainCallbackRequestWithBody(targetURL string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+	_ = err
+
+	reqURL, err := url.Parse(targetURL)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, reqURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
 }
 
 // NewCommitStatusCallbackRequest builds a application/json POST request for the commit_status callback

@@ -1,8 +1,7 @@
 package domainevents
 
 // Eventi dei domini propri e dei certificati delle app (v3-c, GIT-461). Sono avvisi per gli admin
-// (dell'app e dell'istanza): nel contratto non hanno un webhook, quindi la consegna dei webhook li
-// ignora. Ogni evento si scrive una volta sola per stato: lo store lo accoda solo nel passaggio a
+// (dell'app e dell'istanza) e, dal GIT-492, il webhook app_domain del repo dell'app. Ogni evento si scrive una volta sola per stato: lo store lo accoda solo nel passaggio a
 // quello stato, nella stessa transazione che lo salva.
 const (
 	// AppDomainDNSFailed: il dominio non supera la verifica del DNS o ha smesso di puntare all'istanza

@@ -2418,10 +2418,10 @@ export type IssueSubscription = {
 export type WebhookScope = 'repo' | 'org';
 
 /**
- * Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`.
+ * Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS, rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`.
  *
  */
-export type WebhookEvent = 'push' | 'issues' | 'issue_comment' | 'repository' | 'pull_request' | 'pull_request_review' | 'commit_status' | 'workflow_run' | 'workflow_job' | 'release' | 'deployment';
+export type WebhookEvent = 'push' | 'issues' | 'issue_comment' | 'repository' | 'pull_request' | 'pull_request_review' | 'commit_status' | 'workflow_run' | 'workflow_job' | 'release' | 'deployment' | 'app_domain';
 
 /**
  * Stato di un mirror in push. `pending`: in coda (mai spinto, o un push nuovo da fare); `syncing`: un worker lo sta spingendo; `in_sync`: la destinazione ha lo stato dell'ultimo push riuscito; `error`: l'ultimo tentativo e' fallito (rete, credenziale, destinazione non ammessa...), si ritenta con attesa crescente 30 s, 2 min, 10 min, 1 ora fino a 6 ore, tranne un blocco egress (C8) che non si ritenta; `diverged`: la destinazione ha una storia diversa (non fast-forward, o un tag gia' presente con un altro commit): fermo, nessun tentativo automatico e nessuna sovrascrittura, gli admin del repo ricevono una notifica `mirror`; riparte solo con `syncRepoMirror`.
@@ -4546,6 +4546,42 @@ export type WebhookDeploymentPayload = {
     sender: WebhookSender | null;
     app: App;
     deployment: AppVersion;
+};
+
+/**
+ * Payload del webhook `app_domain` (v3-c), per repo (quello dell'app) come `deployment`. `action`: `dns_failed` (il dominio non supera la verifica o non punta piu' all'istanza), `certificate_renewal_failed` (emissione o rinnovo Let's Encrypt fallito), `certificate_expiring` (certificato del cliente in scadenza entro 14 giorni). Un solo invio per guasto o scadenza. Nessun segreto: ne' chiavi ne' contenuto del certificato.
+ *
+ */
+export type WebhookAppDomainPayload = {
+    version: 1;
+    event: 'app_domain';
+    action: 'dns_failed' | 'certificate_renewal_failed' | 'certificate_expiring';
+    time: string;
+    repository: WebhookRepositoryRef;
+    organization?: WebhookOrganizationRef;
+    /**
+     * Sempre null: e' un evento del sistema.
+     */
+    sender: WebhookSender | null;
+    app: {
+        name: string;
+    };
+    /**
+     * Dominio proprio, normalizzato.
+     */
+    domain: string;
+    /**
+     * Stato che ha prodotto l'evento.
+     */
+    status: 'dns_failed' | 'renewal_failed' | 'expiring';
+    /**
+     * Motivo del guasto (DNS o emissione), se c'e'.
+     */
+    reason?: string;
+    /**
+     * Scadenza del certificato, solo per `certificate_expiring`.
+     */
+    validUntil?: string;
 };
 
 export type ActionsSecretInputWritable = {

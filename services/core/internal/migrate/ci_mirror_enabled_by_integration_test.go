@@ -26,7 +26,7 @@ func TestMigration0039_CIMirrorEnabledBy(t *testing.T) {
 	if !has() {
 		t.Fatal("run_on_pull_mirror_by manca dopo le migrazioni")
 	}
-	if err := migrate.Down(ctx, pool, dsn, 15); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 16); err != nil {
 		t.Fatalf("down 0039: %v", err)
 	}
 	if has() {

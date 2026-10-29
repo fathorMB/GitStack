@@ -19,7 +19,7 @@ func TestMigration0053_AppDomainExpiryNotice(t *testing.T) {
 	if err := pool.QueryRow(ctx, q).Scan(&n); err != nil || n != 1 {
 		t.Fatalf("colonna expiry_notified_until: %d %v", n, err)
 	}
-	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
 		t.Fatalf("down 0053: %v", err)
 	}
 	if err := pool.QueryRow(ctx, q).Scan(&n); err != nil || n != 0 {

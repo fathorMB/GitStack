@@ -29,12 +29,14 @@ const (
 	EventWorkflowJob = "workflow_job"
 	// v3-a (GIT-384, H12): deploy di un'app (started, succeeded, failed, rolled_back).
 	EventDeployment = "deployment"
+	// v3-c (GIT-492): dominio o certificato di un'app (dns_failed, certificate_renewal_failed, certificate_expiring).
+	EventAppDomain = "app_domain"
 )
 
 // Events sono gli eventi selezionabili.
 var Events = []string{EventPush, EventIssues, EventIssueComment, EventRepository,
 	EventPullRequest, EventPullRequestReview, EventCommitStatus, EventRelease, EventWorkflowRun, EventWorkflowJob,
-	EventDeployment}
+	EventDeployment, EventAppDomain}
 
 // issueActions: evento di dominio → action di `issues`. issue.hidden e
 // issue.unhidden non hanno webhook (docs/events.md).
@@ -95,6 +97,9 @@ func (e *Engine) handle(ctx context.Context, tx pgx.Tx, ev outboxEvent) error {
 		return err
 	}
 	if handled, err := e.handleAppEvent(ctx, tx, ev); handled || err != nil {
+		return err
+	}
+	if handled, err := e.handleAppDomainEvent(ctx, tx, ev); handled || err != nil {
 		return err
 	}
 	return nil // issue.hidden, issue.unhidden e gli eventi che non sono webhook

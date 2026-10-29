@@ -41,7 +41,7 @@ func TestMigration0050_AppPublic(t *testing.T) {
 	if exec(`INSERT INTO core.app_access_events (kind, new_value, created_at) VALUES ('altro', 'x', $1)`, now) == nil {
 		t.Error("tipo di evento sconosciuto")
 	}
-	if err := migrate.Down(ctx, pool, dsn, 4); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 5); err != nil {
 		t.Fatalf("down 0050: %v", err)
 	}
 	var n int
