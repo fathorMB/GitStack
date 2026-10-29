@@ -8,6 +8,7 @@ $script:siteMode = $false
 $script:showIssues = $false
 $script:issueMode = $false
 $script:badAttachment = $false
+$script:publicApps = $false
 $script:cleanup = @()
 function Add-StepResult { param($Name, $Ok, $Detail) $script:rows += [pscustomobject]@{ Name = $Name; Ok = $Ok; Detail = $Detail } }
 function Start-Sleep { param($Seconds) }
@@ -38,6 +39,8 @@ function Invoke-HttpRaw {
         elseif ($Uri -like '*/resources/*/grants') { $status = 201; '{}' }
         elseif ($Uri -like '*/apps' -and $Method -eq 'POST') { $status = 202; '{}' }
         elseif ($Uri -like '*/versions?per_page=1') { '{"items":[{"state":"serving"}]}' }
+        elseif ($Uri -like '*/admin/apps/settings') { if ($script:publicApps) { '{"publicAppsEnabled":true}' } else { '{"publicAppsEnabled":false}' } }
+        elseif ($Uri -like '*/sito/access') { '{"mode":"login"}' }
         elseif ($Uri -like '*/access/members' -and $Method -eq 'POST') { $status = 201; '{}' }
         elseif ($Uri -like '*/access/members') { '{"items":[{"kind":"user","name":"e2etester123"}]}' }
         elseif ($Uri -like '*/access/invite') { '{"caMode":"internal","fingerprintSha256":"' + ('ab' * 32) + '","address":"https://sito.example.test","guideUrl":"https://example.test/help/ca"}' }
@@ -94,12 +97,16 @@ if ($site -or @($script:rows | Where-Object { -not $_.Ok }).Count -ne 1) { throw
 $script:rows = @(); $script:showIssues = $false
 $site = Initialize-E2ePilotSite -BaseUrl 'https://example.invalid' -AdminCookie 'admin' -Suffix '123' -CaFingerprint ('cd' * 32) -Context $ctx
 if ($site -or @($script:rows | Where-Object { -not $_.Ok }).Count -ne 1) { throw 'wrong CA fingerprint accepted' }
+$script:rows = @(); $script:publicApps = $true
+$site = Initialize-E2ePilotSite -BaseUrl 'https://example.invalid' -AdminCookie 'admin' -Suffix '123' -CaFingerprint ('ab' * 32) -Context $ctx
+if ($site -or @($script:rows | Where-Object { -not $_.Ok }).Count -ne 1) { throw 'public apps enabled accepted' }
+$script:publicApps = $false
 Write-Host '[PASS] pilot site: lista, privacy e impronta CA'
 
 function New-Object { param($TypeName) [pscustomobject]@{ Thumbprint = 'CA123' } }
 function New-Item { param($ItemType, $Path, [switch]$Force) }
 function Test-Path { param($LiteralPath) return $true }
-function Invoke-ExternalCommand { param($FilePath, $ArgumentList, $TimeoutSeconds) [pscustomobject]@{ ExitCode = 0; StdOut = "STEP ok tester-https-data`nISSUE=42`nSTEP ok tester-report`n"; StdErr = '' } }
+function Invoke-ExternalCommand { param($FilePath, $ArgumentList, $TimeoutSeconds) [pscustomobject]@{ ExitCode = 0; StdOut = "STEP ok anonymous-blocked`nSTEP ok tester-https-data`nISSUE=42`nSTEP ok tester-report`n"; StdErr = '' } }
 function Write-E2eText { param($Path, $Stdout, $Stderr) }
 function Invoke-HttpDownloadFile { param($Uri, $OutFile, $Headers) [pscustomobject]@{ StatusCode = 200 } }
 function Get-FileHash { param($LiteralPath, $Algorithm) [pscustomobject]@{ Hash = $(if ($script:badAttachment -and $LiteralPath -like '*allegato.png') { 'different' } else { 'same' }) } }

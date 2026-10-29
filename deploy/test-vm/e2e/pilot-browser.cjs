@@ -15,6 +15,12 @@ async function main() {
     '--no-proxy-server', '--host-resolver-rules=MAP ' + address.hostname + ' ' + ip
   ] });
   try {
+    const anonymous = await browser.newContext({ extraHTTPHeaders: { Accept: 'application/json' } });
+    const anonymousPage = await anonymous.newPage();
+    const denied = await anonymousPage.goto(address.href, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    if (!denied || denied.status() !== 401) throw new Error('anonymous request was not denied with 401');
+    await anonymous.close();
+    console.log('STEP ok anonymous-blocked');
     const context = await browser.newContext({ extraHTTPHeaders: { Authorization: 'Bearer ' + token } });
     const page = await context.newPage();
     const response = await page.goto(address.href, { waitUntil: 'networkidle', timeout: 60000 });

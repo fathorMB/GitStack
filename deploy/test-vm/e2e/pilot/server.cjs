@@ -5,6 +5,7 @@ const { promisify } = require('node:util');
 const { verifyIdentity } = require('./identity.cjs');
 const exec = promisify(execFile);
 const apiUrl = process.env.GITSTACK_API_URL?.replace(/\/+$/, '');
+const keysUrl = process.env.GITSTACK_APP_KEYS_URL;
 const repo = process.env.PILOT_REPO;
 const marker = 'retail-pilot-381';
 
@@ -24,7 +25,7 @@ async function checked(url, options = {}) {
 }
 
 async function identity(req) {
-  const { keys } = await checked(new URL('/.well-known/gitstack-app-keys', apiUrl));
+  const { keys } = await checked(keysUrl);
   return verifyIdentity(req, keys);
 }
 
@@ -65,7 +66,7 @@ http.createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': 'text/plain' }).end(value);
       return;
     }
-    if (process.env.PILOT_ROLE !== 'sito' || !apiUrl || !repo || !process.env.BOT_TOKEN) throw new Error('missing configuration');
+    if (process.env.PILOT_ROLE !== 'sito' || !apiUrl || !keysUrl || !repo || !process.env.BOT_TOKEN) throw new Error('missing configuration');
     const user = await identity(req);
     if (req.method === 'GET' && path === '/') { res.writeHead(200, { 'content-type': 'text/html' }).end(page); return; }
     if (req.method === 'GET' && path === '/data') {

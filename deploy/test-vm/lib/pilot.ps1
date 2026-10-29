@@ -244,6 +244,10 @@ function Initialize-E2ePilotSite {
         $secret = Invoke-HttpRaw -Uri "$apps/sito/secrets/BOT_TOKEN" -Method 'PUT' -Headers $headers -Body (@{ value = $botToken } | ConvertTo-Json)
         if ($secret.StatusCode -ne 200) { throw "segreto bot: status $($secret.StatusCode)" }
         Wait-E2ePilotServing -AppsApi $apps -Name 'sito' -Headers $headers
+        $settings = Invoke-HttpRaw -Uri "$BaseUrl/api/v1/admin/apps/settings" -Cookie $AdminCookie
+        if ($settings.StatusCode -ne 200 -or ($settings.Body | ConvertFrom-Json).publicAppsEnabled -ne $false) { throw 'interruttore app pubbliche non risulta spento' }
+        $access = Invoke-HttpRaw -Uri "$apps/sito/access" -Headers $headers
+        if ($access.StatusCode -ne 200 -or ($access.Body | ConvertFrom-Json).mode -ne 'login') { throw 'sito non protetto dal login' }
         Add-StepResult -Name 'pilot 5b. sito in salute con immagine del repo e token bot segreto' -Ok $true -Detail ''
 
         $stage = 'lista accesso tester'
@@ -308,7 +312,7 @@ function Invoke-E2ePilotTester {
         $env:PILOT_SCREENSHOT = $screen
         $browser = Invoke-ExternalCommand -FilePath 'node' -ArgumentList @((Join-Path $PSScriptRoot '..\e2e\pilot-browser.cjs')) -TimeoutSeconds 240
         Write-E2eText -Path (Join-Path $WorkDir 'browser.log') -Stdout $browser.StdOut -Stderr $browser.StdErr
-        if ($browser.ExitCode -ne 0 -or $browser.StdOut -notmatch 'STEP ok tester-https-data' -or $browser.StdOut -notmatch 'STEP ok tester-report' -or $browser.StdOut -notmatch '(?m)^ISSUE=([0-9]+)\s*$' -or -not (Test-Path -LiteralPath $screen)) {
+        if ($browser.ExitCode -ne 0 -or $browser.StdOut -notmatch 'STEP ok anonymous-blocked' -or $browser.StdOut -notmatch 'STEP ok tester-https-data' -or $browser.StdOut -notmatch 'STEP ok tester-report' -or $browser.StdOut -notmatch '(?m)^ISSUE=([0-9]+)\s*$' -or -not (Test-Path -LiteralPath $screen)) {
             throw "browser fallito: exit $($browser.ExitCode), log in $WorkDir"
         }
         $number = [int]$Matches[1]
