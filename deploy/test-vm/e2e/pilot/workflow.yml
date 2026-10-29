@@ -1,0 +1,19 @@
+name: pilot
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+  packages: write
+jobs:
+  images:
+    runs-on: gitstack-build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and publish pilot images
+        run: |
+          set -eu
+          tag="${GITHUB_REF#refs/tags/}"
+          gitstack-build --name api --tag "$tag" --file Dockerfile.api .
+          gitstack-build --name sito --tag "$tag" --file Dockerfile.sito .
+          gitstack-build --name db --tag "$tag" --file Dockerfile.db .
