@@ -1483,14 +1483,19 @@ function Main {
         if (-not $SkipBackupRestore -and $script:AppsDomain) {
             if ($e12Ok -and $gitToken -and $gitUser) {
                 Invoke-E2ePilotMirror -BaseUrl $baseUrl -Owner $gitUser -Token $gitToken -Suffix $suffix -AliasIp $MirrorAliasIp -OriginPort $MirrorOriginPort
-                if ($script:PilotContext) { $script:PilotDbReady = Initialize-E2ePilotDatabase -BaseUrl $baseUrl -Context $script:PilotContext }
-                if ($script:PilotDbReady -and $ck -and $script:CaFingerprint) {
-                    $script:PilotSite = Initialize-E2ePilotSite -BaseUrl $baseUrl -AdminCookie $ck -Suffix $suffix -CaFingerprint $script:CaFingerprint -Context $script:PilotContext
-                }
-                if ($script:PilotSite) {
-                    Invoke-E2ePilotTester -BaseUrl $baseUrl -CaPath $caPath -WorkDir (Join-Path $OutDir 'pilot') -Context $script:PilotContext -Site $script:PilotSite
-                } else {
-                    Add-StepResult -Name 'pilot: HTTPS del tester e issue' -Ok $false -Detail 'sito o tester non disponibili'
+                try {
+                    if ($script:PilotContext) { $script:PilotDbReady = Initialize-E2ePilotDatabase -BaseUrl $baseUrl -Context $script:PilotContext }
+                    if ($script:PilotDbReady -and $ck -and $script:CaFingerprint) {
+                        $script:PilotSite = Initialize-E2ePilotSite -BaseUrl $baseUrl -AdminCookie $ck -Suffix $suffix -CaFingerprint $script:CaFingerprint -Context $script:PilotContext
+                    }
+                    if ($script:PilotSite) {
+                        Invoke-E2ePilotTester -BaseUrl $baseUrl -CaPath $caPath -WorkDir (Join-Path $OutDir 'pilot') -Context $script:PilotContext -Site $script:PilotSite
+                    } else {
+                        Add-StepResult -Name 'pilot: HTTPS del tester e issue' -Ok $false -Detail 'sito o tester non disponibili'
+                    }
+                } finally {
+                    # GIT-514: anche se il tester cade o e saltato, le app api e sito create si tolgono prima di h-app e h-pub.
+                    if ($script:PilotContext) { Remove-E2ePilotApps -BaseUrl $baseUrl -Context $script:PilotContext }
                 }
             } else {
                 Add-StepResult -Name 'pilot: prerequisiti CI' -Ok $false -Detail 'e12 fallito o token di prova mancante'
