@@ -140,8 +140,8 @@ func ensureWorkspace(workflow []byte, mirrorDir string) ([]byte, error) {
 // withoutNeeds toglie `needs` dal job jobKey. `act -j <job>` pianifica anche i job da cui il job
 // dipende e li riesegue dentro il pod del job (GIT-499): il build girava una seconda volta nel
 // log del job test, con un altro digest. Qui ogni job e' un pod a se': i job di cui dipende
-// sono gia' conclusi sul server, che ha avviato questo solo dopo il loro successo. Gli output di
-// needs.* non arrivano comunque ad act in questo modo (lo scambio non e' previsto dal runner).
+// sono gia' conclusi sul server, che ha avviato questo solo dopo il loro successo. Il risultato
+// di needs.<x>.result e' riscritto in 'success'; gli output di needs.* non arrivano ad act.
 // Un workflow illeggibile o senza il job resta com'e': act dara' il suo errore.
 func withoutNeeds(workflow []byte, jobKey string) ([]byte, error) {
 	var doc yaml.Node
@@ -163,7 +163,27 @@ func withoutNeeds(workflow []byte, jobKey string) ([]byte, error) {
 	if !changed {
 		return workflow, nil
 	}
+	// Senza needs il contesto needs.* in act e' vuoto: un `if: needs.build.result == 'success'`
+	// salterebbe il job (GIT-500). Il server avvia il job solo dopo il successo di tutti i suoi
+	// needs: needs.<x>.result vale quindi 'success' e lo si scrive nelle espressioni del job.
+	// needs.<x>.outputs.* NON e' passato (limite documentato in docs/operations.md (sezione CI)).
+	rewriteNeedsResult(job)
 	return yaml.Marshal(&doc)
+}
+
+var needsResultRe = regexp.MustCompile(`\bneeds\.[A-Za-z0-9_-]+\.result\b`)
+
+// rewriteNeedsResult sostituisce needs.<x>.result con il letterale 'success' in ogni scalare del job.
+func rewriteNeedsResult(n *yaml.Node) {
+	if n == nil {
+		return
+	}
+	if n.Kind == yaml.ScalarNode && strings.Contains(n.Value, "needs.") {
+		n.Value = needsResultRe.ReplaceAllString(n.Value, "'success'")
+	}
+	for _, c := range n.Content {
+		rewriteNeedsResult(c)
+	}
 }
 
 // mapValue e' il valore della chiave key di un nodo mappa, nil se manca.
