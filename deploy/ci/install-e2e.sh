@@ -651,7 +651,7 @@ apps_off_api() {
   before="$("${KUBECTL[@]}" get namespaces -l gitstack.io/managed-app=true -o name | wc -l)"
   api POST "/api/v1/repos/${CI_USER}/${CI_REPO}/apps" '{"name":"web","image":"docker.io/library/nginx:1.27-alpine","port":80}' -H "Authorization: Bearer ${CI_TOKEN}"
   expect 503 "${CODE}" "creazione app con l'hosting spento"
-  printf '%s' "${BODY}" | jq -e '.code == "apps_unavailable"' >/dev/null || fail "503 senza il codice apps_unavailable"
+  printf '%s' "${BODY}" | jq -e '.error.code == "apps_unavailable"' >/dev/null || fail "503 senza il codice apps_unavailable (schema {error:{code}}); BODY: ${BODY:0:500}"
   sleep 5
   after="$("${KUBECTL[@]}" get namespaces -l gitstack.io/managed-app=true -o name | wc -l)"
   [ "${before}" = "${after}" ] || fail "con l'hosting spento sono comparsi namespace delle app (${before} -> ${after})"
