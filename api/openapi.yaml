@@ -10427,6 +10427,12 @@ paths:
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
         "409": {$ref: "#/components/responses/Conflict"}
+        "503":
+          description: Segreti delle app non configurati (`app_secrets_unavailable`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
     delete:
       operationId: removeAppDomainCertificate
