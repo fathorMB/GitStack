@@ -378,6 +378,11 @@ jobs:
           set -euo pipefail
           ./deploy/ci/install-e2e.sh verify-k3s "${K3S_FROM}"
           sudo gitstack status --json | jq -e --arg v "sha-${PREV_SHA}" '.report.server_version == $v'
+          cfg=/etc/gitstack/config.yaml
+          apps_domain="$(sudo sed -n 's/^apps_domain: *//p' "${cfg}" | head -n 1)"
+          apps_enabled="$(sudo sed -n 's/^apps_enabled: *//p' "${cfg}" | head -n 1)"
+          echo "PREV_APPS_DOMAIN=${apps_domain:-unset}" >> "$GITHUB_ENV"
+          echo "PREV_APPS_ENABLED=${apps_enabled:-false}" >> "$GITHUB_ENV"
 
       - name: Dati di prova (login admin, utente, token, repo, push, issue)
         run: ./deploy/ci/install-e2e.sh seed
@@ -484,20 +489,24 @@ jobs:
           sudo gitstack status --json | jq -e --arg v "sha-${GITHUB_SHA}" '.report.server_version == $v and .report.api_healthy == true'
           ./deploy/ci/install-e2e.sh verify-seed --push
 
-      # Una v2 aggiornata non ha un dominio delle app: lo dice lo status e
-      # `gitstack config set apps-domain` lo imposta e rinnova il certificato.
-      - name: Dominio delle app dopo l'upgrade dalla v2
+      # Una v2 scelta a mano con previous_commit non ha apps_domain; una v3
+      # può avere il dominio predefinito o uno scelto dall'utente.
+      - name: Dominio delle app dopo l'upgrade
         if: matrix.scenario == 'upgrade'
         run: |
           set -euo pipefail
-          ./deploy/ci/install-e2e.sh verify-apps-domain unset
-          # GIT-375: dopo l'upgrade (senza opzioni) l'hosting delle app è spento: lo status lo dice,
-          # l'API risponde 503 apps_unavailable e nel cluster non nasce niente.
-          ./deploy/ci/install-e2e.sh verify-apps-hosting off
-          ./deploy/ci/install-e2e.sh apps-off-api
+          ./deploy/ci/install-e2e.sh verify-apps-domain "${PREV_APPS_DOMAIN}"
+          # GIT-375: senza opzioni l'upgrade conserva l'hosting della partenza;
+          # se è spento, l'API risponde 503 apps_unavailable e nel cluster non nasce niente.
+          if [ "${PREV_APPS_ENABLED}" = "true" ]; then
+            ./deploy/ci/install-e2e.sh verify-apps-hosting on
+          else
+            ./deploy/ci/install-e2e.sh verify-apps-hosting off
+            ./deploy/ci/install-e2e.sh apps-off-api
+          fi
           if [ "${{ matrix.os }}" = "ubuntu-24.04" ]; then
             # Un secondo `gitstack upgrade` alla stessa versione, ora col binario nuovo, con l'opzione:
-            # accende l'hosting, imposta il dominio (la v2 non ne ha) e non tocca i dati. (Il primo
+            # accende l'hosting, imposta il dominio e non tocca i dati. (Il primo
             # upgrade parte dal binario del commit precedente, che l'opzione non la conosce.)
             sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --timeout 20m \
               --enable-apps --apps-domain "${APPS_DOMAIN}" ${UPGRADE_UNSIGNED_FLAG:-}
