@@ -98,7 +98,7 @@ $diag = Join-Path $script:OutDir 'pilot\api-diag'
 foreach ($file in @('app.json', 'versions.json', 'pods.txt', 'describe.txt', 'events.txt', 'previous.txt', 'current.txt')) {
     if (-not (Test-Path -LiteralPath (Join-Path $diag $file))) { throw "diagnostic file missing: $file" }
 }
-if ($script:diagCommands.Count -ne 5 -or @($script:diagCommands | Where-Object { $_ -notmatch 'kubectl -n gitstack-app-aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa ' }).Count -ne 0 -or @($script:diagCommands | Where-Object { $_ -match 'logs deploy/app --all-containers --previous --tail=200' }).Count -ne 1) { throw 'diagnostic commands incorrect' }
+if ($script:diagCommands.Count -ne 5 -or @($script:diagCommands | Where-Object { $_ -notmatch 'kubectl -n gitstack-app-aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa ' }).Count -ne 0 -or @($script:diagCommands | Where-Object { $_ -match '^.* logs deploy/app -c app --previous --tail=200$' -and $_ -notmatch '--all-containers' }).Count -ne 1) { throw 'diagnostic commands incorrect' }
 $script:rows = @()
 Test-E2ePilotDatabaseAfterRestore -BaseUrl 'https://example.invalid' -Context ([pscustomobject]@{ Owner = 'alice'; Repo = 'pilot'; Token = 'test' })
 if ($script:rows.Count -ne 1 -or $script:rows[0].Ok -or $script:rows[0].Detail -notmatch 'postgres stato failed: exit 1.*container startup error') { throw 'pilot FAIL detail missing previous log' }
