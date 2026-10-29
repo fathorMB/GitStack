@@ -94,7 +94,10 @@ func TestReexecFuncRunsStagedBinary(t *testing.T) {
 func TestReexecFuncNoProtocol(t *testing.T) {
 	a, _, _ := upgradeApp(t, "ahead")
 	for name, exec := range map[string]func(io.Writer) error{
-		"errore d'uso":    func(out io.Writer) error { _, _ = io.WriteString(out, "flag provided but not defined"); return errors.New("exit 2") },
+		"errore d'uso": func(out io.Writer) error {
+			_, _ = io.WriteString(out, "flag provided but not defined")
+			return errors.New("exit 2")
+		},
 		"non parte":       func(io.Writer) error { return errors.New("exec format error") },
 		"risposta strana": func(out io.Writer) error { _, _ = io.WriteString(out, "9\n"); return nil },
 	} {
