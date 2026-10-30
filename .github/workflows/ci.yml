@@ -478,6 +478,23 @@ jobs:
             exit 1
           fi
 
+      - name: Strumenti di build nativi e programma C (utente 10001, WORKDIR /work)
+        run: |
+          set -euo pipefail
+          img=gitstack-ci-runner:test
+          for tool in cc gcc ld make jq xz unzip; do
+            if ! docker run --rm --entrypoint sh "$img" -c "command -v $tool"; then
+              echo "ERRORE: l'immagine del runner non contiene $tool" >&2
+              exit 1
+            fi
+          done
+          docker run --rm --entrypoint sh "$img" -c '
+            set -eu
+            printf "#include <stdio.h>\nint main(void){puts(\"ciao-c\");return 0;}\n" > hello.c
+            cc -o hello hello.c
+            test "$(./hello)" = ciao-c
+          '
+
       - name: Workflow a due passi con act (dall'immagine) e gateway finto
         run: |
           set -euo pipefail
