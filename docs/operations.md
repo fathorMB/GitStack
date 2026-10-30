@@ -2591,8 +2591,14 @@ Questa sezione dice cosa è stato provato prima di portare la CI su homehub, cos
 | Cosa | Dove | Esito |
 |---|---|---|
 | `gs workflow list`, `gs workflow run -f`, `gs run watch --exit-status` (uscita 0 e 1), `gs run view --log-failed`, `gs release create/list/upload/download` contro core, gateway, identity e git veri | `TestGsCI_RunWatchViewWorkflowReleaseSulloStack` (`services/core/internal/stackitest/gs_ci_integration_test.go`, `-tags integration`) | verde in locale (Windows, Docker Desktop) il 2026-10-25; gira anche nel job `go` di `ci.yml` |
-| Stesso ciclo con un workflow vero nel pod del runner integrato, immagine OCI nel registry, tag `v0.0.0-test.1` e release | passo e12 di `deploy/test-vm/e2e.ps1` (`e2e/gs-ci-cycle.sh`) | scritto e controllato con `bash -n`, shellcheck e il parser di PowerShell; **non ancora eseguito**: `e2e.ps1` vuole l'amministratore sull'host del board |
-| `actions/cache` sul runner integrato (primo run «Cache saved with key: …», secondo «Cache restored from key: …») e 501 di `upload-artifact@v4` | `deploy/ci/runner-e2e.sh`, sezione 1b, nel job `chart` di `ci.yml` | scritto e controllato con shellcheck; **non ancora eseguito** su un cluster. Si legge il risultato nel job `chart` del primo run di `ci.yml` dopo il merge |
+| Stesso ciclo con un workflow vero nel pod del runner integrato, immagine OCI nel registry, tag `v0.0.0-test.1` e release | passo e12 di `deploy/test-vm/e2e.ps1` (`e2e/gs-ci-cycle.sh`) | verde sulla VM nel giro MR-401-r1, 30/10/2026, main `12ebb800`; log `C:\gitstack-e2e\MR-401-r1\e2e.log`: `[PASS] e12. CI (GIT-291): workflow con input, run watch --exit-status, view --log-failed, immagine nel registry e release`. Giro complessivo: `RISULTATO: VERDE`, 162 PASS, 0 FAIL. |
+| `actions/cache` sul runner integrato e 501 di `upload-artifact@v4` | `deploy/ci/runner-e2e.sh`, sezione 1b, nel job `chart` di `ci.yml` | verde il 2026-10-27: vedi le prove sotto |
+
+Nel [job chart del run 40445593216](https://github.com/fathorMB/GitStack/actions/runs/40445593216/job/122001089887), i due run interni nello stesso cluster sono `10f3125b-e595-4f7d-8d30-70ab4b6d3c9a` e `a71942cb-c7b9-4ab9-8ed2-ea279e1ff158`: il log registra rispettivamente `Cache saved with key: e2e-cache-v1` e `Cache restored from key: e2e-cache-v1`, con contenuto ripristinato. Il secondo job `artefatto` fallisce come previsto: lo script verifica il messaggio `GitStack non supporta actions/upload-artifact@v4` e registra `ok: artefatti v4: il passo fallisce col messaggio documentato (501)`. Le due esecuzioni interne sono effimere; il link consultabile è quello del job che le ha eseguite. Anche il [job chart del run 40449947545](https://github.com/fathorMB/GitStack/actions/runs/40449947545/job/122015375756) registra gli stessi controlli verdi. Il primo run dopo GIT-291, 40210356127, aveva saltato chart per un errore nei test di migrazione.
+
+Il [job chart del run 40971314720](https://github.com/fathorMB/GitStack/actions/runs/40971314720/job/123795500608) su `12ebb800` conferma `ok: cache run 1: «Cache saved with key: e2e-cache-v1»`, `ok: cache run 2: «Cache restored from key: e2e-cache-v1»` e `ok: artefatti v4: il passo fallisce col messaggio documentato (501)`.
+
+Nel `gs-ci-cycle.log` di MR-401-r1 sono presenti `STEP ok` per `install`, `repo_create`, `workflow_push`, `workflow_list`, `workflow_input`, `run_watch_ok`, `run_watch_ko`, `run_log_failed`, `image_push`, `package_list`, `release`, e `GS-CI-CYCLE-DONE`.
 
 La diagnostica di e12 precede il passo f: `pre-f-diagnostics/core.log` e `git.log` raccolgono i log dei servizi; `ci-events.txt`, `ci-pods.txt`, `ci-describe.txt` e `ci-logs.txt` raccolgono eventi, pod, describe e log di tutti i container nel namespace `gitstack-ci-jobs`. Gli stessi nomi sono presenti in `vm-diagnostics/` nella raccolta finale. Un errore di raccolta prima di f compare in `pre-f-diagnostics/DIAGNOSTICA-NON-RACCOLTA.txt`; il log del ciclo resta in `gs-ci-cycle.log`.
 
@@ -2606,41 +2612,57 @@ La prova contro git vero ha trovato un difetto di core, corretto in GIT-291: `GE
 - job `chart` (k3d) e `install-ubuntu-22`/`e2e` (`sudo ./deploy/install.sh`): runner esterno su una macchina vera;
 - `runs-on: windows-latest` (job `pwsh`): runner esterno Windows;
 - firma keyless di cosign con `id-token: write` (job `sign`, `release`): su GitStack la firma è quella del registry, con la chiave dell'istanza;
-- `gh release …`/`gh pr …` con `secrets.GITHUB_TOKEN`: si sostituiscono con `gs release` e con un token personale o di agente (il token del job non apre `/repos/…/releases`);
+- `gh release …`/`gh pr …` con `secrets.GITHUB_TOKEN`: la release può usare `gs release` con il token del job e `contents: write` (GIT-372); le PR richiedono una verifica separata;
 - `actions/upload-artifact@v6` (usato in `ci.yml`, `install.yml`, `security.yml`) e `actions/cache`: l'artefatto v4+ riceve 501; si carica con `PUT /ci/v1/artifacts/{nome}` o si usa un runner esterno con un servizio di artefatti compatibile;
 - `actions/deploy-pages`, `environment:` (job `docs`): solo GitHub.
 
-Il dogfooding scrive qui, per ogni workflow, se gira com'è o con quale modifica; la prima colonna è la previsione, la seconda la scrive il board dopo il run.
+Le previsioni dell'ADR restano non confermate: il board ha rinunciato al dogfooding su homehub il 30/10 (GIT-370).
 
 | Workflow | Previsione | Esito su homehub (run) |
 |---|---|---|
-| `docs.yml` | build del sito sì; `deploy-pages` no | da eseguire |
-| `api-contract.yml` | sì (go e redocly nel pod, rete aperta verso internet) | da eseguire |
-| `ci.yml` (job `go`, `web`, `lint`) | sì con l'immagine del runner e la toolchain; `upload-artifact@v6` da cambiare | da eseguire |
-| `ci.yml` (job `chart`, `registry`, `images`, `release`) | no: Docker, k3d, firma keyless | da eseguire (runner esterno o riscrittura) |
-| `smoke.yml`, `install.yml`, `security.yml` | no nel pod (Docker, k3s, Trivy sulle immagini) | da eseguire |
+| `docs.yml` | build del sito sì; `deploy-pages` no | non eseguito: decisione del board del 30/10 (GIT-370) |
+| `api-contract.yml` | sì (go e redocly nel pod, rete aperta verso internet) | non eseguito: decisione del board del 30/10 (GIT-370) |
+| `ci.yml` (job `go`, `web`, `lint`) | sì con l'immagine del runner e la toolchain; `upload-artifact@v6` da cambiare | non eseguito: decisione del board del 30/10 (GIT-370) |
+| `ci.yml` (job `chart`, `registry`, `images`, `release`) | no: Docker, k3d, firma keyless | non eseguito: decisione del board del 30/10 (GIT-370) |
+| `smoke.yml`, `install.yml`, `security.yml` | no nel pod (Docker, k3s, Trivy sulle immagini) | non eseguito: decisione del board del 30/10 (GIT-370) |
 
 ### Runbook per il board
 
-Prima: `ci_status` di main verde (al 2026-10-25 il run `api-contract` di `c01e14b` era rosso: guardarlo), CI accesa su homehub (`sudo ./deploy/install.sh --ci --ci-build`, oppure `sudo gitstack upgrade --to <versione> --set ci.enabled=true --set ci.build.enabled=true`), un token del board (lezione dell'azienda: serve anche la CA interna, `--cacert`/`http.sslCAInfo`).
+Il runbook non è stato eseguito per decisione del board del 30/10 (GIT-370); resta un riferimento per un eventuale giro futuro.
+
+Prima: verificare main verde e la versione installata dall'host con `curl.exe -ks --max-time 15 https://homehub.local/api/v1/meta`; verificare che includa GIT-371 e GIT-372 prima della prova. Sul terminale del board entrare con `ssh -t moreno@homehub.local`, controllare `gitstack version` e configurazione CI; non ripetere upgrade alla cieca. Serve la CA interna (`--cacert`/`http.sslCAInfo`) e un login del board per le operazioni interattive.
+
+**VM e12:** su PowerShell avviato come amministratore, nella copia del repo allineata a main, eseguire `.\deploy\test-vm\e2e.ps1 -Ref <SHA di main con immagini pubblicate> -OutDir C:\gitstack-e2e\GIT-370 -SkipBackupRestore -SkipUpgrade`. Lo script ripristina il checkpoint `clean` della VM e svolge anche i passi precedenti: e12 dipende da e5 e dalla CA. Conservare `e2e.log`, `installer-ci.log` e `gs-ci-cycle.log`; riportare il `[PASS]` o `[FAIL]` di e12 e i `STEP` nel risultato, senza esporre token.
 
 1. Repo di prova su homehub (`admin/ci-dogfood`) con una copia dei workflow di GitStack: `git push` da una copia locale, con la CA e `Basic gs:<token>`.
 2. Cache: due `gs workflow run cache.yml --ref main` di fila (il workflow è in `deploy/ci/runner-e2e.sh`, sezione 1b). Il log del job `cache` deve avere «Cache saved with key: e2e-cache-v1» nel primo run e «Cache restored from key: e2e-cache-v1» nel secondo; il job `artefatto` deve fallire col messaggio «GitStack non supporta actions/upload-artifact@v4…».
-3. Workflow di GitStack: uno alla volta con `gs workflow run <file> --ref main` e `gs run watch --exit-status`; per ogni job rosso, `gs run view --log-failed` e la modifica minima fatta.
-4. Release di prova: tag `v0.0.0-test.N` sul repo di prova e `gs release create --tag v0.0.0-test.N --generate-notes --prerelease`. Le immagini si pubblicano nel registry di homehub e `gs package list` mostra `signature: verified` (il registry firma da solo). **Limite noto:** un workflow oggi non può costruire un'immagine nel pod (il tipo di job `build` del chart non è collegato a `runs-on:`) e non può creare la release col token del job: build e release del passo 4 si fanno da un runner esterno o dal terminale.
+3. Workflow di GitStack: `ci.yml` e `api-contract.yml` non hanno `workflow_dispatch` e partono dal push; gli altri con dispatch possono essere avviati con `gs workflow run <file> --ref main`. Seguire ogni run con `gs run watch --exit-status` e, per ogni job rosso, `gs run view --log-failed`.
+4. Release di prova: il board sceglie un tag `v0.0.0-test.N` libero e lo invia al repo di prova. Il workflow usa `runs-on: gitstack-build`, `gitstack-build` e `packages: write` per pubblicare nel registry (GIT-371), e `contents: write` per creare la release con il token del job (GIT-372). Verificare run, release, digest e `signature: verified` con `gs package list`; registrare i link. Non sostituire il token del job con un token personale.
 5. Un riepilogo per controllo, una riga ciascuno (repo, atteso, trovato, ok/ko), senza espressioni `--jq` con spazi.
+
+Per i workflow con `workflow_dispatch`, dalla copia configurata per homehub, sostituire `<file>` e `<id>` con il nome e l'identificativo restituito dal dispatch; per quelli su push usare l'identificativo del run generato dal push. Conservare anche i fallimenti:
+
+```sh
+gs workflow list -R admin/ci-dogfood
+gs workflow run <file> -R admin/ci-dogfood --ref main
+gs run watch <id> -R admin/ci-dogfood --exit-status
+gs run view <id> -R admin/ci-dogfood --log-failed
+gs package list -R admin/ci-dogfood
+```
+
+Il workflow `cache.yml` va creato nel repo di prova copiando la definizione nella sezione 1b di `deploy/ci/runner-e2e.sh`, e lanciato due volte in sequenza. Il job artefatto fallisce intenzionalmente: leggere i log di entrambi i job, oltre alla conclusione complessiva. Registrare URL, identificativi e righe effettive nella tabella; per le righe mancanti lasciare lo stato in attesa.
 
 ### Risultati (li scrive il board)
 
 | Voce | Valore |
 |---|---|
-| Data del giro su homehub | da eseguire |
-| Run della cache: primo run («Cache saved with key: …») | da eseguire (link al run) |
-| Run della cache: secondo run («Cache restored from key: …») | da eseguire (link al run) |
-| `upload-artifact@v4`: messaggio 501 nel log | da eseguire (link al run) |
-| Workflow di GitStack che girano com'è | da eseguire |
-| Workflow di GitStack con modifica minima (quale) | da eseguire |
-| Release di prova `v0.0.0-test.N` e immagini firmate | da eseguire (link alla release e a `gs package list`) |
+| Data del giro su homehub | non eseguito: decisione del board del 30/10 (GIT-370) |
+| Run della cache: primo run («Cache saved with key: …») | non eseguito: decisione del board del 30/10 (GIT-370); su homehub non eseguito; prova nel job chart, vedi sopra |
+| Run della cache: secondo run («Cache restored from key: …») | non eseguito: decisione del board del 30/10 (GIT-370); su homehub non eseguito; prova nel job chart, vedi sopra |
+| `upload-artifact@v4`: messaggio 501 nel log | non eseguito: decisione del board del 30/10 (GIT-370); su homehub non eseguito; prova nel job chart, vedi sopra |
+| Workflow di GitStack che girano com'è | non eseguito: decisione del board del 30/10 (GIT-370) |
+| Workflow di GitStack con modifica minima (quale) | non eseguito: decisione del board del 30/10 (GIT-370) |
+| Release di prova `v0.0.0-test.N` e immagini firmate | non eseguito: decisione del board del 30/10 (GIT-370) |
 
 ## Dogfooding delle app: passo e2e sulla VM e sito della documentazione su homehub (v3-a, GIT-355)
 
@@ -2653,7 +2675,7 @@ Chiude il goal della v3-a. Anche qui i passi sulla VM e su homehub li fa il boar
 | Copertura delle regole H1, H2 (parte interna), H4–H13 | `docs/rules-coverage.md` (famiglia H), controllata da `go run scripts/check-rules-coverage.go` | nessuna riga «da compilare» nella famiglia H; il check verifica che ogni test citato esista |
 | Passo e2e «ciclo dell'app» (`Test-E2eAppLifecycle` in `deploy/test-vm/lib/phases.ps1`): sei righe `h-app ciclo 1/6 … 6/6` più l'esito complessivo | `deploy/test-vm/tests/phases.Tests.ps1` (API e VM finte: esito completo, errore a v2 con diagnostica, nessun rollback né eliminazione dopo un errore) | verde in locale con Windows PowerShell 5.1 |
 | `e2e/gs-app-restore.sh` (`push-web`, `probe-anon`, `probe-auth`, `diag`) | `bash -n` | sintassi ok; **non eseguito** (serve la VM); shellcheck non era installato nell'ambiente di sviluppo, quindi **non passato** |
-| Immagine e workflow del sito | `docs-site/Dockerfile`, `deploy/dogfooding/docs-app.yml` | **mai costruiti**: la prova è il giro su homehub |
+| Immagine e workflow del sito | `docs-site/Dockerfile`, `deploy/dogfooding/docs-app.yml` | sito mai costruito; non eseguito: decisione del board del 30/10 (GIT-370) |
 
 ### Passo e2e: deploy, login, rollback
 
@@ -2701,13 +2723,13 @@ sudo gitstack config set apps on --apps-domain apps.homehub.lan   # oppure gitst
 
 | Voce | Valore |
 |---|---|
-| `-Ref` e `-OutDir` del giro e2e | da eseguire |
-| Passo e2e: righe `h-app ciclo` 1–6 e esito complessivo | da eseguire (incollare le righe) |
-| Dominio delle app di homehub e come si risolve | da eseguire |
-| Run del workflow `docs-app` | da eseguire (link al run) |
-| Versione dell'app `docs` prima e dopo il push (`trigger`, `commitSha`) | da eseguire |
-| Modifica visibile nel sito dopo il push | da eseguire |
-| Rollback | da eseguire |
+| `-Ref` e `-OutDir` del giro e2e | `12ebb800`; `C:\gitstack-e2e\MR-401-r1` |
+| Passo e2e: righe `h-app ciclo` 1–6 e esito complessivo | `h-app ciclo 1/6` … `6/6` [PASS], esito complessivo 6/6 (VM, non homehub) |
+| Dominio delle app di homehub e come si risolve | non eseguito: decisione del board del 30/10 (GIT-370) |
+| Run del workflow `docs-app` | non eseguito: decisione del board del 30/10 (GIT-370) |
+| Versione dell'app `docs` prima e dopo il push (`trigger`, `commitSha`) | non eseguito: decisione del board del 30/10 (GIT-370) |
+| Modifica visibile nel sito dopo il push | non eseguito: decisione del board del 30/10 (GIT-370) |
+| Rollback | non eseguito: decisione del board del 30/10 (GIT-370) |
 
 ## Registro del dogfooding (dalla tappa 2 di V7)
 
