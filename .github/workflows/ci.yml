@@ -495,7 +495,8 @@ jobs:
             test "$(./hello)" = ciao-c
           '
 
-      - name: Workflow a due passi con act (dall'immagine) e gateway finto
+      # Include la regressione GIT-524: action JavaScript con dist/ ignorato.
+      - name: Workflow con act (dall'immagine), gateway finto e regressione dist
         run: |
           set -euo pipefail
           cid="$(docker create gitstack-ci-runner:test)"

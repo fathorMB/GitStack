@@ -287,7 +287,7 @@ verso Internet). Con GIT-371 la NetworkPolicy aggiunge solo le due uscite verso 
 `https://`, e inoltre manda `GITHUB_TOKEN` (qui il token del job `gsj_`) come credenziale del clone verso
 github.com. Per questo le action pubbliche le scarica il runner (`cirunner.MirrorActions`) con
 `git fetch --depth 1 <mirror o https://github.com>/<owner>/<repo> <ref>` sotto `workspace/.gitstack-actions/`
-e riscrive il `uses:` in un'action locale (act risolve le action locali nella copia del workspace).
+e riscrive il `uses:` in un'action locale (act risolve le action locali nella copia del workspace). Il runner disattiva `--use-gitignore` di act affinché la copia del workspace conservi i bundle `dist/` delle action anche quando il repository li ignora.
 `actions/checkout` non si scarica: act lo salta perché il codice è già nel workspace. Le action richiamate
 dentro un'action composita le risolve ancora act, quindi, se non sono già locali, con il token del job verso
 github.com: limite aperto. Il mirror è `ci.runner.actionMirror` (http o https); se sta su una rete privata
