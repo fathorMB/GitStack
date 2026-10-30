@@ -370,7 +370,7 @@ func runAct(ctx context.Context, cfg Config, rep *reporter, event, jobKey, token
 	for _, p := range platformsFor(cfg.Labels) {
 		args = append(args, "-P", p+"=-self-hosted")
 	}
-	args = append(args, "--pull=false", "--no-cache-server", "-s", "GITHUB_TOKEN")
+	args = append(args, "--pull=false", "--use-gitignore=false", "--no-cache-server", "-s", "GITHUB_TOKEN")
 	cmd := exec.CommandContext(ctx, cfg.ActBin, args...)
 	cmd.Dir = filepath.Join(cfg.WorkDir, "workspace")
 	// I passi del workflow ereditano l'ambiente di act: il segreto dei runner (e ogni

@@ -404,6 +404,9 @@ func TestRun_EventoSha(t *testing.T) {
 	args, _ := os.ReadFile(argsF)
 	evFile := filepath.Join(cfg.WorkDir, "workflow", "event.json")
 	lines := strings.Split(string(args), "\n")
+	if !strings.Contains("\n"+string(args)+"\n", "\n--use-gitignore=false\n") {
+		t.Errorf("argomenti act senza --use-gitignore=false: %q", lines)
+	}
 	if len(lines) < 3 || lines[0] != "workflow_dispatch" || lines[1] != "-e" || lines[2] != evFile {
 		t.Errorf("argomenti di act: %q", lines)
 	}
@@ -585,4 +588,30 @@ func TestRun_ActVero(t *testing.T) {
 	if res.Conclusion != runnerv1.Result_RESULT_SUCCESS || g.result != runnerv1.Result_RESULT_SUCCESS || len(g.steps) != 2 {
 		t.Fatalf("esito %v/%v passi %d\n%s", res.Conclusion, g.result, len(g.steps), strings.Join(g.rows, "\n"))
 	}
+}
+
+// TestRun_ActVero_GitignoreDist verifica la copia delle action JavaScript nel workspace di act.
+func TestRun_ActVero_GitignoreDist(t *testing.T) {
+	act := realAct(t)
+	wf := "name: dist\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: ./.gitstack-actions/example\n"
+	g := &fakeGateway{workflow: wf, archive: tarball(t, map[string]string{
+		"README.md": "x", ".gitignore": "dist/\n",
+		".gitstack-actions/example/action.yml":    "name: example\nruns:\n  using: node20\n  main: dist/index.js\n",
+		".gitstack-actions/example/dist/index.js": "console.log('dist-action-ok')\n",
+	})}
+	cfg := cfgFor(t, start(t, g))
+	t.Setenv("CIRUNNER_FAKE_ACT", "")
+	cfg.ActBin = act
+	cfg.FetchTimeout = 5 * time.Second
+	res, err := cirunner.Run(context.Background(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	log := strings.Join(g.rows, "\n")
+	if res.Conclusion != runnerv1.Result_RESULT_SUCCESS || !strings.Contains(log, "dist-action-ok") {
+		t.Fatalf("esito %v\n%s", res.Conclusion, log)
+	}
+	t.Logf("esito %v: dist-action-ok", res.Conclusion)
 }
