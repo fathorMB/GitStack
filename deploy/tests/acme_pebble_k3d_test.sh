@@ -126,8 +126,21 @@ spec:
           httpChallenge: {entryPoint: web}
 EOF
 echo "attendo che Traefik riparta col resolver"
-sleep 10
+# Attendere che l'helm-controller aggiorni il Deployment prima di seguirne il rollout.
+seen=""
+for _ in $(seq 1 60); do
+  seen=$(k -n kube-system get deploy traefik -o jsonpath='{.spec.template.spec.containers[0].env[*].name}' 2>/dev/null || true)
+  case "$seen" in *LEGO_CA_CERTIFICATES*) break ;; esac
+  seen=""
+  sleep 5
+done
+[ -n "$seen" ] || ko "il Deployment traefik non ha LEGO_CA_CERTIFICATES dopo 300 s"
 k -n kube-system rollout status deployment/traefik --timeout=240s >/dev/null || ko "Traefik non riparte"
+args=$(k -n kube-system get deploy traefik -o jsonpath='{.spec.template.spec.containers[0].args}' 2>/dev/null) || ko "lettura degli argomenti di Traefik fallita"
+case "$args" in
+  *certificatesresolvers.letsencrypt.acme.caServer=https://pebble:14000/dir*) ;;
+  *) ko "gli argomenti di Traefik non hanno il caServer di Pebble: $args" ;;
+esac
 
 # --- App di prova e DNS finto: il dominio punta al Service di Traefik (porta 80 per la sfida) ------
 tr_ip=$(k -n kube-system get svc traefik -o jsonpath='{.spec.clusterIP}')
