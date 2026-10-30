@@ -121,8 +121,19 @@ auth="Authorization: Basic $(printf 'admin:%s' "${tok}" | base64 -w0)"
 push() { # messaggio
   git -C "${src}" add -A
   git -C "${src}" commit -q -m "$1"
-  git -C "${src}" -c credential.helper= -c "http.extraHeader=${auth}" push -q "${BASE_URL}/${OWNER}/${REPO}.git" HEAD:refs/heads/main
-  git -C "${src}" rev-parse HEAD
+  # Dopo un rollout di core il percorso del push (gateway, identity, core) puo' rispondere 503
+  # per qualche secondo: il push si riprova un numero limitato di volte (GIT-448), poi e' un KO.
+  local try tries=12 delay=5
+  for ((try = 1; try <= tries; try++)); do
+    if git -C "${src}" -c credential.helper= -c "http.extraHeader=${auth}" push -q "${BASE_URL}/${OWNER}/${REPO}.git" HEAD:refs/heads/main >&2; then
+      git -C "${src}" rev-parse HEAD
+      return 0
+    fi
+    echo "push non riuscito (tentativo ${try}/${tries}): riprovo tra ${delay}s" >&2
+    sleep "${delay}"
+  done
+  echo "KO: push: non riuscito dopo ${tries} tentativi" >&2
+  return 1
 }
 
 wait_run() { # sha -> scrive in ${work}/run.json l'esecuzione conclusa
@@ -239,6 +250,85 @@ if dispatch_cache 2; then
   else
     ko "artefatti v4: atteso failure con «GitStack non supporta actions/upload-artifact@v4», trovato $(job_concl 2 artefatto)"; tail -n 20 "${work}/cache-2-artefatto.log" >&2
   fi
+fi
+
+# --- 1c. input di workflow_dispatch, github.sha e GITHUB_SHA (GIT-439) --------------------------
+# Lo schema di image.yml del ciclo CI dell'e2e sulla VM (gs-ci-cycle.sh): un input obbligatorio,
+# uno con default, due job con needs. Il job build stampa l'input e lo sha (contesto e ambiente), il
+# job test fallisce se rompi=si. Il primo run deve avere gli input e lo sha del commit, il secondo
+# (rompi=si) deve fallire nel job test. I marcatori si cercano dopo «| »: act ristampa anche lo script.
+cat >"${src}/.gitstack/workflows/image.yml" <<'EOF'
+name: image
+on:
+  workflow_dispatch:
+    inputs:
+      versione:
+        required: true
+      rompi:
+        required: false
+        default: "no"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: build
+        run: |
+          set -eu
+          echo "E2E-INPUT-VERSIONE=${{ github.event.inputs.versione }}"
+          echo "E2E-INPUT-ROMPI=${{ github.event.inputs.rompi }}"
+          echo "E2E-SHA-CTX=${{ github.sha }}"
+          echo "E2E-SHA-ENV=${GITHUB_SHA}"
+          echo "E2E-REF-ENV=${GITHUB_REF}"
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: prova
+        run: |
+          set -eu
+          if [ "${{ github.event.inputs.rompi }}" = si ]; then echo "E2E-ROMPI-VOLUTO"; exit 1; fi
+          echo "E2E-IMAGE-TEST-OK"
+EOF
+shaI=$(push "workflow image")
+
+dispatch_image() { # n inputs-json -> scrive ${work}/image-<n>.json e i log dei job build e test
+  local n="$1" id i st job jid
+  code=$(curl -s -o "${work}/disp.json" -w '%{http_code}' -H "Authorization: Bearer ${tok}" -X POST -H 'content-type: application/json' \
+    -d "{\"ref\":\"main\",\"inputs\":$2}" "${api}/repos/${OWNER}/${REPO}/workflows/image.yml/dispatches" || true)
+  [ "${code}" = 202 ] || { ko "image run ${n}: avvio del workflow, status ${code}, corpo '$(head -c 200 "${work}/disp.json")'"; return 1; }
+  id=$(jq -r .id "${work}/disp.json")
+  for ((i = 0; i < RUN_TIMEOUT / 3; i++)); do
+    curl -s -H "Authorization: Bearer ${tok}" "${api}/repos/${OWNER}/${REPO}/actions/runs/${id}" >"${work}/image-${n}.json" || true
+    st=$(jq -r '.status // ""' "${work}/image-${n}.json" 2>/dev/null || true)
+    [ "${st}" = completed ] || [ "${st}" = cancelled ] && break
+    sleep 3
+  done
+  [ "${st}" = completed ] || { ko "image run ${n}: ${id} non concluso entro ${RUN_TIMEOUT}s (stato '${st}')"; return 1; }
+  for job in build test; do
+    jid=$(jq -r --arg j "${job}" '[.jobs[] | select(.name == $j)][0].id' "${work}/image-${n}.json")
+    curl -s -H "Authorization: Bearer ${tok}" "${api}/repos/${OWNER}/${REPO}/actions/jobs/${jid}/logs" >"${work}/image-${n}-${job}.log" || true
+  done
+}
+image_concl() { jq -r --arg j "$2" '[.jobs[] | select(.name == $j)][0].conclusion // "-"' "${work}/image-$1.json"; }
+image_has() { grep -qF -- "| $2" "${work}/image-$1-$3.log"; } # n marcatore job
+
+if dispatch_image 1 '{"versione":"0.0.1"}'; then
+  if [ "$(jq -r .conclusion "${work}/image-1.json")" = success ]; then ok "image run 1: run success (input obbligatorio dato, due job con needs)"; else
+    ko "image run 1: run $(jq -r .conclusion "${work}/image-1.json")"; tail -n 30 "${work}/image-1-build.log" >&2; fi
+  if image_has 1 'E2E-INPUT-VERSIONE=0.0.1' build; then ok "image run 1: github.event.inputs.versione arriva al passo"; else ko "image run 1: input versione assente dal log"; tail -n 30 "${work}/image-1-build.log" >&2; fi
+  if image_has 1 'E2E-INPUT-ROMPI=no' build; then ok "image run 1: l'input con default (rompi=no) arriva al passo"; else ko "image run 1: input rompi assente dal log"; fi
+  if image_has 1 "E2E-SHA-CTX=${shaI}" build; then ok "image run 1: github.sha è lo sha del commit"; else ko "image run 1: github.sha diverso da ${shaI}"; grep -F 'E2E-SHA' "${work}/image-1-build.log" >&2 || true; fi
+  if image_has 1 "E2E-SHA-ENV=${shaI}" build; then ok "image run 1: GITHUB_SHA è lo sha del commit"; else ko "image run 1: GITHUB_SHA diverso da ${shaI}"; fi
+  if image_has 1 'E2E-REF-ENV=refs/heads/main' build; then ok "image run 1: GITHUB_REF è refs/heads/main"; else ko "image run 1: GITHUB_REF inatteso"; grep -F 'E2E-REF' "${work}/image-1-build.log" >&2 || echo "(nessuna riga E2E-REF nel log)" >&2; fi
+  if image_has 1 'E2E-IMAGE-TEST-OK' test; then ok "image run 1: il job test (needs: build) è partito"; else ko "image run 1: il job test non ha stampato E2E-IMAGE-TEST-OK"; fi
+fi
+if dispatch_image 2 '{"versione":"0.0.2","rompi":"si"}'; then
+  if [ "$(jq -r .conclusion "${work}/image-2.json")" = failure ] && [ "$(image_concl 2 build)" = success ] && [ "$(image_concl 2 test)" = failure ]; then
+    ok "image run 2: con rompi=si il run fallisce nel job test"
+  else
+    ko "image run 2: atteso run failure con build success e test failure, trovato $(jq -r .conclusion "${work}/image-2.json") / $(image_concl 2 build) / $(image_concl 2 test)"
+  fi
+  if image_has 2 'E2E-ROMPI-VOLUTO' test; then ok "image run 2: il log del job test ha il marcatore del fallimento voluto"; else ko "image run 2: marcatore E2E-ROMPI-VOLUTO assente"; tail -n 20 "${work}/image-2-test.log" >&2; fi
 fi
 
 # --- 2. mirror delle action ----------------------------------------------------------------

@@ -118,7 +118,13 @@ func restoreOn(t *testing.T, a *App, cfg, tlsMode, host string) (int, string) {
 		t.Fatalf("archivi: %v", ents)
 	}
 	a.Runner = &recRunner{}
-	a.Getenv = func(string) string { return "" }
+	k3sDir := t.TempDir() // registries.yaml (GIT-425): mai sotto /etc veri
+	a.Getenv = func(k string) string {
+		if k == "GITSTACK_K3S_DIR" {
+			return k3sDir
+		}
+		return ""
+	}
 	var stderr strings.Builder
 	a.Stderr = &stderr
 	code := a.Run(context.Background(), []string{"restore", "--config", cfg, "--dest", dest, ents[0]})

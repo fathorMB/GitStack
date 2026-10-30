@@ -2,14 +2,19 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'integrate/**']
     tags: ['v*']
   pull_request:
 
-# Un solo run per ramo/PR alla volta: un push nuovo cancella quello vecchio.
+# Su PR, integrate/** e tag: un solo run per ref alla volta, un push nuovo
+# cancella quello vecchio. Su main il gruppo è unico per commit e niente si
+# cancella: ogni commit di main deve completare il job Registry, che pubblica
+# le immagini sha-<commit> richieste dall'e2e (GIT-370, GIT-437). Con lo stesso
+# gruppo anche cancel-in-progress: false non basterebbe: GitHub tiene un solo
+# run in coda per gruppo e un terzo push cancellerebbe quello in attesa.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   GOLANGCI_LINT_VERSION: v2.14.0
@@ -273,7 +278,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: shellcheck
-        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/apps_domain_test.sh deploy/tests/ci_install_test.sh deploy/tests/v5_verify_test.sh deploy/tests/release_changelog_test.sh deploy/tests/network_test.sh deploy/tests/k3s_script_test.sh deploy/tests/chart_hardening_test.sh deploy/tests/apps_priority_probe.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh deploy/test-vm/e2e/gs-app-restore.sh deploy/ci/install-e2e.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh scripts/ci/retry.sh deploy/ci/runner-e2e.sh
+        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/apps_domain_test.sh deploy/tests/tls_certs_copy_test.sh deploy/tests/traefik_metrics_test.sh deploy/tests/ci_install_test.sh deploy/tests/v5_verify_test.sh deploy/tests/release_changelog_test.sh deploy/tests/network_test.sh deploy/tests/k3s_script_test.sh deploy/tests/chart_hardening_test.sh deploy/tests/apps_priority_probe.sh deploy/tests/acme_pebble_k3d_test.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh deploy/test-vm/e2e/gs-app-restore.sh deploy/test-vm/e2e/gs-app-public.sh deploy/ci/install-e2e.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh scripts/ci/retry.sh deploy/ci/runner-e2e.sh deploy/ci/autodeploy-e2e.sh deploy/ci-runner/gitstack-build
 
       # Preflight di install.sh (GIT-144): profili minimo e consigliato di N1,
       # sistema non supportato, verifica del nome host. Senza root né VM.
@@ -284,6 +289,10 @@ jobs:
       # wildcard della CA interna con openssl vero. Senza root né VM.
       - name: test del dominio delle app
         run: ./deploy/tests/apps_domain_test.sh
+
+      # GIT-494: la copia di gitstack-tls in <release>-certs si aggiorna solo se esiste (la crea il chart).
+      - name: test della copia del certificato nel namespace dei certificati
+        run: ./deploy/tests/tls_certs_copy_test.sh
 
       # GIT-206 (N4, N9a): opzioni di rete, registries.yaml, drop-in di proxy
       # per k3s, valori Helm e preflight di rete. Senza root né rete.
@@ -316,6 +325,11 @@ jobs:
 
       - name: test dell'hardening del chart (F8)
         run: ./deploy/tests/chart_hardening_test.sh
+
+      # Metriche di Traefik per le app (H12, GIT-403): HelmChartConfig dell'installer (entrypoint
+      # metrics interno) e NetworkPolicy di core verso Traefik.
+      - name: test delle metriche di Traefik (H12)
+        run: ./deploy/tests/traefik_metrics_test.sh
 
       - name: test della verifica delle firme di install.sh (V5)
         run: ./deploy/tests/v5_verify_test.sh
@@ -1549,17 +1563,24 @@ jobs:
           done
           echo "OK: CRD middlewares.traefik.io Established"
 
+      - name: Let's Encrypt dei domini delle app con Pebble (k3d)
+        # GIT-459 (v3-c): lo script crea un SUO cluster usa-e-getta (gs-acme-test, nessuna porta
+        # mappata, quindi niente collisioni con gitstack-ci) e lo elimina nel trap EXIT anche se
+        # fallisce, come k3d-test.sh sopra. Stampa le tre righe «ok:» che la revisione cerca nel log.
+        timeout-minutes: 20
+        run: deploy/tests/acme_pebble_k3d_test.sh
+
       - name: Importa le immagini nel cluster (nessun push su un registry per questo job)
         run: |
           docker build -f deploy/ci-runner/Dockerfile -t gitstack-ci-runner:test .
-          k3d image import \
+          # GIT-432: import verificato nel nodo (crictl), con max 3 tentativi.
+          bash scripts/k3d-import-verified.sh gitstack-ci \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-gateway:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-identity:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-core:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-git:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-web:${IMAGE_TAG}" \
-            gitstack-ci-runner:test \
-            -c gitstack-ci
+            gitstack-ci-runner:test
 
       # GIT-152: web attivo (default del chart), con l'immagine costruita sopra:
       # lo smoke del browser passa dall'Ingress e serve la UI vera.
@@ -1952,6 +1973,15 @@ jobs:
           RUNNER_IMAGE: gitstack-ci-runner:test
         run: bash deploy/ci/runner-e2e.sh
 
+      # GIT-349 (H7, H10): deploy automatico da branch e firme, sullo stesso cluster. Un push su
+      # main con un workflow `gitstack-build` pubblica un'immagine firmata dalla CI e core mette in
+      # produzione una versione nuova (trigger branch_push, verified, serving); un tag pubblicato
+      # senza firma non ne crea. Righe attese: «OK: deploy automatico - versione N serving,
+      # trigger branch_push, verified» e «OK: immagine non firmata - nessuna versione nuova».
+      # Accende le app e rimette i valori del chart all'uscita; logica in deploy/ci/autodeploy-e2e.sh.
+      - name: Deploy automatico da branch e immagini firmate (GIT-349)
+        run: bash deploy/ci/autodeploy-e2e.sh
+
       # GIT-152: smoke della UI nel browser (Chromium headless) attraverso
       # l'Ingress: /login, login admin con la password iniziale del Secret (la
       # UI impone il cambio: E2E_ADMIN_NEW_PASSWORD), pagina principale, lista
@@ -1991,7 +2021,7 @@ jobs:
           pnpm e2e
 
       - name: Trace e screenshot dello smoke UI (solo se fallisce)
-        if: failure()
+        if: failure() && !startsWith(github.ref, 'refs/heads/integrate/')
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: e2e-ui-trace

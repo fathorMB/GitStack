@@ -298,6 +298,9 @@ func TestAuth_TabellaDiRotte(t *testing.T) {
 
 		// mai esposto / non dichiarato
 		{"internal", func() *http.Request { return bearerReq("POST", "/v1/internal/verify", "gst_admin_org") }, 404, "", ""},
+		{"internal: elenco utenti con ruolo (GIT-404)", func() *http.Request {
+			return bearerReq("GET", "/v1/internal/resources/11111111-1111-1111-1111-111111111111/members?role=admin", "gst_admin_org")
+		}, 404, "", ""},
 		{"metodo non dichiarato", func() *http.Request { return bearerReq("PATCH", "/v1/users", "gst_admin_org") }, 404, "", ""},
 		{"percorso sotto un pattern ma non dichiarato", func() *http.Request { return bearerReq("GET", "/v1/auth/inventata", "gst_admin_org") }, 404, "", ""},
 	}

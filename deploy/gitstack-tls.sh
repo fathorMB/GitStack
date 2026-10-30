@@ -253,6 +253,24 @@ ensure_namespace() {
   kubectl_ create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl_ apply -f - >/dev/null
 }
 
+# GIT-494: con le app accese il TLSStore default sta nel namespace <release>-certs (creato dal chart) e il suo
+# defaultCertificate deve stare nello stesso namespace. La copia del Secret la CREA il chart (lookup): qui si
+# aggiorna a ogni rinnovo SOLO se esiste gia'. Crearla con kubectl apply la lascerebbe senza i metadati di
+# helm e il successivo `helm upgrade` fallirebbe con «invalid ownership metadata». Il nome del namespace e'
+# lo stesso del chart (gitstack.certsNamespace): sempre <release>-certs.
+publish_certs_copy() {
+  local crt="$1" key="$2" new="$3" certs_ns current
+  certs_ns="${RELEASE}-certs"
+  case "${certs_ns}" in gitstack-app-*) return 0 ;; esac
+  kubectl_ -n "${certs_ns}" get secret "${SECRET_NAME}" >/dev/null 2>&1 || return 0
+  current="$(kubectl_ -n "${certs_ns}" get secret "${SECRET_NAME}" -o jsonpath='{.data.tls\.crt}' 2>/dev/null || true)"
+  if [ "${current}" != "${new}" ]; then
+    kubectl_ -n "${certs_ns}" create secret tls "${SECRET_NAME}" --cert="${crt}" --key="${key}" \
+      --dry-run=client -o yaml | kubectl_ apply -f - >/dev/null
+    log "Copia del Secret in ${certs_ns}/${SECRET_NAME} aggiornata (TLSStore default)."
+  fi
+}
+
 # Pubblica il certificato in Kubernetes solo se e' cambiato (confronto con il
 # Secret esistente): Traefik rilegge il Secret da solo, nessun riavvio.
 publish() {
@@ -268,6 +286,7 @@ publish() {
   else
     log "Secret ${NAMESPACE}/${SECRET_NAME} gia' aggiornato."
   fi
+  publish_certs_copy "${crt}" "${key}" "${new}"
   if [ "${TLS_MODE}" = "internal" ] && [ -n "${CA_CONFIGMAP}" ]; then
     kubectl_ -n "${NAMESPACE}" create configmap "${CA_CONFIGMAP}" --from-file=ca.crt="${TLS_DIR}/ca.crt" \
       --dry-run=client -o yaml | kubectl_ apply -f - >/dev/null

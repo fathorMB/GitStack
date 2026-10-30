@@ -51,6 +51,9 @@ type App struct {
 	ExePath string
 	// TuneUpgrade, se non nil, ritocca le opzioni di upgrade (test: URL, registry, attese).
 	TuneUpgrade func(*upgrade.Options)
+	// ExecBinary, se non nil, sostituisce l'esecuzione del binario di destinazione
+	// nel re-exec dell'upgrade (GIT-490; test).
+	ExecBinary func(ctx context.Context, bin string, args []string, out io.Writer) error
 	// LocalAddrs, se non nil, sostituisce gli indirizzi delle interfacce (test).
 	LocalAddrs func() []string
 	// ServingTimeout e ServingPoll regolano l'attesa dell'Ingress dopo un

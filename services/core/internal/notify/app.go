@@ -3,6 +3,7 @@ package notify
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
@@ -17,9 +18,18 @@ const AppUnhealthyNoticeWindow = 5 * time.Minute
 // fallisce (la versione precedente resta in esecuzione) e quando un'app che era in esecuzione ha le
 // copie non più pronte («fermata»). Il motivo è state_change, come per la CI; come le altre notifiche,
 // niente a chi non legge il repo (insert). Il sistema non è mai il destinatario: senza attore
-// (deploy automatico senza chi l'ha avviato) nessuno viene avvisato.
-// Non ancora: gli admin del repo (il contratto li prevede per il deploy fallito). Rimandato a GIT-404:
-// core non sa elencare gli admin di un repo, serve un'operazione interna di identity.
+// (deploy automatico senza chi l'ha avviato) manca l'avviso a chi ha fatto il deploy; il deploy fallito
+// avvisa comunque gli admin.
+// Il deploy fallito arriva anche agli admin del repo (GIT-404), elencati da identity con
+// GET /internal/resources/{id}/members?role=admin (stesse regole di HasRole): chi ha fatto il deploy e
+// è anche admin riceve un solo avviso. Senza elenco (Identity non lo sa fare) restano solo gli autori.
+// L'app fermata resta solo per chi ha fatto il deploy.
+
+// ResourceMemberLister è l'operazione interna di identity che elenca gli utenti con almeno un ruolo su
+// una risorsa. Identity può implementarla o no: il motore la usa se c'è.
+type ResourceMemberLister interface {
+	ResourceMembers(ctx context.Context, resourceID uuid.UUID, role string) ([]uuid.UUID, error)
+}
 
 // isAppNotice dice se l'evento è uno di quelli che avvisano chi ha fatto il deploy.
 func isAppNotice(name string) bool {
@@ -41,16 +51,37 @@ func (e *Engine) handleApp(ctx context.Context, tx pgx.Tx, ev outboxEvent) error
 	if err := json.Unmarshal(ev.payload, &p); err != nil {
 		return &badEventError{err}
 	}
-	if p.Actor == nil || p.Actor.ID == "" {
+	hasActor := p.Actor != nil && p.Actor.ID != ""
+	failed := ev.name == domainevents.AppDeploymentFailed
+	lister, _ := e.Identity.(ResourceMemberLister)
+	if !hasActor && (!failed || lister == nil) {
 		return nil
 	}
 	repoID, err := uuid.Parse(p.Repo.ID)
 	if err != nil {
 		return &badEventError{err}
 	}
-	actor, err := uuid.Parse(p.Actor.ID)
-	if err != nil {
-		return &badEventError{err}
+	var actor uuid.UUID
+	if hasActor {
+		if actor, err = uuid.Parse(p.Actor.ID); err != nil {
+			return &badEventError{err}
+		}
+	}
+	cands := map[uuid.UUID]string{}
+	if hasActor {
+		cands[actor] = ReasonStateChange
+	}
+	if failed && lister != nil {
+		// Errore di identity: l'evento si ritenta, meglio che perdere l'avviso agli admin.
+		admins, err := lister.ResourceMembers(ctx, repoID, "admin")
+		if err != nil {
+			return fmt.Errorf("admin del repo non elencati: %w", err)
+		}
+		for _, a := range admins {
+			if a != uuid.Nil {
+				cands[a] = ReasonStateChange
+			}
+		}
 	}
 	data := map[string]any{"app": p.AppName}
 	if ev.name == domainevents.AppDeploymentFailed {
@@ -58,22 +89,26 @@ func (e *Engine) handleApp(ctx context.Context, tx pgx.Tx, ev outboxEvent) error
 		data["reason"] = p.Reason
 	}
 	o := occurrence{name: ev.name, repoID: repoID, access: map[uuid.UUID]bool{}, data: data}
-	if ev.name == domainevents.AppStatusUnhealthy {
+	if ev.name == domainevents.AppStatusUnhealthy && hasActor {
 		// Conserva il primo avviso immediato, poi sopprime le oscillazioni ravvicinate
 		// della stessa app. Il controllo è per destinatario e vede anche gli insert
 		// precedenti nella stessa transazione.
 		var recent bool
+		window := e.AppUnhealthyNoticeWindow
+		if window <= 0 {
+			window = AppUnhealthyNoticeWindow
+		}
 		if err := tx.QueryRow(ctx, `SELECT EXISTS (
 			SELECT 1 FROM core.notifications
 			WHERE user_id = $1 AND repo_id = $2 AND event_name = $3
 			  AND data->>'app' = $4
 			  AND created_at >= clock_timestamp() - ($5 * interval '1 millisecond')
-		)`, actor, repoID, ev.name, p.AppName, AppUnhealthyNoticeWindow.Milliseconds()).Scan(&recent); err != nil {
+		)`, actor, repoID, ev.name, p.AppName, window.Milliseconds()).Scan(&recent); err != nil {
 			return err
 		}
 		if recent {
 			return nil
 		}
 	}
-	return e.insert(ctx, tx, o, map[uuid.UUID]string{actor: ReasonStateChange})
+	return e.insert(ctx, tx, o, cands)
 }

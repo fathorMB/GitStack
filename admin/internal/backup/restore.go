@@ -101,6 +101,11 @@ func Restore(ctx context.Context, o *Options, archive string) (err error) {
 	if err != nil {
 		return fmt.Errorf("volume dei repo (git-data): %w", err)
 	}
+	if len(m.AppVolumes) > 0 {
+		if _, ok := o.Cluster.(AppVolumeCluster); !ok {
+			return errors.New("l'archivio ha volumi di app ma questo cluster non sa ripristinarli")
+		}
+	}
 	attPath := ""
 	if has[AttachmentsName] {
 		if attPath, err = o.Cluster.VolumePath(ctx, o.Cfg.Release+"-attachments-data"); err != nil {
@@ -188,6 +193,19 @@ func Restore(ctx context.Context, o *Options, archive string) (err error) {
 		o.logf("ripristino degli allegati")
 		if e := restoreVolume(filepath.Join(stage, AttachmentsName), attPath); e != nil {
 			return failed(fmt.Errorf("ripristino degli allegati: %w", e))
+		}
+	}
+
+	if len(m.AppVolumes) > 0 {
+		o.logf("ripristino dei volumi delle app (%d)", len(m.AppVolumes))
+		if e := o.restoreAppVolumes(ctx, stage, m.AppVolumes, has, filepath.Dir(gitPath)); e != nil {
+			return failed(e)
+		}
+	}
+
+	if has[ACMEName] {
+		if e := o.restoreACME(ctx, stage); e != nil {
+			return failed(e)
 		}
 	}
 

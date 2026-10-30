@@ -23,7 +23,7 @@ func (s *stubCluster) Scale(context.Context, string, int) error            { ret
 func (s *stubCluster) WaitStopped(context.Context, string) error           { return nil }
 func (s *stubCluster) WaitReady(context.Context, string) error             { return nil }
 func (s *stubCluster) PGExec(_ context.Context, _ io.Reader, w io.Writer, args ...string) error {
-	if strings.Contains(strings.Join(args, " "), "core.app_versions") {
+	if strings.Contains(strings.Join(args, " "), "core.app_versions") || strings.Contains(strings.Join(args, " "), "core.app_volumes") {
 		return nil // immagini in uso dalle app (H4): nessuna app nel test
 	}
 	_, err := io.WriteString(w, "-- dump\n")
@@ -243,9 +243,32 @@ func TestRestorePublishesTLSOnlyForInternalAndCustom(t *testing.T) {
 			}
 			rr := &recRunner{}
 			a.Runner = rr
-			a.Getenv = func(string) string { return "" }
+			k3sDir := filepath.Join(t.TempDir(), "k3s") // registries.yaml (GIT-425): mai sotto /etc veri
+			a.Getenv = func(k string) string {
+				switch k {
+				case "GITSTACK_K3S_DIR":
+					return k3sDir
+				case "GITSTACK_NETWORK_DIR":
+					return filepath.Join(k3sDir, "net")
+				}
+				return ""
+			}
 			if code := a.Run(context.Background(), []string{"restore", "--config", cfg, "--dest", dest, ents[0]}); code != ExitOK {
 				t.Fatalf("restore exit %d", code)
+			}
+			// GIT-425: con TLS internal il restore riallinea la fiducia di containerd nella CA e
+			// riavvia k3s; con le altre modalità non tocca registries.yaml.
+			reg, rerr := os.ReadFile(filepath.Join(k3sDir, "registries.yaml"))
+			restarted := false
+			for _, c := range rr.calls {
+				if c.name == "systemctl" && strings.Join(c.args, " ") == "restart k3s" {
+					restarted = true
+				}
+			}
+			if wantTrust := tc.tls == "internal"; wantTrust != (rerr == nil) || wantTrust != restarted {
+				t.Errorf("tls %s: registries.yaml letto=%v riavvio=%v", tc.tls, rerr == nil, restarted)
+			} else if wantTrust && !strings.Contains(string(reg), `"h":`) {
+				t.Errorf("registries.yaml senza la CA interna per l'host:\n%s", reg)
 			}
 			c := rr.find("gitstack-tls")
 			if !tc.want {
@@ -274,7 +297,13 @@ func TestRestoreTLSEnsureFailureExitsNonZero(t *testing.T) {
 	}
 	ents, _ := filepath.Glob(filepath.Join(dest, "gitstack-backup-*.tar.gz"))
 	a.Runner = failTLSRunner{}
-	a.Getenv = func(string) string { return "" }
+	k3sDir := t.TempDir() // ensure fallisce prima di registries.yaml, ma non si sa mai /etc veri
+	a.Getenv = func(k string) string {
+		if k == "GITSTACK_K3S_DIR" {
+			return k3sDir
+		}
+		return ""
+	}
 	var stderr strings.Builder
 	a.Stderr = &stderr
 	if code := a.Run(context.Background(), []string{"restore", "--config", cfg, "--dest", dest, ents[0]}); code != ExitUnexpected {

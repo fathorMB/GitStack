@@ -69,12 +69,14 @@ func WithServiceSecrets(gateway, core, git string) Option {
 }
 
 // internalAllowed dice se il chiamante può usare quell'operazione interna.
-// Il gateway usa solo la verifica delle credenziali e il controllo dei
-// permessi; git anche la ricerca di una chiave SSH. Core usa il resto.
+// Il gateway usa solo la verifica delle credenziali, il controllo dei
+// permessi e il profilo utente per il forward-auth delle app (GIT-347);
+// git anche la ricerca di una chiave SSH. Core usa il resto.
 func internalAllowed(caller, path string) bool {
 	switch caller {
 	case trust.CallerGateway:
-		return path == "/internal/verify" || path == "/internal/permissions/check"
+		return path == "/internal/verify" || path == "/internal/permissions/check" ||
+			path == "/internal/users/profile"
 	case trust.CallerGit:
 		return path == "/internal/verify" || path == "/internal/permissions/check" ||
 			strings.HasPrefix(path, "/internal/ssh-keys/")

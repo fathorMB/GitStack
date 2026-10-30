@@ -56,20 +56,20 @@ name = "go-test-core"
 # (api, client/go, pkg/*, gateway, identity) e go-test-git qui sotto, che
 # insieme coprono ogni modulo di go.work una volta sola. I paths di ognuno sono
 # le dipendenze reali dei test (go list -deps -test, piu' i file non Go che i
-# test leggono: README.md, deploy/, docs/, skills/, api/openapi.yaml,
+# test leggono: deploy/, docs/, skills/, api/openapi.yaml,
 # scripts/release-readiness.go) e li verifica go-test-paths: non si mantengono a
 # mano, si rigenerano con `go run scripts/check-test-paths.go -suggest`.
 # -timeout e' per pacchetto e resta minore del timeout_s del check, cosi' un
 # blocco stampa lo stack e il test in corso.
 run = "go test -timeout 450s ./services/core/..."
 timeout_s = 600
-paths = ["go.work", "go.work.sum", "pkg/egress/**", "pkg/events/**", "pkg/issuequery/**", "pkg/names/**", "services/core/**"]
+paths = ["api/openapi.yaml", "go.work", "go.work.sum", "pkg/egress/**", "pkg/events/**", "pkg/issuequery/**", "pkg/names/**", "services/core/**"]
 
 [[check]]
 name = "go-test-cli"
 run = "go test -timeout 450s ./cli/..."
 timeout_s = 600
-paths = ["README.md", "api/**", "cli/**", "client/go/**", "go.work", "go.work.sum", "skills/**"]
+paths = ["api/**", "cli/**", "client/go/**", "go.work", "go.work.sum", "skills/**"]
 
 [[check]]
 name = "go-test-admin"
@@ -86,12 +86,12 @@ paths = ["api/**", "client/go/**", "docs/**", "go.work", "go.work.sum", "pkg/egr
 [[check]]
 name = "go-test-git"
 # go list -deps -test ./services/git/... mostra moduli interni solo in
-# services/git e pkg/{events,scopes}; i due pkg sono coperti da pkg/**.
+# services/git e pkg/{events,scopes}.
 # Il budget per pacchetto lascia margine ai test che invocano git molte volte
 # sotto carico, ma resta inferiore al timeout complessivo del check.
 run = "go test -timeout 1500s ./services/git/..."
 timeout_s = 1800
-paths = ["services/git/**", "pkg/**", "go.work", "go.work.sum"]
+paths = ["go.work", "go.work.sum", "pkg/events/**", "pkg/scopes/**", "services/git/**"]
 
 [[check]]
 name = "web-install"
@@ -294,4 +294,4 @@ name = "go-test-paths"
 # paths: go run scripts/check-test-paths.go -suggest
 run = "go run scripts/check-test-paths.go"
 timeout_s = 300
-paths = ["**/*.go", "**/go.mod", "**/go.sum", "go.work", "go.work.sum", ".galaxylab/checks.toml", "deploy/**", "docs/**", "skills/**", "scripts/release-readiness.go", "README.md"]
+paths = ["**/*.go", "**/go.mod", "**/go.sum", "go.work", "go.work.sum", ".galaxylab/checks.toml", "deploy/**", "docs/**", "skills/**", "scripts/release-readiness.go"]

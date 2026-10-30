@@ -390,6 +390,111 @@ func (e AppDeployState) Valid() bool {
 	}
 }
 
+// Defines values for AppDomainCertificateMode.
+const (
+	AppDomainCertificateModeCustom      AppDomainCertificateMode = "custom"
+	AppDomainCertificateModeLetsencrypt AppDomainCertificateMode = "letsencrypt"
+)
+
+// Valid indicates whether the value is a known member of the AppDomainCertificateMode enum.
+func (e AppDomainCertificateMode) Valid() bool {
+	switch e {
+	case AppDomainCertificateModeCustom:
+		return true
+	case AppDomainCertificateModeLetsencrypt:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppDomainCertificateState.
+const (
+	AppDomainCertificateStateError   AppDomainCertificateState = "error"
+	AppDomainCertificateStateIssuing AppDomainCertificateState = "issuing"
+	AppDomainCertificateStateNone    AppDomainCertificateState = "none"
+	AppDomainCertificateStateValid   AppDomainCertificateState = "valid"
+)
+
+// Valid indicates whether the value is a known member of the AppDomainCertificateState enum.
+func (e AppDomainCertificateState) Valid() bool {
+	switch e {
+	case AppDomainCertificateStateError:
+		return true
+	case AppDomainCertificateStateIssuing:
+		return true
+	case AppDomainCertificateStateNone:
+		return true
+	case AppDomainCertificateStateValid:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppDomainDnsRecordAlternativesType.
+const (
+	AppDomainDnsRecordAlternativesTypeA     AppDomainDnsRecordAlternativesType = "A"
+	AppDomainDnsRecordAlternativesTypeAAAA  AppDomainDnsRecordAlternativesType = "AAAA"
+	AppDomainDnsRecordAlternativesTypeCNAME AppDomainDnsRecordAlternativesType = "CNAME"
+)
+
+// Valid indicates whether the value is a known member of the AppDomainDnsRecordAlternativesType enum.
+func (e AppDomainDnsRecordAlternativesType) Valid() bool {
+	switch e {
+	case AppDomainDnsRecordAlternativesTypeA:
+		return true
+	case AppDomainDnsRecordAlternativesTypeAAAA:
+		return true
+	case AppDomainDnsRecordAlternativesTypeCNAME:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppDomainDnsRecordType.
+const (
+	AppDomainDnsRecordTypeA     AppDomainDnsRecordType = "A"
+	AppDomainDnsRecordTypeAAAA  AppDomainDnsRecordType = "AAAA"
+	AppDomainDnsRecordTypeCNAME AppDomainDnsRecordType = "CNAME"
+)
+
+// Valid indicates whether the value is a known member of the AppDomainDnsRecordType enum.
+func (e AppDomainDnsRecordType) Valid() bool {
+	switch e {
+	case AppDomainDnsRecordTypeA:
+		return true
+	case AppDomainDnsRecordTypeAAAA:
+		return true
+	case AppDomainDnsRecordTypeCNAME:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AppDomainStatus.
+const (
+	AppDomainStatusError      AppDomainStatus = "error"
+	AppDomainStatusPendingDns AppDomainStatus = "pending_dns"
+	AppDomainStatusVerified   AppDomainStatus = "verified"
+)
+
+// Valid indicates whether the value is a known member of the AppDomainStatus enum.
+func (e AppDomainStatus) Valid() bool {
+	switch e {
+	case AppDomainStatusError:
+		return true
+	case AppDomainStatusPendingDns:
+		return true
+	case AppDomainStatusVerified:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for AppImageSource.
 const (
 	AppImageSourceExternal AppImageSource = "external"
@@ -535,6 +640,7 @@ const (
 	AppVersionTriggerCreate     AppVersionTrigger = "create"
 	AppVersionTriggerManual     AppVersionTrigger = "manual"
 	AppVersionTriggerRollback   AppVersionTrigger = "rollback"
+	AppVersionTriggerTagPush    AppVersionTrigger = "tag_push"
 )
 
 // Valid indicates whether the value is a known member of the AppVersionTrigger enum.
@@ -549,6 +655,8 @@ func (e AppVersionTrigger) Valid() bool {
 	case AppVersionTriggerManual:
 		return true
 	case AppVersionTriggerRollback:
+		return true
+	case AppVersionTriggerTagPush:
 		return true
 	default:
 		return false
@@ -2208,6 +2316,78 @@ func (e WebhookDisabledReason) Valid() bool {
 	}
 }
 
+// Defines values for WebhookAppDomainPayloadAction.
+const (
+	WebhookAppDomainPayloadActionCertificateExpiring      WebhookAppDomainPayloadAction = "certificate_expiring"
+	WebhookAppDomainPayloadActionCertificateRenewalFailed WebhookAppDomainPayloadAction = "certificate_renewal_failed"
+	WebhookAppDomainPayloadActionDnsFailed                WebhookAppDomainPayloadAction = "dns_failed"
+)
+
+// Valid indicates whether the value is a known member of the WebhookAppDomainPayloadAction enum.
+func (e WebhookAppDomainPayloadAction) Valid() bool {
+	switch e {
+	case WebhookAppDomainPayloadActionCertificateExpiring:
+		return true
+	case WebhookAppDomainPayloadActionCertificateRenewalFailed:
+		return true
+	case WebhookAppDomainPayloadActionDnsFailed:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookAppDomainPayloadEvent.
+const (
+	WebhookAppDomainPayloadEventAppDomain WebhookAppDomainPayloadEvent = "app_domain"
+)
+
+// Valid indicates whether the value is a known member of the WebhookAppDomainPayloadEvent enum.
+func (e WebhookAppDomainPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookAppDomainPayloadEventAppDomain:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookAppDomainPayloadStatus.
+const (
+	WebhookAppDomainPayloadStatusDnsFailed     WebhookAppDomainPayloadStatus = "dns_failed"
+	WebhookAppDomainPayloadStatusExpiring      WebhookAppDomainPayloadStatus = "expiring"
+	WebhookAppDomainPayloadStatusRenewalFailed WebhookAppDomainPayloadStatus = "renewal_failed"
+)
+
+// Valid indicates whether the value is a known member of the WebhookAppDomainPayloadStatus enum.
+func (e WebhookAppDomainPayloadStatus) Valid() bool {
+	switch e {
+	case WebhookAppDomainPayloadStatusDnsFailed:
+		return true
+	case WebhookAppDomainPayloadStatusExpiring:
+		return true
+	case WebhookAppDomainPayloadStatusRenewalFailed:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookAppDomainPayloadVersion.
+const (
+	WebhookAppDomainPayloadVersionN1 WebhookAppDomainPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookAppDomainPayloadVersion enum.
+func (e WebhookAppDomainPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookAppDomainPayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WebhookCommitStatusPayloadAction.
 const (
 	WebhookCommitStatusPayloadActionCreated WebhookCommitStatusPayloadAction = "created"
@@ -2333,6 +2513,7 @@ func (e WebhookDeploymentPayloadVersion) Valid() bool {
 
 // Defines values for WebhookEvent.
 const (
+	WebhookEventAppDomain         WebhookEvent = "app_domain"
 	WebhookEventCommitStatus      WebhookEvent = "commit_status"
 	WebhookEventDeployment        WebhookEvent = "deployment"
 	WebhookEventIssueComment      WebhookEvent = "issue_comment"
@@ -2349,6 +2530,8 @@ const (
 // Valid indicates whether the value is a known member of the WebhookEvent enum.
 func (e WebhookEvent) Valid() bool {
 	switch e {
+	case WebhookEventAppDomain:
+		return true
 	case WebhookEventCommitStatus:
 		return true
 	case WebhookEventDeployment:
@@ -3390,6 +3573,44 @@ type AdminAppList struct {
 	Total int        `json:"total"`
 }
 
+// AdminPublicApp Riga dell'elenco admin delle app pubbliche (H1, H9, v3-c).
+type AdminPublicApp struct {
+	// Address Indirizzo automatico (H2).
+	Address *string `json:"address,omitempty"`
+
+	// Domains Domini propri, dal piu' vecchio; `verified` vuol dire dominio attivo.
+	Domains []AdminPublicAppDomain `json:"domains"`
+
+	// Name Nome dell'app dentro il repo (H5): lettere minuscole, cifre e trattini, 1-30 caratteri. Entra nell'indirizzo automatico `<app>-<repo>-<owner>.<dominio delle app>` (H2): se l'etichetta DNS risultante supera 63 caratteri la creazione risponde 422 `address_too_long`; se l'indirizzo e' gia' usato da un'altra app risponde 409 `address_conflict`. Il nome dell'app non si cambia dopo la creazione (`AppUpdateInput` non ha `name`).
+	Name  AppName `json:"name"`
+	Owner string  `json:"owner"`
+
+	// PublicAddress Indirizzo con cui l'app si apre da internet: il dominio verificato piu' vecchio, altrimenti l'indirizzo automatico.
+	PublicAddress *string `json:"publicAddress"`
+	Repo          string  `json:"repo"`
+
+	// Status Stato osservato: `starting` (nessuna copia ancora sana), `running`, `restarting`, `unhealthy` (alcune copie non sane), `failed` (nessuna versione parte), `stopped` (fermata a mano o per il repo, vedi `stoppedReason`).
+	Status AppStatus `json:"status"`
+}
+
+// AdminPublicAppDomain Dominio proprio di un'app pubblica, con stato del DNS e del certificato (v3-c).
+type AdminPublicAppDomain struct {
+	Certificate AppDomainCertificate `json:"certificate"`
+
+	// Domain Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`).
+	Domain AppDomainName `json:"domain"`
+
+	// Status Stato del dominio (v3-c): `pending_dns` il record atteso non c'e' ancora, `verified` il DNS punta a GitStack, `error` il DNS risponde altro (motivo in `statusReason`).
+	Status       AppDomainStatus `json:"status"`
+	StatusReason *string         `json:"statusReason,omitempty"`
+}
+
+// AdminPublicAppList defines model for AdminPublicAppList.
+type AdminPublicAppList struct {
+	Items []AdminPublicApp `json:"items"`
+	Total int              `json:"total"`
+}
+
 // AdminSystem Stato dell'installazione per Admin · System (mockup 16). Nessun segreto. `published` dice se l'host ha pubblicato le sue informazioni: se no, le sezioni dell'host hanno `configured: false` o stati `none`.
 type AdminSystem struct {
 	// Access Come si raggiunge GitStack. Nessun segreto.
@@ -3647,6 +3868,9 @@ type App struct {
 	// Port Porta del container. Null per un'app senza indirizzo (worker).
 	Port *int `json:"port,omitempty"`
 
+	// PublicAddress Indirizzo con cui l'app si apre (v3-c), visibile a chi legge l'app: il dominio proprio verificato piu' vecchio se l'app e' `public` e le app pubbliche sono abilitate, altrimenti l'indirizzo automatico. Null per un'app senza indirizzo.
+	PublicAddress *string `json:"publicAddress,omitempty"`
+
 	// ReadyCopies Copie sane.
 	ReadyCopies int    `json:"readyCopies"`
 	Repo        string `json:"repo"`
@@ -3783,9 +4007,12 @@ type AppCopyStatus struct {
 type AppCreateInput struct {
 	Copies *int `json:"copies,omitempty"`
 
-	// FollowBranch Branch da seguire (H7). Non disponibile per un'immagine esterna.
-	FollowBranch *string         `json:"followBranch,omitempty"`
-	HealthCheck  *AppHealthCheck `json:"healthCheck,omitempty"`
+	// FollowBranch Branch da seguire (H7). Non disponibile per un'immagine esterna. Non insieme a `followTagPattern` (422 `follow_both`).
+	FollowBranch *string `json:"followBranch,omitempty"`
+
+	// FollowTagPattern Regola sui tag (glob, per esempio `v*-test.*`): un'immagine firmata dalla CI con un tag che la rispetta va in produzione (H7). Non disponibile per un'immagine esterna. Non insieme a `followBranch` (422 `follow_both`).
+	FollowTagPattern *string         `json:"followTagPattern,omitempty"`
+	HealthCheck      *AppHealthCheck `json:"healthCheck,omitempty"`
 
 	// Image Riferimento dell'immagine. Per il registry del repo basta `nome:tag` o il solo tag, risolti contro `<host>/<owner>/<repo>`; altrimenti un riferimento completo a un registry esterno.
 	Image string `json:"image"`
@@ -3816,15 +4043,148 @@ type AppDeployInput struct {
 // AppDeployState Esito di una versione: `in_progress` (in avvio o in attesa del controllo di salute), `serving` (serve il traffico), `superseded` (sostituita da una piu' recente), `failed` (non ha superato il controllo di salute) e `rolled_back` (fallita con ritorno automatico alla versione precedente, H12).
 type AppDeployState string
 
+// AppDomain defines model for AppDomain.
+type AppDomain struct {
+	Certificate AppDomainCertificate `json:"certificate"`
+	CreatedAt   time.Time            `json:"createdAt"`
+	CreatedBy   *AppActor            `json:"createdBy,omitempty"`
+
+	// Dns Record DNS atteso. `type` e' `CNAME` verso l'indirizzo automatico dell'app, oppure `A`/`AAAA` verso l'IP pubblico dichiarato dell'istanza. Per un dominio all'apice (dove il CNAME non e' ammesso) l'unica forma e' A/AAAA.
+	Dns AppDomainDnsRecord `json:"dns"`
+
+	// Domain Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`).
+	Domain AppDomainName      `json:"domain"`
+	Id     openapi_types.UUID `json:"id"`
+
+	// LastCheckedAt Ultimo controllo del DNS.
+	LastCheckedAt *time.Time `json:"lastCheckedAt,omitempty"`
+
+	// Status Stato del dominio (v3-c): `pending_dns` il record atteso non c'e' ancora, `verified` il DNS punta a GitStack, `error` il DNS risponde altro (motivo in `statusReason`).
+	Status AppDomainStatus `json:"status"`
+
+	// StatusReason Motivo quando `status` e' `error` (es. il DNS risponde un altro IP); null altrimenti.
+	StatusReason *string    `json:"statusReason,omitempty"`
+	VerifiedAt   *time.Time `json:"verifiedAt,omitempty"`
+}
+
+// AppDomainCertificate defines model for AppDomainCertificate.
+type AppDomainCertificate struct {
+	// Error Motivo dell'ultimo errore di emissione o rinnovo; null se `state` non e' `error`.
+	Error *string `json:"error,omitempty"`
+
+	// Issuer Emittente (es. «Let's Encrypt R11» o l'emittente del certificato del cliente).
+	Issuer        *string    `json:"issuer,omitempty"`
+	LastAttemptAt *time.Time `json:"lastAttemptAt,omitempty"`
+
+	// Mode `letsencrypt` emissione e rinnovo automatici (HTTP-01 sulla porta 80), `custom` certificato caricato dal cliente.
+	Mode AppDomainCertificateMode `json:"mode"`
+
+	// State `none` nessun certificato (DNS non ancora `verified`), `issuing` emissione in corso, `valid` certificato valido (vedi `validUntil`), `error` emissione o rinnovo falliti (vedi `error`).
+	State     AppDomainCertificateState `json:"state"`
+	ValidFrom *time.Time                `json:"validFrom,omitempty"`
+
+	// ValidUntil Scadenza del certificato in uso; null se non c'e' ancora.
+	ValidUntil *time.Time `json:"validUntil,omitempty"`
+}
+
+// AppDomainCertificateInput defines model for AppDomainCertificateInput.
+type AppDomainCertificateInput struct {
+	// Certificate Certificato e catena intermedia, in PEM, foglia per prima.
+	Certificate string `json:"certificate"`
+
+	// PrivateKey Chiave privata in PEM (PKCS#8, PKCS#1 o EC), senza passphrase. Solo scrittura.
+	PrivateKey *string `json:"privateKey,omitempty"`
+}
+
+// AppDomainCertificateMode `letsencrypt` emissione e rinnovo automatici (HTTP-01 sulla porta 80), `custom` certificato caricato dal cliente.
+type AppDomainCertificateMode string
+
+// AppDomainCertificateState `none` nessun certificato (DNS non ancora `verified`), `issuing` emissione in corso, `valid` certificato valido (vedi `validUntil`), `error` emissione o rinnovo falliti (vedi `error`).
+type AppDomainCertificateState string
+
+// AppDomainDnsRecord Record DNS atteso. `type` e' `CNAME` verso l'indirizzo automatico dell'app, oppure `A`/`AAAA` verso l'IP pubblico dichiarato dell'istanza. Per un dominio all'apice (dove il CNAME non e' ammesso) l'unica forma e' A/AAAA.
+type AppDomainDnsRecord struct {
+	// Alternatives Altri record equivalenti accettati dal controllo (es. A e AAAA quando l'istanza dichiara entrambi). Vuoto se non ce ne sono.
+	Alternatives []struct {
+		Type  AppDomainDnsRecordAlternativesType `json:"type"`
+		Value string                             `json:"value"`
+	} `json:"alternatives"`
+
+	// Name Nome del record, cioe' il dominio.
+	Name string                 `json:"name"`
+	Type AppDomainDnsRecordType `json:"type"`
+
+	// Value Valore atteso: l'host dell'indirizzo automatico (CNAME) o l'IP (A/AAAA).
+	Value string `json:"value"`
+}
+
+// AppDomainDnsRecordAlternativesType defines model for AppDomainDnsRecord.Alternatives.Type.
+type AppDomainDnsRecordAlternativesType string
+
+// AppDomainDnsRecordType defines model for AppDomainDnsRecord.Type.
+type AppDomainDnsRecordType string
+
+// AppDomainInput defines model for AppDomainInput.
+type AppDomainInput struct {
+	// Domain Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`).
+	Domain AppDomainName `json:"domain"`
+}
+
+// AppDomainList defines model for AppDomainList.
+type AppDomainList struct {
+	Items []AppDomain `json:"items"`
+}
+
+// AppDomainName Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`).
+type AppDomainName = string
+
+// AppDomainStatus Stato del dominio (v3-c): `pending_dns` il record atteso non c'e' ancora, `verified` il DNS punta a GitStack, `error` il DNS risponde altro (motivo in `statusReason`).
+type AppDomainStatus string
+
+// AppEgress defines model for AppEgress.
+type AppEgress struct {
+	// AllowedPrivate Le destinazioni private aperte dall'amministratore: l'app puo' sceglierle.
+	AllowedPrivate []AppPrivateDestination `json:"allowedPrivate"`
+
+	// Destinations Le destinazioni della restrizione; vuoto se `restricted` e' false.
+	Destinations []AppEgressDestination `json:"destinations"`
+
+	// InstanceProxy L'istanza ha un proxy di uscita configurato (N9): un'app con l'uscita ristretta esce in modo diretto, senza il proxy.
+	InstanceProxy bool `json:"instanceProxy"`
+
+	// Restricted L'app ha una restrizione propria.
+	Restricted bool       `json:"restricted"`
+	UpdatedAt  *time.Time `json:"updatedAt,omitempty"`
+	UpdatedBy  *AppActor  `json:"updatedBy,omitempty"`
+}
+
+// AppEgressDestination defines model for AppEgressDestination.
+type AppEgressDestination struct {
+	// Host Indirizzo IP o nome DNS, senza schema ne' porta.
+	Host string `json:"host"`
+
+	// Port Porta TCP.
+	Port int `json:"port"`
+}
+
+// AppEgressInput defines model for AppEgressInput.
+type AppEgressInput struct {
+	Destinations []AppEgressDestination `json:"destinations"`
+}
+
 // AppEnvName Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
 type AppEnvName = string
 
-// AppFollow Branch seguito per il deploy automatico (H7).
+// AppFollow Sorgente del deploy automatico (H7): un branch oppure una regola sui tag, mai tutte e due.
 type AppFollow struct {
-	Branch string `json:"branch"`
+	// Branch Branch seguito; assente se l'app segue una regola sui tag.
+	Branch *string `json:"branch,omitempty"`
 
 	// Paused Deploy automatici sospesi (per esempio dopo un rollback).
 	Paused bool `json:"paused"`
+
+	// TagPattern Regola sui tag (glob, per esempio `v*-test.*`); assente se l'app segue un branch.
+	TagPattern *string `json:"tagPattern,omitempty"`
 }
 
 // AppHealthCheck defines model for AppHealthCheck.
@@ -3973,6 +4333,24 @@ type AppOwnerQuotaList struct {
 	Items []AppOwnerQuota `json:"items"`
 }
 
+// AppPrivateDestination defines model for AppPrivateDestination.
+type AppPrivateDestination struct {
+	CreatedAt *time.Time `json:"createdAt,omitempty"`
+	CreatedBy *AppActor  `json:"createdBy,omitempty"`
+	Host      string     `json:"host"`
+
+	// Note A cosa serve (es. database del backoffice).
+	Note string `json:"note"`
+	Port int    `json:"port"`
+}
+
+// AppPrivateDestinationInput defines model for AppPrivateDestinationInput.
+type AppPrivateDestinationInput struct {
+	Host string  `json:"host"`
+	Note *string `json:"note,omitempty"`
+	Port int     `json:"port"`
+}
+
 // AppResourceAmount CPU e memoria, per copia.
 type AppResourceAmount struct {
 	// CpuMillis Millesimi di vCPU (500 = 0,5 vCPU).
@@ -4072,11 +4450,14 @@ type AppTrustedKeyList struct {
 type AppUpdateInput struct {
 	AutoDeployPaused *bool `json:"autoDeployPaused,omitempty"`
 
-	// FollowBranch Branch da seguire; `null` torna ai deploy a mano.
-	FollowBranch *string         `json:"followBranch,omitempty"`
-	HealthCheck  *AppHealthCheck `json:"healthCheck,omitempty"`
-	Port         *int            `json:"port,omitempty"`
-	Restricted   *bool           `json:"restricted,omitempty"`
+	// FollowBranch Branch da seguire; `null` torna ai deploy a mano. Se l'app segue una regola sui tag va tolta prima (o nella stessa richiesta con `followTagPattern: null`), altrimenti 422 `follow_both`.
+	FollowBranch *string `json:"followBranch,omitempty"`
+
+	// FollowTagPattern Regola sui tag; `null` la toglie. Se l'app segue un branch va tolto prima (o nella stessa richiesta con `followBranch: null`), altrimenti 422 `follow_both`.
+	FollowTagPattern *string         `json:"followTagPattern,omitempty"`
+	HealthCheck      *AppHealthCheck `json:"healthCheck,omitempty"`
+	Port             *int            `json:"port,omitempty"`
+	Restricted       *bool           `json:"restricted,omitempty"`
 }
 
 // AppUsage Uso corrente, somma delle copie. Le richieste e gli errori ci sono solo per le app web.
@@ -4146,7 +4527,7 @@ type AppVersion struct {
 	// Summary Per `config` e `rollback`, che cosa e' cambiato, per esempio «variabile SEARCH_TIMEOUT»; i valori dei segreti non compaiono mai.
 	Summary *string `json:"summary,omitempty"`
 
-	// Trigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`.
+	// Trigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `tag_push` (e' arrivata nel registry un'immagine firmata con un tag che rispetta la regola seguita, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`.
 	Trigger AppVersionTrigger `json:"trigger"`
 }
 
@@ -4172,13 +4553,19 @@ type AppVersionList struct {
 	Total int          `json:"total"`
 }
 
-// AppVersionTrigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`.
+// AppVersionTrigger `manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `tag_push` (e' arrivata nel registry un'immagine firmata con un tag che rispetta la regola seguita, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`.
 type AppVersionTrigger string
 
 // AppVolume Volume persistente dell'app (PVC su local-path, dimensione fissa, H3).
 type AppVolume struct {
 	CreatedAt time.Time `json:"createdAt"`
 	CreatedBy *AppActor `json:"createdBy,omitempty"`
+
+	// IncludeInBackup Il volume entra in `gitstack backup` (anche verso S3) e torna con `gitstack restore` (H3, D19). Di default si; si esclude con `updateAppVolume`.
+	IncludeInBackup bool `json:"includeInBackup"`
+
+	// LooksLikeDatabase Avviso database (D19): il percorso di mount, il nome del volume o l'immagine dell'app fanno pensare a un database. La copia del backup si fa con l'app accesa: per un database dentro un container non e' garantita la coerenza, quindi la guida (docs/operations.md, «Volumes and databases») dice di pianificare un dump in un altro volume.
+	LooksLikeDatabase bool `json:"looksLikeDatabase"`
 
 	// MountPath Percorso di mount nel container.
 	MountPath string `json:"mountPath"`
@@ -4236,6 +4623,12 @@ type AppVolumeSpec struct {
 	SizeBytes int64         `json:"sizeBytes"`
 }
 
+// AppVolumeUpdate defines model for AppVolumeUpdate.
+type AppVolumeUpdate struct {
+	// IncludeInBackup `false` toglie il volume dal backup (e dal restore); `true` lo rimette.
+	IncludeInBackup bool `json:"includeInBackup"`
+}
+
 // AppsCapacity Capacita' del server e priorita' servizi di GitStack, poi app, poi job della CI (H11).
 type AppsCapacity struct {
 	Apps struct {
@@ -4269,14 +4662,27 @@ type AppsCapacity struct {
 	} `json:"services"`
 }
 
+// AppsEgressSettings defines model for AppsEgressSettings.
+type AppsEgressSettings struct {
+	PrivateDestinations []AppPrivateDestination `json:"privateDestinations"`
+}
+
+// AppsEgressSettingsInput defines model for AppsEgressSettingsInput.
+type AppsEgressSettingsInput struct {
+	PrivateDestinations []AppPrivateDestinationInput `json:"privateDestinations"`
+}
+
 // AppsInstanceSettings defines model for AppsInstanceSettings.
 type AppsInstanceSettings struct {
 	// AppsDomain Dominio wildcard delle app (H2), scelto all'installazione; solo lettura.
 	AppsDomain *string `json:"appsDomain"`
 
 	// AppsDomainIsDefault Senza `--apps-domain` vale il default, con avviso.
-	AppsDomainIsDefault *bool           `json:"appsDomainIsDefault,omitempty"`
-	LogRetention        AppLogRetention `json:"logRetention"`
+	AppsDomainIsDefault *bool `json:"appsDomainIsDefault,omitempty"`
+
+	// LetsEncrypt Stato di Let's Encrypt (v3-c). Assente finche' core non lo calcola.
+	LetsEncrypt  *AppsLetsEncryptStatus `json:"letsEncrypt,omitempty"`
+	LogRetention AppLogRetention        `json:"logRetention"`
 
 	// MaxPerApp CPU e memoria, per copia.
 	MaxPerApp         AppResourceAmount `json:"maxPerApp"`
@@ -4287,13 +4693,37 @@ type AppsInstanceSettings struct {
 
 // AppsInstanceSettingsInput defines model for AppsInstanceSettingsInput.
 type AppsInstanceSettingsInput struct {
-	LogRetention AppLogRetention `json:"logRetention"`
+	// AcmeEmail Email dell'account ACME (v3-c). Assente = invariata; null = la toglie.
+	AcmeEmail    *openapi_types.Email `json:"acmeEmail,omitempty"`
+	LogRetention AppLogRetention      `json:"logRetention"`
 
 	// MaxPerApp CPU e memoria, per copia.
 	MaxPerApp         AppResourceAmount `json:"maxPerApp"`
 	PublicAppsEnabled bool              `json:"publicAppsEnabled"`
-	Restricted        bool              `json:"restricted"`
-	SignedImagesOnly  bool              `json:"signedImagesOnly"`
+
+	// PublicIps IP pubblici dell'istanza (A/AAAA) per il controllo DNS (v3-c). Assente = invariati; [] li toglie. Solo IP validi e non privati: 422 altrimenti.
+	PublicIps        *[]string `json:"publicIps,omitempty"`
+	Restricted       bool      `json:"restricted"`
+	SignedImagesOnly bool      `json:"signedImagesOnly"`
+}
+
+// AppsLetsEncryptStatus Stato di Let's Encrypt sull'istanza (v3-c), in sola lettura dentro `AppsInstanceSettings`.
+type AppsLetsEncryptStatus struct {
+	// AcmeEmail Email per l'account ACME; null se non impostata.
+	AcmeEmail *openapi_types.Email `json:"acmeEmail,omitempty"`
+
+	// Enabled Let's Encrypt e' attivo: c'e' un'email ACME e le app pubbliche sono abilitate.
+	Enabled         bool       `json:"enabled"`
+	Port80CheckedAt *time.Time `json:"port80CheckedAt,omitempty"`
+
+	// Port80Error Motivo quando `port80Reachable` e' false.
+	Port80Error *string `json:"port80Error,omitempty"`
+
+	// Port80Reachable La porta 80 dell'istanza e' raggiungibile da internet (serve alla sfida HTTP-01). null = non ancora verificato.
+	Port80Reachable *bool `json:"port80Reachable"`
+
+	// PublicIps IP pubblici dichiarati dell'istanza (A/AAAA) contro cui si controlla il DNS dei domini propri.
+	PublicIps *[]string `json:"publicIps,omitempty"`
 }
 
 // AppsReserveInput CPU e memoria, per copia.
@@ -6760,6 +7190,11 @@ type ResourceList struct {
 	Total   int        `json:"total"`
 }
 
+// ResourceMembersResult defines model for ResourceMembersResult.
+type ResourceMembersResult struct {
+	UserIds []openapi_types.UUID `json:"userIds"`
+}
+
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
 type ResourceRole string
 
@@ -7397,6 +7832,46 @@ type Webhook struct {
 // WebhookDisabledReason defines model for Webhook.DisabledReason.
 type WebhookDisabledReason string
 
+// WebhookAppDomainPayload Payload del webhook `app_domain` (v3-c), per repo (quello dell'app) come `deployment`. `action`: `dns_failed` (il dominio non supera la verifica o non punta piu' all'istanza), `certificate_renewal_failed` (emissione o rinnovo Let's Encrypt fallito), `certificate_expiring` (certificato del cliente in scadenza entro 14 giorni). Un solo invio per guasto o scadenza. Nessun segreto: ne' chiavi ne' contenuto del certificato.
+type WebhookAppDomainPayload struct {
+	Action WebhookAppDomainPayloadAction `json:"action"`
+	App    struct {
+		Name string `json:"name"`
+	} `json:"app"`
+
+	// Domain Dominio proprio, normalizzato.
+	Domain       string                       `json:"domain"`
+	Event        WebhookAppDomainPayloadEvent `json:"event"`
+	Organization *WebhookOrganizationRef      `json:"organization,omitempty"`
+
+	// Reason Motivo del guasto (DNS o emissione), se c'e'.
+	Reason     *string              `json:"reason,omitempty"`
+	Repository WebhookRepositoryRef `json:"repository"`
+
+	// Sender Sempre null: e' un evento del sistema.
+	Sender *WebhookSender `json:"sender"`
+
+	// Status Stato che ha prodotto l'evento.
+	Status WebhookAppDomainPayloadStatus `json:"status"`
+	Time   time.Time                     `json:"time"`
+
+	// ValidUntil Scadenza del certificato, solo per `certificate_expiring`.
+	ValidUntil *time.Time                     `json:"validUntil,omitempty"`
+	Version    WebhookAppDomainPayloadVersion `json:"version"`
+}
+
+// WebhookAppDomainPayloadAction defines model for WebhookAppDomainPayload.Action.
+type WebhookAppDomainPayloadAction string
+
+// WebhookAppDomainPayloadEvent defines model for WebhookAppDomainPayload.Event.
+type WebhookAppDomainPayloadEvent string
+
+// WebhookAppDomainPayloadStatus Stato che ha prodotto l'evento.
+type WebhookAppDomainPayloadStatus string
+
+// WebhookAppDomainPayloadVersion defines model for WebhookAppDomainPayload.Version.
+type WebhookAppDomainPayloadVersion int
+
 // WebhookCommitStatusPayload Corpo di una consegna con `X-GitStack-Event: commit_status` (PR11).
 type WebhookCommitStatusPayload struct {
 	// Action `created`: un sistema esterno ha inviato uno stato (PR9).
@@ -7442,7 +7917,7 @@ type WebhookDeliveryDetail struct {
 	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
 	Error *string `json:"error,omitempty"`
 
-	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`.
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS, rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`.
 	Event WebhookEvent `json:"event"`
 
 	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
@@ -7503,7 +7978,7 @@ type WebhookDeliverySummary struct {
 	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
 	Error *string `json:"error,omitempty"`
 
-	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`.
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS, rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`.
 	Event WebhookEvent `json:"event"`
 
 	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
@@ -7540,7 +8015,7 @@ type WebhookDeploymentPayloadEvent string
 // WebhookDeploymentPayloadVersion defines model for WebhookDeploymentPayload.Version.
 type WebhookDeploymentPayloadVersion int
 
-// WebhookEvent Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`.
+// WebhookEvent Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS, rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`.
 type WebhookEvent string
 
 // WebhookList defines model for WebhookList.
@@ -7770,6 +8245,9 @@ type WorkflowRunList struct {
 
 // ActionsNameParam defines model for ActionsNameParam.
 type ActionsNameParam = string
+
+// AppDomainParam Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`).
+type AppDomainParam = AppDomainName
 
 // AppEnvNameParam Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
 type AppEnvNameParam = AppEnvName
@@ -8169,6 +8647,11 @@ type GitGetTreeParams struct {
 
 	// Path Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
 	Path *PathParam `form:"path,omitempty" json:"path,omitempty"`
+}
+
+// ListResourceMembersParams defines parameters for ListResourceMembers.
+type ListResourceMembersParams struct {
+	Role ResourceRole `form:"role" json:"role"`
 }
 
 // DeleteNotificationsParams defines parameters for DeleteNotifications.
@@ -8704,6 +9187,9 @@ type ListUserTokensParams struct {
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// UpdateAdminAppsEgressJSONRequestBody defines body for UpdateAdminAppsEgress for application/json ContentType.
+type UpdateAdminAppsEgressJSONRequestBody = AppsEgressSettingsInput
+
 // PutAdminAppOwnerQuotaJSONRequestBody defines body for PutAdminAppOwnerQuota for application/json ContentType.
 type PutAdminAppOwnerQuotaJSONRequestBody = AppOwnerQuotaInput
 
@@ -8833,6 +9319,15 @@ type AddAppAccessMemberJSONRequestBody = AppAccessMemberInput
 // DeployAppJSONRequestBody defines body for DeployApp for application/json ContentType.
 type DeployAppJSONRequestBody = AppDeployInput
 
+// AddAppDomainJSONRequestBody defines body for AddAppDomain for application/json ContentType.
+type AddAppDomainJSONRequestBody = AppDomainInput
+
+// UploadAppDomainCertificateJSONRequestBody defines body for UploadAppDomainCertificate for application/json ContentType.
+type UploadAppDomainCertificateJSONRequestBody = AppDomainCertificateInput
+
+// SetAppEgressJSONRequestBody defines body for SetAppEgress for application/json ContentType.
+type SetAppEgressJSONRequestBody = AppEgressInput
+
 // SetAppResourcesJSONRequestBody defines body for SetAppResources for application/json ContentType.
 type SetAppResourcesJSONRequestBody = AppResourcesInput
 
@@ -8850,6 +9345,9 @@ type PutAppVariableJSONRequestBody = AppVariableInput
 
 // CreateAppVolumeJSONRequestBody defines body for CreateAppVolume for application/json ContentType.
 type CreateAppVolumeJSONRequestBody = AppVolumeInput
+
+// UpdateAppVolumeJSONRequestBody defines body for UpdateAppVolume for application/json ContentType.
+type UpdateAppVolumeJSONRequestBody = AppVolumeUpdate
 
 // UpdateBranchSettingsJSONRequestBody defines body for UpdateBranchSettings for application/json ContentType.
 type UpdateBranchSettingsJSONRequestBody = UpdateBranchSettingsInput
@@ -8995,6 +9493,9 @@ type ChangePasswordJSONRequestBody = ChangePasswordInput
 // CreateUserTokenJSONRequestBody defines body for CreateUserToken for application/json ContentType.
 type CreateUserTokenJSONRequestBody = CreateTokenInput
 
+// AppDomainJSONRequestBody defines body for AppDomain for application/json ContentType.
+type AppDomainJSONRequestBody = WebhookAppDomainPayload
+
 // CommitStatusJSONRequestBody defines body for CommitStatus for application/json ContentType.
 type CommitStatusJSONRequestBody = WebhookCommitStatusPayload
 
@@ -9104,6 +9605,38 @@ type ClientInterface interface {
 	// Corresponds with GET /admin/apps/capacity (the `GetAdminAppsCapacity` operationId).
 	GetAdminAppsCapacity(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetAdminAppsEgress Legge le destinazioni private aperte all'uscita delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Internet e' aperto alle app; la rete privata (RFC 1918, ULA, CGNAT) e' chiusa e si apre solo per destinazioni precise (`db.azienda.lan:5432`), con le stesse regole di webhook e mirror (pkg/egress, C8). Loopback, link-local, indirizzi del cluster e del nodo e porte di Kubernetes non si aprono mai.
+	//
+	// Corresponds with GET /admin/apps/egress (the `GetAdminAppsEgress` operationId).
+	GetAdminAppsEgress(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAdminAppsEgressWithBody Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked` (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
+	UpdateAdminAppsEgressWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAdminAppsEgress Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked` (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
+	UpdateAdminAppsEgress(ctx context.Context, body UpdateAdminAppsEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListAdminPublicApps Elenca le app pubbliche dell'istanza con dominio attivo e certificato (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H1, H9): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Una sola chiamata per la console Admin · Apps & resources (v3-c): le app con accesso `public`, ciascuna con repo, indirizzo pubblico (dominio verificato o indirizzo automatico) e domini propri con stato del DNS e del certificato. Con l'interruttore d'istanza spento l'elenco e' vuoto: le app non sono esposte.
+	//
+	// Corresponds with GET /admin/apps/public (the `ListAdminPublicApps` operationId).
+	ListAdminPublicApps(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListAdminAppOwnerQuotas Elenca le quote delle app per owner (solo amministratore)
 	//
 	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Le quote contano sull'owner del repo (H5, H11): CPU e RAM garantite e disco dei volumi, con l'uso e l'avviso all'80%. Compaiono gli owner con almeno un'app o una quota impostata.
@@ -9163,7 +9696,7 @@ type ClientInterface interface {
 
 	// UpdateAdminAppsSettingsWithBody Modifica le impostazioni d'istanza delle app (solo amministratore)
 	//
-	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`, `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -9172,7 +9705,7 @@ type ClientInterface interface {
 
 	// UpdateAdminAppsSettings Modifica le impostazioni d'istanza delle app (solo amministratore)
 	//
-	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`, `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -9695,6 +10228,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /internal/resources/{resourceId}/grants/creator (the `GrantResourceCreator` operationId).
 	GrantResourceCreator(ctx context.Context, resourceId openapi_types.UUID, body GrantResourceCreatorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListResourceMembers Elenca gli utenti con almeno un ruolo su una risorsa (per core)
+	//
+	// Per core (v3-a, H12, GIT-404): gli utenti attivi con almeno il ruolo `role` sulla risorsa, calcolato come in `checkPermission` (grant diretto, via team, owner dell'organizzazione, proprietario del repo personale, amministratore di sistema). Core la usa per avvisare gli admin di un repo. Una risorsa senza grant ne attributi da' un elenco vuoto (a parte gli amministratori di sistema per `admin`). Raggiungibile solo dai servizi: il gateway pubblico rifiuta `/v1/internal/*`.
+	//
+	// Corresponds with GET /internal/resources/{resourceId}/members (the `ListResourceMembers` operationId).
+	ListResourceMembers(ctx context.Context, resourceId openapi_types.UUID, params *ListResourceMembersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// LookupSshKey Risolve un utente dal fingerprint di una chiave SSH
 	//
@@ -10443,7 +10983,7 @@ type ClientInterface interface {
 
 	// UpdateAppWithBody Modifica immagine di base, porta, controllo di salute e deploy automatico
 	//
-	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `followTagPattern` segue una regola sui tag al posto del branch (mai tutte e due, 422 `follow_both`); `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -10452,7 +10992,7 @@ type ClientInterface interface {
 
 	// UpdateApp Modifica immagine di base, porta, controllo di salute e deploy automatico
 	//
-	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `followTagPattern` segue una regola sui tag al posto del branch (mai tutte e due, 422 `follow_both`); `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -10525,7 +11065,7 @@ type ClientInterface interface {
 
 	// DeployAppWithBody Mette in produzione un'immagine (nuova versione)
 	//
-	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `write` sul repo (H7).
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `packages: write` e solo per le app del proprio repo (H7); il deploy usa i permessi di chi ha causato il run (CI4), che deve avere ancora `write` sul repo.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -10534,12 +11074,115 @@ type ClientInterface interface {
 
 	// DeployApp Mette in produzione un'immagine (nuova versione)
 	//
-	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `write` sul repo (H7).
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `packages: write` e solo per le app del proprio repo (H7); il deploy usa i permessi di chi ha causato il run (CI4), che deve avere ancora `write` sul repo.
 	//
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/deploys (the `DeployApp` operationId).
 	DeployApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body DeployAppJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListAppDomains Elenca i domini propri dell'app (v3-c)
+	//
+	// Serve `admin` sull'app, cioe' sul repo (H5): `write` e `read` ricevono 403, un repo che non si legge 404. Elenca i domini propri dell'app con stato del dominio, record DNS atteso e stato del certificato. L'indirizzo automatico dell'app (`<app>-<repo>-<owner>.apps.<dominio>`) non e' un dominio proprio e non compare qui: resta in `GET .../access`. Come si controlla il DNS e che certificato usa ogni indirizzo: docs/adr/0002-architettura-hosting-app.md, sezione «App pubbliche e domini propri (v3-c)».
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/domains (the `ListAppDomains` operationId).
+	ListAppDomains(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddAppDomainWithBody Aggiunge un dominio proprio all'app (v3-c)
+	//
+	// Serve `admin` sull'app (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. Solo un'app con accesso `public` ha domini propri: altrimenti 409 `app_not_public`. Il dominio nasce `pending_dns` con il record DNS da creare (campo `dns`); il certificato nasce in modalita' `letsencrypt` e l'emissione parte quando il DNS e' `verified`. Errori: 409 `domain_taken` se il dominio e' gia' di un'altra app (o della stessa); 422 `domain_reserved` se e' il dominio di GitStack, il dominio delle app (`*.apps.<dominio>`) o un suo sotto-dominio, o un indirizzo IP; 422 `invalid_domain` se non e' un nome DNS valido (RFC 1123, minuscolo, al massimo 253 caratteri, wildcard non ammessi).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/domains (the `AddAppDomain` operationId).
+	AddAppDomainWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddAppDomain Aggiunge un dominio proprio all'app (v3-c)
+	//
+	// Serve `admin` sull'app (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. Solo un'app con accesso `public` ha domini propri: altrimenti 409 `app_not_public`. Il dominio nasce `pending_dns` con il record DNS da creare (campo `dns`); il certificato nasce in modalita' `letsencrypt` e l'emissione parte quando il DNS e' `verified`. Errori: 409 `domain_taken` se il dominio e' gia' di un'altra app (o della stessa); 422 `domain_reserved` se e' il dominio di GitStack, il dominio delle app (`*.apps.<dominio>`) o un suo sotto-dominio, o un indirizzo IP; 422 `invalid_domain` se non e' un nome DNS valido (RFC 1123, minuscolo, al massimo 253 caratteri, wildcard non ammessi).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/domains (the `AddAppDomain` operationId).
+	AddAppDomain(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body AddAppDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemoveAppDomain Toglie un dominio proprio dall'app (v3-c)
+	//
+	// Serve `admin` sull'app (H5). Su un repo archiviato risponde 409 `archived`. Toglie la route e il certificato del dominio (anche quello caricato dal cliente); il dominio torna libero per altre app. L'indirizzo automatico non cambia. Un dominio che l'app non ha e' 404.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/domains/{domain} (the `RemoveAppDomain` operationId).
+	RemoveAppDomain(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAppDomain Legge un dominio proprio dell'app (v3-c)
+	//
+	// Serve `admin` sull'app (H5). Un dominio che l'app non ha e' 404.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/domains/{domain} (the `GetAppDomain` operationId).
+	GetAppDomain(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemoveAppDomainCertificate Toglie il certificato del cliente e torna a Let's Encrypt (v3-c)
+	//
+	// Serve `admin` sull'app (H5). Cancella certificato e chiave caricati, riporta il dominio in modalita' `letsencrypt` e riavvia l'emissione. Su un dominio gia' in `letsencrypt`: 409 `not_custom`.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate (the `RemoveAppDomainCertificate` operationId).
+	RemoveAppDomainCertificate(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UploadAppDomainCertificateWithBody Carica il certificato del cliente per un dominio (v3-c)
+	//
+	// Serve `admin` sull'app (H5). Porta il dominio in modalita' `custom`: Let's Encrypt non emette e non rinnova piu' per questo dominio. Si controlla che la catena sia in PEM, che la chiave privata corrisponda al certificato, che il certificato copra il dominio (nome esatto o wildcard di un livello) e non sia scaduto: altrimenti 422 `certificate_invalid` con il motivo nel messaggio. La chiave privata e' solo in scrittura: non si rilegge e non e' nei log. Il caricamento non richiede che il DNS sia `verified`. Se il dominio non e' di un'app pubblica: 409 `app_not_public`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate (the `UploadAppDomainCertificate` operationId).
+	UploadAppDomainCertificateWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UploadAppDomainCertificate Carica il certificato del cliente per un dominio (v3-c)
+	//
+	// Serve `admin` sull'app (H5). Porta il dominio in modalita' `custom`: Let's Encrypt non emette e non rinnova piu' per questo dominio. Si controlla che la catena sia in PEM, che la chiave privata corrisponda al certificato, che il certificato copra il dominio (nome esatto o wildcard di un livello) e non sia scaduto: altrimenti 422 `certificate_invalid` con il motivo nel messaggio. La chiave privata e' solo in scrittura: non si rilegge e non e' nei log. Il caricamento non richiede che il DNS sia `verified`. Se il dominio non e' di un'app pubblica: 409 `app_not_public`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate (the `UploadAppDomainCertificate` operationId).
+	UploadAppDomainCertificate(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, body UploadAppDomainCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RecheckAppDomain Ricontrolla il DNS di un dominio proprio (v3-c)
+	//
+	// Serve `admin` sull'app (H5). Rifa subito il controllo del DNS (regole nell'ADR 0002) senza aspettare quello periodico e restituisce il dominio aggiornato: `verified` se il record atteso c'e', `pending_dns` se il DNS non risponde ancora, `error` con `statusReason` se risponde altro. Un esito negativo non e' un errore HTTP: risponde 200 con lo stato.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/domains/{domain}/recheck (the `RecheckAppDomain` operationId).
+	RecheckAppDomain(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteAppEgress Toglie la restrizione di uscita dell'app
+	//
+	// Serve `admin` sul repo (H16). L'app torna all'uscita dell'istanza. Idempotente: senza restrizione risponde comunque 204. Repo archiviato 409 `archived`.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/egress (the `DeleteAppEgress` operationId).
+	DeleteAppEgress(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAppEgress Legge l'uscita dell'app
+	//
+	// Serve `write` sul repo (H16): `read` riceve 403, un repo che non si legge 404. `restricted` dice se l'app ha una restrizione propria; senza, l'app esce come l'istanza (internet aperto piu' le destinazioni private aperte dall'amministratore, in `allowedPrivate`).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/egress (the `GetAppEgress` operationId).
+	GetAppEgress(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetAppEgressWithBody Restringe l'uscita dell'app a un elenco di destinazioni
+	//
+	// Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409 `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza riavviare l'app e senza creare una versione.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/egress (the `SetAppEgress` operationId).
+	SetAppEgressWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetAppEgress Restringe l'uscita dell'app a un elenco di destinazioni
+	//
+	// Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409 `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza riavviare l'app e senza creare una versione.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/egress (the `SetAppEgress` operationId).
+	SetAppEgress(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetAppLogs Legge i log dell'app, in diretta o dalla cronologia
 	//
@@ -10732,6 +11375,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `DeleteAppVolume` operationId).
 	DeleteAppVolume(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAppVolumeWithBody Include o esclude il volume dal backup
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `UpdateAppVolume` operationId).
+	UpdateAppVolumeWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAppVolume Include o esclude il volume dal backup
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `UpdateAppVolume` operationId).
+	UpdateAppVolume(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, body UpdateAppVolumeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRepositoryArchive Archivio ZIP o tar.gz di un ref (streaming)
 	//
@@ -12340,6 +13001,78 @@ func (c *Client) GetAdminAppsCapacity(ctx context.Context, reqEditors ...Request
 	return c.Client.Do(req)
 }
 
+// GetAdminAppsEgress Legge le destinazioni private aperte all'uscita delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Internet e' aperto alle app; la rete privata (RFC 1918, ULA, CGNAT) e' chiusa e si apre solo per destinazioni precise (`db.azienda.lan:5432`), con le stesse regole di webhook e mirror (pkg/egress, C8). Loopback, link-local, indirizzi del cluster e del nodo e porte di Kubernetes non si aprono mai.
+//
+// Corresponds with GET /admin/apps/egress (the `GetAdminAppsEgress` operationId).
+func (c *Client) GetAdminAppsEgress(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAdminAppsEgressRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAdminAppsEgressWithBody Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked` (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
+func (c *Client) UpdateAdminAppsEgressWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAdminAppsEgressRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAdminAppsEgress Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked` (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
+func (c *Client) UpdateAdminAppsEgress(ctx context.Context, body UpdateAdminAppsEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAdminAppsEgressRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListAdminPublicApps Elenca le app pubbliche dell'istanza con dominio attivo e certificato (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H1, H9): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Una sola chiamata per la console Admin · Apps & resources (v3-c): le app con accesso `public`, ciascuna con repo, indirizzo pubblico (dominio verificato o indirizzo automatico) e domini propri con stato del DNS e del certificato. Con l'interruttore d'istanza spento l'elenco e' vuoto: le app non sono esposte.
+//
+// Corresponds with GET /admin/apps/public (the `ListAdminPublicApps` operationId).
+func (c *Client) ListAdminPublicApps(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAdminPublicAppsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListAdminAppOwnerQuotas Elenca le quote delle app per owner (solo amministratore)
 //
 // Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Le quote contano sull'owner del repo (H5, H11): CPU e RAM garantite e disco dei volumi, con l'uso e l'avviso all'80%. Compaiono gli owner con almeno un'app o una quota impostata.
@@ -12469,7 +13202,7 @@ func (c *Client) GetAdminAppsSettings(ctx context.Context, reqEditors ...Request
 
 // UpdateAdminAppsSettingsWithBody Modifica le impostazioni d'istanza delle app (solo amministratore)
 //
-// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`, `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
 //
 // Takes any type of body and a specified content type.
 //
@@ -12488,7 +13221,7 @@ func (c *Client) UpdateAdminAppsSettingsWithBody(ctx context.Context, contentTyp
 
 // UpdateAdminAppsSettings Modifica le impostazioni d'istanza delle app (solo amministratore)
 //
-// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`, `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -13682,6 +14415,23 @@ func (c *Client) GrantResourceCreatorWithBody(ctx context.Context, resourceId op
 // Corresponds with POST /internal/resources/{resourceId}/grants/creator (the `GrantResourceCreator` operationId).
 func (c *Client) GrantResourceCreator(ctx context.Context, resourceId openapi_types.UUID, body GrantResourceCreatorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGrantResourceCreatorRequest(c.Server, resourceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListResourceMembers Elenca gli utenti con almeno un ruolo su una risorsa (per core)
+//
+// Per core (v3-a, H12, GIT-404): gli utenti attivi con almeno il ruolo `role` sulla risorsa, calcolato come in `checkPermission` (grant diretto, via team, owner dell'organizzazione, proprietario del repo personale, amministratore di sistema). Core la usa per avvisare gli admin di un repo. Una risorsa senza grant ne attributi da' un elenco vuoto (a parte gli amministratori di sistema per `admin`). Raggiungibile solo dai servizi: il gateway pubblico rifiuta `/v1/internal/*`.
+//
+// Corresponds with GET /internal/resources/{resourceId}/members (the `ListResourceMembers` operationId).
+func (c *Client) ListResourceMembers(ctx context.Context, resourceId openapi_types.UUID, params *ListResourceMembersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListResourceMembersRequest(c.Server, resourceId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -15449,7 +16199,7 @@ func (c *Client) GetApp(ctx context.Context, owner RepoOwnerParam, repo RepoName
 
 // UpdateAppWithBody Modifica immagine di base, porta, controllo di salute e deploy automatico
 //
-// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `followTagPattern` segue una regola sui tag al posto del branch (mai tutte e due, 422 `follow_both`); `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
 //
 // Takes any type of body and a specified content type.
 //
@@ -15468,7 +16218,7 @@ func (c *Client) UpdateAppWithBody(ctx context.Context, owner RepoOwnerParam, re
 
 // UpdateApp Modifica immagine di base, porta, controllo di salute e deploy automatico
 //
-// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `followTagPattern` segue una regola sui tag al posto del branch (mai tutte e due, 422 `follow_both`); `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -15631,7 +16381,7 @@ func (c *Client) RemoveAppAccessMember(ctx context.Context, owner RepoOwnerParam
 
 // DeployAppWithBody Mette in produzione un'immagine (nuova versione)
 //
-// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `write` sul repo (H7).
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `packages: write` e solo per le app del proprio repo (H7); il deploy usa i permessi di chi ha causato il run (CI4), che deve avere ancora `write` sul repo.
 //
 // Takes any type of body and a specified content type.
 //
@@ -15650,13 +16400,246 @@ func (c *Client) DeployAppWithBody(ctx context.Context, owner RepoOwnerParam, re
 
 // DeployApp Mette in produzione un'immagine (nuova versione)
 //
-// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `write` sul repo (H7).
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `packages: write` e solo per le app del proprio repo (H7); il deploy usa i permessi di chi ha causato il run (CI4), che deve avere ancora `write` sul repo.
 //
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with POST /repos/{owner}/{repo}/apps/{app}/deploys (the `DeployApp` operationId).
 func (c *Client) DeployApp(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body DeployAppJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeployAppRequest(c.Server, owner, repo, app, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListAppDomains Elenca i domini propri dell'app (v3-c)
+//
+// Serve `admin` sull'app, cioe' sul repo (H5): `write` e `read` ricevono 403, un repo che non si legge 404. Elenca i domini propri dell'app con stato del dominio, record DNS atteso e stato del certificato. L'indirizzo automatico dell'app (`<app>-<repo>-<owner>.apps.<dominio>`) non e' un dominio proprio e non compare qui: resta in `GET .../access`. Come si controlla il DNS e che certificato usa ogni indirizzo: docs/adr/0002-architettura-hosting-app.md, sezione «App pubbliche e domini propri (v3-c)».
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/domains (the `ListAppDomains` operationId).
+func (c *Client) ListAppDomains(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAppDomainsRequest(c.Server, owner, repo, app)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddAppDomainWithBody Aggiunge un dominio proprio all'app (v3-c)
+//
+// Serve `admin` sull'app (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. Solo un'app con accesso `public` ha domini propri: altrimenti 409 `app_not_public`. Il dominio nasce `pending_dns` con il record DNS da creare (campo `dns`); il certificato nasce in modalita' `letsencrypt` e l'emissione parte quando il DNS e' `verified`. Errori: 409 `domain_taken` se il dominio e' gia' di un'altra app (o della stessa); 422 `domain_reserved` se e' il dominio di GitStack, il dominio delle app (`*.apps.<dominio>`) o un suo sotto-dominio, o un indirizzo IP; 422 `invalid_domain` se non e' un nome DNS valido (RFC 1123, minuscolo, al massimo 253 caratteri, wildcard non ammessi).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/domains (the `AddAppDomain` operationId).
+func (c *Client) AddAppDomainWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddAppDomainRequestWithBody(c.Server, owner, repo, app, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddAppDomain Aggiunge un dominio proprio all'app (v3-c)
+//
+// Serve `admin` sull'app (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. Solo un'app con accesso `public` ha domini propri: altrimenti 409 `app_not_public`. Il dominio nasce `pending_dns` con il record DNS da creare (campo `dns`); il certificato nasce in modalita' `letsencrypt` e l'emissione parte quando il DNS e' `verified`. Errori: 409 `domain_taken` se il dominio e' gia' di un'altra app (o della stessa); 422 `domain_reserved` se e' il dominio di GitStack, il dominio delle app (`*.apps.<dominio>`) o un suo sotto-dominio, o un indirizzo IP; 422 `invalid_domain` se non e' un nome DNS valido (RFC 1123, minuscolo, al massimo 253 caratteri, wildcard non ammessi).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/domains (the `AddAppDomain` operationId).
+func (c *Client) AddAppDomain(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body AddAppDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddAppDomainRequest(c.Server, owner, repo, app, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemoveAppDomain Toglie un dominio proprio dall'app (v3-c)
+//
+// Serve `admin` sull'app (H5). Su un repo archiviato risponde 409 `archived`. Toglie la route e il certificato del dominio (anche quello caricato dal cliente); il dominio torna libero per altre app. L'indirizzo automatico non cambia. Un dominio che l'app non ha e' 404.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/domains/{domain} (the `RemoveAppDomain` operationId).
+func (c *Client) RemoveAppDomain(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveAppDomainRequest(c.Server, owner, repo, app, domain)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAppDomain Legge un dominio proprio dell'app (v3-c)
+//
+// Serve `admin` sull'app (H5). Un dominio che l'app non ha e' 404.
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/domains/{domain} (the `GetAppDomain` operationId).
+func (c *Client) GetAppDomain(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAppDomainRequest(c.Server, owner, repo, app, domain)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemoveAppDomainCertificate Toglie il certificato del cliente e torna a Let's Encrypt (v3-c)
+//
+// Serve `admin` sull'app (H5). Cancella certificato e chiave caricati, riporta il dominio in modalita' `letsencrypt` e riavvia l'emissione. Su un dominio gia' in `letsencrypt`: 409 `not_custom`.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate (the `RemoveAppDomainCertificate` operationId).
+func (c *Client) RemoveAppDomainCertificate(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveAppDomainCertificateRequest(c.Server, owner, repo, app, domain)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UploadAppDomainCertificateWithBody Carica il certificato del cliente per un dominio (v3-c)
+//
+// Serve `admin` sull'app (H5). Porta il dominio in modalita' `custom`: Let's Encrypt non emette e non rinnova piu' per questo dominio. Si controlla che la catena sia in PEM, che la chiave privata corrisponda al certificato, che il certificato copra il dominio (nome esatto o wildcard di un livello) e non sia scaduto: altrimenti 422 `certificate_invalid` con il motivo nel messaggio. La chiave privata e' solo in scrittura: non si rilegge e non e' nei log. Il caricamento non richiede che il DNS sia `verified`. Se il dominio non e' di un'app pubblica: 409 `app_not_public`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate (the `UploadAppDomainCertificate` operationId).
+func (c *Client) UploadAppDomainCertificateWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUploadAppDomainCertificateRequestWithBody(c.Server, owner, repo, app, domain, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UploadAppDomainCertificate Carica il certificato del cliente per un dominio (v3-c)
+//
+// Serve `admin` sull'app (H5). Porta il dominio in modalita' `custom`: Let's Encrypt non emette e non rinnova piu' per questo dominio. Si controlla che la catena sia in PEM, che la chiave privata corrisponda al certificato, che il certificato copra il dominio (nome esatto o wildcard di un livello) e non sia scaduto: altrimenti 422 `certificate_invalid` con il motivo nel messaggio. La chiave privata e' solo in scrittura: non si rilegge e non e' nei log. Il caricamento non richiede che il DNS sia `verified`. Se il dominio non e' di un'app pubblica: 409 `app_not_public`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate (the `UploadAppDomainCertificate` operationId).
+func (c *Client) UploadAppDomainCertificate(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, body UploadAppDomainCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUploadAppDomainCertificateRequest(c.Server, owner, repo, app, domain, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RecheckAppDomain Ricontrolla il DNS di un dominio proprio (v3-c)
+//
+// Serve `admin` sull'app (H5). Rifa subito il controllo del DNS (regole nell'ADR 0002) senza aspettare quello periodico e restituisce il dominio aggiornato: `verified` se il record atteso c'e', `pending_dns` se il DNS non risponde ancora, `error` con `statusReason` se risponde altro. Un esito negativo non e' un errore HTTP: risponde 200 con lo stato.
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/domains/{domain}/recheck (the `RecheckAppDomain` operationId).
+func (c *Client) RecheckAppDomain(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRecheckAppDomainRequest(c.Server, owner, repo, app, domain)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteAppEgress Toglie la restrizione di uscita dell'app
+//
+// Serve `admin` sul repo (H16). L'app torna all'uscita dell'istanza. Idempotente: senza restrizione risponde comunque 204. Repo archiviato 409 `archived`.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/egress (the `DeleteAppEgress` operationId).
+func (c *Client) DeleteAppEgress(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteAppEgressRequest(c.Server, owner, repo, app)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAppEgress Legge l'uscita dell'app
+//
+// Serve `write` sul repo (H16): `read` riceve 403, un repo che non si legge 404. `restricted` dice se l'app ha una restrizione propria; senza, l'app esce come l'istanza (internet aperto piu' le destinazioni private aperte dall'amministratore, in `allowedPrivate`).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/egress (the `GetAppEgress` operationId).
+func (c *Client) GetAppEgress(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAppEgressRequest(c.Server, owner, repo, app)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetAppEgressWithBody Restringe l'uscita dell'app a un elenco di destinazioni
+//
+// Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409 `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza riavviare l'app e senza creare una versione.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/egress (the `SetAppEgress` operationId).
+func (c *Client) SetAppEgressWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetAppEgressRequestWithBody(c.Server, owner, repo, app, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetAppEgress Restringe l'uscita dell'app a un elenco di destinazioni
+//
+// Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409 `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza riavviare l'app e senza creare una versione.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/egress (the `SetAppEgress` operationId).
+func (c *Client) SetAppEgress(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetAppEgressRequest(c.Server, owner, repo, app, body)
 	if err != nil {
 		return nil, err
 	}
@@ -16089,6 +17072,44 @@ func (c *Client) CreateAppVolume(ctx context.Context, owner RepoOwnerParam, repo
 // Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `DeleteAppVolume` operationId).
 func (c *Client) DeleteAppVolume(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteAppVolumeRequest(c.Server, owner, repo, app, volume)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAppVolumeWithBody Include o esclude il volume dal backup
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `UpdateAppVolume` operationId).
+func (c *Client) UpdateAppVolumeWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAppVolumeRequestWithBody(c.Server, owner, repo, app, volume, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAppVolume Include o esclude il volume dal backup
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `UpdateAppVolume` operationId).
+func (c *Client) UpdateAppVolume(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, body UpdateAppVolumeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAppVolumeRequest(c.Server, owner, repo, app, volume, body)
 	if err != nil {
 		return nil, err
 	}
@@ -19804,6 +20825,100 @@ func NewGetAdminAppsCapacityRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewGetAdminAppsEgressRequest constructs an http.Request for the GetAdminAppsEgress method
+func NewGetAdminAppsEgressRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps/egress")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateAdminAppsEgressRequest calls the generic UpdateAdminAppsEgress builder with application/json body
+func NewUpdateAdminAppsEgressRequest(server string, body UpdateAdminAppsEgressJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateAdminAppsEgressRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateAdminAppsEgressRequestWithBody constructs an http.Request for the UpdateAdminAppsEgress method, with any body, and a specified content type
+func NewUpdateAdminAppsEgressRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps/egress")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListAdminPublicAppsRequest constructs an http.Request for the ListAdminPublicApps method
+func NewListAdminPublicAppsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/apps/public")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListAdminAppOwnerQuotasRequest constructs an http.Request for the ListAdminAppOwnerQuotas method
 func NewListAdminAppOwnerQuotasRequest(server string) (*http.Request, error) {
 	var err error
@@ -22386,6 +23501,63 @@ func NewGrantResourceCreatorRequestWithBody(server string, resourceId openapi_ty
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListResourceMembersRequest constructs an http.Request for the ListResourceMembers method
+func NewListResourceMembersRequest(server string, resourceId openapi_types.UUID, params *ListResourceMembersParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "resourceId", resourceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/resources/%s/members", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "role", params.Role, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -26737,6 +27909,560 @@ func NewDeployAppRequestWithBody(server string, owner RepoOwnerParam, repo RepoN
 	return req, nil
 }
 
+// NewListAppDomainsRequest constructs an http.Request for the ListAppDomains method
+func NewListAppDomainsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/domains", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAddAppDomainRequest calls the generic AddAppDomain builder with application/json body
+func NewAddAppDomainRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body AddAppDomainJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAddAppDomainRequestWithBody(server, owner, repo, app, "application/json", bodyReader)
+}
+
+// NewAddAppDomainRequestWithBody constructs an http.Request for the AddAppDomain method, with any body, and a specified content type
+func NewAddAppDomainRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/domains", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRemoveAppDomainRequest constructs an http.Request for the RemoveAppDomain method
+func NewRemoveAppDomainRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "domain", domain, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/domains/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAppDomainRequest constructs an http.Request for the GetAppDomain method
+func NewGetAppDomainRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "domain", domain, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/domains/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRemoveAppDomainCertificateRequest constructs an http.Request for the RemoveAppDomainCertificate method
+func NewRemoveAppDomainCertificateRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "domain", domain, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/domains/%s/certificate", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUploadAppDomainCertificateRequest calls the generic UploadAppDomainCertificate builder with application/json body
+func NewUploadAppDomainCertificateRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, body UploadAppDomainCertificateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUploadAppDomainCertificateRequestWithBody(server, owner, repo, app, domain, "application/json", bodyReader)
+}
+
+// NewUploadAppDomainCertificateRequestWithBody constructs an http.Request for the UploadAppDomainCertificate method, with any body, and a specified content type
+func NewUploadAppDomainCertificateRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "domain", domain, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/domains/%s/certificate", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRecheckAppDomainRequest constructs an http.Request for the RecheckAppDomain method
+func NewRecheckAppDomainRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "domain", domain, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/domains/%s/recheck", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteAppEgressRequest constructs an http.Request for the DeleteAppEgress method
+func NewDeleteAppEgressRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/egress", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAppEgressRequest constructs an http.Request for the GetAppEgress method
+func NewGetAppEgressRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/egress", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetAppEgressRequest calls the generic SetAppEgress builder with application/json body
+func NewSetAppEgressRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppEgressJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetAppEgressRequestWithBody(server, owner, repo, app, "application/json", bodyReader)
+}
+
+// NewSetAppEgressRequestWithBody constructs an http.Request for the SetAppEgress method, with any body, and a specified content type
+func NewSetAppEgressRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/egress", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetAppLogsRequest constructs an http.Request for the GetAppLogs method
 func NewGetAppLogsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, params *GetAppLogsParams) (*http.Request, error) {
 	var err error
@@ -27906,6 +29632,74 @@ func NewDeleteAppVolumeRequest(server string, owner RepoOwnerParam, repo RepoNam
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewUpdateAppVolumeRequest calls the generic UpdateAppVolume builder with application/json body
+func NewUpdateAppVolumeRequest(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, body UpdateAppVolumeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateAppVolumeRequestWithBody(server, owner, repo, app, volume, "application/json", bodyReader)
+}
+
+// NewUpdateAppVolumeRequestWithBody constructs an http.Request for the UpdateAppVolume method, with any body, and a specified content type
+func NewUpdateAppVolumeRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "app", app, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "volume", volume, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/apps/%s/volumes/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -37170,6 +38964,42 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /admin/apps/capacity (the `GetAdminAppsCapacity` operationId).
 	GetAdminAppsCapacityWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAdminAppsCapacityResponse, error)
 
+	// GetAdminAppsEgressWithResponse Legge le destinazioni private aperte all'uscita delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Internet e' aperto alle app; la rete privata (RFC 1918, ULA, CGNAT) e' chiusa e si apre solo per destinazioni precise (`db.azienda.lan:5432`), con le stesse regole di webhook e mirror (pkg/egress, C8). Loopback, link-local, indirizzi del cluster e del nodo e porte di Kubernetes non si aprono mai.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/apps/egress (the `GetAdminAppsEgress` operationId).
+	GetAdminAppsEgressWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAdminAppsEgressResponse, error)
+
+	// UpdateAdminAppsEgressWithBodyWithResponse Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked` (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
+	UpdateAdminAppsEgressWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAdminAppsEgressResponse, error)
+
+	// UpdateAdminAppsEgressWithResponse Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked` (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
+	UpdateAdminAppsEgressWithResponse(ctx context.Context, body UpdateAdminAppsEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAdminAppsEgressResponse, error)
+
+	// ListAdminPublicAppsWithResponse Elenca le app pubbliche dell'istanza con dominio attivo e certificato (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione (H1, H9): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Una sola chiamata per la console Admin · Apps & resources (v3-c): le app con accesso `public`, ciascuna con repo, indirizzo pubblico (dominio verificato o indirizzo automatico) e domini propri con stato del DNS e del certificato. Con l'interruttore d'istanza spento l'elenco e' vuoto: le app non sono esposte.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/apps/public (the `ListAdminPublicApps` operationId).
+	ListAdminPublicAppsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAdminPublicAppsResponse, error)
+
 	// ListAdminAppOwnerQuotasWithResponse Elenca le quote delle app per owner (solo amministratore)
 	//
 	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Le quote contano sull'owner del repo (H5, H11): CPU e RAM garantite e disco dei volumi, con l'uso e l'avviso all'80%. Compaiono gli owner con almeno un'app o una quota impostata.
@@ -37235,7 +39065,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateAdminAppsSettingsWithBodyWithResponse Modifica le impostazioni d'istanza delle app (solo amministratore)
 	//
-	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`, `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -37244,7 +39074,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateAdminAppsSettingsWithResponse Modifica le impostazioni d'istanza delle app (solo amministratore)
 	//
-	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+	// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`, `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -37849,6 +39679,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /internal/resources/{resourceId}/grants/creator (the `GrantResourceCreator` operationId).
 	GrantResourceCreatorWithResponse(ctx context.Context, resourceId openapi_types.UUID, body GrantResourceCreatorJSONRequestBody, reqEditors ...RequestEditorFn) (*GrantResourceCreatorResponse, error)
+
+	// ListResourceMembersWithResponse Elenca gli utenti con almeno un ruolo su una risorsa (per core)
+	//
+	// Per core (v3-a, H12, GIT-404): gli utenti attivi con almeno il ruolo `role` sulla risorsa, calcolato come in `checkPermission` (grant diretto, via team, owner dell'organizzazione, proprietario del repo personale, amministratore di sistema). Core la usa per avvisare gli admin di un repo. Una risorsa senza grant ne attributi da' un elenco vuoto (a parte gli amministratori di sistema per `admin`). Raggiungibile solo dai servizi: il gateway pubblico rifiuta `/v1/internal/*`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/resources/{resourceId}/members (the `ListResourceMembers` operationId).
+	ListResourceMembersWithResponse(ctx context.Context, resourceId openapi_types.UUID, params *ListResourceMembersParams, reqEditors ...RequestEditorFn) (*ListResourceMembersResponse, error)
 
 	// LookupSshKeyWithResponse Risolve un utente dal fingerprint di una chiave SSH
 	//
@@ -38707,7 +40546,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateAppWithBodyWithResponse Modifica immagine di base, porta, controllo di salute e deploy automatico
 	//
-	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `followTagPattern` segue una regola sui tag al posto del branch (mai tutte e due, 422 `follow_both`); `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -38716,7 +40555,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateAppWithResponse Modifica immagine di base, porta, controllo di salute e deploy automatico
 	//
-	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `followTagPattern` segue una regola sui tag al posto del branch (mai tutte e due, 422 `follow_both`); `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -38797,7 +40636,7 @@ type ClientWithResponsesInterface interface {
 
 	// DeployAppWithBodyWithResponse Mette in produzione un'immagine (nuova versione)
 	//
-	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `write` sul repo (H7).
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `packages: write` e solo per le app del proprio repo (H7); il deploy usa i permessi di chi ha causato il run (CI4), che deve avere ancora `write` sul repo.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -38806,12 +40645,129 @@ type ClientWithResponsesInterface interface {
 
 	// DeployAppWithResponse Mette in produzione un'immagine (nuova versione)
 	//
-	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `write` sul repo (H7).
+	// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `packages: write` e solo per le app del proprio repo (H7); il deploy usa i permessi di chi ha causato il run (CI4), che deve avere ancora `write` sul repo.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/deploys (the `DeployApp` operationId).
 	DeployAppWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body DeployAppJSONRequestBody, reqEditors ...RequestEditorFn) (*DeployAppResponse, error)
+
+	// ListAppDomainsWithResponse Elenca i domini propri dell'app (v3-c)
+	//
+	// Serve `admin` sull'app, cioe' sul repo (H5): `write` e `read` ricevono 403, un repo che non si legge 404. Elenca i domini propri dell'app con stato del dominio, record DNS atteso e stato del certificato. L'indirizzo automatico dell'app (`<app>-<repo>-<owner>.apps.<dominio>`) non e' un dominio proprio e non compare qui: resta in `GET .../access`. Come si controlla il DNS e che certificato usa ogni indirizzo: docs/adr/0002-architettura-hosting-app.md, sezione «App pubbliche e domini propri (v3-c)».
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/domains (the `ListAppDomains` operationId).
+	ListAppDomainsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*ListAppDomainsResponse, error)
+
+	// AddAppDomainWithBodyWithResponse Aggiunge un dominio proprio all'app (v3-c)
+	//
+	// Serve `admin` sull'app (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. Solo un'app con accesso `public` ha domini propri: altrimenti 409 `app_not_public`. Il dominio nasce `pending_dns` con il record DNS da creare (campo `dns`); il certificato nasce in modalita' `letsencrypt` e l'emissione parte quando il DNS e' `verified`. Errori: 409 `domain_taken` se il dominio e' gia' di un'altra app (o della stessa); 422 `domain_reserved` se e' il dominio di GitStack, il dominio delle app (`*.apps.<dominio>`) o un suo sotto-dominio, o un indirizzo IP; 422 `invalid_domain` se non e' un nome DNS valido (RFC 1123, minuscolo, al massimo 253 caratteri, wildcard non ammessi).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/domains (the `AddAppDomain` operationId).
+	AddAppDomainWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddAppDomainResponse, error)
+
+	// AddAppDomainWithResponse Aggiunge un dominio proprio all'app (v3-c)
+	//
+	// Serve `admin` sull'app (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. Solo un'app con accesso `public` ha domini propri: altrimenti 409 `app_not_public`. Il dominio nasce `pending_dns` con il record DNS da creare (campo `dns`); il certificato nasce in modalita' `letsencrypt` e l'emissione parte quando il DNS e' `verified`. Errori: 409 `domain_taken` se il dominio e' gia' di un'altra app (o della stessa); 422 `domain_reserved` se e' il dominio di GitStack, il dominio delle app (`*.apps.<dominio>`) o un suo sotto-dominio, o un indirizzo IP; 422 `invalid_domain` se non e' un nome DNS valido (RFC 1123, minuscolo, al massimo 253 caratteri, wildcard non ammessi).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/domains (the `AddAppDomain` operationId).
+	AddAppDomainWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body AddAppDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*AddAppDomainResponse, error)
+
+	// RemoveAppDomainWithResponse Toglie un dominio proprio dall'app (v3-c)
+	//
+	// Serve `admin` sull'app (H5). Su un repo archiviato risponde 409 `archived`. Toglie la route e il certificato del dominio (anche quello caricato dal cliente); il dominio torna libero per altre app. L'indirizzo automatico non cambia. Un dominio che l'app non ha e' 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/domains/{domain} (the `RemoveAppDomain` operationId).
+	RemoveAppDomainWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, reqEditors ...RequestEditorFn) (*RemoveAppDomainResponse, error)
+
+	// GetAppDomainWithResponse Legge un dominio proprio dell'app (v3-c)
+	//
+	// Serve `admin` sull'app (H5). Un dominio che l'app non ha e' 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/domains/{domain} (the `GetAppDomain` operationId).
+	GetAppDomainWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, reqEditors ...RequestEditorFn) (*GetAppDomainResponse, error)
+
+	// RemoveAppDomainCertificateWithResponse Toglie il certificato del cliente e torna a Let's Encrypt (v3-c)
+	//
+	// Serve `admin` sull'app (H5). Cancella certificato e chiave caricati, riporta il dominio in modalita' `letsencrypt` e riavvia l'emissione. Su un dominio gia' in `letsencrypt`: 409 `not_custom`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate (the `RemoveAppDomainCertificate` operationId).
+	RemoveAppDomainCertificateWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, reqEditors ...RequestEditorFn) (*RemoveAppDomainCertificateResponse, error)
+
+	// UploadAppDomainCertificateWithBodyWithResponse Carica il certificato del cliente per un dominio (v3-c)
+	//
+	// Serve `admin` sull'app (H5). Porta il dominio in modalita' `custom`: Let's Encrypt non emette e non rinnova piu' per questo dominio. Si controlla che la catena sia in PEM, che la chiave privata corrisponda al certificato, che il certificato copra il dominio (nome esatto o wildcard di un livello) e non sia scaduto: altrimenti 422 `certificate_invalid` con il motivo nel messaggio. La chiave privata e' solo in scrittura: non si rilegge e non e' nei log. Il caricamento non richiede che il DNS sia `verified`. Se il dominio non e' di un'app pubblica: 409 `app_not_public`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate (the `UploadAppDomainCertificate` operationId).
+	UploadAppDomainCertificateWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadAppDomainCertificateResponse, error)
+
+	// UploadAppDomainCertificateWithResponse Carica il certificato del cliente per un dominio (v3-c)
+	//
+	// Serve `admin` sull'app (H5). Porta il dominio in modalita' `custom`: Let's Encrypt non emette e non rinnova piu' per questo dominio. Si controlla che la catena sia in PEM, che la chiave privata corrisponda al certificato, che il certificato copra il dominio (nome esatto o wildcard di un livello) e non sia scaduto: altrimenti 422 `certificate_invalid` con il motivo nel messaggio. La chiave privata e' solo in scrittura: non si rilegge e non e' nei log. Il caricamento non richiede che il DNS sia `verified`. Se il dominio non e' di un'app pubblica: 409 `app_not_public`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate (the `UploadAppDomainCertificate` operationId).
+	UploadAppDomainCertificateWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, body UploadAppDomainCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*UploadAppDomainCertificateResponse, error)
+
+	// RecheckAppDomainWithResponse Ricontrolla il DNS di un dominio proprio (v3-c)
+	//
+	// Serve `admin` sull'app (H5). Rifa subito il controllo del DNS (regole nell'ADR 0002) senza aspettare quello periodico e restituisce il dominio aggiornato: `verified` se il record atteso c'e', `pending_dns` se il DNS non risponde ancora, `error` con `statusReason` se risponde altro. Un esito negativo non e' un errore HTTP: risponde 200 con lo stato.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/domains/{domain}/recheck (the `RecheckAppDomain` operationId).
+	RecheckAppDomainWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, reqEditors ...RequestEditorFn) (*RecheckAppDomainResponse, error)
+
+	// DeleteAppEgressWithResponse Toglie la restrizione di uscita dell'app
+	//
+	// Serve `admin` sul repo (H16). L'app torna all'uscita dell'istanza. Idempotente: senza restrizione risponde comunque 204. Repo archiviato 409 `archived`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/egress (the `DeleteAppEgress` operationId).
+	DeleteAppEgressWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*DeleteAppEgressResponse, error)
+
+	// GetAppEgressWithResponse Legge l'uscita dell'app
+	//
+	// Serve `write` sul repo (H16): `read` riceve 403, un repo che non si legge 404. `restricted` dice se l'app ha una restrizione propria; senza, l'app esce come l'istanza (internet aperto piu' le destinazioni private aperte dall'amministratore, in `allowedPrivate`).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/egress (the `GetAppEgress` operationId).
+	GetAppEgressWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*GetAppEgressResponse, error)
+
+	// SetAppEgressWithBodyWithResponse Restringe l'uscita dell'app a un elenco di destinazioni
+	//
+	// Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409 `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza riavviare l'app e senza creare una versione.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/egress (the `SetAppEgress` operationId).
+	SetAppEgressWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetAppEgressResponse, error)
+
+	// SetAppEgressWithResponse Restringe l'uscita dell'app a un elenco di destinazioni
+	//
+	// Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409 `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza riavviare l'app e senza creare una versione.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/egress (the `SetAppEgress` operationId).
+	SetAppEgressWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*SetAppEgressResponse, error)
 
 	// GetAppLogsWithResponse Legge i log dell'app, in diretta o dalla cronologia
 	//
@@ -39028,6 +40984,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `DeleteAppVolume` operationId).
 	DeleteAppVolumeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, reqEditors ...RequestEditorFn) (*DeleteAppVolumeResponse, error)
+
+	// UpdateAppVolumeWithBodyWithResponse Include o esclude il volume dal backup
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `UpdateAppVolume` operationId).
+	UpdateAppVolumeWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAppVolumeResponse, error)
+
+	// UpdateAppVolumeWithResponse Include o esclude il volume dal backup
+	//
+	// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `UpdateAppVolume` operationId).
+	UpdateAppVolumeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, body UpdateAppVolumeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAppVolumeResponse, error)
 
 	// GetRepositoryArchiveWithResponse Archivio ZIP o tar.gz di un ref (streaming)
 	//
@@ -40935,6 +42909,185 @@ func (r GetAdminAppsCapacityResponse) ContentType() string {
 	return ""
 }
 
+type GetAdminAppsEgressResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppsEgressSettings
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAdminAppsEgressResponse) GetJSON200() *AppsEgressSettings {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAdminAppsEgressResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAdminAppsEgressResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAdminAppsEgressResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAdminAppsEgressResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAdminAppsEgressResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAdminAppsEgressResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateAdminAppsEgressResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppsEgressSettings
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateAdminAppsEgressResponse) GetJSON200() *AppsEgressSettings {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateAdminAppsEgressResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateAdminAppsEgressResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateAdminAppsEgressResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateAdminAppsEgressResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateAdminAppsEgressResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateAdminAppsEgressResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateAdminAppsEgressResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateAdminAppsEgressResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListAdminPublicAppsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminPublicAppList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAdminPublicAppsResponse) GetJSON200() *AdminPublicAppList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListAdminPublicAppsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListAdminPublicAppsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAdminPublicAppsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAdminPublicAppsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAdminPublicAppsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAdminPublicAppsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListAdminAppOwnerQuotasResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -42729,6 +44882,8 @@ type ListCredentialEventsResponse struct {
 	JSON400 *BadRequest
 	// JSON401 the response for an HTTP 401 `application/json` response
 	JSON401 *Unauthorized
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
 	// JSONDefault the response for an HTTP default `application/json` response
 	JSONDefault *UnexpectedError
 }
@@ -42746,6 +44901,11 @@ func (r ListCredentialEventsResponse) GetJSON400() *BadRequest {
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
 func (r ListCredentialEventsResponse) GetJSON401() *Unauthorized {
 	return r.JSON401
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListCredentialEventsResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
 }
 
 // GetJSONDefault returns the response for an HTTP default `application/json` response
@@ -44362,6 +46522,8 @@ type CheckPermissionResponse struct {
 	JSON401 *Unauthorized
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
 	// JSONDefault the response for an HTTP default `application/json` response
 	JSONDefault *UnexpectedError
 }
@@ -44384,6 +46546,11 @@ func (r CheckPermissionResponse) GetJSON401() *Unauthorized {
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
 func (r CheckPermissionResponse) GetJSON404() *NotFound {
 	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CheckPermissionResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
 }
 
 // GetJSONDefault returns the response for an HTTP default `application/json` response
@@ -44745,6 +46912,75 @@ func (r GrantResourceCreatorResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GrantResourceCreatorResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListResourceMembersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ResourceMembersResult
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListResourceMembersResponse) GetJSON200() *ResourceMembersResult {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListResourceMembersResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListResourceMembersResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListResourceMembersResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListResourceMembersResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListResourceMembersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListResourceMembersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListResourceMembersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListResourceMembersResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -50745,6 +52981,710 @@ func (r DeployAppResponse) ContentType() string {
 	return ""
 }
 
+type ListAppDomainsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppDomainList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAppDomainsResponse) GetJSON200() *AppDomainList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListAppDomainsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListAppDomainsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListAppDomainsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAppDomainsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAppDomainsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAppDomainsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAppDomainsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AddAppDomainResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *AppDomain
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AddAppDomainResponse) GetJSON201() *AppDomain {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r AddAppDomainResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r AddAppDomainResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r AddAppDomainResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r AddAppDomainResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r AddAppDomainResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r AddAppDomainResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AddAppDomainResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AddAppDomainResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AddAppDomainResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AddAppDomainResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemoveAppDomainResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RemoveAppDomainResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RemoveAppDomainResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RemoveAppDomainResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r RemoveAppDomainResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r RemoveAppDomainResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveAppDomainResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveAppDomainResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveAppDomainResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAppDomainResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppDomain
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAppDomainResponse) GetJSON200() *AppDomain {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAppDomainResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAppDomainResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetAppDomainResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAppDomainResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAppDomainResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAppDomainResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAppDomainResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemoveAppDomainCertificateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppDomain
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RemoveAppDomainCertificateResponse) GetJSON200() *AppDomain {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RemoveAppDomainCertificateResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RemoveAppDomainCertificateResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RemoveAppDomainCertificateResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r RemoveAppDomainCertificateResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r RemoveAppDomainCertificateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveAppDomainCertificateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveAppDomainCertificateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveAppDomainCertificateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UploadAppDomainCertificateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppDomain
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *Error
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UploadAppDomainCertificateResponse) GetJSON200() *AppDomain {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UploadAppDomainCertificateResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UploadAppDomainCertificateResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UploadAppDomainCertificateResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UploadAppDomainCertificateResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UploadAppDomainCertificateResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UploadAppDomainCertificateResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r UploadAppDomainCertificateResponse) GetJSON503() *Error {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r UploadAppDomainCertificateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UploadAppDomainCertificateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UploadAppDomainCertificateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UploadAppDomainCertificateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RecheckAppDomainResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppDomain
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RecheckAppDomainResponse) GetJSON200() *AppDomain {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RecheckAppDomainResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RecheckAppDomainResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RecheckAppDomainResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r RecheckAppDomainResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r RecheckAppDomainResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RecheckAppDomainResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RecheckAppDomainResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RecheckAppDomainResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteAppEgressResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteAppEgressResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteAppEgressResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteAppEgressResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteAppEgressResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteAppEgressResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteAppEgressResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteAppEgressResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteAppEgressResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAppEgressResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppEgress
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAppEgressResponse) GetJSON200() *AppEgress {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAppEgressResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAppEgressResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetAppEgressResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAppEgressResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAppEgressResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAppEgressResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAppEgressResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetAppEgressResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppEgress
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetAppEgressResponse) GetJSON200() *AppEgress {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SetAppEgressResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SetAppEgressResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SetAppEgressResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SetAppEgressResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SetAppEgressResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SetAppEgressResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r SetAppEgressResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetAppEgressResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetAppEgressResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetAppEgressResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetAppLogsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -52009,6 +54949,89 @@ func (r DeleteAppVolumeResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r DeleteAppVolumeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateAppVolumeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AppVolume
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateAppVolumeResponse) GetJSON200() *AppVolume {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateAppVolumeResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateAppVolumeResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateAppVolumeResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateAppVolumeResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateAppVolumeResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateAppVolumeResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateAppVolumeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateAppVolumeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateAppVolumeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateAppVolumeResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -64288,6 +67311,66 @@ func (c *ClientWithResponses) GetAdminAppsCapacityWithResponse(ctx context.Conte
 	return ParseGetAdminAppsCapacityResponse(rsp)
 }
 
+// GetAdminAppsEgressWithResponse Legge le destinazioni private aperte all'uscita delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Internet e' aperto alle app; la rete privata (RFC 1918, ULA, CGNAT) e' chiusa e si apre solo per destinazioni precise (`db.azienda.lan:5432`), con le stesse regole di webhook e mirror (pkg/egress, C8). Loopback, link-local, indirizzi del cluster e del nodo e porte di Kubernetes non si aprono mai.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/apps/egress (the `GetAdminAppsEgress` operationId).
+func (c *ClientWithResponses) GetAdminAppsEgressWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAdminAppsEgressResponse, error) {
+	rsp, err := c.GetAdminAppsEgress(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAdminAppsEgressResponse(rsp)
+}
+
+// UpdateAdminAppsEgressWithBodyWithResponse Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked` (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
+func (c *ClientWithResponses) UpdateAdminAppsEgressWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAdminAppsEgressResponse, error) {
+	rsp, err := c.UpdateAdminAppsEgressWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAdminAppsEgressResponse(rsp)
+}
+
+// UpdateAdminAppsEgressWithResponse Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked` (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/apps/egress (the `UpdateAdminAppsEgress` operationId).
+func (c *ClientWithResponses) UpdateAdminAppsEgressWithResponse(ctx context.Context, body UpdateAdminAppsEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAdminAppsEgressResponse, error) {
+	rsp, err := c.UpdateAdminAppsEgress(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAdminAppsEgressResponse(rsp)
+}
+
+// ListAdminPublicAppsWithResponse Elenca le app pubbliche dell'istanza con dominio attivo e certificato (solo amministratore)
+//
+// Solo l'amministratore dell'installazione (H1, H9): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Una sola chiamata per la console Admin · Apps & resources (v3-c): le app con accesso `public`, ciascuna con repo, indirizzo pubblico (dominio verificato o indirizzo automatico) e domini propri con stato del DNS e del certificato. Con l'interruttore d'istanza spento l'elenco e' vuoto: le app non sono esposte.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/apps/public (the `ListAdminPublicApps` operationId).
+func (c *ClientWithResponses) ListAdminPublicAppsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAdminPublicAppsResponse, error) {
+	rsp, err := c.ListAdminPublicApps(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAdminPublicAppsResponse(rsp)
+}
+
 // ListAdminAppOwnerQuotasWithResponse Elenca le quote delle app per owner (solo amministratore)
 //
 // Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Le quote contano sull'owner del repo (H5, H11): CPU e RAM garantite e disco dei volumi, con l'uso e l'avviso all'80%. Compaiono gli owner con almeno un'app o una quota impostata.
@@ -64395,7 +67478,7 @@ func (c *ClientWithResponses) GetAdminAppsSettingsWithResponse(ctx context.Conte
 
 // UpdateAdminAppsSettingsWithBodyWithResponse Modifica le impostazioni d'istanza delle app (solo amministratore)
 //
-// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`, `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -64410,7 +67493,7 @@ func (c *ClientWithResponses) UpdateAdminAppsSettingsWithBodyWithResponse(ctx co
 
 // UpdateAdminAppsSettingsWithResponse Modifica le impostazioni d'istanza delle app (solo amministratore)
 //
-// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
+// Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono 403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`, `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -65422,6 +68505,21 @@ func (c *ClientWithResponses) GrantResourceCreatorWithResponse(ctx context.Conte
 		return nil, err
 	}
 	return ParseGrantResourceCreatorResponse(rsp)
+}
+
+// ListResourceMembersWithResponse Elenca gli utenti con almeno un ruolo su una risorsa (per core)
+//
+// Per core (v3-a, H12, GIT-404): gli utenti attivi con almeno il ruolo `role` sulla risorsa, calcolato come in `checkPermission` (grant diretto, via team, owner dell'organizzazione, proprietario del repo personale, amministratore di sistema). Core la usa per avvisare gli admin di un repo. Una risorsa senza grant ne attributi da' un elenco vuoto (a parte gli amministratori di sistema per `admin`). Raggiungibile solo dai servizi: il gateway pubblico rifiuta `/v1/internal/*`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/resources/{resourceId}/members (the `ListResourceMembers` operationId).
+func (c *ClientWithResponses) ListResourceMembersWithResponse(ctx context.Context, resourceId openapi_types.UUID, params *ListResourceMembersParams, reqEditors ...RequestEditorFn) (*ListResourceMembersResponse, error) {
+	rsp, err := c.ListResourceMembers(ctx, resourceId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListResourceMembersResponse(rsp)
 }
 
 // LookupSshKeyWithResponse Risolve un utente dal fingerprint di una chiave SSH
@@ -66887,7 +69985,7 @@ func (c *ClientWithResponses) GetAppWithResponse(ctx context.Context, owner Repo
 
 // UpdateAppWithBodyWithResponse Modifica immagine di base, porta, controllo di salute e deploy automatico
 //
-// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `followTagPattern` segue una regola sui tag al posto del branch (mai tutte e due, 422 `follow_both`); `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -66902,7 +70000,7 @@ func (c *ClientWithResponses) UpdateAppWithBodyWithResponse(ctx context.Context,
 
 // UpdateAppWithResponse Modifica immagine di base, porta, controllo di salute e deploy automatico
 //
-// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne crea una. `followBranch: null` torna ai deploy a mano; `followTagPattern` segue una regola sui tag al posto del branch (mai tutte e due, 422 `follow_both`); `autoDeployPaused` sospende il deploy automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie. 422 `follow_branch_unsigned` come in `createApp`.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -67037,7 +70135,7 @@ func (c *ClientWithResponses) RemoveAppAccessMemberWithResponse(ctx context.Cont
 
 // DeployAppWithBodyWithResponse Mette in produzione un'immagine (nuova versione)
 //
-// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `write` sul repo (H7).
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `packages: write` e solo per le app del proprio repo (H7); il deploy usa i permessi di chi ha causato il run (CI4), che deve avere ancora `write` sul repo.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -67052,7 +70150,7 @@ func (c *ClientWithResponses) DeployAppWithBodyWithResponse(ctx context.Context,
 
 // DeployAppWithResponse Mette in produzione un'immagine (nuova versione)
 //
-// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `write` sul repo (H7).
+// Serve `write` sul repo (H5): `read` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). Deploy a mano di un'immagine del registry del repo o esterna (H7). Crea una nuova versione, la avvia con aggiornamento senza interruzione se le copie sono due o piu' (H12) e risponde 202: l'esito si legge da `getAppVersion` (`state`) o dall'ultimo deploy dell'app; chi aspetta (`gs app deploy --wait`) interroga finche' la versione non e' `serving` o `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409 `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422 `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di job puo' farlo se ha `packages: write` e solo per le app del proprio repo (H7); il deploy usa i permessi di chi ha causato il run (CI4), che deve avere ancora `write` sul repo.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -67063,6 +70161,201 @@ func (c *ClientWithResponses) DeployAppWithResponse(ctx context.Context, owner R
 		return nil, err
 	}
 	return ParseDeployAppResponse(rsp)
+}
+
+// ListAppDomainsWithResponse Elenca i domini propri dell'app (v3-c)
+//
+// Serve `admin` sull'app, cioe' sul repo (H5): `write` e `read` ricevono 403, un repo che non si legge 404. Elenca i domini propri dell'app con stato del dominio, record DNS atteso e stato del certificato. L'indirizzo automatico dell'app (`<app>-<repo>-<owner>.apps.<dominio>`) non e' un dominio proprio e non compare qui: resta in `GET .../access`. Come si controlla il DNS e che certificato usa ogni indirizzo: docs/adr/0002-architettura-hosting-app.md, sezione «App pubbliche e domini propri (v3-c)».
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/domains (the `ListAppDomains` operationId).
+func (c *ClientWithResponses) ListAppDomainsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*ListAppDomainsResponse, error) {
+	rsp, err := c.ListAppDomains(ctx, owner, repo, app, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAppDomainsResponse(rsp)
+}
+
+// AddAppDomainWithBodyWithResponse Aggiunge un dominio proprio all'app (v3-c)
+//
+// Serve `admin` sull'app (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. Solo un'app con accesso `public` ha domini propri: altrimenti 409 `app_not_public`. Il dominio nasce `pending_dns` con il record DNS da creare (campo `dns`); il certificato nasce in modalita' `letsencrypt` e l'emissione parte quando il DNS e' `verified`. Errori: 409 `domain_taken` se il dominio e' gia' di un'altra app (o della stessa); 422 `domain_reserved` se e' il dominio di GitStack, il dominio delle app (`*.apps.<dominio>`) o un suo sotto-dominio, o un indirizzo IP; 422 `invalid_domain` se non e' un nome DNS valido (RFC 1123, minuscolo, al massimo 253 caratteri, wildcard non ammessi).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/domains (the `AddAppDomain` operationId).
+func (c *ClientWithResponses) AddAppDomainWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddAppDomainResponse, error) {
+	rsp, err := c.AddAppDomainWithBody(ctx, owner, repo, app, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddAppDomainResponse(rsp)
+}
+
+// AddAppDomainWithResponse Aggiunge un dominio proprio all'app (v3-c)
+//
+// Serve `admin` sull'app (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived`. Solo un'app con accesso `public` ha domini propri: altrimenti 409 `app_not_public`. Il dominio nasce `pending_dns` con il record DNS da creare (campo `dns`); il certificato nasce in modalita' `letsencrypt` e l'emissione parte quando il DNS e' `verified`. Errori: 409 `domain_taken` se il dominio e' gia' di un'altra app (o della stessa); 422 `domain_reserved` se e' il dominio di GitStack, il dominio delle app (`*.apps.<dominio>`) o un suo sotto-dominio, o un indirizzo IP; 422 `invalid_domain` se non e' un nome DNS valido (RFC 1123, minuscolo, al massimo 253 caratteri, wildcard non ammessi).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/domains (the `AddAppDomain` operationId).
+func (c *ClientWithResponses) AddAppDomainWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body AddAppDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*AddAppDomainResponse, error) {
+	rsp, err := c.AddAppDomain(ctx, owner, repo, app, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddAppDomainResponse(rsp)
+}
+
+// RemoveAppDomainWithResponse Toglie un dominio proprio dall'app (v3-c)
+//
+// Serve `admin` sull'app (H5). Su un repo archiviato risponde 409 `archived`. Toglie la route e il certificato del dominio (anche quello caricato dal cliente); il dominio torna libero per altre app. L'indirizzo automatico non cambia. Un dominio che l'app non ha e' 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/domains/{domain} (the `RemoveAppDomain` operationId).
+func (c *ClientWithResponses) RemoveAppDomainWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, reqEditors ...RequestEditorFn) (*RemoveAppDomainResponse, error) {
+	rsp, err := c.RemoveAppDomain(ctx, owner, repo, app, domain, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveAppDomainResponse(rsp)
+}
+
+// GetAppDomainWithResponse Legge un dominio proprio dell'app (v3-c)
+//
+// Serve `admin` sull'app (H5). Un dominio che l'app non ha e' 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/domains/{domain} (the `GetAppDomain` operationId).
+func (c *ClientWithResponses) GetAppDomainWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, reqEditors ...RequestEditorFn) (*GetAppDomainResponse, error) {
+	rsp, err := c.GetAppDomain(ctx, owner, repo, app, domain, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAppDomainResponse(rsp)
+}
+
+// RemoveAppDomainCertificateWithResponse Toglie il certificato del cliente e torna a Let's Encrypt (v3-c)
+//
+// Serve `admin` sull'app (H5). Cancella certificato e chiave caricati, riporta il dominio in modalita' `letsencrypt` e riavvia l'emissione. Su un dominio gia' in `letsencrypt`: 409 `not_custom`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate (the `RemoveAppDomainCertificate` operationId).
+func (c *ClientWithResponses) RemoveAppDomainCertificateWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, reqEditors ...RequestEditorFn) (*RemoveAppDomainCertificateResponse, error) {
+	rsp, err := c.RemoveAppDomainCertificate(ctx, owner, repo, app, domain, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveAppDomainCertificateResponse(rsp)
+}
+
+// UploadAppDomainCertificateWithBodyWithResponse Carica il certificato del cliente per un dominio (v3-c)
+//
+// Serve `admin` sull'app (H5). Porta il dominio in modalita' `custom`: Let's Encrypt non emette e non rinnova piu' per questo dominio. Si controlla che la catena sia in PEM, che la chiave privata corrisponda al certificato, che il certificato copra il dominio (nome esatto o wildcard di un livello) e non sia scaduto: altrimenti 422 `certificate_invalid` con il motivo nel messaggio. La chiave privata e' solo in scrittura: non si rilegge e non e' nei log. Il caricamento non richiede che il DNS sia `verified`. Se il dominio non e' di un'app pubblica: 409 `app_not_public`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate (the `UploadAppDomainCertificate` operationId).
+func (c *ClientWithResponses) UploadAppDomainCertificateWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadAppDomainCertificateResponse, error) {
+	rsp, err := c.UploadAppDomainCertificateWithBody(ctx, owner, repo, app, domain, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUploadAppDomainCertificateResponse(rsp)
+}
+
+// UploadAppDomainCertificateWithResponse Carica il certificato del cliente per un dominio (v3-c)
+//
+// Serve `admin` sull'app (H5). Porta il dominio in modalita' `custom`: Let's Encrypt non emette e non rinnova piu' per questo dominio. Si controlla che la catena sia in PEM, che la chiave privata corrisponda al certificato, che il certificato copra il dominio (nome esatto o wildcard di un livello) e non sia scaduto: altrimenti 422 `certificate_invalid` con il motivo nel messaggio. La chiave privata e' solo in scrittura: non si rilegge e non e' nei log. Il caricamento non richiede che il DNS sia `verified`. Se il dominio non e' di un'app pubblica: 409 `app_not_public`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate (the `UploadAppDomainCertificate` operationId).
+func (c *ClientWithResponses) UploadAppDomainCertificateWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, body UploadAppDomainCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*UploadAppDomainCertificateResponse, error) {
+	rsp, err := c.UploadAppDomainCertificate(ctx, owner, repo, app, domain, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUploadAppDomainCertificateResponse(rsp)
+}
+
+// RecheckAppDomainWithResponse Ricontrolla il DNS di un dominio proprio (v3-c)
+//
+// Serve `admin` sull'app (H5). Rifa subito il controllo del DNS (regole nell'ADR 0002) senza aspettare quello periodico e restituisce il dominio aggiornato: `verified` se il record atteso c'e', `pending_dns` se il DNS non risponde ancora, `error` con `statusReason` se risponde altro. Un esito negativo non e' un errore HTTP: risponde 200 con lo stato.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/apps/{app}/domains/{domain}/recheck (the `RecheckAppDomain` operationId).
+func (c *ClientWithResponses) RecheckAppDomainWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, domain AppDomainParam, reqEditors ...RequestEditorFn) (*RecheckAppDomainResponse, error) {
+	rsp, err := c.RecheckAppDomain(ctx, owner, repo, app, domain, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRecheckAppDomainResponse(rsp)
+}
+
+// DeleteAppEgressWithResponse Toglie la restrizione di uscita dell'app
+//
+// Serve `admin` sul repo (H16). L'app torna all'uscita dell'istanza. Idempotente: senza restrizione risponde comunque 204. Repo archiviato 409 `archived`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/apps/{app}/egress (the `DeleteAppEgress` operationId).
+func (c *ClientWithResponses) DeleteAppEgressWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*DeleteAppEgressResponse, error) {
+	rsp, err := c.DeleteAppEgress(ctx, owner, repo, app, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteAppEgressResponse(rsp)
+}
+
+// GetAppEgressWithResponse Legge l'uscita dell'app
+//
+// Serve `write` sul repo (H16): `read` riceve 403, un repo che non si legge 404. `restricted` dice se l'app ha una restrizione propria; senza, l'app esce come l'istanza (internet aperto piu' le destinazioni private aperte dall'amministratore, in `allowedPrivate`).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/apps/{app}/egress (the `GetAppEgress` operationId).
+func (c *ClientWithResponses) GetAppEgressWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, reqEditors ...RequestEditorFn) (*GetAppEgressResponse, error) {
+	rsp, err := c.GetAppEgress(ctx, owner, repo, app, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAppEgressResponse(rsp)
+}
+
+// SetAppEgressWithBodyWithResponse Restringe l'uscita dell'app a un elenco di destinazioni
+//
+// Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409 `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza riavviare l'app e senza creare una versione.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/egress (the `SetAppEgress` operationId).
+func (c *ClientWithResponses) SetAppEgressWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetAppEgressResponse, error) {
+	rsp, err := c.SetAppEgressWithBody(ctx, owner, repo, app, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetAppEgressResponse(rsp)
+}
+
+// SetAppEgressWithResponse Restringe l'uscita dell'app a un elenco di destinazioni
+//
+// Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409 `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza riavviare l'app e senza creare una versione.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/apps/{app}/egress (the `SetAppEgress` operationId).
+func (c *ClientWithResponses) SetAppEgressWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, body SetAppEgressJSONRequestBody, reqEditors ...RequestEditorFn) (*SetAppEgressResponse, error) {
+	rsp, err := c.SetAppEgress(ctx, owner, repo, app, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetAppEgressResponse(rsp)
 }
 
 // GetAppLogsWithResponse Legge i log dell'app, in diretta o dalla cronologia
@@ -67423,6 +70716,36 @@ func (c *ClientWithResponses) DeleteAppVolumeWithResponse(ctx context.Context, o
 		return nil, err
 	}
 	return ParseDeleteAppVolumeResponse(rsp)
+}
+
+// UpdateAppVolumeWithBodyWithResponse Include o esclude il volume dal backup
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `UpdateAppVolume` operationId).
+func (c *ClientWithResponses) UpdateAppVolumeWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAppVolumeResponse, error) {
+	rsp, err := c.UpdateAppVolumeWithBody(ctx, owner, repo, app, volume, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAppVolumeResponse(rsp)
+}
+
+// UpdateAppVolumeWithResponse Include o esclude il volume dal backup
+//
+// Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/apps/{app}/volumes/{volume} (the `UpdateAppVolume` operationId).
+func (c *ClientWithResponses) UpdateAppVolumeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, app AppParam, volume AppVolumeParam, body UpdateAppVolumeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAppVolumeResponse, error) {
+	rsp, err := c.UpdateAppVolume(ctx, owner, repo, app, volume, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAppVolumeResponse(rsp)
 }
 
 // GetRepositoryArchiveWithResponse Archivio ZIP o tar.gz di un ref (streaming)
@@ -70524,6 +73847,140 @@ func ParseGetAdminAppsCapacityResponse(rsp *http.Response) (*GetAdminAppsCapacit
 	return response, nil
 }
 
+// ParseGetAdminAppsEgressResponse parses an HTTP response from a GetAdminAppsEgressWithResponse call
+func ParseGetAdminAppsEgressResponse(rsp *http.Response) (*GetAdminAppsEgressResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAdminAppsEgressResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppsEgressSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateAdminAppsEgressResponse parses an HTTP response from a UpdateAdminAppsEgressWithResponse call
+func ParseUpdateAdminAppsEgressResponse(rsp *http.Response) (*UpdateAdminAppsEgressResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateAdminAppsEgressResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppsEgressSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAdminPublicAppsResponse parses an HTTP response from a ListAdminPublicAppsWithResponse call
+func ParseListAdminPublicAppsResponse(rsp *http.Response) (*ListAdminPublicAppsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAdminPublicAppsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminPublicAppList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListAdminAppOwnerQuotasResponse parses an HTTP response from a ListAdminAppOwnerQuotasWithResponse call
 func ParseListAdminAppOwnerQuotasResponse(rsp *http.Response) (*ListAdminAppOwnerQuotasResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -71969,6 +75426,13 @@ func ParseListCredentialEventsResponse(rsp *http.Response) (*ListCredentialEvent
 		}
 		response.JSON401 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -73280,6 +76744,13 @@ func ParseCheckPermissionResponse(rsp *http.Response) (*CheckPermissionResponse,
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -73541,6 +77012,60 @@ func ParseGrantResourceCreatorResponse(rsp *http.Response) (*GrantResourceCreato
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListResourceMembersResponse parses an HTTP response from a ListResourceMembersWithResponse call
+func ParseListResourceMembersResponse(rsp *http.Response) (*ListResourceMembersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListResourceMembersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ResourceMembersResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError
@@ -78319,6 +81844,566 @@ func ParseDeployAppResponse(rsp *http.Response) (*DeployAppResponse, error) {
 	return response, nil
 }
 
+// ParseListAppDomainsResponse parses an HTTP response from a ListAppDomainsWithResponse call
+func ParseListAppDomainsResponse(rsp *http.Response) (*ListAppDomainsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAppDomainsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppDomainList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAddAppDomainResponse parses an HTTP response from a AddAppDomainWithResponse call
+func ParseAddAppDomainResponse(rsp *http.Response) (*AddAppDomainResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AddAppDomainResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest AppDomain
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRemoveAppDomainResponse parses an HTTP response from a RemoveAppDomainWithResponse call
+func ParseRemoveAppDomainResponse(rsp *http.Response) (*RemoveAppDomainResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveAppDomainResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAppDomainResponse parses an HTTP response from a GetAppDomainWithResponse call
+func ParseGetAppDomainResponse(rsp *http.Response) (*GetAppDomainResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAppDomainResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppDomain
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRemoveAppDomainCertificateResponse parses an HTTP response from a RemoveAppDomainCertificateWithResponse call
+func ParseRemoveAppDomainCertificateResponse(rsp *http.Response) (*RemoveAppDomainCertificateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveAppDomainCertificateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppDomain
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUploadAppDomainCertificateResponse parses an HTTP response from a UploadAppDomainCertificateWithResponse call
+func ParseUploadAppDomainCertificateResponse(rsp *http.Response) (*UploadAppDomainCertificateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UploadAppDomainCertificateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppDomain
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRecheckAppDomainResponse parses an HTTP response from a RecheckAppDomainWithResponse call
+func ParseRecheckAppDomainResponse(rsp *http.Response) (*RecheckAppDomainResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RecheckAppDomainResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppDomain
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteAppEgressResponse parses an HTTP response from a DeleteAppEgressWithResponse call
+func ParseDeleteAppEgressResponse(rsp *http.Response) (*DeleteAppEgressResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteAppEgressResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAppEgressResponse parses an HTTP response from a GetAppEgressWithResponse call
+func ParseGetAppEgressResponse(rsp *http.Response) (*GetAppEgressResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAppEgressResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppEgress
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetAppEgressResponse parses an HTTP response from a SetAppEgressWithResponse call
+func ParseSetAppEgressResponse(rsp *http.Response) (*SetAppEgressResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetAppEgressResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppEgress
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetAppLogsResponse parses an HTTP response from a GetAppLogsWithResponse call
 func ParseGetAppLogsResponse(rsp *http.Response) (*GetAppLogsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -79319,6 +83404,74 @@ func ParseDeleteAppVolumeResponse(rsp *http.Response) (*DeleteAppVolumeResponse,
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateAppVolumeResponse parses an HTTP response from a UpdateAppVolumeWithResponse call
+func ParseUpdateAppVolumeResponse(rsp *http.Response) (*UpdateAppVolumeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateAppVolumeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AppVolume
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	}
 
@@ -89499,6 +93652,11 @@ func (p *CallbackInitiator) applyCallbackEditors(ctx context.Context, req *http.
 
 // CallbackInitiatorInterface is the interface specification for the callback initiator.
 type CallbackInitiatorInterface interface {
+	// AppDomainWithBody fires the app_domain callback with any body
+	AppDomainWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	AppDomain(ctx context.Context, targetURL string, body AppDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CommitStatusWithBody fires the commit_status callback with any body
 	CommitStatusWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -89533,6 +93691,30 @@ type CallbackInitiatorInterface interface {
 	WorkflowRunWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	WorkflowRun(ctx context.Context, targetURL string, body WorkflowRunJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (p *CallbackInitiator) AppDomainWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAppDomainCallbackRequestWithBody(targetURL, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) AppDomain(ctx context.Context, targetURL string, body AppDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAppDomainCallbackRequest(targetURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
 }
 
 func (p *CallbackInitiator) CommitStatusWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -89701,6 +93883,37 @@ func (p *CallbackInitiator) WorkflowRun(ctx context.Context, targetURL string, b
 		return nil, err
 	}
 	return p.Client.Do(req)
+}
+
+// NewAppDomainCallbackRequest builds a application/json POST request for the app_domain callback
+func NewAppDomainCallbackRequest(targetURL string, body AppDomainJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAppDomainCallbackRequestWithBody(targetURL, "application/json", bodyReader)
+}
+
+// NewAppDomainCallbackRequestWithBody builds a POST request for the app_domain callback with any body
+func NewAppDomainCallbackRequestWithBody(targetURL string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+	_ = err
+
+	reqURL, err := url.Parse(targetURL)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, reqURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
 }
 
 // NewCommitStatusCallbackRequest builds a application/json POST request for the commit_status callback

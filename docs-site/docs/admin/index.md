@@ -13,6 +13,7 @@ pages follow the life of an installation.
 | HTTPS and trusting the CA | [HTTPS and certificates](./https-and-ca.md) |
 | Use your own database | [External PostgreSQL](./external-postgres.md) |
 | Closed network | [Corporate network](./corporate-network.md): proxy, mirrors, CA, egress |
+| Let apps be public on the internet | [Public apps](./public-apps.md): port 80, ACME e-mail, Let's Encrypt limits |
 | Protect the data | [Backup and restore](./backup-restore.md), including S3 |
 | Keep it current | [Upgrade](./upgrade.md), k3s included |
 | Trust what you run | [Verify signatures](./verify-signatures.md) |

@@ -27,6 +27,10 @@ type CIGatewayConfig struct {
 	Options []Option
 	// ExternalOnly: il gateway esposto fuori dal cluster, solo runner registrati (GIT-329).
 	ExternalOnly bool
+	// AppPullKeys: chiavi per verificare i token di pull delle app (GIT-425).
+	AppPullKeys []string
+	// AppPullOnly: CI spenta, solo il pull delle app (GIT-449).
+	AppPullOnly bool
 }
 
 // NewCIGateway costruisce l'handler del ci-gateway sulle letture di git: i workflow
@@ -34,9 +38,13 @@ type CIGatewayConfig struct {
 // su quella dell'API. I cambi di stato dei job passano dal Reporter della CI
 // (stati dei commit, webhook, notifiche; GIT-281).
 func NewCIGateway(pool *pgxpool.Pool, rd gitclient.Reader, c CIGatewayConfig) http.Handler {
+	if c.AppPullOnly {
+		return cigateway.New(cigateway.Config{Pool: pool, AppPullKeys: c.AppPullKeys, AppPullOnly: true, Log: c.Log})
+	}
 	return cigateway.New(cigateway.Config{
 		Pool: pool, Source: gitCISource{rd: rd}, Reader: rd, Logs: c.Logs, Blobs: c.Blobs, SpoolDir: c.SpoolDir,
 		RunnerSecrets: c.RunnerSecrets, Capacity: c.Capacity, Keys: c.Keys, ArchiveURL: c.ArchiveURL, Log: c.Log,
 		Reporter: NewCIReporter(pool, c.Options...), ExternalOnly: c.ExternalOnly,
+		AppPullKeys: c.AppPullKeys,
 	})
 }

@@ -6,7 +6,7 @@ Una app interna ha tre modi di accesso (`PUT /repos/{owner}/{repo}/apps/{app}/ac
 | --- | --- |
 | `login` (default) | chi ha `read` sul repo: repo interno → tutti gli utenti attivi, repo privato → chi ha un ruolo; **oppure** chi è nella [lista di accesso](#lista-di-accesso-dei-tester) dell'app. Gli agenti passano con un token che ha `read:resource` e `read` sul repo. |
 | `none` | tutti, senza login. Lo imposta solo un admin del repo, per scelta esplicita: una app nuova parte sempre da `login`. |
-| `public` | su internet; solo con le app pubbliche abilitate dall'amministratore (H1). Oggi risponde 422 `public_apps_disabled`. |
+| `public` | su internet; solo con le app pubbliche abilitate dall'amministratore (H1). Con l'interruttore spento risponde 422 `public_apps_disabled`; spegnerlo toglie l'esposizione a tutte le app ma il modo scelto resta salvato e la riaccensione lo ripristina (GIT-456). |
 
 Con `login` l'app riceve chi è l'utente in intestazioni firmate. Con `none` riceve **nessuna**
 intestazione `X-GitStack-*`: quelle mandate dal client vengono comunque scartate.
@@ -115,8 +115,8 @@ più vecchio di 60 secondi per richieste normali; per connessioni lunghe come We
 
 ### Chiave pubblica
 
-`GET https://<gitstack>/api/.well-known/gitstack-app-keys` (senza autenticazione; dentro il cluster
-`http://<gateway>:8080/.well-known/gitstack-app-keys`):
+`GET https://<gitstack>/api/.well-known/gitstack-app-keys` (senza autenticazione; dentro il cluster,
+dall'app, l'indirizzo è la variabile di sistema `GITSTACK_APP_KEYS_URL`, sulla porta interna del gateway):
 
 ```json
 {"keys":[{"kid":"9f3a1c2b7d4e5f60","alg":"Ed25519","publicKey":"<32 byte in base64>"}]}

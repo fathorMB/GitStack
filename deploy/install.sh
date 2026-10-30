@@ -259,6 +259,11 @@ GITSTACK_TLS_EMAIL="${GITSTACK_TLS_EMAIL:-}"
 # Solo per prove con Let's Encrypt staging
 # (https://acme-staging-v02.api.letsencrypt.org/directory).
 GITSTACK_ACME_CA_SERVER="${GITSTACK_ACME_CA_SERVER:-}"
+# Una sola configurazione ACME (GIT-459): il resolver di Traefik qui sotto serve sia l'host di
+# GitStack (--tls letsencrypt, ingress.tls.certResolver) sia i domini propri delle app pubbliche
+# (apps.acme.resolver di core). ACME_ENABLED (yes|no) lo calcola resolve_apps_enabled.
+ACME_RESOLVER_NAME="letsencrypt"
+ACME_ENABLED="no"
 HOST_ARGS=()
 # Dominio delle app (H2, GIT-346): le app hanno l'indirizzo <app>-<repo>-<owner>.<dominio>,
 # con un certificato wildcard *.<dominio> della CA interna. Vuoto = la scelta
@@ -275,7 +280,11 @@ TLS_BIN_PATH="/usr/local/sbin/gitstack-tls"
 TLS_SYSTEMD_DIR="/etc/systemd/system"
 BACKUP_SYSTEMD_DIR="/etc/systemd/system"
 K3S_MANIFESTS_DIR="/var/lib/rancher/k3s/server/manifests"
-ACME_MANIFEST="${K3S_MANIFESTS_DIR}/gitstack-traefik-letsencrypt.yaml"
+# Una sola HelmChartConfig `traefik`: metriche (GIT-403) e, con --tls letsencrypt, il resolver ACME.
+# Due file con lo stesso oggetto si sovrascriverebbero a vicenda, quindi il vecchio file del solo
+# Let's Encrypt (prima di GIT-403) viene tolto.
+TRAEFIK_MANIFEST="${K3S_MANIFESTS_DIR}/gitstack-traefik.yaml"
+OLD_ACME_MANIFEST="${K3S_MANIFESTS_DIR}/gitstack-traefik-letsencrypt.yaml"
 # Valorizzate da resolve_tls (nomi e IP dei SAN, host dell'URL pubblico, schema).
 TLS_NAMES=""
 TLS_IPS=""
@@ -2046,8 +2055,20 @@ resolve_apps_enabled() {
     *) APPS_ENABLED=0; src="predefinito" ;;
   esac
   APPS_HELM_SETS=("apps.domain=${APPS_DOMAIN}")
+  # Let's Encrypt per i domini propri delle app pubbliche (GIT-459): serve un resolver in Traefik. C'e'
+  # gia' con --tls letsencrypt; con le altre modalita' lo si scrive se le app sono accese e
+  # l'installazione ha un'email ACME (--tls-email) o un server ACME di prova (GITSTACK_ACME_CA_SERVER).
+  ACME_ENABLED="no"
+  if [ "${GITSTACK_TLS_MODE}" = "letsencrypt" ]; then
+    ACME_ENABLED="yes"
+  elif [ "${APPS_ENABLED}" = "1" ] && { [ -n "${GITSTACK_TLS_EMAIL}" ] || [ -n "${GITSTACK_ACME_CA_SERVER}" ]; }; then
+    ACME_ENABLED="yes"
+  fi
   if [ "${APPS_ENABLED}" = "1" ]; then
     APPS_HELM_SETS+=("apps.enabled=true")
+    if [ "${ACME_ENABLED}" = "yes" ]; then
+      APPS_HELM_SETS+=("apps.acme.resolver=${ACME_RESOLVER_NAME}" "apps.acme.email=${GITSTACK_TLS_EMAIL}")
+    fi
     log "Hosting delle app: acceso (${src})"
   else
     APPS_HELM_SETS+=("apps.enabled=false")
@@ -2165,7 +2186,7 @@ resolve_tls() {
           fail "--tls letsencrypt: '${PUBLIC_HOST}' non e' un nome pubblico: Let's Encrypt non emette certificati per domini locali (usa la CA interna)."
           ;;
       esac
-      TLS_HELM_SETS=("ingress.tls.enabled=true" "ingress.tls.secretName=" "ingress.tls.certResolver=letsencrypt" "ingress.tls.caConfigMap=")
+      TLS_HELM_SETS=("ingress.tls.enabled=true" "ingress.tls.secretName=" "ingress.tls.certResolver=${ACME_RESOLVER_NAME}" "ingress.tls.caConfigMap=")
       ;;
   esac
   TLS_HELM_SETS+=("core.env.publicUrl=${PUBLIC_SCHEME}://${PUBLIC_HOST}" "identity.oidc.publicUrl=${PUBLIC_SCHEME}://${PUBLIC_HOST}")
@@ -2301,18 +2322,27 @@ disable_backup_timer() {
   fi
 }
 
-# Let's Encrypt: il Traefik di k3s e' un HelmChart; la sua configurazione si
-# estende con un HelmChartConfig (certificatesResolvers + storage persistente
-# per acme.json). k3s lo applica da solo.
-write_acme_manifest() {
+# HelmChartConfig `traefik` (kube-system): il Traefik di k3s e' un HelmChart e la sua configurazione
+# si estende cosi'; k3s la applica da solo. Contiene sempre le metriche Prometheus su un entrypoint
+# interno al cluster (GIT-403, H12; valori in deploy/gitstack/files/traefik-metrics-values.yaml, che
+# core legge per richieste ed errori 5xx delle app) e, con --tls letsencrypt (N5/GIT-143),
+# anche il resolver ACME + lo storage persistente per acme.json. Lo scrive l'installer e non il
+# chart di release perche' e' un oggetto di kube-system che segue il ciclo di k3s (come l'ACME) e
+# perche' l'ACME e le metriche vanno nello stesso oggetto: due file con lo stesso nome oggetto
+# si sovrascriverebbero.
+write_traefik_manifest() {
+  local chart_dir="$1" acme="$2"
+  local metrics_values="${chart_dir}/files/traefik-metrics-values.yaml"
+  [ -f "${metrics_values}" ] || fail "manca ${metrics_values} (valori delle metriche di Traefik)"
   mkdir -p "${K3S_MANIFESTS_DIR}"
+  rm -f "${OLD_ACME_MANIFEST}"
   local email_line="" server_line=""
   [ -n "${GITSTACK_TLS_EMAIL}" ] && email_line="          email: ${GITSTACK_TLS_EMAIL}"
   [ -n "${GITSTACK_ACME_CA_SERVER}" ] && server_line="          caServer: ${GITSTACK_ACME_CA_SERVER}"
   {
-    cat <<'EOF'
-# Scritto da deploy/install.sh (--tls letsencrypt, N5/GIT-143). Non modificarlo
-# a mano: rilancia l'installer.
+    cat <<'EOF2'
+# Scritto da deploy/install.sh (metriche di Traefik GIT-403; Let's Encrypt N5/GIT-143). Non
+# modificarlo a mano: rilancia l'installer.
 apiVersion: helm.cattle.io/v1
 kind: HelmChartConfig
 metadata:
@@ -2320,26 +2350,35 @@ metadata:
   namespace: kube-system
 spec:
   valuesContent: |-
+EOF2
+    grep -v '^[[:space:]]*#' "${metrics_values}" | grep -v '^[[:space:]]*$' | sed 's/^/    /' | tr -d '\r'
+    if [ "${acme}" = "yes" ]; then
+      cat <<'EOF2'
     persistence:
       enabled: true
       path: /data
       size: 128Mi
     certificatesResolvers:
-      letsencrypt:
+EOF2
+      printf '      %s:
         acme:
-EOF
-    [ -n "${email_line}" ] && printf '%s\n' "${email_line}"
-    [ -n "${server_line}" ] && printf '%s\n' "${server_line}"
-    cat <<'EOF'
+' "${ACME_RESOLVER_NAME}"
+      [ -n "${email_line}" ] && printf '%s\n' "${email_line}"
+      [ -n "${server_line}" ] && printf '%s\n' "${server_line}"
+      cat <<'EOF2'
           storage: /data/acme.json
           httpChallenge:
             entryPoint: web
-EOF
-  } >"${ACME_MANIFEST}.tmp"
-  mv -f "${ACME_MANIFEST}.tmp" "${ACME_MANIFEST}"
-  log "Let's Encrypt: scritta la configurazione di Traefik in ${ACME_MANIFEST} (HTTP-01 sulla porta 80, host ${PUBLIC_HOST})."
-  if [ -z "${GITSTACK_TLS_EMAIL}" ]; then
-    warn "--tls-email non indicata: Let's Encrypt non potra' avvisarti delle scadenze."
+EOF2
+    fi
+  } >"${TRAEFIK_MANIFEST}.tmp"
+  mv -f "${TRAEFIK_MANIFEST}.tmp" "${TRAEFIK_MANIFEST}"
+  log "Traefik: scritta la configurazione in ${TRAEFIK_MANIFEST} (metriche interne al cluster)."
+  if [ "${acme}" = "yes" ]; then
+    log "Let's Encrypt: resolver '${ACME_RESOLVER_NAME}' HTTP-01 sulla porta 80 (host ${PUBLIC_HOST}; domini propri delle app pubbliche se accese)."
+    if [ -z "${GITSTACK_TLS_EMAIL}" ]; then
+      warn "--tls-email non indicata: Let's Encrypt non potra' avvisarti delle scadenze."
+    fi
   fi
 }
 
@@ -2350,7 +2389,7 @@ setup_tls() {
   save_tls_choices
   case "${GITSTACK_TLS_MODE}" in
     internal|custom)
-      rm -f "${ACME_MANIFEST}"
+      write_traefik_manifest "${chart_dir}" "${ACME_ENABLED}"
       install_tls_tool "${chart_dir}"
       local args=(ensure --mode "${GITSTACK_TLS_MODE}" --names "${TLS_NAMES}" --ips "${TLS_IPS}" --apps-domain "${APPS_DOMAIN}"
         --release "${GITSTACK_RELEASE_NAME}" --namespace "${GITSTACK_NAMESPACE}" --kubeconfig "${GITSTACK_KUBECONFIG}")
@@ -2372,10 +2411,10 @@ setup_tls() {
       ;;
     letsencrypt)
       disable_renew_timer
-      write_acme_manifest
+      write_traefik_manifest "${chart_dir}" yes
       ;;
     insecure)
-      rm -f "${ACME_MANIFEST}"
+      write_traefik_manifest "${chart_dir}" "${ACME_ENABLED}"
       disable_renew_timer
       warn "--insecure-http: GitStack parla HTTP in chiaro, password e token viaggiano senza cifratura. Solo per prove locali: la UI mostra un avviso."
       ;;
@@ -2636,23 +2675,54 @@ source_tarball_url() {
 # registries.yaml: il mirror vale per ogni immagine ("*"), comprese quelle di
 # sistema di k3s. Stampa niente senza mirror.
 render_registries_yaml() {
-  [ -n "${GITSTACK_REGISTRY_MIRROR}" ] || return 0
+  local trust_hosts mirror_host="" h
+  trust_hosts="$(registry_trust_hosts)"
+  { [ -n "${GITSTACK_REGISTRY_MIRROR}" ] || [ -n "${trust_hosts}" ]; } || return 0
   printf '%s\n' '# Scritto da GitStack (install.sh o gitstack config set network): non modificarlo a mano.'
-  printf 'mirrors:\n  "*":\n    endpoint:\n      - %s\n' "$(net_quote "${GITSTACK_REGISTRY_MIRROR}")"
-  local has_ca=0
-  if [ -n "${GITSTACK_CA_BUNDLE}" ]; then
-    case "${GITSTACK_REGISTRY_MIRROR}" in https://*) has_ca=1 ;; esac
-  fi
-  if [ -n "${GITSTACK_REGISTRY_USERNAME}" ] || [ "${has_ca}" -eq 1 ]; then
-    printf 'configs:\n  %s:\n' "$(net_quote "$(net_authority "${GITSTACK_REGISTRY_MIRROR}")")"
-    if [ -n "${GITSTACK_REGISTRY_USERNAME}" ]; then
-      printf '    auth:\n      username: %s\n      password: %s\n' \
-        "$(net_quote "${GITSTACK_REGISTRY_USERNAME}")" "$(net_quote "${GITSTACK_REGISTRY_PASSWORD}")"
+  local has_ca=0 wrote_configs=0
+  if [ -n "${GITSTACK_REGISTRY_MIRROR}" ]; then
+    mirror_host="$(net_authority "${GITSTACK_REGISTRY_MIRROR}")"
+    printf 'mirrors:\n  "*":\n    endpoint:\n      - %s\n' "$(net_quote "${GITSTACK_REGISTRY_MIRROR}")"
+    if [ -n "${GITSTACK_CA_BUNDLE}" ]; then
+      case "${GITSTACK_REGISTRY_MIRROR}" in https://*) has_ca=1 ;; esac
     fi
-    if [ "${has_ca}" -eq 1 ]; then
-      printf '    tls:\n      ca_file: %s\n' "$(net_quote "$(net_ca_copy_path)")"
+    if [ -n "${GITSTACK_REGISTRY_USERNAME}" ] || [ "${has_ca}" -eq 1 ]; then
+      printf 'configs:\n  %s:\n' "$(net_quote "${mirror_host}")"
+      wrote_configs=1
+      if [ -n "${GITSTACK_REGISTRY_USERNAME}" ]; then
+        printf '    auth:\n      username: %s\n      password: %s\n' \
+          "$(net_quote "${GITSTACK_REGISTRY_USERNAME}")" "$(net_quote "${GITSTACK_REGISTRY_PASSWORD}")"
+      fi
+      if [ "${has_ca}" -eq 1 ]; then
+        printf '    tls:\n      ca_file: %s\n' "$(net_quote "$(net_ca_copy_path)")"
+      fi
     fi
   fi
+  # GIT-425: containerd si fida della CA interna per il registry del repo
+  # (stesso formato di admin/internal/cli/confignetwork.go, renderRegistries).
+  while IFS= read -r h; do
+    [ -n "${h}" ] || continue
+    [ "${h}" != "${mirror_host}" ] || continue
+    if [ "${wrote_configs}" -eq 0 ]; then
+      printf 'configs:\n'
+      wrote_configs=1
+    fi
+    printf '  %s:\n    tls:\n      ca_file: %s\n' "$(net_quote "${h}")" "$(net_quote "${TLS_DIR}/ca.crt")"
+  done <<<"${trust_hosts}"
+}
+
+# Gli host del registry di GitStack per cui containerd deve fidarsi della CA
+# interna (GIT-425): host pubblico e --host, ordinati e senza doppioni, solo con
+# TLS internal (con certificato del cliente o Let's Encrypt la CA è quella di
+# sistema o --ca-bundle). `gitstack restore` e `config set host` ricalcolano lo
+# stesso elenco da cfg.Host e da HOSTS di install.conf (registrytrust.go).
+registry_trust_hosts() {
+  [ "${GITSTACK_TLS_MODE:-}" = "internal" ] || return 0
+  local h
+  {
+    printf '%s\n' "${PUBLIC_HOST:-}"
+    for h in "${HOST_ARGS[@]:-}"; do printf '%s\n' "${h}"; done
+  } | awk 'NF' | LC_ALL=C sort -u
 }
 
 # Una riga Environment= di systemd: apici doppi, % raddoppiato.
@@ -2737,7 +2807,9 @@ apply_ca_trust() {
 # registries.yaml (0600: può contenere la password) e drop-in del proxy. Va
 # fatto prima di installare k3s (parte già col mirror) e a ogni riesecuzione.
 apply_k3s_network() {
-  [ "${NETWORK_CONFIGURED}" -eq 1 ] || return 0
+  # Anche senza rete aziendale: con TLS internal containerd deve fidarsi della
+  # CA interna per il registry del repo (GIT-425).
+  { [ "${NETWORK_CONFIGURED}" -eq 1 ] || [ -n "$(registry_trust_hosts)" ]; } || return 0
   write_managed_file "${K3S_CONFIG_DIR}/registries.yaml" 0600 "$(render_registries_yaml)"
   write_managed_file "${SYSTEMD_UNIT_DIR}/k3s.service.d/${K3S_DROPIN_NAME}" 0644 "$(render_k3s_dropin)"
   if [ -n "${GITSTACK_REGISTRY_MIRROR}" ]; then

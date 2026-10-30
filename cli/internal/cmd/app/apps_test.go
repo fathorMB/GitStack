@@ -389,6 +389,21 @@ func TestAppCreate(t *testing.T) {
 	if r := run(t, fk, "app", "create", "web"); r.code != 2 {
 		t.Fatalf("senza --image: %+v", r)
 	}
+	// La regola sui tag parte nel corpo; insieme al branch è un errore d'uso, senza chiamate.
+	fk = newFake(t, map[string]reply{"POST " + appsBase: {202, created}})
+	if r := run(t, fk, "app", "create", "web", "--image", "ci", "--follow-tag", "v*-test.*"); r.code != 0 {
+		t.Fatalf("--follow-tag: %+v", r)
+	}
+	if c := fk.find("POST", appsBase); len(c) != 1 || c[0].Body["followTagPattern"] != "v*-test.*" || c[0].Body["followBranch"] != nil {
+		t.Fatalf("corpo con la regola sui tag: %+v", c)
+	}
+	fk = newFake(t, map[string]reply{"POST " + appsBase: {202, created}})
+	if r := run(t, fk, "app", "create", "web", "--image", "ci", "--follow-tag", "v*", "--follow-branch", "main"); r.code != 2 || !strings.Contains(r.errOut, "non vanno insieme") {
+		t.Fatalf("branch e tag insieme: %+v", r)
+	}
+	if c := fk.find("POST", appsBase); len(c) != 0 {
+		t.Fatalf("nessuna chiamata attesa: %+v", c)
+	}
 	fk = newFake(t, map[string]reply{"POST " + appsBase: {403, forbidden}})
 	if r := run(t, fk, "app", "create", "web", "--image", "x"); r.code != 5 {
 		t.Fatalf("write non crea: %+v", r)

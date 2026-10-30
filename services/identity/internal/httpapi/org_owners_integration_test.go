@@ -3,6 +3,7 @@
 package httpapi_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -11,8 +12,10 @@ import (
 	"github.com/fathorMB/GitStack/services/identity/internal/httpapi"
 	"github.com/fathorMB/GitStack/services/identity/internal/loginlimit"
 	"github.com/fathorMB/GitStack/services/identity/internal/orgs"
+	"github.com/fathorMB/GitStack/services/identity/internal/permissions"
 	"github.com/fathorMB/GitStack/services/identity/internal/sessions"
 	"github.com/fathorMB/GitStack/services/identity/internal/users"
+	"github.com/google/uuid"
 )
 
 func TestListOrgOwnersOverHTTP(t *testing.T) {
@@ -39,4 +42,40 @@ func TestListOrgOwnersOverHTTP(t *testing.T) {
 		t.Fatalf("attesto solo alice come owner: %s", r.body)
 	}
 	errCode(t, e.do("GET", "/internal/orgs/11111111-1111-1111-1111-111111111111/owners", nil, nil, bearer(secret)...), 404, "not_found")
+}
+
+// GIT-404: GET /internal/resources/{id}/members, solo con il segreto di servizio.
+func TestListResourceMembersOverHTTP(t *testing.T) {
+	pool, _ := dbtest.NewPool(t)
+	c := &clock{t: time.Now().UTC().Truncate(time.Microsecond)}
+	us := users.New(pool, c.now)
+	svc := &auth.Service{Users: us, Sessions: sessions.New(pool, c.now, time.Hour), Limiter: loginlimit.New(cfg, c.now)}
+	perms := permissions.New(pool, c.now)
+	h := httpapi.New(svc, nil, httpapi.WithPermissions(perms), httpapi.WithServiceSecret(secret))
+	e := &env{t: t, h: h, clock: c, users: us}
+	e.mk("alice", true)
+	e.mk("bob", false)
+	res := "22222222-2222-2222-2222-222222222222"
+	if _, err := perms.Create(context.Background(), permissions.CreateInput{
+		ResourceID: uuid.MustParse(res), SubjectType: permissions.SubjectUser, SubjectID: uuid.MustParse(e.userID("bob")), Role: permissions.RoleWrite,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	path := "/internal/resources/" + res + "/members?role=admin"
+	errCode(t, e.do("GET", path, nil, nil), 401, "unauthenticated")
+	alice := e.mustLogin("alice")
+	errCode(t, e.do("GET", path, nil, alice), 401, "unauthenticated") // una sessione utente non basta
+	r := e.do("GET", path, nil, nil, bearer(secret)...)
+	status(t, r, 200)
+	got, _ := r.json()["userIds"].([]any)
+	if len(got) != 1 || got[0] != e.userID("alice") {
+		t.Fatalf("admin = solo alice (amministratore di sistema): %s", r.body)
+	}
+	r = e.do("GET", "/internal/resources/"+res+"/members?role=write", nil, nil, bearer(secret)...)
+	status(t, r, 200)
+	if got, _ = r.json()["userIds"].([]any); len(got) != 2 {
+		t.Fatalf("write = alice e bob: %s", r.body)
+	}
+	status(t, e.do("GET", "/internal/resources/"+res+"/members?role=boh", nil, nil, bearer(secret)...), 422)
 }

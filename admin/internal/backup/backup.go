@@ -78,6 +78,9 @@ type Manifest struct {
 	// AppImages sono i riferimenti delle immagini in uso dalle app incluse (H4): versione attiva
 	// e precedente. Solo informativi: il restore non li legge.
 	AppImages []string `json:"app_images,omitempty"`
+	// AppVolumes sono i volumi delle app nell'archivio (H3, D19): quelli non esclusi dall'app, copiati
+	// con l'app accesa. Il restore li rimette al loro posto.
+	AppVolumes []AppVolumeRef `json:"app_volumes,omitempty"`
 }
 
 // RefusedError è un rifiuto motivato (versione diversa, archivio corrotto,
@@ -135,6 +138,11 @@ type Options struct {
 	// entrano sempre nel backup, qualunque sia includeInBackup (RG2/H4). nil = le legge dal
 	// database (core.apps, core.app_versions).
 	InUseImages func(ctx context.Context) ([]InUseImage, error)
+	// AppVolumes dà i volumi delle app da includere (H3, D19): quelli con include_in_backup. nil = li
+	// legge dal database (core.app_volumes).
+	AppVolumes func(ctx context.Context) ([]AppVolumeRef, error)
+	// FreeBytes dà lo spazio libero di una cartella per la stima dello spazio; nil = statfs.
+	FreeBytes func(dir string) (int64, bool)
 }
 
 func (o *Options) logf(format string, a ...any) {
@@ -166,6 +174,8 @@ type Result struct {
 	Manifest *Manifest
 	// Window è la durata della finestra di sola lettura.
 	Window time.Duration
+	// EstimatedBytes è la stima dei dati da copiare (volumi di repo, allegati, log e volumi delle app).
+	EstimatedBytes int64
 }
 
 const (
@@ -269,6 +279,32 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("lettura dei Secret: %w", err)
 	}
+	// Volumi delle app (H3, D19): elenco dal database (solo gli inclusi) e cartelle dal cluster, anche
+	// questi prima della finestra. Le app restano accese durante la copia.
+	appVols, err := o.appVolumes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	appStaged, err := o.locateAppVolumes(ctx, appVols)
+	if err != nil {
+		return nil, err
+	}
+	acmePath, err := o.locateACME(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var est estimate
+	est.CoreBytes = dirSize(gitPath)
+	if hasAtt {
+		est.CoreBytes += dirSize(attPath)
+	}
+	if hasCI {
+		est.CoreBytes += dirSize(filepath.Join(ciPath, "logs"))
+	}
+	for _, v := range appStaged {
+		est.AppVolumeBytes += dirSize(v.path)
+	}
+	o.checkSpace(dest, est)
 
 	// Finestra di sola lettura.
 	saved := map[string]int{}
@@ -395,6 +431,19 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 		}
 	}
 
+	var appRefs []AppVolumeRef
+	for _, v := range appStaged {
+		o.logf("copia del volume %s dell'app %s/%s/%s (app accesa: per un database la coerenza non è garantita, vedi il dump in docs/operations.md)", v.ref.Name, v.ref.Owner, v.ref.Repo, v.ref.App)
+		if e := st.write(v.ref.Entry, func(w io.Writer) error { return tarDir(w, v.path) }); e != nil {
+			return nil, fmt.Errorf("copia del volume %s dell'app %s: %w", v.ref.Name, v.ref.App, e)
+		}
+		appRefs = append(appRefs, v.ref)
+	}
+
+	if e := o.stageACME(st, acmePath); e != nil {
+		return nil, e
+	}
+
 	if e := restoreReplicas(); e != nil {
 		return nil, e
 	}
@@ -429,13 +478,14 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 		Files:         st.files,
 		RegistryRepos: regRepos,
 		AppImages:     appImages,
+		AppVolumes:    appRefs,
 	}
 	path, sum, err := writeArchive(dest, o.archiveName(m), st, m, o.Key)
 	if err != nil {
 		return nil, err
 	}
 	o.prune(dest)
-	return &Result{Path: path, SHA256: sum, Manifest: m, Window: window}, nil
+	return &Result{Path: path, SHA256: sum, Manifest: m, Window: window, EstimatedBytes: est.total()}, nil
 }
 
 // readyWait è il tempo massimo di attesa dei Deployment riscalati.

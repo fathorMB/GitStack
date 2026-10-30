@@ -76,7 +76,7 @@ func newLifecycle(t *testing.T) *lifecycle {
 		t.Fatal(err)
 	}
 	l.ver = ch.Version
-	l.ctl = New(st, l.kube, fakeDynamic(), Config{})
+	l.ctl = New(st, l.kube, fakeDynamic(), Config{GateImage: testGateImage})
 	l.app = l.reload()
 	if err := l.ctl.apply(ctx, l.app, l.ver); err != nil {
 		t.Fatal(err)

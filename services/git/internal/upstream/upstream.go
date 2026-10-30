@@ -265,11 +265,16 @@ func (c *Client) JobAccess(ctx context.Context, token, owner, repo string) (acce
 		Packages string `json:"packages"`
 		Workflow string `json:"workflow"`
 		Job      string `json:"job"`
+		RunID    string `json:"runId"`
+		Ref      string `json:"ref"`
+		Event    string `json:"event"`
+		ActorID  string `json:"actorId"`
 	}
 	if err := json.Unmarshal(data, &out); err != nil || out.RepoID == "" {
 		return access.JobAccess{}, fmt.Errorf("%w: risposta di registry-access non valida", access.ErrUnavailable)
 	}
-	return access.JobAccess{RepoID: out.RepoID, Owner: out.Owner, Name: out.Name, Archived: out.Archived, Packages: out.Packages, Workflow: out.Workflow, Job: out.Job}, nil
+	return access.JobAccess{RepoID: out.RepoID, Owner: out.Owner, Name: out.Name, Archived: out.Archived, Packages: out.Packages, Workflow: out.Workflow, Job: out.Job,
+		RunID: out.RunID, Ref: out.Ref, Event: out.Event, ActorID: out.ActorID}, nil
 }
 
 // registrySettingsIdentity è l'identità con cui il servizio git chiama la rotta interna di
@@ -375,4 +380,30 @@ func (c *Client) RemovedTags(ctx context.Context, repoID string) ([]registry.Rem
 		return nil, errors.New("risposta di core non valida")
 	}
 	return out.Items, nil
+}
+
+var _ registry.PushNotifier = (*Client)(nil)
+
+// ImagePushed implementa registry.PushNotifier: POST /internal/registry/image-pushed/{repoId} di
+// core (H7, GIT-349). Core decide se qualche app segue il branch del run.
+func (c *Client) ImagePushed(ctx context.Context, repoID string, push registry.ImagePush) error {
+	b, err := json.Marshal(push)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.core+"/internal/registry/image-pushed/"+url.PathEscape(repoID), bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	trust.Sign(req.Header, c.secret, registrySettingsIdentity, c.now())
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return errors.New(sanitize(err))
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("core ha risposto %d", resp.StatusCode)
+	}
+	return nil
 }

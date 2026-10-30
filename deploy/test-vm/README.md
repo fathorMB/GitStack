@@ -418,7 +418,13 @@ esecuzione verde sono **8 righe `[PASS]`** (7 nell'output reale di Atlas del 28/
 [PASS] h. dati di prova ... e gitstack backup cifrato ...
 [PASS] i. reset, reinstallazione della stessa versione, gitstack restore ...
 [PASS] i-app 1/7 ... 7/7 (sette righe, una per controllo, vedi sotto)
-[PASS] i-app. esito complessivo: 7/7 controlli dell'app ok
+[PASS] i-app volume: log del restore dei volumi
+[PASS] i-app volume: file data presente con contenuto invariato
+[PASS] i-app. esito complessivo: 9/9 controlli dell'app ok
+[PASS] h-pub 1/13 ... 13/13 (app pubblica e dominio proprio con Pebble, prima del backup)
+[PASS] h-pub. esito complessivo: 13/13 controlli ok
+[PASS] i-pub 1/4 ... 4/4 (dominio e certificato dopo il restore)
+[PASS] i-pub. esito complessivo: 4/4 controlli ok
 [PASS] j. upgrade: installazione del commit precedente, dati, ... gitstack upgrade ...
 RISULTATO: VERDE
 ```
@@ -506,6 +512,9 @@ Cosa controlla ciascun passo:
 - **h-app / i-app.** (GIT-388, criterio 2 di GIT-351, H4) con l'hosting acceso
   dall'installer (`--enable-apps --apps-domain`, prima installazione e
   reinstallazione del restore). Prima del backup (`New-E2eAppFixture`):
+  crea un volume `data` montato su `/data` e vi scrive un file di contenuto noto.
+  Dopo il restore verifica le due righe del log relative al volume e confronta
+  il contenuto del file nel container; lo stato `running` resta nel controllo 3.
   `e2e/gs-app-restore.sh push` pubblica nel registry del repo di prova
   `<utente>/<repo>/e2eimg` con tre tag, ognuno con il suo manifest (rootfs
   busybox dell'immagine gia scaricata dal chart, `sleep` come entrypoint;
@@ -527,6 +536,13 @@ Cosa controlla ciascun passo:
   il passo h e rosso e i controlli dell'app non partono. Non provato senza
   VM: i pezzi puri (`Test-E2eAppAfterRestore` con HTTP e VM finti, anche 401 sul registry, il comando
   d'installazione) sono in `tests/phases.Tests.ps1`.
+- **h-app ciclo.** (GIT-355, H1/H6/H7/H12) dopo la preparazione di `e2eapp` e prima del backup, `Test-E2eAppLifecycle` pubblica `e2eweb` (v1, v2: busybox httpd sulla 8080, `gs-app-restore.sh push-web`) e crea l’app `e2elife`: 1 deploy di v1 `serving` con indirizzo; 2 senza credenziale 401 (`probe-anon`); 3 con il token dell’utente il corpo `e2e-web-v1` (`probe-auth`); 4 deploy di v2, corpo `e2e-web-v2`; 5 rollback alla versione di v1, versione nuova, corpo `e2e-web-v1`; 6 eliminazione (204). Al primo errore i pod del namespace dell’app vanno in `backup-restore\app-ciclo\diag.log` e l’app resta. Pezzi puri in `tests/phases.Tests.ps1`; non provato senza VM. Dettagli e runbook: `docs/operations.md`.
+- **h-pub / i-pub.** (GIT-468, H1/H2, ADR 0002) app pubblica e dominio proprio con **Pebble** (il server ACME di prova di Let's Encrypt) e un **resolver DNS di prova**, entrambi dentro il cluster della VM; `Test-E2eAppPublic` gira dopo il ciclo dell'app e prima del backup, cosi' dominio e certificato entrano nell'archivio. Lo script sulla VM e `e2e/gs-app-public.sh` (`pebble-up`, `traefik-acme`, `dns-set`, `pebble-root`, `domain-open`, `domain-closed`, `address-open`, `cert-info`, `diag`). Come e fatta la prova:
+  - *Pebble* (`ghcr.io/letsencrypt/pebble`, `-dnsserver` = ClusterIP di `kube-dns`) sta in `kube-system` accanto a Traefik, con la CA di prova (minica) in un ConfigMap; l'installer si rilancia con `GITSTACK_ACME_CA_SERVER=https://pebble:14000/dir` e `GITSTACK_TLS_EMAIL=e2e@example.test` (resolver `letsencrypt` e volume di `acme.json`, e Let's Encrypt acceso per core). L'installer non da a Traefik la CA di Pebble: `traefik-acme` aggiunge `LEGO_CA_CERTIFICATES` e il volume alla `HelmChartConfig` che l'installer ha scritto in `/var/lib/rancher/k3s/server/manifests/gitstack-traefik.yaml` (come `deploy/tests/acme_pebble_k3d_test.sh`) e aspetta il rollout di Traefik.
+  - *Resolver DNS di prova*: `dns-set` scrive una zona nel CoreDNS (ConfigMap `coredns-custom`, plugin `file`), il dominio delle app senza la prima etichetta (`apps.e2e.test` -> `e2e.test`): `shop-pub.e2e.test` e un CNAME verso l'indirizzo automatico dell'app, che e un A verso il ClusterIP di Traefik. Core (controllo del DNS, CNAME) e Pebble (sfida HTTP-01 sulla porta 80) risolvono cosi' lo stesso nome; la verifica e un `nslookup` da un pod. Nessun IP pubblico dichiarato: serve solo il CNAME.
+  - *Controlli h-pub* (tredici righe `[PASS]`/`[FAIL]` e l'esito complessivo): 1 Pebble pronto, installer con Pebble, Traefik col resolver su Pebble; 2 app `e2epub` (immagine `e2eweb`) e, a interruttore spento, la scelta `public` rifiutata (422 `public_apps_disabled`); 3 interruttore acceso da `PUT /admin/apps/settings` e Let's Encrypt acceso nelle impostazioni; 4 `public` accettato (doppio consenso); 5 l'indirizzo automatico risponde senza login; 6 il dominio proprio risolve dal cluster verso Traefik; 7 dominio aggiunto (201, record CNAME atteso); 8 `verified`; 9 certificato `valid` con emittente Pebble; 10 l'app risponde senza login sul dominio, con la catena verificata fino alla radice di Pebble (`GET /roots/0`) e l'impronta del certificato servito; 11 interruttore spento: il dominio non risponde piu con l'app; 12 spento, l'indirizzo automatico risponde 401 senza login e 200 col token (ADR 0002: resta raggiungibile col login); 13 riacceso: dominio `verified`, certificato `valid` con la stessa impronta, app di nuovo senza login.
+  - *Dopo il restore* (`Test-E2eAppPublicAfterRestore`, quattro righe `i-pub`): il dominio e ancora dell'app (`mode: public`); il certificato e `valid` con emittente Pebble; Traefik serve lo stesso certificato (impronta SHA-256 uguale: e tornato l'archivio ACME del backup, non una riemissione, perche Pebble dopo il reset non c'e piu); l'app risponde senza login sul dominio con la radice di Pebble salvata. Anche l'installer del restore riceve `GITSTACK_ACME_CA_SERVER`, altrimenti Traefik non avrebbe il volume dove ripristinare `acme.json`.
+  - Se un controllo fallisce il passo si ferma e `backup-restore\app-pubblica\diag.log` raccoglie i pod di `kube-system` e i log di Pebble, Traefik e CoreDNS. Ogni sonda HTTPS usa `--resolve <dominio>:443:127.0.0.1` perche il nome non e nel DNS dell'host; i controlli negativi dello script sono `if ...; then fail ...; fi`, mai `!` sotto `set -e`. Pezzi puri (comando d'installazione, righe, diagnostica) in `tests/phases.Tests.ps1`; **non provato senza VM**: il verde dell'e2e lo dichiara solo l'output del giro del board.
 - **j.** (GIT-148, DF/F) reset, installazione del **commit precedente**
   (`installer-precedente.log`), admin e dati di prova su quella versione,
   poi: `gitstack restore` dell'archivio della fase h (versione diversa) deve
@@ -568,6 +584,42 @@ non compare.
 Alla fine: il riepilogo, il percorso dello zip `<OutDir>.zip` (log +
 diagnostica, **sempre creato**) e `RISULTATO: VERDE` o `RISULTATO: ROSSO`.
 Il codice di uscita e' diverso da zero se un passo e' fallito.
+
+### Pilota retail.it (GIT-381, in sviluppo)
+
+Con l'hosting acceso e senza `-SkipBackupRestore`, dopo e12 il passo `pilot`
+prepara un'origine Git HTTPS sulla VM, importa un repo privato come mirror,
+abilita la CI, crea un tag sull'origine e richiede la sincronizzazione. Verifica
+il run del tag sul runner integrato e le firme delle immagini `api`, `sito` e `db`.
+Ogni controllo compare nel riepilogo; l'origine e la configurazione di rete
+temporanea vengono rimosse anche se un controllo fallisce.
+
+Il passo prepara PostgreSQL con un volume incluso nel backup e una password
+passata come segreto; l'API usa la stessa password come segreto e scrive un
+valore collegandosi a `postgres:5432`. Dopo h/i, il probe rilegge il valore
+dall'API ripristinata. I controlli sono eseguiti sulla VM, con una riga per
+ciascun esito.
+
+L'immagine `db` parte come utente `postgres`, senza capability aggiuntive;
+`PGDATA` punta a una sottocartella del volume creata da quell'utente. Questo
+vincolo vale anche per l'immagine PostgreSQL con PostGIS del pilota reale.
+
+Il passo prepara anche il sito, un bot con grant sul repo e token in un segreto,
+e un tester nella lista di accesso. Verifica che il tester riceva 404 su repo e
+issue e confronta l'impronta dell'invito con quella della CA scaricata.
+
+La prova apre il sito con Chromium come tester, dopo aver installato nello store
+utente la CA la cui impronta coincide con l'invito; la CA aggiunta dalla prova
+viene rimossa alla fine. Non disabilita la verifica dei certificati. Il browser
+legge il dato, acquisisce uno screenshot e usa il pulsante di segnalazione; il
+passo confronta l'allegato della issue con lo screenshot e controlla autore e
+tester. Log e immagini sono nella cartella `pilot` dentro `-OutDir`.
+
+Per questa fase servono Node.js e, nel checkout, le dipendenze di `web/` e il
+browser Chromium di Playwright (`corepack pnpm install --frozen-lockfile` e
+`corepack pnpm exec playwright install chromium`, eseguiti da `web/`). La prova
+richiede GIT-442 e GIT-444 su main e le relative immagini installate sulla VM. Non e stata
+ancora eseguita dall'inizio alla fine sulla VM.
 
 ### Istruzioni per il board: passo e10 (GIT-201)
 

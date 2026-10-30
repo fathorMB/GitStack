@@ -276,6 +276,18 @@ flags a mismatch). The login in front of apps (GIT-347,
 the apps domain and the public URL. Without the keys `/_appauth/verify` answers
 503 and no `login` app would pass.
 
+**Network gate, fail-closed (GIT-418, GIT-422).** Every app pod starts with the
+init container `core apps-gate`, so the app runs only once its NetworkPolicy is
+enforced (kube-router applies it after the pod starts). The chart sets
+`GITSTACK_CORE_APPS_GATE_IMAGE` (the `core` image) whenever `apps.enabled` is
+on. If apps are enabled but the variable is empty (a deploy outside the chart,
+a wrong configuration), `core` stays up (git and CI are not affected) and logs a
+`ERROR` log at start, but **refuses to deploy any app** (also restart and
+scale-up, which recreate pods; stopping an app stays allowed): the deploy ends `failed`
+with the reason «GITSTACK_CORE_APPS_GATE_IMAGE non impostata …», and nothing is
+created in the cluster (no namespace, no Deployment). Fix: set the variable to
+the `core` image and deploy again.
+
 RBAC of `core` (chart `templates/apps-rbac.yaml`): a controller ClusterRole
 with `create/get/list/watch/update/delete` on `namespaces`, `create/get` on
 `rolebindings` and `bind` on the one app role template; the template
@@ -338,6 +350,50 @@ the unique index on `apps.normalized_host` (`pkg/names`: `AppAddress`,
      ```
 
    - **curl:** `curl --cacert ca.crt https://<host>/api/healthz`
+
+#### Registry and the internal CA: how the cluster trusts it (GIT-425)
+
+Apps whose image lives in the repo's registry (`<host>/<owner>/<repo>/<image>:<tag>`)
+are pulled by containerd, the container runtime of k3s, not by a pod. With
+`--tls internal` (the default) the registry certificate is signed by the internal
+CA, which containerd does not know. Two things make the pull work with no manual
+step:
+
+- **Trust in the CA.** `install.sh` writes `/etc/rancher/k3s/registries.yaml` with,
+  for every host of the instance (`--host`, the public host), a `configs` entry
+  whose `tls.ca_file` is `/etc/gitstack/tls/ca.crt`. There is **one** CA file, on
+  disk, and containerd reads it at pull time: the trust follows the file. The same
+  `configs` section also holds the `--registry-mirror` / `--ca-bundle` entries
+  (the mirror host keeps its own `tls.ca_file`, `/etc/gitstack/network/ca.crt`).
+  With a customer certificate (`--tls-cert`) or Let's Encrypt there is nothing to
+  add: the CA is a public or system one (a corporate CA goes in with `--ca-bundle`).
+  `gitstack config set network` and `gitstack config set host` regenerate the same
+  file, so the entries are never lost; a new host restarts k3s once.
+- **Credentials.** `core` creates, for each app with a registry image, a
+  `registry-pull` Secret (`kubernetes.io/dockerconfigjson`) in the app's namespace,
+  and the Deployment references it in `imagePullSecrets`. The password is a
+  read-only token of that app, signed by `core` with the gateway service secret
+  (`GITSTACK_SERVICE_SECRET_GATEWAY`): it belongs to no user, grants `packages: read`
+  on the registry of the app's repo only (also when the repo is private), it is
+  valid 30 days and `core` renews it in the Secret after 10 days, with no
+  redeploy. It stops working when the app or its repo is deleted. Rotating the
+  gateway secret with the two-key list (`new,old`) keeps the Secrets valid until
+  the next renewal.
+
+**After a `gitstack restore`.** The restore puts back the CA of the backup in
+`/etc/gitstack/tls/ca.crt`. `registries.yaml` already points at that file, so
+containerd follows it; to be sure it picks up the new CA the restore restarts k3s
+whenever the CA on disk changed, or `registries.yaml` had to change (a different
+host), and waits for the node to be Ready. Services are already back by then, so
+apps with a registry image may need a few seconds before the next pull succeeds.
+If the restart fails, the restore says so; fix k3s (`journalctl -u k3s`) and run
+`sudo gitstack config set host <host>`, which rewrites `registries.yaml` and
+restarts k3s again. An instance installed before this change gets the entries by
+running `install.sh` again (it restarts k3s once).
+
+To check by hand on the server: `sudo grep -A3 '"<host>"' /etc/rancher/k3s/registries.yaml`
+and `sudo k3s crictl pull <host>/<owner>/<repo>/<image>:<tag>` (a private repo
+needs `--creds` from a user token with `read:registry`).
 
 ### Admin password
 
@@ -489,9 +545,13 @@ sudo ./install.sh --egress-allow 192.168.1.0/24,ci.example.com
 
 Entries are IPs, CIDRs, names (`hooks.example.com`) or suffixes (`*.example.com`). With a non-empty list, only what it covers is allowed (public addresses included). It is written in `egress.allow`, and like any `--set` it must be given again at every upgrade. A blocked delivery fails at once, without a retry, and the delivery log shows no response.
 
+**Hosted apps and the GitStack API (GIT-442).** With `apps.enabled`, the gateway listens on a second, internal port (`gateway.internalPort`, default 8081, `GITSTACK_GATEWAY_INTERNAL_ADDR`; `0` turns it off) that serves only `/v1` (no app forward-auth, no web pages) and never trusts `X-Forwarded-For`, so an app cannot forge the client IP used for rate limiting and audit. It is the only gateway port the chart opens to hosted apps: the gateway NetworkPolicy admits pods of namespaces labelled `gitstack.io/managed-app=true` on that port alone, and no core, identity, git, Postgres or NATS policy admits them. Core receives the namespace, Service, pod labels and port (`GITSTACK_CORE_APPS_GATEWAY_*`), adds a fixed egress rule to every app's NetworkPolicy (restricted apps included) and passes `GITSTACK_API_URL` to the pods. Authorization stays with the token. It must differ from `gateway.containerPort` (the chart stops otherwise). See `docs/apps.md`, "Chiamare l'API di GitStack dall'app".
+
+**Hosted apps.** `--egress-allow` does not open the private network to hosted apps: by default an app reaches the internet and nothing in 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 or CGNAT. The administrator opens precise destinations (`db.azienda.lan:5432`) in *Administration → Apps & resources → Private destinations* (or `PUT /admin/apps/egress`), and a repository admin can restrict a single app to a list of destinations, never beyond what the administrator opened. The always-blocked list above applies to apps too, and `--egress-deny` refuses a destination even when it is opened. See `docs/apps.md`, "Uscita delle app".
+
 ### API rate limiting (F6)
 
-The gateway limits `/v1/*` calls with an in-memory token bucket, on two keys: the **credential** (personal token `gst_...` or `gst_session` cookie; the key is its SHA-256, the value is never logged) and the **client IP**. The IP is the real client one: `X-Forwarded-For` counts only when the connection comes from a proxy in `gateway.env.trustedProxies` (default `10.42.0.0/16`, Traefik on k3s); from any other peer it is ignored. Health probes (`/healthz`, `/readyz`) are not limited.
+The gateway limits `/v1/*` calls with an in-memory token bucket, on two keys: the **credential** (personal token `gst_...` or `gst_session` cookie; the key is its SHA-256, the value is never logged) and the **client IP**. The IP is the real client one: `X-Forwarded-For` counts only when the connection comes from a proxy in `gateway.env.trustedProxies` (default `10.42.0.0/16`, Traefik on k3s); from any other peer it is ignored (the internal port for hosted apps never trusts it). Health probes (`/healthz`, `/readyz`) are not limited.
 
 | Value | Env of the gateway | Default | Meaning |
 |---|---|---|---|
@@ -804,6 +864,34 @@ revision and the database schemas: a CI that was switched on by the failed
 upgrade is **off again**, because the previous revision had no `ci.*` values.
 Switch it on again after fixing the cause.
 
+### Jobs with `needs`: what the runner passes to `act` (GIT-499, GIT-500, GIT-501)
+
+Each job runs in its own pod, so the runner removes `needs` from the job it
+hands to `act -j` (the upstream jobs are not run again, and their lines are not
+in the log of the downstream job). The server starts a job only after all its
+`needs` finished, and the task (`runner.v1` `Task.needs`, the same field the
+Gitea runner uses) carries, for each upstream job, its result and its outputs.
+The runner puts that real `needs` context into the job's expressions: in `if:`
+and in `${{ }}` the forms `needs.build.result`, `needs['build'].result`,
+`needs.build.outputs.digest`, `needs['build'].outputs['digest']` and
+`contains(needs.*.result, 'failure')` have the right value. Only expressions
+are rewritten: a literal `needs.build.result` in the text of a `run:` outside
+`${{ }}` stays as it is.
+
+The outputs come from `jobs.<id>.outputs` of the upstream job: act does not
+print them, so the runner adds a last hidden step (`if: always()`, not shown in
+the log or in the steps) that evaluates them and writes them to files; the runner
+reports them with the final `UpdateTask` and core saves them on the job
+(`core.ci_jobs.outputs`). Limits: at most 50 outputs per job, names up to 128
+characters, values up to 64 KiB (what exceeds is dropped); a value that contains
+a secret or the job token is masked like the logs. The extra step needs `bash`
+in the runner image (the official image has it).
+An external runner (`gitstack-runner` on Windows or macOS) needs `bash` in its `PATH`:
+without it the outputs of the job stay empty and the job does not fail (the step
+is `continue-on-error`). The Gitea `act_runner` sends the outputs in its periodic
+reports, even before the result: core saves them as they arrive, merges partial
+reports and confirms every received name (`SentOutputs`).
+
 ### Backup and restore with the CI logs
 
 `gitstack backup` includes the job logs (`ci-logs.tar`, from the `logs/` folder
@@ -861,10 +949,71 @@ sudo gitstack backup --dest /mnt/backup/gitstack --retention 14
 | `database.sql` | `pg_dump` of the `identity` and `core` schemas |
 | `git-data.tar` | All Git repositories (the `git-data` volume) |
 | `attachments.tar` | Issue attachments (only if the directory exists) |
+| `app-volumes/<app-id>/<volume>.tar` | One entry per persistent volume of a hosted app that is **in backups** (the default; see [Volumes and databases](#volumes-and-databases)). The manifest lists them under `app_volumes` |
 | `secrets.json` | Kubernetes secrets used by GitStack (certificate data, SSH host keys, OIDC keys, etc.) |
 | `config/` | Copy of the contents of `/etc/gitstack/` (CA certificate, CA key, configuration files) |
 
 A `gitstack-backup-*.sha256` sidecar file is written next to each archive.
+
+### Volumes and databases
+
+Persistent volumes of hosted apps (v3, rule H3) are **in the backup by default**, to the local
+destination and to S3 alike (N7, same archive, same encryption). The app keeps running while its
+volumes are copied: the read-only window only stops `gateway` and `git`.
+
+**Leaving a volume out.** Every volume has its own "In backups" switch in the app's
+*Settings → Volumes & resources* page (repository admins), or:
+
+```sh
+curl -X PATCH https://HOST/api/v1/repos/OWNER/REPO/apps/APP/volumes/VOLUME \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"includeInBackup": false}'
+```
+
+An excluded volume is not in the archive and comes back **empty** after a restore. The choice is
+about the data, not the app configuration: it creates no version, makes no deploy, and a rollback
+does not change it. `GET .../volumes` returns `includeInBackup` for each volume.
+
+**Space estimate.** Before the read-only window `gitstack backup` prints an estimate of the data
+it will copy (repositories, attachments, CI logs and, separately, the data in the app volumes) and
+the free space needed in the backup directory (twice the data: the working copy and the archive).
+If the free space is lower it prints a warning and goes on, because the figure is an upper bound
+(the archive is compressed and registry images that are not selected stay out). The sizes counted
+are the bytes used in each volume, not the size declared when the volume was created.
+
+**Databases inside a container: the copy may not be consistent.** The volume is copied while the
+app is running. For a database whose files are in a volume (PostgreSQL, MySQL, MongoDB, SQLite
+with writes in flight...) the copy can capture files from different moments and may not start
+after a restore. The UI and the API warn about it: `looksLikeDatabase` is true when the mount
+path, the volume name or the image looks like a database, and the "Volumes & resources" page shows
+"Looks like a database". The supported way to protect such data is a **dump into another volume**:
+
+1. Add a second volume to the app, for example `dumps` mounted at `/dumps`, and keep it in backups.
+2. Schedule a dump that writes into it. With PostgreSQL, a cron job or a sidecar-less loop in the
+   same image:
+
+   ```sh
+   # every night at 03:00, keep 7 days
+   0 3 * * * pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" | gzip > /dumps/db-$(date +\%F).sql.gz \
+     && find /dumps -name 'db-*.sql.gz' -mtime +7 -delete
+   ```
+
+   MySQL/MariaDB: `mysqldump --single-transaction`. MongoDB: `mongodump --archive=/dumps/db.archive --gzip`.
+   SQLite: `sqlite3 db.sqlite ".backup /dumps/db.sqlite"`.
+3. Turn **In backups** off for the volume that holds the live database files (optional: it saves
+   space, and avoids carrying an inconsistent copy), and leave it on for the one with the dumps.
+4. After a restore, start the database from the dump: restore it into a fresh data directory
+   (`psql`, `mysql`, `mongorestore`) instead of trusting the copied files.
+
+GitStack v3 has no managed databases and does not run the dump for you.
+
+**Restore.** `gitstack restore` puts each volume back where it was and the app restarts with its
+data. On a clean machine it first recreates the app's namespace, the volume and the claim (same
+labels and size as `core` would create), writes the data and lets `core` re-apply the app,
+together with the images in use that the archive carries (rule H4). An app that is running on
+the target is scaled to zero while its volume is written; `core` brings the copies back when it
+starts again. An archive with app volumes cannot be restored on a cluster that does not support
+them: the command stops before touching anything.
 
 ### Retention
 
@@ -1070,6 +1219,8 @@ services.
    ripristino del database (in una sola transazione)
    ripristino dei repo (git-data)
    ripristino degli allegati
+   ripristino dei volumi delle app (1)
+   ripristino dell'archivio ACME di Traefik
    ripristino dei Secret
    ripristinati 7 file di configurazione (config.yaml resta quello della nuova installazione)
    riavvio NATS per le credenziali ripristinate
@@ -1086,6 +1237,10 @@ services.
    `kubectl rollout restart statefulset/<release>-nats`, then core and
    gateway: superseded by this fix, GIT-297). PostgreSQL is not restarted (its
    Secret is not restored) and the web reads no Secret.
+
+   With `--tls internal`, after publishing the restored CA the restore also
+   realigns containerd's trust in it (`registries.yaml`) and restarts k3s if the
+   CA or the file changed: see "Registry and the internal CA" above.
 
 4. Verify with `gitstack status` that all services are ready (exit code `0`).
 
@@ -1195,6 +1350,40 @@ Environment variables: `GITSTACK_REPO` (default `fathorMB/GitStack`),
 | `7` | **Rolled back** — the upgrade failed and the previous state was restored automatically |
 | `8` | **Broken** — the upgrade failed and the rollback also failed; manual intervention required |
 | `70` | Unexpected error (backup, network, or other unrecoverable failure) |
+
+### Who runs the rollback: the new binary (GIT-490)
+
+The rollback logic changes from version to version (for example GIT-479/GIT-482, which clear
+the stale ServiceAccount of `core` after `helm rollback`). The installed binary is replaced only
+after the health check, so a failing upgrade used to roll back with the *old* logic. Now the
+installed binary, once the target binary is downloaded and verified, runs the cluster part of the
+rollback (helm rollback, ServiceAccount cleanup, restore, health check) and the post-upgrade
+steps (service Secrets, customer certificates) by running the **target** binary:
+`<target> upgrade --reexec-request F --reexec-reply F` (internal flags). Local files (binary, chart
+copy, config) are always restored by the running binary. If the target does not support it (older
+than GIT-490) or does not start, the running binary falls back to its own logic and says so in the log.
+
+**Limit.** The re-exec exists only in binaries that contain GIT-490. An upgrade *launched from* an
+older version (v1.0 included) still rolls back with that version's logic: with the CI on, after a
+rollback `core` may stay bound to the deleted `ci-dispatcher` ServiceAccount (no pod, gateway not
+ready, exit `8` instead of `7`). To repair it by hand:
+
+```sh
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+# 1. is core bound to a ServiceAccount that no longer exists?
+k3s kubectl -n gitstack get deploy gs-core -o jsonpath='{.spec.template.spec.serviceAccountName}{" "}{.spec.template.spec.serviceAccount}{"\n"}'
+k3s kubectl -n gitstack get sa
+# 2. clear both fields (adjust namespace and Deployment name to your release)
+k3s kubectl -n gitstack patch deploy gs-core --type merge \
+  -p '{"spec":{"template":{"spec":{"serviceAccountName":null,"serviceAccount":null}}}}'
+# 3. wait for it and check
+k3s kubectl -n gitstack rollout status deploy/gs-core
+gitstack status
+```
+
+Do this for every Deployment that was bound to a ServiceAccount the previous revision does not have.
+The upgrade that installs the first binary containing GIT-490 is still launched by the old binary and
+is therefore exposed to the limit; every upgrade after it is not.
 
 ### Upgrading k3s (rule N10)
 
@@ -1610,8 +1799,8 @@ It runs two scenarios on `ubuntu-22.04` and `ubuntu-24.04`:
 - **upgrade**: `install.sh` of the **previous commit** (latest green CI run on
   `main`, strict ancestor, with its images and binary published) with a k3s
   **one patch older** than `deploy/k3s-version` → data → a **failing**
-  `gitstack upgrade` (`--set ci.enabled=true --set gateway.containerPort=1`: the
-  gateway cannot bind, exit code 7, previous version and data back, CI off
+  `gitstack upgrade` (`--set ci.enabled=true --set gateway.env.coreTimeout=guasto-git477`: the
+  gateway exits at startup on an invalid duration, exit code 7, previous version and data back, CI off
   again) → `gitstack upgrade --set ci.enabled=true` (preventive backup → k3s
   patch → GitStack, N10) → k3s checked with `k3s --version`, `kubectl version`
   and `gitstack status --json` (`k3s_version`) → backup → more data → restore.
@@ -1819,7 +2008,7 @@ so it fails as a non-root user with a permission error.
 | `/etc/gitstack/config.yaml` | Main configuration (mode `0600`) |
 | `/etc/gitstack/tls/` | CA certificate, CA key, server certificate (internal CA mode) |
 | `/etc/gitstack/network/ca.crt` | Corporate CA copy (only with `--ca-bundle`) |
-| `/etc/rancher/k3s/registries.yaml` | k3s registry mirror (mode `0600`, may hold the mirror password) |
+| `/etc/rancher/k3s/registries.yaml` | k3s registry mirror and trust in the internal CA for the registry host (mode `0600`, may hold the mirror password) |
 | `/etc/systemd/system/k3s.service.d/10-gitstack-network.conf` | Proxy for k3s and containerd |
 | `deploy/postgres-prepare.sql` | Script for the DBA: database and user for an external PostgreSQL |
 | `/etc/gitstack/backup-state.json` | Last backup status written by `gitstack backup` |
@@ -2407,6 +2596,8 @@ Questa sezione dice cosa è stato provato prima di portare la CI su homehub, cos
 
 Nel [job chart del run 40445593216](https://github.com/fathorMB/GitStack/actions/runs/40445593216/job/122001089887), i due run interni nello stesso cluster sono `10f3125b-e595-4f7d-8d30-70ab4b6d3c9a` e `a71942cb-c7b9-4ab9-8ed2-ea279e1ff158`: il log registra rispettivamente `Cache saved with key: e2e-cache-v1` e `Cache restored from key: e2e-cache-v1`, con contenuto ripristinato. Il secondo job `artefatto` fallisce come previsto: lo script verifica il messaggio `GitStack non supporta actions/upload-artifact@v4` e registra `ok: artefatti v4: il passo fallisce col messaggio documentato (501)`. Le due esecuzioni interne sono effimere; il link consultabile è quello del job che le ha eseguite. Anche il [job chart del run 40449947545](https://github.com/fathorMB/GitStack/actions/runs/40449947545/job/122015375756) registra gli stessi controlli verdi. Il primo run dopo GIT-291, 40210356127, aveva saltato chart per un errore nei test di migrazione.
 
+La diagnostica di e12 precede il passo f: `pre-f-diagnostics/core.log` e `git.log` raccolgono i log dei servizi; `ci-events.txt`, `ci-pods.txt`, `ci-describe.txt` e `ci-logs.txt` raccolgono eventi, pod, describe e log di tutti i container nel namespace `gitstack-ci-jobs`. Gli stessi nomi sono presenti in `vm-diagnostics/` nella raccolta finale. Un errore di raccolta prima di f compare in `pre-f-diagnostics/DIAGNOSTICA-NON-RACCOLTA.txt`; il log del ciclo resta in `gs-ci-cycle.log`.
+
 La prova contro git vero ha trovato un difetto di core, corretto in GIT-291: `GET /repos/{owner}/{repo}/workflows` e l'avvio a mano con `--ref main` risolvevano il nome del branch con `commits/{sha}/resolve`, che per git accetta solo sha. L'elenco dei workflow usciva sempre vuoto e `gs workflow run --ref main` non trovava il branch. Ora il nome si risolve col commit in testa alla ref (`commits?ref=…&perPage=1`).
 
 ### Modifiche minime ai workflow di GitStack (previsione dell'ADR 0001, da confermare)
@@ -2467,6 +2658,73 @@ Il workflow `cache.yml` va creato nel repo di prova copiando la definizione nell
 | Workflow di GitStack con modifica minima (quale) | da eseguire |
 | Release di prova `v0.0.0-test.N` e immagini firmate | da eseguire (link alla release e a `gs package list`) |
 
+## Dogfooding delle app: passo e2e sulla VM e sito della documentazione su homehub (v3-a, GIT-355)
+
+Chiude il goal della v3-a. Anche qui i passi sulla VM e su homehub li fa il board: nessun agente ha una VM Hyper-V o accesso a homehub. Questa sezione dice cosa è stato provato senza, cosa scrive il board e con quali comandi.
+
+### Provato prima (senza VM e senza homehub)
+
+| Cosa | Dove | Esito |
+|---|---|---|
+| Copertura delle regole H1, H2 (parte interna), H4–H13 | `docs/rules-coverage.md` (famiglia H), controllata da `go run scripts/check-rules-coverage.go` | nessuna riga «da compilare» nella famiglia H; il check verifica che ogni test citato esista |
+| Passo e2e «ciclo dell'app» (`Test-E2eAppLifecycle` in `deploy/test-vm/lib/phases.ps1`): sei righe `h-app ciclo 1/6 … 6/6` più l'esito complessivo | `deploy/test-vm/tests/phases.Tests.ps1` (API e VM finte: esito completo, errore a v2 con diagnostica, nessun rollback né eliminazione dopo un errore) | verde in locale con Windows PowerShell 5.1 |
+| `e2e/gs-app-restore.sh` (`push-web`, `probe-anon`, `probe-auth`, `diag`) | `bash -n` | sintassi ok; **non eseguito** (serve la VM); shellcheck non era installato nell'ambiente di sviluppo, quindi **non passato** |
+| Immagine e workflow del sito | `docs-site/Dockerfile`, `deploy/dogfooding/docs-app.yml` | **mai costruiti**: la prova è il giro su homehub |
+
+### Passo e2e: deploy, login, rollback
+
+Dentro il passo h di `e2e.ps1` (con l'hosting acceso: `-AppsDomain`, di default `apps.e2e.test`, nessun DNS), dopo la preparazione dell'app di prova e prima del backup, `Test-E2eAppLifecycle` usa l'immagine `e2eweb` (busybox `httpd` sulla 8080 che serve `e2e-web-<tag>`, pubblicata da `gs-app-restore.sh push-web` nello stesso registry del repo di prova) e l'app `e2elife`:
+
+1. deploy di `v1` (`POST …/apps`, porta 8080): la versione diventa `serving` e l'app ha un indirizzo;
+2. login GitStack davanti all'app (forward-auth del gateway, H6): una richiesta all'indirizzo dell'app, risolto a mano verso Traefik della VM (`curl --resolve`), senza credenziale deve dare **401** e non il corpo dell'app;
+3. la stessa richiesta con il token dell'utente di prova (`Authorization: Bearer gst_…`, `read` sul repo) deve dare il corpo `e2e-web-v1`;
+4. deploy di `v2` (`POST …/deploys`): `serving` e corpo `e2e-web-v2`;
+5. rollback alla versione di `v1` (`POST …/rollback`): una versione nuova, più recente di quella di `v2`, `serving`, corpo di nuovo `e2e-web-v1`;
+6. eliminazione dell'app (`DELETE`, 204; l'app non ha volumi).
+
+Le righe sono `[PASS]`/`[FAIL]` come quelle di `i-app`, più `h-app ciclo. esito complessivo: N/6 controlli ok`. Al primo errore il passo si ferma, le righe dopo sono «non verificato» e `backup-restore\app-ciclo\diag.log` raccoglie i pod del namespace `gitstack-app-<id>` (stato, eventi, describe e log); l'app di prova non si elimina, per poterla guardare. Gli altri log (`push-web.log`, `probe-anon.log`, `probe-v1.log`, `probe-v2.log`, `probe-rollback.log`) sono in `backup-restore\app-ciclo\`. Si salta con `-SkipBackupRestore` (hosting spento).
+
+**Limiti noti, da leggere prima del primo giro:** (a) l'applet `httpd` deve esserci nel busybox dell'immagine `busybox:1.36` già scaricata dal chart; nel ripiego con il busybox statico dell'initramfs potrebbe mancare e il passo 3 cade con «serve-e2e-web-v1». (b) Che un token personale con `read:resource` passi dal forward-auth è previsto da `docs/apps-login.md` ma non è stato provato su un cluster da questo item. (c) Il passo non prova il login dal browser (cookie `gst_app_session`): quello è coperto dai test del gateway.
+
+#### Runbook per il board (passo e2e)
+
+Prima: `ci_status` di `main`, e si sceglie `-Ref` solo fra gli sha il cui run CI ha il job **Registry** in `success` (le immagini `sha-<Ref>` su ghcr.io le pubblica quel job; un run cancellato o rosso non le ha). La cartella `-OutDir` deve essere **nuova** (`e2e.ps1` non svuota la cartella e il log si accoda). L'host deve avere il checkout già su `-Ref` o `e2e.ps1` lo porta lui.
+
+```powershell
+# amministratore sull'host del board
+.\deploy\test-vm\e2e.ps1 -Ref <SHA di main con Registry in success> -OutDir C:\gitstack-e2e\GIT-355
+```
+
+Si guarda nel riepilogo finale: le sei righe `h-app ciclo` e l'esito complessivo `6/6`, poi le righe `i-app` (che non devono cambiare). Con un rosso, mandare `C:\gitstack-e2e\GIT-355\backup-restore\app-ciclo\` (soprattutto `diag.log`) e `e2e.log`. Criterio dell'item: «passo e2e sulla VM verde».
+
+### Dogfooding su homehub: il sito della documentazione come app
+
+Un'app interna di GitStack che segue il suo branch: il sito `docs-site/` (Docusaurus). Il workflow `deploy/dogfooding/docs-app.yml` (`runs-on: gitstack-build`) costruisce `docs-site/Dockerfile` e pubblica `docs:sha-<12 cifre>` nel registry del repo; l'app `docs` con `followBranch=main` lo mette in produzione da sola quando la CI pubblica un tag nuovo (H7), solo se l'immagine è firmata dalla CI dello stesso repo (H10). Il Dockerfile imposta l'etichetta `org.opencontainers.image.revision`, quindi `GITSTACK_COMMIT_SHA` è valorizzato (H14).
+
+Prima, sull'installazione di homehub: CI e build accesi (`--ci --ci-build`, vedi sopra) e hosting acceso con un dominio delle app. **Attenzione:** `homehub.local` è mDNS e non ha record wildcard, e un dominio `.local` per le app è rifiutato: scegliere un dominio senza `.local` (per esempio `apps.homehub.lan`) e, non potendo creare record DNS sul router, aggiungere sulla macchina da cui si guarda il sito una riga nel file hosts con l'indirizzo dell'app (`<IP di homehub> docs-<repo>-<owner>.apps.homehub.lan`). Chi guarda deve fidarsi della CA interna (`/help/ca`).
+
+```sh
+sudo gitstack config set apps on --apps-domain apps.homehub.lan   # oppure gitstack upgrade --enable-apps
+```
+
+1. Nel repo di GitStack su homehub (il mirror in pull, con la CI accesa sul mirror: CI3) o in un repo di prova con una copia, aggiungere `deploy/dogfooding/docs-app.yml` come `.github/workflows/docs-app.yml`. Un mirror in pull è di sola lettura: se il repo è il mirror, il workflow va in un repo normale (`admin/gitstack-docs`) con il contenuto di `main` spinto a mano, e si scrive nel registro quale dei due si è usato.
+2. `gs workflow run docs-app.yml --ref main`, poi `gs run watch --exit-status`: il log deve finire con l'immagine pubblicata; `gs package list` la mostra `signature: verified`.
+3. Creare l'app: `gs app create docs --image docs:sha-<12 cifre> --port 8080 --follow-branch main` (o dalla scheda Apps), attendere `serving` e aprire l'indirizzo: con il login GitStack deve comparire il sito.
+4. Aggiornamento da un push: una modifica a una pagina di `docs-site/docs/` (o a `docs/`), `git push` su `main` del repo; il workflow parte da solo, l'app prende una versione `branch_push` e il sito mostra la modifica. Evidenza per l'item: `gs app status docs` e `gs api /repos/<owner>/<repo>/apps/docs/versions` (l’elenco delle versioni) prima e dopo (numero di versione, `trigger: branch_push`, `commitSha` uguale al commit spinto), il link del run e il testo della modifica visibile nel sito.
+5. Rollback con `gs app rollback docs --to <n>` e verifica che il sito torni com'era.
+
+### Risultati (li scrive il board)
+
+| Voce | Valore |
+|---|---|
+| `-Ref` e `-OutDir` del giro e2e | da eseguire |
+| Passo e2e: righe `h-app ciclo` 1–6 e esito complessivo | da eseguire (incollare le righe) |
+| Dominio delle app di homehub e come si risolve | da eseguire |
+| Run del workflow `docs-app` | da eseguire (link al run) |
+| Versione dell'app `docs` prima e dopo il push (`trigger`, `commitSha`) | da eseguire |
+| Modifica visibile nel sito dopo il push | da eseguire |
+| Rollback | da eseguire |
+
 ## Registro del dogfooding (dalla tappa 2 di V7)
 
 Il dogfooding della v1.0 dura almeno **2 settimane dalla tappa 2** (decisione del board del 18/10/2026). Lo compila il board: la data di inizio è il giorno della tappa 2; i fatti si scrivono quando succedono, con data e orari UTC.
@@ -2486,3 +2744,139 @@ Il periodo è valido solo se tutti i quattro criteri valgono: nessuna perdita di
 
 *Guida operativa — install.sh (T-09 di M-08 [c_8458909a21d9035f]),
 decisioni D17–D19 [c_1d1d61aca3dea601]*
+
+## Verifica GitHub dei rami di integrazione
+
+I push su `integrate/**` avviano i workflow GitHub CI, api-contract, docs e smoke con le verifiche previste sui push a main. I job di pubblicazione e gli upload di artifact sono esclusi da questi rami. Il workflow install resta limitato ai tag, alla pianificazione e all'avvio manuale.
+
+GL-78 deve pubblicare su origin il ramo `integrate/MR-n` e attendere l'esito delle verifiche prima di `propose_merge`. Fino a quel cambiamento del motore, questi trigger non ricevono push automatici. Il giro sui runner GitHub aggiunge una stima di 30–40 minuti per reintegro.
+
+### Domini propri, certificati e archivio ACME nel backup (v3-c, GIT-462)
+
+I domini propri delle app e i certificati caricati dal cliente stanno nel database, quindi entrano nel backup
+(la chiave privata del cliente vi è cifrata con il keyring di core, che sta nei Secret). Dopo il restore core
+riscrive i Secret TLS nel namespace dedicato `<release>-certs` entro un minuto (il backup non salva né ripristina quel namespace: i Secret nascono dal database). L'archivio ACME di Traefik
+(`acme.json`, certificati Let's Encrypt) entra come `traefik-acme.tar` se esiste il volume persistente
+`traefik` in `kube-system` (installazione con Let's Encrypt); il restore lo rimette al suo posto con Traefik
+fermo e con i permessi originali (0600). Se la nuova installazione non ha quel volume, l'archivio ACME si salta
+con un avviso e Traefik riemette i certificati. L'archivio contiene la chiave dell'account ACME: cifra i backup (`--key-file`).
+
+#### Namespace dei certificati del cliente (GIT-494)
+
+Con le app accese il chart crea il namespace `<release>-certs` (`gitstack-certs` con la release di default; il nome non è configurabile e non può cominciare con `gitstack-app-`).
+Lì, e solo lì, core ha dei verbi sui Secret: vi scrive i Secret TLS `gitstack-domain-<id>` e il `TLSStore` `default`
+che li elenca (in tutto il cluster ne esiste uno solo). Su `kube-system` e sul namespace del release core non ha nessun
+verbo sui Secret. Con la CA interna il `defaultCertificate` del TLSStore è una copia del Secret `<release>-tls` che il chart
+crea da quello dell'installer (`lookup`) e che `gitstack-tls` tiene aggiornata a ogni rinnovo.
+
+Chi aveva già caricato certificati con una versione precedente (GIT-460, mai in una release) ha i Secret
+`gitstack-domain-*` nel namespace vecchio (quello del release con la CA interna, `kube-system` con Let's Encrypt).
+`gitstack upgrade` li sposta da solo: al primo giro core ricrea i Secret in `<release>-certs` dal database, poi
+l'upgrade cancella le copie vecchie, ma solo quelle che già esistono nel namespace nuovo, e il `TLSStore` `default` di
+`kube-system` se lo ha creato core (nessun `defaultCertificate`, solo certificati `gitstack-domain-*`). Il riepilogo
+elenca quello che resta. Se core non ha ancora ricreato un Secret, si rilancia `gitstack upgrade` dopo qualche minuto
+(è idempotente) oppure si cancella a mano quando il Secret compare nel namespace nuovo:
+
+```sh
+k3s kubectl -n <release>-certs get secrets -l gitstack.io/custom-domain-cert=true
+k3s kubectl -n <namespace-vecchio> delete secret <nome>
+k3s kubectl -n kube-system delete tlsstore default   # solo se non ha defaultCertificate e cita solo gitstack-domain-*
+```
+
+Se un `TLSStore` `default` resta in due namespace Traefik ne sceglie uno a caso e i certificati dei clienti smettono di
+servirsi: controlla con `k3s kubectl get tlsstores -A`. Il backup non salva né ripristina `<release>-certs`: dopo un
+restore core ricrea i Secret dal database.
+
+**Rischio residuo.** Una ValidatingAdmissionPolicy del chart limita create, update e delete di core nel namespace
+dei certificati ai soli Secret `gitstack-domain-*`: core non può sostituire né cancellare la copia di `<release>-tls`
+(il certificato servito a chi si collega per IP). Il `get` però resta aperto, perché il nome dei Secret dei clienti non
+è noto a priori e RBAC non filtra per prefisso: core può quindi leggere la copia del certificato e della chiave del
+server in `<release>-certs` (non i Secret di kube-system né del release).
+
+---
+
+## Prova su homehub: un'app con un volume sopravvive a backup e restore (v3-b, GIT-360)
+
+La lancia il **board**, non un agente: serve `ssh -t` a mano (sudo chiede la password) e un token admin. Si prova che i dati di un'app con un volume persistente (per esempio un wiki interno) tornano dopo `gitstack backup` e `gitstack restore`, senza toccare il resto di homehub. Come per la [condizione 2](#condizione-2-ripristino-di-prova-su-una-macchina-nuova), il restore si fa su una **VM pulita**, mai su homehub. Se un passo dà un esito diverso da quello atteso ci si ferma e si annotano comando, output e ora. L'esito va scritto nell'item GIT-360 solo dopo averlo ottenuto.
+
+**Stato letto il 2026-10-29 dall'host di sviluppo** (non dal board): `curl.exe -ks https://homehub.local/api/v1/meta` → `server_version` `sha-02b615bf9a4e14fbf6ffcab3274523899bd99afa` (commit del 2026-10-27, «Integra GIT-421»). Quel commit **non contiene GIT-357**: `git merge-base --is-ancestor` dà exit 1 per `ecb5aebe` (feat dei volumi nel backup), `be6d902c` (Integra GIT-357) e `7b50df7d` (GIT-423). È invece un antenato di `origin/main` (242 commit più indietro). Quindi **su homehub un volume oggi non entra nel backup**: prima si fa l'upgrade (passo 0), altrimenti la prova non prova niente. Non è stato provato né l'upgrade né nessuno dei passi qui sotto.
+
+**Prerequisiti.** L'hosting delle app acceso su homehub (`--enable-apps`, vedi [Apps domain and wildcard DNS](#apps-domain-and-wildcard-dns-v3-h2) se manca), un token admin in `$TOKEN` sull'host, una VM Ubuntu pulita raggiungibile via SSH (come nella condizione 2). Le variabili usate sotto:
+
+```powershell
+$H = "https://homehub.local/api/v1"
+$TOKEN = "<token admin di homehub>"
+$REPO = "<owner>/<repo>"        # un repo di prova, per esempio admin/wiki-prova
+$IMG  = "<immagine>"            # un'immagine con una shell che resta in esecuzione, per esempio nginx:alpine
+```
+
+**Passo 0. Portare homehub a una versione con GIT-357**
+
+```sh
+ssh -t gitstack@homehub.local
+sudo gitstack upgrade --dry-run          # exit 0, mostra la versione di arrivo
+sudo gitstack upgrade                    # backup preventivo, migrazioni, controllo di salute
+gitstack version
+sudo gitstack status; echo "exit=$?"     # Stato: sano
+```
+
+Dall'host: `curl.exe -ks https://homehub.local/api/v1/meta` deve mostrare un `server_version` diverso da `sha-02b615bf…`; annotalo come `<VERSIONE>` e verifica con `git merge-base --is-ancestor be6d902c <sha>` (exit 0) che contenga GIT-357. Se l'upgrade torna indietro da solo (rollback automatico) ci si ferma qui.
+
+**Passo 1. Creare l'app con un volume e scriverci un file noto** (dall'host)
+
+```powershell
+curl.exe -ks -X POST "$H/repos/$REPO/apps" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "{\"name\":\"wiki\",\"image\":\"$IMG\"}"
+# 202 con app.id: annotalo come <APP_ID>; attendi status running:
+curl.exe -ks "$H/repos/$REPO/apps/wiki" -H "Authorization: Bearer $TOKEN"
+curl.exe -ks -X POST "$H/repos/$REPO/apps/wiki/volumes" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "{\"name\":\"data\",\"mountPath\":\"/data\",\"sizeBytes\":1048576}"
+# 201/202; l'app riparte con il volume: ripeti il GET finché status è running
+curl.exe -ks "$H/repos/$REPO/apps/wiki/volumes" -H "Authorization: Bearer $TOKEN"
+# atteso: il volume data con includeInBackup true
+```
+
+Poi su homehub, il file di prova (contenuto esatto, senza a capo):
+
+```sh
+ssh -t gitstack@homehub.local
+sudo k3s kubectl exec -n gitstack-app-<APP_ID> deploy/app -- sh -c 'printf %s homehub-wiki-prova-1 > /data/prova.txt && sha256sum /data/prova.txt'
+# annota lo SHA-256 stampato: è <SHA_PRIMA>
+```
+
+**Passo 2. Backup su homehub**
+
+```sh
+ssh -t gitstack@homehub.local
+sudo gitstack backup --key-file /etc/gitstack/backup.key
+# nel log: «copia del volume data dell'app <owner>/<repo>/wiki …»
+sudo ls -l /var/backups/gitstack
+```
+
+Esito atteso: exit 0, la riga di copia del volume nel log, un nuovo `gitstack-backup-*.tar.gz.enc` (0600) con il suo `.sha256`. Poi porta archivio e chiave sulla VM come al passo 1 della condizione 2 (`scp`).
+
+**Passo 3. Installare la VM alla stessa versione e ripristinare**
+
+Come ai passi 2 e 3 della condizione 2, con `<VERSIONE>` del passo 0 e **con l'hosting delle app acceso** (`--enable-apps`, con lo stesso `--apps-domain` di homehub):
+
+```sh
+sudo ./deploy/install.sh --image-tag <VERSIONE> --host <ip-vm> --enable-apps --apps-domain <dominio-app>
+sudo gitstack restore --key-file /tmp/backup.key /tmp/gitstack-backup-<data>-<VERSIONE>.tar.gz.enc
+# nel log: «ripristino dei volumi delle app (1)» e «ripristino del volume data dell'app <owner>/<repo>/wiki»
+sudo gitstack status; echo "exit=$?"
+```
+
+**Passo 4. Il file c'è, uguale** (sulla VM, con `ssh -t`; e dall'host per l'API)
+
+```sh
+sudo k3s kubectl get pods -n gitstack-app-<APP_ID>        # il pod dell'app in Running (può volerci qualche minuto)
+sudo k3s kubectl exec -n gitstack-app-<APP_ID> deploy/app -- sh -c 'cat /data/prova.txt; echo; sha256sum /data/prova.txt'
+```
+
+```powershell
+curl.exe -ks "https://<ip-vm>/api/v1/repos/$REPO/apps/wiki" -H "Authorization: Bearer $TOKEN"
+```
+
+Esito atteso: il contenuto è `homehub-wiki-prova-1`, lo SHA-256 è `<SHA_PRIMA>`, `status` è `running`. Se il namespace non è `gitstack-app-<APP_ID>` perché l'id dell'app è cambiato, cerca con `sudo k3s kubectl get ns | grep gitstack-app`. Qualsiasi altro esito (file assente, SHA diverso) è un difetto da segnalare con l'output di `sudo gitstack restore`.
+
+**Pulizia.** La VM si spegne e si cancella, con la copia della chiave (`shred -u /tmp/backup.key`). Su homehub l'app di prova si elimina con `curl.exe -ks -X DELETE "$H/repos/$REPO/apps/wiki" -H "Authorization: Bearer $TOKEN"` (elimina anche il volume e i suoi dati); il backup della prova resta fra quelli della retention. Nessun passo scrive su homehub oltre alla creazione e all'eliminazione dell'app di prova, al backup e all'upgrade del passo 0.
+
+**Controllo negativo (facoltativo).** Per vedere che l'esclusione funziona, ripeti con un secondo volume `scratch` escluso (`curl.exe -ks -X PATCH "$H/repos/$REPO/apps/wiki/volumes/scratch" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "{\"includeInBackup\":false}"`): dopo il restore il volume è montato ma vuoto.

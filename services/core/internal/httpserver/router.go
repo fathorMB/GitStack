@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fathorMB/GitStack/services/core/internal/apps"
 	"github.com/fathorMB/GitStack/services/core/internal/ci"
 	"github.com/fathorMB/GitStack/services/core/internal/events"
 	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
@@ -48,6 +49,7 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 	// Impostazioni del registry per il servizio git (GIT-325): solo con la sua chiave.
 	mux.HandleFunc("GET "+RegistrySettingsPathPrefix+"{repoId}", server.registrySettings)
 	mux.HandleFunc("POST "+RegistryRemovedTagPathPrefix+"{repoId}", server.registryRemovedTag)
+	mux.HandleFunc("POST "+RegistryImagePushedPathPrefix+"{repoId}", server.registryImagePushed)
 	mux.HandleFunc("GET "+RegistryRemovedTagPathPrefix+"{repoId}", server.registryRemovedTags)
 	// Un segreto per chiamante (F9): il gateway può fare tutto, il servizio git
 	// solo risolvere owner/repo. Il Keyring del solo gateway è il caso senza git.
@@ -94,14 +96,18 @@ func newAPIServerWithOptions(pool *pgxpool.Pool, publisher events.Publisher, opt
 		appsDomain:   o.appsDomain,
 		appCtl:       o.appCtl,
 		appsOff:      o.appsOff,
+		appEgress:    o.appEgress,
+		appDomains:   o.appDomains,
 	}, o
 }
 
-// publicPath sono le rotte raggiungibili senza identità: probe k8s e
-// /health, dichiarata `security: []` nel contratto.
+// publicPath sono le rotte raggiungibili senza identità: le probe k8s e le
+// rotte di core che il contratto dichiara `security: []` (il gateway le lascia
+// passare senza identità firmata, quindi anche core deve). Path esatti, nessun
+// prefisso. TestPublicPathMatchesContract fa cadere i disallineamenti.
 func publicPath(r *http.Request) bool {
 	switch r.URL.Path {
-	case "/healthz", "/readyz", "/health":
+	case "/healthz", "/readyz", "/health", "/meta", "/instance/ca":
 		return true
 	}
 	return false
@@ -131,6 +137,9 @@ func callerAllowed(caller string, r *http.Request) bool {
 	if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, RegistryRemovedTagPathPrefix) {
 		return len(strings.Split(strings.Trim(r.URL.Path, "/"), "/")) == 4
 	}
+	if r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, RegistryImagePushedPathPrefix) {
+		return len(strings.Split(strings.Trim(r.URL.Path, "/"), "/")) == 4
+	}
 	if r.Method != http.MethodGet {
 		return false
 	}
@@ -144,6 +153,8 @@ type routerOptions struct {
 	appsDomain   string
 	appCtl       AppController
 	appsOff      bool
+	appEgress    AppEgressConfig
+	appDomains   AppDomainsConfig
 	grants       identityclient.CreatorGranter
 	readable     identityclient.ReadableLister
 	repoIdentity identityclient.RepoIdentity
@@ -251,6 +262,22 @@ type AppController interface {
 	Kick()
 	Restart(ctx context.Context, app store.App) error
 	Scale(ctx context.Context, app store.App) error
+}
+
+// AppEgressConfig sono le barriere d'istanza che l'API dell'uscita delle app (H16) usa per rifiutare le
+// voci vietate: gli stessi cluster e nodo di webhook e mirror. Resolver nil usa il DNS del sistema.
+type AppEgressConfig struct {
+	ClusterCIDRs  []string
+	NodeAddresses []string
+	Deny          []string
+	Resolver      apps.Resolver
+	// ProxyConfigured: l'istanza ha un proxy di uscita N9; le app ristrette non lo usano.
+	ProxyConfigured bool
+}
+
+// WithAppEgress imposta le barriere con cui si valutano le destinazioni di uscita delle app (H16).
+func WithAppEgress(c AppEgressConfig) Option {
+	return func(o *routerOptions) { o.appEgress = c }
 }
 
 // WithAppsHostingOff dichiara l'hosting delle app spento di proposito (GITSTACK_CORE_APPS_ENABLED

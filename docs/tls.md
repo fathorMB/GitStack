@@ -67,7 +67,7 @@ I client non devono rifare niente quando cambia il certificato del server: si fi
 
 ## Let's Encrypt
 
-`--tls letsencrypt --host git.example.com` accetta solo un nome pubblico (non un IP, non `.local`/`.lan`/`.internal`). L'installer scrive `/var/lib/rancher/k3s/server/manifests/gitstack-traefik-letsencrypt.yaml`, un `HelmChartConfig` di k3s per il Traefik incluso: resolver `letsencrypt` (HTTP-01 sull'entrypoint `web`), `acme.json` su un volume persistente da 128 Mi. Servono le porte 80 e 443 raggiungibili da internet e un record DNS che punti all'host. Il chart mette sull'Ingress e sulla rotta git `certResolver: letsencrypt`; Traefik rinnova da solo. L'indirizzo ACME di test si imposta con `GITSTACK_ACME_CA_SERVER` (staging di Let's Encrypt).
+`--tls letsencrypt --host git.example.com` accetta solo un nome pubblico (non un IP, non `.local`/`.lan`/`.internal`). L'installer scrive `/var/lib/rancher/k3s/server/manifests/gitstack-traefik.yaml`, un `HelmChartConfig` di k3s per il Traefik incluso (lo scrive con ogni modalità TLS, per le metriche delle app; con `letsencrypt` aggiunge): resolver `letsencrypt` (HTTP-01 sull'entrypoint `web`), `acme.json` su un volume persistente da 128 Mi. Servono le porte 80 e 443 raggiungibili da internet e un record DNS che punti all'host. Il chart mette sull'Ingress e sulla rotta git `certResolver: letsencrypt`; Traefik rinnova da solo. L'indirizzo ACME di test si imposta con `GITSTACK_ACME_CA_SERVER` (staging di Let's Encrypt).
 
 Questa modalità è documentata e implementata ma non è stata provata con un'emissione reale (richiede un dominio pubblico). Diagnostica: `k3s kubectl -n kube-system logs deploy/traefik | grep -i acme`.
 
@@ -77,7 +77,7 @@ Solo per prove locali: nessun TLS, nessun redirect, URL pubblici `http://`. La U
 
 ## Accesso per IP: TLSStore di default
 
-Un client che apre `https://<IP>/` non manda SNI (RFC 6066). In quel caso Traefik confronta i certificati con l'indirizzo locale della connessione, che su k3s con ServiceLB (DNAT) è l'IP del pod Traefik (10.42.x.y) e non quello della macchina: non trova niente e serve il suo «TRAEFIK DEFAULT CERT», rifiutato dai client. Per questo il chart crea (con `ingress.tls.secretName`) un `TLSStore` chiamato `default` nel namespace della release, con `defaultCertificate.secretName` = il Secret dell'installer: il certificato vale per qualsiasi nome e IP. Con Let's Encrypt (`certResolver`) non serve e non si crea. Verifica sul server: `openssl s_client -connect <IP>:443 </dev/null 2>/dev/null | openssl x509 -noout -issuer` deve dare `O = GitStack` (senza `-servername`).
+Un client che apre `https://<IP>/` non manda SNI (RFC 6066). In quel caso Traefik confronta i certificati con l'indirizzo locale della connessione, che su k3s con ServiceLB (DNAT) è l'IP del pod Traefik (10.42.x.y) e non quello della macchina: non trova niente e serve il suo «TRAEFIK DEFAULT CERT», rifiutato dai client. Per questo il chart crea (con `ingress.tls.secretName`) un `TLSStore` chiamato `default` (nel namespace della release; con le app accese in `<release>-certs`, il namespace dei certificati del cliente: GIT-494, vedi operations.md), con `defaultCertificate.secretName` = il Secret dell'installer: il certificato vale per qualsiasi nome e IP. Con Let's Encrypt (`certResolver`) non serve e non si crea. Verifica sul server: `openssl s_client -connect <IP>:443 </dev/null 2>/dev/null | openssl x509 -noout -issuer` deve dare `O = GitStack` (senza `-servername`).
 
 ## Guida CA per i tester (`/help/ca`, GIT-383)
 

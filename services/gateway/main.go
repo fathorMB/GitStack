@@ -46,14 +46,29 @@ func run() int {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
+	var internalSrv *http.Server
+	if cfg.InternalAddr != "" {
+		internalSrv = &http.Server{
+			Addr:              cfg.InternalAddr,
+			Handler:           httpserver.NewInternalRouter(cfg, logger),
+			ReadHeaderTimeout: 5 * time.Second,
+		}
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	serveErr := make(chan error, 1)
+	serveErr := make(chan error, 2)
 	go func() {
 		logger.Info("gateway in ascolto", "addr", cfg.Addr, "core_url", cfg.CoreURL.String())
 		serveErr <- srv.ListenAndServe()
 	}()
+	if internalSrv != nil {
+		go func() {
+			logger.Info("gateway in ascolto sulla porta interna (app ospitate)", "addr", cfg.InternalAddr)
+			serveErr <- internalSrv.ListenAndServe()
+		}()
+	}
 
 	select {
 	case err := <-serveErr:
@@ -65,6 +80,12 @@ func run() int {
 		logger.Info("arresto in corso")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
+		if internalSrv != nil {
+			if err := internalSrv.Shutdown(shutdownCtx); err != nil {
+				logger.Error("arresto della porta interna non riuscito", "err", err)
+				return 1
+			}
+		}
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			logger.Error("arresto non riuscito", "err", err)
 			return 1

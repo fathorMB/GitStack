@@ -29,6 +29,21 @@ import (
 // Se la tabella di sicurezza è incoerente NewRouter va in panic all'avvio: è
 // un difetto del codice generato, non della configurazione.
 func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Handler {
+	return newRouter(cfg, logger, false, opts...)
+}
+
+// NewInternalRouter è il router della porta interna (GITSTACK_GATEWAY_INTERNAL_ADDR, GIT-442, H16):
+// quella che il chart apre alle app ospitate. Serve solo /v1 (contratto e rotte di identity), con la
+// stessa autenticazione per token; delle rotte di appauth solo le chiavi pubbliche (GIT-444), niente
+// forward-auth e login delle app, niente /v2, niente probe.
+// Non si fida mai di X-Forwarded-For (TrustedProxies è svuotato): l'IP del client è quello del peer,
+// così un'app non può falsificarlo per rate limit e audit.
+func NewInternalRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Handler {
+	cfg.TrustedProxies = nil
+	return newRouter(cfg, logger, true, opts...)
+}
+
+func newRouter(cfg config.Config, logger *slog.Logger, internal bool, opts ...Option) http.Handler {
 	var o routerOptions
 	for _, opt := range opts {
 		opt(&o)
@@ -60,10 +75,12 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 
 	base := middleware.Chain(middleware.RequestID, middleware.Logging(logger, middleware.WithClientIP(func(r *http.Request) string { return proxy.ClientIP(r, cfg.TrustedProxies) })), middleware.Recover(logger))
 
-	mux.Handle("GET /healthz", base(http.HandlerFunc(healthz)))
+	if !internal {
+		mux.Handle("GET /healthz", base(http.HandlerFunc(healthz)))
 
-	readyClient := &http.Client{Timeout: cfg.CoreTimeout}
-	mux.Handle("GET /readyz", base(http.HandlerFunc(readyz(cfg.CoreURL, readyClient, cfg.CoreTimeout))))
+		readyClient := &http.Client{Timeout: cfg.CoreTimeout}
+		mux.Handle("GET /readyz", base(http.HandlerFunc(readyz(cfg.CoreURL, readyClient, cfg.CoreTimeout))))
+	}
 
 	// Identità firmata verso i servizi a valle; le credenziali del client
 	// (Authorization, cookie) non arrivano a core, che si fida solo
@@ -77,7 +94,12 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 		server.registryKey = proxy.ToRegistrySigningKey(cfg.RegistryURL, logger, proxy.WithTrustedProxies(cfg.TrustedProxies), proxy.WithClock(o.now))
 	}
 
-	mountAppAuth(mux, cfg, logger, base, verifier, o)
+	if !internal {
+		mountAppAuth(mux, cfg, logger, base, verifier, o)
+	} else {
+		// Sulla porta interna solo le chiavi pubbliche delle intestazioni H6 (GIT-444).
+		mountAppKeys(mux, cfg, logger, base)
+	}
 
 	// Middlewares è applicato per ogni operazione generata, dal primo
 	// (interno, più vicino al gestore) all'ultimo (esterno): auth e
@@ -113,7 +135,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 	// Registry OCI (GIT-286, RG1): /v2/ va al servizio git. Passa per request id, log,
 	// recover e rate limiting come il resto; l'autenticazione (token Basic) e i permessi
 	// del repo li applica il registry, come per lo smart HTTP di git.
-	if cfg.RegistryURL != nil {
+	if cfg.RegistryURL != nil && !internal {
 		reg := base(limiter.Middleware(proxy.ToRegistry(cfg.RegistryURL, logger, proxy.WithTrustedProxies(cfg.TrustedProxies), proxy.WithClock(o.now))))
 		mux.Handle("/v2/", reg)
 		mux.Handle("/v2", reg)

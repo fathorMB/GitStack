@@ -61,6 +61,43 @@ describe('AppsPage (H1)', () => {
     expect(screen.getByRole('link', { name: 'wiki' })).toBeInTheDocument();
   }, T);
 
+  describe('v3-c: badge Public e indirizzo nella lista', () => {
+    const shop = makeApp({ id: 'a4', name: 'shop', access: 'public', address: 'shop-handbook-acme.apps.acme.it', publicAddress: 'shop-handbook-acme.apps.acme.it' });
+    const shopVerified = makeApp({ id: 'a5', name: 'shop', access: 'public', address: 'shop-handbook-acme.apps.acme.it', publicAddress: 'https://shop.retail.it' });
+
+    it('app interna: badge con login e indirizzo automatico, nessun Public', async () => {
+      setup('admin', [makeApp()]);
+      const list = await screen.findByRole('list', { name: 'Apps' }, { timeout: T });
+      const row = list.querySelector('li') as HTMLElement;
+      expect(row).toHaveTextContent('Internal · GitStack login');
+      expect(row).not.toHaveTextContent('Public');
+      expect(row).toHaveTextContent('web-handbook-acme.apps.acme.it');
+    }, T);
+
+    it('app pubblica senza domini propri: badge Public e indirizzo automatico', async () => {
+      setup('admin', [shop]);
+      const list = await screen.findByRole('list', { name: 'Apps' }, { timeout: T });
+      const row = list.querySelector('li') as HTMLElement;
+      expect(row).toHaveTextContent('Public');
+      expect(row).toHaveTextContent('shop-handbook-acme.apps.acme.it');
+    }, T);
+
+    it.each(['read', 'write', 'admin'] as const)('con %s la lista mostra il dominio verificato di publicAddress, senza chiamate ai domini', async (role) => {
+      setup(role, [shopVerified]);
+      const list = await screen.findByRole('list', { name: 'Apps' }, { timeout: T });
+      const row = list.querySelector('li') as HTMLElement;
+      expect(row).toHaveTextContent('Public');
+      expect(row).toHaveTextContent('https://shop.retail.it');
+      expect(row).not.toHaveTextContent('shop-handbook-acme.apps.acme.it');
+    }, T);
+
+    it('senza publicAddress ricade sull indirizzo automatico', async () => {
+      setup('read', [makeApp({ id: 'a6', name: 'old', access: 'public', address: 'old-handbook-acme.apps.acme.it', publicAddress: null })]);
+      const list = await screen.findByRole('list', { name: 'Apps' }, { timeout: T });
+      expect(list.querySelector('li')).toHaveTextContent('old-handbook-acme.apps.acme.it');
+    }, T);
+  });
+
   it('New app solo con admin', async () => {
     setup('admin');
     expect(await screen.findByRole('link', { name: /New app/ }, { timeout: T })).toHaveAttribute('href', '/acme/handbook/apps/new');

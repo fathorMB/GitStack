@@ -13,11 +13,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/google/uuid"
-	openapi_types "github.com/oapi-codegen/runtime/types"
-
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
+	"github.com/google/uuid"
 )
 
 // App di un repo (v3-a, GIT-342, H5/H8): creazione, lettura, modifica, eliminazione e storico
@@ -94,29 +92,15 @@ func (a openapiActor) store() *store.AppActor {
 }
 
 func actorToAPI(a *store.AppActor) *openapi.AppActor {
-	if a == nil {
-		return nil
-	}
-	return &openapi.AppActor{Id: openapi_types.UUID(a.ID), Username: a.Username, Type: openapi.AppActorType(a.Type)}
+	return store.AppActorToAPI(a)
 }
 
 func healthToAPI(h *store.AppHealthCheck) *openapi.AppHealthCheck {
-	if h == nil {
-		return nil
-	}
-	return &openapi.AppHealthCheck{Path: h.Path, IntervalSeconds: h.IntervalSeconds, TimeoutSeconds: h.TimeoutSeconds}
+	return store.AppHealthToAPI(h)
 }
 
 func resourcesToAPI(c store.AppConfig) openapi.AppResources {
-	return openapi.AppResources{
-		Guaranteed: openapi.AppResourceAmount{CpuMillis: c.Guaranteed.CPUMillis, MemoryBytes: c.Guaranteed.MemoryBytes},
-		Limit:      openapi.AppResourceAmount{CpuMillis: c.Limit.CPUMillis, MemoryBytes: c.Limit.MemoryBytes},
-	}
-}
-
-func imageToAPI(i store.AppImage) openapi.AppImage {
-	return openapi.AppImage{Reference: i.Reference, Digest: i.Digest, Source: openapi.AppImageSource(i.Source),
-		Verified: i.Verified, SignedBy: i.SignedBy, RunsAsRoot: i.RunsAsRoot}
+	return store.AppResourcesToAPI(c)
 }
 
 func (s *apiServer) appAddress(label *string) *string {
@@ -128,29 +112,19 @@ func (s *apiServer) appAddress(label *string) *string {
 }
 
 func (s *apiServer) appToAPI(a store.App) openapi.App {
-	status, reason := a.Effective()
-	ready := a.ReadyCopies
-	if status == "stopped" {
-		ready = 0
-	}
-	out := openapi.App{
-		Id: openapi_types.UUID(a.ID), Name: a.Name, Owner: a.Owner, Repo: a.RepoName,
-		Status: openapi.AppStatus(status), Access: openapi.AppAccessMode(a.Access),
-		Address: s.appAddress(a.AddressLabel), Image: imageToAPI(a.Image), ActiveVersion: a.ActiveVersion,
-		Port: a.Config.Port, HealthCheck: healthToAPI(a.Config.HealthCheck), Copies: a.Config.Copies, ReadyCopies: ready,
-		Resources: resourcesToAPI(a.Config), CreatedAt: a.CreatedAt, CreatedBy: actorToAPI(a.CreatedBy), UpdatedAt: a.UpdatedAt,
-		Volumes: volumesToAPI(a.Volumes),
-	}
-	if reason != nil {
-		sr := openapi.AppStoppedReason(*reason)
-		out.StoppedReason = &sr
-	}
+	out := store.AppToAPI(a)
+	out.Address = s.appAddress(a.AddressLabel)
+	out.Port = a.Config.Port
+	out.HealthCheck = healthToAPI(a.Config.HealthCheck)
+	out.Volumes = volumesToAPI(a.Volumes, a.Image.Reference)
 	if a.RunningPreviousVer {
 		t := true
 		out.RunningPreviousVersion = &t
 	}
 	if a.FollowBranch != nil {
-		out.Follow = &openapi.AppFollow{Branch: *a.FollowBranch, Paused: a.AutoDeployPaused}
+		out.Follow = &openapi.AppFollow{Branch: a.FollowBranch, Paused: a.AutoDeployPaused}
+	} else if a.FollowTagPattern != nil {
+		out.Follow = &openapi.AppFollow{TagPattern: a.FollowTagPattern, Paused: a.AutoDeployPaused}
 	}
 	if d := a.LastDeploy; d != nil {
 		out.LastDeploy = &openapi.AppLastDeploy{Version: d.Version, State: openapi.AppDeployState(d.State), StartedAt: d.StartedAt, FinishedAt: d.FinishedAt, Reason: d.Reason}
@@ -159,20 +133,15 @@ func (s *apiServer) appToAPI(a store.App) openapi.App {
 }
 
 func (s *apiServer) versionToAPI(v store.AppVersion, active, previous int) openapi.AppVersion {
+	out := store.AppVersionToAPI(v, active, previous)
 	cfg := openapi.AppVersionConfig{
 		Port: v.Config.Port, HealthCheck: healthToAPI(v.Config.HealthCheck), Variables: v.Config.Variables,
 		Resources: resourcesToAPI(v.Config), Copies: v.Config.Copies, Restricted: &v.Config.Restricted,
 		SecretNames: []openapi.AppEnvName{}, Volumes: volumeSpecsToAPI(v.Config.Volumes),
 	}
 	cfg.SecretNames = append(cfg.SecretNames, v.Config.SecretNames...)
-	return openapi.AppVersion{
-		Number: v.Number, Trigger: openapi.AppVersionTrigger(v.Trigger), State: openapi.AppDeployState(v.State),
-		StateReason: v.StateReason, Image: imageToAPI(v.Image),
-		// Il registro dei tag non è letto qui: finché non lo dice la pulizia (RG2) l'immagine è disponibile.
-		ImageAvailable: true, InBackup: v.Number == active || v.Number == previous,
-		Branch: v.Branch, CommitSha: v.CommitSha, Summary: v.Summary, RollbackOf: v.RollbackOf,
-		Config: &cfg, CreatedAt: v.CreatedAt, CreatedBy: actorToAPI(v.CreatedBy),
-	}
+	out.Config = &cfg
+	return out
 }
 
 // previousVersion è la versione che precede l'attiva (anch'essa sempre nei backup, H4).
@@ -267,6 +236,8 @@ func validAmounts(g, l openapi.AppResourceAmount) string {
 func (s *apiServer) writeAppConflict(w http.ResponseWriter, err error) bool {
 	var ce *store.CapacityError
 	switch {
+	case errors.Is(err, store.ErrAppFollowBoth):
+		writeFollowBoth(w)
 	case errors.Is(err, store.ErrAppNameTaken):
 		writeError(w, http.StatusConflict, "name_taken", "Il repo ha già un'app con questo nome.")
 	case errors.Is(err, store.ErrAppAddressConflict):
@@ -283,6 +254,19 @@ func (s *apiServer) writeAppConflict(w http.ResponseWriter, err error) bool {
 		msg := "La quota delle app dell'owner non basta per le parti garantite."
 		if _, disk := ce.Missing["diskBytes"]; disk {
 			msg = "La quota disco dell'owner non basta per questo volume: mancano " + fmt.Sprint(ce.Missing["diskBytes"]) + " byte."
+		} else {
+			_, ownerCPU := ce.Missing["cpuMillis"]
+			_, ownerMemory := ce.Missing["memoryBytes"]
+			_, serverCPU := ce.Missing["reserveCpuMillis"]
+			_, serverMemory := ce.Missing["reserveMemoryBytes"]
+			ownerMissing := ownerCPU || ownerMemory
+			serverMissing := serverCPU || serverMemory
+			switch {
+			case serverMissing && !ownerMissing:
+				msg = "La riserva delle app del server non basta per le parti garantite."
+			case serverMissing && ownerMissing:
+				msg = "La quota delle app dell'owner e la riserva delle app del server non bastano per le parti garantite."
+			}
 		}
 		writeErrorDetails(w, http.StatusConflict, "insufficient_capacity", msg, map[string]any{
 			"owner":   ce.Owner,
@@ -313,8 +297,24 @@ func (s *apiServer) ListApps(w http.ResponseWriter, r *http.Request, owner opena
 		return
 	}
 	out := openapi.AppList{Items: []openapi.App{}}
+	publicOn, err := s.resources.PublicAppsEnabled(r.Context())
+	if err != nil {
+		appInternalError(w, "lettura delle app pubbliche", err)
+		return
+	}
+	byApp := map[uuid.UUID][]store.AppDomain{}
+	if publicOn {
+		all, err := s.resources.ListAppDomainsForCheck(r.Context())
+		if err != nil {
+			appInternalError(w, "lettura dei domini", err)
+			return
+		}
+		for _, d := range all {
+			byApp[d.AppID] = append(byApp[d.AppID], d)
+		}
+	}
 	for _, a := range apps {
-		out.Items = append(out.Items, s.appToAPI(a))
+		out.Items = append(out.Items, s.appToAPIWith(a, publicOn, byApp[a.ID]))
 	}
 	limits, used, isDefault, err := s.resources.OwnerAppQuota(r.Context(), repo.OwnerName)
 	if err != nil {
@@ -396,6 +396,22 @@ func (s *apiServer) CreateApp(w http.ResponseWriter, r *http.Request, owner open
 		}
 		follow = in.FollowBranch
 	}
+	var followTag *string
+	if in.FollowTagPattern != nil {
+		if msg := validTagPattern(*in.FollowTagPattern); msg != "" {
+			writeFieldError(w, "followTagPattern", msg)
+			return
+		}
+		if img.Source == "external" {
+			writeFieldError(w, "followTagPattern", "followTagPattern: non disponibile per un'immagine esterna.")
+			return
+		}
+		followTag = in.FollowTagPattern
+	}
+	if follow != nil && followTag != nil {
+		writeFollowBoth(w)
+		return
+	}
 	var label *string
 	if cfg.Port != nil {
 		l := appAddressLabel(in.Name, repo.Name, repo.OwnerName)
@@ -406,9 +422,18 @@ func (s *apiServer) CreateApp(w http.ResponseWriter, r *http.Request, owner open
 		}
 		label = &l
 	}
+	// Firma (H10): «non verificata» se non è della CI né di una chiave fidata; con «solo firmate» è rifiutata.
+	img, sig, ok := s.verifyAppImage(w, r.Context(), repo, img)
+	if !ok {
+		return
+	}
+	if (follow != nil || followTag != nil) && !sig.ByCI {
+		writeError(w, http.StatusUnprocessableEntity, "follow_branch_unsigned", "Il deploy automatico accetta solo immagini firmate dalla CI di questo repo: questa immagine non lo è.")
+		return
+	}
 	app, ver, err := s.resources.CreateApp(r.Context(), store.NewApp{
 		RepoID: repo.ID, Owner: repo.OwnerName, Name: in.Name, AddressLabel: label, Image: img, Config: cfg,
-		FollowBranch: follow, Actor: actor.store(), CommitSha: s.imageCommit(r.Context(), repo, img),
+		FollowBranch: follow, FollowTagPattern: followTag, Actor: actor.store(), CommitSha: s.imageCommit(r.Context(), repo, img),
 	}, s.now())
 	if err != nil {
 		if !s.writeAppConflict(w, err) {
@@ -416,7 +441,11 @@ func (s *apiServer) CreateApp(w http.ResponseWriter, r *http.Request, owner open
 		}
 		return
 	}
-	writeJSON(w, http.StatusAccepted, openapi.AppCreated{App: s.appToAPI(app), Version: s.versionToAPI(ver, app.ActiveVersion, previousVersion(app.ActiveVersion))})
+	ai, ok := s.appResponse(w, r, app)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusAccepted, openapi.AppCreated{App: ai, Version: s.versionToAPI(ver, app.ActiveVersion, previousVersion(app.ActiveVersion))})
 }
 
 func (s *apiServer) appFor(w http.ResponseWriter, r *http.Request, repo store.Repo, name string) (store.App, bool) {
@@ -442,7 +471,9 @@ func (s *apiServer) GetApp(w http.ResponseWriter, r *http.Request, owner openapi
 	if !ok {
 		return
 	}
-	writeJSON(w, http.StatusOK, s.appToAPI(a))
+	if ai, ok := s.appResponse(w, r, a); ok {
+		writeJSON(w, http.StatusOK, ai)
+	}
 }
 
 // UpdateApp implementa PATCH /repos/{owner}/{repo}/apps/{app}: porta, controllo di salute, deploy
@@ -524,7 +555,31 @@ func (s *apiServer) UpdateApp(w http.ResponseWriter, r *http.Request, owner open
 				writeFieldError(w, "followBranch", "followBranch: non disponibile per un'immagine esterna.")
 				return
 			}
+			if !s.requireCISigned(w, r.Context(), repo, cur.Image) {
+				return
+			}
 			p.FollowBranch = &v
+		case "followTagPattern":
+			p.SetFollowTag = true
+			if isNull(m) {
+				continue
+			}
+			var v string
+			if !decode(key, &v) {
+				return
+			}
+			if msg := validTagPattern(v); msg != "" {
+				writeFieldError(w, "followTagPattern", msg)
+				return
+			}
+			if cur.Image.Source == "external" {
+				writeFieldError(w, "followTagPattern", "followTagPattern: non disponibile per un'immagine esterna.")
+				return
+			}
+			if !s.requireCISigned(w, r.Context(), repo, cur.Image) {
+				return
+			}
+			p.FollowTagPattern = &v
 		case "autoDeployPaused":
 			p.SetPaused = true
 			if isNull(m) || !decode(key, &p.AutoDeployPaused) {
@@ -545,6 +600,18 @@ func (s *apiServer) UpdateApp(w http.ResponseWriter, r *http.Request, owner open
 			writeError(w, http.StatusBadRequest, "bad_request", "Corpo della richiesta non valido.")
 			return
 		}
+	}
+	// Branch e regola sui tag non convivono: vale lo stato che risulterebbe dopo la modifica.
+	branchAfter, tagAfter := cur.FollowBranch != nil, cur.FollowTagPattern != nil
+	if p.SetFollow {
+		branchAfter = p.FollowBranch != nil
+	}
+	if p.SetFollowTag {
+		tagAfter = p.FollowTagPattern != nil
+	}
+	if branchAfter && tagAfter {
+		writeFollowBoth(w)
+		return
 	}
 	// Una porta data a un'app senza indirizzo gliene dà uno (stessi controlli della creazione);
 	// togliere la porta non cambia l'etichetta già riservata.
@@ -568,7 +635,9 @@ func (s *apiServer) UpdateApp(w http.ResponseWriter, r *http.Request, owner open
 		}
 		return
 	}
-	writeJSON(w, http.StatusOK, s.appToAPI(updated))
+	if ai, ok := s.appResponse(w, r, updated); ok {
+		writeJSON(w, http.StatusOK, ai)
+	}
 }
 
 // DeleteApp implementa DELETE /repos/{owner}/{repo}/apps/{app}. Se l'app ha volumi elimina anche i

@@ -122,6 +122,19 @@
          v2 scaricabili dal registry ripristinato (200), 7 il terzo tag no
          (404, RG2). Si salta con -SkipBackupRestore (e allora l'hosting resta
          spento, come prima).
+      h-app ciclo. (GIT-355) prima del backup: app web e2elife, deploy di v1, login
+         GitStack davanti all app (401 senza credenziale, corpo con il token), deploy
+         di v2, rollback a v1, eliminazione: sei righe PASS/FAIL, pod in app-ciclo/diag.log.
+      h-pub, i-pub. (GIT-468, H1/H2) prima del backup, app pubblica e dominio proprio con
+         Pebble come server ACME e un resolver DNS di prova (zona nel CoreDNS del cluster,
+         e2e/gs-app-public.sh): l installer e rilanciato con GITSTACK_ACME_CA_SERVER, si
+         accende l interruttore delle app pubbliche, e2epub diventa public, si aggiunge e si
+         verifica un dominio, Pebble emette il certificato, l app risponde senza login sul
+         dominio; spento l interruttore il dominio non espone piu l app (l indirizzo
+         automatico chiede il login, ADR 0002), riacceso tutto torna. Tredici righe PASS/FAIL
+         (h-pub) e, dopo `gitstack restore`, quattro (i-pub): dominio, certificato e impronta
+         ancora quelli di prima, app raggiungibile. Log di Pebble/Traefik/CoreDNS in
+         app-pubblica/diag.log.
       j. (GIT-148, DF/F) reset, installazione del commit precedente
          (-PreviousRef, default: il primo genitore di -Ref), dati, restore
          di un archivio di un'altra versione rifiutato (exit 6), `gitstack
@@ -218,11 +231,16 @@ param(
 . (Join-Path $PSScriptRoot 'lib\http.ps1')
 . (Join-Path $PSScriptRoot 'lib\tls.ps1')
 . (Join-Path $PSScriptRoot 'lib\phases.ps1')
+. (Join-Path $PSScriptRoot 'lib\pilot.ps1')
 
 # --- Stato globale (risultati dei passi, file di log) ----------------------
 
 $script:StepResults = New-Object System.Collections.Generic.List[object]
 $script:LogFile = $null
+$script:PilotDbReady = $false
+$script:PilotContext = $null
+$script:PilotSite = $null
+$script:RestoredBaseUrl = $null
 
 function Write-Log {
     param([string]$Message)
@@ -799,7 +817,7 @@ function Main {
             if ($uLogin.StatusCode -ne 200 -or -not $uLogin.Cookie) { throw "login utente di prova: status $($uLogin.StatusCode) $($uLogin.Body)" }
             $uck = $uLogin.Cookie
             $expires = (Get-Date).ToUniversalTime().AddHours(2).ToString('yyyy-MM-ddTHH:mm:ssZ')
-            $mkTok = Invoke-HttpRaw -Uri "$baseUrl/api/v1/user/tokens" -Method 'POST' -Cookie $uck -Body (@{ name = 'e2e'; scopes = @('read:resource', 'write:resource'); expiresAt = $expires } | ConvertTo-Json)
+            $mkTok = Invoke-HttpRaw -Uri "$baseUrl/api/v1/user/tokens" -Method 'POST' -Cookie $uck -Body (@{ name = 'e2e'; scopes = @('read:resource', 'write:resource', 'read:registry', 'write:registry'); expiresAt = $expires } | ConvertTo-Json)
             if ($mkTok.StatusCode -ne 201) { throw "creazione token: status $($mkTok.StatusCode) $($mkTok.Body)" }
             $gitToken = ($mkTok.Body | ConvertFrom-Json).token
             if (-not $gitToken) { throw "creazione token: risposta senza 'token'" }
@@ -1118,13 +1136,15 @@ function Main {
                 Start-Sleep -Seconds 5
             }
             if (-not $apiBack) { throw "l'API dei mirror non risponde 200 dopo il riavvio di core (ultimo status $($probe.StatusCode))" }
+            # Anche git e' in rollout: si aspetta una richiesta che passa dal servizio git (GIT-434).
+            Wait-GitServing -BaseUrl $baseUrl -Owner $gitUser -Repo $gitRepo -Headers $e9Bearer -TimeoutSeconds 180
 
             $e9Stage = 'creazione del mirror'
             $mirrorsUrl = "$baseUrl/api/v1/repos/$gitUser/$gitRepo/mirrors"
             $destUrl = "https://${MirrorAliasIp}:$e9Port/mirror.git"
             $mkMirror = Invoke-HttpRaw -Uri $mirrorsUrl -Method 'POST' -Headers $e9Bearer -Body (@{ url = $destUrl; username = $destUser; token = $destToken } | ConvertTo-Json)
             if ($mkMirror.StatusCode -ne 201) { throw "POST /mirrors: status $($mkMirror.StatusCode), corpo '$($mkMirror.Body)' $($mkMirror.Error)" }
-            if ($mkMirror.Body.Contains($destToken)) { throw "il token della destinazione compare nella risposta del POST /mirrors" }
+            if ((Get-TrimmedText -Result $mkMirror -Property 'Body').Contains($destToken)) { throw "il token della destinazione compare nella risposta del POST /mirrors" }
             $e9MirrorId = ($mkMirror.Body | ConvertFrom-Json).id
             if (-not $e9MirrorId) { throw "POST /mirrors: risposta senza 'id'" }
             $e9MirrorUrl = "$mirrorsUrl/$e9MirrorId"
@@ -1136,17 +1156,17 @@ function Main {
                 $getMirror = Invoke-HttpRaw -Uri $e9MirrorUrl -Headers $e9Bearer
                 if ($getMirror.StatusCode -eq 200) {
                     $mj = $getMirror.Body | ConvertFrom-Json
-                    $mirrorState = [string]$mj.state
-                    $mirrorErr = [string]$mj.lastError
+                    $mirrorState = Get-JsonField -Object $mj -Name 'state'
+                    $mirrorErr = Get-JsonField -Object $mj -Name 'lastError'
                     if ($mirrorState -eq 'in_sync' -or $mirrorState -eq 'diverged') { break }
                 }
                 Start-Sleep -Seconds 5
             }
             if ($mirrorState -ne 'in_sync') { throw "stato del mirror '$mirrorState' (atteso in_sync) dopo il primo push: $mirrorErr" }
             $lsMain = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('ls-remote', $httpsUrl, 'refs/heads/main')) -TimeoutSeconds 60
-            if ($lsMain.ExitCode -ne 0 -or $lsMain.StdOut.Trim() -notmatch '^([0-9a-f]{40})\s') { throw "ls-remote del repo sorgente: exit $($lsMain.ExitCode) $($lsMain.StdOut) $($lsMain.StdErr)" }
+            if ($lsMain.ExitCode -ne 0 -or (Get-TrimmedText -Result $lsMain) -notmatch '^([0-9a-f]{40})\s') { throw "ls-remote del repo sorgente: exit $($lsMain.ExitCode) $($lsMain.StdOut) $($lsMain.StdErr)" }
             $srcMain = $Matches[1]
-            $dstMain = (Invoke-RemoteHelper -RemoteArgs @('mirror-dest-ref', 'refs/heads/main') -TimeoutSeconds 30).StdOut.Trim()
+            $dstMain = Get-TrimmedText -Result (Invoke-RemoteHelper -RemoteArgs @('mirror-dest-ref', 'refs/heads/main') -TimeoutSeconds 30)
             if ($dstMain -ne $srcMain) { throw "main sulla destinazione '$dstMain', sulla sorgente '$srcMain'" }
 
             $e9Stage = 'push nuovo con un tag (via git.push)'
@@ -1159,21 +1179,26 @@ function Main {
                 $r = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + $g) -TimeoutSeconds 120
                 if ($r.ExitCode -ne 0) { throw "git $($g[2]) per il mirror: exit $($r.ExitCode) $($r.StdOut) $($r.StdErr)" }
             }
-            $newMain = (Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('-C', $w1, 'rev-parse', 'HEAD')) -TimeoutSeconds 30).StdOut.Trim()
-            $newTag = (Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('-C', $w1, 'rev-parse', 'refs/tags/v-e2e-mirror')) -TimeoutSeconds 30).StdOut.Trim()
+            $newMain = Get-TrimmedText -Result (Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('-C', $w1, 'rev-parse', 'HEAD')) -TimeoutSeconds 30)
+            $newTag = Get-TrimmedText -Result (Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('-C', $w1, 'rev-parse', 'refs/tags/v-e2e-mirror')) -TimeoutSeconds 30)
             if ($newMain -notmatch '^[0-9a-f]{40}$' -or $newTag -notmatch '^[0-9a-f]{40}$') { throw "SHA locali non leggibili: main '$newMain', tag '$newTag'" }
             $arrived = $false
             $dstMain2 = ''
             $dstTag2 = ''
             for ($i = 1; $i -le 24; $i++) {
-                $dstMain2 = (Invoke-RemoteHelper -RemoteArgs @('mirror-dest-ref', 'refs/heads/main') -TimeoutSeconds 30).StdOut.Trim()
-                $dstTag2 = (Invoke-RemoteHelper -RemoteArgs @('mirror-dest-ref', 'refs/tags/v-e2e-mirror') -TimeoutSeconds 30).StdOut.Trim()
+                # Ref assente o errore transitorio del helper: uscita vuota, si riprova.
+                try {
+                    $dstMain2 = Get-TrimmedText -Result (Invoke-RemoteHelper -RemoteArgs @('mirror-dest-ref', 'refs/heads/main') -TimeoutSeconds 30)
+                    $dstTag2 = Get-TrimmedText -Result (Invoke-RemoteHelper -RemoteArgs @('mirror-dest-ref', 'refs/tags/v-e2e-mirror') -TimeoutSeconds 30)
+                } catch {
+                    $dstMain2 = ''; $dstTag2 = ''
+                }
                 if ($dstMain2 -eq $newMain -and $dstTag2 -eq $newTag) { $arrived = $true; break }
                 Start-Sleep -Seconds 5
             }
             if (-not $arrived) { throw "dopo 2 minuti la destinazione ha main '$dstMain2' e tag '$dstTag2'; attesi '$newMain' e '$newTag'" }
             $finalMirror = Invoke-HttpRaw -Uri $e9MirrorUrl -Headers $e9Bearer
-            if ($finalMirror.StatusCode -ne 200 -or $finalMirror.Body.Contains($destToken)) { throw "GET del mirror: status $($finalMirror.StatusCode) oppure il token compare nel corpo" }
+            if ($finalMirror.StatusCode -ne 200 -or (Get-TrimmedText -Result $finalMirror -Property 'Body').Contains($destToken)) { throw "GET del mirror: status $($finalMirror.StatusCode) oppure il token compare nel corpo" }
         } catch {
             $e9Ok = $false
             $e9Details += "[$e9Stage] $($_.Exception.Message)"
@@ -1189,7 +1214,15 @@ function Main {
             # Pulizia: mirror, cablaggio e server di prova, anche dopo un fallimento.
             try {
                 if ($e9MirrorUrl) { Invoke-HttpRaw -Uri $e9MirrorUrl -Method 'DELETE' -Headers $e9Bearer | Out-Null }
-                if ($e9Wired) { Invoke-RemoteHelper -RemoteArgs @('mirror-disable', 'gitstack', 'default') -TimeoutSeconds 600 | Out-Null }
+                if ($e9Wired) {
+                    Invoke-RemoteHelper -RemoteArgs @('mirror-disable', 'gitstack', 'default') -TimeoutSeconds 600 | Out-Null
+                    try {
+                        Wait-GitServing -BaseUrl $baseUrl -Owner $gitUser -Repo $gitRepo -Headers $e9Bearer -TimeoutSeconds 180
+                    } catch {
+                        $e9Ok = $false
+                        $e9Details += "[dopo mirror-disable] $($_.Exception.Message)"
+                    }
+                }
                 if ($e9Started) { Invoke-RemoteHelper -RemoteArgs @('mirror-dest-stop') -TimeoutSeconds 30 | Out-Null }
             } catch {
                 Write-Log "e9: pulizia non completata: $($_.Exception.Message)"
@@ -1253,13 +1286,17 @@ function Main {
                 Start-Sleep -Seconds 5
             }
             if (-not $coreBack) { throw "core non risponde 200 dopo il riavvio (ultimo status $($probe10.StatusCode))" }
+            # La sonda sopra tocca solo core e DB: si aspetta anche il servizio git (GIT-434).
+            Wait-GitServing -BaseUrl $baseUrl -Owner $gitUser -Repo $gitRepo -Headers $e10Bearer -TimeoutSeconds 180
 
             $e10Stage = 'import come mirror'
             $originUrl = "https://${MirrorAliasIp}:$e10Port/mirror.git"
-            $imp = Invoke-HttpRaw -Uri "$baseUrl/api/v1/repos/import" -Method 'POST' -Headers $e10Bearer -Body (@{
+            # Al massimo 4 tentativi, e solo su 503 git_unavailable (il repo non e' stato creato).
+            $imp = Invoke-RepoImportWithRetry -Uri "$baseUrl/api/v1/repos/import" -Headers $e10Bearer -MaxAttempts 4 -DelaySeconds 10 -Body (@{
                     owner = $gitUser; name = $e10Name; visibility = 'private'; url = $originUrl; mode = 'mirror'
                     username = $originUser; token = $originToken; intervalSeconds = 3600 } | ConvertTo-Json)
-            if ($imp.StatusCode -ne 201) { throw "POST /repos/import: status $($imp.StatusCode), corpo '$($imp.Body)' $($imp.Error)" }
+            if ($imp.Attempts -gt 1) { $e10Details += "POST /repos/import: $($imp.Attempts) tentativi (503 git_unavailable prima dell'ultimo)" }
+            if ($imp.StatusCode -ne 201) { throw "POST /repos/import: status $($imp.StatusCode) dopo $($imp.Attempts) tentativi, corpo '$($imp.Body)' $($imp.Error)" }
             $e10Repo = $e10Name
             if ($imp.Body.Contains($originToken)) { throw "il token dell'origine compare nella risposta dell'import" }
             $e10PullUrl = "$baseUrl/api/v1/repos/$gitUser/$e10Name/pull-mirror"
@@ -1272,8 +1309,8 @@ function Main {
                 $getPull = Invoke-HttpRaw -Uri $e10PullUrl -Headers $e10Bearer
                 if ($getPull.StatusCode -eq 200) {
                     $pj = $getPull.Body | ConvertFrom-Json
-                    $pullState = [string]$pj.state
-                    $pullErr = [string]$pj.lastError
+                    $pullState = Get-JsonField -Object $pj -Name 'state'
+                    $pullErr = Get-JsonField -Object $pj -Name 'lastError'
                     if ($pullState -eq 'in_sync' -or $pullState -eq 'error') { break }
                 }
                 Start-Sleep -Seconds 5
@@ -1331,7 +1368,15 @@ function Main {
                     Invoke-HttpRaw -Uri "$e10PullUrl/stop" -Method 'POST' -Headers $e10Bearer -Body (@{ confirm = $e10Repo } | ConvertTo-Json) | Out-Null
                     Invoke-HttpRaw -Uri "$baseUrl/api/v1/repos/$gitUser/$e10Repo" -Method 'DELETE' -Headers $e10Bearer | Out-Null
                 }
-                if ($e10Wired) { Invoke-RemoteHelper -RemoteArgs @('mirror-disable', 'gitstack', 'default') -TimeoutSeconds 600 | Out-Null }
+                if ($e10Wired) {
+                    Invoke-RemoteHelper -RemoteArgs @('mirror-disable', 'gitstack', 'default') -TimeoutSeconds 600 | Out-Null
+                    try {
+                        Wait-GitServing -BaseUrl $baseUrl -Owner $gitUser -Repo $gitRepo -Headers $e10Bearer -TimeoutSeconds 180
+                    } catch {
+                        $e10Ok = $false
+                        $e10Details += "[dopo mirror-disable] $($_.Exception.Message)"
+                    }
+                }
                 if ($e10Started) { Invoke-RemoteHelper -RemoteArgs @('mirror-dest-stop') -TimeoutSeconds 30 | Out-Null }
             } catch {
                 Write-Log "e10: pulizia non completata: $($_.Exception.Message)"
@@ -1434,6 +1479,41 @@ function Main {
             $e12Details += "[$e12Stage] $($_.Exception.Message)"
         }
         Add-StepResult -Name 'e12. CI (GIT-291): workflow con input, run watch --exit-status, view --log-failed, immagine nel registry e release' -Ok $e12Ok -Detail ($e12Details -join '; ')
+
+        if (-not $SkipBackupRestore -and $script:AppsDomain) {
+            if ($e12Ok -and $gitToken -and $gitUser) {
+                Invoke-E2ePilotMirror -BaseUrl $baseUrl -Owner $gitUser -Token $gitToken -Suffix $suffix -AliasIp $MirrorAliasIp -OriginPort $MirrorOriginPort
+                try {
+                    if ($script:PilotContext) { $script:PilotDbReady = Initialize-E2ePilotDatabase -BaseUrl $baseUrl -Context $script:PilotContext }
+                    if ($script:PilotDbReady -and $ck -and $script:CaFingerprint) {
+                        $script:PilotSite = Initialize-E2ePilotSite -BaseUrl $baseUrl -AdminCookie $ck -Suffix $suffix -CaFingerprint $script:CaFingerprint -Context $script:PilotContext
+                    }
+                    if ($script:PilotSite) {
+                        Invoke-E2ePilotTester -BaseUrl $baseUrl -CaPath $caPath -WorkDir (Join-Path $OutDir 'pilot') -Context $script:PilotContext -Site $script:PilotSite
+                    } else {
+                        Add-StepResult -Name 'pilot: HTTPS del tester e issue' -Ok $false -Detail 'sito o tester non disponibili'
+                    }
+                } finally {
+                    # GIT-514: anche se il tester cade o e saltato, le app api e sito create si tolgono prima di h-app e h-pub.
+                    if ($script:PilotContext) { Remove-E2ePilotApps -BaseUrl $baseUrl -Context $script:PilotContext }
+                }
+            } else {
+                Add-StepResult -Name 'pilot: prerequisiti CI' -Ok $false -Detail 'e12 fallito o token di prova mancante'
+            }
+        }
+
+        # Conserva i log prima che il passo f ricrei core e git.
+        $preFDir = Join-Path $OutDir 'pre-f-diagnostics'
+        New-Item -ItemType Directory -Path $preFDir -Force | Out-Null
+        try {
+            $snapshot = Invoke-RemoteHelper -RemoteArgs @('collect-ci-diagnostics', '/tmp/gitstack-e2e/pre-f-diag') -TimeoutSeconds 120
+            if ($snapshot.ExitCode -ne 0) { throw "raccolta exit $($snapshot.ExitCode): $($snapshot.StdErr)" }
+            $pullSnapshot = Copy-FromVm -RemotePath '/tmp/gitstack-e2e/pre-f-diag/*' -LocalPath $preFDir -TimeoutSeconds 120
+            if ($pullSnapshot.ExitCode -ne 0) { throw "scp exit $($pullSnapshot.ExitCode): $($pullSnapshot.StdErr)" }
+        } catch {
+            Set-Content -LiteralPath (Join-Path $preFDir 'DIAGNOSTICA-NON-RACCOLTA.txt') -Value $_.Exception.Message -Encoding utf8
+            Write-Log "ATTENZIONE: diagnostica prima di f non raccolta: $($_.Exception.Message)"
+        }
 
         # --- f. idempotenza -----------------------------------------------
         Write-Log "==> Passo f: idempotenza (seconda esecuzione dell'installer, senza reset) ..."
@@ -1540,6 +1620,13 @@ function Main {
             Add-StepResult -Name 'h. backup e restore' -Ok $false -Detail "manca la sessione dell'admin (passo e3 fallito): impossibile creare i dati di prova"
         } else {
             Invoke-E2eBackupRestorePhase -BaseUrl $baseUrl -CaPath $caPath -AdminPassword $adminNewPassword -InstallRef $Ref
+            if ($script:AppsDomain) {
+                if ($script:PilotDbReady -and $script:PilotContext -and $script:RestoredBaseUrl) {
+                    Test-E2ePilotDatabaseAfterRestore -BaseUrl $script:RestoredBaseUrl -Context $script:PilotContext
+                } else {
+                    Add-StepResult -Name 'pilot 7. dato PostgreSQL conservato dopo backup e restore' -Ok $false -Detail 'database o restore non disponibili'
+                }
+            }
         }
 
         # --- j. upgrade dal commit precedente (GIT-148, DF/F) -------------

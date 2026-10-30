@@ -3,15 +3,16 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, ConfirmDialog, EmptyState, ErrorAlert, FormField, TextInput, useToast } from '../../../components';
-import { addAppVolume, fetchAppVersions, fetchAppVolumes, removeAppVolume, saveAppResources, updateApp } from '../../../lib/appsApi';
+import { addAppVolume, fetchAppVersions, fetchAppVolumes, removeAppVolume, saveAppResources, setVolumeInBackup, updateApp } from '../../../lib/appsApi';
 import type { App, AppVolume } from '../../../lib/appsApi';
 import type { AppPermissions } from '../../../lib/appsPermissions';
 import { formatCpu, formatMemory, percent } from '../../../lib/appsView';
-import { formatDisk, looksLikeDatabase, parseBytes, parseCpuMillis } from '../../../lib/appVolumes';
+import { DUMP_GUIDE_URL, formatDisk, looksLikeDatabase, parseBytes, parseCpuMillis } from '../../../lib/appVolumes';
 import { describeError } from '../../../lib/http';
 import type { Repository } from '../../../lib/reposApi';
 import { useLoad } from '../../../lib/useLoad';
 import { AppHeader } from './AppHeader';
+import { AppOutboundSection } from './AppOutboundSection';
 import { appsPath } from './appMode';
 
 interface Props {
@@ -25,7 +26,7 @@ const MIN_VOLUME = 1024 * 1024;
 
 /**
  * Volumes & resources (H3, H9, H11; mockup data-screen="volumes"): volumi con dimensione e mount, avviso database,
- * nota sulla copia unica, risorse garantite e tetto, modalità restricted. L'uscita di rete (H16) è di un altro item.
+ * nota sulla copia unica, risorse garantite e tetto, modalità restricted e uscita di rete (H16, AppOutboundSection).
  */
 export function AppVolumesPage({ repo, app, perms, onChange }: Props) {
   const owner = repo.owner.name;
@@ -47,7 +48,8 @@ export function AppVolumesPage({ repo, app, perms, onChange }: Props) {
   const quota = data?.volumes.quota;
   const isRestricted = restricted ?? data?.restricted ?? false;
   const canEdit = perms.canConfigure;
-  const dbVolume = volumes.find((v) => looksLikeDatabase(v.mountPath, app.image.reference));
+  // L'avviso viene dall'API (looksLikeDatabase, D19); la regola locale resta per le risposte di server più vecchi.
+  const dbVolume = volumes.find((v) => v.looksLikeDatabase ?? looksLikeDatabase(v.mountPath, app.image.reference));
   const dumpTarget = volumes.find((v) => v !== dbVolume);
 
   async function confirmRemove() {
@@ -61,6 +63,20 @@ export function AppVolumesPage({ repo, app, perms, onChange }: Props) {
     } catch (err) {
       setTarget(null);
       setActionError(describeError(err));
+    }
+  }
+
+  async function toggleBackup(v: AppVolume, include: boolean) {
+    setBusy(true);
+    setActionError(null);
+    try {
+      await setVolumeInBackup(owner, name, app.name, v.name, include);
+      toast(include ? `Volume ${v.name} is in backups.` : `Volume ${v.name} is left out of backups.`, 'success');
+      await reload();
+    } catch (err) {
+      setActionError(describeError(err));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -149,10 +165,10 @@ export function AppVolumesPage({ repo, app, perms, onChange }: Props) {
                               type="checkbox"
                               role="switch"
                               aria-label={`${v.name} in backups`}
-                              checked
-                              disabled
-                              title="Volumes are always in backups; excluding one per app is not available yet"
-                              readOnly
+                              checked={v.includeInBackup}
+                              disabled={!canEdit || busy}
+                              title={canEdit ? 'Volumes are in backups by default; turn off to leave this one out' : 'Only admins of the repository can change this'}
+                              onChange={(e) => void toggleBackup(v, e.target.checked)}
                             />
                             In backups
                           </label>
@@ -177,7 +193,10 @@ export function AppVolumesPage({ repo, app, perms, onChange }: Props) {
                           </>
                         ) : (
                           <>Add a second volume and schedule a dump into it.</>
-                        )}
+                        )}{' '}
+                        <a href={DUMP_GUIDE_URL} target="_blank" rel="noreferrer">
+                          How to
+                        </a>
                       </div>
                     </div>
                   ) : null}
@@ -225,6 +244,7 @@ export function AppVolumesPage({ repo, app, perms, onChange }: Props) {
                     ) : null}
                   </div>
                 </section>
+                <AppOutboundSection app={app} canEdit={canEdit} />
               </>
             ) : null}
           </div>

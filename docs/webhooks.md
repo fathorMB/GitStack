@@ -35,7 +35,7 @@ rinvia dal log (`redeliver`).
 |---|---|
 | `Content-Type` | `application/json` |
 | `User-Agent` | `GitStack-Webhook/1` |
-| `X-GitStack-Event` | l'evento: `push`, `issues`, `issue_comment`, `repository`, `pull_request`, `pull_request_review`, `commit_status`, `workflow_run`, `workflow_job` o `deployment` |
+| `X-GitStack-Event` | l'evento: `push`, `issues`, `issue_comment`, `repository`, `pull_request`, `pull_request_review`, `commit_status`, `workflow_run`, `workflow_job`, `deployment` o `app_domain` |
 | `X-GitStack-Delivery` | uuid della consegna: è l'`id` nel log (`…/deliveries`); una *Redeliver* ne ha uno nuovo |
 | `X-GitStack-Payload-Version` | `1` |
 | `X-GitStack-Signature` | `sha256=<hex>`, solo se il webhook ha un segreto |
@@ -312,6 +312,17 @@ della v3-a. Stessi corpo comune, intestazioni, firma e tentativi. `action` è `s
 versione precedente) o `rolled_back` (rollback a mano riuscito). `app` è l'app e `deployment` la versione
 (`AppVersion`) con chi l'ha fatta, anche un agente con la sua identità (H13). Lo stesso evento di dominio
 alimenta la notifica a chi ha fatto il deploy e agli `admin` del repo quando fallisce.
+
+## `app_domain` (v3-c, GIT-492)
+
+Contratto: schema `WebhookAppDomainPayload` in `api/openapi.yaml`. Si seleziona sul webhook del repo
+dell'app, come `deployment`; stessi corpo comune, intestazioni, firma e tentativi. `action` è
+`dns_failed` (il dominio proprio non supera la verifica o non punta più all'istanza),
+`certificate_renewal_failed` (emissione o rinnovo Let's Encrypt fallito) o `certificate_expiring`
+(certificato del cliente che scade entro 14 giorni). Campi: `app.name`, `domain`, `status`
+(`dns_failed`, `renewal_failed`, `expiring`), `reason` se c'è, `validUntil` solo per la scadenza;
+`sender` è sempre `null`. Un solo invio per guasto o scadenza (la stessa deduplica delle notifiche di
+GIT-461). Il payload non porta mai chiavi né il contenuto dei certificati.
 
 ## Da dove nascono
 

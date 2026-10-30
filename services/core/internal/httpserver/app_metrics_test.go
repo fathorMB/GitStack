@@ -34,3 +34,21 @@ func TestFoldMetricBuckets_VuotoNonEZero(t *testing.T) {
 		t.Fatalf("senza campioni le serie sono vuote e non nil (per il JSON): %v %v", cpu, mem)
 	}
 }
+
+// GIT-403 (H12): le somme per passo di Traefik diventano due serie «count»; senza campioni sono null.
+func TestFoldTrafficBuckets(t *testing.T) {
+	if r, e := foldTrafficBuckets(nil); r != nil || e != nil {
+		t.Fatalf("senza campioni le serie sono null: %v %v", r, e)
+	}
+	t0 := time.Date(2026, 10, 27, 10, 0, 0, 0, time.UTC)
+	r, e := foldTrafficBuckets([]store.AppTrafficBucket{{Time: t0, Requests: 40, Errors5xx: 3}, {Time: t0.Add(time.Minute), Requests: 0, Errors5xx: 0}})
+	if r == nil || e == nil || len(r.Points) != 2 || len(e.Points) != 2 {
+		t.Fatalf("serie: %+v %+v", r, e)
+	}
+	if r.Points[0].Value != 40 || e.Points[0].Value != 3 || r.Points[1].Value != 0 || !r.Points[0].Time.Equal(t0) {
+		t.Errorf("punti: %+v %+v", r.Points, e.Points)
+	}
+	if r.Unit != "count" || e.Unit != "count" {
+		t.Errorf("unità: %v %v", r.Unit, e.Unit)
+	}
+}

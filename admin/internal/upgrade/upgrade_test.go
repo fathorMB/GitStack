@@ -42,7 +42,8 @@ type fakeCluster struct {
 	schema   string // risposta della query sulle migrazioni
 	dumped   string // schema al momento del pg_dump
 	restored bool
-	noSchema bool // la query sulle migrazioni fallisce
+	noSchema bool                          // la query sulle migrazioni fallisce
+	ready    func(deployment string) error // esito di WaitReady (nil: sempre pronto)
 }
 
 func (f *fakeCluster) note(s string) { f.mu.Lock(); f.calls = append(f.calls, s); f.mu.Unlock() }
@@ -54,7 +55,12 @@ func (f *fakeCluster) Scale(_ context.Context, d string, n int) error {
 	return nil
 }
 func (f *fakeCluster) WaitStopped(context.Context, string) error { return nil }
-func (f *fakeCluster) WaitReady(context.Context, string) error   { return nil }
+func (f *fakeCluster) WaitReady(_ context.Context, d string) error {
+	if f.ready != nil {
+		return f.ready(d)
+	}
+	return nil
+}
 func (f *fakeCluster) PGExec(_ context.Context, stdin io.Reader, stdout io.Writer, args ...string) error {
 	cmd := strings.Join(args, " ")
 	switch {
@@ -65,7 +71,7 @@ func (f *fakeCluster) PGExec(_ context.Context, stdin io.Reader, stdout io.Write
 		return err
 	case strings.Contains(cmd, "repo_package_settings"):
 		return nil // elenco dei repo con le immagini nel backup (GIT-325): nessuno
-	case strings.Contains(cmd, "core.app_versions"):
+	case strings.Contains(cmd, "core.app_versions"), strings.Contains(cmd, "core.app_volumes"):
 		return nil // immagini in uso dalle app (H4): nessuna app
 	case strings.Contains(cmd, "schema_migrations"):
 		if f.noSchema {
@@ -113,6 +119,18 @@ type fakeHelm struct {
 	newSecret     bool // <release>-service-secrets esiste dopo l'upgrade
 	legacyDeleted bool
 	deleteErr     error
+
+	// GIT-479: dopo helm rollback il Deployment di core resta legato al
+	// ServiceAccount che l'upgrade aveva messo (campo deprecato
+	// serviceAccount); lo toglie solo la patch merge con i campi a null.
+	staleSA bool
+	breakSA bool // l'upgrade ha legato core a un ServiceAccount: il rollback lo lascia
+
+	// GIT-482: la patch può non cambiare niente (campi ripopolati dal
+	// defaulting, run 40630162371): le prime ignorePatches non li tolgono.
+	ignorePatches int
+	patches       int
+	manifest      string // manifest della revisione di destinazione (vuoto: quello di prova)
 }
 
 func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...string) ([]byte, error) {
@@ -127,6 +145,25 @@ func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...strin
 				return []byte("secret/gitstack-service-secrets\n"), nil
 			}
 			return []byte("Error from server (NotFound)"), errors.New("exit 1")
+		case strings.Contains(joined, "get deployments"):
+			core := `{"metadata":{"name":"gitstack-core"},"spec":{"template":{"spec":{}}}}`
+			if h.staleSA {
+				core = `{"metadata":{"name":"gitstack-core"},"spec":{"template":{"spec":{"serviceAccountName":"ci-dispatcher","serviceAccount":"ci-dispatcher"}}}}`
+			}
+			return []byte(`{"items":[` + core + `,{"metadata":{"name":"gitstack-gateway"},"spec":{"template":{"spec":{}}}}]}`), nil
+		case strings.Contains(joined, "get serviceaccount ci-dispatcher"):
+			if h.upgraded && h.rolled {
+				return []byte("Error from server (NotFound): serviceaccounts \"ci-dispatcher\" not found"), errors.New("exit 1")
+			}
+			return []byte("serviceaccount/ci-dispatcher\n"), nil
+		case strings.Contains(joined, "patch deployment gitstack-core") && strings.Contains(joined, `"serviceAccount":null`):
+			h.patches++
+			if h.patches > h.ignorePatches {
+				h.staleSA = false
+			}
+			return []byte("deployment.apps/gitstack-core patched\n"), nil
+		case strings.Contains(joined, "patch deployment"):
+			return []byte("deployment.apps/x patched (no change)\n"), nil
 		case strings.Contains(joined, "delete secret gitstack-identity-service"):
 			if h.deleteErr != nil {
 				return []byte("forbidden"), h.deleteErr
@@ -141,6 +178,12 @@ func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...strin
 	case "history":
 		return []byte(`[{"revision":3,"status":"superseded"},{"revision":4,"status":"deployed"}]`), nil
 	case "get":
+		if len(args) > 1 && args[1] == "manifest" {
+			if h.manifest != "" {
+				return []byte(h.manifest), nil
+			}
+			return []byte("---\nkind: Service\nmetadata:\n  name: gitstack-core\n---\nkind: Deployment\nmetadata:\n  name: gitstack-core\nspec:\n  template:\n    spec:\n      containers: []\n---\nkind: Deployment\nmetadata:\n  name: gitstack-gateway\nspec:\n  template:\n    spec:\n      containers: []\n---\nkind: Deployment\nmetadata:\n  name: gitstack-runner\nspec:\n  template:\n    spec:\n      serviceAccountName: ci-dispatcher\n"), nil
+		}
 		if h.values != "" {
 			return []byte(h.values), nil
 		}
@@ -169,6 +212,10 @@ func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...strin
 			return []byte("rollback boom"), errors.New("exit 1")
 		}
 		h.rolled = true
+		h.staleSA = h.upgraded && h.breakSA
+		if h.staleSA && strings.Contains(strings.Join(args, " "), "--wait") {
+			return []byte("Error: timed out waiting for the condition"), errors.New("exit 1")
+		}
 		return nil, nil
 	}
 	return nil, errors.New("sottocomando inatteso " + args[0])
@@ -527,8 +574,13 @@ func TestBrokenServiceRollsBackChartOnly(t *testing.T) {
 	if !res.RolledBackChart || res.Restored || w.cl.restored {
 		t.Errorf("rollback: chart=%v restore=%v", res.RolledBackChart, res.Restored)
 	}
-	if !w.helm.has("rollback gitstack 4") || !w.helm.has("--wait") {
+	if !w.helm.has("rollback gitstack 4") {
 		t.Errorf("chiamate: %v", w.helm.calls)
+	}
+	for _, c := range w.helm.calls {
+		if strings.HasPrefix(c, "rollback") && strings.Contains(c, "--wait") {
+			t.Errorf("rollback con --wait: %s", c)
+		}
 	}
 	w.assertUntouched()
 	if !strings.Contains(strings.Join(res.Summary, "\n"), "dati intatti") {
@@ -573,6 +625,160 @@ func TestUnreadableSchemaCountsAsTouched(t *testing.T) {
 	res, err := Run(context.Background(), w.o)
 	if err != nil || res.Outcome != RolledBack || !res.Restored {
 		t.Fatalf("res=%+v err=%v", res, err)
+	}
+}
+
+// GIT-479: l'upgrade rompe solo il gateway (valore non valido), ma ha anche
+// legato core a un ServiceAccount nuovo. Il database è toccato dalle
+// migrazioni: helm rollback + restore. Il rollback lascia core legato al
+// ServiceAccount cancellato: senza la pulizia core non ha pod, WaitReady del
+// restore scade e l'esito è Broken (exit 8). Con la pulizia: RolledBack (exit 7).
+func TestGatewayOnlyBreakRollsBackAndRestores(t *testing.T) {
+	w := newWorld(t)
+	w.helm.newSchem = "identity|5|f\ncore|12|f"
+	w.helm.breakSA = true
+	w.helm.onUp = func() error { return errors.New("exit 1") } // helm upgrade --wait: il gateway non diventa pronto
+	w.cl.ready = func(d string) error {
+		w.helm.mu.Lock()
+		defer w.helm.mu.Unlock()
+		if w.helm.staleSA && strings.HasSuffix(d, "-core") {
+			return errors.New("timed out waiting for the condition")
+		}
+		return nil
+	}
+	w.healthy = func() bool { return !w.helm.upgraded || w.helm.rolled && w.cl.restored && !w.helm.staleSA }
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != RolledBack {
+		t.Fatalf("res=%+v err=%v (atteso RolledBack, exit 7)", res, err)
+	}
+	if !res.RolledBackChart || !res.Restored || !w.cl.restored {
+		t.Errorf("rollback: chart=%v restore=%v", res.RolledBackChart, res.Restored)
+	}
+	if !w.helm.has("get manifest gitstack --revision 4") {
+		t.Errorf("manifest della revisione di destinazione non letto: %v", w.helm.calls)
+	}
+	if w.helm.staleSA {
+		t.Error("il ServiceAccount di core è rimasto")
+	}
+	w.assertUntouched()
+}
+
+// GIT-479, ramo senza restore: le migrazioni non hanno cambiato il database,
+// ma l'upgrade ha legato core a un ServiceAccount che il rollback cancella.
+// Con helm rollback --wait il rollback scadeva (exit 8); senza --wait e con la
+// pulizia dopo il rollback l'esito è RolledBack (exit 7), senza restore.
+func TestGatewayOnlyBreakRollsBackWithoutRestore(t *testing.T) {
+	w := newWorld(t)
+	w.helm.breakSA = true
+	w.helm.onUp = func() error { return errors.New("exit 1") }
+	w.healthy = func() bool { return !w.helm.upgraded || w.helm.rolled && !w.helm.staleSA }
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != RolledBack {
+		t.Fatalf("res=%+v err=%v (atteso RolledBack, exit 7)", res, err)
+	}
+	if !res.RolledBackChart || res.Restored || w.cl.restored {
+		t.Errorf("rollback: chart=%v restore=%v", res.RolledBackChart, res.Restored)
+	}
+	if w.helm.staleSA {
+		t.Error("il ServiceAccount di core è rimasto")
+	}
+	for _, c := range w.helm.calls {
+		if strings.HasPrefix(c, "rollback") && strings.Contains(c, "--wait") {
+			t.Errorf("rollback con --wait: %s", c)
+		}
+	}
+	w.assertUntouched()
+}
+
+// GIT-482 (run 40630162371): dopo la patch i campi sono ancora al valore
+// vecchio (la patch non cambia niente). Il passo rilegge il Deployment e
+// fallisce in modo esplicito: Broken, con il Deployment e il ServiceAccount
+// nel messaggio e nel log.
+func TestStaleServiceAccountAfterPatchFailsExplicitly(t *testing.T) {
+	w := newWorld(t)
+	w.helm.breakSA = true
+	w.helm.ignorePatches = 100
+	w.helm.onUp = func() error { return errors.New("exit 1") }
+	w.healthy = func() bool { return !w.helm.upgraded }
+	var log strings.Builder
+	w.o.Log = &log
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Broken {
+		t.Fatalf("res=%+v err=%v (atteso Broken)", res, err)
+	}
+	if !strings.Contains(res.RollbackErr, "gitstack-core → ci-dispatcher") {
+		t.Errorf("errore non esplicito: %q", res.RollbackErr)
+	}
+	if w.helm.patches != 2 {
+		t.Errorf("patch tentate: %d (attese 2)", w.helm.patches)
+	}
+	for _, want := range []string{"Deployment senza ServiceAccount: gitstack-core, gitstack-gateway", "patch su gitstack-core:", "dopo la patch: Deployment gitstack-core usa il ServiceAccount ci-dispatcher, che NON esiste"} {
+		if !strings.Contains(log.String(), want) {
+			t.Errorf("manca nel log %q:\n%s", want, log.String())
+		}
+	}
+}
+
+// GIT-482: campi ripopolati dopo la prima patch (defaulting): la rilettura li
+// trova, la seconda patch li toglie, l'esito è RolledBack e il log lo dice.
+func TestRepopulatedServiceAccountIsPatchedAgain(t *testing.T) {
+	w := newWorld(t)
+	w.helm.breakSA = true
+	w.helm.ignorePatches = 1
+	w.helm.onUp = func() error { return errors.New("exit 1") }
+	w.healthy = func() bool { return !w.helm.upgraded || w.helm.rolled && !w.helm.staleSA }
+	var log strings.Builder
+	w.o.Log = &log
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != RolledBack {
+		t.Fatalf("res=%+v err=%v (atteso RolledBack)", res, err)
+	}
+	if w.helm.staleSA || w.helm.patches != 2 {
+		t.Errorf("staleSA=%v patch=%d", w.helm.staleSA, w.helm.patches)
+	}
+	for _, want := range []string{"ServiceAccount rimasti dopo la patch: gitstack-core → ci-dispatcher; riprovo", "dopo la seconda patch: Deployment gitstack-core senza ServiceAccount dedicato", "nessun Deployment legato a un ServiceAccount inesistente"} {
+		if !strings.Contains(log.String(), want) {
+			t.Errorf("manca nel log %q:\n%s", want, log.String())
+		}
+	}
+}
+
+// GIT-482: il manifest della revisione di destinazione non ha Deployment senza
+// ServiceAccount: nessuna patch, ma i Deployment vengono comunque riletti e
+// nel log. Con il campo già vuoto non si fallisce.
+func TestManifestWithoutDeploymentsToPatch(t *testing.T) {
+	w := newWorld(t)
+	w.helm.manifest = `kind: Deployment
+metadata:
+  name: gitstack-runner
+spec:
+  template:
+    spec:
+      serviceAccountName: ci-dispatcher
+`
+	w.helm.onUp = func() error { return errors.New("exit 1") }
+	var log strings.Builder
+	w.o.Log = &log
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != RolledBack {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if w.helm.patches != 0 {
+		t.Errorf("patch senza motivo: %d", w.helm.patches)
+	}
+	for _, want := range []string{"Deployment senza ServiceAccount: nessuno", "Deployment gitstack-core senza ServiceAccount dedicato"} {
+		if !strings.Contains(log.String(), want) {
+			t.Errorf("manca nel log %q:\n%s", want, log.String())
+		}
+	}
+}
+
+// Senza il ServiceAccount stantio il passo non cambia niente di osservabile.
+func TestDeploymentsWithoutServiceAccount(t *testing.T) {
+	m := "kind: Deployment\nmetadata:\n  name: a\nspec:\n  template:\n    spec:\n      serviceAccountName: x\n---\nkind: Deployment\nmetadata:\n  name: b\nspec:\n  template:\n    spec: {}\n---\nkind: StatefulSet\nmetadata:\n  name: c\n"
+	got, err := deploymentsWithoutServiceAccount([]byte(m))
+	if err != nil || len(got) != 1 || got[0] != "b" {
+		t.Fatalf("got=%v err=%v", got, err)
 	}
 }
 

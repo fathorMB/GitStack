@@ -73,16 +73,14 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 		if _, err := e.kube.NetworkingV1().NetworkPolicies(ns.Name).Create(ctx, apps.BuildNetworkPolicy(a), metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), ns.Name, metav1.DeleteOptions{}) })
+		cleanupNamespaceWithDiag(t, e.kube, ns.Name)
 	}
 	// I servizi GitStack e il proxy sono esterni agli spazi app e senza label GitStack.
 	systemNS := "gitstack-h9-system-" + strings.ToLower(uuid.NewString()[:8])
 	if _, err := e.kube.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: systemNS}}, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		_ = e.kube.CoreV1().Namespaces().Delete(context.Background(), systemNS, metav1.DeleteOptions{})
-	})
+	cleanupNamespaceWithDiag(t, e.kube, systemNS)
 	server := func(ns, name, image string, labels map[string]string, command []string, ports []corev1.ContainerPort) string {
 		p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns, Labels: labels},
 			Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyAlways, Containers: []corev1.Container{{Name: "server", Image: image, Command: command, Ports: ports}}}}
@@ -93,13 +91,14 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 		return waitPodIP(t, e.kube, p.Namespace, p.Name)
 	}
 	appLabels := map[string]string{apps.LabelManaged: "true"}
-	peerIP := server(apps.Namespace(peer.ID), "peer", "busybox:1.36", appLabels, []string{"sh", "-c", "nc -lk -p 8080"}, []corev1.ContainerPort{{Name: "http", ContainerPort: 8080}})
-	postgresIP := server(systemNS, "postgres", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "postgres"}, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
-	natsIP := server(systemNS, "nats", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "nats"}, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
-	coreIP := server(systemNS, "core", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "core"}, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
+	// GIT-447: bersagli httpd -f (resta in ascolto per più connessioni), non `nc -lk` che esce dopo la prima.
+	peerIP := server(apps.Namespace(peer.ID), "peer", "busybox:1.36", appLabels, []string{"sh", "-c", "httpd -f -p 8080 -h /tmp"}, []corev1.ContainerPort{{Name: "http", ContainerPort: 8080}})
+	postgresIP := server(systemNS, "postgres", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "postgres"}, []string{"sh", "-c", "httpd -f -p 8080 -h /tmp"}, nil)
+	natsIP := server(systemNS, "nats", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "nats"}, []string{"sh", "-c", "httpd -f -p 8080 -h /tmp"}, nil)
+	coreIP := server(systemNS, "core", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "core"}, []string{"sh", "-c", "httpd -f -p 8080 -h /tmp"}, nil)
 	httpIP := server(systemNS, "http-target", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "http-target"}, []string{"sh", "-c", "mkdir -p /w && echo ok > /w/index.html && exec httpd -f -p 8080 -h /w"}, nil)
-	directIP := server(systemNS, "direct-target", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "direct-target"}, []string{"sh", "-c", "nc -lk -p 8081"}, nil)
-	otherIP := server(apps.Namespace(other.ID), "other", "busybox:1.36", appLabels, []string{"sh", "-c", "nc -lk -p 8080"}, nil)
+	directIP := server(systemNS, "direct-target", "busybox:1.36", map[string]string{"app.kubernetes.io/name": "direct-target"}, []string{"sh", "-c", "httpd -f -p 8081 -h /tmp"}, nil)
+	otherIP := server(apps.Namespace(other.ID), "other", "busybox:1.36", appLabels, []string{"sh", "-c", "httpd -f -p 8080 -h /tmp"}, nil)
 	probe := func(ns, name, ip string, port int, allowed bool, labels map[string]string) {
 		// kube-router applica la NetworkPolicy al pod appena creato in modo
 		// asincrono: un nc che passa subito dopo l'avvio non prova nulla. Una
@@ -171,9 +170,7 @@ func TestApps_IsolamentoSuK3d(t *testing.T) {
 	if _, err := e.kube.CoreV1().Namespaces().Create(ctx, rns, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		_ = e.kube.CoreV1().Namespaces().Delete(context.Background(), rns.Name, metav1.DeleteOptions{})
-	})
+	cleanupNamespaceWithDiag(t, e.kube, rns.Name)
 	f := false
 	rootSC := &corev1.SecurityContext{AllowPrivilegeEscalation: &f, Capabilities: &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}}, SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}, RunAsUser: ptr(int64(0)), RunAsNonRoot: &f}
 	rejected(rns.Name, "root", corev1.PodSpec{Containers: []corev1.Container{{Name: "x", Image: "busybox:1.36", SecurityContext: rootSC}}})
@@ -208,11 +205,26 @@ func waitPodIP(t *testing.T, kube kubernetes.Interface, ns, name string) string 
 	return ""
 }
 
+// waitPodLogTimeout contiene il cancello (fino a 60 s), il pull dell'immagine e la finestra dei probe
+// positivi (probePositiveWindowSeconds, più un ultimo tentativo di al più ~6 s).
+const waitPodLogTimeout = 240 * time.Second
+
 func waitPodLog(t *testing.T, kube kubernetes.Interface, ns, name string) string {
 	t.Helper()
-	deadline := time.Now().Add(180 * time.Second)
+	deadline := time.Now().Add(waitPodLogTimeout)
 	for time.Now().Before(deadline) {
 		p, err := kube.CoreV1().Pods(ns).Get(context.Background(), name, metav1.GetOptions{})
+		if err == nil && p.Status.Phase == corev1.PodRunning {
+			// GIT-472: al primo KO di un probe positivo il dump del nodo si prende a pod ancora vivo.
+			if raw, lerr := kube.CoreV1().Pods(ns).GetLogs(name, &corev1.PodLogOptions{}).DoRaw(context.Background()); lerr == nil {
+				if strings.Contains(string(raw), probeFirstKOMarker) {
+					diagNodeRules(t, kube, ns, name, "primo KO")
+				}
+				if strings.Contains(string(raw), probeLastKOMarker) {
+					diagNodeRules(t, kube, ns, name, "fine finestra")
+				}
+			}
+		}
 		if err == nil && (p.Status.Phase == corev1.PodSucceeded || p.Status.Phase == corev1.PodFailed) {
 			if p.Status.Phase != corev1.PodSucceeded {
 				log, _ := kube.CoreV1().Pods(ns).GetLogs(name, &corev1.PodLogOptions{}).DoRaw(context.Background())
@@ -227,7 +239,15 @@ func waitPodLog(t *testing.T, kube kubernetes.Interface, ns, name string) string
 			if err != nil {
 				t.Fatal(err)
 			}
-			return strings.TrimSpace(string(b))
+			var kept []string
+			for _, line := range strings.Split(string(b), "\n") {
+				if strings.HasPrefix(line, probeMarkerPrefix) {
+					t.Logf("%s/%s: %s", ns, name, strings.TrimSpace(line))
+					continue
+				}
+				kept = append(kept, line)
+			}
+			return strings.TrimSpace(strings.Join(kept, "\n"))
 		}
 		time.Sleep(time.Second)
 	}
@@ -247,10 +267,42 @@ func newDeployEnv(t *testing.T) *appsDeployEnv { return newDeployEnvOpt(t, true)
 // newDeployEnvOpt: runController=false non avvia ctl.Run, per i test che creano
 // namespace gestiti fuori dal DB.
 func newDeployEnvOpt(t *testing.T, runController bool) *appsDeployEnv {
+	return newDeployEnvWith(t, runController, deployEnvOptions{})
+}
+
+// deployEnvOptions: ritocchi per i test che provano un pezzo del cluster in più (GIT-425).
+type deployEnvOptions struct {
+	// tune ritocca la Config del controller prima di crearlo.
+	tune func(*apps.Config)
+	// publicURL è l'URL pubblico di GitStack (e quindi l'host del registry); vuoto: git.example.com.
+	publicURL string
+	// controllerKubeconfig (GIT-424): se non è vuoto il controller (e solo lui) parla al cluster con
+	// quel kubeconfig; le asserzioni e la pulizia dei test restano con l'amministratore.
+	controllerKubeconfig string
+}
+
+// envTestKubeconfigCore (GIT-424): kubeconfig col token del ServiceAccount di core, con l'RBAC
+// reso dal chart (apps-rbac.yaml). Il kubeconfig di k3d è cluster-admin: da solo non prova mai
+// i permessi del controller.
+const envTestKubeconfigCore = "GITSTACK_TEST_KUBECONFIG_CORE"
+
+// Nomi esportati da k3d-test.sh insieme al kubeconfig: ServiceAccount di core come
+// `namespace/nome` e ClusterRole modello delle app.
+const (
+	envTestCoreSA       = "GITSTACK_TEST_CORE_SA"
+	envTestWorkloadRole = "GITSTACK_TEST_WORKLOAD_ROLE"
+)
+
+func newDeployEnvWith(t *testing.T, runController bool, opt deployEnvOptions) *appsDeployEnv {
 	t.Helper()
+	controllerKubeconfig := opt.controllerKubeconfig
 	kc := os.Getenv("GITSTACK_TEST_KUBECONFIG")
 	if kc == "" {
 		t.Skip("GITSTACK_TEST_KUBECONFIG non impostata: serve un cluster k3d (internal/apps/k3d-test.sh)")
+	}
+	if os.Getenv(envTestCoreImage) == "" {
+		// GIT-422: senza immagine del cancello core rifiuta ogni deploy.
+		t.Skip("GITSTACK_TEST_CORE_IMAGE non impostata: core rifiuta i deploy senza cancello (GIT-422)")
 	}
 	rc, err := clientcmd.BuildConfigFromFlags("", kc)
 	if err != nil {
@@ -269,6 +321,19 @@ func newDeployEnvOpt(t *testing.T, runController bool) *appsDeployEnv {
 	if _, err := kube.SchedulingV1().PriorityClasses().Create(context.Background(), pc, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
 		t.Fatal(err)
 	}
+	ctlKube, ctlDyn := kubernetes.Interface(kube), dyn
+	if controllerKubeconfig != "" {
+		crc, err := clientcmd.BuildConfigFromFlags("", controllerKubeconfig)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ctlKube, err = kubernetes.NewForConfig(crc); err != nil {
+			t.Fatal(err)
+		}
+		if ctlDyn, err = dynamic.NewForConfig(crc); err != nil {
+			t.Fatal(err)
+		}
+	}
 	pool, _ := dbtest.NewPool(t)
 	id := &issuesIdentity{fakeIdentity: newFakeIdentity(), writers: map[uuid.UUID][]string{}}
 	base := &issuesEnv{t: t, pool: pool, id: id}
@@ -278,16 +343,33 @@ func newDeployEnvOpt(t *testing.T, runController bool) *appsDeployEnv {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctl := apps.New(store.New(pool), kube, dyn, apps.Config{
+	appsCfg := apps.Config{
 		AppsDomain: "apps.example.com", ProgressTimeout: 75 * time.Second, FailureGrace: 6 * time.Second,
 		PollInterval: 500 * time.Millisecond, LoopInterval: time.Second, SyncEvery: 2 * time.Second,
 		Secrets: keys,
 		// GIT-418: con GITSTACK_TEST_CORE_IMAGE i pod delle app hanno il cancello vero (immagine di core importata nel cluster).
 		GateImage: os.Getenv(envTestCoreImage),
-	})
+	}
+	if controllerKubeconfig != "" {
+		// GIT-424: come in produzione, il controller si lega al ruolo modello nel namespace di ogni
+		// app; senza questi due campi ensureRoleBinding non crea il RoleBinding.
+		appsCfg.ControllerServiceAccount = os.Getenv(envTestCoreSA)
+		appsCfg.WorkloadRole = os.Getenv(envTestWorkloadRole)
+		if appsCfg.ControllerServiceAccount == "" || appsCfg.WorkloadRole == "" {
+			t.Fatalf("%s e %s vanno impostate insieme a %s", envTestCoreSA, envTestWorkloadRole, envTestKubeconfigCore)
+		}
+	}
+	if opt.tune != nil {
+		opt.tune(&appsCfg)
+	}
+	publicURL := opt.publicURL
+	if publicURL == "" {
+		publicURL = "https://git.example.com"
+	}
+	ctl := apps.New(store.New(pool), ctlKube, ctlDyn, appsCfg)
 	base.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
 		httpserver.WithRepoIdentity(id), httpserver.WithReadableLister(id), httpserver.WithGit(git),
-		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "https://git.example.com"}),
+		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: publicURL}),
 		httpserver.WithAppsDomain("apps.example.com"), httpserver.WithClock(clock.Now), httpserver.WithWebhooks(httpserver.WebhookConfig{Keys: keys}), httpserver.WithAppController(ctl))
 	env := &appsDeployEnv{appsEnv: &appsEnv{issuesEnv: base, clock: clock, git: git}, kube: kube, dyn: dyn}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -428,7 +510,7 @@ func TestApps_ControllerSuK3d(t *testing.T) {
 	}
 	e.ns = apps.Namespace(uuid.UUID(created.App.Id))
 	path := base + "/web"
-	t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), e.ns, metav1.DeleteOptions{}) })
+	cleanupNamespaceWithDiag(t, e.kube, e.ns)
 
 	t.Run("la versione risulta partita solo dopo la salute ok", func(t *testing.T) {
 		e.t = t

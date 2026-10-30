@@ -39,7 +39,7 @@ func (s *apiServer) writeDeployConflict(w http.ResponseWriter, err error) bool {
 
 // DeployApp implementa POST /repos/{owner}/{repo}/apps/{app}/deploys.
 func (s *apiServer) DeployApp(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, app openapi.AppParam) {
-	repo, actor, ok := s.appRepo(w, r, owner, name, "write", true)
+	repo, actor, ok := s.deployRepo(w, r, owner, name)
 	if !ok {
 		return
 	}
@@ -57,6 +57,10 @@ func (s *apiServer) DeployApp(w http.ResponseWriter, r *http.Request, owner open
 	img, msg := s.resolveAppImage(in.Image, repo)
 	if msg != "" {
 		writeFieldError(w, "image", msg)
+		return
+	}
+	img, _, ok = s.verifyAppImage(w, r.Context(), repo, img)
+	if !ok {
 		return
 	}
 	a, ver, err := s.resources.BeginAppDeploy(r.Context(), repo.ID, app, store.NewAppDeploy{
@@ -122,6 +126,17 @@ func (s *apiServer) RollbackApp(w http.ResponseWriter, r *http.Request, owner op
 			return
 		}
 	}
+	// Con «solo immagini firmate» (H10) anche il ritorno a una versione vecchia riguarda una firma
+	// ancora valida oggi (una chiave fidata può essere stata tolta).
+	if only, err := s.resources.AppSignedImagesOnly(r.Context()); err != nil {
+		appInternalError(w, "lettura di «solo immagini firmate»", err)
+		return
+	} else if only {
+		var ok bool
+		if target.Image, _, ok = s.verifyAppImage(w, r.Context(), repo, target.Image); !ok {
+			return
+		}
+	}
 	summary := fmt.Sprintf("ritorno alla versione %d", target.Number)
 	pause := in.PauseAutoDeploy != nil && *in.PauseAutoDeploy
 	_, ver, err := s.resources.BeginAppDeploy(r.Context(), repo.ID, app, store.NewAppDeploy{
@@ -176,7 +191,9 @@ func (s *apiServer) RestartApp(w http.ResponseWriter, r *http.Request, owner ope
 		appInternalError(w, "lettura dell'app", err)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, s.appToAPI(out))
+	if ai, ok := s.appResponse(w, r, out); ok {
+		writeJSON(w, http.StatusAccepted, ai)
+	}
 }
 
 // ScaleApp implementa PUT /repos/{owner}/{repo}/apps/{app}/scale: scala a mano entro la quota.
@@ -213,5 +230,7 @@ func (s *apiServer) ScaleApp(w http.ResponseWriter, r *http.Request, owner opena
 	if err := ctl.Scale(r.Context(), out); err != nil {
 		slog.Default().Warn("scala dell'app sul cluster non riuscita", "app", out.ID, "err", err)
 	}
-	writeJSON(w, http.StatusOK, s.appToAPI(out))
+	if ai, ok := s.appResponse(w, r, out); ok {
+		writeJSON(w, http.StatusOK, ai)
+	}
 }

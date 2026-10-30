@@ -66,15 +66,26 @@ git.registry.ciGateway, altrimenti con ci.enabled il ci-gateway di core. Vuoto =
 {{- define "gitstack.registry.ciGatewayURL" -}}
 {{- if .Values.git.registry.ciGateway.url -}}
 {{- .Values.git.registry.ciGateway.url -}}
-{{- else if .Values.ci.enabled -}}
+{{- else if or .Values.ci.enabled (include "gitstack.ci.appPullOnly" .) -}}
 {{- printf "http://%s-core.%s.svc:%d" (include "gitstack.fullname" .) .Release.Namespace (.Values.ci.gateway.port | int) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+CI spenta ma app e registry accesi (GIT-449): il cluster scarica le immagini delle app con un token
+gsj_app., che il servizio git fa convalidare al ci-gateway di core. Core allora apre la porta in
+modalità «solo pull delle app» (nessun token del job, nessun altro percorso). Stringa vuota = no.
+*/}}
+{{- define "gitstack.ci.appPullOnly" -}}
+{{- if and (not .Values.ci.enabled) .Values.core.enabled .Values.apps.enabled .Values.git.enabled .Values.git.registry.enabled (not .Values.git.registry.ciGateway.url) -}}
+true
 {{- end -}}
 {{- end -}}
 
 {{- define "gitstack.registry.ciGatewayPort" -}}
 {{- if .Values.git.registry.ciGateway.url -}}
 {{- .Values.git.registry.ciGateway.port | int -}}
-{{- else if .Values.ci.enabled -}}
+{{- else if or .Values.ci.enabled (include "gitstack.ci.appPullOnly" .) -}}
 {{- .Values.ci.gateway.port | int -}}
 {{- else -}}
 0
@@ -396,6 +407,30 @@ ServiceAccount di core: ci-dispatcher se la CI è accesa (stesso account, un sol
 {{- default (printf "%s/_appauth/verify" (include "gitstack.gateway.url" .)) .Values.apps.authUrl -}}
 {{- end -}}
 
+{{/* Porta interna del gateway per le app (GIT-442, H16): la porta se le app sono abilitate e il gateway
+     la espone, altrimenti vuoto. Deve differire dalla porta pubblica del container. */}}
+{{- define "gitstack.apps.gatewayInternalPort" -}}
+{{- if and .Values.apps.enabled .Values.gateway.enabled (gt (.Values.gateway.internalPort | int) 0) -}}
+{{- if eq (.Values.gateway.internalPort | int) (.Values.gateway.containerPort | int) -}}
+{{- fail "gateway.internalPort deve essere diversa da gateway.containerPort: la porta interna non si fida di X-Forwarded-For" -}}
+{{- end -}}
+{{- .Values.gateway.internalPort | int -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Metriche Prometheus di Traefik (GITSTACK_CORE_APPS_TRAEFIK_METRICS_URL, GIT-403): il Service headless
+     `traefik-metrics` che il chart Traefik di k3s crea con la HelmChartConfig dell'installer
+     (deploy/traefik-metrics-values.yaml), entrypoint `metrics` interno al cluster. */}}
+{{- define "gitstack.apps.traefikMetricsUrl" -}}
+{{- default (printf "http://traefik-metrics.%s.svc.cluster.local:%d/metrics" .Values.networkPolicy.ingressNamespace (.Values.apps.traefikMetrics.port | int)) .Values.apps.traefikMetrics.url -}}
+{{- end -}}
+
+{{/* Dove core legge il certificato servito da Traefik per un dominio (GITSTACK_CORE_APPS_ACME_TLS_ADDR,
+     GIT-459): il Service `traefik` del chart Traefik di k3s, porta 443 (websecure). */}}
+{{- define "gitstack.apps.acmeTLSAddr" -}}
+{{- default (printf "traefik.%s.svc.cluster.local:443" .Values.networkPolicy.ingressNamespace) .Values.apps.acme.tlsAddr -}}
+{{- end -}}
+
 {{/* Secret con le chiavi di firma del login delle app (del chart, o apps.signingKeys.existingSecret). */}}
 {{- define "gitstack.apps.signingKeysSecret" -}}
 {{- default (printf "%s-gateway-appauth-keys" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-") .Values.apps.signingKeys.existingSecret -}}
@@ -404,4 +439,21 @@ ServiceAccount di core: ci-dispatcher se la CI è accesa (stesso account, un sol
 {{/* ClusterRole «modello» con i permessi sull'app: lo usano solo i RoleBinding dei namespace delle app. */}}
 {{- define "gitstack.apps.workloadRoleName" -}}
 {{- printf "%s-app-workload" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/* GIT-460: il TLSStore default del chart esiste (ed e' reso) solo con TLS dell'installer. Unica fonte della condizione: vale "true" oppure e' vuoto. */}}
+{{- define "gitstack.tlsStore.enabled" -}}
+{{- if and .Values.ingress.enabled .Values.ingress.tls.enabled .Values.ingress.tls.secretName -}}true{{- end -}}
+{{- end -}}
+
+{{/* GIT-494: namespace dedicato ai certificati del cliente (apps.enabled): ci stanno solo il TLSStore default e i Secret TLS (gitstack-domain-<id>, più la copia del certificato dell'installer per il defaultCertificate). Core ha i verbi sui Secret solo qui, mai in kube-system né nel namespace del release. Non deve iniziare con gitstack-app-: è il perimetro dei namespace delle app. */}}
+{{- define "gitstack.certsNamespace" -}}
+{{- $ns := printf "%s-certs" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- if hasPrefix "gitstack-app-" $ns }}{{ fail (printf "il namespace dei certificati (%s) non puo' iniziare con gitstack-app-: e' il perimetro dei namespace delle app, scegli un altro nome di release" $ns) }}{{- end -}}
+{{- $ns -}}
+{{- end -}}
+
+{{/* GIT-460, GIT-494: namespace del TLSStore default letto da Traefik (in tutto il cluster ne esiste uno solo). Con le app accese è il namespace dei certificati, dove il chart crea il TLSStore (TLS dell'installer) o core (Let's Encrypt); con le app spente è il namespace del release e nessuno scrive Secret. */}}
+{{- define "gitstack.tlsStoreNamespace" -}}
+{{- if .Values.apps.enabled -}}{{ include "gitstack.certsNamespace" . }}{{- else -}}{{ .Release.Namespace }}{{- end -}}
 {{- end -}}

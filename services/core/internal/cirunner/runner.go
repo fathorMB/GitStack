@@ -140,10 +140,31 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 	if repo, _ := cx["repository"].(string); repo != "" {
 		cfg.ActEnv = append(cfg.ActEnv, "GITSTACK_REPOSITORY="+repo)
 	}
+	// Lo sha e il ref del run: act li prende dal repo git della cartella (che qui non c'e') o
+	// dal file evento, mai dall'ambiente, quindi sotto si scrivono il file evento e un .git
+	// minimo. Nell'ambiente restano comunque, per chi li legge fuori da act (GIT-439).
+	runSHA, _ := cx["sha"].(string)
+	runRef, _ := cx["ref"].(string)
+	if runSHA != "" {
+		cfg.ActEnv = append(cfg.ActEnv, "GITHUB_SHA="+runSHA)
+	}
+	if runRef != "" {
+		cfg.ActEnv = append(cfg.ActEnv, "GITHUB_REF="+runRef)
+	}
+	// Gli outputs del job (jobs.<id>.outputs) li scrive un passo aggiunto in coda (needs.go).
+	var outputNames []string
+	outputsDir := filepath.Join(cfg.WorkDir, "outputs")
+	cfg.ActEnv = append(cfg.ActEnv, outputsDirEnv+"="+outputsDir)
 	prepare := func() error {
 		ws := filepath.Join(cfg.WorkDir, "workspace")
 		if err := downloadArchive(ctx, cfg.HTTP, archiveURL, token, ws); err != nil {
 			return fmt.Errorf("download del codice: %w", err)
+		}
+		if err := writeGitHead(ws, runSHA, runRef); err != nil {
+			return fmt.Errorf("sha del run: %w", err)
+		}
+		if err := writeEventFile(filepath.Join(cfg.WorkDir, "workflow", eventFileName), cx); err != nil {
+			return fmt.Errorf("file evento: %w", err)
 		}
 		wf := filepath.Join(cfg.WorkDir, "workflow", "job.yml")
 		if err := os.MkdirAll(filepath.Dir(wf), 0o750); err != nil {
@@ -158,6 +179,14 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 		if err != nil {
 			return err
 		}
+		if payload, outputNames, err = prepareJob(payload, jobKey, needsFromTask(task)); err != nil {
+			return err
+		}
+		if len(outputNames) > 0 {
+			if err := os.MkdirAll(outputsDir, 0o750); err != nil {
+				return err
+			}
+		}
 		return os.WriteFile(wf, payload, 0o640)
 	}
 	if err := prepare(); err != nil {
@@ -167,6 +196,9 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 	}
 	conclusion = runAct(ctx, cfg, rep, event, jobKey, token)
 	res.Conclusion = conclusion
+	if len(outputNames) > 0 {
+		rep.outputs = readOutputs(outputsDir, outputNames)
+	}
 	if err := rep.flush(ctx, conclusion, true); err != nil {
 		return res, fmt.Errorf("esito non riportato: %w", err)
 	}
@@ -241,13 +273,100 @@ func NormalizeLabels(in []string) []string {
 // è quello del namespace di build. Senza il -P act salterebbe il job con uscita 0.
 var actPlatforms = []string{"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "ubuntu-20.04", "gitstack-build"}
 
+const eventFileName = "event.json"
+
+var sha1Hex = regexp.MustCompile(`^[0-9a-f]{40}$`)
+
+// branchName: solo caratteri sicuri per un percorso sotto .git/refs/heads (niente «..», niente
+// componenti vuoti o che iniziano con un punto).
+var branchName = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_./-]*$`)
+
+func validBranchRef(b string) bool {
+	if !branchName.MatchString(b) || strings.Contains(b, "..") || strings.Contains(b, "//") ||
+		strings.Contains(b, "/.") || strings.HasSuffix(b, "/") || strings.HasSuffix(b, ".lock") {
+		return false
+	}
+	return true
+}
+
+// writeGitHead da' al workspace (un archivio, senza .git) un repo git minimo con HEAD staccato
+// sullo sha del run: e' da li' che act ricava github.sha e GITHUB_SHA. Senza, act li lascia
+// vuoti (v0.2.89 non li legge ne' dal file evento ne' dall'ambiente). Uno sha non valido non
+// scrive nulla; un .git gia' presente nell'archivio resta com'e'.
+//
+// Per un ref di ramo (refs/heads/x) HEAD e' simbolico e il ramo punta allo sha: act ricava
+// GITHUB_REF da li' (con HEAD staccato lo lasciava senza il ramo, e il job vedeva un valore
+// non completo, GIT-448). Per tag, sha o ref vuoto HEAD resta staccato.
+func writeGitHead(ws, sha, ref string) error {
+	if !sha1Hex.MatchString(sha) {
+		return nil
+	}
+	dir := filepath.Join(ws, ".git")
+	if _, err := os.Lstat(dir); err == nil {
+		return nil
+	}
+	for _, d := range []string{"objects", filepath.Join("refs", "heads")} {
+		if err := os.MkdirAll(filepath.Join(dir, d), 0o750); err != nil {
+			return err
+		}
+	}
+	if err := os.WriteFile(filepath.Join(dir, "config"), []byte("[core]\n\trepositoryformatversion = 0\n"), 0o640); err != nil {
+		return err
+	}
+	if branch, ok := strings.CutPrefix(ref, "refs/heads/"); ok && validBranchRef(branch) {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, "refs", "heads", filepath.FromSlash(branch))), 0o750); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dir, "refs", "heads", filepath.FromSlash(branch)), []byte(sha+"\n"), 0o640); err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(dir, "HEAD"), []byte("ref: refs/heads/"+branch+"\n"), 0o640)
+	}
+	return os.WriteFile(filepath.Join(dir, "HEAD"), []byte(sha+"\n"), 0o640)
+}
+
+// writeEventFile scrive il payload dell'evento per `act -e`: gli input del run (workflow_dispatch,
+// quelli risolti dal server con i default), il ref e lo sha, il repository e il numero della PR.
+// I passi li vedono in github.event.*.
+func writeEventFile(path string, cx map[string]any) error {
+	ev := map[string]any{}
+	if in, ok := cx["inputs"].(map[string]any); ok {
+		ev["inputs"] = in
+	}
+	ref, _ := cx["ref"].(string)
+	sha, _ := cx["sha"].(string)
+	if ref != "" {
+		ev["ref"] = ref
+	}
+	if sha != "" {
+		ev["after"] = sha
+		ev["head_commit"] = map[string]any{"id": sha}
+	}
+	if repo, _ := cx["repository"].(string); repo != "" {
+		ev["repository"] = map[string]any{"full_name": repo}
+	}
+	if n, ok := cx["pull_number"].(float64); ok {
+		ev["number"] = int64(n)
+		ev["pull_request"] = map[string]any{"number": int64(n), "head": map[string]any{"sha": sha}}
+	}
+	b, err := json.Marshal(ev)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return err
+	}
+	return os.WriteFile(path, b, 0o640)
+}
+
 // runAct esegue `act <evento> -j <job>` in modalità host sul workspace e ne segue l'output.
 func runAct(ctx context.Context, cfg Config, rep *reporter, event, jobKey, token string) runnerv1.Result {
 	if event == "" {
 		event = "push"
 	}
 	args := append([]string{}, cfg.ActArgs...)
-	args = append(args, event, "-W", filepath.Join(cfg.WorkDir, "workflow", "job.yml"), "-j", jobKey)
+	args = append(args, event, "-e", filepath.Join(cfg.WorkDir, "workflow", eventFileName),
+		"-W", filepath.Join(cfg.WorkDir, "workflow", "job.yml"), "-j", jobKey)
 	for _, p := range platformsFor(cfg.Labels) {
 		args = append(args, "-P", p+"=-self-hosted")
 	}
@@ -314,6 +433,9 @@ type reporter struct {
 	total   int64              // righe prodotte
 	steps   []*runnerv1.StepState
 	current *runnerv1.StepState
+	// hidden: act sta eseguendo il passo di raccolta degli outputs, che non va nel log.
+	hidden  bool
+	outputs map[string]string // riportati con l'esito finale
 }
 
 func (r *reporter) line(s string) {
@@ -333,6 +455,17 @@ func (r *reporter) appendLocked(s string) {
 func (r *reporter) actLine(s string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if m := stepStart.FindStringSubmatch(s); m != nil && strings.TrimSpace(m[1]) == OutputsStepName {
+		r.closeCurrentLocked(runnerv1.Result_RESULT_UNSPECIFIED)
+		r.hidden = true
+		return
+	}
+	if r.hidden {
+		if stepResult.MatchString(s) {
+			r.hidden = false
+		}
+		return
+	}
 	if m := stepStart.FindStringSubmatch(s); m != nil {
 		r.closeCurrentLocked(runnerv1.Result_RESULT_UNSPECIFIED)
 		r.current = &runnerv1.StepState{Id: int64(len(r.steps)), StartedAt: timestamppb.Now(), LogIndex: r.total}
@@ -372,6 +505,10 @@ func (r *reporter) flush(ctx context.Context, result runnerv1.Result, final bool
 	}
 	rows := append([]*runnerv1.LogRow(nil), r.rows...)
 	base := r.base
+	var outputs map[string]string
+	if final {
+		outputs = r.outputs
+	}
 	steps := make([]*runnerv1.StepState, len(r.steps))
 	for i, s := range r.steps {
 		steps[i] = &runnerv1.StepState{Id: s.Id, Result: s.Result, StartedAt: s.StartedAt, StoppedAt: s.StoppedAt, LogIndex: s.LogIndex, LogLength: s.LogLength}
@@ -392,7 +529,7 @@ func (r *reporter) flush(ctx context.Context, result runnerv1.Result, final bool
 			case <-time.After(time.Duration(i) * 500 * time.Millisecond):
 			}
 		}
-		if err = r.send(ctx, base, rows, steps, result); err == nil {
+		if err = r.send(ctx, base, rows, steps, result, outputs); err == nil {
 			return nil
 		}
 		if connect.CodeOf(err) == connect.CodeUnauthenticated || connect.CodeOf(err) == connect.CodePermissionDenied {
@@ -402,7 +539,7 @@ func (r *reporter) flush(ctx context.Context, result runnerv1.Result, final bool
 	return err
 }
 
-func (r *reporter) send(ctx context.Context, base int64, rows []*runnerv1.LogRow, steps []*runnerv1.StepState, result runnerv1.Result) error {
+func (r *reporter) send(ctx context.Context, base int64, rows []*runnerv1.LogRow, steps []*runnerv1.StepState, result runnerv1.Result, outputs map[string]string) error {
 	if len(rows) > 0 || result != runnerv1.Result_RESULT_UNSPECIFIED {
 		for len(rows) > 0 {
 			chunk := rows
@@ -432,7 +569,7 @@ func (r *reporter) send(ctx context.Context, base int64, rows []*runnerv1.LogRow
 		}
 	}
 	_, err := r.client.UpdateTask(ctx, withToken(&runnerv1.UpdateTaskRequest{
-		State: &runnerv1.TaskState{Id: r.taskID, Result: result, Steps: steps}}, r.token))
+		State: &runnerv1.TaskState{Id: r.taskID, Result: result, Steps: steps}, Outputs: outputs}, r.token))
 	return err
 }
 

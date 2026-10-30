@@ -147,7 +147,12 @@ func newStatusCmd(f *cmdutil.Factory) *cobra.Command {
 				if a.Follow.Paused {
 					state = "sospeso"
 				}
-				_, _ = fmt.Fprintf(out, "deploy automatico: branch %s (%s)\n", a.Follow.Branch, state)
+				switch {
+				case a.Follow.TagPattern != nil:
+					_, _ = fmt.Fprintf(out, "deploy automatico: tag %s (%s)\n", *a.Follow.TagPattern, state)
+				case a.Follow.Branch != nil:
+					_, _ = fmt.Fprintf(out, "deploy automatico: branch %s (%s)\n", *a.Follow.Branch, state)
+				}
 			}
 			if d := a.LastDeploy; d != nil {
 				line := fmt.Sprintf("ultimo deploy: v%d %s", d.Version, d.State)
@@ -178,10 +183,10 @@ func imageTrust(i gitstack.AppImage) string {
 
 func newCreateCmd(f *cmdutil.Factory) *cobra.Command {
 	var (
-		image, branch, healthPath string
-		port, copies              int
-		restricted                bool
-		jo                        output.JSONOptions
+		image, branch, tagPattern, healthPath string
+		port, copies                          int
+		restricted                            bool
+		jo                                    output.JSONOptions
 	)
 	cmd := &cobra.Command{
 		Use:   "create <app>",
@@ -211,6 +216,12 @@ func newCreateCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 			if fl.Changed("follow-branch") {
 				in.FollowBranch = &branch
+			}
+			if fl.Changed("follow-tag") {
+				in.FollowTagPattern = &tagPattern
+			}
+			if fl.Changed("follow-branch") && fl.Changed("follow-tag") {
+				return cmdutil.UsageErrorf("--follow-branch e --follow-tag non vanno insieme: un'app segue un branch oppure una regola sui tag")
 			}
 			if fl.Changed("restricted") {
 				in.Restricted = &restricted
@@ -245,6 +256,7 @@ func newCreateCmd(f *cmdutil.Factory) *cobra.Command {
 	fl.IntVar(&port, "port", 0, "Porta del container (senza: app senza indirizzo)")
 	fl.IntVar(&copies, "copies", 1, "Numero di copie")
 	fl.StringVar(&branch, "follow-branch", "", "Branch da seguire per il deploy automatico (H7)")
+	fl.StringVar(&tagPattern, "follow-tag", "", "Regola sui tag per il deploy automatico, per esempio 'v*-test.*' (H7); non insieme a --follow-branch")
 	fl.StringVar(&healthPath, "health-path", "", "Percorso HTTP del controllo di salute, per esempio /healthz")
 	fl.BoolVar(&restricted, "restricted", false, "Rifiuta immagini che girano come root")
 	output.AddJSONFlags(cmd, &jo, ListFields)

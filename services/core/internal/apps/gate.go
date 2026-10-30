@@ -78,13 +78,22 @@ func RunGate(ctx context.Context, getenv func(string) string, timeout time.Durat
 	return waitUnreachable(ctx, net.JoinHostPort(host, port), timeout)
 }
 
+// dialSaysUnreachable dice se l'esito di un dial vale come «barriera presente». Un errore conta
+// solo se arriva prima della scadenza dell'attesa: il dial eredita la scadenza del contesto, e
+// l'ultimo dial può fallire con i/o timeout un attimo PRIMA che ctx.Err() diventi non nil. Quella
+// non è una barriera ma la fine dell'attesa: leggerla come tale apriva il cancello (GIT-426).
+func dialSaysUnreachable(ctx context.Context, err error, deadline, now time.Time) bool {
+	return err != nil && ctx.Err() == nil && now.Before(deadline)
+}
+
 func waitUnreachable(ctx context.Context, address string, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+	deadline, _ := ctx.Deadline()
 	for {
 		d := net.Dialer{Timeout: time.Second}
 		conn, err := d.DialContext(ctx, "tcp", address)
-		if err != nil && ctx.Err() == nil {
+		if dialSaysUnreachable(ctx, err, deadline, time.Now()) {
 			return nil
 		}
 		if err == nil {

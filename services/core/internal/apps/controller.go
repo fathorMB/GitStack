@@ -77,12 +77,26 @@ type Config struct {
 	ProxyEnv map[string]string
 	// GateImage: immagine dell'init container «gate» dei pod delle app (GIT-418), quella di core.
 	GateImage string
-	// TraefikNamespace è il namespace dell'Ingress controller k3s.
+	// Domains: controllo del DNS dei domini propri delle app pubbliche (v3-c, GIT-458); AppsDomain
+	// vuoto prende quello sopra. Resolver nil = DNS di sistema.
+	Domains DomainConfig
+	// TraefikNamespace è il namespace dei pod dell'Ingress controller k3s: la NetworkPolicy delle app
+	// ammette l'ingresso solo da lì.
 	TraefikNamespace string
+	// TLSStoreNamespace è il namespace dei certificati del cliente (GIT-494: <release>-certs, creato dal chart):
+	// ci stanno i Secret TLS e il TLSStore default letto da Traefik. Il chart lo passa sempre; vuoto = TraefikNamespace
+	// (solo test: in un cluster vero core non ha verbi sui Secret di quel namespace).
+	TLSStoreNamespace string
+	// Gateway è la porta interna del gateway per le app (GIT-442); nil o incompleta = non configurata.
+	Gateway *GatewayAccess
 	// EgressClusterCIDRs e EgressNodeAddresses sono gli stessi di webhook e mirror (pkg/egress):
 	// le barriere in uscita delle app (H16) li escludono da internet.
 	EgressClusterCIDRs  []string
 	EgressNodeAddresses []string
+	// EgressDeny è GITSTACK_EGRESS_DENY: le destinazioni vietate non si aprono (H16).
+	EgressDeny []string
+	// Resolver risolve i nomi delle destinazioni di uscita (H16); nil usa il DNS del sistema.
+	Resolver Resolver
 	// Secrets decifra i valori correnti dei segreti dell'app: si iniettano nei pod e si usano per
 	// mascherarli nei log (GIT-348, GIT-350). Nil: le righe delle copie non si raccolgono, e nei pod
 	// non entra nessun segreto.
@@ -95,6 +109,12 @@ type Config struct {
 	// sorgente di CPU e memoria; nil = metrics-server.
 	MetricsEvery time.Duration
 	PodMetrics   PodMetricsReader
+	// TraefikMetrics: la sorgente delle richieste e degli errori 5xx (GIT-403, H12), il testo Prometheus
+	// di Traefik; nil legge TraefikMetricsURL. Vuoti entrambi: richieste ed errori non disponibili.
+	TraefikMetrics    TraefikMetricsReader
+	TraefikMetricsURL string
+	// ACME: Let's Encrypt per i domini propri (GIT-459); la configurazione vera è quella di Traefik.
+	ACME ACMEConfig
 	// LogRetention: per quanto si tengono le righe (default 7 giorni); LogMaxBytes: per app (default 1 GiB).
 	LogRetention time.Duration
 	LogMaxBytes  int64
@@ -149,21 +169,37 @@ type Controller struct {
 	cfg  Config
 	// siblings dà le app di un repo (H15); nil senza store (alcuni test): niente nomi interni.
 	siblings func(context.Context, uuid.UUID) ([]store.App, error)
+	// versionOf dà la versione attiva dell'app (reapply); senza store è un seam dei test.
+	versionOf func(context.Context, store.App) (store.AppVersion, error)
 
+	// publicOn è un seam dei test per l'interruttore delle app pubbliche; nil = lo legge lo store.
+	publicOn func(context.Context) (bool, error)
+	// domainsOf e' il seam dei test per i domini propri attivi dell'app; nil = li legge lo store.
+	domainsOf func(context.Context, store.App) ([]string, error)
+
+	acme    acmeState
 	kick    chan struct{}
 	mu      sync.Mutex
 	running map[uuid.UUID]bool
 	// oomSeen: ultimo riavvio per OOM già registrato, per app e copia (mu).
 	oomSeen map[uuid.UUID]map[string]int32
+	// pullChecked: ultimo controllo della rotazione del pull secret, per app (mu).
+	pullChecked map[uuid.UUID]time.Time
+	// traffic: ultimi contatori di Traefik letti per app (GIT-403); solo il ciclo delle metriche li usa.
+	traffic map[uuid.UUID]trafficCounters
 }
 
 // New crea il controller. dyn può essere nil: allora non crea le rotte Traefik.
 func New(st *store.Store, kube kubernetes.Interface, dyn dynamic.Interface, cfg Config) *Controller {
 	cfg.defaults()
 	c := &Controller{st: st, kube: kube, dyn: dyn, cfg: cfg, kick: make(chan struct{}, 1),
-		running: map[uuid.UUID]bool{}, oomSeen: map[uuid.UUID]map[string]int32{}}
+		running: map[uuid.UUID]bool{}, oomSeen: map[uuid.UUID]map[string]int32{}, traffic: map[uuid.UUID]trafficCounters{}}
+	c.acme.issuing = map[uuid.UUID]time.Time{}
 	if st != nil {
 		c.siblings = st.ListApps
+		c.versionOf = func(ctx context.Context, a store.App) (store.AppVersion, error) {
+			return st.GetAppVersion(ctx, a.ID, a.ActiveVersion)
+		}
 	}
 	return c
 }
@@ -181,7 +217,7 @@ func (c *Controller) Kick() {
 func (c *Controller) Run(ctx context.Context) {
 	tick := time.NewTicker(c.cfg.LoopInterval)
 	defer tick.Stop()
-	var lastSync, lastCollect, lastLogs, lastMetrics, lastPrune time.Time
+	var lastSync, lastCollect, lastLogs, lastMetrics, lastPrune, lastDomains, lastCerts time.Time
 	for {
 		c.processPending(ctx)
 		if now := time.Now(); now.Sub(lastSync) >= c.cfg.SyncEvery {
@@ -199,6 +235,19 @@ func (c *Controller) Run(ctx context.Context) {
 		if now := time.Now(); now.Sub(lastMetrics) >= c.cfg.MetricsEvery {
 			lastMetrics = now
 			c.CollectMetrics(ctx)
+		}
+		if now := time.Now(); now.Sub(lastDomains) >= time.Minute {
+			lastDomains = now
+			c.CheckDomains(ctx)
+			c.CheckPort80(ctx)
+			// GIT-462: dopo un restore (o se qualcuno toglie un Secret) il namespace di Traefik non ha
+			// più i Secret dei certificati del cliente: il database li ha cifrati e qui si riscrivono.
+			c.SyncCustomCerts(ctx)
+		}
+		if now := time.Now(); now.Sub(lastCerts) >= certProbeEvery {
+			lastCerts = now
+			c.CheckCertificates(ctx)
+			c.CheckCertExpiry(ctx)
 		}
 		if now := time.Now(); now.Sub(lastPrune) >= time.Minute {
 			lastPrune = now
@@ -320,8 +369,16 @@ func (c *Controller) rollout(ctx context.Context, app store.App, v store.AppVers
 	return c.waitReady(ctx, app, v)
 }
 
+// ErrGateImageMissing: senza l'immagine del cancello (GITSTACK_CORE_APPS_GATE_IMAGE) il pod dell'app
+// partirebbe prima che la NetworkPolicy valga (H16, GIT-418): il deploy è rifiutato (fail-closed, GIT-422).
+var ErrGateImageMissing = errors.New("GITSTACK_CORE_APPS_GATE_IMAGE non impostata: senza il cancello di rete (core apps-gate) i pod delle app non vengono creati")
+
 // apply crea o aggiorna namespace, pull secret, Service, rotta e Deployment della versione.
+// Prima di toccare il cluster verifica che il cancello sia configurato.
 func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersion) error {
+	if c.cfg.GateImage == "" {
+		return ErrGateImageMissing
+	}
 	ns := Namespace(app.ID)
 	if err := c.ensureNamespace(ctx, app, v.Config.Restricted); err != nil {
 		return fmt.Errorf("namespace: %w", err)
@@ -339,6 +396,9 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 			return fmt.Errorf("credenziali del registry: %w", err)
 		}
 		if cred != nil {
+			if cred.Server == "" {
+				cred.Server = imageHost(v.Image.Reference)
+			}
 			if err := c.ensurePullSecret(ctx, ns, app.ID, cred); err != nil {
 				return fmt.Errorf("pull secret: %w", err)
 			}
@@ -378,8 +438,16 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 	if err := c.ensureVolumes(ctx, app, v); err != nil {
 		return fmt.Errorf("volumi: %w", err)
 	}
+	restricted := false
+	if c.st != nil { // l'env del proxy segue la restrizione dell'uscita, come la NetworkPolicy
+		rs, err := c.st.GetAppEgressRestriction(ctx, app.ID)
+		if err != nil {
+			return fmt.Errorf("restrizione dell'uscita: %w", err)
+		}
+		restricted = rs != nil
+	}
 	deps := c.kube.AppsV1().Deployments(ns)
-	opts := BuildOptions{Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret, ProxyEnv: c.cfg.ProxyEnv, GateImage: c.cfg.GateImage}
+	opts := BuildOptions{EgressRestricted: restricted, Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret, ProxyEnv: c.cfg.ProxyEnv, GateImage: c.cfg.GateImage, Gateway: c.cfg.Gateway}
 	// Get+Build+Update a ogni tentativo: il deployment controller di Kubernetes aggiorna lo stesso
 	// oggetto (status, revisione, rollout precedente) e l'Update con un ResourceVersion vecchio
 	// riceve 409.
@@ -413,7 +481,27 @@ func (c *Controller) ensureNetworkPolicy(ctx context.Context, app store.App) err
 		}
 		proxyIPs[endpoint.host] = ips
 	}
-	want := BuildNetworkPolicy(app, NetworkPolicyOptions{TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs, ClusterCIDRs: c.cfg.EgressClusterCIDRs, NodeAddresses: c.cfg.EgressNodeAddresses})
+	np := NetworkPolicyOptions{Gateway: c.cfg.Gateway, TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs, ClusterCIDRs: c.cfg.EgressClusterCIDRs, NodeAddresses: c.cfg.EgressNodeAddresses, Deny: c.cfg.EgressDeny}
+	// Destinazioni private aperte dall'amministratore e restrizione dell'app (H16, GIT-385): gli indirizzi
+	// si risolvono ora, a ogni applicazione della policy (deploy o modifica delle impostazioni).
+	if c.st != nil { // senza store (prove del solo cluster) nessuna apertura e nessuna restrizione
+		policy := EgressPolicy(c.cfg.EgressClusterCIDRs, c.cfg.EgressNodeAddresses, c.cfg.EgressDeny)
+		openedList, err := c.st.ListAppPrivateDestinations(ctx)
+		if err != nil {
+			return fmt.Errorf("destinazioni private: %w", err)
+		}
+		opened := OpenedAddrs(ctx, policy, c.cfg.Resolver, openedList)
+		np.PrivateOpenings = sortedAddrPorts(opened)
+		restriction, err := c.st.GetAppEgressRestriction(ctx, app.ID)
+		if err != nil {
+			return fmt.Errorf("restrizione dell'uscita: %w", err)
+		}
+		if restriction != nil {
+			addrs := RestrictionAddrs(ctx, policy, c.cfg.Resolver, opened, restriction.Destinations)
+			np.Restriction = &addrs
+		}
+	}
+	want := BuildNetworkPolicy(app, np)
 	policies := c.kube.NetworkingV1().NetworkPolicies(want.Namespace)
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		cur, err := policies.Get(ctx, want.Name, metav1.GetOptions{})
@@ -428,6 +516,66 @@ func (c *Controller) ensureNetworkPolicy(ctx context.Context, app store.App) err
 		_, err = policies.Update(ctx, cur, metav1.UpdateOptions{})
 		return err
 	})
+}
+
+// RefreshEgress riapplica la NetworkPolicy di uscita (H16, GIT-385) dopo che l'amministratore ha
+// cambiato le destinazioni private o che l'app ha cambiato la sua restrizione. ids nil: tutte le app.
+// Un'app che non è ancora in cluster (nessun namespace) si salta: la policy la scrive il primo deploy.
+func (c *Controller) RefreshEgress(ctx context.Context, ids []uuid.UUID) error {
+	if ids == nil {
+		var err error
+		if ids, err = c.st.AppIDs(ctx); err != nil {
+			return err
+		}
+	}
+	var firstErr error
+	for _, id := range ids {
+		app, err := c.st.GetAppByID(ctx, id)
+		if err != nil {
+			continue
+		}
+		if _, err := c.kube.CoreV1().Namespaces().Get(ctx, Namespace(app.ID), metav1.GetOptions{}); err != nil {
+			if !apierrors.IsNotFound(err) && firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		if err := c.ensureNetworkPolicy(ctx, app); err != nil {
+			c.cfg.Log.Warn("apps: policy di rete non aggiornata", "app", app.ID, "err", err)
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		if err := c.refreshProxyEnv(ctx, app); err != nil {
+			c.cfg.Log.Warn("apps: env del proxy non aggiornato", "app", app.ID, "err", err)
+			if firstErr == nil {
+				firstErr = err
+			}
+		}
+	}
+	return firstErr
+}
+
+// refreshProxyEnv riallinea il Deployment alla restrizione dell'uscita: se accendere o spegnere la
+// restrizione cambia l'env del proxy N9, il template del pod cambia e Kubernetes riavvia l'app
+// (rollout). Un'app senza Deployment, o con un deploy in corso (che legge già la restrizione nuova),
+// si salta; i Deployment il cui template non cambia non si riavviano.
+func (c *Controller) refreshProxyEnv(ctx context.Context, app store.App) error {
+	if len(c.cfg.ProxyEnv) == 0 || c.isDeploying(app.ID) {
+		return nil
+	}
+	if _, err := c.kube.AppsV1().Deployments(Namespace(app.ID)).Get(ctx, WorkloadName, metav1.GetOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	v, err := c.versionOf(ctx, app)
+	if err != nil || v.State != "serving" {
+		return nil
+	}
+	return c.apply(ctx, app, v)
 }
 
 func (c *Controller) ensureAppSecret(ctx context.Context, ns string, id uuid.UUID, values map[string]string) error {
@@ -517,9 +665,10 @@ func (c *Controller) ensurePullSecret(ctx context.Context, ns string, id uuid.UU
 	cfg, _ := json.Marshal(map[string]any{"auths": map[string]any{cred.Server: map[string]string{
 		"username": cred.Username, "password": cred.Password, "auth": auth}}})
 	want := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: pullSecretName, Namespace: ns, Labels: objectLabels(id)},
-		Type:       corev1.SecretTypeDockerConfigJson,
-		Data:       map[string][]byte{corev1.DockerConfigJsonKey: cfg},
+		ObjectMeta: metav1.ObjectMeta{Name: pullSecretName, Namespace: ns, Labels: objectLabels(id),
+			Annotations: map[string]string{annotationPullIssued: c.cfg.Now().UTC().Format(time.RFC3339)}},
+		Type: corev1.SecretTypeDockerConfigJson,
+		Data: map[string][]byte{corev1.DockerConfigJsonKey: cfg},
 	}
 	secrets := c.kube.CoreV1().Secrets(ns)
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -532,6 +681,10 @@ func (c *Controller) ensurePullSecret(ctx context.Context, ns string, id uuid.UU
 			return err
 		}
 		cur.Data = want.Data
+		if cur.Annotations == nil {
+			cur.Annotations = map[string]string{}
+		}
+		cur.Annotations[annotationPullIssued] = want.Annotations[annotationPullIssued]
 		_, err = secrets.Update(ctx, cur, metav1.UpdateOptions{})
 		return err
 	})
@@ -643,6 +796,18 @@ func (c *Controller) routeHost(app store.App, cfg store.AppConfig) string {
 	return *app.AddressLabel + "." + c.cfg.AppsDomain
 }
 
+// publicAppsEnabled legge l'interruttore d'istanza delle app pubbliche (H1); senza store (test) è
+// il seam publicOn, e senza nemmeno quello vale spento.
+func (c *Controller) publicAppsEnabled(ctx context.Context) (bool, error) {
+	if c.publicOn != nil {
+		return c.publicOn(ctx)
+	}
+	if c.st == nil {
+		return false, nil
+	}
+	return c.st.PublicAppsEnabled(ctx)
+}
+
 // authConfigured: il forward-auth del login (H6) ha indirizzo e segreto.
 func (c *Controller) authConfigured() bool {
 	return c.cfg.AuthURL != "" && c.cfg.AuthSecret != ""
@@ -654,14 +819,39 @@ func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.A
 	}
 	routes := c.dyn.Resource(routeGVR).Namespace(Namespace(app.ID))
 	host := c.routeHost(app, cfg)
-	if host == "" {
-		err := routes.Delete(ctx, WorkloadName, metav1.DeleteOptions{})
-		if apierrors.IsNotFound(err) {
-			return nil // niente rotta, oppure le CRD di Traefik non ci sono
-		}
-		return err
-	}
+	// App pubbliche (H1): con l'interruttore d'istanza spento un'app `public` non è esposta. Il modo
+	// resta salvato; alla riaccensione la rotta torna al prossimo giro. Nel dubbio (errore di lettura)
+	// la rotta non si crea e quella già esistente si toglie (fail-closed, GIT-457): mai esposta per
+	// sbaglio. L'errore di lettura resta al chiamante, che riprova al giro dopo.
+	// Interruttore spento (lettura riuscita): ADR 0002, l'app resta raggiungibile dentro l'installazione
+	// con la rotta dell'accesso `login` (forward-auth) sul dominio delle app, senza domini propri.
+	var readErr error
 	login := app.Access == "login"
+	degraded := false
+	if host != "" && app.Access == "public" {
+		on, err := c.publicAppsEnabled(ctx)
+		if err != nil {
+			readErr = fmt.Errorf("lettura dell'interruttore delle app pubbliche: %w", err)
+			on = false
+		}
+		if !on {
+			if readErr == nil && c.authConfigured() {
+				login, degraded = true, true
+			} else {
+				host = ""
+			}
+		}
+	}
+	if host == "" {
+		err := deleteRoutes(ctx, routes)
+		if err != nil {
+			if readErr != nil {
+				return errors.Join(readErr, err)
+			}
+			return err
+		}
+		return readErr
+	}
 	// I Middleware prima della rotta: la rotta che li cita non deve mai esistere senza.
 	ns := c.dyn.Resource(middlewareGVR).Namespace(Namespace(app.ID))
 	if err := upsert(ctx, ns, BuildStripMiddleware(app.ID)); err != nil {
@@ -674,7 +864,37 @@ func (c *Controller) ensureRoute(ctx context.Context, app store.App, cfg store.A
 	} else if err := ns.Delete(ctx, MiddlewareAuth, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("middleware %s: %w", MiddlewareAuth, err)
 	}
-	return upsert(ctx, routes, BuildRoute(app, host, login))
+	var extra, acmeHosts []string
+	if !degraded {
+		var err error
+		if extra, acmeHosts, err = c.domainHosts(ctx, app); err != nil {
+			return fmt.Errorf("lettura dei domini propri: %w", err)
+		}
+	}
+	if err := upsert(ctx, routes, BuildRoute(app, host, login, extra...)); err != nil {
+		return err
+	}
+	// Domini con certificato Let's Encrypt: una rotta propria col resolver di Traefik (GIT-459). Senza
+	// domini la rotta si toglie.
+	if len(acmeHosts) == 0 {
+		if err := routes.Delete(ctx, DomainsRouteName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}
+	return upsert(ctx, routes, BuildDomainsRoute(app, acmeHosts, login, c.cfg.ACME.Resolver))
+}
+
+// deleteRoutes toglie le rotte pubbliche dell'app (indirizzo automatico e domini propri). NotFound:
+// niente rotta, oppure le CRD di Traefik non ci sono.
+func deleteRoutes(ctx context.Context, routes dynamic.ResourceInterface) error {
+	var errs []error
+	for _, name := range []string{WorkloadName, DomainsRouteName} {
+		if err := routes.Delete(ctx, name, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // upsert crea l'oggetto o ne aggiorna lo spec e le label, solo se cambiano (il ciclo di sync lo
@@ -877,6 +1097,9 @@ func trim(s string) string {
 // Restart riavvia le copie una alla volta (H12): cambia l'annotazione del template, Kubernetes fa
 // l'aggiornamento graduale senza togliere copie pronte. Non crea una versione.
 func (c *Controller) Restart(ctx context.Context, app store.App) error {
+	if c.cfg.GateImage == "" {
+		return ErrGateImageMissing // il riavvio ricrea i pod: senza cancello restano aperti (GIT-422)
+	}
 	deps := c.kube.AppsV1().Deployments(Namespace(app.ID))
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		d, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})
@@ -906,6 +1129,9 @@ func (c *Controller) Restart(ctx context.Context, app store.App) error {
 
 // Scale porta le repliche del Deployment alle copie dell'app (già validate e scritte dalla quota).
 func (c *Controller) Scale(ctx context.Context, app store.App) error {
+	if c.cfg.GateImage == "" && desiredReplicas(app) > 0 {
+		return ErrGateImageMissing // nuove copie = nuovi pod; fermare l'app (0 copie) resta permesso (GIT-422)
+	}
 	deps := c.kube.AppsV1().Deployments(Namespace(app.ID))
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		d, err := deps.Get(ctx, WorkloadName, metav1.GetOptions{})
@@ -954,9 +1180,14 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 	ns := Namespace(app.ID)
 	d, err := c.kube.AppsV1().Deployments(ns).Get(ctx, WorkloadName, metav1.GetOptions{})
 	if err != nil {
-		if apierrors.IsNotFound(err) {
+		// Dopo un restore su un cluster pulito il namespace può esistere (creato dal restore per i
+		// volumi) senza il RoleBinding di core: il Get dà Forbidden, non NotFound. Anche allora si
+		// riapplica, perché apply rifà namespace e RoleBinding prima del Deployment.
+		if apierrors.IsNotFound(err) || apierrors.IsForbidden(err) {
 			c.reapply(ctx, app)
+			return
 		}
+		c.cfg.Log.Warn("apps: deployment non leggibile", "app", app.ID, "err", err)
 		return
 	}
 	// Il modo di accesso può cambiare a deploy fermo (PUT .../access): la rotta e i suoi middleware
@@ -970,6 +1201,7 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 	}
 	// H3: i volumi tolti si eliminano quando la versione in servizio non li monta più.
 	c.pruneVolumes(ctx, app)
+	c.refreshPullSecret(ctx, app)
 	if app.Status == "failed" {
 		if v, err := c.st.GetAppVersion(ctx, app.ID, app.ActiveVersion); err == nil && v.State == "failed" {
 			return // il primo deploy è fallito: l'app resta «fallita» finché non ne arriva un altro
@@ -1016,7 +1248,7 @@ func (c *Controller) syncApp(ctx context.Context, app store.App) {
 // restore su un cluster pulito (H4), dove le app tornano dal database (versione, configurazione,
 // immagini nel registry ripristinato).
 func (c *Controller) reapply(ctx context.Context, app store.App) {
-	v, err := c.st.GetAppVersion(ctx, app.ID, app.ActiveVersion)
+	v, err := c.versionOf(ctx, app)
 	if !shouldReapply(app, v, err) {
 		return
 	}

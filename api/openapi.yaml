@@ -6866,6 +6866,25 @@ paths:
                   description: Consegnato (qualunque 2xx).
                 "4XX":
                   description: Rifiutato dal ricevitore; un 410 ferma le consegne, gli altri 4xx non si ritentano (C7).
+        app_domain:
+          "{$request.body#/url}":
+            post:
+              summary: Consegna dell'evento app_domain (dominio o certificato di un'app, v3-c)
+              description: >
+                POST con `X-GitStack-Event: app_domain` quando un dominio proprio non supera la verifica del DNS
+                (`dns_failed`), il rinnovo Let's Encrypt fallisce (`certificate_renewal_failed`) o il certificato
+                del cliente sta per scadere (`certificate_expiring`). Un solo invio per guasto o scadenza.
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: "#/components/schemas/WebhookAppDomainPayload"
+              responses:
+                "200":
+                  description: Consegnato (qualunque 2xx).
+                "4XX":
+                  description: Rifiutato dal ricevitore; un 410 ferma le consegne, gli altri 4xx non si ritentano (C7).
         workflow_job:
           "{$request.body#/url}":
             post:
@@ -8425,6 +8444,8 @@ paths:
                 $ref: "#/components/schemas/CheckPermissionResult"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -8639,6 +8660,54 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/resources/{resourceId}/members:
+    parameters:
+      - name: resourceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listResourceMembers
+      tags: [internal]
+      x-mcp:
+        expose: false
+        name: resource_members_list
+        destructive: false
+      summary: Elenca gli utenti con almeno un ruolo su una risorsa (per core)
+      description: >
+        Per core (v3-a, H12, GIT-404): gli utenti attivi con almeno il ruolo
+        `role` sulla risorsa, calcolato come in `checkPermission` (grant
+        diretto, via team, owner dell'organizzazione, proprietario del repo
+        personale, amministratore di sistema). Core la usa per avvisare gli
+        admin di un repo. Una risorsa senza grant ne attributi da' un elenco
+        vuoto (a parte gli amministratori di sistema per `admin`). Raggiungibile
+        solo dai servizi: il gateway pubblico rifiuta `/v1/internal/*`.
+      security:
+        - serviceAuth: []
+      parameters:
+        - name: role
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/ResourceRole"
+      responses:
+        "200":
+          description: Gli utenti.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceMembersResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         default:
           $ref: "#/components/responses/UnexpectedError"
 
@@ -9025,6 +9094,8 @@ paths:
                 $ref: "#/components/schemas/CredentialEventList"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
         "401":
           $ref: "#/components/responses/Unauthorized"
         default:
@@ -9733,7 +9804,7 @@ paths:
         Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato
         risponde 409 `archived` (R10, H5). Ogni modifica della configurazione crea una nuova versione (H8) e
         riavvia le copie una alla volta; se non cambia nulla di quel che entra in una versione non se ne
-        crea una. `followBranch: null` torna ai deploy a mano; `autoDeployPaused` sospende il deploy
+        crea una. `followBranch: null` torna ai deploy a mano; `followTagPattern` segue una regola sui tag al posto del branch (mai tutte e due, 422 `follow_both`); `autoDeployPaused` sospende il deploy
         automatico senza perdere il branch. Variabili, segreti, accesso e risorse hanno operazioni proprie.
         422 `follow_branch_unsigned` come in `createApp`.
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppUpdateInput"}}}}
@@ -9782,6 +9853,7 @@ paths:
       tags: [apps]
       x-required-scopes: ["write:resource"]
       x-repo-permission: write
+      x-job-token: true
       x-mcp:
         expose: true
         name: app_deploy
@@ -9796,7 +9868,8 @@ paths:
         `failed`. Se il controllo di salute fallisce resta la versione precedente (`rolled_back`). 409
         `deploy_in_progress` se un deploy e' gia' in corso; 409 `insufficient_capacity` (H11); 422
         `image_not_allowed` (solo immagini firmate, H10) o `root_not_allowed` (restricted, H9). Un token di
-        job puo' farlo se ha `write` sul repo (H7).
+        job puo' farlo se ha `packages: write` e solo per le app del proprio repo (H7); il deploy usa i
+        permessi di chi ha causato il run (CI4), che deve avere ancora `write` sul repo.
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppDeployInput"}}}}
       responses:
         "202": {description: "Deploy avviato.", content: {application/json: {schema: {$ref: "#/components/schemas/AppVersion"}}}}
@@ -10220,6 +10293,185 @@ paths:
         "200": {description: "Esito.", content: {application/json: {schema: {$ref: "#/components/schemas/AppAccessMembership"}}}}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
+  /repos/{owner}/{repo}/apps/{app}/domains:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/AppParam"}]
+    get:
+      operationId: listAppDomains
+      tags: [apps]
+      x-required-scopes: ["read:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: true
+        name: app_domains_list
+        destructive: false
+      summary: "Elenca i domini propri dell'app (v3-c)"
+      description: >
+        Serve `admin` sull'app, cioe' sul repo (H5): `write` e `read` ricevono 403, un repo che non si
+        legge 404. Elenca i domini propri dell'app con stato del dominio, record DNS atteso e stato del
+        certificato. L'indirizzo automatico dell'app (`<app>-<repo>-<owner>.apps.<dominio>`) non e' un
+        dominio proprio e non compare qui: resta in `GET .../access`. Come si controlla il DNS e che
+        certificato usa ogni indirizzo: docs/adr/0002-architettura-hosting-app.md, sezione «App
+        pubbliche e domini propri (v3-c)».
+      responses:
+        "200": {description: "I domini.", content: {application/json: {schema: {$ref: "#/components/schemas/AppDomainList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    post:
+      operationId: addAppDomain
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: true
+        name: app_domain_add
+        destructive: true
+      summary: "Aggiunge un dominio proprio all'app (v3-c)"
+      description: >
+        Serve `admin` sull'app (H5): `write` riceve 403, un repo che non si legge 404. Su un repo
+        archiviato risponde 409 `archived`. Solo un'app con accesso `public` ha domini propri: altrimenti
+        409 `app_not_public`. Il dominio nasce `pending_dns` con il record DNS da creare (campo `dns`);
+        il certificato nasce in modalita' `letsencrypt` e l'emissione parte quando il DNS e' `verified`.
+        Errori: 409 `domain_taken` se il dominio e' gia' di un'altra app (o della stessa);
+        422 `domain_reserved` se e' il dominio di GitStack, il dominio delle app (`*.apps.<dominio>`) o un
+        suo sotto-dominio, o un indirizzo IP; 422 `invalid_domain` se non e' un nome DNS valido (RFC 1123,
+        minuscolo, al massimo 253 caratteri, wildcard non ammessi).
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppDomainInput"}}}}
+      responses:
+        "201": {description: "Aggiunto.", content: {application/json: {schema: {$ref: "#/components/schemas/AppDomain"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+  /repos/{owner}/{repo}/apps/{app}/domains/{domain}:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/AppParam"
+      - $ref: "#/components/parameters/AppDomainParam"
+    get:
+      operationId: getAppDomain
+      tags: [apps]
+      x-required-scopes: ["read:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: true
+        name: app_domain_get
+        destructive: false
+      summary: "Legge un dominio proprio dell'app (v3-c)"
+      description: >
+        Serve `admin` sull'app (H5). Un dominio che l'app non ha e' 404.
+      responses:
+        "200": {description: "Il dominio.", content: {application/json: {schema: {$ref: "#/components/schemas/AppDomain"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    delete:
+      operationId: removeAppDomain
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: true
+        name: app_domain_remove
+        destructive: true
+      summary: "Toglie un dominio proprio dall'app (v3-c)"
+      description: >
+        Serve `admin` sull'app (H5). Su un repo archiviato risponde 409 `archived`. Toglie la route e il
+        certificato del dominio (anche quello caricato dal cliente); il dominio torna libero per altre
+        app. L'indirizzo automatico non cambia. Un dominio che l'app non ha e' 404.
+      responses:
+        "204": {description: "Tolto."}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /repos/{owner}/{repo}/apps/{app}/domains/{domain}/recheck:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/AppParam"
+      - $ref: "#/components/parameters/AppDomainParam"
+    post:
+      operationId: recheckAppDomain
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: true
+        name: app_domain_recheck
+        destructive: true
+      summary: "Ricontrolla il DNS di un dominio proprio (v3-c)"
+      description: >
+        Serve `admin` sull'app (H5). Rifa subito il controllo del DNS (regole nell'ADR 0002) senza
+        aspettare quello periodico e restituisce il dominio aggiornato: `verified` se il record atteso c'e',
+        `pending_dns` se il DNS non risponde ancora, `error` con `statusReason` se risponde altro. Un
+        esito negativo non e' un errore HTTP: risponde 200 con lo stato.
+      responses:
+        "200": {description: "Dominio dopo il ricontrollo.", content: {application/json: {schema: {$ref: "#/components/schemas/AppDomain"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /repos/{owner}/{repo}/apps/{app}/domains/{domain}/certificate:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/AppParam"
+      - $ref: "#/components/parameters/AppDomainParam"
+    put:
+      operationId: uploadAppDomainCertificate
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: true
+        name: app_domain_certificate_upload
+        destructive: true
+      summary: "Carica il certificato del cliente per un dominio (v3-c)"
+      description: >
+        Serve `admin` sull'app (H5). Porta il dominio in modalita' `custom`: Let's Encrypt non emette
+        e non rinnova piu' per questo dominio. Si controlla che la catena sia in PEM, che la chiave privata
+        corrisponda al certificato, che il certificato copra il dominio (nome esatto o wildcard di un
+        livello) e non sia scaduto: altrimenti 422 `certificate_invalid` con il motivo nel messaggio. La
+        chiave privata e' solo in scrittura: non si rilegge e non e' nei log. Il caricamento non richiede
+        che il DNS sia `verified`. Se il dominio non e' di un'app pubblica: 409 `app_not_public`.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppDomainCertificateInput"}}}}
+      responses:
+        "200": {description: "Dominio con il certificato caricato.", content: {application/json: {schema: {$ref: "#/components/schemas/AppDomain"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "503":
+          description: Segreti delle app non configurati (`app_secrets_unavailable`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+    delete:
+      operationId: removeAppDomainCertificate
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: true
+        name: app_domain_certificate_remove
+        destructive: true
+      summary: "Toglie il certificato del cliente e torna a Let's Encrypt (v3-c)"
+      description: >
+        Serve `admin` sull'app (H5). Cancella certificato e chiave caricati, riporta il dominio in modalita'
+        `letsencrypt` e riavvia l'emissione. Su un dominio gia' in `letsencrypt`: 409 `not_custom`.
+      responses:
+        "200": {description: "Dominio in modalita' letsencrypt.", content: {application/json: {schema: {$ref: "#/components/schemas/AppDomain"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
   /repos/{owner}/{repo}/apps/{app}/resources:
     parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/AppParam"}]
     get:
@@ -10264,6 +10516,72 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
         "409": {$ref: "#/components/responses/Conflict"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
+  /repos/{owner}/{repo}/apps/{app}/egress:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/AppParam"}]
+    get:
+      operationId: getAppEgress
+      tags: [apps]
+      x-required-scopes: ["read:resource"]
+      x-repo-permission: write
+      x-mcp:
+        expose: false
+        name: app_egress_get
+        destructive: false
+      summary: "Legge l'uscita dell'app"
+      description: >
+        Serve `write` sul repo (H16): `read` riceve 403, un repo che non si legge 404. `restricted` dice se
+        l'app ha una restrizione propria; senza, l'app esce come l'istanza (internet aperto piu' le
+        destinazioni private aperte dall'amministratore, in `allowedPrivate`).
+      responses:
+        "200": {description: "Uscita dell'app.", content: {application/json: {schema: {$ref: "#/components/schemas/AppEgress"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    put:
+      operationId: setAppEgress
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: false
+        name: app_egress_set
+        destructive: true
+      summary: "Restringe l'uscita dell'app a un elenco di destinazioni"
+      description: >
+        Serve `admin` sul repo (H16): `write` riceve 403, un repo che non si legge 404; repo archiviato 409
+        `archived`. Con la restrizione l'app raggiunge solo le destinazioni elencate, oltre alle app dello
+        stesso repo e al DNS; niente internet aperto e niente proxy. Una voce nella rete privata deve essere
+        una di quelle aperte dall'amministratore (422 `destination_blocked` altrimenti); una voce pubblica va
+        sempre bene. Un elenco vuoto chiude ogni altra uscita. La policy di rete si riapplica subito, senza
+        riavviare l'app e senza creare una versione.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppEgressInput"}}}}
+      responses:
+        "200": {description: "Uscita aggiornata.", content: {application/json: {schema: {$ref: "#/components/schemas/AppEgress"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+    delete:
+      operationId: deleteAppEgress
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: false
+        name: app_egress_delete
+        destructive: true
+      summary: "Toglie la restrizione di uscita dell'app"
+      description: >
+        Serve `admin` sul repo (H16). L'app torna all'uscita dell'istanza. Idempotente: senza restrizione
+        risponde comunque 204. Repo archiviato 409 `archived`.
+      responses:
+        "204": {description: "Restrizione tolta."}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
   /repos/{owner}/{repo}/apps/{app}/volumes:
     parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/AppParam"}]
     get:
@@ -10318,6 +10636,31 @@ paths:
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
   /repos/{owner}/{repo}/apps/{app}/volumes/{volume}:
     parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/RepoNameParam"}, {$ref: "#/components/parameters/AppParam"}, {$ref: "#/components/parameters/AppVolumeParam"}]
+    patch:
+      operationId: updateAppVolume
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-repo-permission: admin
+      x-mcp:
+        expose: true
+        name: app_volume_update
+        destructive: true
+      summary: "Include o esclude il volume dal backup"
+      description: >
+        Serve `admin` sul repo (H5): `write` riceve 403, un repo che non si legge 404. Su un repo archiviato
+        risponde 409 `archived` (R10, H5). `includeInBackup` (default `true`, H3) decide se il volume entra in
+        `gitstack backup`, anche verso S3, e torna con `gitstack restore`. E' una scelta sul dato, non sulla
+        configurazione: non crea versioni, non fa un deploy e un rollback non la cambia. Un volume escluso
+        non e' nell'archivio: dopo un restore l'app riparte con il volume vuoto. Un nome che non c'e' e' 404.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppVolumeUpdate"}}}}
+      responses:
+        "200": {description: "Volume aggiornato.", content: {application/json: {schema: {$ref: "#/components/schemas/AppVolume"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
     delete:
       operationId: deleteAppVolume
       tags: [apps]
@@ -10407,6 +10750,26 @@ paths:
       responses:
         "200": {description: "App dell'istanza.", content: {application/json: {schema: {$ref: "#/components/schemas/AdminAppList"}}}}
         "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/apps/public:
+    get:
+      operationId: listAdminPublicApps
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: admin_public_app_list
+        destructive: false
+      summary: "Elenca le app pubbliche dell'istanza con dominio attivo e certificato (solo amministratore)"
+      description: >
+        Solo l'amministratore dell'installazione (H1, H9): lo scope da solo non basta, gli altri ricevono
+        403 `forbidden`. Una sola chiamata per la console Admin · Apps & resources (v3-c): le app con
+        accesso `public`, ciascuna con repo, indirizzo pubblico (dominio verificato o indirizzo automatico)
+        e domini propri con stato del DNS e del certificato. Con l'interruttore d'istanza spento l'elenco
+        e' vuoto: le app non sono esposte.
+      responses:
+        "200": {description: "App pubbliche dell'istanza.", content: {application/json: {schema: {$ref: "#/components/schemas/AdminPublicAppList"}}}}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
   /admin/apps/capacity:
@@ -10537,13 +10900,59 @@ paths:
       summary: "Modifica le impostazioni d'istanza delle app (solo amministratore)"
       description: >
         Solo l'amministratore dell'installazione (H9, H11): lo scope da solo non basta, gli altri ricevono
-        403 `forbidden`. Sostituisce tutti i valori modificabili. Il dominio delle app non si cambia da qui
-        (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e
+        403 `forbidden`. Sostituisce i valori obbligatori (`publicAppsEnabled`, `signedImagesOnly`,
+        `restricted`, `maxPerApp`, `logRetention`); `acmeEmail` e `publicIps` sono opzionali e se assenti restano
+        invariati. `publicAppsEnabled` (H1) spento toglie l'esposizione a tutte le app pubbliche senza cambiare il modo
+        scelto per app: la riaccensione la ripristina; ogni cambio va nello storico con chi lo fa. Il dominio delle app non
+        si cambia da qui (installazione). Non ferma e non riavvia le app gia' in esecuzione: `restricted` e
         `signedImagesOnly` valgono dal deploy successivo; le app che non li rispettano compaiono in `GET
         /admin/apps`. 422 se un massimo e' sotto quanto un'app usa gia'.
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppsInstanceSettingsInput"}}}}
       responses:
         "200": {description: "Impostazioni aggiornate.", content: {application/json: {schema: {$ref: "#/components/schemas/AppsInstanceSettings"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+  /admin/apps/egress:
+    get:
+      operationId: getAdminAppsEgress
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: admin_apps_egress_view
+        destructive: false
+      summary: "Legge le destinazioni private aperte all'uscita delle app (solo amministratore)"
+      description: >
+        Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono
+        403 `forbidden`. Internet e' aperto alle app; la rete privata (RFC 1918, ULA, CGNAT) e' chiusa e si
+        apre solo per destinazioni precise (`db.azienda.lan:5432`), con le stesse regole di webhook e mirror
+        (pkg/egress, C8). Loopback, link-local, indirizzi del cluster e del nodo e porte di Kubernetes non
+        si aprono mai.
+      responses:
+        "200": {description: "Destinazioni aperte.", content: {application/json: {schema: {$ref: "#/components/schemas/AppsEgressSettings"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    put:
+      operationId: updateAdminAppsEgress
+      tags: [apps]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: admin_apps_egress_update
+        destructive: true
+      summary: "Modifica le destinazioni private aperte all'uscita delle app (solo amministratore)"
+      description: >
+        Solo l'amministratore dell'installazione (H16): lo scope da solo non basta, gli altri ricevono
+        403 `forbidden`. Sostituisce l'elenco intero. Ogni voce e' `host` (IP o nome DNS) e `port`; il nome
+        si risolve ora e ogni indirizzo deve passare le regole di fondo, altrimenti 422 `destination_blocked`
+        (o `destination_unresolved` se il nome non si risolve). La policy di rete delle app in esecuzione
+        si riapplica subito. Un nome si risolve a ogni applicazione della policy (deploy o modifica), non
+        di continuo. Una voce tolta non vale piu' nemmeno per le app con una restrizione propria.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AppsEgressSettingsInput"}}}}
+      responses:
+        "200": {description: "Destinazioni aggiornate.", content: {application/json: {schema: {$ref: "#/components/schemas/AppsEgressSettings"}}}}
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
@@ -11184,6 +11593,12 @@ components:
       in: path
       required: true
       schema: {type: string, pattern: '^[A-Z_][A-Z0-9_]*$', maxLength: 100}
+    AppDomainParam:
+      name: domain
+      in: path
+      required: true
+      schema: {$ref: "#/components/schemas/AppDomainName"}
+      description: "Dominio proprio dell'app, in minuscolo."
     AppParam:
       name: app
       in: path
@@ -13523,6 +13938,17 @@ components:
             type: string
             format: uuid
 
+    ResourceMembersResult:
+      type: object
+      additionalProperties: false
+      required: [userIds]
+      properties:
+        userIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
     GitCreateRepoInput:
       type: object
       additionalProperties: false
@@ -15208,8 +15634,9 @@ components:
         (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in
         docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e
         `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato
-        indietro, payload `WebhookDeploymentPayload`.
-      enum: [push, issues, issue_comment, repository, pull_request, pull_request_review, commit_status, workflow_run, workflow_job, release, deployment]
+        indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS,
+        rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`.
+      enum: [push, issues, issue_comment, repository, pull_request, pull_request_review, commit_status, workflow_run, workflow_job, release, deployment, app_domain]
     RepoMirrorState:
       type: string
       description: >
@@ -17202,11 +17629,12 @@ components:
         runsAsRoot: {type: boolean, nullable: true, description: "Vero se l'immagine gira come root (avviso baseline, H9); null se non ancora letto."}
     AppFollow:
       type: object
-      description: Branch seguito per il deploy automatico (H7).
+      description: "Sorgente del deploy automatico (H7): un branch oppure una regola sui tag, mai tutte e due."
       additionalProperties: false
-      required: [branch, paused]
+      required: [paused]
       properties:
-        branch: {type: string}
+        branch: {type: string, description: "Branch seguito; assente se l'app segue una regola sui tag."}
+        tagPattern: {type: string, description: "Regola sui tag (glob, per esempio `v*-test.*`); assente se l'app segue un branch."}
         paused: {type: boolean, description: "Deploy automatici sospesi (per esempio dopo un rollback)."}
     AppHealthCheck:
       type: object
@@ -17252,6 +17680,7 @@ components:
         runningPreviousVersion: {type: boolean, description: "Il deploy dell'ultima versione e' fallito e serve ancora la precedente."}
         access: {$ref: "#/components/schemas/AppAccessMode"}
         address: {type: string, format: uri, nullable: true, description: "Indirizzo automatico (H2); assente per un'app senza indirizzo, raggiungibile solo dalle app dello stesso repo."}
+        publicAddress: {type: string, format: uri, nullable: true, readOnly: true, description: "Indirizzo con cui l'app si apre (v3-c), visibile a chi legge l'app: il dominio proprio verificato piu' vecchio se l'app e' `public` e le app pubbliche sono abilitate, altrimenti l'indirizzo automatico. Null per un'app senza indirizzo."}
         image: {$ref: "#/components/schemas/AppImage"}
         activeVersion: {type: integer, description: "Numero della versione che serve il traffico."}
         follow: {allOf: [{$ref: "#/components/schemas/AppFollow"}], nullable: true, type: object}
@@ -17289,7 +17718,8 @@ components:
         image: {type: string, minLength: 1, maxLength: 512, description: "Riferimento dell'immagine. Per il registry del repo basta `nome:tag` o il solo tag, risolti contro `<host>/<owner>/<repo>`; altrimenti un riferimento completo a un registry esterno."}
         port: {type: integer, minimum: 1, maximum: 65535, description: "Assente: app senza indirizzo, che parla solo con le app dello stesso repo (H9)."}
         healthCheck: {$ref: "#/components/schemas/AppHealthCheck"}
-        followBranch: {type: string, nullable: true, description: "Branch da seguire (H7). Non disponibile per un'immagine esterna."}
+        followBranch: {type: string, nullable: true, description: "Branch da seguire (H7). Non disponibile per un'immagine esterna. Non insieme a `followTagPattern` (422 `follow_both`)."}
+        followTagPattern: {type: string, nullable: true, maxLength: 128, description: "Regola sui tag (glob, per esempio `v*-test.*`): un'immagine firmata dalla CI con un tag che la rispetta va in produzione (H7). Non disponibile per un'immagine esterna. Non insieme a `followBranch` (422 `follow_both`)."}
         resources: {$ref: "#/components/schemas/AppResourcesInput"}
         copies: {type: integer, minimum: 1, default: 1}
         restricted: {type: boolean, default: false, description: "Rifiuta immagini che girano come root (H9). L'istanza puo' imporlo comunque."}
@@ -17300,7 +17730,8 @@ components:
       properties:
         port: {type: integer, minimum: 1, maximum: 65535, nullable: true}
         healthCheck: {$ref: "#/components/schemas/AppHealthCheck"}
-        followBranch: {type: string, nullable: true, description: "Branch da seguire; `null` torna ai deploy a mano."}
+        followBranch: {type: string, nullable: true, description: "Branch da seguire; `null` torna ai deploy a mano. Se l'app segue una regola sui tag va tolta prima (o nella stessa richiesta con `followTagPattern: null`), altrimenti 422 `follow_both`."}
+        followTagPattern: {type: string, nullable: true, maxLength: 128, description: "Regola sui tag; `null` la toglie. Se l'app segue un branch va tolto prima (o nella stessa richiesta con `followBranch: null`), altrimenti 422 `follow_both`."}
         autoDeployPaused: {type: boolean}
         restricted: {type: boolean}
     AppDeployInput:
@@ -17324,8 +17755,8 @@ components:
         copies: {type: integer, minimum: 0, maximum: 50, description: "Zero ferma l'app (`stoppedReason: manual`)."}
     AppVersionTrigger:
       type: string
-      description: "`manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`."
-      enum: [create, manual, branch_push, config, rollback]
+      description: "`manual` (deploy a mano), `branch_push` (la CI ha pubblicato un'immagine per il branch seguito, H7), `tag_push` (e' arrivata nel registry un'immagine firmata con un tag che rispetta la regola seguita, H7), `config` (variabile, segreto, risorse, porta, volume), `rollback`, `create`."
+      enum: [create, manual, branch_push, tag_push, config, rollback]
     AppVersionConfig:
       type: object
       description: Configurazione di una versione. I segreti compaiono solo per nome (H8).
@@ -17406,6 +17837,99 @@ components:
       additionalProperties: false
       required: [value]
       properties: {value: {type: string, writeOnly: true, maxLength: 32768}}
+    AppDomainName:
+      type: string
+      minLength: 1
+      maxLength: 253
+      description: "Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`)."
+    AppDomainStatus:
+      type: string
+      description: "Stato del dominio (v3-c): `pending_dns` il record atteso non c'e' ancora, `verified` il DNS punta a GitStack, `error` il DNS risponde altro (motivo in `statusReason`)."
+      enum: [pending_dns, verified, error]
+    AppDomainCertificateMode:
+      type: string
+      description: "`letsencrypt` emissione e rinnovo automatici (HTTP-01 sulla porta 80), `custom` certificato caricato dal cliente."
+      enum: [letsencrypt, custom]
+    AppDomainCertificateState:
+      type: string
+      description: "`none` nessun certificato (DNS non ancora `verified`), `issuing` emissione in corso, `valid` certificato valido (vedi `validUntil`), `error` emissione o rinnovo falliti (vedi `error`)."
+      enum: [none, issuing, valid, error]
+    AppDomainDnsRecord:
+      type: object
+      additionalProperties: false
+      required: [type, name, value, alternatives]
+      description: "Record DNS atteso. `type` e' `CNAME` verso l'indirizzo automatico dell'app, oppure `A`/`AAAA` verso l'IP pubblico dichiarato dell'istanza. Per un dominio all'apice (dove il CNAME non e' ammesso) l'unica forma e' A/AAAA."
+      properties:
+        type: {type: string, enum: [CNAME, A, AAAA]}
+        name: {type: string, description: "Nome del record, cioe' il dominio."}
+        value: {type: string, description: "Valore atteso: l'host dell'indirizzo automatico (CNAME) o l'IP (A/AAAA)."}
+        alternatives:
+          type: array
+          description: "Altri record equivalenti accettati dal controllo (es. A e AAAA quando l'istanza dichiara entrambi). Vuoto se non ce ne sono."
+          items:
+            type: object
+            additionalProperties: false
+            required: [type, value]
+            properties:
+              type: {type: string, enum: [CNAME, A, AAAA]}
+              value: {type: string}
+    AppDomainCertificate:
+      type: object
+      additionalProperties: false
+      required: [mode, state]
+      properties:
+        mode: {$ref: "#/components/schemas/AppDomainCertificateMode"}
+        state: {$ref: "#/components/schemas/AppDomainCertificateState"}
+        validFrom: {type: string, format: date-time, nullable: true}
+        validUntil: {type: string, format: date-time, nullable: true, description: "Scadenza del certificato in uso; null se non c'e' ancora."}
+        issuer: {type: string, nullable: true, description: "Emittente (es. «Let's Encrypt R11» o l'emittente del certificato del cliente)."}
+        error: {type: string, nullable: true, description: "Motivo dell'ultimo errore di emissione o rinnovo; null se `state` non e' `error`."}
+        lastAttemptAt: {type: string, format: date-time, nullable: true}
+    AppDomain:
+      type: object
+      additionalProperties: false
+      required: [id, domain, status, dns, certificate, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        domain: {$ref: "#/components/schemas/AppDomainName"}
+        status: {$ref: "#/components/schemas/AppDomainStatus"}
+        statusReason: {type: string, nullable: true, description: "Motivo quando `status` e' `error` (es. il DNS risponde un altro IP); null altrimenti."}
+        dns: {$ref: "#/components/schemas/AppDomainDnsRecord"}
+        certificate: {$ref: "#/components/schemas/AppDomainCertificate"}
+        lastCheckedAt: {type: string, format: date-time, nullable: true, description: "Ultimo controllo del DNS."}
+        verifiedAt: {type: string, format: date-time, nullable: true}
+        createdAt: {type: string, format: date-time}
+        createdBy: {allOf: [{$ref: "#/components/schemas/AppActor"}], nullable: true, type: object}
+    AppDomainList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties: {items: {type: array, items: {$ref: "#/components/schemas/AppDomain"}}}
+    AppDomainInput:
+      type: object
+      additionalProperties: false
+      required: [domain]
+      properties:
+        domain: {$ref: "#/components/schemas/AppDomainName"}
+    AppDomainCertificateInput:
+      type: object
+      additionalProperties: false
+      required: [certificate, privateKey]
+      properties:
+        certificate: {type: string, maxLength: 65536, description: "Certificato e catena intermedia, in PEM, foglia per prima."}
+        privateKey: {type: string, writeOnly: true, maxLength: 16384, description: "Chiave privata in PEM (PKCS#8, PKCS#1 o EC), senza passphrase. Solo scrittura."}
+    AppsLetsEncryptStatus:
+      type: object
+      additionalProperties: false
+      required: [enabled, port80Reachable]
+      description: "Stato di Let's Encrypt sull'istanza (v3-c), in sola lettura dentro `AppsInstanceSettings`."
+      properties:
+        enabled: {type: boolean, description: "Let's Encrypt e' attivo: c'e' un'email ACME e le app pubbliche sono abilitate."}
+        acmeEmail: {type: string, format: email, nullable: true, description: "Email per l'account ACME; null se non impostata."}
+        port80Reachable: {type: boolean, nullable: true, description: "La porta 80 dell'istanza e' raggiungibile da internet (serve alla sfida HTTP-01). null = non ancora verificato."}
+        port80CheckedAt: {type: string, format: date-time, nullable: true}
+        port80Error: {type: string, nullable: true, description: "Motivo quando `port80Reachable` e' false."}
+        publicIps: {type: array, items: {type: string}, description: "IP pubblici dichiarati dell'istanza (A/AAAA) contro cui si controlla il DNS dei domini propri."}
     AppAccess:
       type: object
       additionalProperties: false
@@ -17493,14 +18017,22 @@ components:
       type: object
       description: Volume persistente dell'app (PVC su local-path, dimensione fissa, H3).
       additionalProperties: false
-      required: [name, mountPath, sizeBytes, version, createdAt]
+      required: [name, mountPath, sizeBytes, version, createdAt, includeInBackup, looksLikeDatabase]
       properties:
         name: {$ref: "#/components/schemas/AppVolumeName"}
         mountPath: {type: string, description: "Percorso di mount nel container."}
+        includeInBackup: {type: boolean, description: "Il volume entra in `gitstack backup` (anche verso S3) e torna con `gitstack restore` (H3, D19). Di default si; si esclude con `updateAppVolume`."}
+        looksLikeDatabase: {type: boolean, description: "Avviso database (D19): il percorso di mount, il nome del volume o l'immagine dell'app fanno pensare a un database. La copia del backup si fa con l'app accesa: per un database dentro un container non e' garantita la coerenza, quindi la guida (docs/operations.md, «Volumes and databases») dice di pianificare un dump in un altro volume."}
         sizeBytes: {type: integer, format: int64, minimum: 1048576, description: "Dimensione fissa; conta nella quota disco dell'owner. local-path non la applica come limite fisico del disco."}
         version: {type: integer, minimum: 1, description: "Versione creata dall'aggiunta del volume."}
         createdAt: {type: string, format: date-time}
         createdBy: {allOf: [{$ref: "#/components/schemas/AppActor"}], nullable: true, type: object}
+    AppVolumeUpdate:
+      type: object
+      additionalProperties: false
+      required: [includeInBackup]
+      properties:
+        includeInBackup: {type: boolean, description: "`false` toglie il volume dal backup (e dal restore); `true` lo rimette."}
     AppVolumeInput:
       type: object
       additionalProperties: false
@@ -17630,6 +18162,7 @@ components:
         appsDomain: {type: string, nullable: true, description: "Dominio wildcard delle app (H2), scelto all'installazione; solo lettura."}
         appsDomainIsDefault: {type: boolean, description: "Senza `--apps-domain` vale il default, con avviso."}
         publicAppsEnabled: {type: boolean}
+        letsEncrypt: {allOf: [{$ref: "#/components/schemas/AppsLetsEncryptStatus"}], type: object, description: "Stato di Let's Encrypt (v3-c). Assente finche' core non lo calcola."}
         signedImagesOnly: {type: boolean}
         restricted: {type: boolean}
         maxPerApp: {$ref: "#/components/schemas/AppResourceAmount"}
@@ -17640,10 +18173,80 @@ components:
       required: [publicAppsEnabled, signedImagesOnly, restricted, maxPerApp, logRetention]
       properties:
         publicAppsEnabled: {type: boolean}
+        acmeEmail: {type: string, format: email, nullable: true, description: "Email dell'account ACME (v3-c). Assente = invariata; null = la toglie."}
+        publicIps: {type: array, items: {type: string}, description: "IP pubblici dell'istanza (A/AAAA) per il controllo DNS (v3-c). Assente = invariati; [] li toglie. Solo IP validi e non privati: 422 altrimenti."}
         signedImagesOnly: {type: boolean}
         restricted: {type: boolean}
         maxPerApp: {$ref: "#/components/schemas/AppResourceAmount"}
         logRetention: {$ref: "#/components/schemas/AppLogRetention"}
+    AppEgressDestination:
+      type: object
+      additionalProperties: false
+      required: [host, port]
+      properties:
+        host: {type: string, maxLength: 253, description: "Indirizzo IP o nome DNS, senza schema ne' porta."}
+        port: {type: integer, minimum: 1, maximum: 65535, description: "Porta TCP."}
+    AppPrivateDestination:
+      type: object
+      additionalProperties: false
+      required: [host, port, note]
+      properties:
+        host: {type: string, maxLength: 253}
+        port: {type: integer, minimum: 1, maximum: 65535}
+        note: {type: string, maxLength: 200, description: "A cosa serve (es. database del backoffice)."}
+        createdAt: {type: string, format: date-time}
+        createdBy: {allOf: [{$ref: "#/components/schemas/AppActor"}], nullable: true, type: object}
+    AppPrivateDestinationInput:
+      type: object
+      additionalProperties: false
+      required: [host, port]
+      properties:
+        host: {type: string, maxLength: 253}
+        port: {type: integer, minimum: 1, maximum: 65535}
+        note: {type: string, maxLength: 200}
+    AppsEgressSettings:
+      type: object
+      additionalProperties: false
+      required: [privateDestinations]
+      properties:
+        privateDestinations:
+          type: array
+          items: {$ref: "#/components/schemas/AppPrivateDestination"}
+    AppsEgressSettingsInput:
+      type: object
+      additionalProperties: false
+      required: [privateDestinations]
+      properties:
+        privateDestinations:
+          type: array
+          maxItems: 200
+          items: {$ref: "#/components/schemas/AppPrivateDestinationInput"}
+    AppEgress:
+      type: object
+      additionalProperties: false
+      required: [restricted, destinations, allowedPrivate, instanceProxy]
+      properties:
+        restricted: {type: boolean, description: "L'app ha una restrizione propria."}
+        instanceProxy: {type: boolean, description: "L'istanza ha un proxy di uscita configurato (N9): un'app con l'uscita ristretta esce in modo diretto, senza il proxy."}
+        destinations:
+          type: array
+          items: {$ref: "#/components/schemas/AppEgressDestination"}
+          description: "Le destinazioni della restrizione; vuoto se `restricted` e' false."
+        allowedPrivate:
+          type: array
+          items: {$ref: "#/components/schemas/AppPrivateDestination"}
+          description: "Le destinazioni private aperte dall'amministratore: l'app puo' sceglierle."
+        updatedAt: {type: string, format: date-time}
+        updatedBy: {allOf: [{$ref: "#/components/schemas/AppActor"}], nullable: true, type: object}
+    AppEgressInput:
+      type: object
+      additionalProperties: false
+      required: [destinations]
+      properties:
+        destinations:
+          type: array
+          maxItems: 200
+          items: {$ref: "#/components/schemas/AppEgressDestination"}
     AppLogRetention:
       type: object
       additionalProperties: false
@@ -17693,6 +18296,36 @@ components:
         runsAsRoot: {type: boolean, nullable: true}
         aboveGuaranteed: {type: boolean, description: "Sta usando piu' della parte garantita: e' il primo a essere rallentato."}
         violatesInstanceRules: {type: boolean, description: "Non rispetta `restricted` o `signedImagesOnly` d'istanza (valgono dal deploy successivo)."}
+    AdminPublicAppDomain:
+      type: object
+      description: Dominio proprio di un'app pubblica, con stato del DNS e del certificato (v3-c).
+      additionalProperties: false
+      required: [domain, status, certificate]
+      properties:
+        domain: {$ref: "#/components/schemas/AppDomainName"}
+        status: {$ref: "#/components/schemas/AppDomainStatus"}
+        statusReason: {type: string, nullable: true}
+        certificate: {$ref: "#/components/schemas/AppDomainCertificate"}
+    AdminPublicApp:
+      type: object
+      description: Riga dell'elenco admin delle app pubbliche (H1, H9, v3-c).
+      additionalProperties: false
+      required: [owner, repo, name, status, publicAddress, domains]
+      properties:
+        owner: {type: string}
+        repo: {type: string}
+        name: {$ref: "#/components/schemas/AppName"}
+        status: {$ref: "#/components/schemas/AppStatus"}
+        address: {type: string, format: uri, nullable: true, description: "Indirizzo automatico (H2)."}
+        publicAddress: {type: string, format: uri, nullable: true, description: "Indirizzo con cui l'app si apre da internet: il dominio verificato piu' vecchio, altrimenti l'indirizzo automatico."}
+        domains: {type: array, items: {$ref: "#/components/schemas/AdminPublicAppDomain"}, description: "Domini propri, dal piu' vecchio; `verified` vuol dire dominio attivo."}
+    AdminPublicAppList:
+      type: object
+      additionalProperties: false
+      required: [items, total]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/AdminPublicApp"}}
+        total: {type: integer}
     AdminAppList:
       type: object
       additionalProperties: false
@@ -17718,6 +18351,33 @@ components:
         sender: {allOf: [{$ref: "#/components/schemas/WebhookSender"}], nullable: true, type: object}
         app: {$ref: "#/components/schemas/App"}
         deployment: {$ref: "#/components/schemas/AppVersion"}
+    WebhookAppDomainPayload:
+      type: object
+      description: >
+        Payload del webhook `app_domain` (v3-c), per repo (quello dell'app) come `deployment`. `action`:
+        `dns_failed` (il dominio non supera la verifica o non punta piu' all'istanza), `certificate_renewal_failed`
+        (emissione o rinnovo Let's Encrypt fallito), `certificate_expiring` (certificato del cliente in scadenza
+        entro 14 giorni). Un solo invio per guasto o scadenza. Nessun segreto: ne' chiavi ne' contenuto del certificato.
+      additionalProperties: false
+      required: [version, event, action, time, repository, sender, app, domain, status]
+      properties:
+        version: {type: integer, enum: [1]}
+        event: {type: string, enum: [app_domain]}
+        action: {type: string, enum: [dns_failed, certificate_renewal_failed, certificate_expiring]}
+        time: {type: string, format: date-time}
+        repository: {$ref: "#/components/schemas/WebhookRepositoryRef"}
+        organization: {$ref: "#/components/schemas/WebhookOrganizationRef"}
+        sender: {allOf: [{$ref: "#/components/schemas/WebhookSender"}], nullable: true, type: object, description: "Sempre null: e' un evento del sistema."}
+        app:
+          type: object
+          additionalProperties: false
+          required: [name]
+          properties:
+            name: {type: string}
+        domain: {type: string, description: "Dominio proprio, normalizzato."}
+        status: {type: string, enum: [dns_failed, renewal_failed, expiring], description: "Stato che ha prodotto l'evento."}
+        reason: {type: string, description: "Motivo del guasto (DNS o emissione), se c'e'."}
+        validUntil: {type: string, format: date-time, description: "Scadenza del certificato, solo per `certificate_expiring`."}
 
   headers:
     ContentTypeOptions:

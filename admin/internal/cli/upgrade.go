@@ -45,6 +45,10 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 	fs.Var(&sets, "set", "valore del chart (chiave=valore), ripetibile")
 	fs.Var(&values, "values", "file di valori del chart, ripetibile")
 	allowUnsigned := fs.Bool("allow-unsigned-mirrors", false, "eccezione N9: non verificare le firme cosign (mirror interno non firmato)")
+	// Flag interni del re-exec (GIT-490): non sono per l'utente.
+	reexecProtocol := fs.Bool("reexec-protocol", false, "")
+	reexecReq := fs.String("reexec-request", "", "")
+	reexecReply := fs.String("reexec-reply", "", "")
 	if err := fs.Parse(args); err != nil || fs.NArg() > 0 {
 		if err == nil {
 			err = fmt.Errorf("argomento inatteso: %s", fs.Arg(0))
@@ -52,6 +56,10 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		a.errorf("upgrade: %v", err)
 		a.usage(a.Stderr)
 		return ExitUsage
+	}
+	if *reexecProtocol {
+		_, _ = fmt.Fprintln(a.Stdout, upgrade.ReexecProtocol)
+		return ExitOK
 	}
 	if *version != "" {
 		if *to != "" {
@@ -166,6 +174,12 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 	if a.TuneUpgrade != nil {
 		a.TuneUpgrade(o)
 	}
+
+	// Lato del processo nuovo: esegue il passo chiesto dal vecchio (GIT-490) e basta.
+	if *reexecReq != "" {
+		return a.runReexecChild(ctx, o, *reexecReq, *reexecReply)
+	}
+	o.Reexec = a.reexecFunc(path, *dest, *keyFile, *timeout)
 
 	// Il dominio nuovo (e il suo certificato wildcard) prima dell'aggiornamento, mai in --dry-run:
 	// se l'upgrade poi si ferma, il dominio resta impostato come con «config set apps-domain».

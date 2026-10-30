@@ -378,6 +378,11 @@ jobs:
           set -euo pipefail
           ./deploy/ci/install-e2e.sh verify-k3s "${K3S_FROM}"
           sudo gitstack status --json | jq -e --arg v "sha-${PREV_SHA}" '.report.server_version == $v'
+          cfg=/etc/gitstack/config.yaml
+          apps_domain="$(sudo sed -n 's/^apps_domain: *//p' "${cfg}" | head -n 1)"
+          apps_enabled="$(sudo sed -n 's/^apps_enabled: *//p' "${cfg}" | head -n 1)"
+          echo "PREV_APPS_DOMAIN=${apps_domain:-unset}" >> "$GITHUB_ENV"
+          echo "PREV_APPS_ENABLED=${apps_enabled:-false}" >> "$GITHUB_ENV"
 
       - name: Dati di prova (login admin, utente, token, repo, push, issue)
         run: ./deploy/ci/install-e2e.sh seed
@@ -421,17 +426,39 @@ jobs:
           sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --dry-run "${extra[@]}"
 
       # Rollback con la CI: l'aggiornamento accende la CI ma il gateway non parte
-      # (gateway.containerPort=1: porta privilegiata, uid non root). gitstack upgrade deve
+      # (gateway.env.coreTimeout=guasto-git477: GITSTACK_CORE_TIMEOUT non è una durata, il gateway esce 1
+      # all'avvio, CrashLoopBackOff, mai Ready; deploy/gitstack/templates/gateway/deployment.yaml:92-93,
+      # services/gateway/internal/config/config.go:262-266, services/gateway/main.go:30-33). Passa helm template e
+      # il controllo delle immagini di upgrade (admin/internal/upgrade/upgrade.go:488-517: immagini vere, nessun
+      # Refused/6). gitstack upgrade deve
       # uscire con 7 (fallito e tornato com'era), la versione di prima, la CI di nuovo
       # spenta (revisione di partenza) e i dati del seed intatti.
       - name: gitstack upgrade guasto (rollback con la CI accesa)
         if: matrix.scenario == 'upgrade'
         run: |
           set -uo pipefail
+          # GIT-482: il rollback lo esegue il binario che lancia l'upgrade, cioè quello installato
+          # dal commit PRECEDENTE (install.sh, PREV_SHA): un fix del rollback non c'è finché quel
+          # commit non lo contiene (run 40630162371: nessuna riga di clearStaleServiceAccounts).
+          # Per provare il rollback del commit in prova si installa il suo binario (stessa release
+          # che scarica l'upgrade) e alla fine si rimette quello di prima, così il passo
+          # «gitstack upgrade (con la CI)» sotto resta un vero aggiornamento vecchio → nuovo.
+          exe="$(command -v gitstack)"
+          bindir="$(mktemp -d)"
+          sudo cp -p "${exe}" "${bindir}/gitstack.prev" || { echo "::error::copia del binario attuale non riuscita" >&2; exit 1; }
+          restore_exe() { sudo cp -p "${bindir}/gitstack.prev" "${exe}"; }
+          trap restore_exe EXIT
+          gh release download "sha-${GITHUB_SHA}" --repo "${GITHUB_REPOSITORY}" --pattern 'gitstack-linux-amd64*' --dir "${bindir}" --clobber || { echo "::error::binario sha-${GITHUB_SHA} non scaricato" >&2; exit 1; }
+          (cd "${bindir}" && sha256sum -c gitstack-linux-amd64.sha256) || { echo "::error::checksum del binario sha-${GITHUB_SHA} errato" >&2; exit 1; }
+          sudo install -m 0755 "${bindir}/gitstack-linux-amd64" "${exe}" || { echo "::error::binario non installato" >&2; exit 1; }
+          echo "binario in uso per il rollback: sha-${GITHUB_SHA} ($(sudo "${exe}" version 2>&1 | head -n1))"
+          # Il flag N9 va deciso sul binario che esegue l'upgrade (quello nuovo), non su quello precedente.
           extra=()
-          if [ -n "${UPGRADE_UNSIGNED_FLAG}" ]; then extra+=("${UPGRADE_UNSIGNED_FLAG}"); fi
-          sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --timeout 6m             --set ci.enabled=true --set ci.capacity=1 --set gateway.containerPort=1 "${extra[@]}"
-          rc=$?
+          if [ "${SIGN_MODE}" = "unsigned" ] && grep -aq -- 'allow-unsigned-mirrors' "${exe}"; then extra=(--allow-unsigned-mirrors); fi
+          # GitHub lancia il run con `bash -e {0}`: `set -uo pipefail` non toglie -e, quindi l'exit 7
+          # atteso fermerebbe lo script prima del controllo. Lo si cattura con `|| rc=$?`.
+          rc=0
+          sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --timeout 6m             --set ci.enabled=true --set ci.capacity=1 --set gateway.env.coreTimeout=guasto-git477 "${extra[@]}" || rc=$?
           if [ "${rc}" -ne 7 ]; then
             echo "::error::gitstack upgrade guasto: uscita ${rc}, attesa 7 (fallito e tornato com'era)" >&2
             exit 1
@@ -462,20 +489,24 @@ jobs:
           sudo gitstack status --json | jq -e --arg v "sha-${GITHUB_SHA}" '.report.server_version == $v and .report.api_healthy == true'
           ./deploy/ci/install-e2e.sh verify-seed --push
 
-      # Una v2 aggiornata non ha un dominio delle app: lo dice lo status e
-      # `gitstack config set apps-domain` lo imposta e rinnova il certificato.
-      - name: Dominio delle app dopo l'upgrade dalla v2
+      # Una v2 scelta a mano con previous_commit non ha apps_domain; una v3
+      # può avere il dominio predefinito o uno scelto dall'utente.
+      - name: Dominio delle app dopo l'upgrade
         if: matrix.scenario == 'upgrade'
         run: |
           set -euo pipefail
-          ./deploy/ci/install-e2e.sh verify-apps-domain unset
-          # GIT-375: dopo l'upgrade (senza opzioni) l'hosting delle app è spento: lo status lo dice,
-          # l'API risponde 503 apps_unavailable e nel cluster non nasce niente.
-          ./deploy/ci/install-e2e.sh verify-apps-hosting off
-          ./deploy/ci/install-e2e.sh apps-off-api
+          ./deploy/ci/install-e2e.sh verify-apps-domain "${PREV_APPS_DOMAIN}"
+          # GIT-375: senza opzioni l'upgrade conserva l'hosting della partenza;
+          # se è spento, l'API risponde 503 apps_unavailable e nel cluster non nasce niente.
+          if [ "${PREV_APPS_ENABLED}" = "true" ]; then
+            ./deploy/ci/install-e2e.sh verify-apps-hosting on
+          else
+            ./deploy/ci/install-e2e.sh verify-apps-hosting off
+            ./deploy/ci/install-e2e.sh apps-off-api
+          fi
           if [ "${{ matrix.os }}" = "ubuntu-24.04" ]; then
             # Un secondo `gitstack upgrade` alla stessa versione, ora col binario nuovo, con l'opzione:
-            # accende l'hosting, imposta il dominio (la v2 non ne ha) e non tocca i dati. (Il primo
+            # accende l'hosting, imposta il dominio e non tocca i dati. (Il primo
             # upgrade parte dal binario del commit precedente, che l'opzione non la conosce.)
             sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --timeout 20m \
               --enable-apps --apps-domain "${APPS_DOMAIN}" ${UPGRADE_UNSIGNED_FLAG:-}
@@ -487,6 +518,7 @@ jobs:
           ./deploy/ci/install-e2e.sh verify-apps-domain "${APPS_DOMAIN}"
           ./deploy/ci/install-e2e.sh verify-apps-hosting on
           ./deploy/ci/install-e2e.sh apps-run "${APPS_DOMAIN}"
+          ./deploy/ci/install-e2e.sh apps-public "${APPS_DOMAIN}"
           ./deploy/ci/install-e2e.sh verify-seed --push
 
       - name: CI attiva dopo l'upgrade e workflow di prova
@@ -499,7 +531,10 @@ jobs:
       # GIT-375: l'hosting delle app acceso dall'installer: un'app creata da API risponde al suo indirizzo.
       - name: App di prova con l'hosting acceso (installazione nuova)
         if: matrix.scenario == 'fresh'
-        run: ./deploy/ci/install-e2e.sh apps-run "${APPS_EXPECT}"
+        run: |
+          set -euo pipefail
+          ./deploy/ci/install-e2e.sh apps-run "${APPS_EXPECT}"
+          ./deploy/ci/install-e2e.sh apps-public "${APPS_EXPECT}"
 
       - name: gitstack backup (cifrato)
         run: |

@@ -735,3 +735,30 @@ func loadJobs(ctx context.Context, pool *pgxpool.Pool, runIDs []uuid.UUID) (map[
 	}
 	return out, rows.Err()
 }
+
+// RequeueJob rimette in coda un job preso ma senza pod (rifiuto transitorio di Kubernetes,
+// GIT-452): torna queued con il suo queued_at, il biglietto emesso alla presa è eliminato
+// (ne serve uno nuovo alla prossima presa, la chiave è il job) e il cambio è riportato.
+// false se il job non era più in_progress (per esempio annullato nel frattempo).
+func RequeueJob(ctx context.Context, pool *pgxpool.Pool, jobID uuid.UUID, rep Reporter) (bool, error) {
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	tag, err := tx.Exec(ctx, `UPDATE core.ci_jobs SET status = 'queued', started_at = NULL, runner_name = NULL, runner_id = NULL
+		WHERE id = $1 AND status = 'in_progress' AND runner_type = 'internal_pod'`, jobID)
+	if err != nil {
+		return false, err
+	}
+	if tag.RowsAffected() == 0 {
+		return false, nil
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM core.ci_job_tickets WHERE job_id = $1`, jobID); err != nil {
+		return false, err
+	}
+	if err := report(ctx, tx, rep, nil, []uuid.UUID{jobID}); err != nil {
+		return false, err
+	}
+	return true, tx.Commit(ctx)
+}

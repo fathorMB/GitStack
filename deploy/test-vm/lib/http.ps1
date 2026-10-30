@@ -3,6 +3,89 @@
 # Invoke-HttpRaw: chiamata HTTP per e2e.ps1 (dot-sourced) e per tests/http.Tests.ps1.
 # Solo ASCII: Windows PowerShell 5.1 legge in ANSI i .ps1 senza BOM.
 
+# Legge un campo facoltativo da un oggetto JSON (ConvertFrom-Json) anche sotto
+# Set-StrictMode -Version Latest: core omette le chiavi vuote (omitempty, per
+# esempio lastError), e $obj.lastError lancerebbe "The property 'lastError'
+# cannot be found on this object". Ritorna '' se l'oggetto e' $null o il campo
+# manca o e' null, altrimenti il valore come stringa.
+function Get-JsonField {
+    param($Object, [Parameter(Mandatory)][string]$Name)
+    if ($null -eq $Object) { return '' }
+    $prop = $Object.PSObject.Properties[$Name]
+    if ($null -eq $prop -or $null -eq $prop.Value) { return '' }
+    return [string]$prop.Value
+}
+
+# Legge un campo testuale (StdOut, Body...) di un risultato senza lanciare se il
+# risultato o il campo sono $null: ritorna il testo senza spazi ai bordi, '' se
+# manca (GIT-509: ref assente -> uscita vuota -> StdOut $null, e .Trim() lanciava).
+function Get-TrimmedText {
+    param($Result, [string]$Property = 'StdOut')
+    if ($null -eq $Result) { return '' }
+    $prop = $Result.PSObject.Properties[$Property]
+    if ($null -eq $prop -or $null -eq $prop.Value) { return '' }
+    return ([string]$prop.Value).Trim()
+}
+
+# Aspetta che una richiesta che passa dal servizio git (GET dei branch del
+# repo, letti da core sul servizio git) risponda 200: dopo mirror-enable e
+# mirror-disable git e core sono in rollout, e una sonda che tocca solo core e
+# il DB puo' rispondere 200 mentre git non e' ancora raggiungibile. Se scade
+# lancia un errore con il timeout e l'ultimo status (e l'errore di rete).
+function Wait-GitServing {
+    param(
+        [Parameter(Mandatory)][string]$BaseUrl,
+        [Parameter(Mandatory)][string]$Owner,
+        [Parameter(Mandatory)][string]$Repo,
+        [hashtable]$Headers,
+        [int]$TimeoutSeconds = 180,
+        [int]$IntervalSeconds = 5
+    )
+    $uri = "$BaseUrl/api/v1/repos/$Owner/$Repo/branches"
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $last = $null
+    while ($true) {
+        $last = Invoke-HttpRaw -Uri $uri -Headers $Headers
+        if ($last.StatusCode -eq 200) { return }
+        if ((Get-Date) -ge $deadline) { break }
+        Start-Sleep -Seconds $IntervalSeconds
+    }
+    throw "il servizio git non risponde 200 su GET $uri dopo $TimeoutSeconds secondi (ultimo status $($last.StatusCode), errore '$($last.Error)')"
+}
+
+# POST /repos/import con un numero massimo di tentativi, ripetuto SOLO su 503
+# con codice git_unavailable (core lo da' con git giu' e il repo non viene
+# creato, quindi ripetere e' sicuro). Ogni altro status ritorna subito. Ritorna
+# la risposta di Invoke-HttpRaw piu' Attempts (tentativi fatti).
+function Invoke-RepoImportWithRetry {
+    param(
+        [Parameter(Mandatory)][string]$Uri,
+        [Parameter(Mandatory)][string]$Body,
+        [hashtable]$Headers,
+        [int]$MaxAttempts = 4,
+        [int]$DelaySeconds = 10
+    )
+    $attempt = 0
+    while ($true) {
+        $attempt++
+        $resp = Invoke-HttpRaw -Uri $Uri -Method 'POST' -Headers $Headers -Body $Body
+        $retry = $false
+        if ($resp.StatusCode -eq 503 -and $attempt -lt $MaxAttempts) {
+            $code = ''
+            try {
+                $errObj = $resp.Body | ConvertFrom-Json
+                $code = Get-JsonField -Object $errObj.PSObject.Properties['error'].Value -Name 'code'
+            } catch { $code = '' }
+            if ($code -eq 'git_unavailable') { $retry = $true }
+        }
+        if (-not $retry) {
+            $resp | Add-Member -NotePropertyName Attempts -NotePropertyValue $attempt -Force
+            return $resp
+        }
+        Start-Sleep -Seconds $DelaySeconds
+    }
+}
+
 # Header di risposta (dizionario o WebHeaderCollection) in una hashtable di stringhe.
 function ConvertTo-HeaderTable {
     param($Source)

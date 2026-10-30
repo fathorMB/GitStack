@@ -13,6 +13,7 @@ vi.mock('../../../lib/appsApi', () => ({
   fetchAppMetrics: vi.fn(),
   fetchAppVersions: vi.fn(),
   fetchAppAccess: vi.fn(),
+  fetchAppDomains: vi.fn(),
   saveAppAccess: vi.fn(),
   fetchAppAccessMembers: vi.fn(),
   addAppAccessMember: vi.fn(),

@@ -362,6 +362,9 @@ type AccessSource struct {
 // AccessSourceKind defines model for AccessSource.Kind.
 type AccessSourceKind string
 
+// AppDomainName Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`).
+type AppDomainName = string
+
 // AppEnvName Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
 type AppEnvName = string
 
@@ -627,6 +630,11 @@ type ResourceAttributesInput struct {
 	Visibility RepoVisibility `json:"visibility"`
 }
 
+// ResourceMembersResult defines model for ResourceMembersResult.
+type ResourceMembersResult struct {
+	UserIds []openapi_types.UUID `json:"userIds"`
+}
+
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
 type ResourceRole string
 
@@ -740,6 +748,9 @@ type VerifyCredentialResult struct {
 
 // ActionsNameParam defines model for ActionsNameParam.
 type ActionsNameParam = string
+
+// AppDomainParam Nome DNS completo, minuscolo, senza schema, porta o wildcard (es. `shop.retail.it`).
+type AppDomainParam = AppDomainName
 
 // AppEnvNameParam Nome di una variabile o di un segreto dell'app (variabile d'ambiente).
 type AppEnvNameParam = AppEnvName
@@ -885,9 +896,17 @@ type Unauthorized = Error
 // UnexpectedError Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type UnexpectedError = Error
 
+// UnprocessableEntity Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+type UnprocessableEntity = Error
+
 // ListCredentialEventsParams defines parameters for ListCredentialEvents.
 type ListCredentialEventsParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ListResourceMembersParams defines parameters for ListResourceMembers.
+type ListResourceMembersParams struct {
+	Role ResourceRole `form:"role" json:"role"`
 }
 
 // AckCredentialEventsJSONRequestBody defines body for AckCredentialEvents for application/json ContentType.

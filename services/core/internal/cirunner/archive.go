@@ -17,13 +17,19 @@ const maxExtractBytes = 4 << 30
 // extractTarGz estrae un tar.gz in dest togliendo la prima cartella (git archive --prefix).
 // Accetta solo file e cartelle dentro dest; i collegamenti simbolici e fisici si saltano:
 // un link verso l'esterno non deve poter scrivere fuori dal workspace.
+//
+// I modi seguono la semantica di git checkout, non quelli del tar: file 0644 (0755 se il tar
+// ha un bit di esecuzione) e cartelle (radice compresa) 0755, prima della umask del processo. Devono essere
+// leggibili da altri utenti: act copia il workspace conservando i modi e BuildKit li manda
+// com'è, quindi un Dockerfile con COPY e poi USER non root (immagini del pilot, GIT-510,
+// e2e MR-393-r1) cadrebbe con EACCES su file 0640 di proprietà di root.
 func extractTarGz(r io.Reader, dest string) error {
 	zr, err := gzip.NewReader(r)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = zr.Close() }()
-	if err := os.MkdirAll(dest, 0o750); err != nil {
+	if err := os.MkdirAll(dest, 0o755); err != nil {
 		return err
 	}
 	root, err := filepath.Abs(dest)
@@ -61,16 +67,16 @@ func extractTarGz(r io.Reader, dest string) error {
 		}
 		switch h.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0o750); err != nil {
+			if err := os.MkdirAll(target, 0o755); err != nil {
 				return err
 			}
 		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return err
 			}
-			mode := os.FileMode(0o640)
+			mode := os.FileMode(0o644)
 			if h.Mode&0o111 != 0 {
-				mode = 0o750
+				mode = 0o755
 			}
 			f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
 			if err != nil {

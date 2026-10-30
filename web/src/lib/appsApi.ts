@@ -25,10 +25,20 @@ import {
   deleteAppSecret as sdkDeleteAppSecret,
   deleteAppVariable as sdkDeleteAppVariable,
   deleteApp as sdkDeleteApp,
+  listAppDomains as sdkListAppDomains,
+  addAppDomain as sdkAddAppDomain,
+  recheckAppDomain as sdkRecheckAppDomain,
+  removeAppDomain as sdkRemoveAppDomain,
+  uploadAppDomainCertificate as sdkUploadAppDomainCertificate,
+  removeAppDomainCertificate as sdkRemoveAppDomainCertificate,
   listAppVolumes as sdkListAppVolumes,
   createAppVolume as sdkCreateAppVolume,
   deleteAppVolume as sdkDeleteAppVolume,
+  updateAppVolume as sdkUpdateAppVolume,
   setAppResources as sdkSetAppResources,
+  getAppEgress as sdkGetAppEgress,
+  setAppEgress as sdkSetAppEgress,
+  deleteAppEgress as sdkDeleteAppEgress,
 } from '@gitstack/api-client';
 import type {
   App,
@@ -36,6 +46,8 @@ import type {
   AppAccessInvite,
   AppAccessMember,
   AppAccessMode,
+  AppEgress,
+  AppEgressDestination,
   AppCreateInput,
   AppCreated,
   AppList,
@@ -51,10 +63,12 @@ import type {
   AppVolumeList,
   AppResources,
   AppResourcesInput,
+  AppDomain,
+  AppDomainList,
 } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
-export type { App, AppAccess, AppAccessInvite, AppAccessMember, AppAccessMode, AppCreateInput, AppCreated, AppList, AppMetrics, AppUpdateInput, AppVersion, AppVersionList, AppLogLine, AppSecretList, AppVariableList, AppVolume, AppVolumeChange, AppVolumeList, AppResources, AppResourcesInput };
+export type { App, AppAccess, AppAccessInvite, AppAccessMember, AppAccessMode, AppCreateInput, AppCreated, AppList, AppMetrics, AppUpdateInput, AppVersion, AppVersionList, AppLogLine, AppSecretList, AppVariableList, AppVolume, AppVolumeChange, AppVolumeList, AppResources, AppResourcesInput, AppEgress, AppEgressDestination, AppDomain, AppDomainList };
 
 const at = (owner: string, repo: string) => ({ baseUrl: API_BASE_URL, path: { owner, repo } });
 const atApp = (owner: string, repo: string, app: string) => ({ baseUrl: API_BASE_URL, path: { owner, repo, app } });
@@ -138,6 +152,34 @@ export async function removeApp(owner: string, repo: string, app: string): Promi
   unwrapEmpty(await sdkDeleteApp(atApp(owner, repo, app)));
 }
 
+/** Domini propri dell'app (v3-c). Serve `admin` sull'app: read e write ricevono 403. */
+export async function fetchAppDomains(owner: string, repo: string, app: string): Promise<AppDomainList> {
+  return unwrap(await sdkListAppDomains(atApp(owner, repo, app)));
+}
+
+/** Aggiunge un dominio proprio (admin): risponde con il record DNS da creare. */
+export async function addAppDomain(owner: string, repo: string, app: string, domain: string): Promise<AppDomain> {
+  return unwrap(await sdkAddAppDomain({ ...atApp(owner, repo, app), body: { domain } }));
+}
+
+export async function recheckAppDomain(owner: string, repo: string, app: string, domain: string): Promise<AppDomain> {
+  return unwrap(await sdkRecheckAppDomain({ ...atApp(owner, repo, app), path: { ...atApp(owner, repo, app).path, domain } }));
+}
+
+export async function removeAppDomain(owner: string, repo: string, app: string, domain: string): Promise<void> {
+  unwrapEmpty(await sdkRemoveAppDomain({ ...atApp(owner, repo, app), path: { ...atApp(owner, repo, app).path, domain } }));
+}
+
+/** Certificato del cliente: PEM della catena (foglia per prima) e chiave privata senza passphrase. */
+export async function uploadAppDomainCertificate(owner: string, repo: string, app: string, domain: string, certificate: string, privateKey: string): Promise<AppDomain> {
+  return unwrap(await sdkUploadAppDomainCertificate({ ...atApp(owner, repo, app), path: { ...atApp(owner, repo, app).path, domain }, body: { certificate, privateKey } }));
+}
+
+/** Toglie il certificato caricato: il dominio torna a Let's Encrypt. */
+export async function removeAppDomainCertificate(owner: string, repo: string, app: string, domain: string): Promise<AppDomain> {
+  return unwrap(await sdkRemoveAppDomainCertificate({ ...atApp(owner, repo, app), path: { ...atApp(owner, repo, app).path, domain } }));
+}
+
 export async function fetchAppAccess(owner: string, repo: string, app: string): Promise<AppAccess> {
   return unwrap(await sdkGetAppAccess(atApp(owner, repo, app)));
 }
@@ -179,6 +221,24 @@ export async function removeAppVolume(owner: string, repo: string, app: string, 
   return unwrap(await sdkDeleteAppVolume({ ...atApp(owner, repo, app), path: { ...atApp(owner, repo, app).path, volume } }));
 }
 
+/** Include o esclude il volume dal backup (D19): non crea versioni né deploy. */
+export async function setVolumeInBackup(owner: string, repo: string, app: string, volume: string, includeInBackup: boolean): Promise<AppVolume> {
+  return unwrap(await sdkUpdateAppVolume({ ...atApp(owner, repo, app), path: { ...atApp(owner, repo, app).path, volume }, body: { includeInBackup } }));
+}
+
 export async function saveAppResources(owner: string, repo: string, app: string, input: AppResourcesInput): Promise<AppResources> {
   return unwrap(await sdkSetAppResources({ ...atApp(owner, repo, app), body: input }));
+}
+
+// Uscita dell'app (H16): la restrizione per app, mai oltre le destinazioni aperte dall'amministratore.
+export async function fetchAppEgress(owner: string, repo: string, app: string): Promise<AppEgress> {
+  return unwrap(await sdkGetAppEgress(atApp(owner, repo, app)));
+}
+
+export async function saveAppEgress(owner: string, repo: string, app: string, destinations: AppEgressDestination[]): Promise<AppEgress> {
+  return unwrap(await sdkSetAppEgress({ ...atApp(owner, repo, app), body: { destinations } }));
+}
+
+export async function clearAppEgress(owner: string, repo: string, app: string): Promise<void> {
+  unwrapEmpty(await sdkDeleteAppEgress(atApp(owner, repo, app)));
 }

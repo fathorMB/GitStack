@@ -12,7 +12,7 @@ import (
 const jobRel = "00000000-0000-0000-0000-0000000000aa"
 
 // GIT-372: il token del job (gsj_) è ammesso solo dalle operazioni con
-// x-job-token, cioè createRelease e uploadReleaseAsset, e da nient'altro.
+// x-job-token, cioè createRelease, uploadReleaseAsset e deployApp (GIT-349), e da nient'altro.
 func TestJobToken_SoloCreateEUploadDelleRelease(t *testing.T) {
 	var got []string
 	for _, r := range security.Routes {
@@ -27,8 +27,8 @@ func TestJobToken_SoloCreateEUploadDelleRelease(t *testing.T) {
 		}
 	}
 	sort.Strings(got)
-	if len(got) != 2 || got[0] != "createRelease" || got[1] != "uploadReleaseAsset" {
-		t.Fatalf("rotte con x-job-token = %v, volute createRelease e uploadReleaseAsset", got)
+	if len(got) != 3 || got[0] != "createRelease" || got[1] != "deployApp" || got[2] != "uploadReleaseAsset" {
+		t.Fatalf("rotte con x-job-token = %v, volute createRelease, deployApp (GIT-349) e uploadReleaseAsset", got)
 	}
 }
 
@@ -36,6 +36,7 @@ func TestJobToken_InoltratoACoreComeIdentitaDelJob(t *testing.T) {
 	for _, tc := range []struct{ name, method, target string }{
 		{"createRelease", "POST", "/v1/repos/alice/app/releases"},
 		{"uploadReleaseAsset", "POST", "/v1/repos/alice/app/releases/" + jobRel + "/assets?name=build.zip"},
+		{"deployApp", "POST", "/v1/repos/alice/app/apps/web/deploys"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			v := &stubVerifier{}

@@ -263,6 +263,39 @@ expect_eq "registry spento: nessuna IngressRoute" "$(count 'name: gitstack-regis
 expect_lacks "registry spento: gateway senza GITSTACK_REGISTRY_URL" "$(doc Deployment gitstack-gateway)" "GITSTACK_REGISTRY_URL"
 expect_line_has "registry spento: git lo spegne" "$(doc Deployment gitstack-git)" "- name: GITSTACK_GIT_REGISTRY"
 
+echo "== GIT-489: host senza route del dominio app restituisce 404"
+OUT="$(render --set ingress.enabled=true --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template apps fallback fallito"; exit 1; }
+d="$(doc IngressRoute gitstack-apps-fallback)"
+if [ -n "${d}" ]; then ok; else bad "IngressRoute gitstack-apps-fallback non renderizzata"; fi
+# shellcheck disable=SC2016 # i backtick sono la sintassi letterale della regola Traefik
+expect_has "apps fallback: HostRegexp del dominio" "${d}" 'HostRegexp(`^.+\.apps\.acme\.test$`)'
+expect_has "apps fallback: priorità tra UI e route app" "${d}" "priority: 19"
+expect_has "apps fallback: backend web" "${d}" "name: gitstack-web"
+expect_has "apps fallback: middleware dedicato" "${d}" "name: gitstack-apps-unavailable"
+expect_has "apps fallback: riscrittura al path 404" "$(doc Middleware gitstack-apps-unavailable)" "path: /__gitstack-app-unavailable"
+# L'Ingress della UI resta senza host e non cambia servizio o path.
+d="$(doc Ingress gitstack)"
+expect_lacks "UI: nessun host wildcard delle app" "${d}" "apps.acme.test"
+expect_has "UI: resta il backend web" "${d}" "name: gitstack-web"
+expect_has "UI: location dedicata restituisce 404 HTML" "$(<"${REPO}/web/deploy/nginx.conf.template")" \
+  "return 404 '<!doctype html><html lang=\"it\"><meta charset=\"utf-8\"><title>App non disponibile · GitStack</title>"
+expect_has "UI: messaggio app non disponibile" "$(<"${REPO}/web/deploy/nginx.conf.template")" "<h1>App non disponibile</h1>"
+expect_has "UI: CSP della location 404" "$(<"${REPO}/web/deploy/nginx.conf.template")" \
+  "add_header Content-Security-Policy \"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'\" always;"
+if helm_rc --set ingress.enabled=true --set apps.enabled=true --set apps.domain=apps.x; then ok; else bad "apps.domain di 6 caratteri doveva renderizzare"; fi
+if short_domain_out="$(helm template gitstack "${CHART}" --set ingress.enabled=true --set apps.enabled=true --set apps.domain=a.bcd 2>&1)"; then
+  bad "apps.domain di 5 caratteri doveva fermarsi"
+else
+  ok
+  expect_has "apps.domain corto: messaggio esplicito" "${short_domain_out}" "apps.domain deve contenere almeno 6 caratteri per la route di riserva"
+fi
+OUT="$(render --set ingress.enabled=true --set apps.enabled=true --set apps.domain=apps.acme.test \
+  --set ingress.tls.enabled=true --set ingress.tls.certResolver=le)" || { bad "helm template apps fallback con TLS/ACME fallito"; exit 1; }
+d="$(doc IngressRoute gitstack-apps-fallback)"
+expect_has "apps fallback TLS: options dell'istanza" "${d}" "name: gitstack-tls"
+expect_lacks "apps fallback TLS: niente resolver ACME sul wildcard" "${d}" "certResolver"
+expect_lacks "apps fallback TLS: niente Secret TLS dell'host GitStack" "${d}" "secretName"
+
 OUT="$(render --set git.registry.s3.enabled=true --set git.registry.s3.bucket=img --set git.registry.s3.endpoint=http://minio:9000 \
   --set git.registry.s3.pathStyle=true --set git.registry.s3.existingSecret=s3keys \
   --set git.registry.ciGateway.url=http://gitstack-core:9090 --set git.registry.ciGateway.port=9090)"
@@ -384,7 +417,64 @@ expect_has "hosting acceso: core sa quale ClusterRole modello usare" "${d}" 'val
 cr="$(docs ClusterRole)"
 expect_eq "RBAC: due ClusterRole (controller e modello)" "$(printf '%s\n' "${cr}" | grep -c '^kind: ClusterRole$')" "2"
 expect_lacks "RBAC: niente caratteri jolly" "${cr}" '"*"'
-expect_eq "RBAC: nessun Role nel namespace del release" "$(docs Role | grep -c '^kind: Role$')" "0"
+# GIT-494 (regressione di GIT-460): i Secret dei certificati del cliente stanno in un namespace DEDICATO,
+# <release>-certs, creato dal chart. Il Role -certs è solo lì: mai in kube-system né nel namespace del release,
+# dove core avrebbe i Secret di Postgres, NATS, k3s-serving.
+role="$(docs Role)"
+expect_eq "RBAC: un solo Role (certificati del cliente)" "$(printf '%s\n' "${role}" | grep -c '^kind: Role$')" "1"
+expect_has "RBAC: il Role è nel namespace dei certificati" "${role}" "namespace: gitstack-certs"
+expect_lacks "RBAC: il Role non è in kube-system" "${role}" "namespace: kube-system"
+expect_has "RBAC: il Role è quello dei certificati" "${role}" "name: gitstack-apps-controller-certs"
+expect_lacks "RBAC: il Role dei certificati non elenca i Secret" "${role}" '"list"'
+
+# GIT-460, GIT-494: in tutto il cluster esiste al massimo un TLSStore default, nel namespace dei certificati
+# (l'unico in cui core ha verbi sui Secret). Con la CA interna (ingress.tls.secretName) lo crea il chart lì,
+# con il defaultCertificate copiato; con Let's Encrypt lo crea core lì. Role ed env di core puntano allo
+# STESSO namespace, altrimenti core ne creerebbe un secondo e Traefik scarterebbe il default.
+SAVED_OUT="${OUT}"
+traefik_ns_env() { printf '%s
+' "${OUT}" | grep -A1 'name: GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE$' | tail -n 1 | tr -d ' '; }
+tlsstore_ns_env() { printf '%s
+' "${OUT}" | grep -A1 'name: GITSTACK_CORE_APPS_TLSSTORE_NAMESPACE$' | tail -n 1 | tr -d ' '; }
+certs_role_ns() { docs Role | grep -E '^  namespace: ' | head -n 1 | tr -d ' '; }
+certs_rb_ns() { docs RoleBinding | grep -E '^  namespace: ' | head -n 1 | tr -d ' '; }
+certs_namespace_names() { docs Namespace | grep -E '^  name: ' | tr -d ' ' | tr '\n' ','; }
+no_secret_verbs_outside() {
+  # Nessun Role/RoleBinding fuori da $1 (il chart non dà verbi sui Secret in altri namespace).
+  docs Role | grep -E '^  namespace: ' | grep -v -F "namespace: $1" || true
+}
+# (a) Let's Encrypt / nessun TLS dell'installer: nessun TLSStore del chart; Role, Namespace ed env nel namespace dei certificati.
+OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template (TLSStore, Let's Encrypt) fallito"; exit 1; }
+if [ "$(count '^kind: TLSStore$')" = "0" ]; then ok; else bad "TLSStore (Let's Encrypt): il chart non ne crea, lo crea core"; fi
+if [ "$(certs_namespace_names)" = "name:gitstack-certs," ]; then ok; else bad "TLSStore (Let's Encrypt): il chart deve creare il namespace gitstack-certs (trovati: $(certs_namespace_names))"; fi
+if [ "$(certs_role_ns)" = "namespace:gitstack-certs" ]; then ok; else bad "TLSStore (Let's Encrypt): il Role -certs deve stare in gitstack-certs"; fi
+if [ "$(certs_rb_ns)" = "namespace:gitstack-certs" ]; then ok; else bad "TLSStore (Let's Encrypt): il RoleBinding -certs deve stare in gitstack-certs"; fi
+if [ -z "$(no_secret_verbs_outside gitstack-certs)" ]; then ok; else bad "TLSStore (Let's Encrypt): nessun Role fuori da gitstack-certs"; fi
+if [ "$(traefik_ns_env)" = 'value:"kube-system"' ]; then ok; else bad "TLSStore (Let's Encrypt): GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE deve essere kube-system"; fi
+if [ "$(tlsstore_ns_env)" = 'value:"gitstack-certs"' ]; then ok; else bad "TLSStore (Let's Encrypt): GITSTACK_CORE_APPS_TLSSTORE_NAMESPACE deve essere gitstack-certs"; fi
+# (b) CA interna: il TLSStore del chart c'è, uno solo, nel namespace dei certificati; Role ed env lì, niente nel namespace del release.
+OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test --set ingress.enabled=true --set ingress.tls.enabled=true --set ingress.tls.secretName=gitstack-tls)" || { bad "helm template (TLSStore, CA interna) fallito"; exit 1; }
+if [ "$(count '^kind: TLSStore$')" = "1" ]; then ok; else bad "TLSStore (CA interna): ne serve esattamente uno in tutto l'output"; fi
+if [ "$(docs TLSStore | grep -E '^  namespace: ' | tr -d ' ')" = "namespace:gitstack-certs" ]; then ok; else bad "TLSStore (CA interna): il TLSStore deve stare in gitstack-certs"; fi
+if [ "$(certs_namespace_names)" = "name:gitstack-certs," ]; then ok; else bad "TLSStore (CA interna): il chart deve creare il namespace gitstack-certs (trovati: $(certs_namespace_names))"; fi
+if [ "$(certs_role_ns)" = "namespace:gitstack-certs" ]; then ok; else bad "TLSStore (CA interna): il Role -certs deve stare in gitstack-certs"; fi
+if [ "$(certs_rb_ns)" = "namespace:gitstack-certs" ]; then ok; else bad "TLSStore (CA interna): il RoleBinding -certs deve stare in gitstack-certs"; fi
+if [ -z "$(no_secret_verbs_outside gitstack-certs)" ]; then ok; else bad "TLSStore (CA interna): nessun Role fuori da gitstack-certs (né prova-ns né kube-system)"; fi
+if [ "$(traefik_ns_env)" = 'value:"kube-system"' ]; then ok; else bad "TLSStore (CA interna): GITSTACK_CORE_APPS_TRAEFIK_NAMESPACE deve restare kube-system (NetworkPolicy delle app)"; fi
+if [ "$(tlsstore_ns_env)" = 'value:"gitstack-certs"' ]; then ok; else bad "TLSStore (CA interna): GITSTACK_CORE_APPS_TLSSTORE_NAMESPACE deve essere gitstack-certs"; fi
+# (c) il namespace dei certificati non e' configurabile e non puo' cominciare con gitstack-app-
+# (perimetro dei namespace delle app): una release gitstack-app-x si ferma.
+if helm template gitstack-app-x "${CHART}" --set apps.enabled=true --set apps.domain=apps.acme.test >/dev/null 2>&1; then bad "release gitstack-app-x: il chart doveva fermarsi"; else ok; fi
+expect_has "release gitstack-app-x: messaggio del guard" "$(helm template gitstack-app-x "${CHART}" --set apps.enabled=true --set apps.domain=apps.acme.test 2>&1)" "non puo' iniziare con gitstack-app-"
+# (c2) la ValidatingAdmissionPolicy limita i Secret di core nel namespace dei certificati a gitstack-domain-*.
+vap="$(docs ValidatingAdmissionPolicy)"
+expect_has "VAP: regola sui Secret" "${vap}" "resources: [\"secrets\"]"
+expect_has "VAP: i Secret nel namespace dei certificati sono solo gitstack-domain-*" "${vap}" "startsWith('gitstack-domain-')"
+expect_has "VAP: l'espressione cita il namespace dei certificati" "${vap}" 'request.namespace != "gitstack-certs"'
+# (d) app spente: nessun namespace dei certificati e nessun Role; il TLSStore dell'installer resta nel namespace del release.
+OUT="$(render --namespace prova-ns --set ingress.enabled=true --set ingress.tls.enabled=true --set ingress.tls.secretName=gitstack-tls)" || { bad "helm template (app spente) fallito"; exit 1; }
+if [ "$(docs TLSStore | grep -E '^  namespace: ' | tr -d ' ')" = "namespace:prova-ns" ] && [ -z "$(docs Namespace)" ]; then ok; else bad "app spente: il TLSStore resta nel namespace del release e il chart non crea namespace"; fi
+OUT="${SAVED_OUT}"
 crb="$(docs ClusterRoleBinding)"
 expect_eq "RBAC: un solo ClusterRoleBinding" "$(printf '%s\n' "${crb}" | grep -c '^kind: ClusterRoleBinding$')" "1"
 expect_has "RBAC: il ClusterRoleBinding è del controller" "${crb}" "name: gitstack-apps-controller"
@@ -397,12 +487,15 @@ expect_eq "controller: rolebindings" "$(rules_of "${ctl}" | grep '"rolebindings"
 expect_eq "controller: bind solo sul ruolo modello" "$(rules_of "${ctl}" | grep '"clusterroles"')" '"rbac.authorization.k8s.io"|"clusterroles"|"bind"|"gitstack-app-workload"'
 expect_eq "controller: tre regole in tutto" "$(rules_of "${ctl}" | grep -c .)" "3"
 wl="$(doc ClusterRole gitstack-app-workload)"
-expect_eq "modello: risorse ammesse (ADR 0002, NetworkPolicy H9 e Middleware del login GIT-347)" "$(rules_of "${wl}" | cut -d'|' -f2 | sort | tr '\n' ' ')" '"deployments" "events" "ingressroutes", "middlewares" "networkpolicies" "persistentvolumeclaims" "pods" "pods/log" "secrets" "services" '
+expect_eq "modello: risorse ammesse (ADR 0002, NetworkPolicy H9 e Middleware del login GIT-347)" "$(rules_of "${wl}" | cut -d'|' -f2 | sort | tr '\n' ' ')" '"deployments" "events" "ingressroutes", "middlewares" "networkpolicies" "persistentvolumeclaims" "pods" "pods" "pods/log" "secrets" "services" '
 expect_eq "modello: Service (anche gli alias ExternalName H15, con list per toglierli)" "$(rules_of "${wl}" | grep '"services"')" '""|"services"|"create", "get", "list", "update", "delete"|'
 expect_eq "modello: NetworkPolicy H9" "$(rules_of "${wl}" | grep '"networkpolicies"')" '"networking.k8s.io"|"networkpolicies"|"get", "create", "update"|'
 expect_eq "modello: middlewares e ingressroutes con i soli verbi del controller" "$(rules_of "${wl}" | grep '"middlewares"')" '"traefik.io"|"ingressroutes", "middlewares"|"create", "get", "update", "delete"|'
 expect_eq "modello: PVC dei volumi (v3-b, H3) senza update" "$(rules_of "${wl}" | grep '"persistentvolumeclaims"')" '""|"persistentvolumeclaims"|"create", "get", "list", "delete"|'
-expect_lacks "modello: mai delete su deployments, pods, secrets" "$(rules_of "${wl}" | grep -E '"(deployments|pods|secrets)"')" "delete"
+expect_lacks "modello: mai delete su deployments, pods" "$(rules_of "${wl}" | grep -E '"(deployments|pods)"')" "delete"
+expect_eq "modello: secrets con delete (deleteAppSecret sulle app senza segreti, GIT-424)" "$(rules_of "${wl}" | grep '"secrets"')" '""|"secrets"|"create", "get", "update", "delete"|'
+expect_eq "modello: metriche dei pod (metrics.k8s.io, solo get e list, GIT-427)" "$(rules_of "${wl}" | grep '"metrics.k8s.io"')" '"metrics.k8s.io"|"pods"|"get", "list"|'
+expect_lacks "controller: nessun permesso su metrics.k8s.io (la regola sta nel ruolo modello, GIT-427)" "${ctl}" "metrics.k8s.io"
 expect_lacks "modello: nessun permesso su namespaces" "${wl}" "namespaces"
 expect_lacks "modello: nessun permesso su rolebindings" "${wl}" "rolebindings"
 
@@ -432,7 +525,27 @@ OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=app
 pol="$(doc ValidatingAdmissionPolicy gitstack-apps-controller-scope)"
 expect_has "policy (CI spenta): matchCondition sul ServiceAccount di core" "${pol}" 'request.userInfo.username == "system:serviceaccount:prova-ns:gitstack-core"'
 expect_has "policy (CI spenta): soggetto ammesso" "${pol}" 's.name == "gitstack-core" && s.namespace == "prova-ns"'
+# GIT-449: CI spenta, app e registry accesi: il token di pull delle app (gsj_app.) va al ci-gateway di core.
+d="$(doc Deployment gitstack-git)"
+expect_has "app senza CI: git convalida il token di pull nel ci-gateway di core" "${d}" 'value: "http://gitstack-core.prova-ns.svc:8081"'
+d="$(doc Deployment gitstack-core)"
+expect_line_has "app senza CI: core apre la porta del ci-gateway" "${d}" '- name: ci-gateway'
+expect_has "app senza CI: GITSTACK_CORE_CI_GATEWAY_ADDR" "${d}" 'GITSTACK_CORE_CI_GATEWAY_ADDR'
+expect_lacks "app senza CI: core non è CI_ENABLED (token dei job rifiutati)" "${d}" 'GITSTACK_CORE_CI_ENABLED'
+expect_lacks "app senza CI: core senza URL del ci-gateway per i pod dei job" "${d}" 'GITSTACK_CORE_CI_GATEWAY_URL'
+expect_has "app senza CI: il Service di core espone il ci-gateway" "$(doc Service gitstack-core)" 'name: ci-gateway'
+expect_has "app senza CI: git raggiunge core sulla porta del ci-gateway" "$(doc NetworkPolicy gitstack-git)" "port: 8081"
+d="$(doc NetworkPolicy gitstack-core)"
+expect_has "app senza CI: core accetta il pod git sulla porta del ci-gateway" "${d}" "port: 8081"
+expect_lacks "app senza CI: core non accetta il namespace dei job" "${d}" "gitstack-ci-jobs"
+expect_eq "app senza CI: nessuna policy dei job" "$(count 'name: ci-job-egress$')" "0"
+OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test --set git.registry.enabled=false)" || { bad "helm template apps senza registry fallito"; exit 1; }
+expect_lacks "app senza CI e senza registry: git senza ci-gateway" "$(doc Deployment gitstack-git)" "GITSTACK_GIT_CI_GATEWAY_URL"
+expect_lacks "app senza CI e senza registry: core senza porta ci-gateway" "$(doc Deployment gitstack-core)" "GITSTACK_CORE_CI_GATEWAY_ADDR"
 OUT="$(render --namespace prova-ns --set ci.enabled=true --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template con CI e apps fallito"; exit 1; }
+expect_has "CI e app: GITSTACK_CORE_CI_ENABLED invariato" "$(doc Deployment gitstack-core)" 'GITSTACK_CORE_CI_ENABLED'
+expect_eq "CI e app: una sola porta ci-gateway in core" "$(doc Deployment gitstack-core | grep -c -E '^ +- name: ci-gateway$')" "1"
+expect_eq "CI e app: un solo GITSTACK_CORE_CI_GATEWAY_ADDR" "$(doc Deployment gitstack-core | grep -c 'name: GITSTACK_CORE_CI_GATEWAY_ADDR$')" "1"
 OUT="$(render --namespace prova-ns)" || { bad "helm template di default fallito"; exit 1; }
 expect_eq "apps spento: nessuna policy del controller" "$(count 'gitstack-apps-controller-scope')" "0"
 expect_lacks "apps spento: il gateway senza chiavi di firma" "$(doc Deployment gitstack-gateway)" "GITSTACK_GATEWAY_APPAUTH_SIGNING_KEYS"
@@ -482,6 +595,32 @@ expect_has "policy di ammissione del namespace di build" "$OUT" "kind: Validatin
 if helm_rc --set ci.enabled=true --set ci.build.enabled=true --set git.registry.enabled=false; then bad "build senza registry: helm template doveva fermarsi"; else ok; fi
 if helm_rc --set ci.enabled=true --set ci.build.enabled=true --set gateway.enabled=false; then bad "build senza gateway: helm template doveva fermarsi"; else ok; fi
 
+echo "== GIT-453: gitstack-build mette l'etichetta org.opencontainers.image.revision solo con GITHUB_SHA valido"
+BT="$(mktemp -d)"
+mkdir -p "${BT}/bin" "${BT}/ctx"
+printf 'FROM scratch\n' >"${BT}/ctx/Dockerfile"
+cat >"${BT}/bin/buildctl" <<'EOF'
+#!/bin/sh
+[ "$1" = "debug" ] && exit 0
+printf 'ARG:%s\n' "$@"
+EOF
+chmod +x "${BT}/bin/buildctl"
+run_build() {
+  (cd "${BT}/ctx" && env -u GITHUB_SHA "$@" PATH="${BT}/bin:${PATH}" HOME="${BT}/home" GITSTACK_REGISTRY=reg:8080 \
+    BUILDKIT_HOST=unix:///x GITHUB_TOKEN=t GITSTACK_REPOSITORY=o/r sh "${HERE}/../ci-runner/gitstack-build" --tag 1 2>&1)
+}
+SHA40="0123456789abcdef0123456789abcdef01234567"
+o="$(run_build GITHUB_SHA="${SHA40}")" || bad "gitstack-build con sha valido fallito"
+expect_has "build: etichetta revision con sha valido" "${o}" "ARG:label:org.opencontainers.image.revision=${SHA40}"
+for v in "" "abc123" "${SHA40}0" "zzzz456789abcdef0123456789abcdef01234567"; do
+  o="$(run_build GITHUB_SHA="${v}")" || bad "gitstack-build con sha '${v}' fallito"
+  expect_lacks "build: nessuna etichetta con sha '${v}'" "${o}" "label:"
+done
+o="$(run_build)" || bad "gitstack-build senza GITHUB_SHA fallito"
+expect_lacks "build: nessuna etichetta senza GITHUB_SHA" "${o}" "label:"
+expect_has "build: senza etichetta il resto degli argomenti c'e'" "${o}" "ARG:--output"
+rm -rf "${BT}"
+
 echo "== GIT-383: core legge la CA interna (impronta per la guida dei tester)"
 OUT="$(render)" || { bad "helm template di default fallito"; exit 1; }
 d="$(doc Deployment gitstack-core)"
@@ -500,6 +639,39 @@ expect_has "CA: il ConfigMap e' quello dell'installer" "${d}" "name: gitstack-ca
 expect_line_has "CA: ConfigMap optional" "${d}" "optional: true"
 expect_lacks "CA: niente subPath (un rinnovo arriva senza riavvio)" "${d}" "subPath"
 expect_lacks "CA: con la CA interna nessun GITSTACK_CORE_CA_MODE" "${d}" "GITSTACK_CORE_CA_MODE"
+
+echo "== GIT-442: le app raggiungono l'API dalla porta interna del gateway"
+OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template apps (porta interna) fallito"; exit 1; }
+d="$(doc NetworkPolicy gitstack-gateway)"
+expect_has "app->gateway: ingresso dai namespace gestiti" "${d}" 'gitstack.io/managed-app: "true"'
+expect_eq "app->gateway: una sola regola per le app" "$(printf '%s\n' "${d}" | grep -c 'gitstack.io/managed-app')" "2"
+expect_has "app->gateway: porta interna" "${d}" "port: 8081"
+# Nel documento del gateway, la porta interna compare solo nella regola delle app.
+expect_eq "app->gateway: porta interna una volta sola" "$(printf '%s\n' "${d}" | grep -c 'port: 8081$')" "1"
+# La regola delle app non apre la porta pubblica: fra le righe della regola (da managed-app al blocco egress) c'è solo 8081.
+rule="$(printf '%s\n' "${d}" | awk '/gitstack.io\/managed-app: "true"/ {on=1} /^  egress:/ {on=0} on')"
+expect_has "app->gateway: la regola ha la porta interna" "${rule}" "port: 8081"
+expect_lacks "app->gateway: la regola non ha la porta pubblica" "${rule}" "port: 8080"
+for n in core identity git nats postgres; do
+  expect_lacks "nessuna policy di ${n} ammette le app" "$(doc NetworkPolicy "gitstack-${n}")" "gitstack.io/managed-app"
+done
+d="$(doc Deployment gitstack-gateway)"
+expect_has "gateway: GITSTACK_GATEWAY_INTERNAL_ADDR" "${d}" "GITSTACK_GATEWAY_INTERNAL_ADDR"
+expect_has "gateway: porta interna del container" "${d}" "containerPort: 8081"
+expect_has "gateway: il Service ha la porta interna" "$(doc Service gitstack-gateway)" "port: 8081"
+d="$(doc Deployment gitstack-core)"
+expect_line_has "core: namespace del gateway" "${d}" "value: \"prova-ns\""
+expect_has "core: porta interna del gateway" "${d}" "GITSTACK_CORE_APPS_GATEWAY_INTERNAL_PORT"
+expect_has "core: etichette dei pod del gateway" "${d}" "app.kubernetes.io/name=gateway,app.kubernetes.io/instance=gitstack"
+# Senza app, o con internalPort=0, nessuna porta interna e nessuna regola.
+for args in "" "--set apps.enabled=true --set apps.domain=apps.acme.test --set gateway.internalPort=0"; do
+  # shellcheck disable=SC2086
+  OUT="$(render ${args})" || { bad "helm template (senza porta interna) fallito"; exit 1; }
+  expect_lacks "senza porta interna: nessuna regola per le app" "$(doc NetworkPolicy gitstack-gateway)" "gitstack.io/managed-app"
+  expect_lacks "senza porta interna: gateway" "${OUT}" "GITSTACK_GATEWAY_INTERNAL_ADDR"
+  expect_lacks "senza porta interna: core" "${OUT}" "GITSTACK_CORE_APPS_GATEWAY_INTERNAL_PORT"
+done
+if helm_rc --set apps.enabled=true --set apps.domain=apps.acme.test --set gateway.internalPort=8080; then bad "internalPort uguale a containerPort: helm template doveva fermarsi"; else ok; fi
 
 echo
 echo "Passati: ${PASS}  Falliti: ${FAILN}"

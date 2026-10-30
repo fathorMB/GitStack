@@ -68,6 +68,8 @@ type Engine struct {
 	Log      *slog.Logger
 	// Now è l'orologio (iniettabile nei test); default time.Now.
 	Now func() time.Time
+	// AppUnhealthyNoticeWindow limita gli avvisi app_status.unhealthy; zero usa il default.
+	AppUnhealthyNoticeWindow time.Duration
 
 	Poll  time.Duration // default 1s
 	Batch int           // default 50
@@ -267,6 +269,9 @@ func (e *Engine) handle(ctx context.Context, tx pgx.Tx, ev outboxEvent) error {
 	}
 	if isAppNotice(ev.name) {
 		return e.handleApp(ctx, tx, ev)
+	}
+	if isAppDomainNotice(ev.name) {
+		return e.handleAppDomain(ctx, tx, ev)
 	}
 	switch ev.name {
 	case domainevents.IssueCreated, domainevents.IssueEdited, domainevents.IssueClosed,

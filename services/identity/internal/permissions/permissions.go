@@ -396,3 +396,60 @@ func (s *Service) GrantCreatorAdmin(ctx context.Context, resourceID, userID uuid
 	}
 	return Grant{ID: id, ResourceID: resID, SubjectType: SubjectType(st), SubjectID: subj, Role: Role(role), CreatedAt: at}, inserted, nil
 }
+
+// membersSQL elenca gli utenti attivi con almeno il ruolo $2 (rango 1..3) sulla
+// risorsa $1: le stesse condizioni di effectiveSQL, valutate per tutti gli utenti.
+const membersSQL = `
+SELECT u.id
+FROM identity.users u
+WHERE u.is_active AND (
+  u.is_admin OR GREATEST(COALESCE((
+    SELECT max(CASE g.role WHEN 'admin' THEN 3 WHEN 'write' THEN 2 WHEN 'read' THEN 1 ELSE 0 END)
+    FROM identity.resource_grants g
+    WHERE g.resource_id = $1
+      AND (
+           g.user_id = u.id
+        OR g.team_id IN (SELECT tm.team_id FROM identity.team_members tm WHERE tm.user_id = u.id)
+        OR g.team_id IN (
+             SELECT t.id FROM identity.teams t
+             JOIN identity.org_members om ON om.org_id = t.org_id
+             WHERE om.user_id = u.id AND om.role = 'owner')
+      )
+  ), 0), COALESCE((
+    SELECT CASE
+             WHEN a.owner_type = 'user' AND a.owner_id = u.id THEN 3
+             WHEN a.owner_type = 'organization' AND EXISTS (
+                  SELECT 1 FROM identity.org_members om
+                  WHERE om.org_id = a.owner_id AND om.user_id = u.id AND om.role = 'owner') THEN 3
+             WHEN a.visibility = 'internal' THEN 1
+             ELSE 0
+           END
+    FROM identity.resource_attributes a WHERE a.resource_id = $1
+  ), 0)) >= $2
+)
+ORDER BY u.id`
+
+// UsersWithRole ritorna gli utenti attivi con almeno il ruolo min sulla
+// risorsa, con le regole di EffectiveRole (amministratori di sistema inclusi).
+func (s *Service) UsersWithRole(ctx context.Context, resourceID uuid.UUID, min Role) ([]uuid.UUID, error) {
+	if !min.Valid() {
+		return nil, fmt.Errorf("ruolo non valido: %q", min)
+	}
+	rows, err := s.pool.Query(ctx, membersSQL, resourceID, min.Rank())
+	if err != nil {
+		return nil, fmt.Errorf("elenco degli utenti con ruolo non riuscito: %w", err)
+	}
+	defer rows.Close()
+	out := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("lettura di un utente non riuscita: %w", err)
+		}
+		out = append(out, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("elenco degli utenti con ruolo non riuscito: %w", err)
+	}
+	return out, nil
+}

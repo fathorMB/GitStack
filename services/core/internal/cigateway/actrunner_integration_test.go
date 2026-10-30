@@ -24,9 +24,13 @@ on: push
 jobs:
   prova:
     runs-on: self-hosted
+    outputs:
+      digest: ${{ steps.b.outputs.digest }}
     steps:
       - run: echo ACT-RUNNER-PRIMO
       - run: echo "ACT-RUNNER-SECONDO job=$GITHUB_JOB"
+      - id: b
+        run: echo "digest=sha256:compat" >> "$GITHUB_OUTPUT"
 `
 
 // TestActRunner_Compat (GIT-329, ADR 0001 §4): il runner di Gitea (ex act_runner) parla runner.v1
@@ -122,7 +126,9 @@ func TestActRunner_Compat(t *testing.T) {
 		line(true, "token di registrazione monouso: secondo uso rifiutato", "")
 	}
 
+	daemonStart := time.Now()
 	out, err = run(120*time.Second, "daemon", "--once")
+	daemonTook := time.Since(daemonStart)
 	t.Logf("--- uscita di gitea-runner daemon --once ---\n%s", out)
 	line(err == nil, "daemon --once termina dopo un job", err2s(err))
 
@@ -132,6 +138,18 @@ func TestActRunner_Compat(t *testing.T) {
 		t.Fatal(err)
 	}
 	line(status == "completed" && concl == "success", "esito del job: completed/success", status+"/"+concl)
+
+	// GIT-501: gli outputs dichiarati arrivano via UpdateTask.Outputs; il gateway li conferma in
+	// SentOutputs, altrimenti act_runner li rimanda e alla chiusura non termina.
+	var outs string
+	if err := e.pool.QueryRow(context.Background(), `SELECT outputs::text FROM core.ci_jobs WHERE id = $1`, jobID).Scan(&outs); err != nil {
+		t.Fatal(err)
+	}
+	line(strings.Contains(outs, "sha256:compat"), "outputs del job salvati: "+outs, outs)
+	line(!strings.Contains(out, "outputs that have not been sent"), "act_runner non ha outputs non confermati", out)
+	// Senza SentOutputs act_runner rimanda gli outputs finche' non scade il suo tempo di chiusura
+	// (misurato: ~32 s contro ~5 s) pur finendo il job in success: la durata lo rivela.
+	line(daemonTook < 20*time.Second, "act_runner chiude senza attese per outputs non confermati", daemonTook.String())
 
 	size, err := e.logs.LogSize(context.Background(), e.pool, jobID)
 	if err != nil {

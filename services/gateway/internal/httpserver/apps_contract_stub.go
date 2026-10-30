@@ -181,3 +181,28 @@ func (s *apiServer) GetAppAccessInvite(w http.ResponseWriter, r *http.Request, o
 func (s *apiServer) GetAppAccessMembership(w http.ResponseWriter, r *http.Request, appId openapi_types.UUID) {
 	s.appsProxy(w, r)
 }
+
+func (s *apiServer) UpdateAppVolume(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam, volume openapi.AppVolumeParam) {
+	s.appsProxy(w, r)
+}
+
+// Uscita delle app (GIT-385, H16).
+func (s *apiServer) GetAdminAppsEgress(w http.ResponseWriter, r *http.Request) {
+	s.appsProxy(w, r)
+}
+
+func (s *apiServer) UpdateAdminAppsEgress(w http.ResponseWriter, r *http.Request) {
+	s.appsProxy(w, r)
+}
+
+func (s *apiServer) GetAppEgress(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
+	s.appsProxy(w, r)
+}
+
+func (s *apiServer) SetAppEgress(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
+	s.appsProxy(w, r)
+}
+
+func (s *apiServer) DeleteAppEgress(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
+	s.appsProxy(w, r)
+}
