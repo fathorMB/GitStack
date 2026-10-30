@@ -38,7 +38,7 @@ ARG ACT_VERSION=v0.2.89
 ARG ACT_SHA256=0191d6f1f3b716b5c55820032605d05fc3c1cdbf581ebeff655019e5dd1524c0
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl git \
+    && apt-get install -y --no-install-recommends ca-certificates curl git gcc libc6-dev make jq xz-utils unzip \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL -o /tmp/act.tgz "https://github.com/nektos/act/releases/download/${ACT_VERSION}/act_Linux_x86_64.tar.gz" \
     && echo "${ACT_SHA256}  /tmp/act.tgz" | sha256sum -c - \

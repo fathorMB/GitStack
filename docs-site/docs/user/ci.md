@@ -101,6 +101,28 @@ database or the other services. Base images come from the Internet (for example
 Docker Hub); a mirror of the actions on a private network
 (`ci.runner.actionMirror`) is not reachable from this pod.
 
+## What the job image contains
+
+The built-in runner image is Debian-based and has: Node.js (needed by
+JavaScript actions), `git`, `curl`, `ca-certificates`, `act`, `buildctl`, and a
+basic native toolchain: `gcc` (also as `cc`), `ld` and the C library headers
+(`libc6-dev`), `make`, `jq`, `xz` and `unzip`. A C program compiles, links and
+runs, and so does a Rust crate with proc-macros once Rust is installed.
+
+It does **not** contain:
+
+- language toolchains (Rust, Go, Python, `cmake` and the like);
+- project libraries (for example WebKitGTK or other `-dev` packages);
+- `docker`, `sudo` or `apt`: the job runs as an unprivileged user with a
+  read-only root filesystem, and only `/work` (the home directory) and `/tmp`
+  are writable.
+
+Install languages and libraries from the workflow, without root, under `/work`.
+For example, `rustup` with `CARGO_HOME` and `RUSTUP_HOME` in `/work`, or a
+prebuilt tarball unpacked there. Software that needs system packages other
+than the ones above cannot be installed in this runner: do not assume that
+every native project builds here. Use an external runner for that.
+
 ## Results
 
 Each job reports a commit status named `workflow / job`. You can require it
