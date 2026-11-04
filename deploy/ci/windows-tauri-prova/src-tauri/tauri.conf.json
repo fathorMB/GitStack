@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "GsTauriProva",
+  "version": "0.1.0",
+  "identifier": "lan.gitstack.prova",
+  "build": {
+    "frontendDist": "../dist",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "GitStack prova",
+        "width": 600,
+        "height": 400
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/icon.ico",
+      "icons/32x32.png",
+      "icons/128x128.png"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDBCRkRGRUY3N0UyRkMwNUMKUldSY3dDOSs5Lzc5QzI1K2dZcGRRZVJmRWxHV0hpZUlTWHJRNUk3ZVVpQlUvYkFMcW9zUlNQb3IK",
+      "endpoints": [
+        "https://example.invalid/latest.json"
+      ]
+    }
+  }
+}

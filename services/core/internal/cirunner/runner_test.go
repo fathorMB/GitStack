@@ -22,6 +22,7 @@ import (
 	runnerv1 "code.gitea.io/actions-proto-go/runner/v1"
 	"code.gitea.io/actions-proto-go/runner/v1/runnerv1connect"
 	"connectrpc.com/connect"
+	"github.com/fathorMB/GitStack/services/core/internal/ci"
 	"github.com/fathorMB/GitStack/services/core/internal/cirunner"
 	"google.golang.org/protobuf/types/known/structpb"
 	"gopkg.in/yaml.v3"
@@ -216,9 +217,10 @@ type fakeGateway struct {
 	runnerv1connect.UnimplementedRunnerServiceHandler
 	mu       sync.Mutex
 	workflow string
-	extra    map[string]any // campi in piu' del contesto del task
+	extra    map[string]any    // campi in piu' del contesto del task
 	secrets  map[string]string // segreti del repo, oltre a GITHUB_TOKEN
 	vars     map[string]string
+	masker   *ci.Masker // se c'e', mascherata come fa il gateway vero (UpdateLog)
 	needs    map[string]*runnerv1.TaskNeed
 	outputs  map[string]string // outputs riportati con l'esito
 	taken    bool
@@ -280,7 +282,7 @@ func (g *fakeGateway) UpdateLog(_ context.Context, req *connect.Request[runnerv1
 	}
 	for i, r := range req.Msg.GetRows() {
 		if int(idx)+i >= len(g.rows) {
-			g.rows = append(g.rows, r.GetContent())
+			g.rows = append(g.rows, g.masker.Mask(r.GetContent()))
 		}
 	}
 	return connect.NewResponse(&runnerv1.UpdateLogResponse{AckIndex: int64(len(g.rows))}), nil

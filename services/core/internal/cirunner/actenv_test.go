@@ -63,7 +63,7 @@ func TestDotenvQuote_ConActVero(t *testing.T) {
 		}
 	}
 	for f, c := range map[string]string{
-		filepath.Join(ws, ".git", "HEAD"):                 "ref: refs/heads/main\n",
+		filepath.Join(ws, ".git", "HEAD"):                  "ref: refs/heads/main\n",
 		filepath.Join(ws, ".git", "refs", "heads", "main"): strings.Repeat("a", 40) + "\n",
 		filepath.Join(ws, ".git", "config"):                "[core]\n\trepositoryformatversion = 0\n",
 		filepath.Join(ws, "wf.yml"): "name: t\non: push\njobs:\n  j:\n    runs-on: self-hosted\n    steps:\n" +
