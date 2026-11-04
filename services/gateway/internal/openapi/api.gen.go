@@ -4815,27 +4815,6 @@ type DeletedNotifications struct {
 	Deleted int `json:"deleted"`
 }
 
-// DeletedRepository defines model for DeletedRepository.
-type DeletedRepository struct {
-	DeletedAt time.Time          `json:"deletedAt"`
-	Id        openapi_types.UUID `json:"id"`
-
-	// Name Nome di un repo (R11): lettere maiuscole e minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono conservate come scritte; l'unicita' per owner e il lookup non distinguono maiuscole e minuscole (`GitStack` e `gitstack` sono lo stesso repo).
-	//
-	//
-	// Example: my-app
-	Name  RepoName  `json:"name"`
-	Owner RepoOwner `json:"owner"`
-
-	// PurgeAt Dopo questo istante il repo e' cancellato definitivamente (7 giorni, R2).
-	PurgeAt time.Time `json:"purgeAt"`
-}
-
-// DeletedRepositoryList defines model for DeletedRepositoryList.
-type DeletedRepositoryList struct {
-	Items []DeletedRepository `json:"items"`
-}
-
 // DiffSide Lato del diff su cui sta la riga (PR5), `old` e' il file prima, `new` dopo.
 type DiffSide string
 
@@ -5397,18 +5376,6 @@ type MilestoneList struct {
 //
 // Example: alice
 type Name = string
-
-// NameInTrashDetails `error.details` del 409 `name_in_trash` di `createRepository` e `importRepository`: il nome e' tenuto da un repo eliminato (R2). Il nome si libera solo alla cancellazione definitiva (`purgeAt`); un admin del repo puo' ripristinarlo prima. Un repo attivo con quel nome resta il 409 `conflict`.
-type NameInTrashDetails struct {
-	// Owner Nome dell'owner del repo nel cestino, per il link al cestino giusto.
-	Owner string `json:"owner"`
-
-	// PurgeAt Istante dopo il quale il repo nel cestino e' cancellato definitivamente e il nome si libera.
-	PurgeAt time.Time `json:"purgeAt"`
-
-	// RepoId Id del repo nel cestino, presente solo se il chiamante e' admin su di esso (per ripristinarlo).
-	RepoId *openapi_types.UUID `json:"repoId,omitempty"`
-}
 
 // Notification defines model for Notification.
 type Notification struct {
@@ -6173,20 +6140,6 @@ type RepoMirrorState string
 //
 // Example: my-app
 type RepoName = string
-
-// RepoNameConflictError Come `Error`, per il 409 di creazione e import di un repo: `details` e' presente solo con `code: name_in_trash`.
-type RepoNameConflictError struct {
-	Error struct {
-		// Code `conflict` o `name_in_trash`.
-		//
-		// Example: name_in_trash
-		Code string `json:"code"`
-
-		// Details `error.details` del 409 `name_in_trash` di `createRepository` e `importRepository`: il nome e' tenuto da un repo eliminato (R2). Il nome si libera solo alla cancellazione definitiva (`purgeAt`); un admin del repo puo' ripristinarlo prima. Un repo attivo con quel nome resta il 409 `conflict`.
-		Details *NameInTrashDetails `json:"details,omitempty"`
-		Message string              `json:"message"`
-	} `json:"error"`
-}
 
 // RepoOwner defines model for RepoOwner.
 type RepoOwner struct {
@@ -7307,9 +7260,6 @@ type NotFound = Error
 // PayloadTooLarge Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type PayloadTooLarge = Error
 
-// RepoNameConflict Come `Error`, per il 409 di creazione e import di un repo: `details` e' presente solo con `code: name_in_trash`.
-type RepoNameConflict = RepoNameConflictError
-
 // Unauthorized Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type Unauthorized = Error
 
@@ -7382,12 +7332,6 @@ type ListRepositoriesParams struct {
 	Owner   *RepoOwnerFilter `form:"owner,omitempty" json:"owner,omitempty"`
 	Page    *PageParam       `form:"page,omitempty" json:"page,omitempty"`
 	PerPage *PerPageParam    `form:"perPage,omitempty" json:"perPage,omitempty"`
-}
-
-// ListDeletedRepositoriesParams defines parameters for ListDeletedRepositories.
-type ListDeletedRepositoriesParams struct {
-	// Owner Filtra per nome dell'utente o dell'organizzazione proprietaria.
-	Owner *RepoOwnerFilter `form:"owner,omitempty" json:"owner,omitempty"`
 }
 
 // DeleteActionsCachesParams defines parameters for DeleteActionsCaches.
@@ -8194,16 +8138,10 @@ type ServerInterface interface {
 	// CreateRepository Crea un repo
 	// (POST /repos)
 	CreateRepository(w http.ResponseWriter, r *http.Request)
-	// ListDeletedRepositories Elenca i repo eliminati e ancora ripristinabili
-	// (GET /repos/deleted)
-	ListDeletedRepositories(w http.ResponseWriter, r *http.Request, params ListDeletedRepositoriesParams)
-	// RestoreRepository Ripristina un repo eliminato
-	// (POST /repos/deleted/{repoId}/restore)
-	RestoreRepository(w http.ResponseWriter, r *http.Request, repoId openapi_types.UUID)
 	// ImportRepository Crea un repo importandolo da un URL
 	// (POST /repos/import)
 	ImportRepository(w http.ResponseWriter, r *http.Request)
-	// DeleteRepository Elimina un repo (recuperabile per 7 giorni)
+	// DeleteRepository Elimina un repo, subito e per sempre
 	// (DELETE /repos/{owner}/{repo})
 	DeleteRepository(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
 	// GetRepository Legge un repo per owner/nome
@@ -10156,65 +10094,6 @@ func (siw *ServerInterfaceWrapper) CreateRepository(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateRepository(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// ListDeletedRepositories operation middleware
-func (siw *ServerInterfaceWrapper) ListDeletedRepositories(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ListDeletedRepositoriesParams
-
-	// ------------- Optional query parameter "owner" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "owner", r.URL.Query(), &params.Owner, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "owner"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
-		}
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListDeletedRepositories(w, r, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// RestoreRepository operation middleware
-func (siw *ServerInterfaceWrapper) RestoreRepository(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "repoId" -------------
-	var repoId openapi_types.UUID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "repoId", r.PathValue("repoId"), &repoId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repoId", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.RestoreRepository(w, r, repoId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -20078,8 +19957,6 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos", wrapper.CreateRepository)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/import", wrapper.ImportRepository)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/users/{username}/access", wrapper.GetUserAccess)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/deleted", wrapper.ListDeletedRepositories)
-	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/deleted/{repoId}/restore", wrapper.RestoreRepository)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}", wrapper.DeleteRepository)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}", wrapper.GetRepository)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}", wrapper.UpdateRepository)

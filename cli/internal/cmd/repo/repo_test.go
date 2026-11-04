@@ -120,8 +120,7 @@ const (
 		`"createdAt":"2026-10-01T10:00:00Z","updatedAt":"2026-10-02T10:00:00Z"}`
 
 	session     = `{"authMethod":"token","mustChangePassword":false,"user":{"username":"alice","displayName":"Alice","kind":"human"}}`
-	deletedList = `{"items":[{"id":"00000000-0000-0000-0000-0000000000d1","name":"web","owner":{"name":"acme","type":"organization"},` +
-		`"deletedAt":"2026-10-03T10:00:00Z","purgeAt":"2026-10-10T10:00:00Z"}]}`
+
 )
 
 func TestCreate_PrivatoDiDefaultEOwnerUtente(t *testing.T) {
@@ -217,21 +216,6 @@ func TestList_FiltriETabella(t *testing.T) {
 		if strings.TrimSpace(r.out) != want {
 			t.Errorf("%s: %q, voluto %q (%s)", args, r.out, want, r.errOut)
 		}
-	}
-}
-
-func TestList_Eliminati(t *testing.T) {
-	fk := newFake(t, map[string]reply{"GET /repos/deleted": {200, deletedList}})
-	r := run(t, fk, "repo", "list", "--deleted", "--json", "fullName,deletedAt,purgeAt,id")
-	if r.code != 0 {
-		t.Fatalf("exit %d: %s", r.code, r.errOut)
-	}
-	var m []map[string]any
-	if err := json.Unmarshal([]byte(r.out), &m); err != nil || len(m) != 1 || m[0]["fullName"] != "acme/web" || m[0]["purgeAt"] == nil {
-		t.Errorf("json: %v %v", m, err)
-	}
-	if r := run(t, fk, "repo", "list", "--deleted", "--archived"); r.code != 2 {
-		t.Errorf("--deleted --archived: exit %d", r.code)
 	}
 }
 
@@ -363,7 +347,7 @@ func TestDelete_ConfermeG8(t *testing.T) {
 	if r := runWith(t, fk, runOpts{stdin: "acme/web\n", tty: true}, "repo", "delete", "acme/web"); r.code != 0 || len(fk.find("DELETE", "/repos/acme/web")) != 1 {
 		t.Errorf("conferma: exit %d (%s)", r.code, r.errOut)
 	}
-	if r := run(t, fk, "repo", "delete", "acme/web", "--yes"); r.code != 0 || len(fk.find("DELETE", "/repos/acme/web")) != 2 || !strings.Contains(r.errOut, "gs repo restore acme/web") {
+	if r := run(t, fk, "repo", "delete", "acme/web", "--yes"); r.code != 0 || len(fk.find("DELETE", "/repos/acme/web")) != 2 || !strings.Contains(r.errOut, "definitivo") || strings.Contains(r.errOut, "restore acme/web") {
 		t.Errorf("--yes: exit %d (%s)", r.code, r.errOut)
 	}
 	if r := run(t, fk, "repo", "delete", "acme/nope", "-y"); r.code != 6 {
@@ -371,23 +355,18 @@ func TestDelete_ConfermeG8(t *testing.T) {
 	}
 }
 
-func TestRestore(t *testing.T) {
-	fk := newFake(t, map[string]reply{
-		"GET /repos/deleted": {200, deletedList},
-		"POST /repos/deleted/00000000-0000-0000-0000-0000000000d1/restore": {200, repoJSON},
-	})
-	r := run(t, fk, "repo", "restore", "acme/web")
-	if r.code != 0 || !strings.HasSuffix(strings.TrimSpace(r.out), "/acme/web") {
-		t.Fatalf("exit %d: %s | %s", r.code, r.out, r.errOut)
+// GIT-530: non c'è più cestino, quindi nemmeno `restore` né `list --deleted`.
+func TestNiente_CestinoNeRipristino(t *testing.T) {
+	fk := newFake(t, nil)
+	if r := run(t, fk, "repo", "restore", "acme/web"); r.code != 2 || fk.repoCalls() != 0 {
+		t.Errorf("restore: exit %d, chiamate %d (%s)", r.code, fk.repoCalls(), r.errOut)
 	}
-	if q := fk.find("GET", "/repos/deleted")[0].Query; !strings.Contains(q, "owner=acme") {
-		t.Errorf("query: %s", q)
+	if r := run(t, fk, "repo", "list", "--deleted"); r.code != 2 || fk.repoCalls() != 0 {
+		t.Errorf("list --deleted: exit %d, chiamate %d (%s)", r.code, fk.repoCalls(), r.errOut)
 	}
-	if r := run(t, fk, "repo", "restore", "acme/altro"); r.code != 6 {
-		t.Errorf("non eliminato: exit %d", r.code)
-	}
-	if r := run(t, fk, "repo", "restore"); r.code != 2 {
-		t.Errorf("senza repo: exit %d", r.code)
+	r := run(t, fk, "repo", "delete", "--help")
+	if !strings.Contains(r.out, "definitiva") || !strings.Contains(r.out, "backup") || strings.Contains(r.out, "7 giorni") {
+		t.Errorf("l'aiuto di delete non dice che è definitiva e si recupera solo da backup: %s", r.out)
 	}
 }
 
@@ -409,7 +388,7 @@ func TestStessoCodiceDelCliReadme(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, f := range append(append([]string{}, repo.RepoFields...), repo.DeletedFields...) {
+	for _, f := range repo.RepoFields {
 		if !strings.Contains(string(b), "`"+f+"`") {
 			t.Errorf("il campo %s non è documentato in cli/README.md", f)
 		}

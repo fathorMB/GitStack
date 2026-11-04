@@ -1186,7 +1186,7 @@ var Tools = []Tool{
 		Operation:   "createRepository",
 		Method:      "POST",
 		Path:        "/repos",
-		Description: "Crea un repo. `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato: `conflict` se lo tiene un repo attivo, `name_in_trash` (con `details`: `NameInTrashDetails`) se lo tiene un repo eliminato ancora nel cestino (R2); 404 se `owner` non esiste.",
+		Description: "Crea un repo. `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 `conflict` se il nome e' occupato da un repo attivo (un repo eliminato non occupa piu' il nome, R2); 404 se `owner` non esiste.",
 		Destructive: false,
 		PathParams:  nil,
 		QueryParams: nil,

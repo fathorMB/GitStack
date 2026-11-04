@@ -39,8 +39,8 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 )
 
-// repoPurgeInterval: ogni quanto il job cancella i repo eliminati scaduti.
-const repoPurgeInterval = time.Hour
+// repoPurgeInterval: ogni quanto il job riprova la pulizia dei repo eliminati rimasta in coda (R2, GIT-530).
+const repoPurgeInterval = time.Minute
 
 // ciScheduleInterval: ogni quanto si cercano gli orari dei workflow scaduti (lo scatto minimo e' 15 minuti).
 const ciScheduleInterval = time.Minute
@@ -271,8 +271,10 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	} else {
 		logger.Warn("GITSTACK_CORE_ATTACHMENTS_DIR non impostata: gli allegati rispondono 503")
 	}
+	var releaseDisk *attachments.Disk
 	if cfg.ReleaseAssetsDir != "" {
-		attachCfg.ReleaseAssets = &attachments.Disk{Dir: cfg.ReleaseAssetsDir}
+		releaseDisk = &attachments.Disk{Dir: cfg.ReleaseAssetsDir}
+		attachCfg.ReleaseAssets = releaseDisk
 	}
 	routerOpts = append(routerOpts, httpserver.WithAttachments(attachCfg))
 	// Outbox degli eventi di dominio (M-06/B, GIT-130): le modifiche scrivono
@@ -418,6 +420,20 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		return 1
 	}
 	routerOpts = append(routerOpts, appOpts...)
+	var repoPurgeJob *repopurge.Job
+	if gitAPI != nil && identityPurger != nil {
+		repoPurgeJob = &repopurge.Job{Store: store.New(pool), Git: gitAPI, Identity: identityPurger, Log: logger}
+		if disk != nil {
+			repoPurgeJob.Attachments = disk
+		}
+		if releaseDisk != nil {
+			repoPurgeJob.ReleaseAssets = releaseDisk // gli allegati delle release stanno in un volume a parte
+		}
+		if appCtl != nil {
+			repoPurgeJob.Apps = appCtl // H5: con il repo spariscono dal cluster app e volumi
+		}
+		routerOpts = append(routerOpts, httpserver.WithRepoPurger(repoPurgeJob))
+	}
 	router := httpserver.NewRouter(pool, publisher, cfg.GatewaySecret, append(routerOpts, httpserver.WithGitSecret(cfg.GitSecret))...)
 
 	// Dispatcher v2-a: core conserva coda e stati, ma e' l'unico processo con
@@ -461,17 +477,12 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	// Pulizia definitiva dei repo eliminati da più di 7 giorni (R2). Sicura con
-	// più repliche (FOR UPDATE SKIP LOCKED); parte solo con git e identity.
-	if gitAPI != nil && identityPurger != nil {
-		job := &repopurge.Job{Store: store.New(pool), Git: gitAPI, Identity: identityPurger, Log: logger}
-		if disk != nil {
-			job.Attachments = disk
-		}
-		if appCtl != nil {
-			job.Apps = appCtl // H5: allo scadere dei 7 giorni app e volumi spariscono dal cluster
-		}
-		go job.Run(ctx, repoPurgeInterval)
+	// Pulizia di ciò che sta fuori da Postgres dopo l'eliminazione di un repo (R2, GIT-530): l'API la fa
+	// subito (repoPurger), il giro periodico riprende quello che non è riuscito e, al primo avvio dopo
+	// l'upgrade, cancella i repo che erano nel cestino (una riga di log per ciascuno). Sicuro con più
+	// repliche (FOR UPDATE SKIP LOCKED); parte solo con git e identity.
+	if repoPurgeJob != nil {
+		go repoPurgeJob.Run(ctx, repoPurgeInterval)
 	} else {
 		logger.Warn("git o identity non configurati: la pulizia dei repo eliminati non parte")
 	}

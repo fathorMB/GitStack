@@ -154,7 +154,7 @@ func mcpNeverExposed(op *specOp) bool {
 		return true
 	}
 	switch op.id {
-	case "deleteRepository", "updateRepository", "restoreRepository", "importRepository", "getRepositoryArchive", "deletePullRequestBranch":
+	case "deleteRepository", "updateRepository", "importRepository", "getRepositoryArchive", "deletePullRequestBranch":
 		return true
 	}
 	return strings.Contains(op.id, "Settings") || strings.Contains(op.id, "Webhook") || strings.Contains(op.id, "Token")

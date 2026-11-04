@@ -88,7 +88,7 @@ func (c *Controller) keptVolumes(ctx context.Context, app store.App) (map[string
 // Forget toglie dal cluster il namespace dell'app, e con lui Deployment, rotta e PVC: i dati dei
 // volumi vanno via insieme all'app (H5, v3-b). Idempotente: un namespace già assente non è un
 // errore. Si chiama dopo l'eliminazione dell'app dal modello (la conferma sui volumi è già stata
-// verificata dall'API) o allo scadere dei 7 giorni di un repo eliminato.
+// verificata dall'API) o all'eliminazione del repo (ForgetApps).
 func (c *Controller) Forget(ctx context.Context, id uuid.UUID) error {
 	// I PVC si eliminano per nome prima del namespace: i dati vanno via anche se il namespace
 	// resta un po' in Terminating, e l'intento è esplicito (solo PVC con la label del controller).
@@ -107,20 +107,17 @@ func (c *Controller) Forget(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// PurgeRepoApps elimina dal cluster le app (e i volumi) di un repo che sta per essere cancellato
-// definitivamente. Se il cluster non risponde ritorna l'errore: il repo resta nel cestino e il
-// purge riprova alla corsa dopo, così i dati non restano orfani. Il modello cade in cascata con
-// la riga del repo e lo spazio dei volumi torna libero nella quota dell'owner.
-func (c *Controller) PurgeRepoApps(ctx context.Context, repoID uuid.UUID) error {
-	list, err := c.st.ListApps(ctx, repoID)
-	if err != nil {
-		return fmt.Errorf("app del repo %s: %w", repoID, err)
-	}
-	for _, a := range list {
-		if err := c.Forget(ctx, a.ID); err != nil {
+// ForgetApps toglie dal cluster namespace, Deployment e PVC delle app di un repo appena eliminato (R2,
+// GIT-530). Gli id arrivano dalla coda repo_cleanup, perché il modello è già caduto in cascata con la
+// riga del repo (e con lui lo spazio dei volumi è tornato libero nella quota dell'owner). Se il cluster
+// non risponde ritorna l'errore: il repo resta in coda e il giro periodico riprova, così i dati non
+// restano orfani.
+func (c *Controller) ForgetApps(ctx context.Context, appIDs []uuid.UUID) error {
+	for _, id := range appIDs {
+		if err := c.Forget(ctx, id); err != nil {
 			return err
 		}
-		c.cfg.Log.Info("apps: app e volumi eliminati con il repo", "app", a.ID, "repo", repoID)
+		c.cfg.Log.Info("apps: app e volumi eliminati con il repo", "app", id)
 	}
 	return nil
 }

@@ -18,7 +18,6 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/events"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
-	"github.com/fathorMB/GitStack/services/core/internal/repopurge"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 	"github.com/fathorMB/GitStack/services/core/internal/trust"
 )
@@ -412,81 +411,34 @@ func (e *appsEnv) sql(q string, args ...any) {
 	}
 }
 
-type noIdentityPurge struct{}
-
-func (noIdentityPurge) PurgeResource(context.Context, uuid.UUID) error { return nil }
-
-// R2: repo eliminato, le app si fermano subito; tornano se il repo è ripristinato entro 7 giorni;
-// scaduti i 7 giorni il purge le elimina. Orologio finto.
-func TestApps_RepoEliminatoRipristinoEPurge(t *testing.T) {
+// R2 (GIT-530): eliminando il repo, app, versioni e deploy spariscono subito con la riga del repo (niente
+// più app ferme per 7 giorni), e gli id delle app restano in coda per toglierle dal cluster.
+func TestApps_RepoEliminatoAppSubitoVia(t *testing.T) {
 	e := newAppsEnv(t)
 	repoID := e.repo("handbook", true)
 	base := "/repos/alice/handbook/apps"
 	e.want(e.do(http.MethodPost, base, "alice", createWeb), http.StatusAccepted, "")
 	e.sql(`UPDATE core.apps SET status = 'running', ready_copies = 1`)
-	st := store.New(e.pool)
 	ctx := context.Background()
-	stateOf := func() (string, string) {
-		apps, err := st.ListApps(ctx, repoID)
-		if err != nil || len(apps) != 1 {
-			t.Fatalf("app del repo: %v %d", err, len(apps))
-		}
-		s, r := apps[0].Effective()
-		if r == nil {
-			return s, ""
-		}
-		return s, *r
+	var appID uuid.UUID
+	if err := e.pool.QueryRow(ctx, `SELECT id FROM core.apps WHERE repo_id = $1`, repoID).Scan(&appID); err != nil {
+		t.Fatal(err)
 	}
 
-	// Eliminato: ferme subito (la API non le mostra più, il repo è sparito), con motivo repo_deleted.
 	e.want(e.do(http.MethodDelete, "/repos/alice/handbook", "alice", ""), http.StatusNoContent, "")
 	e.want(e.do(http.MethodGet, base, "alice", ""), http.StatusNotFound, "")
-	if s, r := stateOf(); s != "stopped" || r != "repo_deleted" {
-		t.Fatalf("subito dopo l'eliminazione: %s %s", s, r)
-	}
-
-	// Il giorno 6 il repo si ripristina: l'app torna avviabile e visibile con lo stato di prima.
-	e.clock.advance(6 * 24 * time.Hour)
-	e.want(e.do(http.MethodPost, "/repos/deleted/"+repoID.String()+"/restore", "alice", ""), http.StatusOK, "")
-	if s, r := stateOf(); s != "running" || r != "" {
-		t.Fatalf("dopo il ripristino: %s %s", s, r)
-	}
-	a := e.app(e.do(http.MethodGet, base+"/web", "carol", ""))
-	if a.Status != openapi.AppStatusRunning || a.StoppedReason != nil || a.ActiveVersion != 1 {
-		t.Fatalf("app dopo il ripristino: %+v", a)
-	}
-	if l := e.versions(base+"/web/versions", "carol"); l.Total != 1 {
-		t.Fatalf("versioni dopo il ripristino: %d", l.Total)
-	}
-
-	// Eliminato di nuovo: oltre i 7 giorni il ripristino non è più possibile e il purge elimina app e versioni.
-	e.want(e.do(http.MethodDelete, "/repos/alice/handbook", "alice", ""), http.StatusNoContent, "")
-	deletedAt := e.clock.Now()
-	e.clock.advance(7*24*time.Hour - time.Hour)
-	job := &repopurge.Job{Store: st, Git: e.git, Identity: noIdentityPurge{}, Now: e.clock.Now}
-	if n, err := job.RunOnce(ctx); err != nil || n != 0 {
-		t.Fatalf("purge prima dei 7 giorni: %d %v", n, err)
-	}
-	if s, r := stateOf(); s != "stopped" || r != "repo_deleted" {
-		t.Fatalf("a 6 giorni e 23 ore: %s %s", s, r)
-	}
-	e.clock.advance(2 * time.Hour) // 7 giorni e un'ora dall'eliminazione
-	if got := e.clock.Now().Sub(deletedAt); got < store.Retention {
-		t.Fatalf("orologio: %v", got)
-	}
-	e.want(e.do(http.MethodPost, "/repos/deleted/"+repoID.String()+"/restore", "alice", ""), http.StatusNotFound, "")
-	// Il purge confronta con deleted_at scritto dal database (l'API usa l'orologio finto): lo si porta
-	// all'istante finto, così il confronto è tutto sul tempo simulato.
-	e.sql(`UPDATE core.repositories SET deleted_at = $2 WHERE resource_id = $1`, repoID, deletedAt)
-	if n, err := job.RunOnce(ctx); err != nil || n != 1 {
-		t.Fatalf("purge dopo i 7 giorni: %d %v", n, err)
-	}
 	for _, table := range []string{"apps", "app_versions", "app_deploys"} {
 		var n int
 		if err := e.pool.QueryRow(ctx, `SELECT count(*) FROM core.`+table).Scan(&n); err != nil || n != 0 {
-			t.Fatalf("%s dopo il purge: %d %v", table, n, err)
+			t.Fatalf("%s dopo l'eliminazione: %d %v", table, n, err)
 		}
 	}
+	var queued []uuid.UUID
+	if err := e.pool.QueryRow(ctx, `SELECT app_ids FROM core.repo_cleanup WHERE repo_id = $1`, repoID).Scan(&queued); err != nil || len(queued) != 1 || queued[0] != appID {
+		t.Fatalf("app in coda per il cluster: %v (%v), volevo %s", queued, err, appID)
+	}
+	// Lo stesso nome si ricrea subito, senza app.
+	e.want(e.do(http.MethodPost, "/repos", "alice", `{"owner":"alice","name":"handbook"}`), http.StatusCreated, "")
 }
 
 // H2: l'indirizzo automatico arriva anche se la porta viene data dopo la creazione; togliere la

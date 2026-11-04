@@ -397,7 +397,7 @@ func (s *apiServer) createRepo(w http.ResponseWriter, r *http.Request, p createR
 	})
 	if err != nil {
 		if errors.Is(err, store.ErrConflict) {
-			s.writeNameTaken(w, r, creatorID, owner.Type, owner.ID, owner.Name, body.Name)
+			writeError(w, http.StatusConflict, "conflict", "Esiste già un repo con questo nome per questo owner.")
 			return
 		}
 		slog.Default().Error("inserimento del repo non riuscito", "err", err)

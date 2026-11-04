@@ -52,7 +52,7 @@ var commentActions = map[string]string{
 }
 
 var repositoryActions = map[string]string{
-	domainevents.RepositoryCreated: "created", domainevents.RepositoryDeleted: "deleted", domainevents.RepositoryRestored: "restored",
+	domainevents.RepositoryCreated: "created", domainevents.RepositoryDeleted: "deleted",
 	domainevents.RepositoryArchived: "archived", domainevents.RepositoryUnarchived: "unarchived",
 	domainevents.RepositoryVisibilityChanged: "visibility_changed",
 }

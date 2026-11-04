@@ -1424,55 +1424,6 @@ export type RepositoryList = {
     total: number;
 };
 
-export type DeletedRepository = {
-    id: string;
-    owner: RepoOwner;
-    name: RepoName;
-    deletedAt: string;
-    /**
-     * Dopo questo istante il repo e' cancellato definitivamente (7 giorni, R2).
-     */
-    purgeAt: string;
-};
-
-export type DeletedRepositoryList = {
-    items: Array<DeletedRepository>;
-};
-
-/**
- * Come `Error`, per il 409 di creazione e import di un repo: `details` e' presente solo con `code: name_in_trash`.
- *
- */
-export type RepoNameConflictError = {
-    error: {
-        /**
-         * `conflict` o `name_in_trash`.
-         */
-        code: string;
-        message: string;
-        details?: NameInTrashDetails;
-    };
-};
-
-/**
- * `error.details` del 409 `name_in_trash` di `createRepository` e `importRepository`: il nome e' tenuto da un repo eliminato (R2). Il nome si libera solo alla cancellazione definitiva (`purgeAt`); un admin del repo puo' ripristinarlo prima. Un repo attivo con quel nome resta il 409 `conflict`.
- *
- */
-export type NameInTrashDetails = {
-    /**
-     * Istante dopo il quale il repo nel cestino e' cancellato definitivamente e il nome si libera.
-     */
-    purgeAt: string;
-    /**
-     * Nome dell'owner del repo nel cestino, per il link al cestino giusto.
-     */
-    owner: string;
-    /**
-     * Id del repo nel cestino, presente solo se il chiamante e' admin su di esso (per ripristinarlo).
-     */
-    repoId?: string;
-};
-
 export type ResourceAttributesInput = {
     ownerType: OwnerType;
     ownerId: string;
@@ -8063,10 +8014,9 @@ export type CreateRepositoryErrors = {
      */
     404: Error;
     /**
-     * Il nome e' occupato per l'owner. Codice `conflict` se lo tiene un repo attivo; `name_in_trash`, con `details` di tipo `NameInTrashDetails`, se lo tiene un repo eliminato ancora nel cestino (R2).
-     *
+     * Conflitto con lo stato attuale della risorsa.
      */
-    409: RepoNameConflictError;
+    409: Error;
     /**
      * Errore imprevisto.
      */
@@ -8110,10 +8060,9 @@ export type ImportRepositoryErrors = {
      */
     404: Error;
     /**
-     * Il nome e' occupato per l'owner. Codice `conflict` se lo tiene un repo attivo; `name_in_trash`, con `details` di tipo `NameInTrashDetails`, se lo tiene un repo eliminato ancora nel cestino (R2).
-     *
+     * Conflitto con lo stato attuale della risorsa.
      */
-    409: RepoNameConflictError;
+    409: Error;
     /**
      * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
      *
@@ -8182,108 +8131,6 @@ export type GetUserAccessResponses = {
 };
 
 export type GetUserAccessResponse = GetUserAccessResponses[keyof GetUserAccessResponses];
-
-export type ListDeletedRepositoriesData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Filtra per nome dell'utente o dell'organizzazione proprietaria.
-         */
-        owner?: Name;
-    };
-    url: '/repos/deleted';
-};
-
-export type ListDeletedRepositoriesErrors = {
-    /**
-     * Richiesta non valida.
-     */
-    400: Error;
-    /**
-     * Token mancante o non valido.
-     */
-    401: Error;
-    /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
-     *
-     */
-    403: Error;
-    /**
-     * Risorsa non trovata.
-     */
-    404: Error;
-    /**
-     * Conflitto con lo stato attuale della risorsa.
-     */
-    409: Error;
-    /**
-     * Errore imprevisto.
-     */
-    default: Error;
-};
-
-export type ListDeletedRepositoriesError = ListDeletedRepositoriesErrors[keyof ListDeletedRepositoriesErrors];
-
-export type ListDeletedRepositoriesResponses = {
-    /**
-     * Repo eliminati.
-     */
-    200: DeletedRepositoryList;
-};
-
-export type ListDeletedRepositoriesResponse = ListDeletedRepositoriesResponses[keyof ListDeletedRepositoriesResponses];
-
-export type RestoreRepositoryData = {
-    body?: never;
-    path: {
-        /**
-         * Identificatore del repo eliminato (`DeletedRepository.id`).
-         */
-        repoId: string;
-    };
-    query?: never;
-    url: '/repos/deleted/{repoId}/restore';
-};
-
-export type RestoreRepositoryErrors = {
-    /**
-     * Richiesta non valida.
-     */
-    400: Error;
-    /**
-     * Token mancante o non valido.
-     */
-    401: Error;
-    /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
-     *
-     */
-    403: Error;
-    /**
-     * Risorsa non trovata.
-     */
-    404: Error;
-    /**
-     * Conflitto con lo stato attuale della risorsa.
-     */
-    409: Error;
-    /**
-     * Errore imprevisto.
-     */
-    default: Error;
-};
-
-export type RestoreRepositoryError = RestoreRepositoryErrors[keyof RestoreRepositoryErrors];
-
-export type RestoreRepositoryResponses = {
-    /**
-     * Repo ripristinato.
-     */
-    200: Repository;
-};
-
-export type RestoreRepositoryResponse = RestoreRepositoryResponses[keyof RestoreRepositoryResponses];
 
 export type DeleteRepositoryData = {
     body?: never;

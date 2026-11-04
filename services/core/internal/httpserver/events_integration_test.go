@@ -349,7 +349,7 @@ func TestEventi_UnoPerOgniTipo(t *testing.T) {
 		t.Fatalf("issue_comment.deleted = %+v", cp)
 	}
 
-	// repository: visibilità, archiviazione, riattivazione, eliminazione, ripristino.
+	// repository: visibilità, archiviazione, riattivazione, eliminazione.
 	patch := func(body string) func() {
 		return func() { e.want(e.do(http.MethodPatch, "/repos/alice/zeta", "alice", body), http.StatusOK, "") }
 	}
@@ -364,18 +364,14 @@ func TestEventi_UnoPerOgniTipo(t *testing.T) {
 	step("riattivato", patch(`{"archived":false}`), "repository.unarchived")
 	got = step("eliminato", func() { e.want(e.do(http.MethodDelete, "/repos/alice/zeta", "alice", ``), http.StatusNoContent, "") }, "repository.deleted")
 	rp = payload(got[0]).(coreevents.RepositoryPayload)
-	del, err1 := time.Parse(time.RFC3339, rp.DeletedAt)
-	purge, err2 := time.Parse(time.RFC3339, rp.PurgeAt)
-	if err1 != nil || err2 != nil || purge.Sub(del) != 7*24*time.Hour {
-		t.Fatalf("repository.deleted = %+v (%v %v)", rp, err1, err2)
+	if _, err := time.Parse(time.RFC3339, rp.DeletedAt); err != nil || rp.Repo.FullName != "alice/zeta" {
+		t.Fatalf("repository.deleted = %+v (%v)", rp, err)
 	}
-	var zetaID uuid.UUID
-	if err := e.pool.QueryRow(context.Background(), `SELECT resource_id FROM core.repositories WHERE name = 'zeta'`).Scan(&zetaID); err != nil {
-		t.Fatal(err)
+	// Niente cestino (GIT-530): non esiste più repository.restored, e il repo non c'è più.
+	var gone int
+	if err := e.pool.QueryRow(context.Background(), `SELECT count(*) FROM core.repositories WHERE name = 'zeta'`).Scan(&gone); err != nil || gone != 0 {
+		t.Fatalf("repo zeta dopo l'eliminazione: %d (%v)", gone, err)
 	}
-	step("ripristinato", func() {
-		e.want(e.do(http.MethodPost, "/repos/deleted/"+zetaID.String()+"/restore", "alice", ``), http.StatusOK, "")
-	}, "repository.restored")
 
 	// Ogni riga dell'outbox è stata inviata, con l'id della busta.
 	e.waitOutboxDrained()
