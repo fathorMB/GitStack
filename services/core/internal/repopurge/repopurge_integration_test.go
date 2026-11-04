@@ -74,13 +74,32 @@ type env struct {
 	st   *store.Store
 	git  *fakeGit
 	acc  *fakeAccess
-	log  *bytes.Buffer
+	log  *syncBuffer
+}
+
+// syncBuffer è un bytes.Buffer sicuro in concorrenza: i Job del test
+// girano in parallelo e scrivono tutti sullo stesso logger.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }
 
 func newEnv(t *testing.T) *env {
 	t.Helper()
 	pool, dsn := dbtest.NewPool(t)
-	return &env{pool: pool, dsn: dsn, st: store.New(pool), log: &bytes.Buffer{},
+	return &env{pool: pool, dsn: dsn, st: store.New(pool), log: &syncBuffer{},
 		git: &fakeGit{trashed: map[uuid.UUID]bool{}, deleted: map[uuid.UUID]int{}},
 		acc: &fakeAccess{purged: map[uuid.UUID]int{}}}
 }
