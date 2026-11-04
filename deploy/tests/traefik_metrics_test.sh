@@ -72,6 +72,14 @@ expect_has "metriche presenti" "${m}" "entryPoint: metrics"
 expect_has "resolver presente" "${m}" "certificatesResolvers:"
 expect_has "email" "${m}" "email: admin@example.com"
 expect_has "storage acme" "${m}" "storage: /data/acme.json"
+CI_GATEWAY_ENABLED=1
+CI_GATEWAY_PORT=18443
+write_traefik_manifest "${CHART}" yes >/dev/null 2>&1
+m="$(cat "${TRAEFIK_MANIFEST}")"
+expect_has "entrypoint gateway" "${m}" "cigateway:"
+expect_has "porta gateway" "${m}" "exposedPort: 18443"
+expect_has "gateway e ACME insieme" "${m}" "certificatesResolvers:"
+CI_GATEWAY_ENABLED=0
 n="$(grep -c '^kind: HelmChartConfig' "${TRAEFIK_MANIFEST}")"
 if [ "${n}" = 1 ]; then ok; else bad "attesa una sola HelmChartConfig, trovate ${n}"; fi
 

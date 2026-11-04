@@ -246,6 +246,8 @@ CI_JOB_DISK_GB=20
 CI_ENABLED=0
 CI_CAPACITY=0
 CI_HELM_SETS=()
+CI_GATEWAY_ENABLED=0
+CI_GATEWAY_PORT=8443
 CI_S3_SECRET=""
 
 # --- HTTPS (N5, GIT-143) -----------------------------------------------
@@ -934,7 +936,9 @@ preflight_ports() {
     return 0
   fi
   local port busy
-  for port in ${REQUIRED_PORTS} ${ssh_port}; do
+  local gateway_port=""
+  [ "${CI_GATEWAY_ENABLED}" != "1" ] || gateway_port="${CI_GATEWAY_PORT}"
+  for port in ${REQUIRED_PORTS} ${ssh_port} ${gateway_port}; do
     busy="$(ss -ltnH "( sport = :${port} )" 2>/dev/null || true)"
     if [ -n "${busy}" ]; then
       fail "porta ${port} già in uso da un altro processo. Richiesta libera per k3s/Traefik e per l'SSH di git (porta ${ssh_port}: libera la porta oppure scegline un'altra con --set git.ssh.port=N; l'installer non modifica mai l'sshd dell'host). Trovato: $(printf '%s' "${busy}" | head -n1)"
@@ -1941,6 +1945,8 @@ version: 1
 host: ${PUBLIC_HOST}
 apps_domain: ${APPS_DOMAIN}
 apps_enabled: $([ "${APPS_ENABLED}" = "1" ] && echo true || echo false)
+ci_gateway_enabled: $([ "${CI_GATEWAY_ENABLED}" = "1" ] && echo true || echo false)
+ci_gateway_port: ${CI_GATEWAY_PORT}
 ssh_port: $(git_ssh_port)
 chart_dir: ${GITSTACK_CHART_COPY}
 tls: ${GITSTACK_TLS_MODE}
@@ -2217,6 +2223,8 @@ HOSTS=${hosts}
 EMAIL=${GITSTACK_TLS_EMAIL}
 APPS_DOMAIN=${APPS_DOMAIN}
 APPS_ENABLED=$([ "${APPS_ENABLED}" = "1" ] && echo true || echo false)
+CI_GATEWAY_ENABLED=$([ "${CI_GATEWAY_ENABLED}" = "1" ] && echo true || echo false)
+CI_GATEWAY_PORT=${CI_GATEWAY_PORT}
 EOF
   chmod 0600 "${tmp}"
   mv -f "${tmp}" "${TLS_DIR}/install.conf"
@@ -2352,6 +2360,16 @@ spec:
   valuesContent: |-
 EOF2
     grep -v '^[[:space:]]*#' "${metrics_values}" | grep -v '^[[:space:]]*$' | sed 's/^/    /' | tr -d '\r'
+    if [ "${CI_GATEWAY_ENABLED}" = "1" ]; then
+      cat <<EOF2
+      cigateway:
+        port: ${CI_GATEWAY_PORT}
+        exposedPort: ${CI_GATEWAY_PORT}
+        expose:
+          default: true
+        protocol: TCP
+EOF2
+    fi
     if [ "${acme}" = "yes" ]; then
       cat <<'EOF2'
     persistence:
@@ -3404,6 +3422,16 @@ resolve_ci() {
   CI_CAPACITY=0
   CI_HELM_SETS=()
   CI_S3_SECRET=""
+  local gateway_enabled gateway_port
+  gateway_enabled="$(read_kv "${TLS_DIR}/install.conf" CI_GATEWAY_ENABLED)"
+  gateway_port="$(read_kv "${TLS_DIR}/install.conf" CI_GATEWAY_PORT)"
+  [ -n "${gateway_enabled}" ] || gateway_enabled="$(existing_config_value "" ci_gateway_enabled)"
+  [ -n "${gateway_port}" ] || gateway_port="$(existing_config_value "" ci_gateway_port)"
+  CI_GATEWAY_ENABLED=0
+  case "${gateway_enabled}" in true|1) CI_GATEWAY_ENABLED=1 ;; esac
+  CI_GATEWAY_PORT="${gateway_port:-8443}"
+  case "${CI_GATEWAY_PORT}" in ''|*[!0-9]*) fail "porta ci-gateway non valida" ;; esac
+  [ "${CI_GATEWAY_PORT}" -ge 1 ] && [ "${CI_GATEWAY_PORT}" -le 65535 ] || fail "porta ci-gateway fuori intervallo"
   local requested="${GITSTACK_CI}"
   if [ -z "${requested}" ]; then
     if ci_previously_enabled; then
@@ -3437,6 +3465,9 @@ resolve_ci() {
   esac
   CI_CAPACITY="${cap}"
   CI_HELM_SETS=("ci.enabled=true" "ci.capacity=${cap}")
+  if [ "${CI_GATEWAY_ENABLED}" = "1" ]; then
+    CI_HELM_SETS+=("ci.externalGateway.enabled=true" "ci.externalGateway.host=${PUBLIC_HOST}" "ci.externalGateway.entryPoint=cigateway" "ci.externalGateway.publicPort=${CI_GATEWAY_PORT}")
+  fi
 
   if [ -n "${GITSTACK_CI_ACTION_MIRROR}" ]; then
     net_valid_url "--ci-action-mirror" "${GITSTACK_CI_ACTION_MIRROR}" http https

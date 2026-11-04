@@ -35,7 +35,9 @@ type Config struct {
 	// AppsEnabled è l'hosting delle app (chart apps.enabled, GIT-375): core ha il controller delle
 	// app e i permessi Kubernetes minimi dell'ADR 0002. Falso (default) = l'API delle app risponde 503.
 	// Lo scrivono install.sh, `gitstack upgrade --enable-apps` e `gitstack config set apps on|off`.
-	AppsEnabled bool `yaml:"apps_enabled"`
+	AppsEnabled      bool `yaml:"apps_enabled"`
+	CIGatewayEnabled bool `yaml:"ci_gateway_enabled"`
+	CIGatewayPort    int  `yaml:"ci_gateway_port"`
 	// SSHPort è la porta SSH del servizio git (mai la 22 dell'host).
 	SSHPort int `yaml:"ssh_port"`
 	// TLS è la modalità HTTPS scelta dall'installer: internal, custom,
@@ -167,6 +169,9 @@ func (c *Config) applyDefaults() {
 	if c.SSHPort == 0 {
 		c.SSHPort = 2222
 	}
+	if c.CIGatewayPort == 0 {
+		c.CIGatewayPort = 8443
+	}
 	if c.Kubeconfig == "" {
 		c.Kubeconfig = "/etc/rancher/k3s/k3s.yaml"
 	}
@@ -199,6 +204,9 @@ func (c *Config) Validate() error {
 	}
 	if c.SSHPort < 1 || c.SSHPort > 65535 {
 		return fmt.Errorf("ssh_port %d fuori intervallo", c.SSHPort)
+	}
+	if c.CIGatewayPort < 1 || c.CIGatewayPort > 65535 {
+		return fmt.Errorf("ci_gateway_port %d fuori intervallo", c.CIGatewayPort)
 	}
 	if c.Postgres.External {
 		if strings.TrimSpace(c.Postgres.Host) == "" || strings.TrimSpace(c.Postgres.Database) == "" {
