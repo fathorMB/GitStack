@@ -12,25 +12,6 @@ import (
 func appStringPtr(v string) *string { return &v }
 func appBoolPtr(v bool) *bool       { return &v }
 
-// Le operazioni delle app (v3-a, H1-H13) sono fissate dal contratto GIT-341;
-// l'implementazione arriva negli item successivi. Restituire 501 mantiene il
-// gateway e core allineati senza fingere che la funzione sia disponibile.
-func notImplemented(w http.ResponseWriter) {
-	http.Error(w, "not implemented", http.StatusNotImplemented)
-}
-
-func (s *apiServer) GetAppResources(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) SetAppResources(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
-	notImplemented(w)
-}
-
-func (s *apiServer) ListAdminApps(w http.ResponseWriter, r *http.Request, params openapi.ListAdminAppsParams) {
-	notImplemented(w)
-}
-
 func (s *apiServer) GetAdminAppsSettings(w http.ResponseWriter, r *http.Request) {
 	if _, ok := s.requireInstanceAdmin(w, r, "vedere le impostazioni delle app"); !ok {
 		return
