@@ -143,8 +143,8 @@ func (s State) String() string {
 }
 
 // Plan calcola il manifest voluto e lo confronta col file. Conserva ACME e porta cigateway del
-// file esistente (o del vecchio file del solo Let's Encrypt); senza resolver, lo ricava da
-// tls: letsencrypt della configurazione. Un file che contiene già tutto il voluto è Aligned:
+// file esistente (o del vecchio file del solo Let's Encrypt); senza resolver, lo ricava dalla
+// configurazione come install.sh: tls letsencrypt, o app accese con email ACME. Un file che contiene già tutto il voluto è Aligned:
 // non va riscritto, così le modifiche in più (es. la CA di Pebble nelle prove) restano.
 func Plan(in *Inputs) (data []byte, st State, err error) {
 	mv, err := os.ReadFile(filepath.Join(in.ChartDir, filepath.FromSlash(MetricsValuesRel)))
@@ -176,8 +176,13 @@ func Plan(in *Inputs) (data []byte, st State, err error) {
 				p.CIGatewayPort = defaultCIGatewayPort
 			}
 		}
-		if p.ACME == nil && in.Cfg.TLS == "letsencrypt" {
-			p.ACME = &ACME{Resolver: DefaultResolver, Email: readKV(filepath.Join(in.TLSDir, "install.conf"), "EMAIL")}
+		// Stessa regola di ACME_ENABLED in install.sh (GIT-459): letsencrypt, oppure app accese con
+		// un'email ACME (EMAIL di install.conf).
+		if p.ACME == nil {
+			email := readKV(filepath.Join(in.TLSDir, "install.conf"), "EMAIL")
+			if in.Cfg.TLS == "letsencrypt" || (in.Cfg.AppsEnabled && email != "") {
+				p.ACME = &ACME{Resolver: DefaultResolver, Email: email}
+			}
 		}
 	}
 	data, err = Render(p)

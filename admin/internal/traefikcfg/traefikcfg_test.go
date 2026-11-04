@@ -82,11 +82,17 @@ func TestRenderUgualeAlInstaller(t *testing.T) {
 		acme string
 		gw   int
 		p    Params
+		// plan != nil: il manifest Go è quello di Plan (file assente), con ca vuoto nell'installer.
+		plan *config.Config
+		ca   string
 	}{
-		{"solo metriche", "no", 0, Params{}},
-		{"acme", "yes", 0, Params{ACME: &ACME{Resolver: "letsencrypt", Email: "admin@example.com", CAServer: "https://acme.test/dir"}}},
-		{"acme e gateway", "yes", 8443, Params{CIGatewayPort: 8443, ACME: &ACME{Resolver: "letsencrypt", Email: "admin@example.com", CAServer: "https://acme.test/dir"}}},
-		{"gateway", "no", 9443, Params{CIGatewayPort: 9443}},
+		{"solo metriche", "no", 0, Params{}, nil, ""},
+		{"acme", "yes", 0, Params{ACME: &ACME{Resolver: "letsencrypt", Email: "admin@example.com", CAServer: "https://acme.test/dir"}}, nil, ""},
+		{"acme e gateway", "yes", 8443, Params{CIGatewayPort: 8443, ACME: &ACME{Resolver: "letsencrypt", Email: "admin@example.com", CAServer: "https://acme.test/dir"}}, nil, ""},
+		{"gateway", "no", 9443, Params{CIGatewayPort: 9443}, nil, ""},
+		{"plan: app accese con email, tls internal", "yes", 0, Params{}, &config.Config{TLS: "internal", AppsEnabled: true}, "-"},
+		{"plan: app accese con email, tls custom", "yes", 0, Params{}, &config.Config{TLS: "custom", AppsEnabled: true}, "-"},
+		{"plan: app spente con email", "no", 0, Params{}, &config.Config{TLS: "internal"}, "-"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -96,22 +102,41 @@ export GITSTACK_INSTALL_LIB=1
 . "$INSTALL"
 set +e
 K3S_MANIFESTS_DIR="$OUT"; TRAEFIK_MANIFEST="$OUT/gitstack-traefik.yaml"; OLD_ACME_MANIFEST="$OUT/old.yaml"
-GITSTACK_TLS_EMAIL="admin@example.com"; GITSTACK_ACME_CA_SERVER="https://acme.test/dir"
+GITSTACK_TLS_EMAIL="admin@example.com"; GITSTACK_ACME_CA_SERVER="$CA"
 ACME_RESOLVER_NAME=letsencrypt
 CI_GATEWAY_ENABLED=` + map[bool]string{true: "1", false: "0"}[c.gw > 0] + `; CI_GATEWAY_PORT=` + itoa(c.gw) + `
 write_traefik_manifest "$CHART" ` + c.acme + ` >/dev/null 2>&1
 `
+			ca := c.ca
+			switch ca {
+			case "":
+				ca = "https://acme.test/dir"
+			case "-":
+				ca = ""
+			}
 			cmd := exec.Command(bash, "-c", script)
-			cmd.Env = append(os.Environ(), "INSTALL="+install, "OUT="+dir, "CHART="+chart)
+			cmd.Env = append(os.Environ(), "INSTALL="+install, "OUT="+dir, "CHART="+chart, "CA="+ca)
 			if out, err := cmd.CombinedOutput(); err != nil {
-				t.Skipf("install.sh non caricabile: %v\n%s", err, out)
+				t.Fatalf("install.sh non caricabile: %v\n%s", err, out)
 			}
 			want, err := os.ReadFile(filepath.Join(dir, "gitstack-traefik.yaml"))
 			if err != nil {
 				t.Fatal(err)
 			}
 			c.p.MetricsValues = metrics(t)
-			got, err := Render(c.p)
+			var got []byte
+			if c.plan != nil {
+				in := inputs(t, c.plan)
+				if err := os.MkdirAll(in.TLSDir, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(in.TLSDir, "install.conf"), []byte("EMAIL=admin@example.com\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				got, _, err = Plan(in)
+			} else {
+				got, err = Render(c.p)
+			}
 			if err != nil {
 				t.Fatal(err)
 			}
