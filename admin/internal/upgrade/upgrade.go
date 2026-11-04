@@ -130,6 +130,10 @@ type Options struct {
 	// destinazione già scaricato (GIT-490). nil = sempre la logica di questo
 	// binario; ErrNoReexec = il binario di destinazione non lo supporta.
 	Reexec func(ctx context.Context, staged string, req *ReexecRequest) (*ReexecReply, error)
+	// TraefikManifest è gitstack-traefik.yaml (default traefikcfg.DefaultManifest); TLSDir la cartella
+	// con install.conf (default <cartella del config>/tls). Iniettabili nei test (GIT-534).
+	TraefikManifest string
+	TLSDir          string
 }
 
 func (o *Options) client() *http.Client {
@@ -531,6 +535,7 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 		if hp.needed() {
 			res.add("Hardening di k3s (GIT-228): %s.", hp.describe())
 		}
+		o.traefikDryRun(res, newChart)
 		if k3s.Needed() {
 			res.add("k3s: %s → %s (%s): passi nell'ordine %v.", k3s.From, k3s.To, k3s.Action, Steps(k3s))
 		}
@@ -646,14 +651,18 @@ func (o *Options) hardenOnly(ctx context.Context, res *Result, tag string) (*Res
 		res.add("GitStack è già alla versione %s: niente da fare.", tag)
 		// Una prima installazione di F9 fatta da un binario precedente non
 		// ha cancellato il Secret condiviso: lo si toglie ora (idempotente).
-		if !o.DryRun {
+		if o.DryRun {
+			o.traefikDryRun(res, o.chartDirOrDefault())
+		} else {
 			o.removeLegacyServiceSecret(ctx, res, "")
 			o.migrateCustomCerts(ctx, res)
+			o.syncTraefikManifest(res)
 		}
 		return res, nil
 	}
 	res.add("GitStack è già alla versione %s, ma k3s va messo in sicurezza (GIT-228): %s.", tag, hp.describe())
 	if o.DryRun {
+		o.traefikDryRun(res, o.chartDirOrDefault())
 		res.add("Nessuna modifica fatta (--dry-run).")
 		return res, nil
 	}
@@ -680,6 +689,7 @@ func (o *Options) hardenOnly(ctx context.Context, res *Result, tag string) (*Res
 		res.add("Hardening di k3s NON riuscito. Il backup preventivo è intatto: %s. Procedura manuale: «Hardening di k3s» in docs/operations.md", br.Path)
 		return res, fmt.Errorf("hardening di k3s: %w", err)
 	}
+	o.syncTraefikManifest(res)
 	res.add("k3s messo in sicurezza. Backup preventivo conservato: %s", br.Path)
 	return res, nil
 }

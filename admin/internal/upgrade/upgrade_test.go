@@ -250,6 +250,7 @@ func chartTarball(t *testing.T, sha string, k3sFile ...string) []byte {
 	add("GitStack-"+sha+"/deploy/gitstack/Chart.yaml", "name: gitstack\nversion: 0.1.0\n")
 	add("GitStack-"+sha+"/deploy/gitstack/values.yaml", "NUOVO: 1\n")
 	add("GitStack-"+sha+"/deploy/gitstack/templates/a.yaml", "x")
+	add("GitStack-"+sha+"/deploy/gitstack/files/traefik-metrics-values.yaml", "# commento\nmetrics:\n  prometheus:\n    entryPoint: metrics\nports:\n  metrics:\n    port: 9100\n")
 	_ = tw.Close()
 	_ = gz.Close()
 	return buf.Bytes()
@@ -380,16 +381,17 @@ func newWorld(t *testing.T) *world {
 			}
 			return r
 		},
-		Backup:      backup.Options{Cfg: cfg, ConfigDir: filepath.Dir(w.cfgFile), ConfigFile: w.cfgFile, BinaryVersion: "t", DestDir: w.dest},
-		Timeout:     200 * time.Millisecond,
-		Poll:        10 * time.Millisecond,
-		ExePath:     w.exe,
-		Repo:        "o/r",
-		APIBase:     w.srv.URL + "/repos-api",
-		CodeloadURL: w.srv.URL + "/codeload",
-		ReleaseURL:  w.srv.URL + "/gh",
-		ImageCheck:  func(context.Context, string) error { return nil },
-		V5:          useFakeCosign(t, w),
+		TraefikManifest: filepath.Join(root, "manifests", "gitstack-traefik.yaml"),
+		Backup:          backup.Options{Cfg: cfg, ConfigDir: filepath.Dir(w.cfgFile), ConfigFile: w.cfgFile, BinaryVersion: "t", DestDir: w.dest},
+		Timeout:         200 * time.Millisecond,
+		Poll:            10 * time.Millisecond,
+		ExePath:         w.exe,
+		Repo:            "o/r",
+		APIBase:         w.srv.URL + "/repos-api",
+		CodeloadURL:     w.srv.URL + "/codeload",
+		ReleaseURL:      w.srv.URL + "/gh",
+		ImageCheck:      func(context.Context, string) error { return nil },
+		V5:              useFakeCosign(t, w),
 	}
 	// l'API è montata sotto /repos-api: il server risponde per suffisso, ma
 	// il percorso reale è <base>/repos/<repo>/...
