@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -13,10 +14,9 @@ import (
 	"strings"
 
 	"github.com/fathorMB/GitStack/admin/internal/config"
+	"github.com/fathorMB/GitStack/admin/internal/traefikcfg"
 	"gopkg.in/yaml.v3"
 )
-
-const traefikManifest = "/var/lib/rancher/k3s/server/manifests/gitstack-traefik.yaml"
 
 // gatewayManifest conserva le altre impostazioni della HelmChartConfig, incluse
 // metriche e ACME, e sostituisce soltanto la porta dedicata.
@@ -57,6 +57,9 @@ func gatewayManifest(data []byte, on bool, port int) ([]byte, error) {
 }
 
 func writeGatewayManifest(path string, data []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { //nolint:gosec // cartella dei manifest di k3s
+		return err
+	}
 	f, err := os.CreateTemp(filepath.Dir(path), ".gitstack-traefik-*.tmp")
 	if err != nil {
 		return err
@@ -153,11 +156,19 @@ func runConfigSetCIGateway(ctx context.Context, a *App, args []string) int {
 			return ExitConfig
 		}
 	}
-	manifest := traefikManifest
-	if p := a.Getenv("GITSTACK_TRAEFIK_MANIFEST"); p != "" {
-		manifest = p
-	}
+	in := &traefikcfg.Inputs{Cfg: cfg, ChartDir: cfg.ChartDir, TLSDir: a.tlsDirFor(path), Manifest: a.Getenv("GITSTACK_TRAEFIK_MANIFEST")}
+	manifest := in.Path()
 	old, err := os.ReadFile(manifest)
+	created := false
+	if errors.Is(err, os.ErrNotExist) {
+		// Installazione precedente a GIT-403 (o file perso): lo genero dalla configurazione, come
+		// `gitstack upgrade` (GIT-534), poi vi applico la porta.
+		created = true
+		in.Cfg = &config.Config{TLS: cfg.TLS}
+		var st traefikcfg.State
+		old, st, err = traefikcfg.Plan(in)
+		_ = st
+	}
 	if err != nil {
 		a.errorf("%s: manifest Traefik: %v", cmd, err)
 		return ExitConfig
@@ -171,6 +182,9 @@ func runConfigSetCIGateway(ctx context.Context, a *App, args []string) int {
 		a.errorf("%s: manifest Traefik: %v", cmd, err)
 		return ExitUnexpected
 	}
+	if created {
+		traefikcfg.RemoveLegacy(manifest)
+	}
 	sets := []string{"ci.externalGateway.enabled=" + strconv.FormatBool(on)}
 	if on {
 		sets = append(sets, "ci.externalGateway.host="+cfg.Host, "ci.externalGateway.entryPoint=cigateway", "ci.externalGateway.publicPort="+strconv.Itoa(*port))
@@ -181,7 +195,13 @@ func runConfigSetCIGateway(ctx context.Context, a *App, args []string) int {
 	}
 	argsHelm = append(argsHelm, "--wait", "--timeout", "5m")
 	if out, e := a.Runner.Run(ctx, []string{"KUBECONFIG=" + cfg.Kubeconfig}, a.helmBin(), argsHelm...); e != nil {
-		if rollbackErr := writeGatewayManifest(manifest, old); rollbackErr != nil {
+		var rollbackErr error
+		if created {
+			rollbackErr = os.Remove(manifest)
+		} else {
+			rollbackErr = writeGatewayManifest(manifest, old)
+		}
+		if rollbackErr != nil {
 			a.errorf("%s: ripristino manifest fallito: %v", cmd, rollbackErr)
 		}
 		a.errorf("%s: helm upgrade: %v\n%s", cmd, e, strings.TrimSpace(string(out)))

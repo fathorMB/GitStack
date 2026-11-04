@@ -138,6 +138,7 @@ func (o *Options) reexec(ctx context.Context, staged string, req *ReexecRequest)
 func (o *Options) postUpgradeSteps(ctx context.Context, res *Result, userServiceSecret string) {
 	o.removeLegacyServiceSecret(ctx, res, userServiceSecret)
 	o.migrateCustomCerts(ctx, res)
+	o.syncTraefikManifest(res)
 }
 
 // postUpgrade li esegue con il binario di destinazione, se può.
