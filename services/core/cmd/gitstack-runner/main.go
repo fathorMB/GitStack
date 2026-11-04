@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 
@@ -43,6 +44,18 @@ func defaultConfigPath() string {
 		d = "."
 	}
 	return filepath.Join(d, "gitstack-runner", "config.json")
+}
+
+// defaultWorkDir è la cartella di lavoro se non c'è --workdir: accanto alla configurazione. Su
+// Windows la configurazione sta in %AppData% (Roaming), che un profilo di dominio copia sul server
+// a ogni accesso: il codice e i target/ di una build non vanno lì, ma in %LocalAppData%.
+func defaultWorkDir(cfgPath string) string {
+	if runtime.GOOS == "windows" {
+		if d := os.Getenv("LocalAppData"); d != "" {
+			return filepath.Join(d, "gitstack-runner", "work")
+		}
+	}
+	return filepath.Join(filepath.Dir(cfgPath), "work")
 }
 
 func run(args []string) int {
@@ -97,6 +110,9 @@ func register(args []string) int {
 		fmt.Fprintln(os.Stderr, "errore:", err)
 		return 1
 	}
+	if err := protectFile(*cfgPath); err != nil {
+		fmt.Fprintln(os.Stderr, "avviso: permessi del file di configurazione non ristretti:", err)
+	}
 	fmt.Printf("runner %q registrato; configurazione in %s\n", *name, *cfgPath)
 	return 0
 }
@@ -123,7 +139,7 @@ func serve(args []string) int {
 	}
 	wd := *workdir
 	if wd == "" {
-		wd = filepath.Join(filepath.Dir(*cfgPath), "work")
+		wd = defaultWorkDir(*cfgPath)
 	}
 	if err := os.MkdirAll(wd, 0o700); err != nil {
 		log.Error("cartella di lavoro non creabile", "err", err)

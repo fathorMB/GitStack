@@ -1,0 +1,7 @@
+{
+  "name": "gs-tauri-prova",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": { "build": "node build-web.mjs", "tauri": "tauri" },
+  "devDependencies": { "@tauri-apps/cli": "^2" }
+}

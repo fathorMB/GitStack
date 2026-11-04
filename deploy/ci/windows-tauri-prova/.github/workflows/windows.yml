@@ -1,0 +1,101 @@
+name: windows-tauri
+on: push
+
+# Prova del runner esterno su Windows (GIT-526): app Tauri 2 minima, installer NSIS firmato.
+# Si lancia con GITSTACK_WINDOWS_E2E_DIR=<questa cartella> go test -run TestWindowsE2E (vedi
+# services/core/internal/cirunner/windows_e2e_test.go).
+jobs:
+  tauri:
+    runs-on: [self-hosted, windows]
+    timeout-minutes: 60
+    env:
+      # target/ fuori dal workspace: il workspace si cancella a ogni job (build da zero) e
+      # src-tauri\target supera 260 caratteri. Cartella corta, sempre la stessa sul PC.
+      CARGO_TARGET_DIR: ${{ vars.CARGO_TARGET_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Versioni
+        shell: bash
+        run: |
+          node --version
+          npm --version
+          rustc --version
+          cargo --version
+
+      - name: pwsh - GITHUB_PATH, GITHUB_ENV, GITHUB_OUTPUT
+        id: s_pwsh
+        shell: pwsh
+        run: |
+          "PS_SHELL=pwsh $($PSVersionTable.PSVersion)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          New-Item -ItemType Directory -Force "$PWD\bin-pwsh" | Out-Null
+          Set-Content "$PWD\bin-pwsh\ciao-pwsh.cmd" "@echo off`r`necho dal PATH di pwsh"
+          "$PWD\bin-pwsh" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          "valore=da-pwsh" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+      - name: powershell - GITHUB_PATH, GITHUB_ENV, GITHUB_OUTPUT
+        id: s_ps
+        shell: powershell
+        run: |
+          "PS5_SHELL=powershell $($PSVersionTable.PSVersion)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          New-Item -ItemType Directory -Force "$PWD\bin-ps5" | Out-Null
+          Set-Content "$PWD\bin-ps5\ciao-ps5.cmd" "@echo off`r`necho dal PATH di powershell"
+          "$PWD\bin-ps5" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          "valore=da-powershell" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+      - name: bash - GITHUB_PATH, GITHUB_ENV, GITHUB_OUTPUT
+        id: s_bash
+        shell: bash
+        run: |
+          echo "BASH_SHELL=bash $BASH_VERSION" >> "$GITHUB_ENV"
+          mkdir -p bin-bash
+          printf '@echo off\r\necho dal PATH di bash\r\n' > bin-bash/ciao-bash.cmd
+          echo "$(pwd -W)/bin-bash" >> "$GITHUB_PATH"
+          echo "valore=da-bash" >> "$GITHUB_OUTPUT"
+      - name: Verifica di PATH, ENV e OUTPUT dal passo dopo
+        shell: pwsh
+        run: |
+          Write-Output "env: $env:PS_SHELL | $env:PS5_SHELL | $env:BASH_SHELL"
+          Write-Output "output: ${{ steps.s_pwsh.outputs.valore }} ${{ steps.s_ps.outputs.valore }} ${{ steps.s_bash.outputs.valore }}"
+          ciao-pwsh.cmd
+          ciao-ps5.cmd
+          ciao-bash.cmd
+          if ($env:PS_SHELL -eq $null -or $env:PS5_SHELL -eq $null -or $env:BASH_SHELL -eq $null) { throw "GITHUB_ENV non propagato" }
+          if ('${{ steps.s_pwsh.outputs.valore }}${{ steps.s_ps.outputs.valore }}${{ steps.s_bash.outputs.valore }}' -ne 'da-pwshda-powershellda-bash') { throw "GITHUB_OUTPUT non propagato" }
+
+      - name: Segreto su più righe e variabile (devono comparire mascherati)
+        shell: bash
+        env:
+          MULTI: ${{ secrets.MULTI_SECRET }}
+        run: |
+          echo "bash, come variabile:"
+          echo "$MULTI"
+          echo "variabile: ${{ vars.CARGO_TARGET_DIR }}"
+      - name: Segreto su più righe da pwsh
+        shell: pwsh
+        env:
+          MULTI: ${{ secrets.MULTI_SECRET }}
+        run: |
+          Write-Output "pwsh: $env:MULTI"
+          ($env:MULTI -split "`n").Count
+
+      - name: npm ci
+        run: npm ci
+      - name: Build Tauri (NSIS firmato)
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
+        run: |
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          npx tauri build --bundles nsis
+          if ($LASTEXITCODE -ne 0) { throw "tauri build: $LASTEXITCODE" }
+          "durata build: $($sw.Elapsed)"
+          $b = Join-Path $env:CARGO_TARGET_DIR 'release\bundle\nsis'
+          Get-ChildItem $b | Format-Table Name, Length
+          if (-not (Test-Path "$b\*-setup.exe")) { throw "installer NSIS assente" }
+          if (-not (Test-Path "$b\*-setup.exe.sig")) { throw "firma dell'updater assente" }
+          Get-FileHash "$b\*-setup.exe" | Format-List Hash, Path
+          Get-Content "$b\*-setup.exe.sig" | Select-Object -First 1
