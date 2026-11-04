@@ -181,5 +181,9 @@ e `.url`). Gli argomenti dello script sono quelli del repo dell'app, non di GitS
 
 ## Stato della prova
 
-Questa pagina e il workflow sono scritti, **ma non ancora provati sull'istanza vera** con un repo di prova in mirror in pull, un repo GitHub di prova e un runner Windows
-registrato contro la 8443 (criteri dell'item GIT-528). Le correzioni emerse dal run (soprattutto: l'URL dell'API raggiunto dal runner, la CA, il formato di `id` e `sha256`) vanno riportate qui.
+Pagina e workflow sono scritti ma **non ancora eseguiti** su un'istanza vera. Per decisione del board (4/11) non si usano repo GitHub di prova: la prova si fa su Odin, che ora è dell'azienda.
+
+- **GIT-541** (prima uscita di Odin, in bozza): release GitStack con allegati e SHA-256, copia su GitHub, `latest.json` scaricato, chiave assente dal disco del runner. Conferma anche i punti ancora aperti: `GITSTACK_API_URL` raggiungibile dal runner con il token `gsj_` come Bearer, formato di `id` e `sha256` nelle risposte, `PATCH draft:false`.
+- **GIT-540** (CI di Odin sul runner `pc-board`): la prova del runner Windows contro il gateway esterno, rimasta da GIT-526.
+
+Le correzioni emerse dai run vanno riportate in questa pagina.
