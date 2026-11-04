@@ -89,6 +89,21 @@ describe('RunDetailPage', () => {
     expect(vi.mocked(fetchJobLog).mock.calls.length).toBeGreaterThan(1);
   });
 
+  it('job in corso: il pallino ha la classe animata (run), il job completato con successo no', async () => {
+    const running = run({
+      status: 'in_progress',
+      conclusion: null,
+      completedAt: null,
+      jobs: [run({}).jobs[0]!, { ...run({}).jobs[1]!, status: 'in_progress', conclusion: null, completedAt: null }],
+    });
+    setup(running);
+    const jobLink = await screen.findByRole('link', { name: /test \(go 1\.23\)/ }, { timeout: 5000 });
+    expect(within(jobLink).getByRole('img', { name: 'Running' })).toHaveClass('st', 'run');
+    const doneLink = screen.getByRole('link', { name: /lint/ });
+    expect(within(doneLink).getByRole('img', { name: 'Success' })).toHaveClass('st', 'ok');
+    expect(within(doneLink).getByRole('img', { name: 'Success' })).not.toHaveClass('run');
+  }, 10000);
+
   it('fetchRun che fallisce una volta: avviso, il polling riparte e il log continua ad aggiornarsi', async () => {
     const running = run({ status: 'in_progress', conclusion: null, completedAt: null, jobs: [{ ...run({}).jobs[1]!, status: 'in_progress', conclusion: null, completedAt: null }] });
     setup(running);
