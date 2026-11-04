@@ -923,6 +923,39 @@ apps_public() {
   fi
 }
 
+ci_gateway_external() (
+  set -euo pipefail
+  need E2E_HOST
+  local work token deadline code
+  work="$(mktemp -d)"
+  trap 'sudo gitstack config set ci-gateway off >/dev/null 2>&1 || true; rm -rf "${work}"' EXIT
+  login admin "${NEW_ADMIN_PASSWORD}" "${work}/admin.jar"
+  expect 200 "${CODE}" "login admin per ci-gateway"
+  sudo gitstack config set ci-gateway on
+  api POST /api/v1/admin/ci/runners/registration-token '' -b "${work}/admin.jar"
+  expect 201 "${CODE}" "token di registrazione runner"
+  token="$(printf '%s' "${BODY}" | jq -er '.token')"
+  curl -fsS --cacert "${STATE_DIR}/ca.crt" "$(base_url)/downloads/gitstack-runner_linux_amd64" -o "${work}/gitstack-runner_linux_amd64"
+  curl -fsS --cacert "${STATE_DIR}/ca.crt" "$(base_url)/downloads/SHA256SUMS" -o "${work}/SHA256SUMS"
+  (cd "${work}" && grep '  gitstack-runner_linux_amd64$' SHA256SUMS | sha256sum -c -)
+  chmod +x "${work}/gitstack-runner_linux_amd64"
+  deadline=$((SECONDS + 180))
+  while [ "${SECONDS}" -lt "${deadline}" ]; do
+    code="$(curl --cacert "${STATE_DIR}/ca.crt" -sS -m 3 -o /dev/null -w '%{http_code}' "https://${HOST}:8443/runner.v1.RunnerService/Register" 2>/dev/null || true)"
+    if [ "${code}" != 000 ] && [ -n "${code}" ]; then break; fi
+    sleep 3
+  done
+  [ "${code}" != 000 ] && [ -n "${code}" ] || fail "ci-gateway TLS non raggiungibile sulla porta 8443"
+  SSL_CERT_FILE="${STATE_DIR}/ca.crt" GITSTACK_RUNNER_REGISTRATION_TOKEN="${token}" "${work}/gitstack-runner_linux_amd64" register --url "https://${HOST}:8443" --name "ci-gateway-e2e-$$" --labels linux --config "${work}/runner.json"
+  echo 'ok ci-gateway: register via HTTPS sulla porta 8443'
+  sudo gitstack config set ci-gateway off
+  deadline=$((SECONDS + 180))
+  while [ "${SECONDS}" -lt "${deadline}" ]; do
+    if nc -z -w 2 "${HOST}" 8443; then sleep 3; else echo 'ok ci-gateway: porta 8443 chiusa'; return 0; fi
+  done
+  fail "ci-gateway: porta 8443 ancora aperta dopo off"
+)
+
 latest_backup() {
   local f
   f="$(sudo find /var/backups/gitstack -maxdepth 1 -type f -name 'gitstack-backup-*' -not -name '*.sha256' -printf '%T@ %p\n' | sort -rn | head -n1 | cut -d' ' -f2-)"
@@ -972,6 +1005,7 @@ main() {
     ci-config) ci_config "$@" ;;
     ci-off) ci_off ;;
     ci-run) ci_run ;;
+    ci-gateway-external) ci_gateway_external ;;
     verify-ci) verify_ci ;;
     verify-apps-domain) verify_apps_domain "$@" ;;
     verify-apps-hosting) verify_apps_hosting "$@" ;;
