@@ -108,7 +108,8 @@ jobs:
           [IO.File]::WriteAllText((Join-Path $out.FullName 'latest.json'), ($latest | ConvertTo-Json -Depth 5), (New-Object Text.UTF8Encoding $false))
           Get-ChildItem $out | Get-FileHash -Algorithm SHA256 | Format-Table Hash, @{n='File';e={Split-Path $_.Path -Leaf}}
 
-      # 3. Release GitStack sul tag: bozza, allegati, poi pubblicazione (nessuno vede una release a metà).
+      # 3. Release GitStack sul tag, creata già pubblicata, poi gli allegati. Il token del job può solo
+      #    createRelease e uploadReleaseAsset: niente PATCH (pubblicare una bozza) né DELETE.
       - name: Release GitStack
         shell: pwsh
         env:
@@ -118,7 +119,7 @@ jobs:
           $h = @{ Authorization = "Bearer $env:GS_TOKEN" }
           $rel = Invoke-RestMethod -Method Post -Headers $h -ContentType 'application/json' `
             -Uri "$env:GS_API/repos/$env:GS_REPO/releases" `
-            -Body (@{ tagName = $env:TAG; name = $env:TAG; draft = $true } | ConvertTo-Json)
+            -Body (@{ tagName = $env:TAG; name = $env:TAG; draft = $false } | ConvertTo-Json)
           foreach ($f in Get-ChildItem 'release-assets') {
             $a = Invoke-RestMethod -Method Post -Headers $h -ContentType 'application/octet-stream' `
               -Uri "$env:GS_API/repos/$env:GS_REPO/releases/$($rel.id)/assets?name=$([uri]::EscapeDataString($f.Name))" `
@@ -127,8 +128,6 @@ jobs:
             if ($a.sha256.ToLower() -ne $local) { throw "SHA-256 diverso per $($f.Name): server $($a.sha256), locale $local" }
             "{0}  {1}" -f $a.sha256, $f.Name
           }
-          Invoke-RestMethod -Method Patch -Headers $h -ContentType 'application/json' `
-            -Uri "$env:GS_API/repos/$env:GS_REPO/releases/$($rel.id)" -Body (@{ draft = $false } | ConvertTo-Json) | Out-Null
 
       # 4. Stessa release sul repo GitHub di sole release. latest.json si carica per ultimo e la
       #    release si pubblica alla fine: latest/download/latest.json cambia in un colpo solo.
@@ -164,14 +163,15 @@ e `.url`). Gli argomenti dello script sono quelli del repo dell'app, non di GitS
 1. **Avvio.** Parte dall'evento `push` del tag `v*`. Su un mirror in pull l'evento nasce quando la sincronizzazione porta il tag (fino a 10 minuti, o «Sincronizza ora»).
 2. **Build.** `tauri build --bundles nsis` con `createUpdaterArtifacts: true` in `tauri.conf.json` produce `<App>_<versione>_x64-setup.exe` e il suo `.sig`.
 3. **latest.json.** Il file dell'updater di Tauri 2, con la firma letta dal `.sig` e l'URL del download **sul repo GitHub di release** (non su GitStack: le copie installate non hanno accesso all'istanza).
-4. **Release GitStack.** `POST /repos/{owner}/{repo}/releases` (`createRelease`) con il token del job, poi `POST …/releases/{id}/assets?name=…` (`uploadReleaseAsset`) per ogni file. Il server calcola l'SHA-256 dell'allegato; il passo lo confronta con quello locale, lo stampa e fallisce se differiscono. La release resta bozza fino all'ultimo allegato. Non esiste ancora `gs release`: si usa l'API.
+4. **Release GitStack.** `POST /repos/{owner}/{repo}/releases` (`createRelease`) con il token del job, poi `POST …/releases/{id}/assets?name=…` (`uploadReleaseAsset`) per ogni file. Il server calcola l'SHA-256 dell'allegato; il passo lo confronta con quello locale, lo stampa e fallisce se differiscono. La release GitStack è visibile dalla creazione, mentre gli allegati arrivano: il token del job ha solo `createRelease` e `uploadReleaseAsset`, e pubblicare una bozza o cancellarla richiede un utente con `write`. Non esiste ancora `gs release`: si usa l'API.
 5. **Release su GitHub.** Stessa sequenza (bozza, allegati con `latest.json` per ultimo, pubblicazione con `make_latest`) sul repo `GH_RELEASES_REPO`. Da quel momento `releases/latest/download/latest.json` punta al nuovo file.
 
 ## Limiti
 
 - **Il tag deve già esserci in GitStack.** Creare la release su un tag che la sincronizzazione non ha portato dà `422 tag_not_found`. Per questo il workflow parte dall'evento `push` del tag sincronizzato: non lanciarlo a mano (dispatch) subito dopo il push su GitHub.
-- **Nessun rerun idempotente.** Rilanciare il job su un tag già rilasciato fallisce (`409` su GitStack, `422` su GitHub). Se il job cade a metà resta una **bozza**: va cancellata (UI di GitStack o `DELETE …/releases/{id}`, e la bozza su GitHub) prima di rilanciare. La release GitHub non è pubblicata finché tutti gli allegati non ci sono.
+- **Nessun rerun idempotente.** Rilanciare il job su un tag già rilasciato fallisce (`409` su GitStack, `422` su GitHub). Se il job cade a metà resta su GitStack una release **pubblicata con allegati parziali**: va cancellata da un utente con `write` (UI di GitStack o `DELETE …/releases/{id}` con un token utente, non con il token del job), e così la bozza su GitHub, prima di rilanciare. La release GitHub non è pubblicata finché tutti gli allegati non ci sono.
 - **Le release GitStack non tornano all'origine** e gli allegati restano fuori dal backup di default (vedi ci-mirror-in-pull.md). La copia su GitHub è quella che serve agli updater.
+- **La release GitStack non passa da bozza.** `updateRelease` non accetta il token del job (`job_token_not_allowed`): la release nasce pubblicata e chi la guarda vede per un po' gli allegati incompleti. Farla passare da bozza richiederebbe `x-job-token` su `updateRelease`, un cambio di prodotto fuori da questo workflow. Per questo `latest.json`, che serve agli updater, sta sulla copia GitHub, che invece si pubblica a fine corsa.
 - **Nomi degli allegati senza spazi.** GitHub sostituisce gli spazi con punti nel nome del file, e l'URL scritto in `latest.json` non troverebbe più il file. Usare `productName` senza spazi.
 - **Il token GitHub è un segreto del repo**: chi può scrivere workflow sul repo lo legge. Limitarlo al repo di release e a `Contents: write`, e registrare il runner solo per repo fidati.
 - **La chiave di firma**: è mascherata nei log (anche su più righe) e il runner passa i segreti ad `act` con un file dotenv `0600` tolto a fine job (GIT-526); questo workflow non scrive la chiave in nessun file e la mette nell'ambiente solo del passo di build. Il runner non separa l'utente del processo da quello dei passi: chi scrive il workflow può comunque leggerla (limite di GIT-526). La build lascia sul PC la cache di Cargo/npm e `CARGO_TARGET_DIR`, mai la chiave.
@@ -183,7 +183,7 @@ e `.url`). Gli argomenti dello script sono quelli del repo dell'app, non di GitS
 
 Pagina e workflow sono scritti ma **non ancora eseguiti** su un'istanza vera. Per decisione del board (4/11) non si usano repo GitHub di prova: la prova si fa su Odin, che ora è dell'azienda.
 
-- **GIT-541** (prima uscita di Odin, in bozza): release GitStack con allegati e SHA-256, copia su GitHub, `latest.json` scaricato, chiave assente dal disco del runner. Conferma anche i punti ancora aperti: `GITSTACK_API_URL` raggiungibile dal runner con il token `gsj_` come Bearer, formato di `id` e `sha256` nelle risposte, `PATCH draft:false`.
+- **GIT-541** (prima uscita di Odin, in bozza): release GitStack con allegati e SHA-256, copia su GitHub, `latest.json` scaricato, chiave assente dal disco del runner. Conferma anche i punti ancora aperti: `GITSTACK_API_URL` raggiungibile dal runner con il token `gsj_` come Bearer e formato di `id` e `sha256` nelle risposte.
 - **GIT-540** (CI di Odin sul runner `pc-board`): la prova del runner Windows contro il gateway esterno, rimasta da GIT-526.
 
 Le correzioni emerse dai run vanno riportate in questa pagina.
