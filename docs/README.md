@@ -35,3 +35,5 @@ Licenza: AGPL-3.0, come il resto del server (vedi LICENSE in radice).
 `agent-trial.md` (M-07/M, GIT-174) è la guida per il board alla prova reale di un agente di coding con `gs` e le skills, su una VM di prova o su homehub; gli script e il repo di prova sono in `scripts/agent-trial/`.
 
 `release-checklist.md` (M-09/B, GIT-226) è la lista di controllo della release candidate: un passo per criterio di uscita V1; `scripts/release-readiness.go` (`make release-readiness`) verifica gli automatici e stampa i manuali.
+
+`ci-release-desktop.md` (GIT-528) è il workflow di esempio per rilasciare un'app desktop Tauri su Windows: installer firmato, release GitStack con allegati e copia su un repo GitHub di sole release.
