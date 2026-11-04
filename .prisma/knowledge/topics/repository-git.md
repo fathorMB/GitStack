@@ -1,6 +1,7 @@
 ---
-{"area":"requirements","id":"DOC-6878277b-230e-448b-a761-215e9d233c54","related":["TOP-74180f5f-ae9e-4bbf-b220-4b52950e5038","TOP-4a11694d-e261-4934-bafb-f17ccc6d1726","DOC-d1718775-770d-4065-8b27-3dc7a400dad6","OBJ-bcb9bb89-a13a-4c0c-8a2f-e56f6dd76c38","TOP-de29e79d-90cb-4163-a1fe-2978bed63f8d","DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363"],"reopen_reason":"Regola su eliminazione del repo e app confermata dall'operatore il 2026-10-18 (scelta A).","schema_version":1,"sources":[],"tags":["git","repository","ssh","m-03"],"title":"Repository Git: regole di prodotto","updated":"2026-10-18T17:00:34.316863500+00:00"}
+{"area":"requirements","id":"DOC-6878277b-230e-448b-a761-215e9d233c54","related":["TOP-74180f5f-ae9e-4bbf-b220-4b52950e5038","TOP-4a11694d-e261-4934-bafb-f17ccc6d1726","DOC-d1718775-770d-4065-8b27-3dc7a400dad6","OBJ-bcb9bb89-a13a-4c0c-8a2f-e56f6dd76c38","TOP-de29e79d-90cb-4163-a1fe-2978bed63f8d","DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363"],"reopen_reason":"Decisione del board del 2026-11-04, «eliminato è eliminato»: R2 diventa eliminazione definitiva e immediata, niente cestino né ripristino (codice in GIT-530). Aggiornate R2, R11, R12 e la sezione v3.","schema_version":1,"sources":[],"tags":["git","repository","ssh","m-03"],"title":"Repository Git: regole di prodotto","updated":"2026-11-04T18:13:11.398178900+00:00"}
 ---
+
 
 
 # Repository Git: regole di prodotto
@@ -14,7 +15,7 @@ Regole per l'hosting dei repo (M-03) confermate dall'operatore il 2026-10-05 nel
 | # | Regola |
 |---|---|
 | R1 | **Indirizzi come GitHub:** `https://<host>/<owner>/<repo>.git`; pagina web `/<owner>/<repo>`; `owner/repo` è il nome breve di `gs`. Utenti e organizzazioni condividono un unico spazio di nomi. |
-| R2 | **Eliminazione recuperabile per 7 giorni:** il repo sparisce subito per tutti (UI, API, clone/push), resta ripristinabile per 7 giorni, poi è cancellato definitivamente. Nel frattempo il nome resta occupato e il disco non viene liberato. |
+| R2 | **Eliminazione definitiva e immediata:** chi ha `admin` elimina il repo dopo aver scritto `owner/repo` per intero. Il repo e tutto ciò che gli appartiene (codice, issues, PR, allegati, release, immagini del registry, app e volumi, webhook, mirror) sono cancellati subito, e il nome si libera alla risposta. Non ci sono cestino né ripristino: si recupera solo da un backup (`gitstack restore`). Decisione del board del 4/11/2026, che sostituisce i 7 giorni. |
 | R3 | **Nessuna rinomina né trasferimento nella v1:** `owner/repo` è fisso; per cambiarlo si crea un nuovo repo. Niente redirect. La scelta dell'owner va resa evidente alla creazione. |
 | R4 | **Branch principale `main`, modificabile per repo** da chi ha `admin` (tra i branch esistenti). È il branch mostrato di default dal browser (M-04) e su cui valgono le chiusure `fixes #12` (M-06). |
 | R5 | **Contenuto iniziale opzionale, tutto spento di default:** README, `.gitignore` e licenza (da piccoli elenchi di modelli). Senza opzioni il repo nasce vuoto; con almeno una, primo commit su `main`. Uguale da UI, API e `gs`. |
@@ -23,12 +24,18 @@ Regole per l'hosting dei repo (M-03) confermate dall'operatore il 2026-10-05 nel
 | R8 | **Git LFS dopo la v1.** I file grandi sono governati da R6; nulla in M-03 deve impedire di aggiungere LFS. |
 | R9 | **Protezione minima del branch principale:** force-push ed eliminazione rifiutati, attiva di default, disattivabile da chi ha `admin`. Regole complete con le PR in v1.1. |
 | R10 | **Archiviazione nella v1:** chi ha `admin` archivia e riattiva; il repo resta leggibile e clonabile ma rifiuta push e modifiche alle impostazioni; etichetta "Archived"; con M-05 le issues diventano di sola lettura. |
-| R11 | **Nomi dei repo:** lettere maiuscole e minuscole, cifre, `-`, `_`, `.`; 1–100 caratteri; non inizia con `.`, non finisce con `.git`. Il nome conserva le maiuscole scritte alla creazione o alla modifica (es. `GitStack`) e così appare in UI, API, `gs` e indirizzi di clone mostrati. Unicità per owner **senza distinzione di maiuscole**: `GitStack` e `gitstack` non coesistono sotto lo stesso owner (il nome resta occupato anche nel cestino, R2). Ogni indirizzo risolve il repo in qualsiasi combinazione di maiuscole e minuscole: pagina web `/<owner>/<repo>`, API `/v1/repos/{owner}/{repo}/…`, git HTTPS `/<owner>/<repo>.git`, SSH `ssh://git@<host>:2222/<owner>/<repo>.git`, raw e archivi, `gs --repo`, riferimenti `owner/repo#n` nelle issues e nei commit (C1). Nomi di utenti e organizzazioni: restano in minuscolo (regola invariata). |
-| R12 | **Eliminazione e ripristino a chi ha `admin` sul repo** (owner dell'organizzazione, grant `admin`, proprietario del repo personale) e sempre all'amministratore dell'installazione. Lista "Deleted repositories" nelle impostazioni dell'owner con ripristino e giorni rimasti. |
+| R11 | **Nomi dei repo:** lettere maiuscole e minuscole, cifre, `-`, `_`, `.`; 1–100 caratteri; non inizia con `.`, non finisce con `.git`. Il nome conserva le maiuscole scritte alla creazione o alla modifica (es. `GitStack`) e così appare in UI, API, `gs` e indirizzi di clone mostrati. Unicità per owner **senza distinzione di maiuscole**: `GitStack` e `gitstack` non coesistono sotto lo stesso owner. Ogni indirizzo risolve il repo in qualsiasi combinazione di maiuscole e minuscole: pagina web `/<owner>/<repo>`, API `/v1/repos/{owner}/{repo}/…`, git HTTPS `/<owner>/<repo>.git`, SSH `ssh://git@<host>:2222/<owner>/<repo>.git`, raw e archivi, `gs --repo`, riferimenti `owner/repo#n` nelle issues e nei commit (C1). Nomi di utenti e organizzazioni: restano in minuscolo (regola invariata). |
+| R12 | **Eliminazione a chi ha `admin` sul repo** (owner dell'organizzazione, grant `admin`, proprietario del repo personale) e sempre all'amministratore dell'installazione. |
 
 ### Revisioni delle decisioni
 
 - **2026-10-06, R11 (decisione del board, GIT-178):** la regola originale del 2026-10-05 rifiutava le maiuscole. Creando su homehub il repo per il codice di GitStack il nome `GitStack` è stato rifiutato: il rifiuto era corretto per la regola di allora, il board l'ha cambiata per comportarsi come GitHub (nome conservato come scritto, unicità e indirizzi senza distinzione di maiuscole). Il percorso su disco resta per id (R3), quindi i repo esistenti non si spostano; la migrazione `0013_repo_name_case` allarga il CHECK dei nomi e sostituisce l'unicità con un indice su `lower(name)`.
+- **2026-11-04, R2, R11, R12 (decisione del board, «eliminato è eliminato», codice in GIT-530):** l'eliminazione diventa definitiva e immediata, con conferma scrivendo `owner/repo` per intero; il nome si libera subito; niente cestino né ripristino, si recupera solo da un backup. Tolti da R11 il nome occupato nel cestino e da R12 il ripristino e la lista "Deleted repositories".
+
+## Superseded
+
+- **R2, versione del 2026-10-05:** eliminazione recuperabile per 7 giorni (repo sparito subito per tutti, ripristinabile per 7 giorni, poi cancellato; nel frattempo nome occupato e disco non liberato). **Sostituita** il 2026-11-04 dalla decisione del board.
+- **R12, versione del 2026-10-05:** eliminazione **e ripristino** a chi ha `admin`, con lista "Deleted repositories" nelle impostazioni dell'owner (ripristino e giorni rimasti). **Sostituita** il 2026-11-04: resta solo l'eliminazione.
 
 ## Requisiti derivati
 
@@ -39,7 +46,7 @@ Regole per l'hosting dei repo (M-03) confermate dall'operatore il 2026-10-05 nel
 
 ## Dalla v3 (app ospitate)
 
-Le app appartengono a un repo (H5 in [[knowledge/topics/hosting-app]], confermata il 2026-10-18). **Archiviazione (R10):** le app del repo si fermano e tornano avviabili alla riattivazione. **Eliminazione (R2):** le app si fermano subito, tornano se il repo è ripristinato entro 7 giorni, poi sono eliminate insieme ai volumi. Le quote per owner delle app (H11) non cambiano R6 per il codice.
+Le app appartengono a un repo (H5 in [[knowledge/topics/hosting-app]], confermata il 2026-10-18). **Archiviazione (R10):** le app del repo si fermano e tornano avviabili alla riattivazione. **Eliminazione (R2):** le app e i volumi sono cancellati subito con il repo. Le quote per owner delle app (H11) non cambiano R6 per il codice.
 
 ## Fuori dalla v1
 
@@ -52,4 +59,5 @@ Rinomina e trasferimento (R3), Git LFS (R8), quote per organizzazione (R6), rego
 - [[knowledge/topics/architettura]]
 - [[knowledge/topics/installazione-e-deploy]]
 - [[knowledge/topics/hosting-app]]
+
 
