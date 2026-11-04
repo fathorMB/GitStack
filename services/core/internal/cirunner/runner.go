@@ -194,7 +194,7 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 		_ = rep.flush(ctx, conclusion, true)
 		return res, err
 	}
-	conclusion = runAct(ctx, cfg, rep, event, jobKey, token)
+	conclusion = runAct(ctx, cfg, rep, event, jobKey, token, task.GetSecrets(), task.GetVars())
 	res.Conclusion = conclusion
 	if len(outputNames) > 0 {
 		rep.outputs = readOutputs(outputsDir, outputNames)
@@ -360,7 +360,7 @@ func writeEventFile(path string, cx map[string]any) error {
 }
 
 // runAct esegue `act <evento> -j <job>` in modalità host sul workspace e ne segue l'output.
-func runAct(ctx context.Context, cfg Config, rep *reporter, event, jobKey, token string) runnerv1.Result {
+func runAct(ctx context.Context, cfg Config, rep *reporter, event, jobKey, token string, secrets, vars map[string]string) runnerv1.Result {
 	if event == "" {
 		event = "push"
 	}
@@ -371,6 +371,13 @@ func runAct(ctx context.Context, cfg Config, rep *reporter, event, jobKey, token
 		args = append(args, "-P", p+"=-self-hosted")
 	}
 	args = append(args, "--pull=false", "--use-gitignore=false", "--no-cache-server", "-s", "GITHUB_TOKEN")
+	extra, cleanup, err := actEnvFiles(cfg, rep, secrets, vars)
+	if err != nil {
+		rep.line("errore: segreti e variabili del job: " + err.Error())
+		return runnerv1.Result_RESULT_FAILURE
+	}
+	defer cleanup()
+	args = append(args, extra...)
 	cmd := exec.CommandContext(ctx, cfg.ActBin, args...)
 	cmd.Dir = filepath.Join(cfg.WorkDir, "workspace")
 	// I passi del workflow ereditano l'ambiente di act: il segreto dei runner (e ogni
@@ -621,7 +628,8 @@ func RuntimeToken(jobToken string) string {
 func withoutCIEnv(env []string) []string {
 	out := make([]string, 0, len(env))
 	for _, kv := range env {
-		if strings.HasPrefix(kv, "GITSTACK_CI_") {
+		// Su Windows i nomi delle variabili non distinguono maiuscole e minuscole.
+		if strings.HasPrefix(strings.ToUpper(kv), "GITSTACK_CI_") {
 			continue
 		}
 		out = append(out, kv)
