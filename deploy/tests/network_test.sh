@@ -228,8 +228,9 @@ expect_eq "URL col mirror" "${OUT}" "http://dl.corp:8080/k3s/install.sh
 http://dl.corp:8080/helm
 http://dl.corp:8080/gitstack/sha-abc/gitstack-linux-amd64
 http://dl.corp:8080/gitstack/source/0123.tar.gz"
-OUT="$(in_install -- 'resolve_network; printf "%s %s" "$(k3s_script_url)" "$(helm_base_url)"')"
-expect_eq "URL senza mirror" "${OUT}" "https://get.k3s.io https://get.helm.sh"
+OUT="$(in_install -- 'CHART_DIR="${HERE}/../gitstack"; resolve_network; resolve_k3s_version; printf "%s %s" "$(k3s_script_url)" "$(helm_base_url)"')"
+VERSION="$(tr -d '[:space:]' <"${HERE}/../k3s-version")"
+expect_eq "URL senza mirror" "${OUT}" "https://raw.githubusercontent.com/k3s-io/k3s/${VERSION//+/%2B}/install.sh https://get.helm.sh"
 
 # --- config.yaml: scrittura e rilettura (riesecuzione) -------------------------------------------------------------
 OUT="$(in_install --http-proxy http://u:p@proxy.corp:3128 --registry-mirror http://r:5000 --registry-username 'u"x' \
@@ -263,6 +264,12 @@ net_probe_tcp() { [ "$1" != "down.corp" ]; }
 net_probe_url() { case "$1" in *dead.corp*) printf 000 ;; *forbidden.corp*) printf 403 ;; *registry.corp*) [ "${2:-}" = "u" ] && printf 200 || printf 401 ;; *) printf 200 ;; esac; }
 '
 # tutto risponde
+OUT="$(in_install -- "${STUBS}"'CHART_DIR=""; INSTALL_K3S_VERSION=""; net_probe_url() { echo "$1" >>"${WORK}/preflight-urls"; printf 200; }; resolve_network; preflight_network; echo "rc=$?"')"
+expect_has "preflight prima del chart: prosegue" "${OUT}" "rc=0"
+expect_has "preflight prima del chart: probe k3s" "${OUT}" "download di k3s risponde"
+expect_has "preflight prima del chart: host k3s" "$(cat "${WORK}/preflight-urls")" "https://raw.githubusercontent.com/"
+OUT="$(in_install -- "${STUBS}"'INSTALL_K3S_VERSION="v1.2.3+k3s1"; net_probe_url() { echo "$1" >>"${WORK}/preflight-version-urls"; printf 200; }; resolve_network; preflight_network; echo "rc=$?"')"
+expect_has "preflight con versione: URL del tag" "$(cat "${WORK}/preflight-version-urls")" "https://raw.githubusercontent.com/k3s-io/k3s/v1.2.3%2Bk3s1/install.sh"
 OUT="$(in_install --http-proxy http://proxy.corp:3128 --registry-mirror http://registry.corp:5000 --download-mirror http://dl.corp:8080 \
   -- "${STUBS}"'resolve_network; preflight_network; echo "rc=$?"')"
 expect_has "preflight: tutto risponde" "${OUT}" "rc=0"

@@ -64,7 +64,7 @@ Lo script li verifica in preflight prima di installare qualunque cosa (N1, confe
 | Disco | filesystem di almeno 60 GB **e** almeno 20 GB liberi, sul filesystem che ospita `/var/lib/rancher` (se non esiste ancora, `/`) | 200 GB su SSD (fino a circa 100 utenti) |
 | Sistema | Ubuntu Server 22.04/24.04 amd64 (supportato nella v1.0); Pop!_OS 22.04/24.04 amd64 con avviso nel preflight; altri sistemi solo con `--force` | |
 | Accesso | root o sudo | |
-| Rete | uscita verso `get.k3s.io`, `get.helm.sh` e il registry delle immagini (`ghcr.io` di default, configurabile; l'air-gapped arriva con M-08) | |
+| Rete | uscita verso `raw.githubusercontent.com` (script k3s dal tag fissato), `github.com` (release k3s), `get.helm.sh` e il registry delle immagini (`ghcr.io` di default, configurabile; l'air-gapped arriva con M-08) | |
 | Porte libere | 80, 443, 6443 e la porta SSH di git (già occupate da un'installazione GitStack esistente non sono un errore: vedi Idempotenza) | |
 
 Sotto il minimo l'installer esce con exit 1 e il valore trovato; sotto il consigliato stampa `ATTENZIONE` e prosegue. L'SSD si legge da `/sys/class/block/<dev>/queue/rotational` (segue partizioni e device mapper); se non si capisce, avviso (un disco virtuale può dichiararsi rotazionale: è solo un avviso, come sulla VM di test). Lo spazio per i repo è circa il doppio della loro dimensione: sui dischi piccoli pesa il consigliato.
@@ -145,6 +145,8 @@ Il caso reale di homehub: il router di casa (Sky) non permette record DNS locali
 ### k3s e Traefik v3
 
 La versione di k3s è pinnata (mai `latest`) nel file `deploy/k3s-version` (oggi `v1.36.4+k3s1`), unico punto che dichiara con quale k3s è provata ogni versione di GitStack: lo leggono `install.sh` e `gitstack upgrade` (una patch nuova si applica da sola, una minore con `gitstack upgrade --k3s`, vedi `docs/operations.md`). Quella versione include il chart Traefik `40.1.0` (`appVersion: v3.7.0`, cioè Traefik v3), richiesto dal Middleware `traefik.io/v1alpha1` dell'Ingress del chart (`gitstack/templates/ingress.yaml`, vedi `gitstack/README.md`). Sovrascrivibile con la variabile `INSTALL_K3S_VERSION` se serve un'altra versione, purché includa Traefik v3.
+
+Quando si aggiorna k3s, scaricare `install.sh` dal nuovo tag, rileggerlo, misurarne lo SHA-256 e riportarlo in `deploy/k3s-install.sha256`: la procedura è in `docs/operations.md`, sezione «The k3s install script is pinned by checksum».
 
 k3s installa la CRD `middlewares.traefik.io` (serve al Middleware dell'Ingress) in modo **asincrono**, tramite un HelmChart/Job interni che partono dopo che il nodo è Ready: `install.sh` aspetta esplicitamente che quella CRD compaia e diventi `Established` prima di lanciare `helm upgrade --install` del chart di GitStack, altrimenti su una macchina pulita si incontra la stessa race del job "chart" della CI (`no matches for kind Middleware`). Con la CRD già presente (esecuzioni successive) l'attesa passa subito.
 

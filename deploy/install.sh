@@ -2639,7 +2639,7 @@ k3s_script_url() {
   if [ -n "${GITSTACK_DOWNLOAD_MIRROR}" ]; then
     printf '%s/k3s/install.sh' "${GITSTACK_DOWNLOAD_MIRROR}"
   else
-    printf 'https://get.k3s.io'
+    printf 'https://raw.githubusercontent.com/k3s-io/k3s/%s/install.sh' "${INSTALL_K3S_VERSION//+/%2B}"
   fi
 }
 
@@ -2986,7 +2986,13 @@ preflight_network() {
     command -v helm >/dev/null 2>&1 || net_probe_check "download di Helm (mirror)" \
       "$(helm_base_url)/helm-${GITSTACK_HELM_VERSION}-linux-amd64.tar.gz.sha256sum" file
   else
-    k3s_already_installed || net_probe_check "download di k3s" "$(k3s_script_url)" file
+    # Il chart e la versione possono non essere ancora disponibili: il loro
+    # download avviene dopo il preflight. In quel caso verifica solo l'host.
+    local k3s_probe_url="https://raw.githubusercontent.com/"
+    if [ -n "${INSTALL_K3S_VERSION}" ]; then
+      k3s_probe_url="$(k3s_script_url)"
+    fi
+    k3s_already_installed || net_probe_check "download di k3s" "${k3s_probe_url}" file
     k3s_already_installed || net_probe_check "binario di k3s" "https://github.com/k3s-io/k3s/releases" file
     command -v helm >/dev/null 2>&1 || net_probe_check "download di Helm" \
       "$(helm_base_url)/helm-${GITSTACK_HELM_VERSION}-linux-amd64.tar.gz.sha256sum" file

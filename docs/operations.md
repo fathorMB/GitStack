@@ -433,7 +433,7 @@ sudo ./deploy/install.sh \
 
 | Path | Content |
 |---|---|
-| `k3s/install.sh` | The k3s install script (from `https://get.k3s.io`) |
+| `k3s/install.sh` | The k3s install script from the tag pinned in `deploy/k3s-version` |
 | `k3s/releases/download/<version>/k3s` and `sha256sum-amd64.txt` | The k3s binary and its checksums (what the script downloads from GitHub releases) |
 | `helm/helm-<version>-linux-amd64.tar.gz` and `.sha256sum` | The Helm tarball |
 | `gitstack/<image-tag>/gitstack-linux-amd64`, `.sha256` and `.sigstore.json` | The `gitstack` binary, its checksum and its cosign bundle (V5) |
@@ -459,7 +459,7 @@ Outbound rules (C8) do not change either: the GitStack services apply
 `egress.*` to the real destination before talking to the proxy.
 
 **Preflight.** Before touching the system, the installer tries to reach the
-proxy, the mirrors and (without a mirror) the usual sources (`get.k3s.io`, GitHub
+proxy, the mirrors and (without a mirror) the usual sources (`raw.githubusercontent.com`, GitHub
 releases, `get.helm.sh`, `ghcr.io`, Docker Hub, `registry.k8s.io`), through the
 proxy, and lists what does not answer:
 
@@ -1425,16 +1425,23 @@ There is no automatic rollback of k3s: follow the procedure below.
 
 ### The k3s install script is pinned by checksum (F19, GIT-239)
 
-`install.sh` does not pipe `https://get.k3s.io` into `sh`: it downloads the
+`install.sh` downloads the script from `https://raw.githubusercontent.com/k3s-io/k3s/<version>/install.sh`,
+where `<version>` is pinned in `deploy/k3s-version` and `+` is encoded as `%2B`. It
+downloads the
 script, compares its SHA-256 with the one pinned in `deploy/k3s-install.sha256`
 and runs it only if they match. A different script (changed upstream, or
 tampered with on the way or on a mirror) stops the install with
 `lo script di k3s ... non corrisponde allo sha256 fissato` before anything is
 executed.
 
-- When the pin is stale because k3s changed its script, update it with the
-  version bump: `curl -sfL https://get.k3s.io | sha256sum`, review the script,
-  and put the hash in `deploy/k3s-install.sha256`.
+- When bumping k3s, download the script from the new version tag, review it,
+  measure its SHA-256 and put the hash in `deploy/k3s-install.sha256`:
+  ```sh
+  version=$(tr -d '[:space:]' < deploy/k3s-version | sed 's/+/%2B/g')
+  curl -fsSL "https://raw.githubusercontent.com/k3s-io/k3s/${version}/install.sh" -o k3s-install.sh
+  less k3s-install.sh
+  sha256sum k3s-install.sh
+  ```
 - With `--download-mirror` the mirror's `k3s/install.sh` must be the same
   script; if it is a deliberately different one, set
   `GITSTACK_K3S_SCRIPT_SHA256=<sha256 of your script>` for the install.
