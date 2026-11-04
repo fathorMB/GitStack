@@ -178,5 +178,3 @@ func appTarball(t *testing.T, dir string) []byte {
 	_ = zw.Close()
 	return buf.Bytes()
 }
-
-
