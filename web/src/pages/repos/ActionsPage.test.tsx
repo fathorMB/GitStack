@@ -67,6 +67,15 @@ describe('ActionsPage', () => {
     expect(within(list).getAllByRole('link', { name: 'ci' })[0]).toHaveAttribute('href', '/acme/api/actions/runs/4');
   });
 
+  it('run in corso: il pallino ha la classe animata (run), queued e completata no', async () => {
+    setup();
+    const list = await screen.findByRole('list', { name: 'Workflow runs' });
+    expect(within(list).getByRole('img', { name: 'Running' })).toHaveClass('st', 'run');
+    expect(within(list).getByRole('img', { name: 'Queued' })).toHaveClass('st', 'wait');
+    expect(within(list).getByRole('img', { name: 'Queued' })).not.toHaveClass('run');
+    expect(within(list).getByRole('img', { name: 'Success' })).not.toHaveClass('run');
+  }, 10000);
+
   it('filtra per Failed, per testo e per workflow', async () => {
     const user = userEvent.setup();
     setup();

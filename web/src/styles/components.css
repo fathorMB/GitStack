@@ -486,6 +486,12 @@ ul.list{margin:0;padding:0;list-style:none}
 .st{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none}
 .st svg{stroke-width:2.6}
 .st.ok{background:var(--success);color:#fff}.st.err{background:var(--danger);color:#fff}.st.run{border:2px solid var(--warning);border-right-color:transparent}.st.skip{background:var(--surface-3);color:var(--text-subtle)}.st.wait{border:2px dashed var(--border-strong)}
+/* GIT-545: lo stato in corso gira come lo spinner di GitHub Actions. Con prefers-reduced-motion
+   niente rotazione: una pulsazione lieve di opacità, così lo stato resta riconoscibile. */
+.st.run{animation:st-spin .9s linear infinite}
+@keyframes st-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.st.run{animation:st-pulse 1.6s ease-in-out infinite}}
+@keyframes st-pulse{50%{opacity:.4}}
 .log{background:var(--log-bg);color:var(--log-fg);font:12.5px/1.65 var(--font-mono);border-radius:0 0 var(--r-lg) var(--r-lg);padding:8px 0;overflow:auto;max-height:560px}
 .log div{padding:0 14px;white-space:pre}.log .n{color:#6c6584;display:inline-block;width:34px;text-align:right;margin-right:12px;user-select:none}
 .log .er{background:rgba(255,107,118,.14);color:#ff8f98}.log .gr{color:#9479ff}
