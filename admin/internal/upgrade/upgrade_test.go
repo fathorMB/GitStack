@@ -234,13 +234,8 @@ func (h *fakeHelm) has(sub string) bool {
 // newTLS è il gitstack-tls del commit di destinazione nei sorgenti di prova.
 const newTLS = "#!/bin/sh\n# gitstack-tls nuovo: --apps-domain\n"
 
-func chartTarball(t *testing.T, sha string, k3sFile ...string) []byte {
-	t.Helper()
-	return chartTarballTLS(t, sha, newTLS, k3sFile...)
-}
-
-// chartTarballTLS è chartTarball con il contenuto di deploy/gitstack-tls.sh
-// ("" = il commit non lo contiene).
+// chartTarballTLS è il sorgente del commit di prova, con il contenuto di
+// deploy/gitstack-tls.sh ("" = il commit non lo contiene).
 func chartTarballTLS(t *testing.T, sha, tls string, k3sFile ...string) []byte {
 	t.Helper()
 	var buf bytes.Buffer
