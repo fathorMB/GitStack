@@ -119,8 +119,7 @@ const (
 		`"cloneUrls":{"https":"https://git.example.com/acme/web.git","ssh":"ssh://git@git.example.com:2222/acme/web.git"},` +
 		`"createdAt":"2026-10-01T10:00:00Z","updatedAt":"2026-10-02T10:00:00Z"}`
 
-	session     = `{"authMethod":"token","mustChangePassword":false,"user":{"username":"alice","displayName":"Alice","kind":"human"}}`
-
+	session = `{"authMethod":"token","mustChangePassword":false,"user":{"username":"alice","displayName":"Alice","kind":"human"}}`
 )
 
 func TestCreate_PrivatoDiDefaultEOwnerUtente(t *testing.T) {

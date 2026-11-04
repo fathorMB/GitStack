@@ -24,7 +24,7 @@ func newListCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:     "list [<owner>]",
 		Aliases: []string{"ls"},
 		Short:   "Elenca i repository",
-		Long: "Elenca i repository che puoi leggere, anche di un solo utente o organizzazione.",
+		Long:    "Elenca i repository che puoi leggere, anche di un solo utente o organizzazione.",
 		Example: "  gs repo list\n  gs repo list acme --visibility internal\n  gs repo list --archived --json fullName,archivedAt",
 		Args:    cobra.ArbitraryArgs,
 		RunE: func(c *cobra.Command, args []string) error {
