@@ -61,6 +61,7 @@ in_install() {
     set -- "${args[@]:-}"
     [ "$1" = "" ] && shift
     . "${INSTALL}"
+    CHART_DIR="${HERE}/../gitstack"
     GITSTACK_CONFIG_FILE="${WORK}/config.yaml"
     set +e +o pipefail
     eval "${cmd}"
@@ -228,8 +229,9 @@ expect_eq "URL col mirror" "${OUT}" "http://dl.corp:8080/k3s/install.sh
 http://dl.corp:8080/helm
 http://dl.corp:8080/gitstack/sha-abc/gitstack-linux-amd64
 http://dl.corp:8080/gitstack/source/0123.tar.gz"
-OUT="$(in_install -- 'resolve_network; printf "%s %s" "$(k3s_script_url)" "$(helm_base_url)"')"
-expect_eq "URL senza mirror" "${OUT}" "https://get.k3s.io https://get.helm.sh"
+OUT="$(in_install -- 'resolve_network; resolve_k3s_version; printf "%s %s" "$(k3s_script_url)" "$(helm_base_url)"')"
+VERSION="$(tr -d '[:space:]' <"${HERE}/../k3s-version")"
+expect_eq "URL senza mirror" "${OUT}" "https://raw.githubusercontent.com/k3s-io/k3s/${VERSION//+/%2B}/install.sh https://get.helm.sh"
 
 # --- config.yaml: scrittura e rilettura (riesecuzione) -------------------------------------------------------------
 OUT="$(in_install --http-proxy http://u:p@proxy.corp:3128 --registry-mirror http://r:5000 --registry-username 'u"x' \
@@ -263,6 +265,8 @@ net_probe_tcp() { [ "$1" != "down.corp" ]; }
 net_probe_url() { case "$1" in *dead.corp*) printf 000 ;; *forbidden.corp*) printf 403 ;; *registry.corp*) [ "${2:-}" = "u" ] && printf 200 || printf 401 ;; *) printf 200 ;; esac; }
 '
 # tutto risponde
+OUT="$(in_install -- "${STUBS}"'net_probe_url() { echo "$1" >>"${WORK}/preflight-urls"; printf 200; }; resolve_network; preflight_network')"
+expect_has "preflight: URL del tag risolto" "$(cat "${WORK}/preflight-urls")" "https://raw.githubusercontent.com/k3s-io/k3s/${VERSION//+/%2B}/install.sh"
 OUT="$(in_install --http-proxy http://proxy.corp:3128 --registry-mirror http://registry.corp:5000 --download-mirror http://dl.corp:8080 \
   -- "${STUBS}"'resolve_network; preflight_network; echo "rc=$?"')"
 expect_has "preflight: tutto risponde" "${OUT}" "rc=0"

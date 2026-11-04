@@ -22,6 +22,10 @@ bad() { FAILN=$((FAILN + 1)); printf 'FALLITO: %s\n' "$1"; }
 
 # Il file fissato nel repo è uno sha256 vero.
 pinned="$(tr -d '[:space:]' <"${HERE}/../k3s-install.sha256")"
+CHART_DIR="${HERE}/../gitstack"
+resolve_k3s_version
+expected_url="https://raw.githubusercontent.com/k3s-io/k3s/${INSTALL_K3S_VERSION//+/%2B}/install.sh"
+if [ "$(k3s_script_url)" = "${expected_url}" ]; then ok; else bad "URL del tag k3s errato"; fi
 if [[ "${pinned}" =~ ^[0-9a-f]{64}$ ]]; then ok; else bad "deploy/k3s-install.sha256 non è uno sha256: '${pinned}'"; fi
 
 mkdir -p "${WORK}/deploy/gitstack"

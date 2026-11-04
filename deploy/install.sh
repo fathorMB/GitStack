@@ -2639,7 +2639,7 @@ k3s_script_url() {
   if [ -n "${GITSTACK_DOWNLOAD_MIRROR}" ]; then
     printf '%s/k3s/install.sh' "${GITSTACK_DOWNLOAD_MIRROR}"
   else
-    printf 'https://get.k3s.io'
+    printf 'https://raw.githubusercontent.com/k3s-io/k3s/%s/install.sh' "${INSTALL_K3S_VERSION//+/%2B}"
   fi
 }
 
@@ -2976,6 +2976,9 @@ net_probe_proxy() {
 # l'installazione (altrimenti fallirebbe a metà); senza, è solo un avviso.
 preflight_network() {
   NET_PROBE_BAD=()
+  if ! k3s_already_installed; then
+    resolve_k3s_version
+  fi
   [ -z "${GITSTACK_HTTP_PROXY}" ] || net_probe_proxy "${GITSTACK_HTTP_PROXY}"
   if [ -n "${GITSTACK_HTTPS_PROXY}" ] && [ "${GITSTACK_HTTPS_PROXY}" != "${GITSTACK_HTTP_PROXY}" ]; then
     net_probe_proxy "${GITSTACK_HTTPS_PROXY}"

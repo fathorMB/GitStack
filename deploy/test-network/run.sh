@@ -261,13 +261,13 @@ cmd_verify() {
 
   log "1. La rete è davvero chiusa"
   local code
-  if vm 'curl -sS --noproxy "*" -m 8 -o /dev/null https://get.k3s.io' >/dev/null 2>&1; then
+  if vm 'curl -sS --noproxy "*" -m 8 -o /dev/null https://raw.githubusercontent.com' >/dev/null 2>&1; then
     ko "la VM raggiunge Internet senza proxy: la prova non vale"
     return 1
   fi
   ok "nessuna uscita diretta dalla VM"
-  code="$(vm "curl -s -o /dev/null -m 20 -w '%{http_code}' -x ${proxy} https://get.k3s.io" || true)"
-  [ "${code}" = "200" ] && ok "get.k3s.io raggiungibile solo attraverso il proxy" || ko "get.k3s.io via proxy: HTTP ${code}"
+  code="$(vm "curl -s -L -o /dev/null -m 20 -w '%{http_code}' -x ${proxy} https://raw.githubusercontent.com" || true)"
+  [ "${code}" = "200" ] && ok "raw.githubusercontent.com raggiungibile solo attraverso il proxy" || ko "raw.githubusercontent.com via proxy: HTTP ${code}"
   code="$(vm "curl -s -o /dev/null -m 20 -w '%{http_code}' -x ${proxy} https://ghcr.io/v2/" 2>/dev/null || true)"
   case "${code}" in
     200|401) ko "il proxy lascia passare ghcr.io: le immagini potrebbero non venire dal mirror" ;;
@@ -314,7 +314,7 @@ cmd_verify() {
     ok "nessun traffico interno del nodo passa dal proxy"
   fi
   local host
-  for host in get.k3s.io github.com get.helm.sh; do
+  for host in raw.githubusercontent.com github.com get.helm.sh; do
     if grep -q "${host}" "${STATE}/squid-access.log"; then ok "scaricato attraverso il proxy: ${host}"; else ko "nessuna richiesta a ${host} nel log del proxy"; fi
   done
   if grep -E "TCP_DENIED" "${STATE}/squid-access.log" | grep -qE "ghcr.io|docker.io|registry.k8s.io|quay.io"; then

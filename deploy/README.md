@@ -64,7 +64,7 @@ Lo script li verifica in preflight prima di installare qualunque cosa (N1, confe
 | Disco | filesystem di almeno 60 GB **e** almeno 20 GB liberi, sul filesystem che ospita `/var/lib/rancher` (se non esiste ancora, `/`) | 200 GB su SSD (fino a circa 100 utenti) |
 | Sistema | Ubuntu Server 22.04/24.04 amd64 (supportato nella v1.0); Pop!_OS 22.04/24.04 amd64 con avviso nel preflight; altri sistemi solo con `--force` | |
 | Accesso | root o sudo | |
-| Rete | uscita verso `get.k3s.io`, `get.helm.sh` e il registry delle immagini (`ghcr.io` di default, configurabile; l'air-gapped arriva con M-08) | |
+| Rete | uscita verso `raw.githubusercontent.com` (script k3s dal tag fissato), `github.com` (release k3s), `get.helm.sh` e il registry delle immagini (`ghcr.io` di default, configurabile; l'air-gapped arriva con M-08) | |
 | Porte libere | 80, 443, 6443 e la porta SSH di git (già occupate da un'installazione GitStack esistente non sono un errore: vedi Idempotenza) | |
 
 Sotto il minimo l'installer esce con exit 1 e il valore trovato; sotto il consigliato stampa `ATTENZIONE` e prosegue. L'SSD si legge da `/sys/class/block/<dev>/queue/rotational` (segue partizioni e device mapper); se non si capisce, avviso (un disco virtuale può dichiararsi rotazionale: è solo un avviso, come sulla VM di test). Lo spazio per i repo è circa il doppio della loro dimensione: sui dischi piccoli pesa il consigliato.
