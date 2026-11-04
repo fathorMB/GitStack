@@ -494,7 +494,8 @@ keeps the network values (they are Helm values) and uses the configured proxy
 for its own downloads. This includes the k3s update step (N10): with a
 `--download-mirror` configured, `gitstack upgrade` fetches the k3s install script
 and binary from `<mirror>/k3s/install.sh` and `<mirror>/k3s/releases` (the same
-layout as the installer), not from `get.k3s.io`; afterwards it removes the
+layout as the installer). Without a mirror it downloads the script from the
+target k3s version tag on `raw.githubusercontent.com`; afterwards it removes the
 `*_PROXY` lines that the k3s script copies into `k3s.service.env`, so the systemd
 drop-in stays the only source. The mirror must therefore also hold the k3s
 version declared in `deploy/k3s-version` of the version you upgrade to.
@@ -1412,7 +1413,7 @@ that version and `gitstack upgrade` compares it with the one running
 Order of the steps (always): **preventive backup → k3s → GitStack**. The checks
 come first and change nothing, so a refusal leaves the system untouched.
 While k3s restarts, all services stop for a few minutes: schedule the upgrade
-accordingly. `--dry-run` (add `--k3s` to see a minor) prints the plan.
+accordingly. `--dry-run` (add `--k3s` to see a minor) prints the plan, script URL and expected SHA-256.
 
 ```sh
 sudo gitstack upgrade --dry-run --k3s   # what would change
@@ -1445,8 +1446,11 @@ executed.
 - With `--download-mirror` the mirror's `k3s/install.sh` must be the same
   script; if it is a deliberately different one, set
   `GITSTACK_K3S_SCRIPT_SHA256=<sha256 of your script>` for the install.
-- `gitstack upgrade --k3s` is not covered by this pin (it uses its own
-  download path, `admin/internal/upgrade/k3s.go`).
+- `gitstack upgrade` uses the checksum from the destination commit, including
+  for automatic patch updates. It refuses an update when the checksum is absent
+  and executes a downloaded script only after its checksum matches. The same
+  environment variable overrides the expected checksum for an upgrade; pass it
+  explicitly through `sudo` when needed.
 - The test is `deploy/tests/k3s_script_test.sh`, run in CI.
 
 ### Traefik HelmChartConfig on installations older than GIT-403 (GIT-534)

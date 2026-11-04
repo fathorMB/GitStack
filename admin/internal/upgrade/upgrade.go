@@ -23,6 +23,7 @@ package upgrade
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -89,7 +90,7 @@ type Options struct {
 	DryRun bool
 	// AllowK3sMinor è --k3s: consente il cambio di minore di k3s (N10).
 	AllowK3sMinor bool
-	// K3sInstallURL sostituisce lo script https://get.k3s.io (test, reti chiuse).
+	// K3sInstallURL sostituisce l'URL dello script (test, reti chiuse).
 	K3sInstallURL string
 	// K3sDownloadMirror è network.download_mirror (N9a): con un valore lo script
 	// di k3s e il binario vengono da <mirror>/k3s/install.sh e
@@ -478,6 +479,18 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 		}
 	}
 	if k3s.Needed() {
+		if override := strings.TrimSpace(os.Getenv("GITSTACK_K3S_SCRIPT_SHA256")); override != "" {
+			t.K3sScriptSHA256 = override
+		}
+		t.K3sScriptSHA256 = strings.ToLower(strings.TrimSpace(t.K3sScriptSHA256))
+		if len(t.K3sScriptSHA256) != 64 {
+			res.Outcome = Refused
+			return res, refused("SHA-256 script k3s atteso non valido o mancante: trovato %q", t.K3sScriptSHA256)
+		}
+		if _, err := hex.DecodeString(t.K3sScriptSHA256); err != nil {
+			res.Outcome = Refused
+			return res, refused("SHA-256 script k3s atteso non valido: trovato %q", t.K3sScriptSHA256)
+		}
 		res.K3sFrom, res.K3sTo = k3s.From.String(), k3s.To.String()
 	}
 
@@ -538,6 +551,8 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 		o.traefikDryRun(res, newChart)
 		if k3s.Needed() {
 			res.add("k3s: %s → %s (%s): passi nell'ordine %v.", k3s.From, k3s.To, k3s.Action, Steps(k3s))
+			u, _ := o.k3sSource(k3s.To)
+			res.add("Script k3s: %s; SHA-256 atteso %s.", u, t.K3sScriptSHA256)
 		}
 		return res, nil
 	}
@@ -551,8 +566,12 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 	// 2b. k3s, dopo il backup e prima di GitStack (Steps).
 	if k3s.Needed() {
 		o.logf("==> Aggiorno k3s da %s a %s (%s): interruzione breve, i servizi si fermano e ripartono", k3s.From, k3s.To, k3s.Action)
-		if err := o.updateK3s(ctx, k3s); err != nil {
+		if err := o.updateK3s(ctx, k3s, t.K3sScriptSHA256); err != nil {
 			res.Outcome = Failed
+			var refusal *RefusedError
+			if errors.As(err, &refusal) {
+				res.Outcome = Refused
+			}
 			res.Reason = err.Error()
 			res.add("Aggiornamento di k3s NON riuscito: GitStack non è stato aggiornato (il chart è com'era).")
 			res.add("Il backup preventivo è intatto: %s", br.Path)

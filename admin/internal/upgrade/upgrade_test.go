@@ -245,6 +245,10 @@ func chartTarball(t *testing.T, sha string, k3sFile ...string) []byte {
 	for _, v := range k3sFile {
 		if v != "" {
 			add("GitStack-"+sha+"/deploy/k3s-version", v+"\n")
+			if !strings.HasPrefix(v, "no-sha:") {
+				s := sha256.Sum256([]byte("test k3s script"))
+				add("GitStack-"+sha+"/deploy/k3s-install.sha256", hex.EncodeToString(s[:]))
+			}
 		}
 	}
 	add("GitStack-"+sha+"/deploy/gitstack/Chart.yaml", "name: gitstack\nversion: 0.1.0\n")
@@ -312,6 +316,8 @@ func newWorld(t *testing.T) *world {
 		w.hits = append(w.hits, p)
 		w.hitMu.Unlock()
 		switch {
+		case strings.HasSuffix(p, "/k3s/install.sh"):
+			_, _ = io.WriteString(rw, "test k3s script")
 		case strings.HasSuffix(p, "/commits/"+newSHA), strings.HasSuffix(p, "/commits/main"), strings.HasSuffix(p, "/commits/2222222"):
 			_, _ = io.WriteString(rw, `{"sha":"`+newSHA+`"}`)
 		case strings.HasSuffix(p, "/commits/v0.2.0"):
@@ -382,6 +388,7 @@ func newWorld(t *testing.T) *world {
 			return r
 		},
 		TraefikManifest: filepath.Join(root, "manifests", "gitstack-traefik.yaml"),
+		K3sInstallURL:   w.srv.URL + "/k3s/install.sh",
 		Backup:          backup.Options{Cfg: cfg, ConfigDir: filepath.Dir(w.cfgFile), ConfigFile: w.cfgFile, BinaryVersion: "t", DestDir: w.dest},
 		Timeout:         200 * time.Millisecond,
 		Poll:            10 * time.Millisecond,
