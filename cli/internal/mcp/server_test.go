@@ -342,7 +342,7 @@ func TestStrumentiCorrispondonoAlContratto(t *testing.T) {
 // webhook, token e amministrazione.
 func TestNessunoStrumentoPerLeOperazioniEscluse(t *testing.T) {
 	banned := map[string]bool{
-		"deleteRepository": true, "updateRepository": true, "restoreRepository": true, "importRepository": true,
+		"deleteRepository": true, "updateRepository": true, "importRepository": true,
 		"getBranchSettings": true, "updateBranchSettings": true, "getAdminSystem": true, "deleteRepoWebhook": true,
 		"createRepoWebhook": true, "createToken": true, "createUserToken": true, "revokeToken": true, "deleteUser": true,
 		"deleteOrganization": true, "deleteRepoMirror": true, "stopRepoPullMirror": true, "createResourceGrant": true,

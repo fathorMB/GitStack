@@ -13,7 +13,6 @@ import { LoginPage } from './pages/LoginPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { ResourcesPage } from './pages/ResourcesPage';
 import { NewRepoPage } from "./pages/repos/NewRepoPage";
-import { DeletedReposPage } from './pages/repos/DeletedReposPage';
 import { RepoSettingsPage } from './pages/repos/RepoSettingsPage';
 import { RepoSettingsSecretsPage } from './pages/repos/RepoSettingsSecretsPage';
 import { BranchSettingsPage } from './pages/repos/BranchSettingsPage';
@@ -141,16 +140,6 @@ export function AppRoutes() {
         }
       />
       <Route
-        path="/orgs/:org/deleted-repos"
-        element={
-          <RequireAuth>
-            <AppShell crumb="Deleted repositories">
-              <DeletedReposPage />
-            </AppShell>
-          </RequireAuth>
-        }
-      />
-      <Route
         path="/settings"
         element={
           <RequireAuth>
@@ -168,7 +157,6 @@ export function AppRoutes() {
         <Route path="security" element={<SecurityPage />} />
         <Route path="sessions" element={<SessionsPage />} />
         <Route path="ssh-keys" element={<SshKeysPage />} />
-        <Route path="deleted-repos" element={<DeletedReposPage />} />
       </Route>
       {/* Rotte dinamiche dopo quelle fisse: /:owner/:repo non copre /orgs, /settings... (due segmenti) e i nomi riservati (R1, GIT-64). */}
       <Route

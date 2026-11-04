@@ -25,8 +25,6 @@ vi.mock('../../lib/reposApi', () => ({
   fetchRepo: vi.fn(),
   updateRepo: vi.fn(),
   deleteRepo: vi.fn(),
-  fetchDeletedRepos: vi.fn(),
-  restoreRepo: vi.fn(),
   fetchBranches: vi.fn(),
   fetchTags: vi.fn(),
   fetchTree: vi.fn(),
@@ -260,64 +258,21 @@ describe('NewRepoPage', () => {
   });
 });
 
-describe('NewRepoPage: nome nel cestino (R2)', () => {
-  const purgeAt = '2026-10-25T14:31:47Z';
-  function trashed(owner: string, withId = true) {
-    return new ApiError(
-      { error: { code: 'name_in_trash', message: 'Il nome e tenuto da un repo eliminato.', details: { purgeAt, owner, ...(withId ? { repoId: 'r-1' } : {}) } } },
-      409,
-    );
-  }
+describe('NewRepoPage: nome occupato (R2 rivista, GIT-530)', () => {
   beforeEach(() => {
     mockCreateRepo.mockReset();
     mockImportRepo.mockReset();
   });
 
-  it('creazione: mostra la data, il link al cestino personale e il ripristino', async () => {
-    const user = userEvent.setup({ delay: null });
-    mockCreateRepo.mockRejectedValue(trashed('alice'));
-    renderPage();
-    await user.type(await screen.findByPlaceholderText('billing-service'), 'gone');
-    await user.click(screen.getByRole('button', { name: 'Create repository' }));
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('alice/gone');
-    expect(alert).toHaveTextContent(new Date(purgeAt).toLocaleDateString());
-    expect(alert).toHaveTextContent('restore it');
-    expect(within(alert).getByRole('link', { name: 'Deleted repositories' })).toHaveAttribute('href', '/settings/deleted-repos');
-  });
-
-  it('import: il repo e di un\'organizzazione, link al suo cestino', async () => {
-    const user = userEvent.setup({ delay: null });
-    mockImportRepo.mockRejectedValue(trashed('acme'));
-    renderPage();
-    await user.click(screen.getByRole('button', { name: 'Import from URL' }));
-    await user.click(screen.getByLabelText('Source URL')); await user.paste('https://github.com/acme/example.git');
-    await user.type(screen.getByPlaceholderText('repo-name'), 'example');
-    await user.click(screen.getByRole('button', { name: 'Import repository' }));
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('acme/example');
-    expect(alert).toHaveTextContent(new Date(purgeAt).toLocaleDateString());
-    expect(within(alert).getByRole('link', { name: 'Deleted repositories' })).toHaveAttribute('href', '/orgs/acme/deleted-repos');
-  });
-
-  it('senza repoId (non admin) solo codice e data, senza link', async () => {
-    const user = userEvent.setup({ delay: null });
-    mockCreateRepo.mockRejectedValue(trashed('alice', false));
-    renderPage();
-    await user.type(await screen.findByPlaceholderText('billing-service'), 'gone');
-    await user.click(screen.getByRole('button', { name: 'Create repository' }));
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(new Date(purgeAt).toLocaleDateString());
-    expect(within(alert).queryByRole('link')).not.toBeInTheDocument();
-  });
-
-  it('un conflitto normale resta il messaggio generico', async () => {
+  it('un conflitto resta il messaggio generico, senza cestino né ripristino', async () => {
     const user = userEvent.setup({ delay: null });
     mockCreateRepo.mockRejectedValue(new ApiError({ error: { code: 'conflict', message: 'Esiste gia un repo con questo nome.' } }, 409));
     renderPage();
     await user.type(await screen.findByPlaceholderText('billing-service'), 'gone');
     await user.click(screen.getByRole('button', { name: 'Create repository' }));
     const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Esiste gia un repo con questo nome.');
     expect(alert).not.toHaveTextContent('Deleted repositories');
+    expect(within(alert).queryByRole('link')).not.toBeInTheDocument();
   });
 });

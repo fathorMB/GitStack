@@ -4,14 +4,11 @@ import {
   createRepository,
   deleteRepository,
   getRepository,
-  listDeletedRepositories,
   listRepositories,
-  restoreRepository,
   updateRepository,
 } from '@gitstack/api-client';
 import type {
   CreateRepositoryInput,
-  DeletedRepository,
   GitignoreTemplate,
   LicenseTemplate,
   OwnerType,
@@ -21,7 +18,7 @@ import type {
 } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
-export type { CreateRepositoryInput, DeletedRepository, UpdateRepositoryInput, GitignoreTemplate, LicenseTemplate, OwnerType, RepoVisibility, Repository };
+export type { CreateRepositoryInput, UpdateRepositoryInput, GitignoreTemplate, LicenseTemplate, OwnerType, RepoVisibility, Repository };
 
 // Id stabili dei modelli (D-D, uguali a GIT-69).
 export const GITIGNORE_TEMPLATES = [
@@ -68,14 +65,6 @@ export async function updateRepo(owner: string, repo: string, input: UpdateRepos
 
 export async function deleteRepo(owner: string, repo: string): Promise<void> {
   unwrapEmpty(await deleteRepository({ baseUrl: API_BASE_URL, path: { owner, repo } }));
-}
-
-export async function fetchDeletedRepos(owner?: string): Promise<DeletedRepository[]> {
-  return unwrap(await listDeletedRepositories({ baseUrl: API_BASE_URL, ...(owner ? { query: { owner } } : {}) })).items;
-}
-
-export async function restoreRepo(repoId: string): Promise<Repository> {
-  return unwrap(await restoreRepository({ baseUrl: API_BASE_URL, path: { repoId } }));
 }
 
 // R11: stessa regola del backend (D-A) piu «non finisce con .git».

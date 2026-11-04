@@ -35,6 +35,7 @@ type apiServer struct {
 	// userAccess serve GET /users/{username}/access; nil = 503.
 	userAccess identityclient.UserAccessReader
 	git        gitclient.Git
+	repoPurger RepoPurger
 	clone      CloneConfig
 	// attachments: volume e limite degli allegati (I9); Disk nil = 503.
 	attachments AttachmentsConfig

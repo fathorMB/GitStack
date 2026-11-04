@@ -22,7 +22,7 @@ sono compatibili, quindi un ricevitore ignora i campi che non conosce.
 | `push` | dopo ogni push accettato, un messaggio **per ref** (branch o tag) | nessuna |
 | `issues` | cambia una issue | `opened`, `edited`, `closed`, `reopened`, `assigned`, `unassigned`, `labeled`, `unlabeled`, `milestoned`, `demilestoned`, `locked`, `unlocked` |
 | `issue_comment` | cambia un commento di una issue | `created`, `edited`, `deleted` |
-| `repository` | cambia un repo | `created`, `deleted`, `restored`, `archived`, `unarchived`, `visibility_changed` |
+| `repository` | cambia un repo | `created`, `deleted`, `archived`, `unarchived`, `visibility_changed` |
 | `pull_request`, `pull_request_review`, `commit_status` | v1.1 (PR11): vedi la sezione dedicata | |
 
 Nessun webhook per una issue nascosta (I4) né per i suoi commenti. Nella v1

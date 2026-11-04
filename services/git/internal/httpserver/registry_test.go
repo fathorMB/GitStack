@@ -67,8 +67,9 @@ func TestRegistry_SpentoDa404(t *testing.T) {
 	}
 }
 
-// La cancellazione definitiva toglie anche le immagini, ma solo dopo aver cancellato il repo,
-// e un errore sulle immagini non la fa fallire.
+// La cancellazione definitiva toglie anche le immagini, ma solo dopo aver cancellato il repo.
+// GIT-530: un errore sulle immagini si restituisce (core ritenta) e al tentativo dopo, con il repo già
+// andato dal disco (404), le immagini si tolgono comunque.
 func TestPurge_ToglieLeImmagini(t *testing.T) {
 	var purged []string
 	var failWith error
@@ -90,13 +91,18 @@ func TestPurge_ToglieLeImmagini(t *testing.T) {
 		t.Fatalf("immagini cancellate = %v", purged)
 	}
 
-	// Errore sulle immagini: il repo è già andato, la risposta resta 204.
+	// Errore sulle immagini: 500, così core ritenta; il repo su disco è già andato.
 	id2 := "0a1b2c3d-1111-4222-8333-444455557777"
 	e.expect(e.do("POST", "/internal/git/repos", `{"repoId":"`+id2+`","name":"altro"}`, true), 201)
 	e.expect(e.do("POST", "/internal/git/repos/"+id2+"/trash", "", true), 204)
 	failWith = errors.New("disco pieno")
-	e.expect(e.do("DELETE", "/internal/git/repos/"+id2, "", true), 204)
+	e.expect(e.do("DELETE", "/internal/git/repos/"+id2, "", true), 500)
 	if len(purged) != 2 {
 		t.Errorf("immagini cancellate = %v", purged)
+	}
+	failWith = nil
+	e.expect(e.do("DELETE", "/internal/git/repos/"+id2, "", true), 404)
+	if len(purged) != 3 || purged[2] != id2 {
+		t.Errorf("al tentativo dopo le immagini non sono state tolte: %v", purged)
 	}
 }

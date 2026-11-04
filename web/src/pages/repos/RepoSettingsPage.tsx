@@ -4,8 +4,7 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button, Checkbox, ConfirmDialog, ErrorAlert, FormField, TextInput, useToast } from '../../components';
 import { ApiError, describeError, fieldErrors } from '../../lib/http';
-import { deleteRepo, fetchDeletedRepos, fetchRepo, updateRepo } from '../../lib/reposApi';
-import { purgeDate, trashPath } from './nameInTrash';
+import { deleteRepo, fetchRepo, updateRepo } from '../../lib/reposApi';
 import type { RepoVisibility, Repository, UpdateRepositoryInput } from '../../lib/reposApi';
 import { RepoMirrorsSection } from './RepoMirrorsSection';
 import { PullMirrorSection } from './PullMirrorSection';
@@ -95,17 +94,8 @@ function SettingsSections({ repo, onChange }: { repo: Repository; onChange: (r: 
   async function remove() {
     try {
       await deleteRepo(repo.owner.name, repo.name);
-      // La data di cancellazione definitiva la dice il server (il DELETE e' 204
-      // senza corpo): la si rilegge dal cestino, mai dall'orologio del browser.
-      let when = '';
-      try {
-        const trashed = (await fetchDeletedRepos(repo.owner.name)).find((r) => r.id === repo.id);
-        if (trashed) when = ` until ${purgeDate(trashed.purgeAt)}, then it is removed permanently`;
-      } catch {
-        // il repo e' eliminato comunque: il toast resta senza data.
-      }
-      toast(`${repo.fullName} was deleted. Find it in Deleted repositories${when || ' for 7 days'}; its name stays reserved until then.`, 'success');
-      navigate(trashPath(repo.owner.name, repo.owner.type));
+      toast(`${repo.fullName} was deleted permanently. The name is free again.`, 'success');
+      navigate('/');
     } catch (err) {
       setDangerError(describeError(err));
     }
@@ -256,8 +246,7 @@ function SettingsSections({ repo, onChange }: { repo: Repository; onChange: (r: 
             <div style={{ flex: 1 }}>
               <b>Delete this repository</b>
               <div className="small muted">
-                It disappears immediately for everyone. Admins can restore it for 7 days from Deleted repositories; after that it is removed permanently.
-                The name stays reserved until then.
+                Permanently deletes the repository and everything in it, right away. There is no trash and no undo: it can only come back from a backup.
               </div>
             </div>
             <Button variant="danger" disabled={readOnly || busy} onClick={() => setConfirm('delete')}>
@@ -279,9 +268,19 @@ function SettingsSections({ repo, onChange }: { repo: Repository; onChange: (r: 
       <ConfirmDialog
         open={confirm === 'delete'}
         onOpenChange={(o) => !o && setConfirm(null)}
-        title={`Delete ${repo.fullName}?`}
-        description="The repository disappears immediately for everyone. For 7 days an admin can restore it from Deleted repositories; after that it is removed permanently. The name stays reserved until then."
-        confirmLabel="Delete repository"
+        title={`Delete ${repo.fullName}`}
+        description={
+          <>
+            <b>This cannot be undone.</b> The repository is deleted immediately and permanently. There is no trash and no restore button: it can
+            only come back from a GitStack backup, which an installation admin restores with <span className="mono">gitstack restore</span>.
+            <br />
+            Deleted right away: code, branches and tags; issues with comments and attachments; pull requests; releases and their files; registry
+            images; apps and their volumes; webhooks and the pull mirror settings. The name {repo.fullName} becomes free as soon as the deletion
+            completes.
+          </>
+        }
+        confirmInput={{ placeholder: repo.fullName, expected: repo.fullName }}
+        confirmLabel="Delete this repository permanently"
         destructive
         onConfirm={() => void remove()}
       />

@@ -4,6 +4,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -11,7 +12,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/fathorMB/GitStack/services/core/internal/dbtest"
 	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
@@ -156,72 +159,84 @@ func (l *lifecycle) diskUsed() int64 {
 	return used.DiskBytes
 }
 
-func (l *lifecycle) purgeJob(now time.Time) *repopurge.Job {
-	return &repopurge.Job{Store: l.st, Git: lifecycleGit{}, Identity: lifecycleAccess{}, Apps: l.ctl, Now: func() time.Time { return now }}
+func (l *lifecycle) purgeJob() *repopurge.Job {
+	return &repopurge.Job{Store: l.st, Git: lifecycleGit{}, Identity: lifecycleAccess{}, Apps: l.ctl}
 }
 
-// Criterio 1: ripristino entro 7 giorni riporta i dati; dopo 7 giorni PVC eliminati e quota liberata.
-func TestRepoEliminato_VolumiTornanoEntroSetteGiorniEvannoDopo(t *testing.T) {
+// deleteRepo fa quello che fa DELETE /repos/{owner}/{repo}: la riga del repo cade (e con lei il modello
+// delle app) nella transazione, e il repo entra nella coda di pulizia.
+func (l *lifecycle) deleteRepo() {
+	l.t.Helper()
+	ctx := context.Background()
+	tx, err := l.st.BeginRepo(ctx)
+	if err != nil {
+		l.t.Fatal(err)
+	}
+	defer tx.Rollback(ctx)
+	cur, err := tx.Lock(ctx, l.repo)
+	if err != nil {
+		l.t.Fatal(err)
+	}
+	if err := tx.DeleteRepo(ctx, cur); err != nil {
+		l.t.Fatal(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		l.t.Fatal(err)
+	}
+}
+
+// Criterio 1 (GIT-530, H5): eliminando il repo l'app e i suoi volumi spariscono subito, senza i 7 giorni:
+// PVC, namespace e quota dell'owner. Se il cluster non risponde il repo resta in coda e il giro dopo
+// completa, senza lasciare PVC orfani.
+func TestRepoEliminato_VolumiSpariscono(t *testing.T) {
 	ctx := context.Background()
 	l := newLifecycle(t)
 	if !l.pvc() || l.replicas() != 1 || l.diskUsed() != 1<<30 {
 		t.Fatalf("partenza: pvc=%v repliche=%d disco=%d", l.pvc(), l.replicas(), l.diskUsed())
 	}
+	appID := l.app.ID
 
-	// Il repo viene eliminato: l'app si ferma subito, volumi e quota restano.
-	deletedAt := l.t0
-	l.setRepo("deleted_at", &deletedAt)
-	app := l.reload()
-	if err := l.ctl.Scale(ctx, app); err != nil {
-		t.Fatal(err)
-	}
-	if got := l.replicas(); got != 0 {
-		t.Fatalf("repo eliminato: repliche %d, volute 0", got)
-	}
-	l.ctl.pruneVolumes(ctx, app)
-	if !l.pvc() || l.volumeRows() != 1 || l.diskUsed() != 1<<30 {
-		t.Fatalf("dentro i 7 giorni i volumi restano: pvc=%v righe=%d disco=%d", l.pvc(), l.volumeRows(), l.diskUsed())
-	}
-
-	// Una corsa del purge a 6 giorni e 23 ore non tocca niente.
-	if n, err := l.purgeJob(deletedAt.Add(store.Retention - time.Hour)).RunOnce(ctx); err != nil || n != 0 {
-		t.Fatalf("purge troppo presto: n=%d err=%v", n, err)
-	}
-	if !l.pvc() {
-		t.Fatal("il purge anticipato ha toccato il PVC")
-	}
-
-	// Ripristino a 6 giorni: l'app riparte e il PVC (con i dati) è lo stesso.
-	l.mark()
-	l.setRepo("deleted_at", nil)
-	app = l.reload()
-	if err := l.ctl.Scale(ctx, app); err != nil {
-		t.Fatal(err)
-	}
-	if l.replicas() != 1 || !l.marked() {
-		t.Fatalf("ripristino: repliche=%d, PVC cambiato", l.replicas())
-	}
-	if l.volumeRows() != 1 || l.diskUsed() != 1<<30 {
-		t.Fatalf("ripristino: righe=%d disco=%d", l.volumeRows(), l.diskUsed())
-	}
-
-	// Eliminato di nuovo e questa volta lasciato scadere: dopo 7 giorni app, PVC e quota spariscono.
-	l.setRepo("deleted_at", &deletedAt)
-	n, err := l.purgeJob(deletedAt.Add(store.Retention + time.Minute)).RunOnce(ctx)
-	if err != nil || n != 1 {
-		t.Fatalf("purge dopo 7 giorni: n=%d err=%v", n, err)
-	}
-	if l.pvc() {
-		t.Fatal("dopo 7 giorni il PVC deve essere eliminato")
-	}
-	if _, err := l.kube.CoreV1().Namespaces().Get(ctx, Namespace(app.ID), metav1.GetOptions{}); !apierrors.IsNotFound(err) {
-		t.Fatalf("il namespace deve sparire: %v", err)
+	l.deleteRepo()
+	// Nel database è già tutto sparito e la quota è libera; nel cluster il PVC aspetta la pulizia.
+	if _, err := l.st.GetAppByID(ctx, appID); err == nil {
+		t.Fatal("l'app deve sparire dal modello con il repo")
 	}
 	if got := l.diskUsed(); got != 0 {
-		t.Fatalf("quota disco dopo il purge = %d, voluta 0", got)
+		t.Fatalf("quota disco dopo l'eliminazione = %d, voluta 0", got)
 	}
-	if _, err := l.st.GetAppByID(ctx, app.ID); err == nil {
-		t.Fatal("l'app deve sparire dal modello")
+	if !l.pvc() {
+		t.Fatal("il PVC non può sparire prima della pulizia")
+	}
+
+	// Il cluster non risponde: errore, il repo resta in coda con un tentativo.
+	l.kube.PrependReactor("delete", "persistentvolumeclaims", func(k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, errors.New("cluster non raggiungibile")
+	})
+	if err := l.purgeJob().Purge(ctx, l.repo); err == nil {
+		t.Fatal("Purge doveva fallire con il cluster giù")
+	}
+	var attempts int
+	if err := l.pool.QueryRow(ctx, `SELECT attempts FROM core.repo_cleanup WHERE repo_id = $1`, l.repo).Scan(&attempts); err != nil || attempts != 1 {
+		t.Fatalf("coda: attempts=%d err=%v", attempts, err)
+	}
+	if !l.pvc() {
+		t.Fatal("il PVC non doveva sparire con il cluster giù")
+	}
+
+	// Cluster di nuovo su: il giro periodico toglie PVC e namespace.
+	l.kube.ReactionChain = l.kube.ReactionChain[1:]
+	if n, err := l.purgeJob().RunOnce(ctx); err != nil || n != 1 {
+		t.Fatalf("RunOnce = %d, %v", n, err)
+	}
+	if l.pvc() {
+		t.Fatal("il PVC deve essere eliminato")
+	}
+	if _, err := l.kube.CoreV1().Namespaces().Get(ctx, Namespace(appID), metav1.GetOptions{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("il namespace deve sparire: %v", err)
+	}
+	var left int
+	if err := l.pool.QueryRow(ctx, `SELECT count(*) FROM core.repo_cleanup`).Scan(&left); err != nil || left != 0 {
+		t.Fatalf("coda dopo il giro: %d %v", left, err)
 	}
 }
 
@@ -241,8 +256,8 @@ func TestRepoArchiviato_AppFermaDatiRestano(t *testing.T) {
 	if l.replicas() != 0 || !l.pvc() || l.volumeRows() != 1 || l.diskUsed() != 1<<30 {
 		t.Fatalf("archiviato: repliche=%d pvc=%v righe=%d disco=%d", l.replicas(), l.pvc(), l.volumeRows(), l.diskUsed())
 	}
-	// Il purge dei repo eliminati non riguarda un repo solo archiviato, nemmeno dopo anni.
-	if n, err := l.purgeJob(l.t0.AddDate(1, 0, 0)).RunOnce(ctx); err != nil || n != 0 || !l.pvc() {
+	// La pulizia dei repo eliminati non riguarda un repo solo archiviato.
+	if n, err := l.purgeJob().RunOnce(ctx); err != nil || n != 0 || !l.pvc() {
 		t.Fatalf("purge su archiviato: n=%d err=%v pvc=%v", n, err, l.pvc())
 	}
 

@@ -111,11 +111,6 @@ function OrgView({ org }: { org: string }) {
           </div>
         </div>
         <span className="sp" />
-        {canManageOrg ? (
-          <Link to={`/orgs/${organization.name}/deleted-repos`} className="small">
-            Deleted repositories
-          </Link>
-        ) : null}
         {myRole === 'owner' ? (
           <Link to={`/orgs/${organization.name}/webhooks`} className="small">
             Webhooks

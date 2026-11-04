@@ -38,7 +38,7 @@ precedence over everything. Inside a clone, `gs` finds the repository from the
 
 | Group | For |
 |---|---|
-| `gs repo` | create, list, view, clone, edit, archive, delete, restore |
+| `gs repo` | create, list, view, clone, edit, archive, delete |
 | `gs issue` | create, list, view, edit, comment, close, reopen, lock |
 | `gs pr` | create, list, view, checkout, diff, review, comment, ready, merge, close, status |
 | `gs label`, `gs milestone` | manage labels and milestones |

@@ -82,6 +82,7 @@ func newAPIServerWithOptions(pool *pgxpool.Pool, publisher events.Publisher, opt
 		repoIdentity: o.repoIdentity,
 		userAccess:   o.userAccess,
 		git:          o.git,
+		repoPurger:   o.repoPurger,
 		clone:        o.clone,
 		attachments:  o.attachments,
 		hooks:        o.hooks,
@@ -160,6 +161,7 @@ type routerOptions struct {
 	repoIdentity identityclient.RepoIdentity
 	userAccess   identityclient.UserAccessReader
 	git          gitclient.Git
+	repoPurger   RepoPurger
 	clone        CloneConfig
 	attachments  AttachmentsConfig
 	hooks        WebhookConfig

@@ -2,7 +2,6 @@ package repo
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -105,9 +104,10 @@ func newDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "delete [<owner>/<repo>]",
 		Aliases: []string{"rm"},
-		Short:   "Elimina un repository (recuperabile per 7 giorni)",
-		Long: "Elimina un repo (R12, R2): sparisce subito da elenchi e clone, ma per 7 giorni si recupera con `gs repo restore`; " +
-			"poi è cancellato per sempre. Serve il ruolo admin. Chiede di riscrivere `owner/repo` (G8): senza terminale serve --yes, altrimenti exit 2.",
+		Short:   "Elimina un repository, subito e per sempre",
+		Long: "Elimina un repo (R12, R2): l'eliminazione è definitiva e immediata, senza cestino. Spariscono dati git, issue, PR, release, immagini, app e volumi, " +
+			"e il nome torna libero; si recupera solo da un backup (`gitstack restore`). Serve il ruolo admin. " +
+			"Chiede di riscrivere `owner/repo` (G8): senza terminale serve --yes, altrimenti exit 2.",
 		Example: "  gs repo delete acme/web\n  gs repo delete acme/web --yes",
 		Args:    cobra.ArbitraryArgs,
 		RunE: func(c *cobra.Command, args []string) error {
@@ -132,72 +132,10 @@ func newDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 			if err := e.check(resp.StatusCode(), resp.Body); err != nil {
 				return err
 			}
-			_, _ = fmt.Fprintf(f.IO.ErrOut, "Eliminato %s/%s: si recupera per 7 giorni con `gs repo restore %s/%s`\n", owner, name, owner, name)
+			_, _ = fmt.Fprintf(f.IO.ErrOut, "Eliminato %s/%s: definitivo, si recupera solo da un backup (`gitstack restore`)\n", owner, name)
 			return nil
 		},
 	}
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Conferma senza chiedere (obbligatorio senza terminale)")
-	return cmd
-}
-
-func newRestoreCmd(f *cmdutil.Factory) *cobra.Command {
-	var jo output.JSONOptions
-	cmd := &cobra.Command{
-		Use:   "restore <owner>/<repo>",
-		Short: "Recupera un repository eliminato",
-		Long: "Recupera un repo eliminato da meno di 7 giorni (R2) con il suo contenuto. Il nome non deve essere stato preso nel frattempo " +
-			"(409). Si trovano con `gs repo list --deleted`. Su stdout l'indirizzo web.",
-		Example: "  gs repo restore acme/web",
-		Args:    cobra.ArbitraryArgs,
-		RunE: func(c *cobra.Command, args []string) error {
-			if len(args) != 1 {
-				return cmdutil.UsageErrorf("serve il repo: gs repo restore <owner>/<repo>")
-			}
-			owner, name, err := parseTarget(args[0])
-			if err != nil {
-				return err
-			}
-			e, err := newEnv(f)
-			if err != nil {
-				return err
-			}
-			lr, err := e.gen.ListDeletedRepositoriesWithResponse(c.Context(), &gitstack.ListDeletedRepositoriesParams{Owner: &owner})
-			if err != nil {
-				return err
-			}
-			if err := e.check(lr.StatusCode(), lr.Body); err != nil {
-				return err
-			}
-			if lr.JSON200 == nil {
-				return unexpected(lr.StatusCode())
-			}
-			var found *gitstack.DeletedRepository
-			for i, d := range lr.JSON200.Items {
-				if strings.EqualFold(string(d.Owner.Name), owner) && d.Name == name {
-					found = &lr.JSON200.Items[i]
-					break
-				}
-			}
-			if found == nil {
-				return &cmdutil.ExitError{Code: cmdutil.ExitNotFound, ErrCode: "not_found",
-					Err: fmt.Errorf("nessun repository eliminato %s/%s da recuperare (si vedono con `gs repo list --deleted`)", owner, name)}
-			}
-			resp, err := e.gen.RestoreRepositoryWithResponse(c.Context(), found.Id)
-			if err != nil {
-				return err
-			}
-			if err := e.check(resp.StatusCode(), resp.Body); err != nil {
-				return err
-			}
-			if resp.JSON200 == nil {
-				return unexpected(resp.StatusCode())
-			}
-			if !jo.Enabled() {
-				_, _ = fmt.Fprintf(f.IO.ErrOut, "Recuperato %s\n", resp.JSON200.FullName)
-			}
-			return e.printRepo(&jo, resp.JSON200)
-		},
-	}
-	output.AddJSONFlags(cmd, &jo, RepoFields)
 	return cmd
 }

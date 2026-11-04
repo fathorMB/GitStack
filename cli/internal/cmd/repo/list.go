@@ -19,15 +19,13 @@ func newListCmd(f *cmdutil.Factory) *cobra.Command {
 		visibility string
 		archived   bool
 		active     bool
-		deleted    bool
 	)
 	cmd := &cobra.Command{
 		Use:     "list [<owner>]",
 		Aliases: []string{"ls"},
 		Short:   "Elenca i repository",
-		Long: "Elenca i repository che puoi leggere, anche di un solo utente o organizzazione. " +
-			"Con --deleted elenca quelli eliminati di cui sei proprietario o admin, ancora recuperabili con `gs repo restore` (R2, 7 giorni).",
-		Example: "  gs repo list\n  gs repo list acme --visibility internal\n  gs repo list --archived --json fullName,archivedAt\n  gs repo list --deleted",
+		Long:    "Elenca i repository che puoi leggere, anche di un solo utente o organizzazione.",
+		Example: "  gs repo list\n  gs repo list acme --visibility internal\n  gs repo list --archived --json fullName,archivedAt",
 		Args:    cobra.ArbitraryArgs,
 		RunE: func(c *cobra.Command, args []string) error {
 			if len(args) > 1 {
@@ -48,9 +46,6 @@ func newListCmd(f *cmdutil.Factory) *cobra.Command {
 					return cmdutil.UsageErrorf("--visibility: private o internal (non %q)", visibility)
 				}
 			}
-			if deleted && (visibility != "" || archived || active) {
-				return cmdutil.UsageErrorf("--deleted non si combina con --visibility, --archived e --no-archived")
-			}
 			var owner *string
 			if len(args) == 1 {
 				o := strings.TrimPrefix(strings.TrimSpace(args[0]), "@")
@@ -59,9 +54,6 @@ func newListCmd(f *cmdutil.Factory) *cobra.Command {
 			e, err := newEnv(f)
 			if err != nil {
 				return err
-			}
-			if deleted {
-				return e.listDeleted(c, &jo, owner, limit)
 			}
 			per := limit
 			if per > 100 {
@@ -129,44 +121,6 @@ func newListCmd(f *cmdutil.Factory) *cobra.Command {
 	fl.StringVar(&visibility, "visibility", "", "Solo repo private o internal")
 	fl.BoolVar(&archived, "archived", false, "Solo repo archiviati")
 	fl.BoolVar(&active, "no-archived", false, "Solo repo non archiviati")
-	fl.BoolVar(&deleted, "deleted", false, "Elenca i repo eliminati e ancora recuperabili")
-	output.AddJSONFlags(cmd, &jo, ListFields)
+	output.AddJSONFlags(cmd, &jo, RepoFields)
 	return cmd
-}
-
-func (e *env) listDeleted(c *cobra.Command, jo *output.JSONOptions, owner *string, limit int) error {
-	resp, err := e.gen.ListDeletedRepositoriesWithResponse(c.Context(), &gitstack.ListDeletedRepositoriesParams{Owner: owner})
-	if err != nil {
-		return err
-	}
-	if err := e.check(resp.StatusCode(), resp.Body); err != nil {
-		return err
-	}
-	if resp.JSON200 == nil {
-		return unexpected(resp.StatusCode())
-	}
-	items := resp.JSON200.Items
-	if len(items) > limit {
-		items = items[:limit]
-	}
-	f := e.f
-	if jo.Enabled() {
-		out := make([]deletedOut, len(items))
-		for i, d := range items {
-			o := string(d.Owner.Name)
-			out[i] = deletedOut{DeletedRepository: d, FullName: o + "/" + d.Name, URL: e.webURL(o, d.Name)}
-		}
-		return jo.Write(f.IO.Out, out, f.IO.OutTTY)
-	}
-	if len(items) == 0 {
-		if f.IO.OutTTY {
-			_, _ = fmt.Fprintln(f.IO.ErrOut, "Nessun repository eliminato da recuperare")
-		}
-		return nil
-	}
-	t := output.NewTable(f.IO.OutTTY, f.IO.Width, "REPO", "ELIMINATO", "CANCELLAZIONE DEFINITIVA")
-	for _, d := range items {
-		t.AddRow(string(d.Owner.Name)+"/"+d.Name, day(d.DeletedAt), day(d.PurgeAt))
-	}
-	return t.Render(f.IO.Out)
 }

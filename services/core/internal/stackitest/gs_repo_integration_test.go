@@ -321,7 +321,7 @@ func TestGsRepo(t *testing.T) {
 		g.mustGit(w, "", "push", "-q", "origin", "main")
 	})
 
-	t.Run("delete_restore_G8_R2", func(t *testing.T) {
+	t.Run("delete_definitiva_G8_R2", func(t *testing.T) {
 		// senza TTY e senza --yes: exit 2, nulla cambia
 		repoExit(g, 2, gsOpts{user: "alice", stdin: "alice/demo\n"}, "repo", "delete", "alice/demo")
 		want(t, g.api("alice", "GET", "/repos/alice/demo", nil), 200, "")
@@ -330,7 +330,7 @@ func TestGsRepo(t *testing.T) {
 		want(t, g.api("alice", "GET", "/repos/alice/tool", nil), 200, "")
 
 		r := repoOK(g, alice, "repo", "delete", "alice/demo", "--yes")
-		if !strings.Contains(r.errOut, "gs repo restore alice/demo") {
+		if !strings.Contains(r.errOut, "definitivo") || strings.Contains(r.errOut, "restore alice/demo") {
 			t.Errorf("messaggio: %q", r.errOut)
 		}
 		want(t, g.api("alice", "GET", "/repos/alice/demo", nil), 404, "not_found")
@@ -338,26 +338,10 @@ func TestGsRepo(t *testing.T) {
 			t.Errorf("l'eliminato è ancora in list: %v", l)
 		}
 		repoExit(g, 6, alice, "repo", "view", "alice/demo")
-
-		var del []map[string]any
-		if err := json.Unmarshal([]byte(repoOK(g, alice, "repo", "list", "--deleted", "--json", "fullName,deletedAt,purgeAt,id").out), &del); err != nil {
-			t.Fatal(err)
-		}
-		if len(del) != 1 || del[0]["fullName"] != "alice/demo" || del[0]["purgeAt"] == nil || del[0]["id"] == nil {
-			t.Errorf("list --deleted: %v", del)
-		}
-		if r := repoOK(g, alice, "repo", "list", "--deleted"); !strings.HasPrefix(r.out, "alice/demo\t") {
-			t.Errorf("tabella degli eliminati: %q", r.out)
-		}
-		// restore: torna con le impostazioni di prima
-		m := jsonMap(t, repoOK(g, alice, "repo", "restore", "alice/demo", "--json", "fullName,visibility,description").out)
-		if m["fullName"] != "alice/demo" || m["visibility"] != "private" || m["description"] != "Nuova descrizione" {
-			t.Errorf("restore: %v", m)
-		}
-		want(t, g.api("alice", "GET", "/repos/alice/demo", nil), 200, "")
-		// non c'è più niente da recuperare
-		repoExit(g, 6, alice, "repo", "restore", "alice/demo")
-		repoExit(g, 2, alice, "repo", "restore")
+		// GIT-530: niente cestino né ripristino, e il nome è subito libero.
+		repoExit(g, 2, alice, "repo", "restore", "alice/demo")
+		repoExit(g, 2, alice, "repo", "list", "--deleted")
+		want(t, g.api("alice", "POST", "/repos", map[string]any{"owner": "alice", "name": "demo"}), 201, "")
 	})
 }
 

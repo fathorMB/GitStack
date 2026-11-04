@@ -63,7 +63,6 @@ const (
 
 	RepositoryCreated           = "repository.created"
 	RepositoryDeleted           = "repository.deleted"
-	RepositoryRestored          = "repository.restored"
 	RepositoryArchived          = "repository.archived"
 	RepositoryUnarchived        = "repository.unarchived"
 	RepositoryVisibilityChanged = "repository.visibility_changed"
@@ -74,7 +73,7 @@ var (
 	IssueNames = []string{IssueCreated, IssueEdited, IssueClosed, IssueReopened, IssueAssigned, IssueUnassigned,
 		IssueLabeled, IssueUnlabeled, IssueMilestoned, IssueDemilestoned, IssueLocked, IssueUnlocked, IssueHidden, IssueUnhidden}
 	IssueCommentNames = []string{IssueCommentCreated, IssueCommentEdited, IssueCommentDeleted}
-	RepositoryNames   = []string{RepositoryCreated, RepositoryDeleted, RepositoryRestored, RepositoryArchived,
+	RepositoryNames   = []string{RepositoryCreated, RepositoryDeleted, RepositoryArchived,
 		RepositoryUnarchived, RepositoryVisibilityChanged}
 )
 
@@ -184,14 +183,12 @@ type RepositoryChanges struct {
 	Visibility *From `json:"visibility,omitempty"`
 }
 
-// RepositoryPayload è lo schema v1 degli eventi repository.*. DeletedAt e
-// PurgeAt (RFC 3339, purge = 7 giorni dopo, R2) solo per repository.deleted.
+// RepositoryPayload è lo schema v1 degli eventi repository.*. DeletedAt (RFC 3339) solo per repository.deleted.
 type RepositoryPayload struct {
 	Repo      Repo               `json:"repo"`
 	Actor     *User              `json:"actor"`
 	Changes   *RepositoryChanges `json:"changes,omitempty"`
 	DeletedAt string             `json:"deletedAt,omitempty"`
-	PurgeAt   string             `json:"purgeAt,omitempty"`
 }
 
 // Eventi delle Pull Request (v1.1, GIT-265, PR11). Come gli altri passano
