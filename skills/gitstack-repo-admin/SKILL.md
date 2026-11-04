@@ -32,17 +32,16 @@ gs repo create tool --add-readme --gitignore go --license mit
 gs repo edit acme/web --description "Nuova descrizione"
 ```
 
-## Archiviare, eliminare, recuperare
+## Archiviare ed eliminare
 
 ```
 gs repo archive acme/web
 gs repo unarchive acme/web
 gs repo delete acme/web
-gs repo restore acme/web
 ```
 
 - `archive`: il repo resta leggibile e clonabile, ma push, issue e commenti sono rifiutati. `unarchive` lo riattiva.
-- `delete`: sparisce subito, ma per 7 giorni si recupera con `gs repo restore`; poi è cancellato per sempre.
+- `delete`: è definitivo e immediato, senza cestino e senza `restore`: spariscono codice, issue, PR, release, immagini, app e volumi, e il nome torna libero. Si recupera solo da un backup (`gitstack restore`, a cura dell'amministratore dell'installazione).
 - Servono i permessi di admin sul repo.
 
 ### Divieto di `--yes` (G8)

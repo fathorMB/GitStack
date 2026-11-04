@@ -371,8 +371,7 @@ Campi: solo i comuni, più `changes` dove indicato.
 | Evento | Campi in più |
 |---|---|
 | `repository.created` | |
-| `repository.deleted` | `deletedAt`, `purgeAt` (7 giorni dopo, R2) |
-| `repository.restored` | |
+| `repository.deleted` | `deletedAt` (eliminazione definitiva, R2: niente cestino né ripristino) |
 | `repository.archived`, `repository.unarchived` | |
 | `repository.visibility_changed` | `changes`: `{ visibility: { from } }` |
 

@@ -161,7 +161,7 @@ Problems by severity: critical 0, high 1, medium 7, low 9. No critical problem w
 | V3.5.1 | Revoke OAuth tokens of linked apps | n/a | GitStack is only an OIDC client and exposes no OAuth provider or third-party app grants. |
 | V3.5.2 | Session tokens rather than static API secrets | ok | The web uses session cookies; personal tokens exist for Git and CLI only, with mandatory expiry, scopes and revocation (`services/identity/internal/apitokens/apitokens_integration_test.go#TestRevokeAndList`). |
 | V3.5.3 | Stateless tokens protected | ok | The only stateless tokens are OIDC ID tokens (`services/identity/internal/oidc/service_test.go#TestFinish_TokenValidation`) and the HMAC identity header with timestamp (`services/core/internal/trust/trust_test.go#TestVerify_Rifiuti`). |
-| V3.7.1 | Re-authentication for sensitive transactions | ok | Password change needs the current password (`services/identity/internal/httpapi/httpapi_integration_test.go#TestChangePassword`); repository deletion is recoverable for 7 days (`services/core/internal/httpserver/repos_trash_integration_test.go#TestRepos_EliminazioneERipristino`). |
+| V3.7.1 | Re-authentication for sensitive transactions | ok | Password change needs the current password (`services/identity/internal/httpapi/httpapi_integration_test.go#TestChangePassword`); repository deletion is immediate and permanent, with no trash (GIT-530; it comes back only from a backup): `services/core/internal/httpserver/repos_delete_integration_test.go#TestRepos_EliminazioneTogliTutto`. |
 
 ## V4 Access Control
 
@@ -265,7 +265,7 @@ Problems by severity: critical 0, high 1, medium 7, low 9. No critical problem w
 | V8.3.5 | Audit of access to regulated data | n/a | No regulated data classification applies; general auditing is F10. |
 | V8.3.6 | Memory overwritten after use | n/a | Not feasible in Go (immutable strings, GC); a memory dump needs root on the host. |
 | V8.3.7 | Encrypted with approved algorithms | ok | AES-256-GCM: `services/core/internal/webhooks/unit_test.go#TestKeyring_CifraDecifraERotazione`, `services/identity/internal/oidc/crypto_test.go`. |
-| V8.3.8 | Retention classification | ok | Trash 7 days, notifications, delivery logs 30 days, mirror logs 50 runs or 30 days: `services/core/internal/httpserver/repos_trash_integration_test.go#TestRepos_EliminazioneERipristino`, `services/core/internal/httpserver/mirrors_pull_engine_integration_test.go#TestPullMirror_Registro_50E30Giorni`. |
+| V8.3.8 | Retention classification | ok | Deleted repositories removed at once (no trash), notifications, delivery logs 30 days, mirror logs 50 runs or 30 days: `services/core/internal/httpserver/repos_delete_integration_test.go#TestRepos_EliminazioneTogliTutto`, `services/core/internal/httpserver/mirrors_pull_engine_integration_test.go#TestPullMirror_Registro_50E30Giorni`. |
 
 ## V9 Communication
 

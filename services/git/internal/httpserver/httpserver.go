@@ -249,17 +249,20 @@ func (h *handler) restore(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) purge(w http.ResponseWriter, r *http.Request) {
 	h.simple(w, r, "cancellazione definitiva", func(id string) error {
-		if err := h.Store.Purge(id); err != nil {
+		// GIT-530: l'eliminazione è definitiva e core la ritenta finché non riesce, quindi un errore sulle
+		// immagini del registry si restituisce (500) e la corsa dopo le toglie: anche se il repo su disco
+		// non c'è più (404) le immagini si cancellano, così un tentativo interrotto a metà si completa.
+		err := h.Store.Purge(id)
+		if err != nil && !errors.Is(err, repostore.ErrNotFound) {
 			return err
 		}
-		// Il repo è già cancellato e non si può più ripristinare: un errore sulle immagini
-		// non deve far fallire la cancellazione (core non la ritenterebbe), resta nel log.
 		if h.RegistryPurge != nil {
-			if err := h.RegistryPurge(r.Context(), id); err != nil {
-				h.Logger.Error("immagini del registry non cancellate", "repoId", id, "err", err)
+			if rerr := h.RegistryPurge(r.Context(), id); rerr != nil {
+				h.Logger.Error("immagini del registry non cancellate", "repoId", id, "err", rerr)
+				return rerr
 			}
 		}
-		return nil
+		return err
 	})
 }
 

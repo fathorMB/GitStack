@@ -195,26 +195,25 @@ Sono quelli dello schema dell'API (camelCase), più `url` (pagina web della PR).
 
 ## `gs repo` (GIT-165, G4)
 
-Sottocomandi: `create`, `list` (`ls`), `view`, `clone`, `edit`, `archive`, `unarchive`, `delete` (`rm`), `restore`. Salvo `create`, `list` e `restore`, il repo è l'argomento `owner/repo` (anche un URL di clone), altrimenti `-R` o il remote `origin`. Le regole le applica l'API (R1, R2, R5, R9, R10, R12, P7): `gs` mostra l'errore e lo traduce nel codice di uscita.
+Sottocomandi: `create`, `list` (`ls`), `view`, `clone`, `edit`, `archive`, `unarchive`, `delete` (`rm`). Salvo `create` e `list`, il repo è l'argomento `owner/repo` (anche un URL di clone), altrimenti `-R` o il remote `origin`. Le regole le applica l'API (R1, R2, R5, R9, R10, R12, P7): `gs` mostra l'errore e lo traduce nel codice di uscita.
 
 | Comando | Cosa fa | Flag principali |
 |---|---|---|
 | `create [<owner>/]<nome>` | crea il repo; su stdout l'indirizzo web. Owner: l'utente che chiama, o l'organizzazione data nel nome o con `-o/--owner`. **Privato di default (P7)**; non esiste l'accesso anonimo (`--public` non c'è) | `-d/--description`, `--visibility private\|internal`, `--private`, `--internal`, `--add-readme`, `--gitignore <modello>`, `--license <modello>` (contenuto iniziale facoltativo, R5: primo commit su `main`), `--no-default-labels` |
-| `list [<owner>]` | elenca i repo leggibili (`-L 30`); con `<owner>` solo i suoi | `--visibility`, `--archived`, `--no-archived`, `--deleted` (i repo eliminati ancora recuperabili), `-L/--limit` |
+| `list [<owner>]` | elenca i repo leggibili (`-L 30`); con `<owner>` solo i suoi | `--visibility`, `--archived`, `--no-archived`, `-L/--limit` |
 | `view [<repo>]` | nome, descrizione, visibilità, stato, branch principale, indirizzi di clone | `-w/--web` |
 | `clone <repo> [<cartella>] [-- opzioni di git]` | `git clone` dell'indirizzo dell'installazione: HTTPS di default, SSH (`ssh://git@<host>:2222/...`, R7) con `-p/--protocol ssh` o se la configurazione dell'istanza ha `git_protocol: ssh`. Con HTTPS l'accesso usa il token via `gs auth setup-git` | `-p/--protocol https\|ssh` |
 | `edit [<repo>]` | modifica (serve admin) | `-d`, `--visibility private\|internal`, `--default-branch`, `--protect-default-branch[=false]` (R9) |
 | `archive [<repo>]` / `unarchive [<repo>]` | sola lettura (R10) e ritorno | `archive` chiede conferma (G8) |
-| `delete [<repo>]` | elimina, recuperabile per 7 giorni (R2, R12) | conferma (G8) |
-| `restore <repo>` | recupera un repo eliminato da meno di 7 giorni | |
+| `delete [<repo>]` | elimina per sempre e subito (R2, R12): niente cestino né ripristino, si recupera solo da un backup | conferma (G8) |
 
-- **Conferma G8.** `archive` e `delete` fanno riscrivere `owner/repo`. Con `--yes`/`-y` procedono senza chiedere. Senza terminale in ingresso e senza `--yes` escono con 2 senza leggere stdin e senza chiamare l'API; con terminale, un testo diverso annulla (exit 1). `unarchive` e `restore` non sono distruttivi e non chiedono.
-- **Repo eliminati.** `gs repo list --deleted` mostra nome, data di eliminazione e di cancellazione definitiva; `restore` cerca tra quelli di `owner` e, se non c'è, esce 6.
+- **Conferma G8.** `archive` e `delete` fanno riscrivere `owner/repo`. Con `--yes`/`-y` procedono senza chiedere. Senza terminale in ingresso e senza `--yes` escono con 2 senza leggere stdin e senza chiamare l'API; con terminale, un testo diverso annulla (exit 1). `unarchive` non è distruttivo e non chiede.
+- **Repo eliminati.** Non c'è un cestino: `gs repo delete` è definitivo, il nome torna libero subito, e `gs repo restore` e `gs repo list --deleted` non esistono più (GIT-530).
 - **Codici di uscita.** Quelli di G3: 401 → 4, 403 → 5, 404 → 6 (un repo che non puoi leggere è 404), 409 (nome già preso, repo già archiviato) e 422 → 1; flag e argomenti sbagliati, `edit` senza modifiche, SSH richiesto ma non offerto dall'istanza → 2.
 
 ### Campi di `--json` (repo)
 
-Sono quelli dello schema `Repository` dell'API (camelCase), più `url` (pagina web). Un campo facoltativo assente è `null`. `--json` senza campi li elenca; un campo sconosciuto è un uso errato (exit 2). Valgono per `create`, `list`, `view`, `edit`, `archive`, `unarchive` e `restore` (`list` è una lista di oggetti).
+Sono quelli dello schema `Repository` dell'API (camelCase), più `url` (pagina web). Un campo facoltativo assente è `null`. `--json` senza campi li elenca; un campo sconosciuto è un uso errato (exit 2). Valgono per `create`, `list`, `view`, `edit`, `archive` e `unarchive` (`list` è una lista di oggetti).
 
 | Campo | Contenuto |
 |---|---|
@@ -229,11 +228,9 @@ Sono quelli dello schema `Repository` dell'API (camelCase), più `url` (pagina w
 | `mirror` | `{origin, lastSyncedAt}` se il repo è un mirror in pull attivo (anche in pausa, MP2: il push è rifiutato), altrimenti `null` |
 | `createdAt`, `updatedAt`, `url` | date e pagina web |
 
-`gs repo list --deleted --json` elenca `DeletedRepository`: `id`, `name`, `owner`, `fullName`, `deletedAt`, `purgeAt` (dopo questo istante la cancellazione è definitiva) e `url`. Nelle due liste i campi dell'altra sono `null`.
-
 ### Test
 
-`cli/internal/cmd/repo/repo_test.go`: gateway finto, richieste e corpi verificati, conferme G8 con e senza TTY. `services/core/internal/stackitest/gs_repo_integration_test.go` (`TestGsRepo`, tag `integration`): il binario `gs` vero contro lo stack completo, con `git` e `ssh` veri per `clone`. Prova create (privato di default, contenuto iniziale su `main`, owner organizzazione), list, view, clone HTTPS e SSH, edit, archive (push rifiutato, R10), delete, restore, la conferma G8 (senza TTY exit 2, `--yes`) e i codici 4, 5 e 6.
+`cli/internal/cmd/repo/repo_test.go`: gateway finto, richieste e corpi verificati, conferme G8 con e senza TTY. `services/core/internal/stackitest/gs_repo_integration_test.go` (`TestGsRepo`, tag `integration`): il binario `gs` vero contro lo stack completo, con `git` e `ssh` veri per `clone`. Prova create (privato di default, contenuto iniziale su `main`, owner organizzazione), list, view, clone HTTPS e SSH, edit, archive (push rifiutato, R10), delete (definitiva, nome subito libero; `restore` e `list --deleted` non esistono più), la conferma G8 (senza TTY exit 2, `--yes`) e i codici 4, 5 e 6.
 
 ## `gs label` (GIT-167, G4)
 

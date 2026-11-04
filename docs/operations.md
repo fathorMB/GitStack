@@ -1339,6 +1339,15 @@ sudo gitstack upgrade --to v0.2.0 --dest /mnt/backup/gitstack \
 Environment variables: `GITSTACK_REPO` (default `fathorMB/GitStack`),
 `GITSTACK_REF` (default `main`).
 
+**Repositories in the trash (GIT-530).** Repository deletion is immediate and permanent. The core
+migration `0056` empties the trash at the first upgrade: the rows of the repositories deleted earlier
+leave `core.repositories` (their names are free at once, for example `admin/odin` on homehub) and wait
+in `core.repo_cleanup`; the first cleanup round of core removes their data from disk and identity and
+writes one line for each in core's log (`upgrade: repo che era nel cestino eliminato definitivamente`,
+`repo=<owner>/<name>`): `kubectl logs deploy/<release>-core | grep 'era nel cestino'`. A repository that
+failed stays in the queue (`last_error`) and is retried every minute. The preventive backup taken
+before the upgrade still holds them.
+
 ### What happens if the upgrade fails
 
 | Exit code | Outcome |

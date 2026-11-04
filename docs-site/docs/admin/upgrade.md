@@ -25,6 +25,15 @@ Order of steps: checks (no change if refused) → preventive backup → k3s (onl
 if the target declares another version) → Helm upgrade and health wait → local
 replacement of the binary, the chart copy and the image tag.
 
+**Repositories in the trash.** Deleting a repository is now immediate and
+permanent (no trash). The first upgrade to this version removes for good the
+repositories that were still in the trash: their names are free as soon as
+core has migrated, and the first cleanup round of core removes their data from
+disk and identity, writing one line for each in core's log
+(`upgrade: repo che era nel cestino eliminato definitivamente`, with
+`repo=<owner>/<name>`). The preventive backup taken before the upgrade still
+contains them, so `gitstack restore` of that archive brings them back.
+
 ## Exit codes
 
 | Code | Meaning |

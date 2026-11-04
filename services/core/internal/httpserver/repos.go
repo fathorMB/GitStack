@@ -28,7 +28,7 @@ import (
 )
 
 // Operazioni del tag `repos` (M-03, GIT-67): creazione, lettura, elenco,
-// impostazioni e archiviazione. Eliminazione e ripristino: repos_trash.go.
+// impostazioni e archiviazione. Eliminazione: repos_delete.go.
 // Regole: R1-R12 di repository-git.md; contratto e scelte di
 // permesso in docs/repos.md.
 

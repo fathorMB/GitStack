@@ -18,7 +18,7 @@ adapting.
 | `push` | after each accepted push, one message per branch or tag |
 | `issues` | an issue is opened, edited, closed, reopened, assigned, labeled, milestoned or locked |
 | `issue_comment` | a comment is created, edited or deleted |
-| `repository` | a repository is created, deleted, restored, archived or its visibility changes |
+| `repository` | a repository is created, deleted, archived or its visibility changes |
 | `pull_request` | a pull request is opened, edited, marked ready or draft, closed, reopened, merged, or receives new commits |
 | `pull_request_review` | a review is submitted or dismissed |
 | `commit_status` | an external system reports a commit status |
