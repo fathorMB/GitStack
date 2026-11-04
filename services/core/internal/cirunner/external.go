@@ -51,8 +51,16 @@ func Serve(ctx context.Context, cfg Config) error {
 		cfg.FetchTimeout = 30 * time.Second
 	}
 	for ctx.Err() == nil {
-		_ = os.RemoveAll(filepath.Join(cfg.WorkDir, "workspace"))
-		_ = os.RemoveAll(filepath.Join(cfg.WorkDir, "workflow"))
+		if err := cleanJobDirs(ctx, cfg.WorkDir); err != nil {
+			// Un job sopra il workspace del precedente vedrebbe i suoi file (e su Windows un target/ mezzo
+			// cancellato): meglio non prenderlo, e riprovare fra poco.
+			cfg.Log.Error("cartella di lavoro non pulita: non prendo job", "err", err)
+			select {
+			case <-ctx.Done():
+			case <-time.After(5 * time.Second):
+			}
+			continue
+		}
 		res, err := Run(ctx, cfg)
 		switch {
 		case errors.Is(err, ErrNoTask), ctx.Err() != nil:
@@ -68,6 +76,36 @@ func Serve(ctx context.Context, cfg Config) error {
 			continue
 		}
 		cfg.Log.Info("job eseguito", "task", res.TaskID, "job", res.Job, "result", fmt.Sprint(res.Conclusion))
+	}
+	return nil
+}
+
+// removeAll è os.RemoveAll; i test lo sostituiscono.
+var removeAll = os.RemoveAll
+
+// cleanRetryWait è l'attesa base fra due tentativi di pulizia.
+var cleanRetryWait = 500 * time.Millisecond
+
+// cleanJobDirs toglie workspace e workflow del job precedente. Su Windows un file può restare
+// aperto ancora per un attimo (un processo figlio che termina, l'antivirus che scansiona
+// src-tauri/target): si ritenta qualche volta prima di arrendersi. Un errore non si ignora.
+func cleanJobDirs(ctx context.Context, workDir string) error {
+	for _, d := range []string{"workspace", "workflow", "actenv", "outputs"} {
+		p := filepath.Join(workDir, d)
+		var err error
+		for i := 0; i < 4; i++ {
+			if err = removeAll(p); err == nil {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(time.Duration(i+1) * cleanRetryWait):
+			}
+		}
+		if err != nil {
+			return fmt.Errorf("%s: %w", d, err)
+		}
 	}
 	return nil
 }

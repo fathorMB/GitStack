@@ -74,6 +74,16 @@ func fakeAct(args []string) int {
 		}
 		_ = os.WriteFile(f, []byte(strings.Join(kv, "\n")), 0o600)
 	}
+	if f := os.Getenv("CIRUNNER_FAKE_ACT_FILES"); f != "" { // contenuto dei file dotenv passati ad act, che il runner toglie a fine job
+		var out []string
+		for i, a := range args {
+			if (a == "--secret-file" || a == "--var-file" || a == "--env-file") && i+1 < len(args) {
+				raw, _ := os.ReadFile(args[i+1])
+				out = append(out, a+"\n"+string(raw))
+			}
+		}
+		_ = os.WriteFile(f, []byte(strings.Join(out, "\n--\n")), 0o600)
+	}
 	b, err := os.ReadFile(wf)
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -207,6 +217,8 @@ type fakeGateway struct {
 	mu       sync.Mutex
 	workflow string
 	extra    map[string]any // campi in piu' del contesto del task
+	secrets  map[string]string // segreti del repo, oltre a GITHUB_TOKEN
+	vars     map[string]string
 	needs    map[string]*runnerv1.TaskNeed
 	outputs  map[string]string // outputs riportati con l'esito
 	taken    bool
@@ -233,8 +245,17 @@ func (g *fakeGateway) FetchTask(_ context.Context, req *connect.Request[runnerv1
 	}
 	cx, _ := structpb.NewStruct(fields)
 	return connect.NewResponse(&runnerv1.FetchTaskResponse{Task: &runnerv1.Task{
-		Id: 42, WorkflowPayload: []byte(g.workflow), Context: cx, Secrets: map[string]string{"GITHUB_TOKEN": jobToken}, Needs: g.needs,
+		Id: 42, WorkflowPayload: []byte(g.workflow), Context: cx, Secrets: g.allSecrets(), Vars: g.vars, Needs: g.needs,
 	}}), nil
+}
+
+func (g *fakeGateway) allSecrets() map[string]string {
+	out := map[string]string{}
+	for k, v := range g.secrets {
+		out[k] = v
+	}
+	out["GITHUB_TOKEN"] = jobToken // il token del job vince, come nel gateway vero
+	return out
 }
 
 func (g *fakeGateway) check(h interface{ Get(string) string }) error {
@@ -614,4 +635,54 @@ func TestRun_ActVero_GitignoreDist(t *testing.T) {
 		t.Fatalf("esito %v\n%s", res.Conclusion, log)
 	}
 	t.Logf("esito %v: dist-action-ok", res.Conclusion)
+}
+
+// TestRun_SegretiEVariabiAdAct (GIT-526): i segreti del repo e le variabili del task arrivano ad act
+// in file dotenv (non sulla riga di comando né nell'ambiente), con valori su più righe intatti, e i
+// file spariscono a fine job. Prima il runner passava solo GITHUB_TOKEN e `secrets.X` era vuoto.
+func TestRun_SegretiEVariabiAdAct(t *testing.T) {
+	key := "untrusted comment: minisign secret key\nRWRTY0Iy" + "AAAA$HOME\"q\"\\n\nfine-chiave"
+	g := &fakeGateway{workflow: twoSteps, archive: tarball(t, map[string]string{
+		"README.md": "x", ".env": "INIETTATA=1\n", ".secrets": "RUBATO=1\n", ".vars": "V=1\n",
+	}),
+		secrets: map[string]string{"TAURI_SIGNING_PRIVATE_KEY": key, "GITHUB_TOKEN": "non-vince", "nome-non-valido": "x"},
+		vars:    map[string]string{"FOO": "bar"}}
+	cfg := cfgFor(t, start(t, g))
+	dir := t.TempDir()
+	filesF, argsF := filepath.Join(dir, "files"), filepath.Join(dir, "args")
+	t.Setenv("CIRUNNER_FAKE_ACT_FILES", filesF)
+	t.Setenv("CIRUNNER_FAKE_ACT_ARGS", argsF)
+	res, err := cirunner.Run(context.Background(), cfg)
+	if err != nil || res.Conclusion != runnerv1.Result_RESULT_SUCCESS {
+		t.Fatalf("esito %+v: %v", res, err)
+	}
+	raw, _ := os.ReadFile(filesF)
+	got := string(raw)
+	wantKey := `TAURI_SIGNING_PRIVATE_KEY="untrusted comment: minisign secret key\nRWRTY0IyAAAA\$HOME\"q\"\\n\nfine-chiave"`
+	if !strings.Contains(got, wantKey+"\n") {
+		t.Errorf("segreto non scritto per intero:\n%s", got)
+	}
+	if !strings.Contains(got, "FOO=\"bar\"\n") {
+		t.Errorf("variabile mancante:\n%s", got)
+	}
+	if strings.Contains(got, "non-vince") || strings.Contains(got, "nome-non-valido") || strings.Contains(got, "INIETTATA") {
+		t.Errorf("segreto o file del repo nei file di act:\n%s", got)
+	}
+	args, _ := os.ReadFile(argsF)
+	if strings.Contains(string(args), "RWRTY0Iy") || strings.Contains(string(args), "fine-chiave") {
+		t.Errorf("segreto sulla riga di comando di act: %q", args)
+	}
+	for _, f := range []string{"--secret-file", "--var-file", "--env-file"} {
+		if !strings.Contains("\n"+string(args)+"\n", "\n"+f+"\n") {
+			t.Errorf("manca %s tra gli argomenti: %q", f, args)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(cfg.WorkDir, "actenv")); !os.IsNotExist(err) {
+		t.Errorf("file dei segreti rimasti a fine job: %v", err)
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if log := strings.Join(g.rows, "\n"); !strings.Contains(log, "nome-non-valido") || strings.Contains(log, "RWRTY0Iy") {
+		t.Errorf("avviso sul nome non valido assente, o segreto nel log:\n%s", log)
+	}
 }
