@@ -28,3 +28,12 @@ L'autore delle esecuzioni è **chi ha acceso la CI** sul mirror, non chi ha crea
 ## Se chi l'ha accesa perde `admin`
 
 La CI sul mirror **si spegne** e la persona riceve una notifica («La CI sul mirror in pull di … è stata spenta»). I ruoli stanno in identity e core non riceve un evento di cambio ruolo, quindi la verifica avviene quando la CI sta per essere usata (sincronizzazione, avvio manuale, orario) e quando l'impostazione viene letta: `GET …/actions/pull-mirror` la dà già spenta. Per riaccenderla serve un admin.
+
+## Release e allegati sui mirror (GIT-529)
+
+Le release sono **supportate** sui repo in mirror in pull: il mirror è in sola lettura per il codice (il push, anche di un tag, è rifiutato con `mirror_read_only`), non per i metadati delle release. Un tag arrivato con la sincronizzazione ammette `POST /repos/{owner}/{repo}/releases` e il caricamento degli allegati, sia con un token utente con `write` sia con il token del job (`contents: write`, gsj_, solo su quel repo); elenco, download e SHA-256 degli allegati funzionano come su un repo normale. Prova: `TestPullMirrorRelease_TagSincronizzatoConAllegati` (stackitest, tag `integration`).
+
+Limiti:
+
+- La release si crea solo su un tag già presente nel mirror: finché la sincronizzazione non l'ha portato (intervallo di 10 minuti o «Sincronizza ora») la risposta è `422 tag_not_found`. Un workflow che parte dall'evento del tag sincronizzato lo trova già.
+- Le release e gli allegati vivono solo in GitStack: non tornano all'origine e, come altrove, gli allegati restano fuori dal backup di default.
