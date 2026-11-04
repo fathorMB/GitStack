@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // restorePrelude prepara Postgres: il ruolo di identity deve esistere (il
@@ -280,6 +282,31 @@ func Restore(ctx context.Context, o *Options, archive string) (err error) {
 		o.logf("attendo che l'Ingress risponda (/api/healthz, /downloads/ca.crt)")
 		if e := o.WaitServing(ctx); e != nil {
 			return errors.Join(tlsErr, &ServingError{Err: e})
+		}
+	}
+	if tlsErr == nil && o.RestoreCIGateway != nil && has[ConfigPrefix+"config.yaml"] {
+		data, e := os.ReadFile(filepath.Join(stage, filepath.FromSlash(ConfigPrefix+"config.yaml")))
+		if e != nil {
+			return fmt.Errorf("lettura impostazione ci-gateway dal backup: %w", e)
+		}
+		var saved struct {
+			Enabled *bool `yaml:"ci_gateway_enabled"`
+			Port    int   `yaml:"ci_gateway_port"`
+		}
+		if e = yaml.Unmarshal(data, &saved); e != nil {
+			return fmt.Errorf("lettura impostazione ci-gateway dal backup: %w", e)
+		}
+		// Gli archivi precedenti a GIT-527 non hanno l'impostazione.
+		if saved.Enabled != nil {
+			if saved.Port == 0 {
+				saved.Port = 8443
+			}
+			if saved.Port < 1 || saved.Port > 65535 {
+				return fmt.Errorf("porta ci-gateway non valida nel backup: %d", saved.Port)
+			}
+			if e = o.RestoreCIGateway(ctx, *saved.Enabled, saved.Port); e != nil {
+				return fmt.Errorf("dati ripristinati, riallineamento ci-gateway fallito: %w", e)
+			}
 		}
 	}
 	return tlsErr
