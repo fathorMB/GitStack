@@ -11,22 +11,29 @@ che prende i job che il pod interno non può fare: quelli con `runs-on:` diverso
   il runner esegue il job con `act` in modalità host, come il pod interno. Sulla macchina girano i comandi dei workflow:
   usa una macchina (o un utente) dedicata alla CI.
 - Raggiungere il **ci-gateway esterno** dell'istanza (porta dedicata di core, non quella dell'API): lo espone
-  l'amministratore con l'opzione `ci.externalGateway` del chart, **spenta per default** (sezione sotto).
+  l'amministratore con `gitstack config set ci-gateway`, **spento per default** (sezione sotto).
 
 ## 0. Esporre il ci-gateway (amministratore, GIT-329)
 
-Il ci-gateway interno (`ci.gateway.port`, 8081) è raggiungibile solo dai pod dei job. Per i runner esterni il chart ha
-un'opzione spenta per default, `ci.externalGateway` (dettagli in [`deploy/gitstack/README.md`](../deploy/gitstack/README.md)):
+Il ci-gateway interno (`ci.gateway.port`, 8081) è raggiungibile solo dai pod dei job. Su un'installazione con CI e HTTPS attivi:
 
 ```sh
-helm upgrade gitstack deploy/gitstack --reuse-values \
-  --set ci.externalGateway.enabled=true --set ci.externalGateway.host=ci.gitstack.lan
+sudo gitstack config set ci-gateway on              # porta 8443
+sudo gitstack config set ci-gateway on --port 9443  # porta alternativa
+sudo gitstack config set ci-gateway off
 ```
 
-Core apre una seconda porta (`GITSTACK_CORE_CI_EXTERNAL_ADDR`, 8082) e Traefik la pubblica con una `IngressRoute` sull'host
-dedicato, solo HTTPS, con il certificato dell'istanza (la CA interna; deve coprire quell'host). Richiede
-`ingress.tls.enabled`. La porta esterna accetta **solo token di runner registrati** (`gsr_…`): il biglietto di un pod
-interno (`gsq_…`) riceve `Unauthenticated` e la NetworkPolicy dei job non la raggiunge. Un host dedicato, non un path, perché
+Apri la porta TCP scelta sul nodo e sul firewall. L'URL del runner è `https://<host>:<porta>`, per esempio
+`https://homehub.local:8443`. Il certificato dell'istanza deve coprire l'host; i runner devono fidarsi della CA.
+Con Let's Encrypt o un certificato del cliente valgono gli stessi requisiti: la porta non cambia i SAN. Un nome `.local`
+funziona sullo stesso host via mDNS, mentre `ci.homehub.local` richiederebbe un DNS o un file hosts sui client.
+Let's Encrypt non emette certificati per `.local`. Il comando conserva la scelta per riesecuzioni, upgrade e restore.
+Per un chart gestito autonomamente resta disponibile la modalità con host dedicato
+([dettagli](../deploy/gitstack/README.md)).
+
+Core apre una seconda porta (`GITSTACK_CORE_CI_EXTERNAL_ADDR`, 8082) e Traefik la pubblica sull'entrypoint dedicato,
+solo HTTPS. La porta esterna accetta **solo token di runner registrati** (`gsr_…`): il biglietto di un pod
+interno (`gsq_…`) riceve `Unauthenticated` e la NetworkPolicy dei job non la raggiunge. La rotta resta separata perché
 il protocollo vive su percorsi suoi (`/runner.v1.RunnerService/…`, `/api/actions/…`, `/ci/v1/archive`) e il resto dell'host
 risponde 404.
 

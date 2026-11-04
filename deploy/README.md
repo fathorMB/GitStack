@@ -121,6 +121,16 @@ Prova sulla VM (GIT-355): il passo h di `deploy/test-vm/e2e.ps1` installa con `-
 
 Prova in CI (`install.yml`): installazione con `--enable-apps` e un'app di prova creata da API che risponde 200 al suo indirizzo automatico; upgrade dalla v2 con l'hosting spento (503 e nessun oggetto nel cluster), poi `gitstack upgrade --enable-apps` (24.04) o `config set apps on` (22.04), l'app di prova e i dati del seed ancora lì.
 
+### Gateway CI per runner esterni (GIT-527)
+
+Con CI e HTTPS già attivi, `sudo gitstack config set ci-gateway on` espone il gateway su `https://<host>:8443`.
+Usa `on --port 9443` per una porta diversa e `off` per spegnerlo; apri la porta TCP sul nodo e nel firewall.
+La scelta viene conservata in `config.yaml` e `install.conf`, nelle riesecuzioni, negli upgrade e nei backup/restore.
+Il certificato esistente deve coprire l'host e il runner deve fidarsi della CA, anche con Let's Encrypt o certificati
+del cliente. La porta non cambia i SAN. Per `homehub.local` si usa `https://homehub.local:8443`: mDNS risolve il nome
+della macchina, mentre un sottodominio richiederebbe configurazione DNS o hosts sui client. Let's Encrypt non emette
+certificati per `.local`. Procedura di registrazione: [runner esterno](../docs/ci-runner-esterno.md).
+
 #### Nomi `.local` (mDNS)
 
 Il caso reale di homehub: il router di casa (Sky) non permette record DNS locali, quindi la macchina si chiama `homehub.local`, risolto via mDNS.

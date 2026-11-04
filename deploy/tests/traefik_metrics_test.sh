@@ -9,6 +9,7 @@ export MSYS2_ARG_CONV_EXCL="*"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHART="${HERE}/../gitstack"
+if command -v cygpath >/dev/null 2>&1; then CHART="$(cygpath -m "${CHART}")"; fi
 HAVE_HELM=1
 command -v helm >/dev/null 2>&1 || HAVE_HELM=0
 export GITSTACK_INSTALL_LIB=1
