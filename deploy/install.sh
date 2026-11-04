@@ -3442,6 +3442,7 @@ resolve_ci() {
     fi
   fi
   if [ "${requested}" != "1" ]; then
+    [ "${CI_GATEWAY_ENABLED}" != "1" ] || fail "il ci-gateway esterno è acceso: spegnilo con 'gitstack config set ci-gateway off' prima di disattivare la CI."
     local opt
     for opt in "${GITSTACK_CI_CAPACITY}" "${GITSTACK_CI_ACTION_MIRROR}" "${GITSTACK_CI_S3_BUCKET}" "${GITSTACK_CI_S3_ENDPOINT}" "${GITSTACK_CI_STORAGE_SIZE}"; do
       [ -z "${opt}" ] || fail "le opzioni --ci-* servono con --ci: la CI è spenta."
@@ -3450,6 +3451,9 @@ resolve_ci() {
     return 0
   fi
   CI_ENABLED=1
+  if [ "${CI_GATEWAY_ENABLED}" = "1" ] && [ "${GITSTACK_TLS_MODE}" = "insecure" ]; then
+    fail "il ci-gateway esterno richiede HTTPS: spegnilo prima di disattivare TLS."
+  fi
 
   local cap="${GITSTACK_CI_CAPACITY}"
   if [ -z "${cap}" ] && [ "${GITSTACK_CI}" != "1" ]; then

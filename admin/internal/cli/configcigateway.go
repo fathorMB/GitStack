@@ -92,7 +92,13 @@ func runConfigSetCIGateway(ctx context.Context, a *App, args []string) int {
 		pos = append(pos, fs.Arg(0))
 		rest = fs.Args()[1:]
 	}
-	if len(pos) != 1 || (pos[0] != "on" && pos[0] != "off") || *port < 0 || *port > 65535 || (pos[0] == "off" && *port != 0) {
+	portSet := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "port" {
+			portSet = true
+		}
+	})
+	if len(pos) != 1 || (pos[0] != "on" && pos[0] != "off") || *port < 0 || *port > 65535 || (portSet && (*port == 0 || pos[0] == "off")) {
 		a.errorf("%s: usa on [--port 1..65535] oppure off", cmd)
 		return ExitUsage
 	}
