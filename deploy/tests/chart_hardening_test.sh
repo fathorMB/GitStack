@@ -326,12 +326,14 @@ if [ -n "${d}" ]; then ok; else bad "IngressRoute gitstack-ci-gateway non render
 # shellcheck disable=SC2016 # i backtick sono la sintassi letterale della regola Traefik
 expect_has "ci-gateway esterno: host dedicato" "${d}" 'Host(`ci.example.test`)'
 expect_has "ci-gateway esterno: solo websecure" "${d}" "- websecure"
+expect_lacks "ci-gateway host dedicato: nessun entrypoint dedicato" "${d}" "- cigateway"
 expect_has "ci-gateway esterno: TLS con il Secret dell'istanza" "${d}" "secretName: gitstack-tls"
 expect_has "ci-gateway esterno: va a core, porta esterna" "${d}" "name: gitstack-core"
 expect_has "ci-gateway esterno: porta 8082" "${d}" "port: 8082"
 d="$(doc Deployment gitstack-core)"
 expect_has "core: porta esterna" "${d}" "GITSTACK_CORE_CI_EXTERNAL_ADDR"
 expect_has "core: URL pubblico" "${d}" 'value: "https://ci.example.test"'
+expect_lacks "core: URL senza porta dedicata" "${d}" 'https://ci.example.test:'
 expect_has "core: porta ci-external esposta" "$(doc Service gitstack-core)" "targetPort: ci-external"
 expect_has "core: ingresso 8082 solo dal controller" "$(doc NetworkPolicy gitstack-core)" "port: 8082"
 expect_lacks "pod dei job: la porta esterna resta chiusa" "$(doc NetworkPolicy ci-job-egress)" "8082"

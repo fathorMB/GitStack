@@ -128,7 +128,16 @@ func runConfigSetCIGateway(ctx context.Context, a *App, args []string) int {
 		return ExitConfig
 	}
 	chartValues, err := os.ReadFile(filepath.Join(cfg.ChartDir, "values.yaml"))
-	if err != nil || !strings.Contains(string(chartValues), "publicPort:") {
+	var values struct {
+		CI struct {
+			ExternalGateway map[string]any `yaml:"externalGateway"`
+		} `yaml:"ci"`
+	}
+	if err == nil {
+		err = yaml.Unmarshal(chartValues, &values)
+	}
+	_, hasPublicPort := values.CI.ExternalGateway["publicPort"]
+	if err != nil || !hasPublicPort {
 		a.errorf("%s: aggiorna prima il chart di GitStack", cmd)
 		return ExitConfig
 	}

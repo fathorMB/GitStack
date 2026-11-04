@@ -86,3 +86,15 @@ func TestCIGatewayManifestRejectsWrongObject(t *testing.T) {
 		t.Fatal("manifest errato accettato")
 	}
 }
+
+func TestCIGatewayRejectsOldChartWithPostgresPublicPort(t *testing.T) {
+	cfg, tls := hostFixture(t, "internal")
+	values := "postgres:\n  external:\n    publicPort: 8443\nci:\n  externalGateway:\n    enabled: false\n"
+	if err := os.WriteFile(filepath.Join(filepath.Dir(cfg), "chart", "values.yaml"), []byte(values), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	a, _, errs := hostApp(&recRunner{}, tls)
+	if code := a.Run(context.Background(), []string{"config", "set", "ci-gateway", "off", "--config", cfg}); code != ExitConfig {
+		t.Fatalf("codice %d, atteso ExitConfig: %s", code, errs)
+	}
+}
