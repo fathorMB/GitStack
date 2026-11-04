@@ -945,7 +945,7 @@ ci_gateway_external() (
     if [ "${code}" != 000 ] && [ -n "${code}" ]; then break; fi
     sleep 3
   done
-  [ "${code}" != 000 ] && [ -n "${code}" ] || fail "ci-gateway TLS non raggiungibile sulla porta 8443"
+  if ! { [ "${code}" != 000 ] && [ -n "${code}" ]; }; then fail "ci-gateway TLS non raggiungibile sulla porta 8443"; fi
   SSL_CERT_FILE="${STATE_DIR}/ca.crt" GITSTACK_RUNNER_REGISTRATION_TOKEN="${token}" "${work}/gitstack-runner_linux_amd64" register --url "https://${HOST}:8443" --name "ci-gateway-e2e-$$" --labels linux --config "${work}/runner.json"
   echo 'ok ci-gateway: register via HTTPS sulla porta 8443'
   sudo gitstack config set ci-gateway off

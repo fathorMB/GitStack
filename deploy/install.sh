@@ -3434,7 +3434,7 @@ resolve_ci() {
   case "${gateway_enabled}" in true|1) CI_GATEWAY_ENABLED=1 ;; esac
   CI_GATEWAY_PORT="${gateway_port:-8443}"
   case "${CI_GATEWAY_PORT}" in ''|*[!0-9]*) fail "porta ci-gateway non valida" ;; esac
-  [ "${CI_GATEWAY_PORT}" -ge 1 ] && [ "${CI_GATEWAY_PORT}" -le 65535 ] || fail "porta ci-gateway fuori intervallo"
+  if ! { [ "${CI_GATEWAY_PORT}" -ge 1 ] && [ "${CI_GATEWAY_PORT}" -le 65535 ]; }; then fail "porta ci-gateway fuori intervallo"; fi
   local requested="${GITSTACK_CI}"
   if [ -z "${requested}" ]; then
     if ci_previously_enabled; then
