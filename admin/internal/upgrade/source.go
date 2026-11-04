@@ -58,10 +58,14 @@ type Target struct {
 	// K3sVersionFile ("" se non la dichiara): la compila FetchChart.
 	K3sVersion      string
 	K3sScriptSHA256 string
-	// TLSScript è deploy/gitstack-tls.sh del commit di destinazione, letto dallo
-	// stesso sorgente del chart (nil se il commit non lo contiene): lo installa
-	// installTLSTool a upgrade riuscito (GIT-543).
+	// TLSScript è il gitstack-tls della destinazione che installTLSTool mette in
+	// /usr/local/sbin a upgrade riuscito (GIT-543). Con la firma verificata viene
+	// solo da files/gitstack-tls.sh del chart firmato (gli stessi byte del
+	// bundle cosign); il valore letto dal sorgente, non firmato, si scarta. Con
+	// l'eccezione N9 (AllowUnsigned) resta quello del sorgente.
 	TLSScript []byte
+	// TLSNote è il motivo per cui TLSScript è vuoto (chart firmato senza script).
+	TLSNote string
 }
 
 func (o *Options) get(ctx context.Context, rawURL string, limit int64, accept string) ([]byte, error) {
@@ -369,6 +373,9 @@ func (o *Options) FetchChart(ctx context.Context, t *Target, dest string) error 
 	}
 	if o.v5().AllowUnsigned {
 		o.logf("    AVVISO: firma del chart NON verificata (eccezione N9 attiva)")
+		if len(t.TLSScript) > 0 {
+			o.logf("    AVVISO: firma di gitstack-tls NON verificata (eccezione N9 attiva)")
+		}
 		return nil
 	}
 	return o.useSignedChart(ctx, t, dest)
@@ -434,6 +441,18 @@ func (o *Options) useSignedChart(ctx context.Context, t *Target, dest string) er
 	}
 	if t.Version != "" && !chartHasVersion(string(signedMeta), t.Version) {
 		return fmt.Errorf("il chart firmato della release %s non ha version e appVersion %s: non è il chart di questa versione", t.Tag, t.Version)
+	}
+	// GIT-543: lo script di TLS è valido solo se viene dal chart firmato. Quello
+	// letto dal sorgente non è coperto da nessuna firma: mai ripiegare su di lui.
+	t.TLSScript, t.TLSNote = nil, ""
+	switch b, err := os.ReadFile(filepath.Join(root, "files", "gitstack-tls.sh")); { //nolint:gosec // percorso nostro
+	case err == nil && len(b) <= maxTLSScript:
+		t.TLSScript = b
+		o.logf("    gitstack-tls letto dal chart firmato")
+	case err == nil:
+		t.TLSNote = fmt.Sprintf("files/gitstack-tls.sh del chart firmato di %s è troppo grande", t.Tag)
+	default:
+		t.TLSNote = fmt.Sprintf("il chart firmato di %s non contiene lo script", t.Tag)
 	}
 	if err := os.RemoveAll(dest); err != nil {
 		return err

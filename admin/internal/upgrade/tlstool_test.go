@@ -14,8 +14,8 @@ func TestUpgradeInstallaGitstackTLSNuovo(t *testing.T) {
 	if err != nil || res.Outcome != Upgraded {
 		t.Fatalf("res=%+v err=%v", res, err)
 	}
-	if got := readFile(t, w.tlsBin); got != newTLS {
-		t.Errorf("gitstack-tls: %q, atteso quello del commit di destinazione", got)
+	if got := readFile(t, w.tlsBin); got != signedTLS {
+		t.Errorf("gitstack-tls: %q, atteso quello del chart firmato (non quello del sorgente)", got)
 	}
 	if runtime.GOOS != "windows" {
 		fi, err := os.Stat(w.tlsBin)
@@ -46,9 +46,55 @@ func TestUpgradeFirmaChartFalliscePerGitstackTLSResta(t *testing.T) {
 	}
 }
 
+// Firma che non torna (il chart pubblicato non è quello firmato): nessuno script installato.
+func TestUpgradeChartManomessoNonInstallaGitstackTLS(t *testing.T) {
+	w := versionWorld(t)
+	w.chartSign = []byte("altro contenuto")
+	runRefused(t, w)
+	if got := readFile(t, w.tlsBin); got != oldTLS {
+		t.Errorf("gitstack-tls sostituito con la firma non valida: %q", got)
+	}
+}
+
+// Chart firmato di una release vecchia, senza lo script: niente ripiego sul sorgente.
+func TestUpgradeChartFirmatoSenzaScriptNonAggiorna(t *testing.T) {
+	w := newWorld(t)
+	w.chartTgz = signedChartTgzFiles(t, "name: gitstack\nversion: 0.1.0\n", "")
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if got := readFile(t, w.tlsBin); got != oldTLS {
+		t.Errorf("gitstack-tls cambiato (ripiego sul sorgente?): %q", got)
+	}
+	s := strings.Join(res.Summary, "\n")
+	if !strings.Contains(s, "gitstack-tls NON aggiornato") || !strings.Contains(s, "non contiene lo script") {
+		t.Errorf("riepilogo: %v", res.Summary)
+	}
+}
+
+// Eccezione N9: si usa lo script del sorgente, con l'avviso.
+func TestUpgradeAllowUnsignedUsaSorgenteConAvviso(t *testing.T) {
+	w := newWorld(t)
+	var log strings.Builder
+	w.o.Log = &log
+	w.o.V5.AllowUnsigned = true
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if got := readFile(t, w.tlsBin); got != newTLS {
+		t.Errorf("gitstack-tls: %q, atteso quello del sorgente", got)
+	}
+	if !strings.Contains(log.String(), "firma di gitstack-tls NON verificata (eccezione N9 attiva)") {
+		t.Errorf("manca l'avviso: %s", log.String())
+	}
+}
+
 func TestUpgradeSenzaScriptNelCommitLoDice(t *testing.T) {
 	w := newWorld(t)
 	w.tlsSrc = ""
+	w.o.V5.AllowUnsigned = true // con la firma lo script viene solo dal chart firmato
 	res, err := Run(context.Background(), w.o)
 	if err != nil || res.Outcome != Upgraded {
 		t.Fatalf("res=%+v err=%v", res, err)

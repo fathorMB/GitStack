@@ -157,15 +157,26 @@ func signedChartTgz(t *testing.T) []byte {
 // signedChartTgzVersion è signedChartTgz con il Chart.yaml dato.
 func signedChartTgzVersion(t *testing.T, chartYAML string) []byte {
 	t.Helper()
+	return signedChartTgzFiles(t, chartYAML, signedTLS)
+}
+
+// signedChartTgzFiles è il chart firmato con files/gitstack-tls.sh = tls
+// ("" = il chart, di una release vecchia, non lo contiene).
+func signedChartTgzFiles(t *testing.T, chartYAML, tls string) []byte {
+	t.Helper()
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gz)
-	for _, f := range [][2]string{
+	files := [][2]string{
 		{"gitstack/Chart.yaml", chartYAML},
 		{"gitstack/values.yaml", "NUOVO: 1\n"},
 		{"gitstack/templates/a.yaml", "x"},
 		{"gitstack/files/traefik-metrics-values.yaml", "# commento\nmetrics:\n  prometheus:\n    entryPoint: metrics\nports:\n  metrics:\n    port: 9100\n"},
-	} {
+	}
+	if tls != "" {
+		files = append(files, [2]string{"gitstack/files/gitstack-tls.sh", tls})
+	}
+	for _, f := range files {
 		if err := tw.WriteHeader(&tar.Header{Name: f[0], Mode: 0o644, Size: int64(len(f[1])), Typeflag: tar.TypeReg}); err != nil {
 			t.Fatal(err)
 		}

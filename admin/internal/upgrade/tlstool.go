@@ -27,6 +27,10 @@ func (o *Options) installTLSTool(res *Result, t *Target) {
 	if dst == "" {
 		dst = DefaultTLSToolPath
 	}
+	if len(t.TLSScript) == 0 && t.TLSNote != "" {
+		res.add("gitstack-tls NON aggiornato: %s; resta %s com'era.", t.TLSNote, dst)
+		return
+	}
 	if len(t.TLSScript) == 0 {
 		res.add("gitstack-tls NON aggiornato: %s non è nel sorgente di %s; resta %s com'era.", TLSScriptFile, t.Tag, dst)
 		return

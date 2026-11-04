@@ -231,8 +231,12 @@ func (h *fakeHelm) has(sub string) bool {
 	return false
 }
 
-// newTLS è il gitstack-tls del commit di destinazione nei sorgenti di prova.
-const newTLS = "#!/bin/sh\n# gitstack-tls nuovo: --apps-domain\n"
+// newTLS è il gitstack-tls nel tarball del sorgente (non firmato); signedTLS
+// quello nel chart firmato: sono diversi di proposito, conta solo il secondo.
+const (
+	newTLS    = "#!/bin/sh\n# gitstack-tls del sorgente NON firmato: --apps-domain\n"
+	signedTLS = "#!/bin/sh\n# gitstack-tls del chart firmato: --apps-domain\n"
+)
 
 // chartTarballTLS è il sorgente del commit di prova, con il contenuto di
 // deploy/gitstack-tls.sh ("" = il commit non lo contiene).
