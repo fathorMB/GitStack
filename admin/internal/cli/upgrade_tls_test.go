@@ -32,8 +32,8 @@ const (
 // al momento della chiamata, e rifiuta --apps-domain se lo script non lo conosce.
 type tlsRunner struct {
 	recRunner
-	tlsBin  string
-	tlsRuns []string
+	tlsBin       string
+	tlsRuns      []string
 	helmUpgraded bool
 }
 
