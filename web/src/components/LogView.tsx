@@ -55,7 +55,7 @@ export function LogView({ lines, label, live, loadingText, emptyText }: {
         {!loadingText && emptyText && lines.length === 0 ? <div>{emptyText}</div> : null}
         {lines.map((line) => (
           <div key={line.key} className={['l', line.cls].filter(Boolean).join(' ')}>
-            <span className="n">{line.prefix}</span>{line.text}
+            <span className="n">{line.prefix}</span><span className="log-text">{line.text}</span>
           </div>
         ))}
         {live ? <div aria-hidden="true">▍</div> : null}
