@@ -274,7 +274,7 @@ func TestK3sChecksumErrato(t *testing.T) {
 	w, r := newK3sWorld(t, "v1.36.4+k3s1", "v1.36.5+k3s1")
 	t.Setenv("GITSTACK_K3S_SCRIPT_SHA256", strings.Repeat("0", 64))
 	res, err := Run(context.Background(), w.o)
-	if err == nil || !strings.Contains(err.Error(), "atteso") || !strings.Contains(err.Error(), "trovato") || len(r.events) != 0 || w.helm.upgraded {
+	if err == nil || !strings.Contains(err.Error(), "atteso") || !strings.Contains(err.Error(), "trovato") || len(r.events) != 0 || r.script != "" || w.helm.upgraded {
 		t.Fatalf("res=%+v err=%v events=%v", res, err, r.events)
 	}
 }
@@ -292,8 +292,20 @@ func TestK3sMirrorDownload(t *testing.T) {
 	w, r := newK3sWorld(t, "v1.36.4+k3s1", "v1.36.5+k3s1")
 	w.o.K3sInstallURL = ""
 	w.o.K3sDownloadMirror = w.srv.URL
+	w.o.SystemdDir = t.TempDir()
+	env := filepath.Join(w.o.SystemdDir, "k3s.service.env")
+	if err := os.WriteFile(env, []byte("K3S_TOKEN=x\nHTTP_PROXY=http://p:3128\nNO_PROXY=a\nhttps_proxy=http://p:3128\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	_, err := Run(context.Background(), w.o)
-	if err != nil || !strings.Contains(r.script, "GITHUB_URL='"+w.srv.URL+"/k3s/releases'") || !slices.Contains(w.hits, "/k3s/install.sh") {
+	if err != nil || !strings.Contains(r.script, "GITHUB_URL='"+w.srv.URL+"/k3s/releases'") || strings.Contains(r.script, "get.k3s"+".io") || !slices.Contains(w.hits, "/k3s/install.sh") {
 		t.Fatalf("err=%v script=%s hits=%v", err, r.script, w.hits)
+	}
+	b, err := os.ReadFile(env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(string(b)) != "K3S_TOKEN=x" {
+		t.Errorf("k3s.service.env: %q", b)
 	}
 }
