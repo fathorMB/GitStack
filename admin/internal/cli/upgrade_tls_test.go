@@ -161,6 +161,7 @@ func TestUpgradeAggiornaGitstackTLSEConfigSetAppsFunziona(t *testing.T) {
 	a.ExecBinary = func(context.Context, string, []string, io.Writer) error { return errors.New("no re-exec") }
 	a.NewCluster = func(*config.Config) backup.Cluster { return &stubCluster{git: git} }
 	a.TuneUpgrade = func(o *upgrade.Options) {
+		o.Backup.DestDir = filepath.Join(dir, "backups")
 		o.APIBase, o.CodeloadURL, o.ReleaseURL = srv.URL, srv.URL, srv.URL
 		o.Poll = 10 * time.Millisecond
 		o.CheckCA = nil
