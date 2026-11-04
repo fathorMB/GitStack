@@ -256,56 +256,44 @@ func TestDeclaredFile_InstallSh(t *testing.T) {
 	}
 }
 
-func TestInstallerScript(t *testing.T) {
-	v, err := ParseK3sVersion("v1.36.5+k3s1")
-	if err != nil {
-		t.Fatal(err)
+func TestK3sSource(t *testing.T) {
+	v, _ := ParseK3sVersion("v1.36.5+k3s1")
+	o := &Options{}
+	u, g := o.k3sSource(v)
+	if u != "https://raw.githubusercontent.com/k3s-io/k3s/v1.36.5%2Bk3s1/install.sh" || g != "" {
+		t.Fatalf("%s %s", u, g)
 	}
-	want := `curl -sfL 'https://get.k3s.io' | INSTALL_K3S_VERSION=v1.36.5+k3s1 INSTALL_K3S_EXEC='server --write-kubeconfig-mode 600 --secrets-encryption' sh -`
-	if got := installerScript(K3sInstallURL, v, ""); got != want {
-		t.Errorf("script:\n got %s\nwant %s", got, want)
+	o.K3sDownloadMirror = "http://mirror/"
+	u, g = o.k3sSource(v)
+	if u != "http://mirror/k3s/install.sh" || g != "http://mirror/k3s/releases" {
+		t.Fatalf("%s %s", u, g)
 	}
 }
 
-// N9a: con network.download_mirror l'aggiornamento di k3s usa lo script e il
-// binario del mirror (GITHUB_URL), come deploy/install.sh; senza, get.k3s.io e
-// nessun GITHUB_URL. Dopo lo script le righe *_PROXY di k3s.service.env sono
-// tolte: il drop-in resta l'unica fonte.
-func TestUpgradeK3s_MirrorDeiDownload(t *testing.T) {
+func TestK3sChecksumErrato(t *testing.T) {
 	w, r := newK3sWorld(t, "v1.36.4+k3s1", "v1.36.5+k3s1")
-	w.o.K3sDownloadMirror = "http://dl.corp:8080/"
-	dir := t.TempDir()
-	w.o.SystemdDir = dir
-	env := filepath.Join(dir, "k3s.service.env")
-	if err := os.WriteFile(env, []byte("K3S_TOKEN=x\nHTTP_PROXY=http://p:3128\nNO_PROXY=a\nhttps_proxy=http://p:3128\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	t.Setenv("GITSTACK_K3S_SCRIPT_SHA256", strings.Repeat("0", 64))
 	res, err := Run(context.Background(), w.o)
-	if err != nil || res.Outcome != Upgraded {
-		t.Fatalf("res=%+v err=%v", res, err)
-	}
-	if !strings.Contains(r.script, "curl -sfL 'http://dl.corp:8080/k3s/install.sh'") {
-		t.Errorf("lo script non viene dal mirror: %s", r.script)
-	}
-	if !strings.Contains(r.script, "GITHUB_URL='http://dl.corp:8080/k3s/releases' INSTALL_K3S_VERSION=v1.36.5+k3s1") {
-		t.Errorf("manca GITHUB_URL del mirror: %s", r.script)
-	}
-	if strings.Contains(r.script, "get.k3s.io") {
-		t.Errorf("get.k3s.io con il mirror configurato: %s", r.script)
-	}
-	b, _ := os.ReadFile(env)
-	if strings.TrimSpace(string(b)) != "K3S_TOKEN=x" {
-		t.Errorf("k3s.service.env: %q", b)
+	if err == nil || !strings.Contains(err.Error(), "atteso") || !strings.Contains(err.Error(), "trovato") || len(r.events) != 0 || w.helm.upgraded {
+		t.Fatalf("res=%+v err=%v events=%v", res, err, r.events)
 	}
 }
 
-func TestUpgradeK3s_SenzaMirrorGetK3sIo(t *testing.T) {
-	w, r := newK3sWorld(t, "v1.36.4+k3s1", "v1.36.5+k3s1")
-	w.o.SystemdDir = t.TempDir()
-	if _, err := Run(context.Background(), w.o); err != nil {
-		t.Fatal(err)
+func TestK3sChecksumMancante(t *testing.T) {
+	w, r := newK3sWorld(t, "v1.36.4+k3s1", "no-sha:v1.36.5+k3s1")
+	res, err := Run(context.Background(), w.o)
+	var refusedErr *RefusedError
+	if !errors.As(err, &refusedErr) || res.Outcome != Refused || len(r.events) != 0 || slices.Contains(w.cl.calls, "pg_dump") {
+		t.Fatalf("res=%+v err=%v events=%v", res, err, r.events)
 	}
-	if !strings.Contains(r.script, "curl -sfL 'https://get.k3s.io'") || strings.Contains(r.script, "GITHUB_URL") {
-		t.Errorf("senza mirror: %s", r.script)
+}
+
+func TestK3sMirrorDownload(t *testing.T) {
+	w, r := newK3sWorld(t, "v1.36.4+k3s1", "v1.36.5+k3s1")
+	w.o.K3sInstallURL = ""
+	w.o.K3sDownloadMirror = w.srv.URL
+	_, err := Run(context.Background(), w.o)
+	if err != nil || !strings.Contains(r.script, "GITHUB_URL='"+w.srv.URL+"/k3s/releases'") || !slices.Contains(w.hits, "/k3s/install.sh") {
+		t.Fatalf("err=%v script=%s hits=%v", err, r.script, w.hits)
 	}
 }

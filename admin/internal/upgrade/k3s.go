@@ -2,6 +2,8 @@ package upgrade
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,9 +27,6 @@ import (
 
 // K3sVersionFile è il percorso del file nel repository sorgente.
 const K3sVersionFile = "deploy/k3s-version"
-
-// K3sInstallURL è lo script ufficiale di installazione di k3s.
-const K3sInstallURL = "https://get.k3s.io"
 
 // K3sInstallExec è INSTALL_K3S_EXEC con cui install.sh installa k3s: va
 // ripetuto identico, o l'installer riscriverebbe l'unità systemd col vecchio
@@ -174,19 +173,19 @@ func Steps(p K3sPlan) []Step {
 // installerScript è il comando che installa la versione dichiarata. La
 // versione è validata da ParseK3sVersion: nessun carattere di shell.
 // githubURL, se non vuoto, è GITHUB_URL dello script di k3s (mirror dei download).
-func installerScript(url string, to K3sVersion, githubURL string) string {
+func installerScript(file string, to K3sVersion, githubURL string) string {
 	env := ""
 	if githubURL != "" {
 		env = "GITHUB_URL=" + shellQuote(githubURL) + " "
 	}
-	return fmt.Sprintf("curl -sfL %s | %sINSTALL_K3S_VERSION=%s INSTALL_K3S_EXEC='%s' sh -", shellQuote(url), env, to, K3sInstallExec)
+	return fmt.Sprintf("%sINSTALL_K3S_VERSION=%s INSTALL_K3S_EXEC='%s' sh %s", env, to, K3sInstallExec, shellQuote(file))
 }
 
 // k3sSource dà lo script di installazione e GITHUB_URL: senza mirror
-// https://get.k3s.io e nessun GITHUB_URL; con il mirror dei download (N9a)
+// l'URL del tag e nessun GITHUB_URL; con il mirror dei download (N9a)
 // <mirror>/k3s/install.sh e <mirror>/k3s/releases. K3sInstallURL, se
 // impostato, vince sullo script (test).
-func (o *Options) k3sSource() (url, githubURL string) {
+func (o *Options) k3sSource(to K3sVersion) (url, githubURL string) {
 	url = o.K3sInstallURL
 	if m := strings.TrimRight(o.K3sDownloadMirror, "/"); m != "" {
 		githubURL = m + "/k3s/releases"
@@ -195,7 +194,7 @@ func (o *Options) k3sSource() (url, githubURL string) {
 		}
 	}
 	if url == "" {
-		url = K3sInstallURL
+		url = "https://raw.githubusercontent.com/k3s-io/k3s/" + strings.ReplaceAll(to.String(), "+", "%2B") + "/install.sh"
 	}
 	return url, githubURL
 }
@@ -245,9 +244,30 @@ func (o *Options) installedK3s(ctx context.Context) (string, error) {
 
 // updateK3s installa la versione e aspetta che i servizi tornino sani. Il
 // restart di k3s ferma per poco tempo tutti i servizi.
-func (o *Options) updateK3s(ctx context.Context, p K3sPlan) error {
-	url, githubURL := o.k3sSource()
-	out, err := o.Runner.Run(ctx, nil, "sh", "-c", installerScript(url, p.To, githubURL))
+func (o *Options) updateK3s(ctx context.Context, p K3sPlan, want string) error {
+	url, githubURL := o.k3sSource(p.To)
+	b, err := o.get(ctx, url, 8<<20, "")
+	if err != nil {
+		return fmt.Errorf("download script k3s: %w; GitStack non è stato aggiornato", err)
+	}
+	sum := sha256.Sum256(b)
+	got := hex.EncodeToString(sum[:])
+	if got != want {
+		return refused("SHA-256 script k3s: atteso %s, trovato %s; GitStack non è stato aggiornato", want, got)
+	}
+	f, err := os.CreateTemp("", "gitstack-k3s-*.sh")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(f.Name()) }()
+	if _, err = f.Write(b); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err = f.Close(); err != nil {
+		return err
+	}
+	out, err := o.Runner.Run(ctx, nil, "sh", "-c", installerScript(f.Name(), p.To, githubURL))
 	// Anche se lo script è fallito a metà può aver scritto l'ambiente.
 	StripK3sEnvProxy(o.SystemdDir)
 	if err != nil {
