@@ -95,7 +95,7 @@ func (a *App) applyAppsDomain(ctx context.Context, cfg *config.Config, path, dom
 		_, _ = fmt.Fprintf(a.Stdout, "==> Rigenero il certificato (SAN wildcard: *.%s)\n", domain)
 		out, err := a.Runner.Run(ctx, []string{"GITSTACK_TLS_DIR=" + tlsDir}, tlsBin, "ensure", "--apps-domain", domain)
 		if err != nil {
-			a.errorf(cmd+": gitstack-tls: %v\n%s", err, strings.TrimSpace(string(out)))
+			a.tlsToolFailed(cmd, err, out)
 			return ExitUnexpected
 		}
 		if len(out) > 0 {

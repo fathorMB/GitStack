@@ -1830,6 +1830,16 @@ upgrade summary says so; install it by hand with
 `sudo install -m 0755 deploy/gitstack-tls.sh /usr/local/sbin/gitstack-tls`.
 The upgrade that first brings this behaviour is the one run *by* a binary that
 already contains it: an older binary leaves the script as it was.
+Limit of binaries before GIT-543: the first upgrade from them does not update
+the script, so a second `sudo gitstack upgrade` (with the new binary) or a manual
+reinstall of `deploy/gitstack-tls.sh` is needed; when `gitstack-tls` answers
+«opzione sconosciuta» (`config set apps`, `apps-domain`, `host`, `upgrade`,
+`restore`) the command prints this hint. Order (GIT-559): `gitstack upgrade
+--enable-apps --apps-domain D` applies the domain *after* the upgrade, once the
+script is the target's; if the upgrade is refused, rolled back or broken the
+domain is left untouched and the output gives the command to run
+(`gitstack config set apps-domain D`). With no new version (NoChange) the script
+is not replaced, so an old one stops the command with the same hint.
 
 ### CI tests of install, upgrade and restore (N2, V1)
 

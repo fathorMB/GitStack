@@ -247,6 +247,9 @@ func (a *App) publishTLS(ctx context.Context, configDir string) error {
 		_, _ = a.Stdout.Write(out)
 	}
 	if err != nil {
+		if strings.Contains(string(out), "opzione sconosciuta") {
+			return fmt.Errorf("gitstack-tls ensure: %w\n%s", err, tlsToolOutdatedHint)
+		}
 		return fmt.Errorf("gitstack-tls ensure: %w", err)
 	}
 	return nil

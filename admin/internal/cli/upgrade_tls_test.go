@@ -34,6 +34,7 @@ type tlsRunner struct {
 	recRunner
 	tlsBin  string
 	tlsRuns []string
+	helmUpgraded bool
 }
 
 func (r *tlsRunner) Run(ctx context.Context, env []string, name string, args ...string) ([]byte, error) {
@@ -49,6 +50,9 @@ func (r *tlsRunner) Run(ctx context.Context, env []string, name string, args ...
 		return nil, nil
 	}
 	if strings.HasSuffix(name, "helm") && len(args) > 0 {
+		if args[0] == "upgrade" {
+			r.helmUpgraded = true
+		}
 		switch args[0] {
 		case "history":
 			return []byte(`[{"revision":2,"status":"deployed"}]`), nil

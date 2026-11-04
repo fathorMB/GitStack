@@ -184,11 +184,13 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 	}
 	o.Reexec = a.reexecFunc(path, *dest, *keyFile, *timeout)
 
-	// Il dominio nuovo (e il suo certificato wildcard) prima dell'aggiornamento, mai in --dry-run:
-	// se l'upgrade poi si ferma, il dominio resta impostato come con «config set apps-domain».
-	if appsDomainNew != "" && !*dry {
-		if c := a.applyAppsDomain(ctx, cfg, path, appsDomainNew, "upgrade"); c != ExitOK {
-			return c
+	// GIT-559: il dominio nuovo (e il suo certificato wildcard) si applica DOPO upgrade.Run, quando
+	// gitstack-tls è già quello della destinazione (un host con lo script precedente a GIT-346 non
+	// conosce --apps-domain). Se l'upgrade non riesce il dominio non viene toccato e l'output dice
+	// quale comando lanciare. Mai in --dry-run.
+	pendingDomain := func() {
+		if appsDomainNew != "" && !*dry {
+			_, _ = fmt.Fprintf(a.Stderr, "Il dominio delle app NON è stato applicato (resta %q). Dopo aver sistemato la causa rilancia lo stesso `gitstack upgrade --enable-apps --apps-domain %s`, oppure applicalo da solo con `gitstack config set apps-domain %s`.\n", cfg.AppsDomain, appsDomainNew, appsDomainNew)
 		}
 	}
 
@@ -198,22 +200,32 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 	case errors.As(err, &ref):
 		a.errorf("upgrade rifiutato: %v", err)
 		_, _ = fmt.Fprintln(a.Stderr, "Niente è stato modificato.")
+		pendingDomain()
 		return ExitRefused
 	case err != nil:
 		a.errorf("upgrade: %v", err)
 		for _, l := range res.Summary {
 			_, _ = fmt.Fprintln(a.Stderr, l)
 		}
+		pendingDomain()
 		return ExitUnexpected
 	}
 	if *enableApps && !*dry {
 		switch res.Outcome {
 		case upgrade.Upgraded:
+			if c := a.applyAppsDomainAfterRun(ctx, cfg, path, appsDomainNew, res); c != ExitOK {
+				return c
+			}
 			// config.yaml l'ha già scritto l'upgrade (ExtraConfig), insieme a image_tag.
 			updateInstallConfKey(a.tlsDirFor(path), "APPS_ENABLED", "true")
 			_, _ = fmt.Fprintln(a.Stdout, "Hosting delle app acceso.")
 		case upgrade.NoChange:
-			// Già alla versione richiesta: niente helm upgrade dell'aggiornamento, si applicano solo i valori.
+			// Già alla versione richiesta: lo script gitstack-tls non si aggiorna (lo fa solo un
+			// upgrade vero): se è vecchio, applyAppsDomain dice cosa fare.
+			if c := a.applyAppsDomainAfterRun(ctx, cfg, path, appsDomainNew, res); c != ExitOK {
+				return c
+			}
+			// Niente helm upgrade dell'aggiornamento, si applicano solo i valori.
 			if c := a.helmApps(ctx, cfg, "upgrade", appsSets...); c != ExitOK {
 				return c
 			}
@@ -223,6 +235,9 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 			}
 			updateInstallConfKey(a.tlsDirFor(path), "APPS_ENABLED", "true")
 			_, _ = fmt.Fprintln(a.Stdout, "Hosting delle app acceso.")
+		default:
+			// RolledBack, Broken o Failed: il dominio non è stato toccato.
+			pendingDomain()
 		}
 	}
 	a.autoPublish(ctx, cfg, path)
@@ -242,6 +257,28 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		return ExitBroken
 	}
 	return ExitOK
+}
+
+// applyAppsDomainAfterRun applica il dominio delle app dopo un upgrade.Run riuscito (GIT-559),
+// quando gitstack-tls è già quello della destinazione. Se fallisce, l'aggiornamento è comunque
+// finito: lo dice, stampa il riepilogo e il comando da lanciare.
+func (a *App) applyAppsDomainAfterRun(ctx context.Context, cfg *config.Config, path, domain string, res *upgrade.Result) int {
+	if domain == "" {
+		return ExitOK
+	}
+	c := a.applyAppsDomain(ctx, cfg, path, domain, "upgrade")
+	if c == ExitOK {
+		return c
+	}
+	next := "i valori del chart apps.enabled/apps.domain sono già applicati"
+	if res.Outcome != upgrade.Upgraded {
+		next = "poi lancia `gitstack config set apps on` per accendere l'hosting"
+	}
+	_, _ = fmt.Fprintf(a.Stderr, "Il dominio delle app NON è stato applicato (lo script gitstack-tls o il certificato lo hanno rifiutato). Sistemata la causa lancia `gitstack config set apps-domain %s`; %s.\n", domain, next)
+	for _, l := range res.Summary {
+		_, _ = fmt.Fprintln(a.Stderr, l)
+	}
+	return c
 }
 
 func (a *App) exePath() string {
