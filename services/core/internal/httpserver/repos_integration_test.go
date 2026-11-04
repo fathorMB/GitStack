@@ -392,10 +392,13 @@ func TestRepos_Creazione(t *testing.T) {
 			}
 		}
 		e.want(e.do(http.MethodGet, "/repos/alice/gitstack-2", "alice", ""), http.StatusNotFound)
-		// Nel cestino il nome resta occupato anche con un'altra maiuscola (R2).
+		// R2 (GIT-530): dopo l'eliminazione il nome si libera subito, anche
+		// con un'altra maiuscola.
 		e.want(e.do(http.MethodDelete, "/repos/alice/gitstack", "alice", ""), http.StatusNoContent)
-		e.want(e.do(http.MethodPost, "/repos", "alice", `{"owner":"alice","name":"GITSTACK"}`), http.StatusConflict)
 		e.want(e.do(http.MethodGet, "/repos/alice/GitStack", "alice", ""), http.StatusNotFound)
+		if n := e.create("alice", `{"owner":"alice","name":"GITSTACK"}`); n.Name != "GITSTACK" {
+			t.Fatalf("nome ricreato = %q", n.Name)
+		}
 	})
 
 	t.Run("owner_inesistente_404", func(t *testing.T) {
