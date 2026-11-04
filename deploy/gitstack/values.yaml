@@ -627,6 +627,10 @@ ci:
     port: 8082
     # Secret TLS dedicato; vuoto = ingress.tls.secretName (o il certResolver).
     tlsSecretName: ""
+    # Modalita' su porta dedicata: entrypoint Traefik e porta pubblica, oppure
+    # entrambi vuoti/zero per la modalita' host dedicato su websecure.
+    entryPoint: ""
+    publicPort: 0
   runner:
     # Immagine completa del runner (act + ci-runner). Vuota = quella pubblicata con le altre,
     # <global.image.registry>/<repository>:<global.image.tag> (stesso tag dei servizi, firmata).

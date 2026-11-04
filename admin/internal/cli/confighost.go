@@ -66,6 +66,8 @@ func runConfig(ctx context.Context, a *App, args []string) int {
 		return runConfigSetAppsDomain(ctx, a, args[2:])
 	case "apps":
 		return runConfigSetApps(ctx, a, args[2:])
+	case "ci-gateway":
+		return runConfigSetCIGateway(ctx, a, args[2:])
 	case "network":
 		return runConfigSetNetwork(ctx, a, args[2:])
 	case "backup.s3":
@@ -223,7 +225,11 @@ func runConfigSetHost(ctx context.Context, a *App, args []string) int {
 	url := scheme + "://" + host
 	_, _ = fmt.Fprintf(a.Stdout, "==> Aggiorno i servizi (URL pubblico %s)\n", url)
 	helmArgs := []string{"upgrade", cfg.Release, cfg.ChartDir, "--namespace", cfg.Namespace, "--reuse-values",
-		"--set", "core.env.publicUrl=" + url, "--set", "identity.oidc.publicUrl=" + url, "--wait", "--timeout", "5m"}
+		"--set", "core.env.publicUrl=" + url, "--set", "identity.oidc.publicUrl=" + url}
+	if cfg.CIGatewayEnabled {
+		helmArgs = append(helmArgs, "--set", "ci.externalGateway.host="+host)
+	}
+	helmArgs = append(helmArgs, "--wait", "--timeout", "5m")
 	if out, err := a.Runner.Run(ctx, []string{"KUBECONFIG=" + cfg.Kubeconfig}, a.helmBin(), helmArgs...); err != nil {
 		a.errorf("config set host: helm upgrade fallito: %v\n%s\nIl certificato è già stato rigenerato: dopo aver sistemato la causa rilancia lo stesso comando.", err, strings.TrimSpace(string(out)))
 		return ExitCluster

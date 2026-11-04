@@ -120,6 +120,8 @@ type Options struct {
 	// <release>-tls e il ConfigMap <release>-ca (gitstack-tls ensure).
 	// Impostato da internal/cli; nil = niente da fare.
 	PublishTLS func(ctx context.Context) error
+	// RestoreCIGateway riallinea il gateway esterno alla scelta salvata nel backup.
+	RestoreCIGateway func(ctx context.Context, enabled bool, port int) error
 	// WaitServing, in restore, è l'ultimo passo prima del completamento:
 	// aspetta che l'istanza risponda attraverso l'Ingress (/api/healthz e
 	// /downloads/ca.crt) o scade con un errore. nil = nessuna attesa.

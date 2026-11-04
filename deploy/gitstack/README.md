@@ -174,6 +174,8 @@ Con `ci.externalGateway.enabled=true` (e solo con `ci.enabled=true`) il chart:
 
 Richiede `ingress.enabled`, `ingress.tls.enabled` e `ci.externalGateway.host`: senza, `helm template` si ferma con un messaggio (il token del runner non viaggia in chiaro). Con l'opzione spenta il chart non crea niente di tutto questo. Sul runner: `gitstack-runner register --url https://<host> --token gsrt_…`; il runner di Gitea usa `--instance https://<host>`. Il test del chart è in `deploy/tests/chart_hardening_test.sh` («GIT-329»).
 
+In alternativa, `ci.externalGateway.entryPoint=cigateway` e `ci.externalGateway.publicPort=8443` usano una porta dedicata sullo stesso host e pubblicano `https://<host>:8443`. L'entrypoint deve essere configurato ed esposto in Traefik. Per installazioni gestite dall'installer, `sudo gitstack config set ci-gateway on [--port 8443]` lo fa insieme al chart; `off` lo disattiva. Il certificato dell'istanza deve coprire l'host, indipendentemente dalla porta.
+
 **Routing delle etichette.** Un job con `runs-on:` che contiene un'etichetta diversa da `ubuntu-*` va ai runner esterni, non al pod interno (`runnerTypeOf`, GIT-278): `self-hosted`, `windows-…`, `macos-…`, `gpu`, ma anche `linux`. `runs-on: linux` resta quindi `queued` finché un runner esterno non ha l'etichetta `linux`; non finisce in un pod interno. Con `externalGateway` spento nessun runner esterno può raggiungere il gateway e quei job restano in coda. Dettagli in `docs/ci-runner-esterno.md`.
 
 ## Servizio git (GIT-74)

@@ -232,6 +232,7 @@ param(
 . (Join-Path $PSScriptRoot 'lib\tls.ps1')
 . (Join-Path $PSScriptRoot 'lib\phases.ps1')
 . (Join-Path $PSScriptRoot 'lib\pilot.ps1')
+. (Join-Path $PSScriptRoot 'lib\ci-gateway.ps1')
 
 # --- Stato globale (risultati dei passi, file di log) ----------------------
 
@@ -1479,6 +1480,12 @@ function Main {
             $e12Details += "[$e12Stage] $($_.Exception.Message)"
         }
         Add-StepResult -Name 'e12. CI (GIT-291): workflow con input, run watch --exit-status, view --log-failed, immagine nel registry e release' -Ok $e12Ok -Detail ($e12Details -join '; ')
+
+        if ($e12Ok) {
+            Invoke-E2eExternalCIGateway -BaseUrl $baseUrl -CaPath $caPath -AdminCookie $ck -WorkDir (Join-Path $OutDir 'ci-gateway')
+        } else {
+            Add-StepResult -Name 'e12-gateway. runner esterno TLS su 8443, register e spegnimento' -Ok $false -Detail 'CI non disponibile (passo e12 fallito)'
+        }
 
         if (-not $SkipBackupRestore -and $script:AppsDomain) {
             if ($e12Ok -and $gitToken -and $gitUser) {

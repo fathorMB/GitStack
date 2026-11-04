@@ -50,6 +50,31 @@ func read(t *testing.T, p string) string {
 	return string(b)
 }
 
+func TestRestoreCIGatewayFromBackup(t *testing.T) {
+	e := newEnv(t)
+	writeFile(t, filepath.Join(e.confDir, "config.yaml"), "version: 1\nci_gateway_enabled: true\nci_gateway_port: 18443\n")
+	res, err := Backup(context.Background(), e.o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := newEnv(t)
+	r.o.DestDir = filepath.Join(t.TempDir(), "b")
+	calls := 0
+	r.o.RestoreCIGateway = func(_ context.Context, enabled bool, port int) error {
+		calls++
+		if !enabled || port != 18443 {
+			t.Errorf("impostazione: %v %d", enabled, port)
+		}
+		return nil
+	}
+	if err := Restore(context.Background(), r.o, res.Path); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 1 {
+		t.Fatalf("chiamate: %d", calls)
+	}
+}
+
 func TestRestorePublishesTLSAfterConfigAndRestartsWeb(t *testing.T) {
 	archive, r := tlsBackup(t)
 	calls := 0

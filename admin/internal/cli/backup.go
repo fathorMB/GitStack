@@ -343,6 +343,22 @@ func runRestore(ctx context.Context, a *App, args []string) int {
 		}
 	}
 	o.WaitServing = func(ctx context.Context) error { return a.waitServing(ctx, cfg) }
+	o.RestoreCIGateway = func(ctx context.Context, enabled bool, port int) error {
+		args := []string{"off", "--config", path}
+		if enabled {
+			args = []string{"on", "--port", fmt.Sprint(port), "--config", path}
+		}
+		if code := runConfigSetCIGateway(ctx, a, args); code != ExitOK {
+			return fmt.Errorf("config set ci-gateway: codice %d; rilancia il comando dopo aver corretto l'errore", code)
+		}
+		if !enabled {
+			if err := config.SetFields(path, map[string]string{"ci_gateway_port": fmt.Sprint(port)}); err != nil {
+				return err
+			}
+			updateInstallConfKey(a.tlsDirFor(path), "CI_GATEWAY_PORT", fmt.Sprint(port))
+		}
+		return nil
+	}
 	if err := backup.Restore(ctx, o, archive); err != nil {
 		var se *backup.ServingError
 		if errors.As(err, &se) {

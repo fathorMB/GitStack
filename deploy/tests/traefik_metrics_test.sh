@@ -9,6 +9,7 @@ export MSYS2_ARG_CONV_EXCL="*"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHART="${HERE}/../gitstack"
+if command -v cygpath >/dev/null 2>&1; then CHART="$(cygpath -m "${CHART}")"; fi
 HAVE_HELM=1
 command -v helm >/dev/null 2>&1 || HAVE_HELM=0
 export GITSTACK_INSTALL_LIB=1
@@ -72,6 +73,15 @@ expect_has "metriche presenti" "${m}" "entryPoint: metrics"
 expect_has "resolver presente" "${m}" "certificatesResolvers:"
 expect_has "email" "${m}" "email: admin@example.com"
 expect_has "storage acme" "${m}" "storage: /data/acme.json"
+CI_GATEWAY_ENABLED=1
+CI_GATEWAY_PORT=8443
+write_traefik_manifest "${CHART}" yes >/dev/null 2>&1
+m="$(cat "${TRAEFIK_MANIFEST}")"
+expect_has "entrypoint gateway" "${m}" "cigateway:"
+expect_has "porta interna gateway" "${m}" "port: 18443"
+expect_has "porta pubblica gateway" "${m}" "exposedPort: 8443"
+expect_has "gateway e ACME insieme" "${m}" "certificatesResolvers:"
+CI_GATEWAY_ENABLED=0
 n="$(grep -c '^kind: HelmChartConfig' "${TRAEFIK_MANIFEST}")"
 if [ "${n}" = 1 ]; then ok; else bad "attesa una sola HelmChartConfig, trovate ${n}"; fi
 

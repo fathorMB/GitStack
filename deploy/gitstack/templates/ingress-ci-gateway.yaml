@@ -2,6 +2,8 @@
 {{- $fullname := include "gitstack.fullname" . -}}
 {{- $ext := .Values.ci.externalGateway -}}
 {{- if not $ext.host }}{{ fail "ci.externalGateway.host e' obbligatorio con ci.externalGateway.enabled" }}{{- end }}
+{{- if ne (empty $ext.entryPoint) (empty $ext.publicPort) }}{{ fail "ci.externalGateway.entryPoint e publicPort devono essere impostati insieme" }}{{- end }}
+{{- if and $ext.publicPort (or (lt (int $ext.publicPort) 1) (gt (int $ext.publicPort) 65535)) }}{{ fail "ci.externalGateway.publicPort deve essere tra 1 e 65535" }}{{- end }}
 {{- if not (and .Values.ingress.enabled .Values.ingress.tls.enabled) }}{{ fail "ci.externalGateway richiede ingress.enabled e ingress.tls.enabled: il token del runner non viaggia in chiaro" }}{{- end }}
 {{- if not .Values.core.enabled }}{{ fail "ci.externalGateway richiede core.enabled" }}{{- end }}
 # ci-gateway per i runner esterni (GIT-329): un host dedicato, solo HTTPS, che va alla
@@ -18,7 +20,7 @@ metadata:
     {{- include "gitstack.labels" . | nindent 4 }}
 spec:
   entryPoints:
-    - websecure
+    - {{ default "websecure" $ext.entryPoint }}
   routes:
     - kind: Rule
       match: Host(`{{ $ext.host }}`)
@@ -30,8 +32,10 @@ spec:
         - name: {{ $fullname }}-core
           port: {{ $ext.port }}
   tls:
+    {{- if not (regexMatch `^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$` $ext.host) }}
     options:
       name: {{ $fullname }}-tls
+    {{- end }}
     {{- with (default .Values.ingress.tls.secretName $ext.tlsSecretName) }}
     secretName: {{ . }}
     {{- end }}

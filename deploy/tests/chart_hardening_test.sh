@@ -326,15 +326,27 @@ if [ -n "${d}" ]; then ok; else bad "IngressRoute gitstack-ci-gateway non render
 # shellcheck disable=SC2016 # i backtick sono la sintassi letterale della regola Traefik
 expect_has "ci-gateway esterno: host dedicato" "${d}" 'Host(`ci.example.test`)'
 expect_has "ci-gateway esterno: solo websecure" "${d}" "- websecure"
+expect_lacks "ci-gateway host dedicato: nessun entrypoint dedicato" "${d}" "- cigateway"
 expect_has "ci-gateway esterno: TLS con il Secret dell'istanza" "${d}" "secretName: gitstack-tls"
 expect_has "ci-gateway esterno: va a core, porta esterna" "${d}" "name: gitstack-core"
 expect_has "ci-gateway esterno: porta 8082" "${d}" "port: 8082"
 d="$(doc Deployment gitstack-core)"
 expect_has "core: porta esterna" "${d}" "GITSTACK_CORE_CI_EXTERNAL_ADDR"
 expect_has "core: URL pubblico" "${d}" 'value: "https://ci.example.test"'
+expect_lacks "core: URL senza porta dedicata" "${d}" 'https://ci.example.test:'
 expect_has "core: porta ci-external esposta" "$(doc Service gitstack-core)" "targetPort: ci-external"
 expect_has "core: ingresso 8082 solo dal controller" "$(doc NetworkPolicy gitstack-core)" "port: 8082"
 expect_lacks "pod dei job: la porta esterna resta chiusa" "$(doc NetworkPolicy ci-job-egress)" "8082"
+OUT="$(render --set ci.enabled=true --set ci.externalGateway.enabled=true --set ci.externalGateway.host=homehub.local --set ci.externalGateway.entryPoint=cigateway --set ci.externalGateway.publicPort=8443 --set ingress.tls.enabled=true --set ingress.tls.secretName=gitstack-tls)" || { bad "helm template con porta dedicata fallito"; exit 1; }
+d="$(doc IngressRoute gitstack-ci-gateway)"
+expect_has "ci-gateway: entrypoint dedicato" "${d}" "- cigateway"
+# shellcheck disable=SC2016
+expect_has "ci-gateway: host dell'istanza" "${d}" 'Host(`homehub.local`)'
+expect_has "ci-gateway: certificato dell'istanza" "${d}" "secretName: gitstack-tls"
+expect_has "core: URL con porta dedicata" "$(doc Deployment gitstack-core)" 'value: "https://homehub.local:8443"'
+OUT="$(render --set ci.enabled=true --set ci.externalGateway.enabled=true --set ci.externalGateway.host=192.0.2.1 --set ci.externalGateway.entryPoint=cigateway --set ci.externalGateway.publicPort=8443 --set ingress.tls.enabled=true --set ingress.tls.secretName=gitstack-tls)" || { bad "helm template con IP fallito"; exit 1; }
+expect_lacks "ci-gateway IP: TLS senza opzioni legate a SNI" "$(doc IngressRoute gitstack-ci-gateway)" "options:"
+if helm_rc --set ci.enabled=true --set ci.externalGateway.enabled=true --set ci.externalGateway.host=homehub.local --set ci.externalGateway.entryPoint=cigateway --set ingress.tls.enabled=true; then bad "entrypoint senza porta: helm template doveva fermarsi"; else ok; fi
 OUT="$(render --set ci.enabled=true)" || { bad "helm template con ci.enabled fallito"; exit 1; }
 expect_lacks "pod dei job: nessuna regola proxy di default" "$(doc NetworkPolicy ci-job-egress)" "10.0.0.5/32"
 OUT="$(render --set ci.enabled=true --set 'ci.runner.proxyEgress[0].to[0].ipBlock.cidr=10.0.0.5/32' --set 'ci.runner.proxyEgress[0].ports[0].protocol=TCP' --set 'ci.runner.proxyEgress[0].ports[0].port=3128')" || { bad "helm template con proxyEgress fallito"; exit 1; }
