@@ -542,6 +542,10 @@ postgres:
   # è false.
   external:
     host: ""
+    # Modalita' su porta dedicata: entrypoint Traefik e porta pubblica, oppure
+    # entrambi vuoti/zero per la modalita' host dedicato su websecure.
+    entryPoint: ""
+    publicPort: 0
     port: 5432
     database: ""
     username: ""
