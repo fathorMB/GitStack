@@ -36,5 +36,4 @@ Le release sono **supportate** sui repo in mirror in pull: il mirror è in sola 
 Limiti:
 
 - La release si crea solo su un tag già presente nel mirror: finché la sincronizzazione non l'ha portato (intervallo di 10 minuti o «Sincronizza ora») la risposta è `422 tag_not_found`. Un workflow che parte dall'evento del tag sincronizzato lo trova già.
-- Un tag `diverged` (riscritto nell'origine) resta quello di GitStack: la release segue il tag locale, non quello dell'origine.
 - Le release e gli allegati vivono solo in GitStack: non tornano all'origine e, come altrove, gli allegati restano fuori dal backup di default.
