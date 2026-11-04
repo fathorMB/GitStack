@@ -1,0 +1,392 @@
+# Log del job windows-tauri, secondo il ci-gateway finto con il masker vero (ci.Masker)
+# durata: 6m39s, esito: RESULT_SUCCESS
+time="2026-11-04T19:38:11+01:00" level=info msg="Using docker host 'npipe:////./pipe/docker_engine', and daemon socket 'npipe:////./pipe/docker_engine'"
+[windows-tauri/tauri] ⭐ Run Set up job
+[windows-tauri/tauri]   ✅  Success - Set up job
+[windows-tauri/tauri] ⭐ Run Main actions/checkout@v4
+[windows-tauri/tauri]   ✅  Success - Main actions/checkout@v4 [32.3403589s]
+[windows-tauri/tauri] ⭐ Run Main ./.gitstack-actions/actions__setup-node__v4
+[windows-tauri/tauri]   | Attempting to download 22...
+[windows-tauri/tauri]   | (node:79788) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+[windows-tauri/tauri]   | (Use `node --trace-deprecation ...` to show where the warning was created)
+[windows-tauri/tauri]   | Bad credentials
+[windows-tauri/tauri]   | Falling back to download directly from Node
+[windows-tauri/tauri]   | Acquiring 22.23.4 - x64 from https://nodejs.org/dist/v22.23.4/node-v22.23.4-win-x64.7z
+[windows-tauri/tauri]   | Extracting ...
+[windows-tauri/tauri]   | Adding to the cache ...
+[windows-tauri/tauri]   | Done
+[windows-tauri/tauri]   ❓  ::group::Environment details
+[windows-tauri/tauri]   | node: v22.23.4
+[windows-tauri/tauri]   | npm: 10.9.9
+[windows-tauri/tauri]   | yarn: 1.22.22
+[windows-tauri/tauri]   ❓  ::endgroup::
+[windows-tauri/tauri]   ❓ add-matcher C:\gsr\.cache\act\96ec2c10336dc3cd\hostexecutor\.gitstack-actions\actions__setup-node__v4\.github\tsc.json
+[windows-tauri/tauri]   ❓ add-matcher C:\gsr\.cache\act\96ec2c10336dc3cd\hostexecutor\.gitstack-actions\actions__setup-node__v4\.github\eslint-stylish.json
+[windows-tauri/tauri]   ❓ add-matcher C:\gsr\.cache\act\96ec2c10336dc3cd\hostexecutor\.gitstack-actions\actions__setup-node__v4\.github\eslint-compact.json
+[windows-tauri/tauri]   ✅  Success - Main ./.gitstack-actions/actions__setup-node__v4 [53.253098s]
+[windows-tauri/tauri]   ⚙  ::set-output:: node-version=v22.23.4
+[windows-tauri/tauri]   ⚙  ::add-path:: C:\gsr\.cache\act\tool_cache\node\22.23.4\x64
+[windows-tauri/tauri] ⭐ Run Main ./.gitstack-actions/dtolnay__rust-toolchain__stable
+[windows-tauri/tauri] ⭐ Run Main Parse toolchain version
+[windows-tauri/tauri]   ✅  Success - Main Parse toolchain version [118.7167ms]
+[windows-tauri/tauri]   ⚙  ::set-output:: toolchain=stable
+[windows-tauri/tauri] ⭐ Run Main Set $CARGO_HOME
+[windows-tauri/tauri]   ✅  Success - Main Set $CARGO_HOME [83.8263ms]
+[windows-tauri/tauri]   ⚙  ::set-env:: CARGO_HOME=C:\Users\moren\.cargo
+[windows-tauri/tauri] ⭐ Run Main Install rustup if needed on windows
+[windows-tauri/tauri]   ✅  Success - Main Install rustup if needed on windows [112.6838ms]
+[windows-tauri/tauri] ⭐ Run Main rustup toolchain install stable
+[windows-tauri/tauri]   | info: syncing channel updates for stable-x86_64-pc-windows-msvc
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   |   stable-x86_64-pc-windows-msvc unchanged - rustc 1.99.1 (58cf8f9c3 2026-10-13)
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   ✅  Success - Main rustup toolchain install stable [571.1151ms]
+[windows-tauri/tauri] ⭐ Run Main rustup default stable
+[windows-tauri/tauri]   | info: using existing install for stable-x86_64-pc-windows-msvc
+[windows-tauri/tauri]   | info: default toolchain set to stable-x86_64-pc-windows-msvc
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   |   stable-x86_64-pc-windows-msvc unchanged - rustc 1.99.1 (58cf8f9c3 2026-10-13)
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   ✅  Success - Main rustup default stable [163.6009ms]
+[windows-tauri/tauri] ⭐ Run Main Create cachekey
+[windows-tauri/tauri]   ✅  Success - Main Create cachekey [599.9187ms]
+[windows-tauri/tauri]   ⚙  ::set-output:: cachekey=2026101358cf
+[windows-tauri/tauri] ⭐ Run Main Disable incremental compilation
+[windows-tauri/tauri]   ✅  Success - Main Disable incremental compilation [151.2924ms]
+[windows-tauri/tauri]   ⚙  ::set-env:: CARGO_INCREMENTAL=0
+[windows-tauri/tauri] ⭐ Run Main Enable colors in Cargo output
+[windows-tauri/tauri]   ✅  Success - Main Enable colors in Cargo output [75.0272ms]
+[windows-tauri/tauri]   ⚙  ::set-env:: CARGO_TERM_COLOR=always
+[windows-tauri/tauri] ⭐ Run Main Enable Cargo sparse registry
+[windows-tauri/tauri]   ✅  Success - Main Enable Cargo sparse registry [248.4019ms]
+[windows-tauri/tauri] ⭐ Run Main Work around spurious network errors in curl 8.0
+[windows-tauri/tauri]   ✅  Success - Main Work around spurious network errors in curl 8.0 [449.8037ms]
+[windows-tauri/tauri] ⭐ Run Main rustc +stable --version --verbose
+[windows-tauri/tauri]   | rustc 1.99.1 (58cf8f9c3 2026-10-13)
+[windows-tauri/tauri]   | binary: rustc
+[windows-tauri/tauri]   | commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67
+[windows-tauri/tauri]   | commit-date: 2026-10-13
+[windows-tauri/tauri]   | host: x86_64-pc-windows-msvc
+[windows-tauri/tauri]   | release: 1.99.1
+[windows-tauri/tauri]   | LLVM version: 23.1.1
+[windows-tauri/tauri]   ✅  Success - Main rustc +stable --version --verbose [358.6441ms]
+[windows-tauri/tauri]   ⚙  ::set-output:: cachekey=2026101358cf
+[windows-tauri/tauri]   ⚙  ::set-output:: name=stable
+[windows-tauri/tauri]   ✅  Success - Main ./.gitstack-actions/dtolnay__rust-toolchain__stable [3.2605366s]
+[windows-tauri/tauri] ⭐ Run Main Versioni
+[windows-tauri/tauri]   | v22.23.4
+[windows-tauri/tauri]   | 10.9.9
+[windows-tauri/tauri]   | rustc 1.99.1 (58cf8f9c3 2026-10-13)
+[windows-tauri/tauri]   | cargo 1.99.1 (5f94df478 2026-08-27)
+[windows-tauri/tauri]   ✅  Success - Main Versioni [2.0140044s]
+[windows-tauri/tauri] ⭐ Run Main pwsh - GITHUB_PATH, GITHUB_ENV, GITHUB_OUTPUT
+[windows-tauri/tauri]   ✅  Success - Main pwsh - GITHUB_PATH, GITHUB_ENV, GITHUB_OUTPUT [1.0726907s]
+[windows-tauri/tauri]   ⚙  ::set-env:: PS_SHELL=pwsh 7.6.9
+[windows-tauri/tauri]   ⚙  ::set-output:: valore=da-pwsh
+[windows-tauri/tauri]   ⚙  ::add-path:: C:\gsr\.cache\act\96ec2c10336dc3cd\hostexecutor\bin-pwsh
+[windows-tauri/tauri] ⭐ Run Main powershell - GITHUB_PATH, GITHUB_ENV, GITHUB_OUTPUT
+[windows-tauri/tauri]   ✅  Success - Main powershell - GITHUB_PATH, GITHUB_ENV, GITHUB_OUTPUT [726.8411ms]
+[windows-tauri/tauri]   ⚙  ::set-env:: PS5_SHELL=powershell 5.1.22621.6133
+[windows-tauri/tauri]   ⚙  ::set-output:: valore=da-powershell
+[windows-tauri/tauri]   ⚙  ::add-path:: C:\gsr\.cache\act\96ec2c10336dc3cd\hostexecutor\bin-ps5
+[windows-tauri/tauri] ⭐ Run Main bash - GITHUB_PATH, GITHUB_ENV, GITHUB_OUTPUT
+[windows-tauri/tauri]   ✅  Success - Main bash - GITHUB_PATH, GITHUB_ENV, GITHUB_OUTPUT [173.1646ms]
+[windows-tauri/tauri]   ⚙  ::set-env:: BASH_SHELL=bash 5.2.26(1)-release
+[windows-tauri/tauri]   ⚙  ::set-output:: valore=da-bash
+[windows-tauri/tauri]   ⚙  ::add-path:: C:/gsr/.cache/act/96ec2c10336dc3cd/hostexecutor/bin-bash
+[windows-tauri/tauri] ⭐ Run Main Verifica di PATH, ENV e OUTPUT dal passo dopo
+[windows-tauri/tauri]   | env: pwsh 7.6.9 | powershell 5.1.22621.6133 | bash 5.2.26(1)-release
+[windows-tauri/tauri]   | output: da-pwsh da-powershell da-bash
+[windows-tauri/tauri]   | dal PATH di pwsh
+[windows-tauri/tauri]   | dal PATH di powershell
+[windows-tauri/tauri]   | dal PATH di bash
+[windows-tauri/tauri]   ✅  Success - Main Verifica di PATH, ENV e OUTPUT dal passo dopo [1.0780301s]
+[windows-tauri/tauri] ⭐ Run Main Segreto su più righe e variabile (devono comparire mascherati)
+[windows-tauri/tauri]   | bash, come variabile:
+[windows-tauri/tauri]   | ***
+[windows-tauri/tauri]   | ***
+[windows-tauri/tauri]   | ***
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   | variabile: C:\gsr-target-freddo
+[windows-tauri/tauri]   ✅  Success - Main Segreto su più righe e variabile (devono comparire mascherati) [104.1546ms]
+[windows-tauri/tauri] ⭐ Run Main Segreto su più righe da pwsh
+[windows-tauri/tauri]   | pwsh: ***
+[windows-tauri/tauri]   | ***
+[windows-tauri/tauri]   | ***
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   | 4
+[windows-tauri/tauri]   ✅  Success - Main Segreto su più righe da pwsh [1.0348271s]
+[windows-tauri/tauri] ⭐ Run Main npm ci
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   | added 2 packages, and audited 3 packages in 21s
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   | 1 package is looking for funding
+[windows-tauri/tauri]   |   run `npm fund` for details
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   | found 0 vulnerabilities
+[windows-tauri/tauri]   ✅  Success - Main npm ci [22.7191995s]
+[windows-tauri/tauri] ⭐ Run Main Build Tauri (NSIS firmato)
+[windows-tauri/tauri]   |         Info Looking up installed tauri packages to check mismatched versions...
+[windows-tauri/tauri]   |      Running beforeBuildCommand `npm run build`
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   | > gs-tauri-prova@0.1.0 build
+[windows-tauri/tauri]   | > node build-web.mjs
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   | web ok
+[windows-tauri/tauri]   |    Compiling proc-macro2 v1.0.107
+[windows-tauri/tauri]   |    Compiling unicode-ident v1.0.27
+[windows-tauri/tauri]   |    Compiling quote v1.0.47
+[windows-tauri/tauri]   |    Compiling serde_core v1.0.229
+[windows-tauri/tauri]   |    Compiling siphasher v1.0.4
+[windows-tauri/tauri]   |    Compiling cfg-if v1.0.5
+[windows-tauri/tauri]   |    Compiling windows-link v0.2.1
+[windows-tauri/tauri]   |    Compiling icu_properties_data v2.4.0
+[windows-tauri/tauri]   |    Compiling fastrand v2.5.0
+[windows-tauri/tauri]   |    Compiling icu_normalizer_data v2.4.0
+[windows-tauri/tauri]   |    Compiling stable_deref_trait v1.2.1
+[windows-tauri/tauri]   |    Compiling thiserror v2.0.21
+[windows-tauri/tauri]   |    Compiling zmij v1.0.23
+[windows-tauri/tauri]   |    Compiling smallvec v1.16.4
+[windows-tauri/tauri]   |    Compiling phf_shared v0.13.1
+[windows-tauri/tauri]   |    Compiling parking_lot_core v0.9.12
+[windows-tauri/tauri]   |    Compiling serde v1.0.229
+[windows-tauri/tauri]   |    Compiling typeid v1.0.3
+[windows-tauri/tauri]   |    Compiling memchr v2.8.3
+[windows-tauri/tauri]   |    Compiling num-conv v0.2.2
+[windows-tauri/tauri]   |    Compiling time-core v0.1.9
+[windows-tauri/tauri]   |    Compiling utf_types v1.0.0
+[windows-tauri/tauri]   |    Compiling itoa v1.0.18
+[windows-tauri/tauri]   |    Compiling erased-serde v0.4.11
+[windows-tauri/tauri]   |    Compiling writeable v0.6.4
+[windows-tauri/tauri]   |    Compiling phf_generator v0.13.1
+[windows-tauri/tauri]   |    Compiling strsim v0.11.1
+[windows-tauri/tauri]   |    Compiling ident_case v1.0.1
+[windows-tauri/tauri]   |    Compiling litemap v0.8.3
+[windows-tauri/tauri]   |    Compiling utf8_iter v1.1.0
+[windows-tauri/tauri]   |    Compiling phf_codegen v0.13.1
+[windows-tauri/tauri]   |    Compiling windows-sys v0.61.2
+[windows-tauri/tauri]   |    Compiling libc v0.2.191
+[windows-tauri/tauri]   |    Compiling new_debug_unreachable v1.0.6
+[windows-tauri/tauri]   |    Compiling version_check v0.9.5
+[windows-tauri/tauri]   |    Compiling anyhow v1.0.104
+[windows-tauri/tauri]   |    Compiling scopeguard v1.2.0
+[windows-tauri/tauri]   |    Compiling precomputed-hash v0.1.1
+[windows-tauri/tauri]   |    Compiling lock_api v0.4.14
+[windows-tauri/tauri]   |    Compiling serde_json v1.0.154
+[windows-tauri/tauri]   |    Compiling getrandom v0.4.3
+[windows-tauri/tauri]   |    Compiling syn v3.0.9
+[windows-tauri/tauri]   |    Compiling syn v2.0.119
+[windows-tauri/tauri]   |    Compiling string_cache_codegen v0.6.1
+[windows-tauri/tauri]   |    Compiling parking_lot v0.12.5
+[windows-tauri/tauri]   |    Compiling winnow v1.0.4
+[windows-tauri/tauri]   |    Compiling dtoa v1.0.11
+[windows-tauri/tauri]   |    Compiling autocfg v1.5.1
+[windows-tauri/tauri]   |    Compiling find-msvc-tools v0.1.15
+[windows-tauri/tauri]   |    Compiling string_cache v0.9.0
+[windows-tauri/tauri]   |    Compiling web_atoms v0.2.6
+[windows-tauri/tauri]   |    Compiling toml_parser v1.1.5+spec-1.1.0
+[windows-tauri/tauri]   |    Compiling percent-encoding v2.3.2
+[windows-tauri/tauri]   |    Compiling shlex v2.0.1
+[windows-tauri/tauri]   |    Compiling toml_writer v1.2.0+spec-1.1.0
+[windows-tauri/tauri]   |    Compiling semver v1.0.28
+[windows-tauri/tauri]   |    Compiling serde_spanned v1.1.2
+[windows-tauri/tauri]   |    Compiling toml_datetime v1.1.2+spec-1.1.0
+[windows-tauri/tauri]   |    Compiling log v0.4.35
+[windows-tauri/tauri]   |    Compiling bitflags v2.13.2
+[windows-tauri/tauri]   |    Compiling toml v1.2.0+spec-1.1.0
+[windows-tauri/tauri]   |    Compiling cc v1.11.0
+[windows-tauri/tauri]   |    Compiling uuid v1.29.0
+[windows-tauri/tauri]   |    Compiling form_urlencoded v1.2.2
+[windows-tauri/tauri]   |    Compiling indexmap v1.9.3
+[windows-tauri/tauri]   |    Compiling dtoa-short v0.3.5
+[windows-tauri/tauri]   |    Compiling aho-corasick v1.1.5
+[windows-tauri/tauri]   |    Compiling tendril v0.5.1
+[windows-tauri/tauri]   |    Compiling selectors v0.38.0
+[windows-tauri/tauri]   |    Compiling windows-result v0.4.1
+[windows-tauri/tauri]   |    Compiling windows-strings v0.5.1
+[windows-tauri/tauri]   |    Compiling alloc-no-stdlib v3.0.0
+[windows-tauri/tauri]   |    Compiling regex-syntax v0.8.11
+[windows-tauri/tauri]   |    Compiling camino v1.2.6
+[windows-tauri/tauri]   |    Compiling alloc-stdlib v0.3.0
+[windows-tauri/tauri]   |    Compiling servo_arc v0.4.3
+[windows-tauri/tauri]   |    Compiling deranged v0.5.9
+[windows-tauri/tauri]   |    Compiling bit-vec v0.8.0
+[windows-tauri/tauri]   |    Compiling web-time v1.1.0
+[windows-tauri/tauri]   |    Compiling fnv v1.0.7
+[windows-tauri/tauri]   |    Compiling winapi-util v0.1.11
+[windows-tauri/tauri]   |    Compiling powerfmt v0.2.1
+[windows-tauri/tauri]   |    Compiling serde_derive_internals v0.29.1
+[windows-tauri/tauri]   |    Compiling equivalent v1.0.3
+[windows-tauri/tauri]   |    Compiling hashbrown v0.12.3
+[windows-tauri/tauri]   |    Compiling rustc-hash v2.1.3
+[windows-tauri/tauri]   |    Compiling hashbrown v0.17.1
+[windows-tauri/tauri]   |    Compiling schemars v0.8.22
+[windows-tauri/tauri]   |    Compiling same-file v1.0.6
+[windows-tauri/tauri]   |    Compiling cfb v0.14.0
+[windows-tauri/tauri]   |    Compiling vswhom-sys v0.1.3
+[windows-tauri/tauri]   |    Compiling synstructure v0.14.0
+[windows-tauri/tauri]   |    Compiling darling_core v0.24.1
+[windows-tauri/tauri]   |    Compiling bit-set v0.8.0
+[windows-tauri/tauri]   |    Compiling time v0.3.55
+[windows-tauri/tauri]   |    Compiling brotli-decompressor v6.2.0
+[windows-tauri/tauri]   |    Compiling indexmap v2.14.2
+[windows-tauri/tauri]   |    Compiling quick-xml v0.42.0
+[windows-tauri/tauri]   |    Compiling regex-automata v0.4.18
+[windows-tauri/tauri]   |    Compiling dunce v1.0.5
+[windows-tauri/tauri]   |    Compiling tauri-utils v2.10.2
+[windows-tauri/tauri]   |    Compiling dyn-clone v1.0.20
+[windows-tauri/tauri]   |    Compiling bytes v1.12.1
+[windows-tauri/tauri]   |    Compiling foldhash v0.2.0
+[windows-tauri/tauri]   |    Compiling base64 v0.23.1
+[windows-tauri/tauri]   |    Compiling brotli v9.1.1
+[windows-tauri/tauri]   |    Compiling serde-untagged v0.1.9
+[windows-tauri/tauri]   |    Compiling infer v0.22.0
+[windows-tauri/tauri]   |    Compiling walkdir v2.5.0
+[windows-tauri/tauri]   |    Compiling phf_macros v0.13.1
+[windows-tauri/tauri]   |    Compiling windows-interface v0.59.3
+[windows-tauri/tauri]   |    Compiling windows-implement v0.60.2
+[windows-tauri/tauri]   |    Compiling derive_more-impl v2.1.1
+[windows-tauri/tauri]   |    Compiling schemars_derive v0.8.22
+[windows-tauri/tauri]   |    Compiling zerofrom-derive v0.1.8
+[windows-tauri/tauri]   |    Compiling yoke-derive v0.8.4
+[windows-tauri/tauri]   |    Compiling zerovec-derive v0.11.7
+[windows-tauri/tauri]   |    Compiling displaydoc v0.2.7
+[windows-tauri/tauri]   |    Compiling serde_derive v1.0.229
+[windows-tauri/tauri]   |    Compiling thiserror-impl v2.0.21
+[windows-tauri/tauri]   |    Compiling cssparser-macros v0.7.1
+[windows-tauri/tauri]   |    Compiling http v1.5.0
+[windows-tauri/tauri]   |    Compiling phf v0.13.1
+[windows-tauri/tauri]   |    Compiling windows-core v0.62.2
+[windows-tauri/tauri]   |    Compiling derive_more v2.1.1
+[windows-tauri/tauri]   |    Compiling regex v1.13.1
+[windows-tauri/tauri]   |    Compiling cssparser v0.37.0
+[windows-tauri/tauri]   |    Compiling generic-array v0.14.7
+[windows-tauri/tauri]   |    Compiling windows-threading v0.2.1
+[windows-tauri/tauri]   |    Compiling zerofrom v0.1.8
+[windows-tauri/tauri]   |    Compiling yoke v0.8.4
+[windows-tauri/tauri]   |    Compiling markup5ever v0.39.0
+[windows-tauri/tauri]   |    Compiling glob v0.3.4
+[windows-tauri/tauri]   |    Compiling ctor v1.0.13
+[windows-tauri/tauri]   |    Compiling simd-adler32 v0.3.10
+[windows-tauri/tauri]   |    Compiling zerovec v0.11.9
+[windows-tauri/tauri]   |    Compiling zerotrie v0.2.5
+[windows-tauri/tauri]   |    Compiling darling_macro v0.24.1
+[windows-tauri/tauri]   |    Compiling html5ever v0.39.0
+[windows-tauri/tauri]   |    Compiling windows-future v0.3.2
+[windows-tauri/tauri]   |    Compiling windows-collections v0.3.2
+[windows-tauri/tauri]   |    Compiling windows-numerics v0.3.1
+[windows-tauri/tauri]   |    Compiling vswhom v0.1.0
+[windows-tauri/tauri]   |    Compiling winreg v0.56.0
+[windows-tauri/tauri]   |    Compiling rustc_version v0.4.1
+[windows-tauri/tauri]   |    Compiling time-macros v0.2.32
+[windows-tauri/tauri]   |    Compiling darling v0.24.1
+[windows-tauri/tauri]   |    Compiling tinystr v0.8.5
+[windows-tauri/tauri]   |    Compiling potential_utf v0.1.6
+[windows-tauri/tauri]   |    Compiling serde_with_macros v3.24.0
+[windows-tauri/tauri]   |    Compiling typenum v1.20.1
+[windows-tauri/tauri]   |    Compiling adler2 v2.0.1
+[windows-tauri/tauri]   |    Compiling icu_collections v2.4.0
+[windows-tauri/tauri]   |    Compiling dom_query v0.28.0
+[windows-tauri/tauri]   |    Compiling icu_locale_core v2.4.0
+[windows-tauri/tauri]   |    Compiling option-ext v0.2.0
+[windows-tauri/tauri]   |    Compiling crc32fast v1.5.4
+[windows-tauri/tauri]   |    Compiling dirs-sys v0.5.0
+[windows-tauri/tauri]   |    Compiling embed-resource v3.0.12
+[windows-tauri/tauri]   |    Compiling windows v0.62.2
+[windows-tauri/tauri]   |    Compiling webview2-com-sys v0.39.1
+[windows-tauri/tauri]   |    Compiling serde_with v3.24.0
+[windows-tauri/tauri]   |    Compiling crossbeam-utils v0.8.23
+[windows-tauri/tauri]   |    Compiling raw-window-handle v0.6.2
+[windows-tauri/tauri]   |    Compiling heck v0.5.0
+[windows-tauri/tauri]   |    Compiling jsonptr v0.7.1
+[windows-tauri/tauri]   |    Compiling cargo-platform v0.1.9
+[windows-tauri/tauri]   |    Compiling plist v1.10.3
+[windows-tauri/tauri]   |    Compiling icu_provider v2.4.0
+[windows-tauri/tauri]   |    Compiling json-patch v4.2.0
+[windows-tauri/tauri]   |    Compiling cargo_metadata v0.19.2
+[windows-tauri/tauri]   |    Compiling icu_properties v2.4.0
+[windows-tauri/tauri]   |    Compiling icu_normalizer v2.4.0
+[windows-tauri/tauri]   |    Compiling dpi v0.1.2
+[windows-tauri/tauri]   |    Compiling cargo_toml v1.0.1
+[windows-tauri/tauri]   |    Compiling tauri-winres v0.3.7
+[windows-tauri/tauri]   |    Compiling dirs v7.0.0
+[windows-tauri/tauri]   |    Compiling idna_adapter v1.2.2
+[windows-tauri/tauri]   |    Compiling idna v1.1.0
+[windows-tauri/tauri]   |    Compiling miniz_oxide v0.9.1
+[windows-tauri/tauri]   |    Compiling cookie v0.18.2
+[windows-tauri/tauri]   |    Compiling url v2.5.8
+[windows-tauri/tauri]   |    Compiling urlpattern v0.6.0
+[windows-tauri/tauri]   |    Compiling static_vcruntime v3.0.0
+[windows-tauri/tauri]   |    Compiling flate2 v1.1.10
+[windows-tauri/tauri]   |    Compiling block-buffer v0.10.4
+[windows-tauri/tauri]   |    Compiling crypto-common v0.1.7
+[windows-tauri/tauri]   |    Compiling miniz_oxide v0.8.9
+[windows-tauri/tauri]   |    Compiling fdeflate v0.3.7
+[windows-tauri/tauri]   |    Compiling webview2-com-macros v0.8.1
+[windows-tauri/tauri]   |    Compiling windows-version v0.1.7
+[windows-tauri/tauri]   |    Compiling pin-project-lite v0.2.17
+[windows-tauri/tauri]   |    Compiling png v0.18.1
+[windows-tauri/tauri]   |    Compiling digest v0.10.7
+[windows-tauri/tauri]   |    Compiling crossbeam-channel v0.5.17
+[windows-tauri/tauri]   |    Compiling wry v0.57.1
+[windows-tauri/tauri]   |    Compiling tracing-core v0.1.36
+[windows-tauri/tauri]   |    Compiling cpufeatures v0.2.17
+[windows-tauri/tauri]   |    Compiling tauri-runtime v2.12.2
+[windows-tauri/tauri]   |    Compiling byteorder v1.5.0
+[windows-tauri/tauri]   |    Compiling ico v0.6.0
+[windows-tauri/tauri]   |    Compiling tracing v0.1.44
+[windows-tauri/tauri]   |    Compiling sha2 v0.10.9
+[windows-tauri/tauri]   |    Compiling unicode-segmentation v1.13.3
+[windows-tauri/tauri]   |    Compiling tauri-runtime-wry v2.12.3
+[windows-tauri/tauri]   |    Compiling getrandom v0.3.4
+[windows-tauri/tauri]   |    Compiling muda v0.20.0
+[windows-tauri/tauri]   |    Compiling softbuffer v0.4.8
+[windows-tauri/tauri]   |    Compiling keyboard-types v0.8.3
+[windows-tauri/tauri]   |    Compiling serialize-to-javascript-impl v0.1.2
+[windows-tauri/tauri]   |    Compiling once_cell v1.21.4
+[windows-tauri/tauri]   |    Compiling tauri-build v2.7.4
+[windows-tauri/tauri]   |    Compiling tauri-codegen v2.7.4
+[windows-tauri/tauri]   |    Compiling serialize-to-javascript v0.1.2
+[windows-tauri/tauri]   |    Compiling tokio v1.54.1
+[windows-tauri/tauri]   |    Compiling window-vibrancy v0.8.1
+[windows-tauri/tauri]   |    Compiling serde_repr v0.1.21
+[windows-tauri/tauri]   |    Compiling mime v0.3.17
+[windows-tauri/tauri]   |    Compiling tauri v2.12.5
+[windows-tauri/tauri]   |    Compiling tauri-macros v2.7.4
+[windows-tauri/tauri]   |    Compiling gs-tauri-prova v0.1.0 (C:\gsr\.cache\act\96ec2c10336dc3cd\hostexecutor\src-tauri)
+[windows-tauri/tauri]   |    Compiling tao v0.37.2
+[windows-tauri/tauri]   |    Compiling webview2-com v0.39.1
+[windows-tauri/tauri]   |     Finished `release` profile [optimized] target(s) in 3m 51s
+[windows-tauri/tauri]   |        Built application at: C:\gsr-target-freddo\release\gs-tauri-prova.exe
+[windows-tauri/tauri]   |         Info Patching C:\gsr-target-freddo\release\gs-tauri-prova.exe with bundle type information: nsis
+[windows-tauri/tauri]   |         Info Target: x64
+[windows-tauri/tauri]   |      Running makensis to produce C:\gsr-target-freddo\release\bundle\nsis\GsTauriProva_0.1.0_x64-setup.exe
+[windows-tauri/tauri]   |     Finished 1 bundle at:
+[windows-tauri/tauri]   |         C:\gsr-target-freddo\release\bundle\nsis\GsTauriProva_0.1.0_x64-setup.exe (1.56 MiB)
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   |     Finished 1 updater signature at:
+[windows-tauri/tauri]   |         C:\gsr-target-freddo\release\bundle\nsis\GsTauriProva_0.1.0_x64-setup.exe.sig
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   | durata build: 00:04:08.6171810
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   | Name                                  Length
+[windows-tauri/tauri]   | ----                                  ------
+[windows-tauri/tauri]   | GsTauriProva_0.1.0_x64-setup.exe     1632108
+[windows-tauri/tauri]   | GsTauriProva_0.1.0_x64-setup.exe.sig     444
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   | Hash : C4B1717928A6DA0BAD12A308EB92108D121C3ED170AECD19B17AF2C538CD14B7
+[windows-tauri/tauri]   | Path : C:\gsr-target-freddo\release\bundle\nsis\GsTauriProva_0.1.0_x64-setup.exe
+[windows-tauri/tauri]   | 
+[windows-tauri/tauri]   | dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSY3dDOSs5Lzc5QzIrY3lSU1JXalFGZmd3SHZNelRPNWxxb0d4UnVNK2h4R0kzcDZoTEtUdUtBZ1ppNWpSK0N5RlhmSDdhQTIzWFF3ZW1ONFdRSU5zY0JxWlNHaGwyY1FrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzODE3ODU5CWZpbGU6R3NUYXVyaVByb3ZhXzAuMS4wX3g2NC1zZXR1cC5leGUJdmVyc2lvbjowLjEuMAp1ZkpRQ0NWMWlSQ0FkVHBYTHdlVmpDMnNEbERqbjA4eTN2eldaVW5yUlpWU29DaEVMcVl0TG52SmlDUFpLS2kwOEc4QWFNZFZrSmVUY3pqYlhVL1ZEdz09Cg==
+[windows-tauri/tauri]   ✅  Success - Main Build Tauri (NSIS firmato) [4m9.8267648s]
+[windows-tauri/tauri] ⭐ Run Post ./.gitstack-actions/dtolnay__rust-toolchain__stable
+[windows-tauri/tauri]   ✅  Success - Post ./.gitstack-actions/dtolnay__rust-toolchain__stable [0s]
+[windows-tauri/tauri] ⭐ Run Post ./.gitstack-actions/actions__setup-node__v4
+[windows-tauri/tauri]   | (node:41924) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+[windows-tauri/tauri]   | (Use `node --trace-deprecation ...` to show where the warning was created)
+[windows-tauri/tauri]   ✅  Success - Post ./.gitstack-actions/actions__setup-node__v4 [690.0368ms]
+[windows-tauri/tauri] ⭐ Run Complete job
+[windows-tauri/tauri] Cleaning up container for job tauri
+[windows-tauri/tauri]   ✅  Success - Complete job
+[windows-tauri/tauri] 🏁  Job succeeded
