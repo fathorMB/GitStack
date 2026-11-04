@@ -147,6 +147,7 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		Repo:            a.Getenv("GITSTACK_REPO"),
 		TraefikManifest: a.Getenv("GITSTACK_TRAEFIK_MANIFEST"),
 		TLSDir:          a.tlsDirFor(path),
+		TLSToolPath:     a.tlsToolPath(),
 		// N9a: k3s si aggiorna dal mirror dei download, se configurato, e il
 		// proxy arriva dall'ambiente (exportProxyEnv in loadConfig).
 		K3sDownloadMirror: cfg.Network.DownloadMirror,

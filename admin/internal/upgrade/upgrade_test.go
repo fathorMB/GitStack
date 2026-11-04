@@ -31,6 +31,7 @@ const (
 	newSHA = "2222222222222222222222222222222222222222"
 	newBin = "BINARIO-NUOVO"
 	oldBin = "BINARIO-VECCHIO"
+	oldTLS = "#!/bin/sh\n# gitstack-tls vecchio\n"
 )
 
 // fakeCluster implementa backup.Cluster: il database è una stringa
@@ -230,7 +231,17 @@ func (h *fakeHelm) has(sub string) bool {
 	return false
 }
 
+// newTLS è il gitstack-tls del commit di destinazione nei sorgenti di prova.
+const newTLS = "#!/bin/sh\n# gitstack-tls nuovo: --apps-domain\n"
+
 func chartTarball(t *testing.T, sha string, k3sFile ...string) []byte {
+	t.Helper()
+	return chartTarballTLS(t, sha, newTLS, k3sFile...)
+}
+
+// chartTarballTLS è chartTarball con il contenuto di deploy/gitstack-tls.sh
+// ("" = il commit non lo contiene).
+func chartTarballTLS(t *testing.T, sha, tls string, k3sFile ...string) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
@@ -242,6 +253,9 @@ func chartTarball(t *testing.T, sha string, k3sFile ...string) []byte {
 		_, _ = tw.Write([]byte(body))
 	}
 	add("GitStack-"+sha+"/README.md", "no")
+	if tls != "" {
+		add("GitStack-"+sha+"/deploy/gitstack-tls.sh", tls)
+	}
 	for _, v := range k3sFile {
 		if v != "" {
 			add("GitStack-"+sha+"/deploy/k3s-version", v+"\n")
@@ -275,6 +289,8 @@ type world struct {
 	badSum  bool
 	noBin   bool
 	k3sFile string // contenuto di deploy/k3s-version nel commit nuovo
+	tlsSrc  string // contenuto di deploy/gitstack-tls.sh nel commit nuovo
+	tlsBin  string // gitstack-tls installato (percorso di prova)
 
 	// Firme (V5): la release pubblica i bundle cosign accanto agli artefatti.
 	noBundle   bool   // nessun bundle pubblicato (artefatto non firmato)
@@ -291,7 +307,7 @@ type world struct {
 
 func newWorld(t *testing.T) *world {
 	t.Helper()
-	w := &world{t: t, compare: "ahead", chartVer: "0.1.0"}
+	w := &world{t: t, compare: "ahead", chartVer: "0.1.0", tlsSrc: newTLS}
 	root := t.TempDir()
 	w.exe = filepath.Join(root, "bin", "gitstack")
 	w.chart = filepath.Join(root, "share", "chart")
@@ -304,6 +320,8 @@ func newWorld(t *testing.T) *world {
 		}
 	}
 	mustWrite(t, w.exe, oldBin)
+	w.tlsBin = filepath.Join(root, "sbin", "gitstack-tls")
+	mustWriteMode(t, w.tlsBin, 0o700, oldTLS)
 	mustWrite(t, filepath.Join(w.chart, "Chart.yaml"), "name: gitstack\n")
 	mustWrite(t, filepath.Join(w.chart, "values.yaml"), "VECCHIO: 1\n")
 	mustWrite(t, filepath.Join(git, "r.git"), "OGGETTO")
@@ -361,7 +379,7 @@ func newWorld(t *testing.T) *world {
 			}
 			_, _ = rw.Write(fakeBundle(signed, w.identity()))
 		case strings.HasSuffix(p, "/tar.gz/"+newSHA), strings.HasSuffix(p, "/gitstack/source/"+newSHA+".tar.gz"):
-			_, _ = rw.Write(chartTarball(t, newSHA, w.k3sFile))
+			_, _ = rw.Write(chartTarballTLS(t, newSHA, w.tlsSrc, w.k3sFile))
 		default:
 			http.NotFound(rw, r)
 		}
@@ -393,6 +411,7 @@ func newWorld(t *testing.T) *world {
 		Timeout:         200 * time.Millisecond,
 		Poll:            10 * time.Millisecond,
 		ExePath:         w.exe,
+		TLSToolPath:     w.tlsBin,
 		Repo:            "o/r",
 		APIBase:         w.srv.URL + "/repos-api",
 		CodeloadURL:     w.srv.URL + "/codeload",

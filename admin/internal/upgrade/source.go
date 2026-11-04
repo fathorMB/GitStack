@@ -58,6 +58,10 @@ type Target struct {
 	// K3sVersionFile ("" se non la dichiara): la compila FetchChart.
 	K3sVersion      string
 	K3sScriptSHA256 string
+	// TLSScript è deploy/gitstack-tls.sh del commit di destinazione, letto dallo
+	// stesso sorgente del chart (nil se il commit non lo contiene): lo installa
+	// installTLSTool a upgrade riuscito (GIT-543).
+	TLSScript []byte
 }
 
 func (o *Options) get(ctx context.Context, rawURL string, limit int64, accept string) ([]byte, error) {
@@ -303,6 +307,17 @@ func (o *Options) FetchChart(ctx context.Context, t *Target, dest string) error 
 				return err
 			}
 			t.K3sScriptSHA256 = strings.TrimSpace(string(b))
+			continue
+		}
+		if rel == TLSScriptFile && h.Typeflag == tar.TypeReg {
+			b, err := io.ReadAll(io.LimitReader(tr, maxTLSScript+1))
+			if err != nil {
+				return fmt.Errorf("sorgente scaricato non valido: %w", err)
+			}
+			if len(b) > maxTLSScript {
+				return fmt.Errorf("%s del commit %s è troppo grande", TLSScriptFile, t.SHA)
+			}
+			t.TLSScript = b
 			continue
 		}
 		if rel == K3sVersionFile && h.Typeflag == tar.TypeReg {
