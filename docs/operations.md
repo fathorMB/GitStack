@@ -1810,14 +1810,26 @@ gitstack sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee
 
 ### TLS diagnostics
 
-The script `deploy/gitstack/tls/gitstack-tls.sh` (installed as
-`/usr/local/bin/gitstack-tls`) supports:
+The script `deploy/gitstack-tls.sh` (installed as
+`/usr/local/sbin/gitstack-tls`) supports:
 
 - `gitstack-tls fingerprint` — prints the CA certificate SHA-256 fingerprint
 - `gitstack-tls renew` — regenerates the server certificate (internal CA mode)
 
 Both need `sudo` on internal CA because they read/write under
 `/etc/gitstack/`.
+
+`deploy/install.sh` installs the script, and `gitstack upgrade` replaces it with
+the one of the target version. The CI packs it into the signed chart
+(`files/gitstack-tls.sh`), so it is verified with the same cosign signature as
+the chart; it is written atomically with mode 0755. The unsigned source tarball
+is never used for it, except with the explicit N9 exception
+(`--allow-unsigned-mirrors`, with a warning). A signed chart without the script
+(older releases) or a failed verification leaves the old script in place and the
+upgrade summary says so; install it by hand with
+`sudo install -m 0755 deploy/gitstack-tls.sh /usr/local/sbin/gitstack-tls`.
+The upgrade that first brings this behaviour is the one run *by* a binary that
+already contains it: an older binary leaves the script as it was.
 
 ### CI tests of install, upgrade and restore (N2, V1)
 

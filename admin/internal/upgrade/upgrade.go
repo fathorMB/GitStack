@@ -135,6 +135,8 @@ type Options struct {
 	// con install.conf (default <cartella del config>/tls). Iniettabili nei test (GIT-534).
 	TraefikManifest string
 	TLSDir          string
+	// TLSToolPath è dove installare gitstack-tls (default DefaultTLSToolPath).
+	TLSToolPath string
 }
 
 func (o *Options) client() *http.Client {
@@ -629,6 +631,7 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 	}
 	res.Outcome = Upgraded
 	res.add("Aggiornato da %s a %s: tutti i servizi sono sani.", o.Cfg.ImageTag, t.Tag)
+	o.installTLSTool(res, t)
 	o.postUpgrade(ctx, res, staged, userServiceSecret)
 	res.add("Backup preventivo conservato: %s", br.Path)
 	return res, nil

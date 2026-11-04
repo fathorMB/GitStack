@@ -335,3 +335,11 @@ func updateInstallConf(tlsDir, host string) {
 	}
 	_ = os.WriteFile(p, []byte(strings.Join(lines, "\n")), 0o600)
 }
+
+// tlsToolPath è il percorso di gitstack-tls: GITSTACK_TLS_BIN o l'installato.
+func (a *App) tlsToolPath() string {
+	if p := a.Getenv("GITSTACK_TLS_BIN"); p != "" {
+		return p
+	}
+	return tlsToolPath
+}

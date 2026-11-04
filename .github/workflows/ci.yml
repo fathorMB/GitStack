@@ -940,6 +940,9 @@ jobs:
           app_version=$(helm show chart "${chart_dir}" | awk '/^appVersion:/{print $2; exit}')
 
           # Pack del chart
+          # GIT-543: gitstack-tls.sh viaggia nel chart firmato, così `gitstack upgrade`
+          # lo installa con la stessa verifica cosign del chart.
+          cp deploy/gitstack-tls.sh "${chart_dir}/files/gitstack-tls.sh"
           echo "Packaging chart..."
           helm package "${chart_dir}" --version "${chart_version}" --app-version "${app_version}" --destination /tmp
 
@@ -948,6 +951,7 @@ jobs:
             echo "ERRORE: chart non trovato: ${chart_file}" >&2
             exit 1
           fi
+          tar -tzf "${chart_file}" | grep -qx 'gitstack/files/gitstack-tls.sh' || { echo "ERRORE: gitstack-tls.sh non è nel chart" >&2; exit 1; }
 
           # SBOM del chart (template e metadati)
           mkdir -p sign sbom
@@ -1265,11 +1269,15 @@ jobs:
       - name: Pacchetto del chart con la versione
         run: |
           set -euo pipefail
+          # GIT-543: lo script di TLS nel chart firmato (vedi il job sign).
+          cp deploy/gitstack-tls.sh deploy/gitstack/files/gitstack-tls.sh
           helm package deploy/gitstack \
             --version "${{ steps.ver.outputs.plain }}" \
             --app-version "${{ steps.ver.outputs.plain }}" \
             --destination dist
-          test -s "dist/gitstack-${{ steps.ver.outputs.plain }}.tgz"
+          chart_file="dist/gitstack-${{ steps.ver.outputs.plain }}.tgz"
+          test -s "${chart_file}"
+          tar -tzf "${chart_file}" | grep -qx 'gitstack/files/gitstack-tls.sh' || { echo "ERRORE: gitstack-tls.sh non è nel chart" >&2; exit 1; }
 
       # SBOM: delle immagini quelli già generati dal job sign (stessi digest),
       # di binari e chart quelli nuovi.
