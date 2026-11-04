@@ -56,7 +56,7 @@ func TestCIGatewayOnOff(t *testing.T) {
 		t.Fatalf("on: %d %s", code, errs)
 	}
 	b, _ := os.ReadFile(manifest)
-	for _, s := range []string{"cigateway:", "metrics:", "certificatesResolvers:", fmt.Sprint(port)} {
+	for _, s := range []string{"cigateway:", "metrics:", "certificatesResolvers:", "port: 18443", fmt.Sprintf("exposedPort: %d", port)} {
 		if !strings.Contains(string(b), s) {
 			t.Errorf("manifest senza %s: %s", s, b)
 		}

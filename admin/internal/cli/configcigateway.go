@@ -44,7 +44,7 @@ func gatewayManifest(data []byte, on bool, port int) ([]byte, error) {
 		return nil, fmt.Errorf("ports mancanti nel manifest Traefik")
 	}
 	if on {
-		ports["cigateway"] = map[string]any{"port": port, "exposedPort": port, "expose": map[string]any{"default": true}, "protocol": "TCP"}
+		ports["cigateway"] = map[string]any{"port": 18443, "exposedPort": port, "expose": map[string]any{"default": true}, "protocol": "TCP"}
 	} else {
 		delete(ports, "cigateway")
 	}

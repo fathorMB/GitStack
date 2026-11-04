@@ -32,8 +32,10 @@ spec:
         - name: {{ $fullname }}-core
           port: {{ $ext.port }}
   tls:
+    {{- if not (regexMatch `^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$` $ext.host) }}
     options:
       name: {{ $fullname }}-tls
+    {{- end }}
     {{- with (default .Values.ingress.tls.secretName $ext.tlsSecretName) }}
     secretName: {{ . }}
     {{- end }}

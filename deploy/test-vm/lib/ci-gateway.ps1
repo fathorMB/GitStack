@@ -3,6 +3,7 @@ function Invoke-E2eExternalCIGateway {
     param([string]$BaseUrl, [string]$CaPath, $AdminCookie, [string]$WorkDir)
     $ok = $false; $detail = ''; $store = $null; $added = $false
     $oldToken = $env:GITSTACK_RUNNER_REGISTRATION_TOKEN
+    $oldProgress = $ProgressPreference
     try {
         if (-not $AdminCookie -or -not (Test-Path -LiteralPath $CaPath)) { throw 'manca la sessione admin o la CA verificata' }
         New-Item -ItemType Directory -Force -Path $WorkDir | Out-Null
@@ -14,16 +15,18 @@ function Invoke-E2eExternalCIGateway {
         if (-not $env:GITSTACK_RUNNER_REGISTRATION_TOKEN) { throw 'token di registrazione mancante' }
         $exe = Join-Path $WorkDir 'gitstack-runner_windows_amd64.exe'
         $sums = Join-Path $WorkDir 'SHA256SUMS'
-        Invoke-WebRequest -UseBasicParsing -Uri "$BaseUrl/downloads/gitstack-runner_windows_amd64.exe" -OutFile $exe
-        Invoke-WebRequest -UseBasicParsing -Uri "$BaseUrl/downloads/SHA256SUMS" -OutFile $sums
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -UseBasicParsing -Uri "$BaseUrl/downloads/gitstack-runner_windows_amd64.exe" -OutFile $exe -TimeoutSec 120
+        Invoke-WebRequest -UseBasicParsing -Uri "$BaseUrl/downloads/SHA256SUMS" -OutFile $sums -TimeoutSec 30
         $line = @(Get-Content -LiteralPath $sums | Where-Object { $_ -match '^([0-9a-fA-F]{64})\s+\*?gitstack-runner_windows_amd64\.exe$' })
         if ($line.Count -ne 1) { throw 'checksum del runner mancante o duplicato' }
         $expected = ($line[0] -split '\s+')[0]
         if ((Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash -ne $expected) { throw 'checksum del runner errato' }
         Write-Log 'ok ci-gateway: checksum SHA256 del runner verificato'
-        # Go usa lo store Windows: aggiunge solo la CA verificata, e la rimuove se era assente.
+        # La VM e2e richiede amministratore: lo store macchina evita il prompt
+        # interattivo di conferma dello store CurrentUser su Windows.
         $ca = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 -ArgumentList (Resolve-Path -LiteralPath $CaPath).Path
-        $store = New-Object System.Security.Cryptography.X509Certificates.X509Store('Root', 'CurrentUser')
+        $store = New-Object System.Security.Cryptography.X509Certificates.X509Store('Root', 'LocalMachine')
         $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
         if ($store.Certificates.Find('FindByThumbprint', $ca.Thumbprint, $false).Count -eq 0) { $store.Add($ca); $added = $true }
         $url = "https://$($script:VmIp):8443"
@@ -53,6 +56,7 @@ function Invoke-E2eExternalCIGateway {
         if (-not $ok) { $null = Invoke-VmSsh -Command 'sudo gitstack config set ci-gateway off' -TimeoutSeconds 360 }
         if ($store) { if ($added) { $store.Remove($ca) }; $store.Close() }
         $env:GITSTACK_RUNNER_REGISTRATION_TOKEN = $oldToken
+        $ProgressPreference = $oldProgress
         Remove-Item -LiteralPath (Join-Path $WorkDir 'runner.json') -Force -ErrorAction SilentlyContinue
     }
     Add-StepResult -Name 'e12-gateway. runner esterno TLS su 8443, register e spegnimento' -Ok $ok -Detail $detail

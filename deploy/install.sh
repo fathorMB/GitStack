@@ -2363,7 +2363,7 @@ EOF2
     if [ "${CI_GATEWAY_ENABLED}" = "1" ]; then
       cat <<EOF2
       cigateway:
-        port: ${CI_GATEWAY_PORT}
+        port: 18443
         exposedPort: ${CI_GATEWAY_PORT}
         expose:
           default: true
