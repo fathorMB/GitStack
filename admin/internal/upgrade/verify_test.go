@@ -164,6 +164,7 @@ func signedChartTgzVersion(t *testing.T, chartYAML string) []byte {
 		{"gitstack/Chart.yaml", chartYAML},
 		{"gitstack/values.yaml", "NUOVO: 1\n"},
 		{"gitstack/templates/a.yaml", "x"},
+		{"gitstack/files/traefik-metrics-values.yaml", "# commento\nmetrics:\n  prometheus:\n    entryPoint: metrics\nports:\n  metrics:\n    port: 9100\n"},
 	} {
 		if err := tw.WriteHeader(&tar.Header{Name: f[0], Mode: 0o644, Size: int64(len(f[1])), Typeflag: tar.TypeReg}); err != nil {
 			t.Fatal(err)

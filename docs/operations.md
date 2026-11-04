@@ -1449,6 +1449,26 @@ executed.
   download path, `admin/internal/upgrade/k3s.go`).
 - The test is `deploy/tests/k3s_script_test.sh`, run in CI.
 
+### Traefik HelmChartConfig on installations older than GIT-403 (GIT-534)
+
+`/var/lib/rancher/k3s/server/manifests/gitstack-traefik.yaml` (the `traefik` HelmChartConfig in
+`kube-system`: Prometheus metrics of GIT-403, the ACME resolver with `--tls letsencrypt`, the
+`cigateway` port when the CI gateway is on) was written only by `deploy/install.sh`. An installation
+made before GIT-403 and only upgraded since never had it. Now `gitstack upgrade` writes or realigns
+it as a post-upgrade step (so it runs in the target binary, like the service Secrets), also when
+GitStack is already at the requested version, and removes the old `gitstack-traefik-letsencrypt.yaml`
+as the installer does. The text is generated once in Go (`admin/internal/traefikcfg`), with the chart's
+`files/traefik-metrics-values.yaml`, and is the same the installer writes (test
+`TestRenderUgualeAlInstaller`). A file that already contains everything expected is left alone; one
+that lacks something is rewritten keeping its ACME resolver (email, `caServer`) and `cigateway` port.
+`--dry-run` prints what would be written ("Traefik: scriverei ...").
+
+An upgrade *launched from* a binary older than GIT-490 runs its post-upgrade steps with the old logic
+and cannot write the file. In that case run `sudo gitstack config set ci-gateway on`: it always runs
+the installed (new) binary and, if the manifest is missing, creates it from `config.yaml` and
+`tls/install.conf` before adding the port. Without the CI gateway, run `sudo gitstack upgrade` again
+(same version: it still realigns the manifest).
+
 ### Hardening k3s: private kubeconfig and encrypted Secrets (F2, GIT-228)
 
 `/etc/rancher/k3s/k3s.yaml` is cluster-admin: whoever reads it reads every

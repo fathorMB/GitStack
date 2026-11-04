@@ -98,3 +98,79 @@ func TestCIGatewayRejectsOldChartWithPostgresPublicPort(t *testing.T) {
 		t.Fatalf("codice %d, atteso ExitConfig: %s", code, errs)
 	}
 }
+
+// GIT-534: installazione precedente a GIT-403, senza gitstack-traefik.yaml: il comando lo genera.
+func TestCIGatewayOnCreaIlManifestSeManca(t *testing.T) {
+	cfg, tls := hostFixture(t, "letsencrypt")
+	chart := filepath.Join(filepath.Dir(cfg), "chart")
+	if err := os.WriteFile(filepath.Join(chart, "values.yaml"), []byte("ci:\n  externalGateway:\n    publicPort: 0\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(chart, "files"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	metrics := "metrics:\n  prometheus:\n    entryPoint: metrics\nports:\n  metrics:\n    port: 9100\n"
+	if err := os.WriteFile(filepath.Join(chart, "files", "traefik-metrics-values.yaml"), []byte(metrics), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tls, "install.conf"), []byte("MODE=letsencrypt\nHOSTS=git.example.com\nEMAIL=ops@example.com\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	manifest := filepath.Join(filepath.Dir(cfg), "manifests", "gitstack-traefik.yaml")
+	a, _, errs := hostApp(&recRunner{}, tls)
+	r := &gatewayRunner{}
+	a.Runner = r
+	oldGetenv := a.Getenv
+	a.Getenv = func(k string) string {
+		if k == "GITSTACK_TRAEFIK_MANIFEST" {
+			return manifest
+		}
+		return oldGetenv(k)
+	}
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	_ = ln.Close()
+	if code := a.Run(context.Background(), []string{"config", "set", "ci-gateway", "on", "--port", fmt.Sprint(port), "--config", cfg}); code != ExitOK {
+		t.Fatalf("on senza manifest: %d %s", code, errs)
+	}
+	b, err := os.ReadFile(manifest)
+	if err != nil {
+		t.Fatalf("manifest non creato: %v", err)
+	}
+	for _, s := range []string{"kind: HelmChartConfig", "entryPoint: metrics", "cigateway:", "port: 18443", fmt.Sprintf("exposedPort: %d", port), "certificatesResolvers:", "email: ops@example.com"} {
+		if !strings.Contains(string(b), s) {
+			t.Errorf("manifest senza %s:\n%s", s, b)
+		}
+	}
+}
+
+// Se helm fallisce, il file creato dal comando non resta.
+func TestCIGatewayOnSenzaManifestEHelmFallitoRimuoveIlFile(t *testing.T) {
+	cfg, tls := hostFixture(t, "internal")
+	chart := filepath.Join(filepath.Dir(cfg), "chart")
+	_ = os.WriteFile(filepath.Join(chart, "values.yaml"), []byte("ci:\n  externalGateway:\n    publicPort: 0\n"), 0o600)
+	_ = os.MkdirAll(filepath.Join(chart, "files"), 0o700)
+	_ = os.WriteFile(filepath.Join(chart, "files", "traefik-metrics-values.yaml"), []byte("metrics:\n  prometheus:\n    entryPoint: metrics\nports:\n  metrics:\n    port: 9100\n"), 0o600)
+	manifest := filepath.Join(filepath.Dir(cfg), "manifests", "gitstack-traefik.yaml")
+	a, _, errs := hostApp(&recRunner{}, tls)
+	a.Runner = &gatewayRunner{failUpgrade: true}
+	oldGetenv := a.Getenv
+	a.Getenv = func(k string) string {
+		if k == "GITSTACK_TRAEFIK_MANIFEST" {
+			return manifest
+		}
+		return oldGetenv(k)
+	}
+	ln, _ := net.Listen("tcp", "127.0.0.1:0")
+	port := ln.Addr().(*net.TCPAddr).Port
+	_ = ln.Close()
+	if code := a.Run(context.Background(), []string{"config", "set", "ci-gateway", "on", "--port", fmt.Sprint(port), "--config", cfg}); code != ExitCluster {
+		t.Fatalf("codice %d: %s", code, errs)
+	}
+	if _, err := os.Stat(manifest); !os.IsNotExist(err) {
+		t.Fatalf("il manifest creato doveva essere tolto: %v", err)
+	}
+}
