@@ -24,7 +24,7 @@ Stile e token: `design/styleguide/`. Le variabili CSS qui sono identiche a quell
 | 16 | Admin · System (servizi, Postgres esterno, rete aziendale, backup locale e S3, upgrade di GitStack e k3s; N7–N10) | M-08 |
 | 17 | Admin · Agents (account agent, P4/P5) | M-02 |
 | 18 | Settings · General (branch principale, protezione, archiviazione, eliminazione) | M-03 |
-| 19 | Deleted repositories (ripristino entro 7 giorni) | M-03 |
+| 19 | Delete repository (conferma scrivendo `owner/repo`; eliminazione definitiva e immediata, niente cestino; decisione del board del 2026-11-04, sostituisce «Deleted repositories») | M-03 |
 | 20 | New issue (modelli, allegati) | M-05 |
 | 21 | Notification settings (email per tipo, Watch, conservazione) | M-06 |
 | 22 | Blame (autore per riga, badge agent) | M-04 |

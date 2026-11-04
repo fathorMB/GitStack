@@ -17,6 +17,6 @@
   "schema_version": 1,
   "status": "ready",
   "title": "GitStack Mockups v1",
-  "update_reason": "Schermata 16 (Admin · System) aggiornata alle regole N7–N10 del 2026-10-12: Postgres esterno, rete aziendale (proxy, mirror, CA), backup locale più copia cifrata su S3 con errore di caricamento, aggiornamento di k3s (patch automatica, minori con --k3s).",
-  "updated": "2026-10-11T23:05:57.092902+00:00"
+  "update_reason": "R2/R12 del 2026-11-04 (board, «eliminato è eliminato», GIT-530): la schermata 19 «Deleted repositories» è sostituita da «Delete repository», con conferma scrivendo owner/repo, elenco di ciò che si cancella e avviso «solo da backup»; testo del Delete in Settings · General riscritto; il link «Organization settings» ora porta alla schermata 15.",
+  "updated": "2026-11-04T18:17:50.467749400+00:00"
 }

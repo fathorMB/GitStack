@@ -414,9 +414,9 @@ p{margin:0}
   <select id="pick">
     <optgroup label="Accesso"><option value="login">01 · Login</option></optgroup>
     <optgroup label="Workspace"><option value="home">02 · Home (dashboard)</option><option value="repos">03 · Repositories</option><option value="new-repo">04 · New repository</option><option value="notifications">05 · Notifications</option><option value="downloads">24 · CLI &amp; skills</option></optgroup>
-    <optgroup label="Repository"><option value="repo-empty">06 · Empty repository (quick setup)</option><option value="repo-code">07 · Code</option><option value="repo-file">08 · File view</option><option value="repo-commits">09 · Commits</option><option value="commit">10 · Commit diff</option><option value="blame">22 · Blame</option><option value="tags">23 · Tags</option><option value="repo-webhooks">11 · Settings · Webhooks</option><option value="repo-general">18 · Settings · General</option></optgroup>
+    <optgroup label="Repository"><option value="repo-empty">06 · Empty repository (quick setup)</option><option value="repo-code">07 · Code</option><option value="repo-file">08 · File view</option><option value="repo-commits">09 · Commits</option><option value="commit">10 · Commit diff</option><option value="blame">22 · Blame</option><option value="tags">23 · Tags</option><option value="repo-webhooks">11 · Settings · Webhooks</option><option value="repo-general">18 · Settings · General</option><option value="delete-repo">19 · Delete repository (conferma)</option></optgroup>
     <optgroup label="Issues"><option value="issues">12 · Issue list</option><option value="issue">13 · Issue detail</option><option value="new-issue">20 · New issue</option></optgroup>
-    <optgroup label="Account e organizzazione"><option value="tokens">14 · Access tokens &amp; SSH keys</option><option value="notif-settings">21 · Notification settings</option><option value="org">15 · Organization · Teams</option><option value="deleted-repos">19 · Deleted repositories</option></optgroup>
+    <optgroup label="Account e organizzazione"><option value="tokens">14 · Access tokens &amp; SSH keys</option><option value="notif-settings">21 · Notification settings</option><option value="org">15 · Organization · Teams</option></optgroup>
     <optgroup label="Pull Request (v1.1)"><option value="pulls">25 · Pull requests</option><option value="pull">26 · Pull request · Conversation</option><option value="pull-files">27 · Pull request · Files changed</option><option value="pr-settings">28 · Settings · Branches &amp; merge</option></optgroup>
     <optgroup label="Amministrazione"><option value="admin">16 · Admin · System</option><option value="agents">17 · Admin · Agents</option></optgroup>
   </select>
@@ -916,7 +916,7 @@ make dev</pre>
 </section>
 
 <!-- ============ 18 REPO SETTINGS · GENERAL ============ -->
-<section class="screen" data-screen="repo-general" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>Settings</b>" data-desc="Impostazioni repo, sezione General (solo admin del repo): nome e owner fissi (R3), descrizione, visibilità, branch principale (R4), protezione del branch principale (R9), archiviazione (R10), eliminazione recuperabile per 7 giorni (R2, R12).">
+<section class="screen" data-screen="repo-general" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>Settings</b>" data-desc="Impostazioni repo, sezione General (solo admin del repo): nome e owner fissi (R3), descrizione, visibilità, branch principale (R4), protezione del branch principale (R9), archiviazione (R10), eliminazione definitiva e immediata (R2, R12; decisione del board del 2026-11-04).">
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
     <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab active"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
@@ -957,7 +957,7 @@ make dev</pre>
           <div class="sec-h"><h2 style="color:var(--danger)">Danger zone</h2></div>
           <div class="list" style="border-color:var(--danger)">
             <div class="list-row" style="padding:14px 16px"><div style="flex:1"><b>Archive this repository</b><div class="small muted">Make it read-only: it stays visible and clonable, but pushes and settings changes are rejected. You can unarchive it at any time.</div></div><button class="btn btn-danger">Archive</button></div>
-            <div class="list-row" style="padding:14px 16px"><div style="flex:1"><b>Delete this repository</b><div class="small muted">It disappears immediately for everyone. Admins can restore it for 7 days from <a data-go="deleted-repos">Deleted repositories</a>; after that it is removed permanently. The name stays reserved until then.</div></div><button class="btn btn-danger">Delete</button></div>
+            <div class="list-row" style="padding:14px 16px"><div style="flex:1"><b>Delete this repository</b><div class="small muted">Permanently deletes the repository and everything in it, right away. There is no trash and no undo: it can only come back from a backup.</div></div><button class="btn btn-danger" data-go="delete-repo">Delete</button></div>
           </div>
         </div>
       </div>
@@ -965,16 +965,26 @@ make dev</pre>
   </div>
 </section>
 
-<!-- ============ 19 OWNER SETTINGS · DELETED REPOSITORIES ============ -->
-<section class="screen" data-screen="deleted-repos" data-nav="org" data-crumb="<a>Acme</a><span class='sep'>/</span><a>Settings</a><span class='sep'>/</span><b>Deleted repositories</b>" data-desc="Impostazioni dell'owner (organizzazione o utente): repo eliminati negli ultimi 7 giorni, ripristinabili da chi ha admin sul repo o dall'admin dell'installazione (R2, R12).">
-  <div class="page" style="max-width:980px">
-    <div class="page-h"><h1>Deleted repositories</h1><span class="counter">2</span></div>
-    <p class="muted" style="margin:-6px 0 16px">Repositories deleted in the last 7 days. Restoring brings back code, issues, settings and access exactly as they were.</p>
-    <div class="list">
-      <div class="list-row" style="padding:14px 16px"><svg class="icon muted"><use href="#i-repo"/></svg><div style="flex:1"><div class="mono" style="font-size:13px">acme/experiment-grpc</div><div class="small muted">Deleted by <b>lbianchi</b> yesterday · removed permanently in <b style="color:var(--text)">6 days</b></div></div><button class="btn">Restore</button></div>
-      <div class="list-row" style="padding:14px 16px"><svg class="icon muted"><use href="#i-repo"/></svg><div style="flex:1"><div class="mono" style="font-size:13px">acme/old-docs</div><div class="small muted">Deleted by <b>build-agent</b> <span class="badge badge-agent">agent</span> 6 days ago · removed permanently in <b style="color:var(--danger)">1 day</b></div></div><button class="btn">Restore</button></div>
+<!-- ============ 19 DELETE REPOSITORY · CONFIRM ============ -->
+<section class="screen" data-screen="delete-repo" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><a>Settings</a><span class='sep'>/</span><b>Delete</b>" data-desc="Conferma dell'eliminazione (R2, R12; decisione del board del 2026-11-04, «eliminato è eliminato»): solo chi ha admin sul repo o l'admin dell'installazione. Si scrive owner/repo per intero; il pulsante si attiva solo se coincide. Tutto è cancellato subito e il nome si libera alla risposta; niente cestino né ripristino, si recupera solo da un backup (gitstack restore).">
+  <div class="page" style="max-width:720px">
+    <div class="page-h"><h1 style="color:var(--danger)">Delete acme/api-gateway</h1></div>
+    <div class="alert alert-warning" style="margin-bottom:16px"><svg class="icon"><use href="#i-alert"/></svg><div><b>This cannot be undone.</b> The repository is deleted immediately and permanently. There is no trash and no restore button: it can only come back from a GitStack backup, which an installation admin restores with <span class="mono">gitstack restore</span>.</div></div>
+    <div class="card card-b stack" style="gap:14px">
+      <div><b>What is deleted right away</b>
+        <ul class="small muted" style="margin:8px 0 0 18px;line-height:1.7">
+          <li>Code, branches and tags (1.4 GB)</li>
+          <li>48 issues with comments and attachments</li>
+          <li>3 webhooks and the pull mirror settings</li>
+          <li>From later versions: pull requests, releases, registry images, apps and their volumes</li>
+        </ul>
+      </div>
+      <div class="small muted">The name <span class="mono">acme/api-gateway</span> becomes free as soon as the deletion completes: anyone allowed can create a new repository with it.</div>
+      <div style="height:1px;background:var(--border)"></div>
+      <div class="field"><label>To confirm, type <span class="mono">acme/api-gateway</span></label><input class="input" id="delete-confirm" style="font-family:var(--font-mono);font-size:13px" placeholder="acme/api-gateway" autocomplete="off"><span class="hint">Must match exactly (owner and name).</span></div>
+      <div class="row"><button class="btn" data-go="repo-general">Cancel</button><span class="sp"></span><button class="btn btn-danger" id="delete-btn" disabled style="opacity:.5">Delete this repository permanently</button></div>
+      <div class="alert alert-info" id="delete-done" style="display:none"><svg class="icon"><use href="#i-info"/></svg><div>Simulation: <span class="mono">acme/api-gateway</span> deleted. The name is free again. Back to <a data-go="repos">Repositories</a>.</div></div>
     </div>
-    <div class="alert alert-info" style="margin-top:16px"><svg class="icon"><use href="#i-info"/></svg><div>While a repository is here its name stays reserved and its disk space is not freed.</div></div>
   </div>
 </section>
 
@@ -1547,7 +1557,7 @@ GS_TOKEN=gst_…  <span class="tk-c"># token of the agent account</span></div>
 <!-- ============ 15 ORGANIZATION ============ -->
 <section class="screen" data-screen="org" data-nav="org" data-crumb="<a>Acme</a><span class='sep'>/</span><b>Teams</b>" data-desc="Organizzazione: membri e team, con i permessi che ogni team ha sui repo.">
   <div class="page">
-    <div class="row" style="gap:14px;margin-bottom:20px"><span class="avatar avatar-lg avatar-sq av-org">AC</span><div><h1 style="font-size:22px;font-weight:600">Acme</h1><div class="muted small">12 repositories · 18 members · 4 teams</div></div><span class="sp"></span><button class="btn" data-go="deleted-repos"><svg class="icon"><use href="#i-settings"/></svg>Organization settings</button></div>
+    <div class="row" style="gap:14px;margin-bottom:20px"><span class="avatar avatar-lg avatar-sq av-org">AC</span><div><h1 style="font-size:22px;font-weight:600">Acme</h1><div class="muted small">12 repositories · 18 members · 4 teams</div></div><span class="sp"></span><button class="btn" data-go="org"><svg class="icon"><use href="#i-settings"/></svg>Organization settings</button></div>
     <div class="tabs" style="margin-bottom:20px"><a class="tab" data-go="repos"><svg class="icon"><use href="#i-repo"/></svg>Repositories <span class="counter">12</span></a><a class="tab"><svg class="icon"><use href="#i-user"/></svg>Members <span class="counter">18</span></a><a class="tab active"><svg class="icon"><use href="#i-users"/></svg>Teams <span class="counter">4</span></a></div>
     <div class="repo-grid" style="grid-template-columns:1fr 1.3fr">
       <div class="list">
@@ -1727,6 +1737,12 @@ GS_TOKEN=gst_…  <span class="tk-c"># token of the agent account</span></div>
     sec.addEventListener('click',function(e){var b=e.target.closest('[data-var]');if(b)setv(b.dataset.var)});
     setv(sec.dataset.variant);
   });
+  // mockup 19: conferma dell'eliminazione scrivendo owner/repo
+  var dc=document.getElementById('delete-confirm'),db=document.getElementById('delete-btn'),dd=document.getElementById('delete-done');
+  if(dc&&db){
+    dc.addEventListener('input',function(){var ok=dc.value==='acme/api-gateway';db.disabled=!ok;db.style.opacity=ok?'':'.5'});
+    db.addEventListener('click',function(){if(!db.disabled){dd.style.display='';db.disabled=true;db.style.opacity='.5';dc.disabled=true}});
+  }
   // tema
   var root=document.documentElement,tb=document.getElementById('themeBtn');
   function cur(){return root.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}
