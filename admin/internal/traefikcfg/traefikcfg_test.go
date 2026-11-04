@@ -77,6 +77,14 @@ func TestRenderUgualeAlInstaller(t *testing.T) {
 	}
 	chart := repoChart(t)
 	install := filepath.Join(chart, "..", "install.sh")
+	// Sonda: un bash che non vede il file passato per ambiente (il bash.exe di WSL su Windows non
+	// riceve le variabili né i percorsi Windows) è inutilizzabile, come se mancasse. Un bash che lo
+	// vede e poi non carica install.sh è invece un errore (Fatalf più sotto).
+	probe := exec.Command(bash, "-c", `[ -r "$INSTALL" ]`)
+	probe.Env = append(os.Environ(), "INSTALL="+install)
+	if err := probe.Run(); err != nil {
+		t.Skipf("bash non utilizzabile (non vede %s): l'equivalenza con install.sh si prova in CI Linux", install)
+	}
 	cases := []struct {
 		name string
 		acme string
