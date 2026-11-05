@@ -178,6 +178,19 @@ func (c *Controller) Reconcile(ctx context.Context, d store.ManagedDB) {
 		}
 		return
 	}
+	// Un database `failed` si riprova ogni minuto, non a ogni giro: cosign e il cluster non vanno martellati.
+	if d.Status == store.DBFailed {
+		c.mu.Lock()
+		last := c.usageAt[d.ID]
+		retry := c.cfg.Now().Sub(last) >= failedRetryEvery
+		if retry {
+			c.usageAt[d.ID] = c.cfg.Now()
+		}
+		c.mu.Unlock()
+		if !retry {
+			return
+		}
+	}
 	status, reason, err := c.ensure(ctx, d)
 	if ctx.Err() != nil {
 		return
@@ -564,3 +577,6 @@ func (c *Controller) Logs(ctx context.Context, d store.ManagedDB, opts *corev1.P
 	}
 	return c.kube.CoreV1().Pods(Namespace(d.ID)).GetLogs(PodName, opts).Stream(ctx)
 }
+
+// failedRetryEvery e' ogni quanto si riprova un database in `failed`.
+const failedRetryEvery = time.Minute

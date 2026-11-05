@@ -130,7 +130,10 @@ func TestDatabaseLinks_SessioniResidueNonCompletano(t *testing.T) {
 // CREATEROLE/CREATEDB/superuser.
 func TestDatabaseLinks_RuoloPerCollegamento(t *testing.T) {
 	d := testDB()
-	for _, tc := range []struct{ mode, wantGrant string; wantSet bool }{
+	for _, tc := range []struct {
+		mode, wantGrant string
+		wantSet         bool
+	}{
 		{ModeRW, `GRANT "shop_owner" TO`, true}, {ModeRO, `GRANT "shop_ro" TO`, false},
 	} {
 		r := &recorder{}
