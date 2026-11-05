@@ -1,0 +1,32 @@
+comando: bash docs/adr/poc-managed-db/run-roles.sh (Git Bash su Windows, Docker Desktop)
+commit: e4e164baff3990f471d29ff2a330177bb5ca7613
+immagine: postgres:17-alpine
+OK: oggetto creato da l_rw1: proprietario shop_owner (ALTER ROLE SET role)
+OK: tre sessioni persistenti aperte (rw1, rw2, ro1)
+OK: ALTER ROLE NOLOGIN da solo: la sessione gia aperta continua a eseguire query
+OK: l_rw1: la connessione persistente ha smesso di eseguire query (terminating connection) e il ruolo e stato eliminato
+OK: nuovo login di l_rw1 respinto (role does not exist)
+OK: l_rw2 (altro collegamento): sessione persistente ancora viva
+OK: l_rw2: nuova connessione e scrittura funzionano
+OK: pg_dump -Fc di shop: 2956 byte (contiene owner shop_owner e GRANT a shop_ro)
+OK: blog: pg_restore --no-owner --no-acl --role=blog_owner senza errori
+OK: blog: 4 righe ripristinate
+OK: blog: blog_owner non e superuser
+OK: blog: tutti gli oggetti sono di blog_owner
+OK: blog: nessun riferimento ai vecchi ruoli (ACL e dump dello schema senza 'shop_')
+OK: blog: il link rw scrive
+OK: blog: il link ro legge
+OK: blog: il link ro non scrive (permission denied)
+OK: blog: un oggetto creato dopo il restore e di blog_owner
+OK: shop: pg_restore --no-owner --no-acl --role=shop_owner senza errori
+OK: shop: 4 righe ripristinate
+OK: shop: shop_owner non e superuser
+OK: shop: tutti gli oggetti sono di shop_owner
+OK: shop: stesso nome dell'origine, controllo dei vecchi ruoli non applicabile (stessi nomi per costruzione)
+OK: shop: il link rw scrive
+OK: shop: il link ro legge
+OK: shop: il link ro non scrive (permission denied)
+OK: shop: un oggetto creato dopo il restore e di shop_owner
+OK: controllo: senza --no-owner il restore con nome diverso fallisce (role "shop_owner" does not exist)
+ESITO: OK
+exit: 0

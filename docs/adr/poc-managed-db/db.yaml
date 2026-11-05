@@ -1,0 +1,161 @@
+# Risorse che il controller di core creerebbe per UN database gestito (ADR 0003, DB1-DB6).
+# Il namespace gitstack-db-poc sta per gitstack-db-<db-id>. Il Secret `pg-auth` (password) e il
+# Secret `pg-tls` (certificato firmato dalla CA interna) li crea run.sh.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gitstack-db-poc
+  labels:
+    gitstack.io/managed-db: "true"
+    gitstack.io/db-id: poc
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pg-hba
+  namespace: gitstack-db-poc
+data:
+  pg_hba.conf: |
+    # Solo TLS con password. Il socket locale e fidato solo dentro il container (initdb, pg_dump
+    # lanciato dal controller con exec).
+    local   all all                trust
+    hostssl all all 0.0.0.0/0      scram-sha-256
+    hostssl all all ::/0           scram-sha-256
+    hostnossl all all 0.0.0.0/0    reject
+    hostnossl all all ::/0         reject
+---
+# Default deny + ingresso solo dai namespace delle app collegate (label scritta dal controller
+# sul namespace dell'app al collegamento). Nessuna uscita: un database non chiama nessuno.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: db-isolation
+  namespace: gitstack-db-poc
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              gitstack.io/db-link-poc: "true"
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pg
+  namespace: gitstack-db-poc
+spec:
+  selector:
+    app.kubernetes.io/name: pg
+  ports:
+    - name: pg
+      port: 5432
+      targetPort: pg
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pg
+  namespace: gitstack-db-poc
+spec:
+  serviceName: pg
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pg
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pg
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          args:
+            - -c
+            - ssl=on
+            - -c
+            - ssl_cert_file=/tls/tls.crt
+            - -c
+            - ssl_key_file=/tls/tls.key
+            - -c
+            - hba_file=/etc/pg/pg_hba.conf
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_USER
+              value: owner
+            - name: POSTGRES_DB
+              value: app
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pg-auth
+                  key: password
+          ports:
+            - name: pg
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "owner", "-d", "app"]
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: run
+              mountPath: /var/run/postgresql
+            - name: tmp
+              mountPath: /tmp
+            - name: tls
+              mountPath: /tls
+              readOnly: true
+            - name: hba
+              mountPath: /etc/pg
+              readOnly: true
+      volumes:
+        - name: run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: tls
+          secret:
+            secretName: pg-tls
+            defaultMode: 0640
+        - name: hba
+          configMap:
+            name: pg-hba
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 1Gi

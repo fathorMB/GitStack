@@ -1,0 +1,29 @@
+comando: bash docs/adr/poc-managed-db/run.sh (dalla radice del repo, git bash su Windows, Docker Desktop)
+commit: c0b4b92e88f7fe9a0635c663a7db9cf44c45a150
+k3d: k3d version v5.9.0
+immagine: postgres:17-alpine
+OK: StatefulSet pg pronto (PVC local-path, namespace Pod Security restricted)
+OK: postgres gira come uid 70 (non root), root fs in sola lettura
+OK: PVC data-pg-0: local-path/Bound
+OK: pod root rifiutato da Pod Security restricted nel namespace del database
+OK: app collegata: psql verify-full col nome interno e la CA
+OK: app NON collegata: respinta dalla NetworkPolicy (kube-router risponde Connection refused o scarta)
+OK: sslmode=disable respinto (pg_hba: hostnossl reject)
+OK: password sbagliata respinta
+OK: ruolo ro legge
+OK: ruolo ro non scrive (permission denied)
+OK: pg_dump -Fc: 1209 byte
+OK: ripristino in un database nuovo: 3 righe
+OK: dopo la rotazione la vecchia password e respinta
+OK: dopo la rotazione la nuova password funziona
+OK: dopo lo scollegamento l app e respinta
+misura a vuoto (kubectl top, pod pg-0: CPU(cores) MEMORY(bytes)): pg-0   33m   50Mi   
+OK: LAN: psql sslmode=verify-full da fuori dal cluster sulla porta 15432
+OK: LAN: sslmode=disable: respinto (rejects connection)
+OK: LAN: verify-full senza la CA privata: respinto (certificate verify failed)
+OK: LAN: verify-full con hostname sbagliato: respinto (does not match host name)
+OK: LAN: password sbagliata: respinto (password authentication failed)
+OK: LAN accesa: l app non collegata e comunque respinta in cluster
+OK: LAN spenta: la porta non risponde piu
+ESITO: OK
+exit: 0
