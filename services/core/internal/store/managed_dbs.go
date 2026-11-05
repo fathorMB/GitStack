@@ -516,4 +516,3 @@ func (s *Store) ManagedDBAudit(ctx context.Context, id uuid.UUID) ([]ManagedDBAu
 	}
 	return out, rows.Err()
 }
-

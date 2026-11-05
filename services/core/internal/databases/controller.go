@@ -52,6 +52,8 @@ type Config struct {
 	UsageEvery      time.Duration
 	ProgressTimeout time.Duration
 	Unlink          UnlinkOptions
+	// SweepEvery: ogni quanto si cercano ruoli di collegamento senza collegamento (default LinkSweepEvery).
+	SweepEvery time.Duration
 	Now             func() time.Time
 	Log             *slog.Logger
 }
@@ -65,6 +67,9 @@ func (c *Config) defaults() {
 	}
 	if c.ProgressTimeout <= 0 {
 		c.ProgressTimeout = 5 * time.Minute
+	}
+	if c.SweepEvery <= 0 {
+		c.SweepEvery = LinkSweepEvery
 	}
 	if c.Now == nil {
 		c.Now = func() time.Time { return time.Now().UTC() }
@@ -308,8 +313,8 @@ func (c *Controller) ensure(ctx context.Context, d store.ManagedDB) (string, *st
 		_ = c.sql.Exec(ctx, d, "postgres", `SELECT pg_reload_conf()`)
 	}
 	// Collegamenti (GIT-552): riprende gli scollegamenti rimasti a meta' e toglie i ruoli senza collegamento.
-	c.finishUnlinks(ctx, d)
-	c.sweepOrphanRoles(ctx, d)
+	c.ResumeUnlinks(ctx, d)
+	c.SweepOrphanRoles(ctx, d)
 	c.measure(ctx, d)
 	return store.DBRunning, nil, nil
 }

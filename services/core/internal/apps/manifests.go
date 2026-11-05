@@ -59,8 +59,8 @@ const (
 	// /etc/gitstack/db/ca.crt, e' il PGSSLROOTCERT dell'app. Un Secret e non un ConfigMap perche' il
 	// ClusterRole modello delle app non ha verbi sui ConfigMap; il contenuto e' pubblico.
 	DatabaseCASecret = "db-ca"
-	containerName  = "app"
-	servicePort    = 80
+	containerName    = "app"
+	servicePort      = 80
 	// DeclaredPortName è il nome della seconda porta del Service `app`: la porta dichiarata dall'app.
 	DeclaredPortName = "app"
 )

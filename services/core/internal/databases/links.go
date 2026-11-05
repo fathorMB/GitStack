@@ -216,8 +216,8 @@ func (c *Controller) completeUnlink(ctx context.Context, d store.ManagedDB, link
 	return err
 }
 
-// finishUnlinks riprende gli scollegamenti rimasti a meta' (`unlinking`) di un database pronto.
-func (c *Controller) finishUnlinks(ctx context.Context, d store.ManagedDB) {
+// ResumeUnlinks riprende gli scollegamenti rimasti a meta' (`unlinking`) di un database pronto.
+func (c *Controller) ResumeUnlinks(ctx context.Context, d store.ManagedDB) {
 	links, err := c.st.ListManagedDBLinks(ctx, d.ID)
 	if err != nil {
 		c.cfg.Log.Warn("databases: collegamenti non letti", "db", d.ID, "err", err)
@@ -240,13 +240,13 @@ func (c *Controller) finishUnlinks(ctx context.Context, d store.ManagedDB) {
 
 var linkRoleRE = regexp.MustCompile(`^l_[0-9a-f]{32}$`)
 
-// sweepOrphanRoles toglie i ruoli l_<id> che non hanno piu' un collegamento: l'app o il repo eliminati portano
+// SweepOrphanRoles toglie i ruoli l_<id> che non hanno piu' un collegamento: l'app o il repo eliminati portano
 // via la riga a cascata (DB9), un commit fallito lascia il ruolo. Lo stesso ordine dell'ADR (DB12). Al piu' una
 // volta ogni LinkSweepEvery per database.
-func (c *Controller) sweepOrphanRoles(ctx context.Context, d store.ManagedDB) {
+func (c *Controller) SweepOrphanRoles(ctx context.Context, d store.ManagedDB) {
 	c.mu.Lock()
 	last := c.sweepAt[d.ID]
-	due := c.cfg.Now().Sub(last) >= LinkSweepEvery
+	due := c.cfg.Now().Sub(last) >= c.cfg.SweepEvery
 	if due {
 		c.sweepAt[d.ID] = c.cfg.Now()
 	}
