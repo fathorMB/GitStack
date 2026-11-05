@@ -5,7 +5,7 @@
 - Precedenti: ADR 0002, controller apps dentro `core` [c_19be62e8655c7e83]; priorità e quote
   [c_d7134baf8d45eb3b]; namespace/RBAC/ClusterRole modello [c_463f6c838fe9bea8]; naming e TLS
   [c_fdebc6a7b1004b53]; ADR 0001 (classi di priorità)
-- Prova: [`poc-managed-db/`](poc-managed-db/) (`run.sh`, `logs/esito.txt`, `logs/cnpg-misura.txt`)
+- Prova: [`poc-managed-db/`](poc-managed-db/) (`run.sh`, `run-roles.sh`, `logs/esito.txt`, `logs/esito-roles.txt`, `logs/cnpg-misura.txt`)
 - Item che implementano: GIT-550…GIT-558 (tabella delle regole in fondo)
 
 ## Contesto e scelte già fissate dal board
@@ -162,20 +162,40 @@ barriere H16 (reti private chiuse) non si applicano a questa regola perché è p
 PoC non la prova** (i suoi namespace client non hanno `app-isolation`): è un criterio di GIT-552 con un
 test k3d dedicato. Il namespace dell'app contiene una sola app, quindi la label non allarga a terzi.
 
-**Ruoli per collegamento, rotazione, scollegamento.** Ogni collegamento ha il suo ruolo di login
-(membro di `<name>_owner` oppure di `<name>_ro`) con `ALTER ROLE … SET role = '<name>_owner'`, così gli
-oggetti creati appartengono al proprietario e `DROP ROLE` non resta bloccato (**da provare** in GIT-551:
-se non regge, si ripiega su un ruolo condiviso per modalità). La rotazione genera una password nuova,
-fa `ALTER ROLE`, riscrive il Secret e riavvia l'app; scollegare fa `DROP ROLE`, toglie variabili,
-Secret, label e regola di uscita. Provato in `run.sh`: dopo la rotazione la vecchia password è
-respinta e la nuova funziona; tolta la label l'app è respinta.
+**Ruoli per collegamento (soluzione unica, senza ripiego).** Ogni collegamento ha il **proprio**
+ruolo di login, senza `CREATEROLE`/`CREATEDB`/superuser: `rw` è membro di `<name>_owner` con
+`ALTER ROLE l_<id> SET role = '<name>_owner'`, così ogni oggetto creato da quella sessione appartiene
+al proprietario e il ruolo del link **non possiede nulla**; `ro` è membro di `<name>_ro`
+(a sua volta membro di `pg_read_all_data`). Non esiste un ruolo condiviso per modalità: revoca e
+isolamento sono per link. Provato in `run-roles.sh`: un oggetto creato da `l_rw1` risulta di
+`shop_owner` e `DROP ROLE` non resta bloccato.
+
+**Rotazione.** Password nuova, `ALTER ROLE … PASSWORD`, Secret riscritto, app riavviata. Le sessioni
+aperte con la vecchia password restano valide finché non si chiudono: la rotazione di un link termina
+anche le sue sessioni (stesso passo 2 qui sotto), così nessuna connessione sopravvive alla password vecchia.
+
+**Ordine di scollegamento (obbligatorio, nell'ordine).** `ALTER ROLE`/`DROP ROLE` **non** chiudono le
+connessioni già autenticate, e togliere la NetworkPolicy non è una garanzia portabile per quelle
+esistenti (dipende dal conntrack del CNI). Quindi:
+1. `ALTER ROLE l_<id> NOLOGIN` (nessun nuovo login);
+2. `pg_terminate_backend(pid)` per tutte le sessioni con `usename = 'l_<id>'`, ripetuto finché
+   `pg_stat_activity` non ne mostra più (con `NOLOGIN` non ne nascono di nuove);
+3. `DROP OWNED BY l_<id>` e `DROP ROLE l_<id>`;
+4. solo dopo: via variabili e Secret dall'app (riavvio), label sul namespace e regola di uscita.
+
+Se il passo 2 non completa entro il timeout lo scollegamento resta `unlinking` e ritenta; il collegamento
+non si dichiara rimosso finché il ruolo esiste. Provato in `logs/esito-roles.txt`: con il solo `NOLOGIN` la
+sessione persistente di `l_ro1` **continua a eseguire query**; con l'ordine sopra la sessione persistente
+di `l_rw1` riceve «terminating connection», smette di eseguire query, il nuovo login è respinto
+(`role does not exist`) e la sessione persistente e le scritture di `l_rw2` (altro link) continuano.
+La PoC k3d (`run.sh`) prova invece solo nuove connessioni; la persistente è coperta da `run-roles.sh`.
 
 **Avvertenza osservata.** Un pod appena creato non è ammesso dalla NetworkPolicy per qualche secondo:
 nelle prove, le connessioni subito all'avvio sono fallite (con «Connection refused») e dopo 5 secondi
 dal Ready passavano (non cronometrato con precisione). `run.sh` aspetta 10 s prima di ogni `psql` per
 questo. Le app devono ritentare la connessione all'avvio; la guida lo dirà.
 
-**Scartate.** Password condivisa tra le app (una fuga non si isola, scollegare non revoca); un proxy
+**Scartate.** Password o ruolo condivisi tra le app o per modalità (una fuga non si isola, scollegare non revoca una sola app: era il ripiego della prima stesura, tolto); affidarsi alla sola rimozione della NetworkPolicy per chiudere le sessioni aperte (non portabile); un proxy
 (PgBouncer) davanti: componente in più; consentire per `repo-id` (i database sono dell'owner, non del
 repo). **Rischi.** Finestra di errori durante la rotazione (riavvio dell'app); la label sul namespace è
 un privilegio del controller: la VAP deve permettere a `core` di scrivere solo le label `gitstack.io/db-link-*`.
@@ -198,12 +218,35 @@ archiviazione WAL (PITR), che su un nodo solo non c'è.
   di ogni database, in `databases/<db-id>/<name>.dump`; è cifrato come l'archivio (obbligatorio con
   S3: `backup.go`, «gli archivi caricati su S3 sono sempre cifrati») e segue retention e S3 senza codice nuovo.
   La coerenza è per database, non fra database diversi né con il database di `core`.
-- **Ripristino.** Nello **stesso database** (conferma scrivendo `owner/nome`; prima un dump di
-  sicurezza automatico; `pg_restore --clean --if-exists`) o in un **database nuovo** (provato: dump di
-  1209 byte ripristinato in `app2`, 3 righe su 3). `gitstack restore`: dopo il ripristino di `core` il
-  controller ricrea i database vuoti e vi applica i dump dell'archivio; le password vengono
-  **rigenerate** (non stanno nell'archivio) e riscritte nei link, quindi nessun segreto di database
-  viaggia nei backup.
+- **Ripristino: ruoli, proprietà e privilegi.** Ogni database è la sua istanza PostgreSQL, quindi i
+  ruoli (globali all'istanza) non stanno nel dump e **non si ripristinano da esso**. Il dump resta
+  completo (`-Fc`, con owner e GRANT) ma si ripristina **sempre** con `--no-owner --no-acl
+  --role=<name>_owner` e i privilegi si riapplicano in modo esplicito. Sequenza del controller,
+  uguale per ogni destinazione (database nuovo con nome diverso, istanza vuota di `gitstack restore`,
+  stesso database):
+  1. ruoli, se mancano: `<name>_owner` (login, non superuser), `<name>_ro` (nologin, membro di
+     `pg_read_all_data`); `CREATE DATABASE <name> OWNER <name>_owner`; `REVOKE ALL … FROM PUBLIC`,
+     `GRANT CONNECT`, proprietà dello schema `public`;
+  2. `pg_restore --no-owner --no-acl --role=<name>_owner`: gli oggetti nascono del nuovo proprietario
+     e nessun GRANT/`ALTER DEFAULT PRIVILEGES` del dump cita i vecchi ruoli;
+  3. privilegi riapplicati: `GRANT SELECT ON ALL TABLES` e `ALTER DEFAULT PRIVILEGES … GRANT SELECT` a
+     `<name>_ro` (idempotente, è la stessa routine della creazione);
+  4. link: ruoli di link ricreati con **password nuove** (non stanno nei backup), `rw`/`ro` come
+     da modello, Secret delle app riscritti e app riavviate.
+
+  *Stesso database* (conferma scrivendo `owner/nome`, dump di sicurezza automatico): stessa sequenza con
+  `--clean --if-exists`; i ruoli esistono già e si salta il passo 1. *Database nuovo* (anche con nome
+  diverso): è un'istanza nuova, il nome della destinazione sostituisce `<name>` nei ruoli.
+  *`gitstack restore`*: dopo il ripristino di `core` il controller ricrea le istanze vuote e applica
+  la sequenza ai dump dell'archivio; nessun segreto di database viaggia nei backup.
+  **Alternative scartate:** ripristinare con owner e ACL originali (fallisce con `role "shop_owner" does
+  not exist` in un'istanza con nome diverso: provato nel controllo negativo di `run-roles.sh`);
+  ricreare i vecchi nomi di ruolo nella destinazione (porta nomi del database vecchio in quello nuovo e
+  collide con il nome richiesto); rimappare owner/ACL con edit del dump (fragile).
+  **Rischi:** `--no-acl` perde i GRANT personalizzati dell'owner su oggetti (restano solo owner e `ro`):
+  va scritto nella guida e l'owner può rifarli; `ALTER ROLE … IN DATABASE`/`ALTER DATABASE SET` non sono
+  nel dump e non si ripristinano. Provato in `run-roles.sh` su istanza vuota con nome diverso e con lo
+  stesso nome (vedi DB15).
 
 **Scartate.** Dump in un CronJob per database (pod, immagini, NetworkPolicy e ruolo di rete in più);
 copia del PVC (non consistente a database acceso; incluso solo per i volumi delle app, che l'UI già
@@ -291,13 +334,13 @@ l'item deve consegnare.
 | DB6 | Minor solo su richiesta (dump di sicurezza prima); major mai sul posto (nuovo database da dump); `gitstack upgrade` non toglie una major in uso | test del controller + test del preflight di upgrade | GIT-551, GIT-557 |
 | DB7 | `gitstack_admin` superuser solo da socket locale; `<name>_owner` non superuser; `<name>_ro` facoltativo | integration su k3d (query sui ruoli) | GIT-551 |
 | DB8 | Solo TLS: `hostssl` `scram-sha-256`, `hostnossl` rifiutato; password casuale in Secret | `run.sh` (sslmode=disable respinto) + test k3d | GIT-551 |
-| DB9 | Il collegamento richiede `admin` sull'app e sull'owner, stesso owner (`owner_mismatch`), repo anche diversi; un ruolo di login per collegamento, `rw` o `ro` | `TestDatabaseLinks_PermessiEOwner` | GIT-552 |
+| DB9 | Il collegamento richiede `admin` sull'app e sull'owner, stesso owner (`owner_mismatch`), repo anche diversi; un ruolo di login **proprio** per collegamento (mai condiviso), senza `CREATEROLE`: `rw` membro di `<name>_owner` con `SET role` all'owner, `ro` membro di `<name>_ro`; gli oggetti creati sono del proprietario | `TestDatabaseLinks_PermessiEOwner` + `TestDatabaseLinks_ProprietaOggetti` (oggetto creato dal link = proprietà dell'owner; `DROP ROLE` riesce); logica già provata da `run-roles.sh` | GIT-551, GIT-552 |
 | DB10 | Variabili `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE`, `PGSSLROOTCERT` come segreti dell'app; mai in API e log; conflitto di nome 409 | test dei manifest e delle risposte API | GIT-552 |
-| DB11 | Solo le app collegate raggiungono la 5432, anche da repo diversi; regola di uscita dell'app verso quel database; scollegare o eliminare l'app toglie label e regola | `TestDatabases_CollegamentoSuK3d` (collegata sì, non collegata e altro namespace no, scollegata no) | GIT-552 |
-| DB12 | La rotazione cambia la password, riscrive il Secret e riavvia l'app; la vecchia è respinta; scollegare fa `DROP ROLE` | k3d + integration (come `run.sh`) | GIT-552 |
+| DB11 | Solo le app collegate raggiungono la 5432, anche da repo diversi; regola di uscita dell'app verso quel database; scollegare o eliminare l'app toglie label e regola | `TestDatabases_CollegamentoSuK3d` (collegata sì, non collegata e altro namespace no, scollegata no) **più** `TestDatabaseLinks_SessionePersistenteChiusaAlloScollegamento` (k3d): una connessione persistente aperta prima dello scollegamento esegue query in loop; dopo lo scollegamento deve ricevere «terminating connection» e smettere, mentre la connessione persistente di un altro link continua | GIT-551, GIT-552 |
+| DB12 | La rotazione cambia la password, riscrive il Secret, riavvia l'app e termina le sessioni del link; la vecchia è respinta. Lo scollegamento segue l'ordine: `NOLOGIN` → `pg_terminate_backend` fino a zero sessioni → `DROP OWNED`/`DROP ROLE` → poi variabili, Secret, label e regola di uscita; resta `unlinking` finché il ruolo esiste | k3d + integration (nuove connessioni come `run.sh`, persistenti come `run-roles.sh`; il test dell'ordine deve fallire se `pg_terminate_backend` manca) | GIT-551, GIT-552 |
 | DB13 | Dump `pg_dump -Fc` cifrato AES-256-GCM, programmato giornaliero (ultimi 7) e su richiesta (ultimi 5); mai la directory dati | integration di backup + `TestDatabaseBackup_Retention` | GIT-553 |
 | DB14 | `gitstack backup` mette un dump fresco di ogni database in `databases/<id>/<nome>.dump` (cifrato, S3 sempre cifrato); i PVC dei database non entrano nel backup dei volumi | `admin/internal/backup` test + test S3 MinIO | GIT-553 |
-| DB15 | Ripristino nello stesso database (conferma + dump di sicurezza) o in uno nuovo; `gitstack restore` ricrea i database con password nuove propagate ai link | integration + passo e2e su VM | GIT-553, GIT-558 |
+| DB15 | Ripristino sempre con `--no-owner --no-acl --role=<name>_owner`, ruoli ricreati dal controller e privilegi `ro` riapplicati; nello stesso database (conferma + dump di sicurezza, `--clean --if-exists`), in uno nuovo anche con nome diverso, e in `gitstack restore`; link ricreati con password nuove | `TestDatabaseRestore_IstanzaVuotaNomeDiverso` e `TestDatabaseRestore_IstanzaVuotaStessoNome` (integration, stesse asserzioni di `run-roles.sh`: restore senza errori, owner non superuser corretto, link `rw` scrive, `ro` legge e non scrive, nessun riferimento ai vecchi ruoli in ACL e dump dello schema) + passo e2e su VM | GIT-553, GIT-558 |
 | DB16 | LAN spenta di default; accesa assegna una porta dell'intervallo (`port_unavailable`), Service `LoadBalancer` + `db-lan`; spenta chiude | `TestDatabaseLAN_*` su k3d | GIT-554 |
 | DB17 | TLS LAN: `verify-full` con la CA privata accettato, respinto senza CA, con hostname sbagliato, con `sslmode=disable`; foglia firmata dall'intermedia con name constraints; rinnovo prima dei 30 giorni | `psql` in k3d (come `run.sh`), `openssl verify -verify_hostname`, test del rinnovo | GIT-554, GIT-557 |
 | DB18 | Nessuna modifica di ufw; console e CLI mostrano il comando; nessuna allow-list per IP sorgente in v3-d | test UI/CLI + guida; verifica manuale su homehub (e2e) | GIT-554, GIT-558 |
@@ -322,7 +365,10 @@ Il numero di item resta 9 (GIT-550…558). Cambia l'**ordine**:
 4. GIT-551 è il più pesante (controller, ruoli, quota, eliminazione): **ridimensionamento** vuol dire
    solo dimensione dichiarata e avvisi (punto 3), non espansione del PVC. Il titolo di GIT-551 lo
    promette: va letto così.
-5. GIT-553 dipende dal Secret della chiave di dump (parte chart di GIT-557) e da un metodo nuovo
+5. Dopo la revisione di GIT-549: DB9/DB11/DB12 hanno ora test anche in GIT-551 (ruoli, proprietà degli
+   oggetti, ordine di scollegamento con sessioni persistenti, riusati da GIT-552) e DB15 ha due test
+   di restore su istanza vuota in GIT-553. Né numero né ordine degli item cambiano per questo.
+6. GIT-553 dipende dal Secret della chiave di dump (parte chart di GIT-557) e da un metodo nuovo
    nell'interfaccia `backup.Cluster` (4 fake da aggiornare).
 
 ## Prova di fattibilità
@@ -334,11 +380,16 @@ VM di Docker Desktop era indietro di circa 2 minuti e un certificato valido «da
 `certificate verify failed`); namespace `gitstack-db-poc` con Pod Security `restricted`; StatefulSet
 `postgres:17-alpine` non root con PVC `local-path`; due namespace client (uno collegato, uno no);
 `psql` da pod; dump e ripristino; rotazione; scollegamento; porta LAN con `psql` 17 dall'host.
-Esito completo e SHA in `logs/esito.txt`. La misura di CloudNativePG è
+Esito completo e SHA in `logs/esito.txt`; ruoli, scollegamento e ripristino in `run-roles.sh` / `logs/esito-roles.txt`. La misura di CloudNativePG è
 `CNPG_MANIFEST=<cnpg-1.30.1.yaml> bash cnpg-measure.sh`, esito in `logs/cnpg-misura.txt`.
 
-Non provato nella PoC (da chiudere negli item): `ruolo owner non superuser`, `ALTER ROLE … SET role`,
-regola di uscita di `app-isolation` verso il database, catena CA intermedia con name constraints, SAN
+Provato da `run-roles.sh` (tre istanze PostgreSQL 17 in Docker, `logs/esito-roles.txt`; comando
+`bash docs/adr/poc-managed-db/run-roles.sh`, serve solo Docker): ruolo owner non superuser,
+`ALTER ROLE … SET role`, ordine di scollegamento con sessioni persistenti e ripristino in istanza vuota
+(nome diverso e stesso nome).
+
+Non provato nella PoC (da chiudere negli item): gli stessi controlli su k3d con le immagini del chart
+(`run-roles.sh` usa Docker semplice), regola di uscita di `app-isolation` verso il database, catena CA intermedia con name constraints, SAN
 IP, ufw e FORWARD su un host vero, `externalTrafficPolicy: Local`, firma cosign delle immagini,
 capacità con molti database, Debian/uid 999, comportamento su homehub (RAM/CPU reali).
 
