@@ -72,7 +72,7 @@ func startDatabases(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger
 		Log:                      logger,
 		// Secrets e' anche cio' che attiva l'AfterRestore predefinito (RelinkAfterRestore): dopo un ripristino i
 		// collegamenti ripartono con password nuove e le app collegate sono ridistribuite (DB15, passo 4).
-		Secrets:                  secrets,
+		Secrets: secrets,
 	}
 	cfg.DataDir = strings.TrimSpace(os.Getenv(envDatabasesDataDir))
 	if f := strings.TrimSpace(os.Getenv(envDatabasesDumpKeyFile)); f != "" {
