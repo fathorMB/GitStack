@@ -18862,11 +18862,12 @@ components:
       description: >
         Payload del webhook `database` (v3-d, DB20). Si configura sul webhook dell'organizzazione
         proprietaria del database (C6): un database di un utente non ha webhook. `action`: `created`
-        (con `sizeBytes`, `cpuMillis`, `memoryBytes`), `updated` (con `changes`: i valori precedenti),
-        `deleted` (con `deletedAt`), `linked`/`unlinked` (con `link`), `lan_enabled`/`lan_disabled`,
-        `backup_completed`/`backup_failed` (con `backup`) e `restored` (con `backupId` e `target`).
-        I campi opzionali dipendono dall'azione. Nessun segreto: mai password (ne' dell'owner ne' dei
-        collegamenti), ne' Secret, ne' DATABASE_URL (DB20, DB22).
+        (con `sizeBytes`, `cpuMillis`, `memoryBytes` dichiarati), `updated` (con `changes`: i valori
+        precedenti), `deleted` (con `deletedAt`), `linked`/`unlinked` (con `link`), `lan_enabled`
+        (con la `port` TCP assegnata), `lan_disabled`, `backup_completed` (con `sizeBytes` del dump)
+        e `backup_failed`; `restored`. I dettagli di backup e ripristino (`backup{id,kind}`, `error`,
+        `backupId`, `target`) arrivano con GIT-572. I campi opzionali dipendono dall'azione. Nessun
+        segreto: mai password (ne' dell'owner ne' dei collegamenti), ne' Secret, ne' DATABASE_URL (DB20, DB22).
       additionalProperties: false
       required: [version, event, action, time, sender, database]
       properties:
@@ -18884,7 +18885,7 @@ components:
             owner: {type: string, description: "Nome dell'owner (utente o organizzazione)."}
             name: {type: string}
             pgMajor: {type: integer, enum: [16, 17]}
-        sizeBytes: {type: integer, format: int64, description: "Dimensione dichiarata alla creazione, solo per `created`."}
+        sizeBytes: {type: integer, format: int64, description: "Dimensione dichiarata alla creazione, o del dump per `backup_completed`."}
         cpuMillis: {type: integer, description: "CPU dichiarata alla creazione (millicore), solo per `created`."}
         memoryBytes: {type: integer, format: int64, description: "Memoria dichiarata alla creazione, solo per `created`."}
         changes:
@@ -18914,6 +18915,7 @@ components:
             mode: {type: string, enum: [rw, ro]}
         diskState: {type: string, enum: [none, warning, full], description: "Stato del limite morbido di disco (80%/100%)."}
         usageBytes: {type: integer, format: int64, description: "Dimensione misurata (pg_database_size)."}
+        port: {type: integer, minimum: 1, maximum: 65535, description: "Porta TCP della LAN assegnata, solo per `lan_enabled`."}
 
     # Database gestiti (v3-d, ADR 0003, DB1-DB24).
     DatabaseName:

@@ -4547,7 +4547,7 @@ export type WebhookAppDomainPayload = {
 };
 
 /**
- * Payload del webhook `database` (v3-d, DB20). Si configura sul webhook dell'organizzazione proprietaria del database (C6): un database di un utente non ha webhook. `action`: `created` (con `sizeBytes`, `cpuMillis`, `memoryBytes`), `updated` (con `changes`: i valori precedenti), `deleted` (con `deletedAt`), `linked`/`unlinked` (con `link`), `lan_enabled`/`lan_disabled`, `backup_completed`/`backup_failed` (con `backup`) e `restored` (con `backupId` e `target`). I campi opzionali dipendono dall'azione. Nessun segreto: mai password (ne' dell'owner ne' dei collegamenti), ne' Secret, ne' DATABASE_URL (DB20, DB22).
+ * Payload del webhook `database` (v3-d, DB20). Si configura sul webhook dell'organizzazione proprietaria del database (C6): un database di un utente non ha webhook. `action`: `created` (con `sizeBytes`, `cpuMillis`, `memoryBytes` dichiarati), `updated` (con `changes`: i valori precedenti), `deleted` (con `deletedAt`), `linked`/`unlinked` (con `link`), `lan_enabled` (con la `port` TCP assegnata), `lan_disabled`, `backup_completed` (con `sizeBytes` del dump) e `backup_failed`; `restored`. I dettagli di backup e ripristino (`backup{id,kind}`, `error`, `backupId`, `target`) arrivano con GIT-572. I campi opzionali dipendono dall'azione. Nessun segreto: mai password (ne' dell'owner ne' dei collegamenti), ne' Secret, ne' DATABASE_URL (DB20, DB22).
  *
  */
 export type WebhookDatabasePayload = {
@@ -4566,7 +4566,7 @@ export type WebhookDatabasePayload = {
         pgMajor: 16 | 17;
     };
     /**
-     * Dimensione dichiarata alla creazione, solo per `created`.
+     * Dimensione dichiarata alla creazione, o del dump per `backup_completed`.
      */
     sizeBytes?: number;
     /**
@@ -4615,6 +4615,10 @@ export type WebhookDatabasePayload = {
      * Dimensione misurata (pg_database_size).
      */
     usageBytes?: number;
+    /**
+     * Porta TCP della LAN assegnata, solo per `lan_enabled`.
+     */
+    port?: number;
 };
 
 /**

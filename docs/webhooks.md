@@ -335,11 +335,13 @@ Contratto: schema `WebhookDatabasePayload` in `api/openapi.yaml`. Si seleziona *
 dell'organizzazione proprietaria del database (C6): un database di un utente non ha webhook. Stessi
 corpo comune, intestazioni, firma e tentativi. `action` è `created` (con `sizeBytes`, `cpuMillis` e
 `memoryBytes` dichiarati), `updated` (con `changes`: i valori precedenti), `deleted` (con `deletedAt`),
-`linked`/`unlinked` (con `link`: id, app `owner`/`repo`/`name` e `mode` `rw`/`ro`), `lan_enabled`/
-`lan_disabled`, `backup_completed`/`backup_failed` e `restored`. `database` è l'istantanea minima
-`{id, owner, name, pgMajor}`. Il payload non contiene mai segreti: niente password (né dell'owner né
-dei collegamenti), niente Secret, niente `DATABASE_URL` (DB20, DB22); i nomi e lo schema degli eventi
-di dominio sono in `docs/events.md` (famiglia `database.*`, stream `DATABASE`).
+`linked`/`unlinked` (con `link`: id, app `owner`/`repo`/`name` e `mode` `rw`/`ro`), `lan_enabled`
+(con la porta TCP assegnata in `port`), `lan_disabled`, `backup_completed` (con `sizeBytes` del dump)
+e `backup_failed`; `restored`. I dettagli di backup e ripristino (`backup{id,kind}`, `error`,
+`backupId`, `target`) arrivano con GIT-572. `database` è l'istantanea minima `{id, owner, name, pgMajor}`.
+Il payload non contiene mai segreti: niente password (né dell'owner né dei collegamenti), niente Secret,
+niente `DATABASE_URL` (DB20, DB22); i nomi e lo schema degli eventi di dominio sono in `docs/events.md`
+(famiglia `database.*`, stream `DATABASE`).
 
 ## Da dove nascono
 

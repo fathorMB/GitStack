@@ -119,6 +119,9 @@ func (e *Engine) dispatchDatabase(ctx context.Context, tx pgx.Tx, ev outboxEvent
 	if p.UsageBytes != nil {
 		b.body["usageBytes"] = *p.UsageBytes
 	}
+	if p.Port != nil {
+		b.body["port"] = *p.Port
+	}
 	raw, err := json.Marshal(b.body)
 	if err != nil {
 		return &badEventError{err}

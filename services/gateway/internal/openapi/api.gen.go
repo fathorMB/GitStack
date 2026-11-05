@@ -7476,7 +7476,7 @@ type WebhookCommitStatusPayloadEvent string
 // WebhookCommitStatusPayloadVersion defines model for WebhookCommitStatusPayload.Version.
 type WebhookCommitStatusPayloadVersion int
 
-// WebhookDatabasePayload Payload del webhook `database` (v3-d, DB20). Si configura sul webhook dell'organizzazione proprietaria del database (C6): un database di un utente non ha webhook. `action`: `created` (con `sizeBytes`, `cpuMillis`, `memoryBytes`), `updated` (con `changes`: i valori precedenti), `deleted` (con `deletedAt`), `linked`/`unlinked` (con `link`), `lan_enabled`/`lan_disabled`, `backup_completed`/`backup_failed` (con `backup`) e `restored` (con `backupId` e `target`). I campi opzionali dipendono dall'azione. Nessun segreto: mai password (ne' dell'owner ne' dei collegamenti), ne' Secret, ne' DATABASE_URL (DB20, DB22).
+// WebhookDatabasePayload Payload del webhook `database` (v3-d, DB20). Si configura sul webhook dell'organizzazione proprietaria del database (C6): un database di un utente non ha webhook. `action`: `created` (con `sizeBytes`, `cpuMillis`, `memoryBytes` dichiarati), `updated` (con `changes`: i valori precedenti), `deleted` (con `deletedAt`), `linked`/`unlinked` (con `link`), `lan_enabled` (con la `port` TCP assegnata), `lan_disabled`, `backup_completed` (con `sizeBytes` del dump) e `backup_failed`; `restored`. I dettagli di backup e ripristino (`backup{id,kind}`, `error`, `backupId`, `target`) arrivano con GIT-572. I campi opzionali dipendono dall'azione. Nessun segreto: mai password (ne' dell'owner ne' dei collegamenti), ne' Secret, ne' DATABASE_URL (DB20, DB22).
 type WebhookDatabasePayload struct {
 	Action WebhookDatabasePayloadAction `json:"action"`
 
@@ -7523,10 +7523,13 @@ type WebhookDatabasePayload struct {
 	} `json:"link,omitempty"`
 
 	// MemoryBytes Memoria dichiarata alla creazione, solo per `created`.
-	MemoryBytes *int64         `json:"memoryBytes,omitempty"`
-	Sender      *WebhookSender `json:"sender"`
+	MemoryBytes *int64 `json:"memoryBytes,omitempty"`
 
-	// SizeBytes Dimensione dichiarata alla creazione, solo per `created`.
+	// Port Porta TCP della LAN assegnata, solo per `lan_enabled`.
+	Port   *int           `json:"port,omitempty"`
+	Sender *WebhookSender `json:"sender"`
+
+	// SizeBytes Dimensione dichiarata alla creazione, o del dump per `backup_completed`.
 	SizeBytes *int64    `json:"sizeBytes,omitempty"`
 	Time      time.Time `json:"time"`
 

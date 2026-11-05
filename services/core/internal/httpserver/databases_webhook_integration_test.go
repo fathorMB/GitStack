@@ -98,9 +98,9 @@ func (e *dbHookEnv) run() {
 	}
 }
 
-// TestDatabases_WebhookConsegnaSenzaSegreti crea, ridimensiona ed elimina un database di
-// un'organizzazione SENZA repository e verifica le tre consegne: azioni, schema del payload e
-// divieto di segreti. Il matching va per org_id nell'evento, non per i repo dell'org.
+// TestDatabases_WebhookConsegnaSenzaSegreti crea, ridimensiona, accende e spegne la LAN ed elimina
+// un database di un'organizzazione SENZA repository e verifica le consegne: azioni, schema del
+// payload e divieto di segreti. Il matching va per org_id nell'evento, non per i repo dell'org.
 func TestDatabases_WebhookConsegnaSenzaSegreti(t *testing.T) {
 	e := newDBHookEnv(t)
 	// alice è owner dell'organizzazione acme. L'org NON ha nessun repository: i destinatari si
@@ -116,16 +116,31 @@ func TestDatabases_WebhookConsegnaSenzaSegreti(t *testing.T) {
 
 	// Creazione: 202 con la password una tantum (DB22): non deve finire MAI nel webhook.
 	created := e.create("alice", "acme", `{"name":"erp","pgMajor":16}`, http.StatusAccepted)
+	dbID := uuid.UUID(created.Database.Id)
 	e.run()
 
 	// Ridimensionamento.
 	e.want(e.do(http.MethodPatch, "/databases/acme/erp", "alice", `{"cpuMillis":200}`), http.StatusOK, "")
+	// LAN: accesa (con la porta assegnata nell'evento, docs/events.md) e poi spenta (porta assente).
+	// Si pubblica dallo store come fa il PUT /lan (DB16): il controller non tocca il cluster qui.
+	aliceActor := &store.AppActor{ID: uuid.MustParse(aliceID), Username: "alice", Type: "human"}
+	st := store.New(e.pool)
+	lan, err := st.SetManagedDBLAN(context.Background(), dbID, true, store.LANPortPolicy{From: 15432, To: 15440}, aliceActor, e.clock.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lan.LANPort == nil {
+		t.Fatal("la LAN accesa deve avere una porta")
+	}
+	if _, err := st.SetManagedDBLAN(context.Background(), dbID, false, store.LANPortPolicy{From: 15432, To: 15440}, aliceActor, e.clock.Now()); err != nil {
+		t.Fatal(err)
+	}
 	// Eliminazione (conferma owner/nome).
 	e.want(e.do(http.MethodDelete, "/databases/acme/erp?confirm=acme/erp", "alice", ""), http.StatusNoContent, "")
 	e.run()
 
 	got := e.recv.requests()
-	if len(got) != 3 {
+	if len(got) != 5 {
 		t.Fatalf("consegne: %d", len(got))
 	}
 
@@ -149,6 +164,7 @@ func TestDatabases_WebhookConsegnaSenzaSegreti(t *testing.T) {
 		MemoryBytes *int64          `json:"memoryBytes"`
 		Changes     json.RawMessage `json:"changes"`
 		DeletedAt   string          `json:"deletedAt"`
+		Port        *int            `json:"port"`
 	}
 	// Le consegne partono con worker paralleli: l'ordine di arrivo non e' garantito; si abbinano per azione.
 	byAction := map[string]payload{}
@@ -180,12 +196,12 @@ func TestDatabases_WebhookConsegnaSenzaSegreti(t *testing.T) {
 			}
 		}
 	}
-	if len(byAction) != 3 {
+	if len(byAction) != 5 {
 		t.Fatalf("azioni mancanti: %+v", byAction)
 	}
 
-	dbID := uuid.UUID(created.Database.Id).String()
-	for _, action := range []string{"created", "updated", "deleted"} {
+	dbIDStr := dbID.String()
+	for _, action := range []string{"created", "updated", "lan_enabled", "lan_disabled", "deleted"} {
 		p := byAction[action]
 		if p.Version != 1 || p.Event != "database" || p.Action != action {
 			t.Fatalf("%s: corpo comune %+v", action, p)
@@ -193,7 +209,7 @@ func TestDatabases_WebhookConsegnaSenzaSegreti(t *testing.T) {
 		if p.Time == "" || p.Sender.Username != "alice" || p.Sender.ID != aliceID {
 			t.Fatalf("%s: corpo comune %+v", action, p)
 		}
-		if p.Database.ID != dbID || p.Database.Owner != "acme" || p.Database.Name != "erp" || p.Database.PgMajor != 16 {
+		if p.Database.ID != dbIDStr || p.Database.Owner != "acme" || p.Database.Name != "erp" || p.Database.PgMajor != 16 {
 			t.Fatalf("%s: database %+v", action, p.Database)
 		}
 	}
@@ -209,6 +225,14 @@ func TestDatabases_WebhookConsegnaSenzaSegreti(t *testing.T) {
 	if ch["cpuMillis"]["from"] != 100 {
 		t.Fatalf("updated: changes %+v", ch)
 	}
+	// LAN: la porta dell'evento lan_enabled è quella assegnata dal modello; con la LAN spenta la
+	// porta è assente (docs/events.md: assente con la LAN spenta, DB16).
+	if p := byAction["lan_enabled"]; p.Port == nil || *p.Port != *lan.LANPort {
+		t.Fatalf("lan_enabled: port %+v, attesa %d", p.Port, *lan.LANPort)
+	}
+	if p := byAction["lan_disabled"]; p.Port != nil {
+		t.Fatalf("lan_disabled: la porta deve essere assente: %+v", p.Port)
+	}
 	if byAction["deleted"].DeletedAt == "" {
 		t.Fatal("deleted: deletedAt vuoto")
 	}
@@ -223,7 +247,7 @@ func TestDatabases_WebhookConsegnaSenzaSegreti(t *testing.T) {
 	// l'evento si elabora senza consegne e senza errori.
 	e.create("alice", "alice", `{"name":"shop","pgMajor":17}`, http.StatusAccepted)
 	e.run()
-	if n := len(e.recv.requests()); n != 3 {
+	if n := len(e.recv.requests()); n != 5 {
 		t.Fatalf("il database di un utente non deve avere consegne: %d", n)
 	}
 }
