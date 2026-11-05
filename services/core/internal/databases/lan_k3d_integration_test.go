@@ -75,24 +75,23 @@ func (e *k3dEnv) lanPsql(port int, host, sslmode, rootPEM, user, password, dbnam
 	dir := e.t.TempDir()
 	conn := fmt.Sprintf("host=%s hostaddr=127.0.0.1 port=%d dbname=%s user=%s sslmode=%s connect_timeout=5", host, port, dbname, user, sslmode)
 	local := true
+	hostRoot, ctrRoot := "sslrootcert=system", "sslrootcert=system"
 	if rootPEM != "" {
 		if err := os.WriteFile(filepath.Join(dir, "ca.crt"), []byte(rootPEM), 0o600); err != nil {
 			e.t.Fatal(err)
 		}
-		conn += " sslrootcert=" + filepath.Join(dir, "ca.crt")
-	} else {
-		conn += " sslrootcert=system"
+		hostRoot, ctrRoot = "sslrootcert="+filepath.Join(dir, "ca.crt"), "sslrootcert=/ca/ca.crt"
 	}
+	base := conn
 	var cmd *exec.Cmd
 	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
 	defer cancel()
 	if _, err := exec.LookPath("psql"); err == nil {
-		cmd = exec.CommandContext(ctx, "psql", conn, "-Atc", "select current_user")
+		cmd = exec.CommandContext(ctx, "psql", base+" "+hostRoot, "-Atc", "select current_user")
 	} else {
 		local = false
-		conn = strings.ReplaceAll(conn, dir, "/ca")
 		cmd = exec.CommandContext(ctx, "docker", "run", "--rm", "--network", "host", "-e", "PGPASSWORD", "-v", dir+":/ca:ro",
-			"docker.io/library/postgres@"+k3dImageDigest, "psql", conn, "-Atc", "select current_user")
+			"docker.io/library/postgres@"+k3dImageDigest, "psql", base+" "+ctrRoot, "-Atc", "select current_user")
 	}
 	cmd.Env = append(os.Environ(), "PGPASSWORD="+password)
 	out, err := cmd.CombinedOutput()
