@@ -274,11 +274,7 @@ func TestRBAC_DB4_NessunClusterRoleBindingVersoIlModello(t *testing.T) {
 }
 
 func splitYAMLDocs(s string) []string {
-	var out []string
-	for _, d := range regexp.MustCompile(`(?m)^---\s*$`).Split(strings.ReplaceAll(s, "\r\n", "\n"), -1) {
-		out = append(out, d)
-	}
-	return out
+	return regexp.MustCompile(`(?m)^---\s*$`).Split(strings.ReplaceAll(s, "\r\n", "\n"), -1)
 }
 
 // isClusterRole dice se il documento e' un ClusterRole (kind a colonna 0, non il roleRef di un binding).

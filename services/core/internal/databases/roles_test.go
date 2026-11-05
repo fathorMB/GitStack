@@ -95,7 +95,7 @@ func TestDatabaseLinks_OrdineDiScollegamento(t *testing.T) {
 	if nologin < 0 || terminate < 0 || dropOwned < 0 || dropRole < 0 {
 		t.Fatalf("mancano passi: %d %d %d %d\n%s", nologin, terminate, dropOwned, dropRole, strings.Join(r.stmts, "\n"))
 	}
-	if !(nologin < terminate && terminate < dropOwned && dropOwned < dropRole) {
+	if nologin >= terminate || terminate >= dropOwned || dropOwned >= dropRole {
 		t.Fatalf("ordine sbagliato: NOLOGIN=%d terminate=%d DROP OWNED=%d DROP ROLE=%d", nologin, terminate, dropOwned, dropRole)
 	}
 	// Ripetuto finche' pg_stat_activity non mostra piu' sessioni: 3 giri (2, 1, 0 sessioni).

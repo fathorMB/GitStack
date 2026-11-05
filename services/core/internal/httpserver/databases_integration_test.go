@@ -68,7 +68,7 @@ type lateController struct {
 }
 
 func (l *lateController) set(c *databases.Controller) { l.mu.Lock(); l.c = c; l.mu.Unlock() }
-func (l *lateController) get() *databases.Controller   { l.mu.Lock(); defer l.mu.Unlock(); return l.c }
+func (l *lateController) get() *databases.Controller  { l.mu.Lock(); defer l.mu.Unlock(); return l.c }
 func (l *lateController) Provision(ctx context.Context, d store.ManagedDB, pw string) error {
 	return l.get().Provision(ctx, d, pw)
 }

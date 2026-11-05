@@ -202,11 +202,10 @@ func (c *Controller) Reconcile(ctx context.Context, d store.ManagedDB) {
 		} else {
 			c.cfg.Log.Warn("databases: riconciliazione non riuscita, si ritenta", "db", d.ID, "err", err)
 			// Un errore transitorio non sposta lo stato, ma dopo il timeout il database e' `failed` col motivo.
-			if status = d.Status; (d.Status == store.DBCreating || d.Status == store.DBUpdating) && c.cfg.Now().Sub(d.UpdatedAt) > c.cfg.ProgressTimeout {
-				status, reason = store.DBFailed, strPtr("il database non e' arrivato a pronto in tempo: "+err.Error())
-			} else {
+			if (d.Status != store.DBCreating && d.Status != store.DBUpdating) || c.cfg.Now().Sub(d.UpdatedAt) <= c.cfg.ProgressTimeout {
 				return
 			}
+			status, reason = store.DBFailed, strPtr("il database non e' arrivato a pronto in tempo: "+err.Error())
 		}
 	}
 	if err := c.st.SetManagedDBStatus(ctx, d.ID, status, reason, c.cfg.Now()); err != nil && ctx.Err() == nil {
