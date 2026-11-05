@@ -4,6 +4,7 @@ import { AppShell } from './layout/AppShell';
 import { AgentsPage } from './pages/admin/AgentsPage';
 import { AppsResourcesPage } from './pages/admin/AppsResourcesPage';
 import { CiRunnersPage } from './pages/admin/CiRunnersPage';
+import { DatabasesSettingsPage } from './pages/admin/DatabasesSettingsPage';
 import { SystemPage } from './pages/admin/SystemPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { ComponentsPage } from './pages/ComponentsPage';
@@ -106,6 +107,16 @@ export function AppRoutes() {
           <RequireAuth>
             <AppShell crumb="Apps & resources">
               <AppsResourcesPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/databases"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Database settings">
+              <DatabasesSettingsPage />
             </AppShell>
           </RequireAuth>
         }
