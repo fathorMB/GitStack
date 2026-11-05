@@ -752,19 +752,19 @@ func (e CommitStatusState) Valid() bool {
 
 // Defines values for DatabaseBackupKind.
 const (
-	OnDemand  DatabaseBackupKind = "on_demand"
-	Safety    DatabaseBackupKind = "safety"
-	Scheduled DatabaseBackupKind = "scheduled"
+	DatabaseBackupKindOnDemand  DatabaseBackupKind = "on_demand"
+	DatabaseBackupKindSafety    DatabaseBackupKind = "safety"
+	DatabaseBackupKindScheduled DatabaseBackupKind = "scheduled"
 )
 
 // Valid indicates whether the value is a known member of the DatabaseBackupKind enum.
 func (e DatabaseBackupKind) Valid() bool {
 	switch e {
-	case OnDemand:
+	case DatabaseBackupKindOnDemand:
 		return true
-	case Safety:
+	case DatabaseBackupKindSafety:
 		return true
-	case Scheduled:
+	case DatabaseBackupKindScheduled:
 		return true
 	default:
 		return false
@@ -2346,6 +2346,27 @@ func (e WebhookDatabasePayloadAction) Valid() bool {
 	}
 }
 
+// Defines values for WebhookDatabasePayloadBackupKind.
+const (
+	WebhookDatabasePayloadBackupKindOnDemand  WebhookDatabasePayloadBackupKind = "on_demand"
+	WebhookDatabasePayloadBackupKindSafety    WebhookDatabasePayloadBackupKind = "safety"
+	WebhookDatabasePayloadBackupKindScheduled WebhookDatabasePayloadBackupKind = "scheduled"
+)
+
+// Valid indicates whether the value is a known member of the WebhookDatabasePayloadBackupKind enum.
+func (e WebhookDatabasePayloadBackupKind) Valid() bool {
+	switch e {
+	case WebhookDatabasePayloadBackupKindOnDemand:
+		return true
+	case WebhookDatabasePayloadBackupKindSafety:
+		return true
+	case WebhookDatabasePayloadBackupKindScheduled:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WebhookDatabasePayloadDatabasePgMajor.
 const (
 	WebhookDatabasePayloadDatabasePgMajorN16 WebhookDatabasePayloadDatabasePgMajor = 16
@@ -2412,6 +2433,24 @@ func (e WebhookDatabasePayloadLinkMode) Valid() bool {
 	case WebhookDatabasePayloadLinkModeRo:
 		return true
 	case WebhookDatabasePayloadLinkModeRw:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookDatabasePayloadTarget.
+const (
+	WebhookDatabasePayloadTargetNew  WebhookDatabasePayloadTarget = "new"
+	WebhookDatabasePayloadTargetSame WebhookDatabasePayloadTarget = "same"
+)
+
+// Valid indicates whether the value is a known member of the WebhookDatabasePayloadTarget enum.
+func (e WebhookDatabasePayloadTarget) Valid() bool {
+	switch e {
+	case WebhookDatabasePayloadTargetNew:
+		return true
+	case WebhookDatabasePayloadTargetSame:
 		return true
 	default:
 		return false
@@ -7476,9 +7515,21 @@ type WebhookCommitStatusPayloadEvent string
 // WebhookCommitStatusPayloadVersion defines model for WebhookCommitStatusPayload.Version.
 type WebhookCommitStatusPayloadVersion int
 
-// WebhookDatabasePayload Payload del webhook `database` (v3-d, DB20). Si configura sul webhook dell'organizzazione proprietaria del database (C6): un database di un utente non ha webhook. `action`: `created` (con `sizeBytes`, `cpuMillis`, `memoryBytes` dichiarati), `updated` (con `changes`: i valori precedenti), `deleted` (con `deletedAt`), `linked`/`unlinked` (con `link`), `lan_enabled` (con la `port` TCP assegnata), `lan_disabled`, `backup_completed` (con `sizeBytes` del dump) e `backup_failed`; `restored`. I dettagli di backup e ripristino (`backup{id,kind}`, `error`, `backupId`, `target`) arrivano con GIT-572. I campi opzionali dipendono dall'azione. Nessun segreto: mai password (ne' dell'owner ne' dei collegamenti), ne' Secret, ne' DATABASE_URL (DB20, DB22).
+// WebhookDatabasePayload Payload del webhook `database` (v3-d, DB20). Si configura sul webhook dell'organizzazione proprietaria del database (C6): un database di un utente non ha webhook. `action`: `created` (con `sizeBytes`, `cpuMillis`, `memoryBytes` dichiarati), `updated` (con `changes`: i valori precedenti), `deleted` (con `deletedAt`), `linked`/`unlinked` (con `link`), `lan_enabled` (con la `port` TCP assegnata), `lan_disabled`, `backup_completed` (con `backup`: id, kind e `sizeBytes` del dump) e `backup_failed` (con `backup` senza `sizeBytes` e il motivo in `error`); `restored` (con `backupId` del dump e `target` `same`/`new`). I campi opzionali dipendono dall'azione. Nessun segreto: mai password (ne' dell'owner ne' dei collegamenti), ne' Secret, ne' DATABASE_URL; l'`error` di `backup_failed` rispetta lo stesso divieto (DB20, DB22).
 type WebhookDatabasePayload struct {
 	Action WebhookDatabasePayloadAction `json:"action"`
+
+	// Backup Riferimento al dump, solo per `backup_completed`/`backup_failed`.
+	Backup *struct {
+		Id   openapi_types.UUID               `json:"id"`
+		Kind WebhookDatabasePayloadBackupKind `json:"kind"`
+
+		// SizeBytes Dimensione del dump cifrato, solo per `backup_completed`.
+		SizeBytes *int64 `json:"sizeBytes,omitempty"`
+	} `json:"backup,omitempty"`
+
+	// BackupId Dump ripristinato, solo per `restored`.
+	BackupId *openapi_types.UUID `json:"backupId,omitempty"`
 
 	// Changes Valori precedenti, solo per `updated`.
 	Changes *struct {
@@ -7509,7 +7560,10 @@ type WebhookDatabasePayload struct {
 
 	// DiskState Stato del limite morbido di disco (80%/100%).
 	DiskState *WebhookDatabasePayloadDiskState `json:"diskState,omitempty"`
-	Event     WebhookDatabasePayloadEvent      `json:"event"`
+
+	// Error Motivo del fallimento, solo per `backup_failed`: niente password ne' DATABASE_URL (DB20).
+	Error *string                     `json:"error,omitempty"`
+	Event WebhookDatabasePayloadEvent `json:"event"`
 
 	// Link Collegamento con un'app, solo per `linked`/`unlinked`.
 	Link *struct {
@@ -7529,9 +7583,12 @@ type WebhookDatabasePayload struct {
 	Port   *int           `json:"port,omitempty"`
 	Sender *WebhookSender `json:"sender"`
 
-	// SizeBytes Dimensione dichiarata alla creazione, o del dump per `backup_completed`.
-	SizeBytes *int64    `json:"sizeBytes,omitempty"`
-	Time      time.Time `json:"time"`
+	// SizeBytes Dimensione dichiarata alla creazione, solo per `created`.
+	SizeBytes *int64 `json:"sizeBytes,omitempty"`
+
+	// Target Destinazione del ripristino, solo per `restored` (DB15).
+	Target *WebhookDatabasePayloadTarget `json:"target,omitempty"`
+	Time   time.Time                     `json:"time"`
 
 	// UsageBytes Dimensione misurata (pg_database_size).
 	UsageBytes *int64                        `json:"usageBytes,omitempty"`
@@ -7540,6 +7597,9 @@ type WebhookDatabasePayload struct {
 
 // WebhookDatabasePayloadAction defines model for WebhookDatabasePayload.Action.
 type WebhookDatabasePayloadAction string
+
+// WebhookDatabasePayloadBackupKind defines model for WebhookDatabasePayload.Backup.Kind.
+type WebhookDatabasePayloadBackupKind string
 
 // WebhookDatabasePayloadDatabasePgMajor defines model for WebhookDatabasePayload.Database.PgMajor.
 type WebhookDatabasePayloadDatabasePgMajor int
@@ -7552,6 +7612,9 @@ type WebhookDatabasePayloadEvent string
 
 // WebhookDatabasePayloadLinkMode defines model for WebhookDatabasePayload.Link.Mode.
 type WebhookDatabasePayloadLinkMode string
+
+// WebhookDatabasePayloadTarget Destinazione del ripristino, solo per `restored` (DB15).
+type WebhookDatabasePayloadTarget string
 
 // WebhookDatabasePayloadVersion defines model for WebhookDatabasePayload.Version.
 type WebhookDatabasePayloadVersion int

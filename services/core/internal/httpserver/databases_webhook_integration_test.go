@@ -5,6 +5,7 @@ package httpserver_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -13,10 +14,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/fathorMB/GitStack/services/core/internal/databases"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
+	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 	"github.com/fathorMB/GitStack/services/core/internal/webhooks"
 )
@@ -249,5 +252,320 @@ func TestDatabases_WebhookConsegnaSenzaSegreti(t *testing.T) {
 	e.run()
 	if n := len(e.recv.requests()); n != 5 {
 		t.Fatalf("il database di un utente non deve avere consegne: %d", n)
+	}
+}
+
+// DB13, DB15, DB20 (GIT-572): backup completato/fallito e ripristino pubblicano — nello stesso
+// evento di dominio e nel webhook — i campi di docs/events.md: backup{id, kind, sizeBytes?},
+// error solo per backup_failed, backupId e target (same/new) per restored. Nessun segreto in
+// nessun corpo: l'error non contiene mai password né DATABASE_URL.
+func TestDatabases_WebhookBackupERipristino(t *testing.T) {
+	e := newDBHookEnv(t)
+	e.hid.orgOwner[acmeID] = []string{aliceID, bobID}
+	rec := e.do(http.MethodPost, "/orgs/acme/hooks", "alice", fmt.Sprintf(`{"url":%q,"events":["database"],"secret":"s3cr3t"}`, hookURL))
+	e.want(rec, http.StatusCreated, "")
+
+	// Controller con chiave, cartella e dump finto; il fake kube e' quello condiviso, cosi' il
+	// test marca pronti gli StatefulSet come fa database_links_restore_integration_test.go.
+	dumper := &apiDumper{}
+	e.withBackups(t, dumper, map[int]databases.Image{16: {Repository: "docker.io/library/postgres", Tag: "16-alpine", Digest: "sha256:" + strings.Repeat("a", 64)}})
+	created := e.create("alice", "acme", `{"name":"erp","pgMajor":16}`, http.StatusAccepted)
+	dbID := uuid.UUID(created.Database.Id)
+	erpID := dbID.String()
+	st := store.New(e.pool)
+	ctx := context.Background()
+
+	reconcile := func(owner, name string) {
+		t.Helper()
+		d, err := st.GetManagedDB(ctx, owner, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		e.proxy.get().Reconcile(ctx, d)
+	}
+	markReady := func(id uuid.UUID) {
+		t.Helper()
+		sts, err := e.kube.AppsV1().StatefulSets(databases.Namespace(id)).Get(ctx, databases.WorkloadName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		sts.Status.ReadyReplicas, sts.Status.UpdatedReplicas = 1, 1
+		if _, err := e.kube.AppsV1().StatefulSets(databases.Namespace(id)).UpdateStatus(ctx, sts, metav1.UpdateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Il database arriva a `running` come nei test del ripristino: due giri di riconciliazione.
+	reconcile("acme", "erp")
+	markReady(dbID)
+	reconcile("acme", "erp")
+	if d, _ := st.GetManagedDB(ctx, "acme", "erp"); d.Status != store.DBRunning {
+		t.Fatalf("stato %s (%v)", d.Status, d.StatusReason)
+	}
+
+	// outboxEvents ritorna i payload di dominio di un evento, in ordine di pubblicazione.
+	outboxEvents := func(name string) []map[string]any {
+		t.Helper()
+		rows, err := e.pool.Query(ctx, `SELECT payload FROM core.event_outbox WHERE name = $1 ORDER BY seq`, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rows.Close()
+		var out []map[string]any
+		for rows.Next() {
+			var raw []byte
+			if err := rows.Scan(&raw); err != nil {
+				t.Fatal(err)
+			}
+			var p map[string]any
+			if err := json.Unmarshal(raw, &p); err != nil {
+				t.Fatal(err)
+			}
+			out = append(out, p)
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	lastOutbox := func(name string) map[string]any {
+		t.Helper()
+		evs := outboxEvents(name)
+		if len(evs) == 0 {
+			t.Fatalf("nessun evento %s nell'outbox", name)
+		}
+		return evs[len(evs)-1]
+	}
+	waitBackup := func(id, status string) {
+		t.Helper()
+		deadline := time.Now().Add(10 * time.Second)
+		for time.Now().Before(deadline) {
+			for _, b := range e.backups(t, "acme", "erp") {
+				if b.Id.String() == id && string(b.Status) == status {
+					return
+				}
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		t.Fatalf("backup %s non arrivato a %s", id, status)
+	}
+
+	type payload struct {
+		Version int    `json:"version"`
+		Event   string `json:"event"`
+		Action  string `json:"action"`
+		Time    string `json:"time"`
+		Sender  struct {
+			ID       string `json:"id"`
+			Username string `json:"username"`
+		} `json:"sender"`
+		Database struct {
+			ID      string `json:"id"`
+			Owner   string `json:"owner"`
+			Name    string `json:"name"`
+			PgMajor int    `json:"pgMajor"`
+		} `json:"database"`
+		Backup struct {
+			ID        string `json:"id"`
+			Kind      string `json:"kind"`
+			SizeBytes *int64 `json:"sizeBytes"`
+		} `json:"backup"`
+		Error    string `json:"error"`
+		BackupID string `json:"backupId"`
+		Target   string `json:"target"`
+	}
+	checkCommon := func(i int, req received, action string) payload {
+		t.Helper()
+		var p payload
+		if err := json.Unmarshal(req.body, &p); err != nil {
+			t.Fatalf("consegna %d: %v: %s", i, err, req.body)
+		}
+		if p.Version != 1 || p.Event != "database" || p.Time == "" {
+			t.Fatalf("consegna %d: corpo comune %+v", i, p)
+		}
+		if action != "" && p.Action != action {
+			t.Fatalf("consegna %d: azione %q, attesa %q", i, p.Action, action)
+		}
+		return p
+	}
+
+	// Creazione: consegna `created`.
+	e.run()
+	got := e.recv.requests()
+	if len(got) != 1 {
+		t.Fatalf("consegne dopo la creazione: %d", len(got))
+	}
+
+	// 1) Backup riuscito: backup{id, kind, sizeBytes} e nessun error, nel dominio e nel webhook.
+	rec = e.do(http.MethodPost, "/databases/acme/erp/backups", "alice", "")
+	e.want(rec, http.StatusAccepted, "")
+	var started openapi.DatabaseBackup
+	_ = json.Unmarshal(rec.Body.Bytes(), &started)
+	waitBackup(started.Id.String(), "completed")
+
+	ev := lastOutbox("database.backup_completed")
+	backup, _ := ev["backup"].(map[string]any)
+	if backup["id"] != started.Id.String() || backup["kind"] != "on_demand" {
+		t.Fatalf("dominio backup_completed: backup %+v", backup)
+	}
+	if sb, _ := backup["sizeBytes"].(float64); sb <= 0 {
+		t.Fatalf("dominio backup_completed: sizeBytes %+v", backup)
+	}
+	if _, ok := ev["error"]; ok {
+		t.Fatalf("backup_completed non porta error: %+v", ev)
+	}
+	e.run()
+	got = e.recv.requests()
+	p := checkCommon(len(got)-1, got[len(got)-1], "backup_completed")
+	if p.Backup.ID != started.Id.String() || p.Backup.Kind != "on_demand" || p.Backup.SizeBytes == nil || *p.Backup.SizeBytes <= 0 {
+		t.Fatalf("backup_completed: backup %+v", p.Backup)
+	}
+	if p.Error != "" || p.BackupID != "" || p.Target != "" {
+		t.Fatalf("backup_completed: campi inattesi %+v", p)
+	}
+
+	// 2) Backup fallito: backup{id, kind} senza sizeBytes, con error; il motivo e' lo stesso
+	// testo gia' filtrato (niente password né DATABASE_URL) della riga di audit.
+	dumper.err = errors.New("pg_dump: server chiuso")
+	rec = e.do(http.MethodPost, "/databases/acme/erp/backups", "alice", "")
+	e.want(rec, http.StatusAccepted, "")
+	var failed openapi.DatabaseBackup
+	_ = json.Unmarshal(rec.Body.Bytes(), &failed)
+	waitBackup(failed.Id.String(), "failed")
+
+	ev = lastOutbox("database.backup_failed")
+	backup, _ = ev["backup"].(map[string]any)
+	if backup["id"] != failed.Id.String() || backup["kind"] != "on_demand" {
+		t.Fatalf("dominio backup_failed: backup %+v", backup)
+	}
+	if _, ok := backup["sizeBytes"]; ok {
+		t.Fatalf("backup_failed non porta sizeBytes: %+v", backup)
+	}
+	if msg, _ := ev["error"].(string); !strings.Contains(msg, "server chiuso") {
+		t.Fatalf("dominio backup_failed: error %q", msg)
+	}
+	e.run()
+	got = e.recv.requests()
+	p = checkCommon(len(got)-1, got[len(got)-1], "backup_failed")
+	if p.Backup.ID != failed.Id.String() || p.Backup.Kind != "on_demand" || p.Backup.SizeBytes != nil {
+		t.Fatalf("backup_failed: backup %+v", p.Backup)
+	}
+	if !strings.Contains(p.Error, "server chiuso") {
+		t.Fatalf("backup_failed: error %q", p.Error)
+	}
+	dumper.err = nil
+
+	// 3) Ripristino sul posto: restored con backupId del dump e target same; prima il dump di
+	// sicurezza pubblica il suo backup_completed (kind safety).
+	path := "/databases/acme/erp/backups/" + started.Id.String() + "/restore"
+	rec = e.do(http.MethodPost, path, "alice", `{"target":"same","confirm":"acme/erp"}`)
+	e.want(rec, http.StatusAccepted, "")
+	reconcile("acme", "erp")
+	if d, _ := st.GetManagedDB(ctx, "acme", "erp"); d.Status != store.DBRunning {
+		t.Fatalf("dopo il ripristino: stato %s (%v)", d.Status, d.StatusReason)
+	}
+
+	ev = lastOutbox("database.restored")
+	if bid, _ := ev["backupId"].(string); bid != started.Id.String() {
+		t.Fatalf("dominio restored: backupId %q", bid)
+	}
+	if target, _ := ev["target"].(string); target != "same" {
+		t.Fatalf("dominio restored: target %q", target)
+	}
+	e.run()
+	got = e.recv.requests()
+	if len(got) != 5 {
+		t.Fatalf("consegne dopo il ripristino sul posto: %d", len(got))
+	}
+	safety, restoredSame := false, false
+	for i, req := range got[3:] {
+		q := checkCommon(i+3, req, "")
+		switch q.Action {
+		case "backup_completed":
+			if q.Backup.Kind != "safety" || q.Backup.SizeBytes == nil {
+				t.Fatalf("dump di sicurezza: %+v", q.Backup)
+			}
+			safety = true
+		case "restored":
+			if q.BackupID != started.Id.String() || q.Target != "same" || q.Database.ID != erpID || q.Database.Name != "erp" {
+				t.Fatalf("restored same: %+v", q)
+			}
+			restoredSame = true
+		default:
+			t.Fatalf("consegna inattesa dopo il ripristino: %+v", q)
+		}
+	}
+	if !safety || !restoredSame {
+		t.Fatalf("consegne del ripristino sul posto: safety=%v restored=%v", safety, restoredSame)
+	}
+
+	// 4) Ripristino in un database nuovo: created del database nuovo, poi restored con
+	// backupId del dump sorgente e target new sul database nuovo.
+	rec = e.do(http.MethodPost, path, "alice", `{"target":"new","name":"erp-copia"}`)
+	e.want(rec, http.StatusAccepted, "")
+	var copyDB openapi.Database
+	_ = json.Unmarshal(rec.Body.Bytes(), &copyDB)
+	copyID := uuid.UUID(copyDB.Id)
+	reconcile("acme", "erp-copia")
+	markReady(copyID)
+	reconcile("acme", "erp-copia")
+	if d, _ := st.GetManagedDB(ctx, "acme", "erp-copia"); d.Status != store.DBRunning {
+		t.Fatalf("dopo il ripristino: stato %s (%v)", d.Status, d.StatusReason)
+	}
+
+	ev = lastOutbox("database.restored")
+	if bid, _ := ev["backupId"].(string); bid != started.Id.String() {
+		t.Fatalf("dominio restored (new): backupId %q", bid)
+	}
+	if target, _ := ev["target"].(string); target != "new" {
+		t.Fatalf("dominio restored (new): target %q", target)
+	}
+	db, _ := ev["database"].(map[string]any)
+	if db["id"] != copyID.String() || db["name"] != "erp-copia" {
+		t.Fatalf("dominio restored (new): database %+v", db)
+	}
+	e.run()
+	got = e.recv.requests()
+	if len(got) != 7 {
+		t.Fatalf("consegne dopo il ripristino nel database nuovo: %d", len(got))
+	}
+	createdCopy, restoredNew := false, false
+	for i, req := range got[5:] {
+		q := checkCommon(i+5, req, "")
+		switch q.Action {
+		case "created":
+			if q.Database.ID != copyID.String() || q.Database.Name != "erp-copia" {
+				t.Fatalf("created del database nuovo: %+v", q.Database)
+			}
+			createdCopy = true
+		case "restored":
+			if q.BackupID != started.Id.String() || q.Target != "new" || q.Database.ID != copyID.String() || q.Database.Name != "erp-copia" {
+				t.Fatalf("restored new: %+v", q)
+			}
+			restoredNew = true
+		default:
+			t.Fatalf("consegna inattesa dopo il ripristino new: %+v", q)
+		}
+	}
+	if !createdCopy || !restoredNew {
+		t.Fatalf("consegne del ripristino new: created=%v restored=%v", createdCopy, restoredNew)
+	}
+
+	// DB20: nessun segreto in nessun corpo consegnato, di nessuna azione.
+	for i, req := range got {
+		if h := req.header.Get("X-GitStack-Event"); h != "database" {
+			t.Fatalf("consegna %d: X-GitStack-Event %q", i, h)
+		}
+		body := strings.ToLower(string(req.body))
+		for _, banned := range []string{"password", "secret", "database_url"} {
+			if strings.Contains(body, banned) {
+				t.Fatalf("consegna %d: il payload contiene %q: %s", i, banned, req.body)
+			}
+		}
+	}
+
+	// Outbox elaborato tutto: una consegna per evento, nessun residuo.
+	var outbox int
+	if err := e.pool.QueryRow(ctx, `SELECT count(*) FROM core.event_outbox WHERE webhooked_at IS NULL`).Scan(&outbox); err != nil || outbox != 0 {
+		t.Fatalf("outbox non svuotato: %d %v", outbox, err)
 	}
 }

@@ -123,7 +123,7 @@ func (s *Store) CompleteManagedDBBackup(ctx context.Context, d ManagedDB, b Mana
 		return err
 	}
 	if err := dbEvent(ctx, tx, domainevents.DatabaseBackupCompleted, d, b.CreatedBy, func(p *domainevents.DatabasePayload) {
-		p.SizeBytes = &size
+		p.Backup = &domainevents.DatabaseBackup{ID: b.ID.String(), Kind: b.Kind, SizeBytes: &size}
 	}); err != nil {
 		return err
 	}
@@ -146,7 +146,12 @@ func (s *Store) FailManagedDBBackup(ctx context.Context, d ManagedDB, b ManagedD
 	if err := dbAudit(ctx, tx, d, "backup_failed", b.CreatedBy, map[string]any{"backupId": b.ID, "kind": b.Kind, "error": reason}, now); err != nil {
 		return err
 	}
-	if err := dbEvent(ctx, tx, domainevents.DatabaseBackupFailed, d, b.CreatedBy, nil); err != nil {
+	// L'evento porta backup{id, kind} e il motivo in `error`: lo stesso testo gia' filtrato
+	// (niente password ne' DATABASE_URL) che va nella riga di audit e in backup_error (DB20).
+	if err := dbEvent(ctx, tx, domainevents.DatabaseBackupFailed, d, b.CreatedBy, func(p *domainevents.DatabasePayload) {
+		p.Backup = &domainevents.DatabaseBackup{ID: b.ID.String(), Kind: b.Kind}
+		p.Error = reason
+	}); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -399,7 +404,10 @@ func (s *Store) FinishManagedDBRestore(ctx context.Context, d ManagedDB, p Pendi
 		if err := dbAudit(ctx, tx, d, "restored", p.RequestedBy, map[string]any{"backupId": p.BackupID, "mode": p.Mode}, now); err != nil {
 			return err
 		}
-		if err := dbEvent(ctx, tx, domainevents.DatabaseRestored, d, p.RequestedBy, nil); err != nil {
+		if err := dbEvent(ctx, tx, domainevents.DatabaseRestored, d, p.RequestedBy, func(dp *domainevents.DatabasePayload) {
+			dp.BackupID = p.BackupID.String()
+			dp.Target = p.Mode
+		}); err != nil {
 			return err
 		}
 	} else if err := dbAudit(ctx, tx, d, "restore_failed", p.RequestedBy, map[string]any{"backupId": p.BackupID, "mode": p.Mode, "error": msg}, now); err != nil {

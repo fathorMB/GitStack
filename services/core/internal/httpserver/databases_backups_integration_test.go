@@ -8,13 +8,14 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/fathorMB/GitStack/services/core/internal/databases"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
@@ -42,9 +43,15 @@ func (f *apiDumper) Restore(context.Context, store.ManagedDB, io.Reader, databas
 }
 
 // withBackups sostituisce il controller del router con uno che ha chiave, cartella (t.TempDir()) e dump finto.
+// Il fake kube e' quello condiviso dell'ambiente: i test possono marcarne pronti gli StatefulSet. La CA
+// serve a ensureTLS (altrimenti la riconciliazione non arriva allo StatefulSet).
 func (e *dbEnv) withBackups(t *testing.T, d databases.Dumper, images map[int]databases.Image) {
 	t.Helper()
-	e.proxy.set(databases.New(store.New(e.pool), fake.NewSimpleClientset(), databases.Config{SQL: e.sql, Images: images, Dumper: d,
+	dir, rootPEM := k3dCA(t)
+	if err := os.WriteFile(filepath.Join(dir, "ca.crt"), rootPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	e.proxy.set(databases.New(store.New(e.pool), e.kube, databases.Config{SQL: e.sql, Images: images, Dumper: d, CADir: dir,
 		DumpKey: []byte("0123456789abcdef0123456789abcdef"), DataDir: t.TempDir(), Verifier: okVerifier{}}))
 }
 
@@ -99,7 +106,7 @@ func TestDatabaseBackups_API(t *testing.T) {
 	e.want(rec, http.StatusAccepted, "")
 	var started openapi.DatabaseBackup
 	_ = json.Unmarshal(rec.Body.Bytes(), &started)
-	if started.Kind != openapi.OnDemand || started.Status != openapi.DatabaseBackupStatusInProgress {
+	if started.Kind != openapi.DatabaseBackupKindOnDemand || started.Status != openapi.DatabaseBackupStatusInProgress {
 		t.Fatalf("avvio: %+v", started)
 	}
 	var done openapi.DatabaseBackup

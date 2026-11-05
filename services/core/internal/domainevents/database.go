@@ -36,9 +36,19 @@ type Database struct {
 	PgMajor   int    `json:"pgMajor"`
 }
 
+// DatabaseBackup e' il riferimento al dump negli eventi backup_completed/backup_failed
+// (DB13): l'istantanea minima, niente file, niente chiavi. `sizeBytes` solo se il dump
+// e' riuscito; `error` (motivo, senza segreti) solo in backup_failed.
+type DatabaseBackup struct {
+	ID        string `json:"id"`
+	Kind      string `json:"kind"`
+	SizeBytes *int64 `json:"sizeBytes,omitempty"`
+}
+
 // DatabasePayload e' lo schema interno di database.*. I campi opzionali dipendono dall'evento:
 // created porta sizeBytes/cpuMillis/memoryBytes, updated `changes` coi valori precedenti, deleted
-// `deletedAt`, quota_warning `diskState`/`usageBytes`.
+// `deletedAt`, quota_warning `diskState`/`usageBytes`, backup_completed/backup_failed `backup`
+// (con `error` solo per failed) e restored `backupId`/`target` (DB13, DB15).
 type DatabasePayload struct {
 	Database    Database        `json:"database"`
 	Actor       *User           `json:"actor"`
@@ -52,4 +62,11 @@ type DatabasePayload struct {
 	UsageBytes  *int64          `json:"usageBytes,omitempty"`
 	// Port: porta TCP della LAN, solo in lan_enabled (assente con la LAN spenta, DB16).
 	Port *int `json:"port,omitempty"`
+	// Backup: dump di backup_completed/backup_failed. Error: motivo del fallimento, solo in
+	// backup_failed, mai password ne' DATABASE_URL (DB20, come le righe di audit).
+	Backup *DatabaseBackup `json:"backup,omitempty"`
+	Error  string          `json:"error,omitempty"`
+	// BackupID e Target: dump ripristinato e destinazione (same/new), solo in restored (DB15).
+	BackupID string `json:"backupId,omitempty"`
+	Target   string `json:"target,omitempty"`
 }
