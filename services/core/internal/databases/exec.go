@@ -113,11 +113,14 @@ type ImageVerifier interface {
 	Verify(ctx context.Context, imageRef string) error
 }
 
-// CosignCLI verifica con `cosign verify --key <chiave pubblica>` del registry dell'istanza.
+// CosignCLI verifica la firma KEYLESS (OIDC di GitHub Actions) con `cosign verify`, come le immagini le firma
+// GIT-566: identita' (regex del workflow ci.yml) e issuer arrivano dal chart, che li prende dalla stessa fonte
+// di admin/internal/upgrade/verify.go (V5Config.IdentityRegexp e issuer). Senza uno dei due: fail-closed.
 type CosignCLI struct {
-	Binary  string
-	KeyFile string
-	Timeout time.Duration
+	Binary         string
+	IdentityRegexp string
+	Issuer         string
+	Timeout        time.Duration
 }
 
 // Verify implementa ImageVerifier.
@@ -126,8 +129,8 @@ func (c CosignCLI) Verify(ctx context.Context, imageRef string) error {
 	if bin == "" {
 		bin = "cosign"
 	}
-	if c.KeyFile == "" {
-		return errors.New("verifica cosign non configurata: manca la chiave pubblica (GITSTACK_CORE_DATABASES_COSIGN_KEY_FILE)")
+	if c.IdentityRegexp == "" || c.Issuer == "" {
+		return errors.New("verifica cosign non configurata: mancano identita' e issuer della firma (GITSTACK_CORE_DATABASES_COSIGN_IDENTITY_REGEXP, GITSTACK_CORE_DATABASES_COSIGN_ISSUER)")
 	}
 	t := c.Timeout
 	if t <= 0 {
@@ -135,7 +138,7 @@ func (c CosignCLI) Verify(ctx context.Context, imageRef string) error {
 	}
 	ctx, cancel := context.WithTimeout(ctx, t)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, bin, "verify", "--key", c.KeyFile, imageRef).CombinedOutput()
+	out, err := exec.CommandContext(ctx, bin, "verify", "--certificate-identity-regexp", c.IdentityRegexp, "--certificate-oidc-issuer", c.Issuer, imageRef).CombinedOutput()
 	if err != nil {
 		msg := strings.TrimSpace(string(out))
 		if len(msg) > 300 {

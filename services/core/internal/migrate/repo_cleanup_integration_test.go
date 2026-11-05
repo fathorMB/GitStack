@@ -17,7 +17,7 @@ import (
 func TestMigration0056_RepoNelCestinoInCodaENomeLibero(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
-	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
 		t.Fatalf("down 0056: %v", err)
 	}
 	var n int
@@ -59,7 +59,7 @@ func TestMigration0056_RepoNelCestinoInCodaENomeLibero(t *testing.T) {
 		t.Fatalf("il nome doveva essere libero: %v", err)
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
 		t.Fatalf("down 0056 (di nuovo): %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.repositories WHERE resource_id = $1`, live).Scan(&n); err != nil || n != 1 {

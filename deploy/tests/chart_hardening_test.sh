@@ -797,6 +797,16 @@ d="$(doc Deployment gitstack-core)"
 expect_has "core: GITSTACK_CORE_DATABASES_ENABLED" "${d}" "GITSTACK_CORE_DATABASES_ENABLED"
 expect_has "core: ruolo modello" "${d}" 'value: "gitstack-db-workload"'
 expect_has "core: volume databases-data" "${d}" "claimName: gitstack-databases-data"
+# GIT-551 (DB5): verifica cosign keyless dei digest PostgreSQL. Identita' e issuer arrivano a core solo con
+# databases.enabled=true; spenti non c'e' niente (la riga "databases spenti" sopra conta GITSTACK_CORE_DATABASES).
+expect_has "core: identita' cosign dei database" "${d}" "GITSTACK_CORE_DATABASES_COSIGN_IDENTITY_REGEXP"
+expect_has "core: identita' cosign = workflow ci.yml di main o tag v*" "${d}" '.yml@refs/(heads/main|tags/v.+)$'
+expect_line_has "core: issuer cosign dei database" "${d}" 'value: "https://token.actions.githubusercontent.com"'
+expect_has "core: issuer cosign (nome)" "${d}" "GITSTACK_CORE_DATABASES_COSIGN_ISSUER"
+expect_lacks "core: nessuna chiave cosign da montare" "${d}" "COSIGN_KEY_FILE"
+d_off="$(helm template gitstack "${CHART}" 2>&1)"
+expect_lacks "databases spenti: niente identita' cosign" "${d_off}" "GITSTACK_CORE_DATABASES_COSIGN"
+expect_has "identita' cosign sovrascrivibile (fork)" "$(helm template gitstack "${CHART}" --set databases.enabled=true --set-string 'databases.cosign.identityRegexp=^https://github\.com/acme/fork/.*$' 2>&1)" 'acme/fork'
 expect_has "core: CA intermedia opzionale" "${d}" "secretName: gitstack-db-ca"
 expect_has "core: chiave di dump opzionale (volume)" "${d}" "secretName: gitstack-db-dump-key"
 expect_has "core: chiave di dump letta da file" "${d}" "value: /etc/gitstack/db-dump-key/key"

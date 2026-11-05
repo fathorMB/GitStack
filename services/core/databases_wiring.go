@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -23,16 +22,17 @@ import (
 // GITSTACK_CORE_DATABASES_ENABLED=true con databases.enabled. Le altre variabili le imposta
 // templates/core/deployment.yaml (GIT-565): ServiceAccount di core e ClusterRole modello per i RoleBinding,
 // tabella major -> immagine per digest, cartella della CA intermedia.
-// GITSTACK_CORE_DATABASES_COSIGN_KEY_FILE e' la chiave pubblica con cui cosign verifica il digest prima di
-// ogni StatefulSet (DB5, H10); GITSTACK_CORE_DATABASES_COSIGN_BIN il binario (default `cosign` nel PATH).
-// Senza la chiave la creazione di un database fallisce con un motivo esplicito: mai senza verifica.
+// GITSTACK_CORE_DATABASES_COSIGN_IDENTITY_REGEXP e _ISSUER sono identita' e issuer della firma KEYLESS con cui GIT-566 firma le
+// immagini (DB5, H10), come admin/internal/upgrade/verify.go; GITSTACK_CORE_DATABASES_COSIGN_BIN il binario (default `cosign`).
+// Senza identita' e issuer la creazione di un database fallisce con un motivo esplicito: mai senza verifica.
 const (
 	envDatabasesEnabled    = "GITSTACK_CORE_DATABASES_ENABLED"
 	envDatabasesSA         = "GITSTACK_CORE_DATABASES_CONTROLLER_SA"
 	envDatabasesRole       = "GITSTACK_CORE_DATABASES_WORKLOAD_ROLE"
 	envDatabasesImages     = "GITSTACK_CORE_DATABASES_POSTGRES_IMAGES"
 	envDatabasesCADir      = "GITSTACK_CORE_DATABASES_CA_DIR"
-	envDatabasesCosignKey  = "GITSTACK_CORE_DATABASES_COSIGN_KEY_FILE"
+	envDatabasesCosignID   = "GITSTACK_CORE_DATABASES_COSIGN_IDENTITY_REGEXP"
+	envDatabasesCosignIss  = "GITSTACK_CORE_DATABASES_COSIGN_ISSUER"
 	envDatabasesCosignBin  = "GITSTACK_CORE_DATABASES_COSIGN_BIN"
 	envDatabasesMajors     = "GITSTACK_CORE_DATABASES_ALLOWED_MAJORS"
 	envDatabasesProgressSe = "GITSTACK_CORE_DATABASES_PROGRESS_TIMEOUT"
@@ -59,25 +59,20 @@ func startDatabases(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger
 	if err != nil {
 		return nil, fmt.Errorf("client Kubernetes: %w", err)
 	}
-	dyn, err := dynamic.NewForConfig(rc)
-	if err != nil {
-		return nil, fmt.Errorf("client Kubernetes dinamico: %w", err)
-	}
 	cfg := databases.Config{
 		ControllerServiceAccount: strings.TrimSpace(os.Getenv(envDatabasesSA)),
 		WorkloadRole:             strings.TrimSpace(os.Getenv(envDatabasesRole)),
 		Images:                   images,
 		CADir:                    strings.TrimSpace(os.Getenv(envDatabasesCADir)),
 		Exec:                     &databases.SPDYExecutor{Config: rc, Client: kube},
-		PodMetrics:               databases.MetricsFromDynamic(dyn),
-		Verifier:                 databases.CosignCLI{Binary: strings.TrimSpace(os.Getenv(envDatabasesCosignBin)), KeyFile: strings.TrimSpace(os.Getenv(envDatabasesCosignKey))},
+		Verifier:                 databases.CosignCLI{Binary: strings.TrimSpace(os.Getenv(envDatabasesCosignBin)), IdentityRegexp: strings.TrimSpace(os.Getenv(envDatabasesCosignID)), Issuer: strings.TrimSpace(os.Getenv(envDatabasesCosignIss))},
 		Log:                      logger,
 	}
 	if v, err := strconv.Atoi(strings.TrimSpace(os.Getenv(envDatabasesProgressSe))); err == nil && v > 0 {
 		cfg.ProgressTimeout = time.Duration(v) * time.Second
 	}
-	if strings.TrimSpace(os.Getenv(envDatabasesCosignKey)) == "" {
-		logger.Error("databases: " + envDatabasesCosignKey + " vuota, la creazione dei database sara' rifiutata finche' non e' impostata (DB5)")
+	if strings.TrimSpace(os.Getenv(envDatabasesCosignID)) == "" || strings.TrimSpace(os.Getenv(envDatabasesCosignIss)) == "" {
+		logger.Error("databases: " + envDatabasesCosignID + " o " + envDatabasesCosignIss + " vuote, la creazione dei database sara' rifiutata finche' non e' impostata (DB5)")
 	}
 	ctl := databases.New(store.New(pool), kube, cfg)
 	go ctl.Run(ctx)

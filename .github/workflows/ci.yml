@@ -1527,6 +1527,12 @@ jobs:
           GITSTACK_TEST_CORE_IMAGE: ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-core:${{ env.IMAGE_TAG }}
         run: services/core/internal/apps/k3d-test.sh
 
+      - name: Database gestiti (k3d)
+        # GIT-551 (ADR 0003, DB4/DB5/DB8/DB19): creazione da API fino a running, TLS con le credenziali generate
+        # (sslmode=disable respinto), contesto di sicurezza, NetworkPolicy deny e eliminazione con PVC/Secret.
+        # Lo script crea un cluster suo e FALLISCE se uno dei 4 test *SuK3d e' SKIP o non e' PASS.
+        run: services/core/internal/databases/k3d-test.sh
+
       # GIT-21: "k3d cluster create --wait" sopra attende solo che il nodo
       # k3s riporti Ready, non che l'API server accetti già in modo stabile
       # tutte le richieste: su un runner GitHub Actions il cluster appena

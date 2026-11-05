@@ -43,13 +43,6 @@ type Config struct {
 	Exec Executor
 	// PodLogs legge i log del pod; nil usa l'API di Kubernetes.
 	PodLogs func(ctx context.Context, ns, pod string, opts *corev1.PodLogOptions) (io.ReadCloser, error)
-	// Dumper: dump di sicurezza prima di un aggiornamento della minor (DB6, GIT-553). Nil: l'aggiornamento non procede.
-	Dumper SafetyDumper
-	// PodMetrics legge CPU e RAM del pod da metrics-server; nil o errore = non disponibile (DB21).
-	PodMetrics func(ctx context.Context, ns string) (cpuMillis int, memoryBytes int64, err error)
-	// LogRetention: per quanto si tengono campioni e righe di log (default 7 giorni); LogEvery: ogni quanto si raccolgono (default 5 s).
-	LogRetention time.Duration
-	LogEvery     time.Duration
 
 	PriorityClass string
 	StorageClass  string
@@ -66,12 +59,6 @@ type Config struct {
 func (c *Config) defaults() {
 	if c.LoopInterval <= 0 {
 		c.LoopInterval = 3 * time.Second
-	}
-	if c.LogRetention <= 0 {
-		c.LogRetention = 7 * 24 * time.Hour
-	}
-	if c.LogEvery <= 0 {
-		c.LogEvery = 5 * time.Second
 	}
 	if c.UsageEvery <= 0 {
 		c.UsageEvery = 30 * time.Second
@@ -98,7 +85,6 @@ type Controller struct {
 	mu      sync.Mutex
 	running map[uuid.UUID]bool
 	usageAt map[uuid.UUID]time.Time
-	logAt   map[uuid.UUID]time.Time
 	// secrets sono le password appena generate, da togliere dagli errori (mu).
 	secrets []string
 }
@@ -106,7 +92,7 @@ type Controller struct {
 // New crea il controller.
 func New(st *store.Store, kube kubernetes.Interface, cfg Config) *Controller {
 	cfg.defaults()
-	c := &Controller{st: st, kube: kube, cfg: cfg, kick: make(chan struct{}, 1), running: map[uuid.UUID]bool{}, usageAt: map[uuid.UUID]time.Time{}, logAt: map[uuid.UUID]time.Time{}}
+	c := &Controller{st: st, kube: kube, cfg: cfg, kick: make(chan struct{}, 1), running: map[uuid.UUID]bool{}, usageAt: map[uuid.UUID]time.Time{}}
 	c.sql = cfg.SQL
 	if c.sql == nil && cfg.Exec != nil {
 		c.sql = &PsqlRunner{Pod: cfg.Exec, Redact: c.redactions}
@@ -318,7 +304,6 @@ func (c *Controller) ensure(ctx context.Context, d store.ManagedDB) (string, *st
 		_ = c.sql.Exec(ctx, d, "postgres", `SELECT pg_reload_conf()`)
 	}
 	c.measure(ctx, d)
-	c.collectLogs(ctx, d)
 	return store.DBRunning, nil, nil
 }
 
@@ -424,49 +409,6 @@ func (c *Controller) Provision(ctx context.Context, d store.ManagedDB, ownerPass
 	}
 	c.Kick()
 	return pw, nil
-}
-
-// SafetyDumper fa il dump di sicurezza prima di un cambio d'immagine (DB6); lo fornisce GIT-553.
-type SafetyDumper interface {
-	SafetyDump(ctx context.Context, d store.ManagedDB) error
-}
-
-var (
-	// ErrDumpUnavailable: senza dump di sicurezza (GIT-553) l'aggiornamento non procede.
-	ErrDumpUnavailable = errors.New("dump di sicurezza non disponibile: l'aggiornamento della minor non procede")
-	// ErrUpToDate: il database usa gia' il digest della tabella dell'istanza.
-	ErrUpToDate = errors.New("il database usa gia' l'immagine della tabella dell'istanza")
-)
-
-// UpgradeMinor porta UN database al digest corrente della tabella (DB6): solo su richiesta esplicita, con la
-// firma cosign verificata e dopo un dump di sicurezza riuscito. Un dump fallito o mancante lascia tutto com'e'.
-func (c *Controller) UpgradeMinor(ctx context.Context, d store.ManagedDB, actor *store.AppActor) error {
-	img, ok := c.cfg.Images[d.PgMajor]
-	if !ok {
-		return fmt.Errorf("la major %d non e' nella tabella delle immagini", d.PgMajor)
-	}
-	if d.ImageDigest != nil && *d.ImageDigest == img.Digest {
-		return ErrUpToDate
-	}
-	if c.cfg.Dumper == nil {
-		return ErrDumpUnavailable
-	}
-	if c.cfg.Verifier == nil {
-		return errors.New("verifica cosign non configurata")
-	}
-	if err := c.cfg.Verifier.Verify(ctx, img.Ref()); err != nil {
-		return err
-	}
-	if err := c.cfg.Dumper.SafetyDump(ctx, d); err != nil {
-		return fmt.Errorf("dump di sicurezza non riuscito, l'aggiornamento non procede: %w", err)
-	}
-	if err := c.st.SetManagedDBImage(ctx, d.ID, img.Digest, c.cfg.Now()); err != nil {
-		return err
-	}
-	_ = c.st.RecordManagedDBAudit(ctx, d, "minor_upgrade", actor, map[string]string{"digest": img.Digest}, c.cfg.Now())
-	_ = c.st.SetManagedDBStatus(ctx, d.ID, store.DBUpdating, nil, c.cfg.Now())
-	c.Kick()
-	return nil
 }
 
 // ensureTLS emette il certificato del server se manca o scade entro 30 giorni; ritorna true se l'ha riscritto.
@@ -622,10 +564,8 @@ func (c *Controller) measure(ctx context.Context, d store.ManagedDB) {
 	size, err := DatabaseSize(ctx, c.sql, d)
 	if err != nil {
 		c.cfg.Log.Warn("databases: pg_database_size non letto", "db", d.ID, "err", err)
-		c.sample(ctx, d, nil)
 		return
 	}
-	c.sample(ctx, d, &size)
 	state := store.DiskStateFor(size, d.SizeBytes)
 	changed, err := c.st.SetManagedDBUsage(ctx, d.ID, size, state)
 	if err != nil {

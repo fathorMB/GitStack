@@ -28,4 +28,16 @@ created=true
 export GITSTACK_TEST_KUBECONFIG="$work/kubeconfig"
 cd "$root/services/core"
 # Mirata ai soli test su k3d (direttiva del quaderno del repo): niente pacchetti interi, niente ./...
-go test -tags integration -count=1 -timeout 25m -v -run 'TestDatabases_(ContestoDiSicurezza|ConnessioneTls|Isolamento|Eliminazione)SuK3d' ./internal/databases/ ./internal/httpserver/
+# Il risultato si legge dall'output: un test SKIP non vale come prova (e' il caso del cluster mancante),
+# quindi lo script fallisce se uno dei 4 test non risulta PASS.
+log="$work/go-test.log"
+set +e
+go test -tags integration -count=1 -timeout 25m -v -run 'TestDatabases_(ContestoDiSicurezza|ConnessioneTls|Isolamento|Eliminazione)SuK3d' ./internal/databases/ ./internal/httpserver/ 2>&1 | tee "$log"
+rc=${PIPESTATUS[0]}
+set -e
+[ "$rc" -eq 0 ] || { echo "KO: go test uscito con $rc"; exit "$rc"; }
+for t in ContestoDiSicurezza ConnessioneTls Isolamento Eliminazione; do
+  if grep -q -- "--- SKIP: TestDatabases_${t}SuK3d" "$log"; then echo "KO: TestDatabases_${t}SuK3d e' SKIP"; exit 1; fi
+  if ! grep -q -- "--- PASS: TestDatabases_${t}SuK3d" "$log"; then echo "KO: TestDatabases_${t}SuK3d non risulta PASS"; exit 1; fi
+done
+echo "ok: i 4 test *SuK3d sono PASS"
