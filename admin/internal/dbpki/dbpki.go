@@ -314,7 +314,7 @@ func Ensure(ctx context.Context, o Options) (Result, error) {
 func addRoot(ctx context.Context, o Options, cur backup.Secret) (bool, error) {
 	var obj map[string]any
 	if err := json.Unmarshal(cur.Raw, &obj); err != nil {
-		return false, fmt.Errorf("Secret %s: %w", cur.Name, err)
+		return false, fmt.Errorf("secret %s: %w", cur.Name, err)
 	}
 	data, _ := obj["data"].(map[string]any)
 	if data == nil {
