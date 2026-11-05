@@ -45,6 +45,10 @@ type DatabaseController interface {
 	RequestMinorUpgrade(ctx context.Context, d store.ManagedDB, actor *store.AppActor) error
 	RequestMinorUpgradeAll(ctx context.Context, actor *store.AppActor) (int, error)
 	MinorUpdateAvailable(d store.ManagedDB) bool
+	// Impostazioni d'istanza cambiate dalla console (GIT-557): applicazione e valori in uso.
+	SetRuntime(databases.Runtime)
+	EffectiveLANRange() (from, to int)
+	EffectiveKeep() (scheduled, onDemand int)
 }
 
 var _ DatabaseController = (*databases.Controller)(nil)
@@ -54,6 +58,9 @@ var _ DatabaseController = (*databases.Controller)(nil)
 type DatabasesConfig struct {
 	Controller    DatabaseController
 	AllowedMajors []int
+	// Images sono le major che hanno un'immagine nella tabella del chart (DB5): la console non ne ammette altre.
+	// Vuoto vale 16 e 17.
+	Images []int
 }
 
 // WithDatabases accende i database gestiti. Senza, ogni operazione del tag databases risponde 422 databases_disabled.
@@ -208,12 +215,8 @@ func (s *apiServer) writeDatabaseConflict(w http.ResponseWriter, err error) bool
 	return true
 }
 
-func (s *apiServer) allowedMajor(m int) bool {
-	allowed := s.databases.AllowedMajors
-	if len(allowed) == 0 {
-		allowed = []int{16, 17}
-	}
-	for _, a := range allowed {
+func (s *apiServer) allowedMajor(ctx context.Context, m int) bool {
+	for _, a := range s.effectiveMajors(ctx) {
 		if a == m {
 			return true
 		}
@@ -255,7 +258,7 @@ func (s *apiServer) CreateDatabase(w http.ResponseWriter, r *http.Request, owner
 		return
 	}
 	major := int(in.PgMajor)
-	if !s.allowedMajor(major) {
+	if !s.allowedMajor(r.Context(), major) {
 		writeError(w, http.StatusUnprocessableEntity, "pg_major_not_allowed", fmt.Sprintf("La major %d di PostgreSQL non e' ammessa in questa installazione.", major))
 		return
 	}
@@ -271,6 +274,9 @@ func (s *apiServer) CreateDatabase(w http.ResponseWriter, r *http.Request, owner
 	}
 	if size < 1 || cpu < 1 || mem < 1 {
 		writeFieldError(w, "resources", "Dimensione, CPU e memoria devono essere positive.")
+		return
+	}
+	if !s.withinDatabaseMax(w, r.Context(), &size, &cpu, &mem) {
 		return
 	}
 	pw, err := databases.NewPassword()
@@ -339,6 +345,9 @@ func (s *apiServer) UpdateDatabase(w http.ResponseWriter, r *http.Request, owner
 	}
 	if d.Status == store.DBDeleting {
 		writeError(w, http.StatusConflict, "conflict", "Il database e' in eliminazione.")
+		return
+	}
+	if !s.withinDatabaseMax(w, r.Context(), in.SizeBytes, in.CpuMillis, in.MemoryBytes) {
 		return
 	}
 	updated, err := s.resources.UpdateManagedDB(r.Context(), d.ID, store.ManagedDBChange{SizeBytes: in.SizeBytes, CPUMillis: in.CpuMillis, MemoryBytes: in.MemoryBytes}, u.actor(), s.now())

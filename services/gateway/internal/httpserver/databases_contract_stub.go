@@ -94,6 +94,10 @@ func (s *apiServer) UpgradeDatabaseMinor(w http.ResponseWriter, r *http.Request,
 	s.databasesProxy(w, r)
 }
 
+func (s *apiServer) ListAdminDatabases(w http.ResponseWriter, r *http.Request) {
+	s.databasesProxy(w, r)
+}
+
 func (s *apiServer) UpgradeAllDatabasesMinor(w http.ResponseWriter, r *http.Request) {
 	s.databasesProxy(w, r)
 }

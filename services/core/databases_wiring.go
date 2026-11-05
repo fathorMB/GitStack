@@ -140,6 +140,10 @@ func startDatabases(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger
 		logger.Error("databases: " + envDatabasesCosignID + " o " + envDatabasesCosignIss + " vuote, la creazione dei database sara' rifiutata finche' non e' impostata (DB5)")
 	}
 	ctl := databases.New(store.New(pool), kube, cfg)
+	// Le scelte della console Admin (GIT-557): intervallo delle porte LAN e conservazione dei dump.
+	if err := httpserver.ApplyDatabaseSettings(ctx, store.New(pool), ctl); err != nil {
+		logger.Error("databases: impostazioni d'istanza non lette, valgono quelle del chart", "err", err)
+	}
 	go ctl.Run(ctx)
 	var majors []int
 	for m := range images {
@@ -153,5 +157,9 @@ func startDatabases(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger
 			}
 		}
 	}
-	return []httpserver.Option{httpserver.WithDatabases(httpserver.DatabasesConfig{Controller: ctl, AllowedMajors: majors})}, nil
+	var available []int
+	for m := range images {
+		available = append(available, m)
+	}
+	return []httpserver.Option{httpserver.WithDatabases(httpserver.DatabasesConfig{Controller: ctl, AllowedMajors: majors, Images: available})}, nil
 }

@@ -57,6 +57,14 @@ describe('Sidebar: voce Notifications', () => {
     }
   });
 
+  it('raggiunge Database settings dal gruppo Administration (GIT-557)', async () => {
+    mockedCount.mockResolvedValue(0);
+    renderAt('/admin/databases');
+    const link = await screen.findByRole('link', { name: 'Database settings' });
+    expect(link).toHaveAttribute('href', '/admin/databases');
+    expect(link).toHaveClass('active');
+  });
+
   it('raggiunge Apps & resources dal gruppo Administration', async () => {
     mockedCount.mockResolvedValue(0);
     renderAt('/admin/apps');

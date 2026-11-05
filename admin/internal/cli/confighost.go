@@ -66,6 +66,8 @@ func runConfig(ctx context.Context, a *App, args []string) int {
 		return runConfigSetAppsDomain(ctx, a, args[2:])
 	case "apps":
 		return runConfigSetApps(ctx, a, args[2:])
+	case "databases":
+		return runConfigSetDatabases(ctx, a, args[2:])
 	case "ci-gateway":
 		return runConfigSetCIGateway(ctx, a, args[2:])
 	case "network":
@@ -73,7 +75,7 @@ func runConfig(ctx context.Context, a *App, args []string) int {
 	case "backup.s3":
 		return runConfigSetBackupS3(ctx, a, args[2:])
 	default:
-		a.errorf("config set: chiave sconosciuta %q (oggi: host, apps-domain, apps, network, backup.s3)", args[1])
+		a.errorf("config set: chiave sconosciuta %q (oggi: host, apps-domain, apps, databases, ci-gateway, network, backup.s3)", args[1])
 		return ExitUsage
 	}
 }

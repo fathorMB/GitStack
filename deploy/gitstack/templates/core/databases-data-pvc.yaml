@@ -1,10 +1,14 @@
 {{- if and .Values.core.enabled .Values.databases.enabled -}}
 # Dump programmati e su richiesta dei database gestiti (ADR 0003, punto 5): file cifrati con la chiave di
 # dump dell'istanza. Solo con databases.enabled. I PVC dei database stessi li crea il controller.
+# Spegnere i database (gitstack config set databases off) non cancella i dump (GIT-557): resource-policy keep,
+# come i Secret della CA intermedia e della chiave di dump. Riaccendendo, Helm lo riadotta (stessa release).
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: {{ include "gitstack.fullname" . }}-databases-data
+  annotations:
+    helm.sh/resource-policy: keep
 spec:
   accessModes: [{{ .Values.databases.storage.persistence.accessMode }}]
   resources:

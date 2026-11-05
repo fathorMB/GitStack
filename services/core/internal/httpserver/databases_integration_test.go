@@ -113,6 +113,9 @@ func (l *lateController) RequestMinorUpgradeAll(ctx context.Context, a *store.Ap
 func (l *lateController) MinorUpdateAvailable(d store.ManagedDB) bool {
 	return l.get().MinorUpdateAvailable(d)
 }
+func (l *lateController) SetRuntime(r databases.Runtime) { l.get().SetRuntime(r) }
+func (l *lateController) EffectiveLANRange() (int, int)  { return l.get().EffectiveLANRange() }
+func (l *lateController) EffectiveKeep() (int, int)      { return l.get().EffectiveKeep() }
 
 func (e *dbEnv) create(user, owner, body string, want int) openapi.DatabaseCreated {
 	e.t.Helper()

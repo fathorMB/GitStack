@@ -9012,6 +9012,9 @@ type ServerInterface interface {
 	// UpdateCiStorageSettings Modifica conservazione e limiti di log, artefatti e cache CI (solo amministratore)
 	// (PUT /admin/ci/storage)
 	UpdateCiStorageSettings(w http.ResponseWriter, r *http.Request)
+	// ListAdminDatabases Elenca i database di tutta l'istanza (solo amministratore)
+	// (GET /admin/databases)
+	ListAdminDatabases(w http.ResponseWriter, r *http.Request)
 	// GetAdminDatabasesSettings Legge le impostazioni d'istanza dei database (solo amministratore)
 	// (GET /admin/databases/settings)
 	GetAdminDatabasesSettings(w http.ResponseWriter, r *http.Request)
@@ -10124,6 +10127,20 @@ func (siw *ServerInterfaceWrapper) UpdateCiStorageSettings(w http.ResponseWriter
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateCiStorageSettings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAdminDatabases operation middleware
+func (siw *ServerInterfaceWrapper) ListAdminDatabases(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAdminDatabases(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -22077,6 +22094,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/databases/{owner}/{name}/lan", wrapper.SetDatabaseLan)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/databases/{owner}/{name}/logs", wrapper.GetDatabaseLogs)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/databases/{owner}/{name}/metrics", wrapper.GetDatabaseMetrics)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/databases", wrapper.ListAdminDatabases)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/admin/databases/upgrade-minor", wrapper.UpgradeAllDatabasesMinor)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/databases/settings", wrapper.GetAdminDatabasesSettings)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/admin/databases/settings", wrapper.UpdateAdminDatabasesSettings)

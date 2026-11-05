@@ -102,6 +102,29 @@ func printDatabaseIssues(p func(string, ...any), issues []status.ManagedDatabase
 	p("")
 }
 
+// printManagedDatabases stampa lo stato dei database gestiti (v3-d, GIT-557, DB23): acceso/spento, quanti
+// database ci sono e quanti hanno l'ultimo backup fallito. Spento non vuol dire senza dati: i database gia'
+// creati restano nel cluster e riappaiono accendendo la funzione.
+func printManagedDatabases(p func(string, ...any), r *status.Report) {
+	on := r.DatabasesEnabled
+	note := ""
+	switch {
+	case r.DatabasesLive == "on" && !on:
+		on, note = true, " (ma config.yaml dice spento: allinea con gitstack config set databases on)"
+	case r.DatabasesLive == "off" && on:
+		on, note = false, " (config.yaml dice acceso ma core non lo ha attivo: rilancia gitstack config set databases on)"
+	}
+	if !on {
+		p("  Database gestiti: spento%s (gitstack config set databases on, oppure gitstack upgrade --enable-databases)", note)
+		return
+	}
+	p("  Database gestiti: acceso%s", note)
+	p("    Database: %d; backup falliti: %d", r.DatabasesCount, r.DatabasesFailedBackups)
+	if r.DatabasesPortRange != "" {
+		p("    Porte LAN dei database: %s (da aprire nel firewall solo alla tua rete)", r.DatabasesPortRange)
+	}
+}
+
 func printReport(w io.Writer, binVersion string, r *status.Report) {
 	p := func(format string, args ...any) { _, _ = fmt.Fprintf(w, format+"\n", args...) }
 	p("GitStack")
@@ -123,6 +146,7 @@ func printReport(w io.Writer, binVersion string, r *status.Report) {
 	default:
 		p("  Hosting delle app: spento (gitstack config set apps on, oppure gitstack upgrade --enable-apps)")
 	}
+	printManagedDatabases(p, r)
 	p("  Release: %s (namespace %s)", r.Release, r.Namespace)
 	switch {
 	case r.K3sVersion == "":

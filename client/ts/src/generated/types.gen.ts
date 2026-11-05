@@ -23624,6 +23624,41 @@ export type GetDatabaseMetricsResponses = {
 
 export type GetDatabaseMetricsResponse = GetDatabaseMetricsResponses[keyof GetDatabaseMetricsResponses];
 
+export type ListAdminDatabasesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/databases';
+};
+
+export type ListAdminDatabasesErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type ListAdminDatabasesError = ListAdminDatabasesErrors[keyof ListAdminDatabasesErrors];
+
+export type ListAdminDatabasesResponses = {
+    /**
+     * Database dell'istanza.
+     */
+    200: DatabaseList;
+};
+
+export type ListAdminDatabasesResponse = ListAdminDatabasesResponses[keyof ListAdminDatabasesResponses];
+
 export type UpgradeAllDatabasesMinorData = {
     body?: never;
     path?: never;

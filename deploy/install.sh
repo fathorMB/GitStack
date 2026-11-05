@@ -160,6 +160,14 @@ MIN_DISK_FREE_GB=20
 REC_CPU=8
 REC_RAM_GB=16
 REC_DISK_GB=200
+# Database gestiti (v3-d, ADR 0003, GIT-557): ogni database e' un Postgres a parte che consuma la riserva delle
+# app, quindi con --enable-databases servono piu' risorse del profilo minimo. Stessi valori di
+# admin/internal/sysinfo/databases.go (un test li confronta). Sotto il minimo si ferma, sotto il consigliato
+# avvisa.
+DB_MIN_RAM_GB=12
+DB_REC_RAM_GB=16
+DB_MIN_DISK_FREE_GB=30
+DB_REC_DISK_FREE_GB=100
 # Sistemi supportati (N2 rivista il 2026-10-18, D14): nella v1.0 ufficialmente
 # solo ubuntu 22.04 e ubuntu 24.04, x86_64. pop 22.04 e pop 24.04 si installano
 # senza --force, ma con avviso nel preflight (nessuna garanzia, nessun test in
@@ -277,6 +285,15 @@ APPS_DOMAIN=""
 GITSTACK_ENABLE_APPS="${GITSTACK_ENABLE_APPS:-}"
 APPS_ENABLED="0"
 APPS_HELM_SETS=()
+# Database gestiti (GIT-557, ADR 0003, DB23): 1 = acceso, 0 = spento, vuoto = la scelta della volta prima
+# (install.conf, config.yaml databases_enabled), un --set databases.enabled=true, o spento. Intervallo delle
+# porte LAN DA-A: vuoto = quello salvato o il default del chart (15432-15531). Valorizzati da resolve_databases.
+GITSTACK_ENABLE_DATABASES="${GITSTACK_ENABLE_DATABASES:-}"
+GITSTACK_DATABASES_PORT_RANGE="${GITSTACK_DATABASES_PORT_RANGE:-}"
+DATABASES_ENABLED="0"
+DATABASES_PORT_FROM=""
+DATABASES_PORT_TO=""
+DATABASES_HELM_SETS=()
 TLS_DIR="/etc/gitstack/tls"
 TLS_BIN_PATH="/usr/local/sbin/gitstack-tls"
 TLS_SYSTEMD_DIR="/etc/systemd/system"
@@ -356,6 +373,20 @@ Opzioni:
                              lo spegne. Su un'installazione esistente:
                              'gitstack config set apps on' o 'gitstack upgrade --enable-apps'.
   --disable-apps            Spegne l'hosting delle app (il default).
+  --enable-databases        Accende i database gestiti (chart databases.enabled, ADR 0003):
+                             core riceve il controller dei database PostgreSQL (majors 16
+                             e 17) e i suoi permessi Kubernetes minimi; l'installer crea
+                             la CA intermedia e la chiave di dump. Serve piu' risorse del
+                             profilo minimo (almeno 12 GB di RAM e 30 GB liberi). Una
+                             riesecuzione conserva la scelta; --disable-databases la
+                             spegne SENZA cancellare database ne' dati. Su
+                             un'installazione esistente: 'gitstack config set databases on'
+                             o 'gitstack upgrade --enable-databases'.
+  --disable-databases       Spegne i database gestiti (il default). Non cancella niente.
+  --databases-port-range DA-A
+                            Intervallo delle porte TCP per l'accesso LAN dei database
+                            (default 15432-15531, porte da 1024 a 65535): vanno aperte nel
+                            firewall solo alla tua rete (l'installer non modifica ufw).
   --tls internal|letsencrypt
                             HTTPS (default: internal): CA interna generata qui,
                              con chiave solo sull'host; letsencrypt: certificato
@@ -532,6 +563,18 @@ while [ "$#" -gt 0 ]; do
     --disable-apps)
       GITSTACK_ENABLE_APPS=0
       shift
+      ;;
+    --enable-databases)
+      GITSTACK_ENABLE_DATABASES=1
+      shift
+      ;;
+    --disable-databases)
+      GITSTACK_ENABLE_DATABASES=0
+      shift
+      ;;
+    --databases-port-range)
+      GITSTACK_DATABASES_PORT_RANGE="$2"
+      shift 2
       ;;
     --tls)
       GITSTACK_TLS_MODE="$2"
@@ -958,6 +1001,7 @@ run_preflight() {
   preflight_cpu
   preflight_ram
   preflight_disk
+  preflight_databases
   preflight_ports
   preflight_host
 }
@@ -1632,6 +1676,9 @@ helm_value_args() {
   done
   postgres_helm_sets
   local pg_set
+  for db_set in "${DATABASES_HELM_SETS[@]:-}"; do
+    [ -n "${db_set}" ] && helm_args+=(--set "${db_set}")
+  done
   for pg_set in "${POSTGRES_HELM_SETS[@]:-}"; do
     [ -n "${pg_set}" ] && helm_args+=(--set "${pg_set}")
   done
@@ -1792,18 +1839,28 @@ install_admin() {
   log "Installato ${ADMIN_BIN_PATH} da ${ADMIN_SOURCE_DESC}: $("${ADMIN_BIN_PATH}" version 2>/dev/null || echo 'versione non leggibile')."
 }
 
-# Database gestiti (ADR 0003, GIT-565): con `--set databases.enabled=true` crea la CA intermedia dei
-# database (dalla radice dell'istanza, con name constraints) e la chiave di dump, se mancano. Lo fa il
-# binario gitstack (admin/internal/dbpki): la chiave della radice resta sull'host. core li monta come
-# opzionali, quindi l'ordine rispetto a helm non conta. Idempotente; spento = non fa niente (DB23).
-ensure_database_secrets() {
-  local kv enabled=0
-  for kv in "${extra_helm_set[@]:-}"; do
+# Valori effettivi dei database gestiti: quelli dell'installer (DATABASES_HELM_SETS) e poi i --set dell'utente,
+# che vincono come nel comando helm. Stampa «abilitato da a» (da/a vuoti = default del chart).
+database_values() {
+  local kv enabled=0 from="" to=""
+  for kv in "${DATABASES_HELM_SETS[@]:-}" "${extra_helm_set[@]:-}"; do
     case "${kv}" in
       databases.enabled=true) enabled=1 ;;
       databases.enabled=*) enabled=0 ;;
+      databases.lan.portRange.from=*) from="${kv#databases.lan.portRange.from=}" ;;
+      databases.lan.portRange.to=*) to="${kv#databases.lan.portRange.to=}" ;;
     esac
   done
+  printf '%s %s %s' "${enabled}" "${from:--}" "${to:--}"
+}
+
+# Database gestiti (ADR 0003, GIT-565): con databases.enabled crea la CA intermedia dei database (dalla radice
+# dell'istanza, con name constraints) e la chiave di dump, se mancano. Lo fa il binario gitstack
+# (admin/internal/dbpki): la chiave della radice resta sull'host. core li monta come opzionali, quindi l'ordine
+# rispetto a helm non conta. Idempotente; spento = non fa niente (DB23).
+ensure_database_secrets() {
+  local enabled _from _to
+  read -r enabled _from _to <<<"$(database_values)"
   [ "${enabled}" = "1" ] || return 0
   [ -x "${ADMIN_BIN_PATH}" ] || fail "database gestiti accesi ma ${ADMIN_BIN_PATH} non c'è: serve per creare la CA intermedia e la chiave di dump."
   "${ADMIN_BIN_PATH}" databases ensure --config "${GITSTACK_CONFIG_FILE:-/etc/gitstack/config.yaml}" \
@@ -1812,19 +1869,15 @@ ensure_database_secrets() {
 
 # Accesso dalla LAN dei database (ADR 0003 punto 6, GIT-554). Con i database accesi dice quali porte aprire
 # nel firewall (l'installer non modifica mai ufw) e avvisa se qualcuna dell'intervallo e' gia' in ascolto
-# sull'host: ServiceLB non potrebbe aprirla. Intervallo: --set databases.lan.portRange.from=N / .to=N
-# (default 15432-15531). Solo informativo: la LAN di ogni database e' spenta finche' non la accende il portale.
+# sull'host: ServiceLB non potrebbe aprirla. Intervallo: --databases-port-range DA-A (o --set
+# databases.lan.portRange.from=N / .to=N; default 15432-15531). Solo informativo: la LAN di ogni database e'
+# spenta finche' non la accende il portale.
 database_lan_hint() {
-  local kv enabled=0 from=15432 to=15531
-  for kv in "${extra_helm_set[@]:-}"; do
-    case "${kv}" in
-      databases.enabled=true) enabled=1 ;;
-      databases.enabled=*) enabled=0 ;;
-      databases.lan.portRange.from=*) from="${kv#databases.lan.portRange.from=}" ;;
-      databases.lan.portRange.to=*) to="${kv#databases.lan.portRange.to=}" ;;
-    esac
-  done
+  local enabled from to
+  read -r enabled from to <<<"$(database_values)"
   [ "${enabled}" = "1" ] || return 0
+  [ "${from}" != "-" ] || from=15432
+  [ "${to}" != "-" ] || to=15531
   case "${from}${to}" in
     ''|*[!0-9]*) warn "databases.lan.portRange non valido (${from}-${to}): servono due numeri di porta."; return 0 ;;
   esac
@@ -1839,7 +1892,7 @@ database_lan_hint() {
         n=$((n + 1))
       fi
     done
-    [ "${n}" = "0" ] || warn "porte dell'intervallo ${from}-${to} già in ascolto sull'host:${busy}. Un database con la LAN accesa su una di queste non si raggiunge: sposta l'intervallo con --set databases.lan.portRange.from=N --set databases.lan.portRange.to=M."
+    [ "${n}" = "0" ] || warn "porte dell'intervallo ${from}-${to} già in ascolto sull'host:${busy}. Un database con la LAN accesa su una di queste non si raggiunge: sposta l'intervallo con --databases-port-range DA-A."
   fi
 }
 
@@ -1996,6 +2049,8 @@ version: 1
 host: ${PUBLIC_HOST}
 apps_domain: ${APPS_DOMAIN}
 apps_enabled: $([ "${APPS_ENABLED}" = "1" ] && echo true || echo false)
+databases_enabled: $([ "${DATABASES_ENABLED}" = "1" ] && echo true || echo false)
+$([ -z "${DATABASES_PORT_FROM}" ] || printf 'databases_port_from: %s\ndatabases_port_to: %s' "${DATABASES_PORT_FROM}" "${DATABASES_PORT_TO}")
 ci_gateway_enabled: $([ "${CI_GATEWAY_ENABLED}" = "1" ] && echo true || echo false)
 ci_gateway_port: ${CI_GATEWAY_PORT}
 ssh_port: $(git_ssh_port)
@@ -2093,6 +2148,90 @@ resolve_apps_domain() {
   esac
   log "Dominio delle app: ${d} (${src})"
   resolve_apps_enabled
+}
+
+# Intervallo di porte DA-A valido: due numeri da 1024 a 65535 con DA <= A. Stampa «da a»; rc 1 se non valido.
+databases_port_range_parse() {
+  local v="$1" from to
+  case "${v}" in
+    *-*) from="${v%%-*}"; to="${v#*-}" ;;
+    *) return 1 ;;
+  esac
+  case "${from}${to}" in ''|*[!0-9]*) return 1 ;; esac
+  [ -n "${from}" ] && [ -n "${to}" ] || return 1
+  [ "${#from}" -le 5 ] && [ "${#to}" -le 5 ] || return 1
+  [ "${from}" -ge 1024 ] && [ "${to}" -le 65535 ] && [ "${from}" -le "${to}" ] || return 1
+  printf '%s %s' "${from}" "${to}"
+}
+
+# Imposta DATABASES_ENABLED, l'intervallo delle porte e DATABASES_HELM_SETS (GIT-557, DB23):
+# --enable-databases/--disable-databases, altrimenti la scelta salvata (install.conf, poi databases_enabled di
+# config.yaml), altrimenti un --set databases.enabled=true dell'utente, altrimenti spento. Come l'hosting delle
+# app, una riesecuzione senza opzioni conserva la scelta: non spegne e non riaccende da sola.
+resolve_databases() {
+  local v="${GITSTACK_ENABLE_DATABASES}" src="--enable-databases/--disable-databases" kv
+  if [ -z "${v}" ]; then
+    case "$(read_kv "${TLS_DIR}/install.conf" DATABASES_ENABLED)" in true|1) v=1 ;; false|0) v=0 ;; esac
+    src="scelta salvata"
+  fi
+  if [ -z "${v}" ]; then
+    case "$(existing_config_value "" databases_enabled)" in true) v=1 ;; false) v=0 ;; esac
+  fi
+  if [ -z "${v}" ]; then
+    for kv in "${extra_helm_set[@]:-}"; do
+      if [ "${kv}" = "databases.enabled=true" ]; then
+        v=1
+        src="--set databases.enabled=true"
+      fi
+    done
+  fi
+  case "${v}" in
+    1|true) DATABASES_ENABLED=1 ;;
+    *) DATABASES_ENABLED=0; src="predefinito" ;;
+  esac
+  local range="${GITSTACK_DATABASES_PORT_RANGE}" parsed
+  if [ -z "${range}" ]; then
+    range="$(read_kv "${TLS_DIR}/install.conf" DATABASES_PORT_RANGE)"
+  fi
+  DATABASES_PORT_FROM=""
+  DATABASES_PORT_TO=""
+  if [ -n "${range}" ]; then
+    parsed="$(databases_port_range_parse "${range}")" \
+      || fail "--databases-port-range '${range}' non valido: serve DA-A con porte da 1024 a 65535 e DA <= A (es. 15432-15531)."
+    DATABASES_PORT_FROM="${parsed% *}"
+    DATABASES_PORT_TO="${parsed#* }"
+  fi
+  DATABASES_HELM_SETS=()
+  if [ "${DATABASES_ENABLED}" = "1" ]; then
+    DATABASES_HELM_SETS+=("databases.enabled=true")
+    if [ -n "${DATABASES_PORT_FROM}" ]; then
+      DATABASES_HELM_SETS+=("databases.lan.portRange.from=${DATABASES_PORT_FROM}" "databases.lan.portRange.to=${DATABASES_PORT_TO}")
+    fi
+    log "Database gestiti: acceso (${src})"
+  else
+    DATABASES_HELM_SETS+=("databases.enabled=false")
+    log "Database gestiti: spento (${src}); si accende con 'gitstack config set databases on'."
+  fi
+}
+
+# Preflight di risorse dei database gestiti (GIT-557): solo se accesi. Sotto il minimo (12 GB di RAM, 30 GB
+# liberi) l'installer si ferma, sotto il consigliato avvisa. Usa le stesse letture di preflight_ram/disk.
+preflight_databases() {
+  [ "${DATABASES_ENABLED}" = "1" ] || return 0
+  local mem_kib mem_gb target avail_gb
+  mem_kib="$(mem_total_kib)"
+  mem_gb="$(awk -v kib="${mem_kib}" 'BEGIN { printf "%.1f", (kib * 1024) / 1000000000 }')"
+  if ! gb_ge "${mem_gb}" "${DB_MIN_RAM_GB}"; then
+    fail "RAM insufficiente per i database gestiti. Trovati: ${mem_gb} GB. Richiesti almeno: ${DB_MIN_RAM_GB} GB (consigliati: ${DB_REC_RAM_GB} GB); senza --enable-databases bastano ${MIN_RAM_GB} GB."
+  fi
+  target="$(disk_target)"
+  avail_gb="$(bytes_to_gb "$(fs_avail_bytes "${target}")")"
+  if ! gb_ge "${avail_gb}" "${DB_MIN_DISK_FREE_GB}"; then
+    fail "disco libero insufficiente per i database gestiti su ${target}. Trovati: ${avail_gb} GB. Richiesti almeno: ${DB_MIN_DISK_FREE_GB} GB (consigliati: ${DB_REC_DISK_FREE_GB} GB)."
+  fi
+  log "Database gestiti: ${mem_gb} GB di RAM (minimo ${DB_MIN_RAM_GB} GB), ${avail_gb} GB liberi su ${target} (minimo ${DB_MIN_DISK_FREE_GB} GB) OK"
+  gb_ge "${mem_gb}" "${DB_REC_RAM_GB}" || warn "RAM sotto il profilo consigliato per i database gestiti: ${mem_gb} GB, consigliati ${DB_REC_RAM_GB} GB."
+  gb_ge "${avail_gb}" "${DB_REC_DISK_FREE_GB}" || warn "disco libero sotto il profilo consigliato per i database gestiti: ${avail_gb} GB su ${target}, consigliati ${DB_REC_DISK_FREE_GB} GB."
 }
 
 # Imposta APPS_ENABLED e APPS_HELM_SETS: --enable-apps/--disable-apps, altrimenti la scelta salvata
@@ -2274,6 +2413,8 @@ HOSTS=${hosts}
 EMAIL=${GITSTACK_TLS_EMAIL}
 APPS_DOMAIN=${APPS_DOMAIN}
 APPS_ENABLED=$([ "${APPS_ENABLED}" = "1" ] && echo true || echo false)
+DATABASES_ENABLED=$([ "${DATABASES_ENABLED}" = "1" ] && echo true || echo false)
+DATABASES_PORT_RANGE=$([ -z "${DATABASES_PORT_FROM}" ] || printf '%s-%s' "${DATABASES_PORT_FROM}" "${DATABASES_PORT_TO}")
 CI_GATEWAY_ENABLED=$([ "${CI_GATEWAY_ENABLED}" = "1" ] && echo true || echo false)
 CI_GATEWAY_PORT=${CI_GATEWAY_PORT}
 EOF
@@ -3627,6 +3768,7 @@ main() {
   resolve_network
   resolve_postgres
   resolve_ci
+  resolve_databases
   run_preflight
   if [ "${GITSTACK_SKIP_PREFLIGHT}" != "1" ]; then
     preflight_network

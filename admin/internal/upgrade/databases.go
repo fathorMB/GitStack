@@ -225,3 +225,79 @@ func (o *Options) ensureDatabaseSecrets(ctx context.Context, res *Result, now da
 	}
 	return nil
 }
+
+// --- major in uso (DB6, GIT-557) ---------------------------------------------------------------------------
+//
+// Una release non può togliere dalla tabella (databases.postgres.images) una major di PostgreSQL che un
+// database dell'istanza usa ancora: il controller non saprebbe più riavviarlo né aggiornarlo, e la major non
+// cambia mai sul posto. Le major in uso si leggono dal database di core, la tabella dal rendering di Helm.
+
+// majorsInUseQuery stampa le major di PostgreSQL dei database gestiti, una per riga. Senza la tabella
+// (versione senza database gestiti) non stampa niente.
+// Ogni errore di psql (connessione, autenticazione, SQL) esce con codice diverso da zero: mai «nessuna major».
+const majorsInUseQuery = `exec_psql() { psql -X -q -At -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "$1"; }
+exists=$(exec_psql "SELECT to_regclass('core.managed_dbs') IS NOT NULL") || exit $?
+case "$exists" in
+  t) exec_psql "SELECT DISTINCT pg_major FROM core.managed_dbs ORDER BY 1" || exit $? ;;
+  f) exit 0 ;;
+  *) echo "risposta inattesa di psql: $exists" >&2; exit 1 ;;
+esac`
+
+// parseMajors legge l'output di majorsInUseQuery; ignora ciò che non è un numero.
+func parseMajors(out string) []int {
+	var majors []int
+	for _, l := range strings.Split(out, "\n") {
+		n := 0
+		if _, err := fmt.Sscanf(strings.TrimSpace(l), "%d", &n); err == nil && n > 0 {
+			majors = append(majors, n)
+		}
+	}
+	sort.Ints(majors)
+	return majors
+}
+
+// databaseMajorsInUse legge le major usate dai database gestiti.
+func (o *Options) databaseMajorsInUse(ctx context.Context) ([]int, error) {
+	var b bytes.Buffer
+	if err := o.Cluster.PGExec(ctx, nil, &b, "sh", "-c", majorsInUseQuery); err != nil {
+		return nil, err
+	}
+	return parseMajors(b.String()), nil
+}
+
+// checkDatabaseMajors rifiuta la release che toglie una major ancora in uso (DB6). Vale anche con la
+// funzione spenta nella destinazione (o già spenta): spegnere conserva i database, quindi non autorizza a
+// togliere una major. Le major in uso si leggono sempre; una lettura impossibile ferma l'aggiornamento.
+// Da spenta la tabella della release non è nel Deployment di core: si ricava da Helm rendendo il chart con
+// gli stessi valori e databases.enabled=true (renderEnabled).
+func (o *Options) checkDatabaseMajors(ctx context.Context, now databaseState, renderEnabled func(context.Context) (databaseState, error)) error {
+	inUse, err := o.databaseMajorsInUse(ctx)
+	if err != nil {
+		return fmt.Errorf("non riesco a leggere le major di PostgreSQL usate dai database gestiti (%v): l'aggiornamento non può escludere che la release ne tolga una ancora in uso", err)
+	}
+	if len(inUse) == 0 {
+		return nil
+	}
+	if !now.Enabled {
+		if now, err = renderEnabled(ctx); err != nil {
+			return fmt.Errorf("non riesco a ricavare la tabella delle major della release (%v): un database gestito usa ancora la major %d e l'aggiornamento non può escludere che la release la tolga", err, inUse[0])
+		}
+	}
+	have := map[int]bool{}
+	for _, im := range now.Images {
+		var m int
+		if _, err := fmt.Sscanf(im.Major, "%d", &m); err == nil {
+			have[m] = true
+		}
+	}
+	var missing []string
+	for _, m := range inUse {
+		if !have[m] {
+			missing = append(missing, fmt.Sprintf("%d", m))
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("la release non ha più la major PostgreSQL %s nella tabella databases.postgres.images, ma un database gestito la usa ancora (DB6): elimina o migra quei database prima, oppure scegli una release che la mantiene", strings.Join(missing, ", "))
+	}
+	return nil
+}

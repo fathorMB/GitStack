@@ -71,6 +71,7 @@ export function Sidebar() {
       <SidebarItem icon={<Users size={18} strokeWidth={1.8} />} label="Organization" to="/orgs" />
       <SidebarItem icon={<Bot size={18} strokeWidth={1.8} />} label="Agents" to="/admin/agents" />
       <SidebarItem icon={<Grid2x2 size={18} strokeWidth={1.8} />} label="Apps & resources" to="/admin/apps" />
+      <SidebarItem icon={<Database size={18} strokeWidth={1.8} />} label="Database settings" to="/admin/databases" />
       <SidebarItem icon={<Server size={18} strokeWidth={1.8} />} label="System" to="/admin/system" />
       <SidebarItem icon={<Cpu size={18} strokeWidth={1.8} />} label="CI & runners" to="/admin/ci" />
     </aside>
