@@ -64,6 +64,41 @@ it('mantiene la pagina visibile se la chiusura LAN fallisce', async () => {
   expect(screen.getByText(/Status: running/)).toBeInTheDocument();
 }, 20000);
 
+it('aggiorna un backup in corso e abilita il ripristino quando è completato', async () => {
+  const pending = { id: 'b1', kind: 'on_demand' as const, status: 'in_progress' as const, createdAt: 'today' };
+  const completed = { ...pending, status: 'completed' as const };
+  vi.mocked(api.addDatabaseBackup).mockResolvedValue(pending);
+  vi.mocked(api.fetchDatabaseBackups).mockResolvedValueOnce({ items: [] }).mockResolvedValueOnce({ items: [pending] }).mockResolvedValue({ items: [completed] });
+  vi.mocked(api.restoreBackup).mockResolvedValue(db);
+  render(<MemoryRouter initialEntries={['/databases/alice/db']}><Routes><Route path="/databases/:owner/:name" element={<DatabaseDetailPage />} /></Routes></MemoryRouter>);
+  await screen.findByText('Status: running', { exact: false });
+  await waitFor(() => expect(api.fetchDatabaseBackups).toHaveBeenCalledTimes(1));
+  await userEvent.click(screen.getByRole('button', { name: 'Create backup' }));
+  await screen.findByText(/on_demand · in_progress/);
+  await userEvent.type(screen.getByLabelText('Restore confirmation'), 'alice/db');
+  expect(screen.getByRole('button', { name: 'Restore' })).toBeDisabled();
+  await userEvent.click(screen.getByRole('button', { name: 'Refresh backups' }));
+  await screen.findByText(/on_demand · completed/);
+  expect(screen.getByRole('button', { name: 'Restore' })).toBeEnabled();
+  await userEvent.click(screen.getByRole('button', { name: 'Restore' }));
+  await waitFor(() => expect(api.restoreBackup).toHaveBeenCalledWith('alice', 'db', 'b1', { target: 'same', confirm: 'alice/db' }));
+}, 20000);
+
+it('mostra il backup fallito nella sua sezione senza nascondere il database', async () => {
+  const pending = { id: 'b1', kind: 'on_demand' as const, status: 'in_progress' as const, createdAt: 'today' };
+  vi.mocked(api.addDatabaseBackup).mockResolvedValue(pending);
+  vi.mocked(api.fetchDatabaseBackups).mockResolvedValueOnce({ items: [] }).mockResolvedValueOnce({ items: [pending] }).mockResolvedValue({ items: [{ ...pending, status: 'failed', error: 'Backup failed' }] });
+  render(<MemoryRouter initialEntries={['/databases/alice/db']}><Routes><Route path="/databases/:owner/:name" element={<DatabaseDetailPage />} /></Routes></MemoryRouter>);
+  await screen.findByText('Status: running', { exact: false });
+  await waitFor(() => expect(api.fetchDatabaseBackups).toHaveBeenCalledTimes(1));
+  await userEvent.click(screen.getByRole('button', { name: 'Create backup' }));
+  await screen.findByText(/on_demand · in_progress/);
+  await userEvent.click(screen.getByRole('button', { name: 'Refresh backups' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Backup failed');
+  expect(screen.getByText(/Status: running/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Restore' })).toBeDisabled();
+}, 20000);
+
 it('collega, esegue backup, ripristina, cambia LAN ed elimina con conferma', async () => {
   vi.mocked(api.addDatabaseLink).mockResolvedValue({} as Awaited<ReturnType<typeof api.addDatabaseLink>>);
   vi.mocked(api.addDatabaseBackup).mockResolvedValue({} as Awaited<ReturnType<typeof api.addDatabaseBackup>>);

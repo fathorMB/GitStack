@@ -35,11 +35,15 @@ test('gestione database dal portale', async ({ page }) => {
   await page.getByRole('link', { name }).click();
   await page.getByRole('button', { name: 'Create backup' }).click();
   await expect.poll(async () => {
-    await page.reload();
+    const response = page.waitForResponse((r) => r.request().method() === 'GET' && new URL(r.url()).pathname.endsWith(`/databases/${owner}/${name}/backups`));
+    await page.getByRole('button', { name: 'Refresh backups' }).click();
+    expect((await response).ok()).toBeTruthy();
     return page.getByText(/on_demand · completed/).count();
   }, { timeout: 300_000, intervals: [5000] }).toBeGreaterThan(0);
   await page.getByLabel('Restore confirmation').fill(`${owner}/${name}`);
+  const restoreResponse = page.waitForResponse((r) => r.request().method() === 'POST' && /\/backups\/[^/]+\/restore$/.test(new URL(r.url()).pathname));
   await page.getByRole('button', { name: 'Restore' }).first().click();
+  expect((await restoreResponse).status()).toBe(202);
   await expect.poll(async () => {
     await page.getByRole('button', { name: 'Refresh' }).click();
     return page.getByText('Status: running').count();

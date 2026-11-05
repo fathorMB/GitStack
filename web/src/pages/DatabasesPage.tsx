@@ -98,8 +98,9 @@ function Backups({ owner, name }: Identity) {
   async function run(action: () => Promise<unknown>) { try { setFailure(null); await action(); await reload(); } catch (err) { setFailure(dbError(err)); } }
   return <section className="card section-gap"><div className="card-h">Backups</div><div className="card-b stack">{error || failure ? <ErrorAlert message={failure ?? error ?? ''} /> : null}
     <Button onClick={() => void run(() => api.addDatabaseBackup(owner, name))}>Create backup</Button>
+    <Button onClick={() => void reload()}>Refresh backups</Button>
     <p>Restoring replaces the database and restarts linked apps. Type {owner}/{name} to confirm.</p><label>Restore confirmation <input className="input" value={confirm} onChange={(e) => setConfirm(e.target.value)} /></label>
-    <ul>{data?.items.map((backup) => <li key={backup.id}>{backup.kind} · {backup.status} · {backup.createdAt} {backup.error} <Button disabled={backup.status !== 'completed' || confirm !== `${owner}/${name}`} onClick={() => void run(() => api.restoreBackup(owner, name, backup.id, { target: 'same', confirm }))}>Restore</Button></li>)}</ul>
+    <ul>{data?.items.map((backup) => <li key={backup.id}>{backup.kind} · {backup.status} · {backup.createdAt} {backup.status === 'failed' && backup.error ? <ErrorAlert message={backup.error} /> : null} <Button disabled={backup.status !== 'completed' || confirm !== `${owner}/${name}`} onClick={() => void run(() => api.restoreBackup(owner, name, backup.id, { target: 'same', confirm }))}>Restore</Button></li>)}</ul>
   </div></section>;
 }
 
