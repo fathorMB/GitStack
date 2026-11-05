@@ -45,6 +45,8 @@ type fakeCluster struct {
 	restored bool
 	noSchema bool                          // la query sulle migrazioni fallisce
 	ready    func(deployment string) error // esito di WaitReady (nil: sempre pronto)
+	secrets  []backup.Secret               // Secret di GitStack nel cluster finto (GIT-565)
+	applied  []string                      // nomi dei Secret applicati, in ordine
 }
 
 func (f *fakeCluster) note(s string) { f.mu.Lock(); f.calls = append(f.calls, s); f.mu.Unlock() }
@@ -94,8 +96,24 @@ func (f *fakeCluster) VolumePath(_ context.Context, pvc string) (string, error) 
 	}
 	return "", backup.ErrNotFound
 }
-func (f *fakeCluster) Secrets(context.Context) ([]backup.Secret, error) { return nil, nil }
-func (f *fakeCluster) ApplySecret(context.Context, backup.Secret) error { return nil }
+func (f *fakeCluster) Secrets(context.Context) ([]backup.Secret, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]backup.Secret(nil), f.secrets...), nil
+}
+func (f *fakeCluster) ApplySecret(_ context.Context, s backup.Secret) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.applied = append(f.applied, s.Name)
+	for i, e := range f.secrets {
+		if e.Name == s.Name {
+			f.secrets[i] = s
+			return nil
+		}
+	}
+	f.secrets = append(f.secrets, s)
+	return nil
+}
 
 func (f *fakeCluster) StatefulSetExists(context.Context, string) (bool, error) { return false, nil }
 func (f *fakeCluster) RestartStatefulSet(context.Context, string) error        { return nil }
@@ -132,6 +150,21 @@ type fakeHelm struct {
 	ignorePatches int
 	patches       int
 	manifest      string // manifest della revisione di destinazione (vuoto: quello di prova)
+
+	dbNew, dbOld string                              // rendering dei database del chart nuovo e di quello attuale (GIT-565)
+	real         func(args []string) ([]byte, error) // helm template vero (databases_helm_test.go)
+}
+
+// stripImageLines toglie le righe image: dal rendering di helm vero: le immagini del test le dà fakeHelm.images.
+func stripImageLines(s string) string {
+	var keep []string
+	for _, l := range strings.Split(s, "\n") {
+		if strings.HasPrefix(strings.TrimPrefix(strings.TrimSpace(l), "- "), "image:") {
+			continue
+		}
+		keep = append(keep, l)
+	}
+	return strings.Join(keep, "\n")
 }
 
 func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...string) ([]byte, error) {
@@ -190,7 +223,19 @@ func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...strin
 		}
 		return []byte(`{"global":{"image":{"registry":"mirror.example"}}}`), nil
 	case "template":
-		return []byte(h.images), nil
+		// GIT-565: il rendering dei database (variabili del Deployment di core) arriva da dbNew per il
+		// chart nuovo (cartella .new) e da dbOld per quello attuale; con real impostato lo produce helm vero.
+		if h.real != nil {
+			out, err := h.real(args)
+			if err != nil {
+				return out, err
+			}
+			return []byte(h.images + "\n---\n" + stripImageLines(string(out))), nil
+		}
+		if len(args) > 2 && strings.HasSuffix(strings.TrimRight(args[2], "/\\"), ".new") {
+			return []byte(h.images + h.dbNew), nil
+		}
+		return []byte(h.images + h.dbOld), nil
 	case "upgrade":
 		for i, a := range args {
 			if a == "-f" && i+1 < len(args) {
@@ -238,9 +283,9 @@ const (
 	signedTLS = "#!/bin/sh\n# gitstack-tls del chart firmato: --apps-domain\n"
 )
 
-// chartTarballTLS è il sorgente del commit di prova, con il contenuto di
-// deploy/gitstack-tls.sh ("" = il commit non lo contiene).
-func chartTarballTLS(t *testing.T, sha, tls string, k3sFile ...string) []byte {
+// chartTarballValues è il sorgente del commit di prova, con il contenuto di
+// deploy/gitstack-tls.sh ("" = il commit non lo contiene) e di deploy/gitstack/values.yaml.
+func chartTarballValues(t *testing.T, sha, tls, values string, k3sFile ...string) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
@@ -265,7 +310,7 @@ func chartTarballTLS(t *testing.T, sha, tls string, k3sFile ...string) []byte {
 		}
 	}
 	add("GitStack-"+sha+"/deploy/gitstack/Chart.yaml", "name: gitstack\nversion: 0.1.0\n")
-	add("GitStack-"+sha+"/deploy/gitstack/values.yaml", "NUOVO: 1\n")
+	add("GitStack-"+sha+"/deploy/gitstack/values.yaml", values)
 	add("GitStack-"+sha+"/deploy/gitstack/templates/a.yaml", "x")
 	add("GitStack-"+sha+"/deploy/gitstack/files/traefik-metrics-values.yaml", "# commento\nmetrics:\n  prometheus:\n    entryPoint: metrics\nports:\n  metrics:\n    port: 9100\n")
 	_ = tw.Close()
@@ -290,6 +335,7 @@ type world struct {
 	k3sFile string // contenuto di deploy/k3s-version nel commit nuovo
 	tlsSrc  string // contenuto di deploy/gitstack-tls.sh nel commit nuovo
 	tlsBin  string // gitstack-tls installato (percorso di prova)
+	values  string // values.yaml del chart nuovo (vuoto: NUOVO: 1)
 
 	// Firme (V5): la release pubblica i bundle cosign accanto agli artefatti.
 	noBundle   bool   // nessun bundle pubblicato (artefatto non firmato)
@@ -378,7 +424,11 @@ func newWorld(t *testing.T) *world {
 			}
 			_, _ = rw.Write(fakeBundle(signed, w.identity()))
 		case strings.HasSuffix(p, "/tar.gz/"+newSHA), strings.HasSuffix(p, "/gitstack/source/"+newSHA+".tar.gz"):
-			_, _ = rw.Write(chartTarballTLS(t, newSHA, w.tlsSrc, w.k3sFile))
+			vals := w.values
+			if vals == "" {
+				vals = "NUOVO: 1\n"
+			}
+			_, _ = rw.Write(chartTarballValues(t, newSHA, w.tlsSrc, vals, w.k3sFile))
 		default:
 			http.NotFound(rw, r)
 		}
@@ -391,7 +441,7 @@ func newWorld(t *testing.T) *world {
 	}
 	cfg.Backup.Destination = w.dest
 	w.cl = &fakeCluster{git: git, schema: "identity|5|f\ncore|11|f"}
-	w.helm = &fakeHelm{cluster: w.cl, images: "image: \"mirror.example/fathormb/gitstack-core:sha-" + newSHA + "\"\n      - image: busybox:1\n"}
+	w.helm = &fakeHelm{cluster: w.cl, images: "kind: Pod\nspec:\n  containers:\n    - image: \"mirror.example/fathormb/gitstack-core:sha-" + newSHA + "\"\n    - image: busybox:1\n"}
 	w.healthy = func() bool { return true }
 	w.chartTgz = signedChartTgz(t)
 	w.o = &Options{

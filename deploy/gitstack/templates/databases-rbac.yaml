@@ -1,0 +1,175 @@
+{{- if .Values.databases.enabled }}
+{{- if not .Values.core.enabled }}{{ fail "databases.enabled richiede core.enabled: il controller dei database vive in core" }}{{- end }}
+{{- $sa := include "gitstack.core.serviceAccountName" . }}
+{{- $workload := include "gitstack.databases.workloadRoleName" . }}
+{{- $controller := include "gitstack.databases.controllerName" . }}
+# Database gestiti (ADR 0003 punto 1, DB4, GIT-565): RBAC minimo di core, sul modello di apps-rbac.yaml.
+#  - ClusterRole del controller: namespace e RoleBinding (cluster-wide per RBAC, li chiude la policy in
+#    fondo) e `bind` solo sul ruolo modello. Nessun verbo su StatefulSet, PVC, Secret, Service...
+#  - ClusterRole modello (<release>-db-workload): i verbi sui database. NESSUN ClusterRoleBinding: il
+#    controller crea un RoleBinding in ogni namespace gitstack-db-<id> (label gitstack.io/managed-db=true).
+{{- if and (not .Values.ci.enabled) (not .Values.apps.enabled) }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $sa }}
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+automountServiceAccountToken: true
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $controller }}
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["create", "get", "list", "watch", "update", "delete"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["rolebindings"]
+    verbs: ["create", "get"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles"]
+    verbs: ["bind"]
+    resourceNames: [{{ $workload | quote }}]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $controller }}
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $sa }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $controller }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $workload }}
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+    gitstack.io/role-template: "true"
+rules:
+  - apiGroups: ["apps"]
+    resources: ["statefulsets"]
+    verbs: ["create", "get", "list", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["create", "get", "list", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["create", "get", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["create", "get", "list", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "get", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  # pg_dump e ripristino con exec nel pod del database, e log del pod (ADR 0003 punto 5).
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+# Perimetro del controller dei database (rischio aperto dell'ADR 0003): i verbi del ClusterRole del
+# controller valgono su TUTTO il cluster, quindi la policy restringe SOLO il ServiceAccount di core:
+#  - namespace: core crea e modifica solo gitstack-db-* con la label gitstack.io/managed-db=true, e
+#    la label non puo' comparire su nessun altro namespace (ne' crearla ne' aggiungerla): le app, o un
+#    namespace che core non ha creato, non diventano mai un namespace dei database;
+#  - RoleBinding: il ruolo modello dei database si lega solo in un namespace gitstack-db-* con la label,
+#    e in quei namespace si lega solo lui, solo per il ServiceAccount di core;
+#  - Service: niente ExternalName nei namespace dei database.
+# Con apps.enabled la policy delle app esclude i namespace gitstack-db-* (templates/apps-rbac.yaml) e
+# lascia questa il solo giudice. Richiede Kubernetes >= 1.30 (ValidatingAdmissionPolicy GA).
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ $controller }}-scope
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["namespaces"]
+      - apiGroups: ["rbac.authorization.k8s.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["rolebindings"]
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["services"]
+  matchConditions:
+    - name: solo-il-serviceaccount-di-core
+      expression: >-
+        request.userInfo.username == {{ printf "system:serviceaccount:%s:%s" .Release.Namespace $sa | quote }}
+  validations:
+    # Namespace (CREATE, UPDATE, DELETE). Ogni namespace passa da qui, non c'e' un ramo permissivo:
+    #  - nome gitstack-db-*: serve la label gitstack.io/managed-db=true sull'oggetto (CREATE/UPDATE) e sul
+    #    vecchio oggetto (UPDATE/DELETE), cosi' non si marca un namespace preesistente senza label;
+    #  - qualsiasi altro nome: {{ if .Values.apps.enabled }}con le app accese passa soltanto se non porta la label dei database e poi lo giudica
+    #    la policy delle app (gitstack-app-* con managed-app, DELETE solo se gia' marcato){{ else }}vietato (le app sono spente: core non ha ragione di toccarlo){{ end }}.
+    - expression: >-
+        request.resource.resource != 'namespaces' ||
+        ((request.operation == 'DELETE' ? oldObject.metadata.name : object.metadata.name).startsWith('gitstack-db-') ?
+          ((request.operation == 'DELETE' ||
+            (has(object.metadata.labels) && 'gitstack.io/managed-db' in object.metadata.labels &&
+             object.metadata.labels['gitstack.io/managed-db'] == 'true')) &&
+           (request.operation == 'CREATE' ||
+            (has(oldObject.metadata.labels) && 'gitstack.io/managed-db' in oldObject.metadata.labels &&
+             oldObject.metadata.labels['gitstack.io/managed-db'] == 'true'))) :
+          {{ if .Values.apps.enabled -}}
+          (request.operation == 'DELETE' ||
+           !(has(object.metadata.labels) && 'gitstack.io/managed-db' in object.metadata.labels))
+          {{- else -}}
+          false
+          {{- end }})
+      message: "core può creare, modificare ed eliminare solo namespace gitstack-db-* con la label gitstack.io/managed-db=true (già presente prima di una modifica o eliminazione); la label non può comparire su nessun altro namespace"
+    # RoleBinding: nei namespace gitstack-db-* con la label si lega solo il ruolo modello, e il ruolo modello
+    # non si lega altrove.{{ if not .Values.apps.enabled }} Con le app spente nessun RoleBinding fuori dai namespace dei database.{{ end }}
+    - expression: >-
+        request.resource.resource != 'rolebindings' || !request.namespace.startsWith('gitstack-db-') ||
+        (has(namespaceObject.metadata.labels) && 'gitstack.io/managed-db' in namespaceObject.metadata.labels &&
+         namespaceObject.metadata.labels['gitstack.io/managed-db'] == 'true')
+      message: "i RoleBinding nei namespace gitstack-db-* si creano solo se il namespace è marcato gitstack.io/managed-db=true"
+    - expression: >-
+        request.resource.resource != 'rolebindings' ||
+        (request.namespace.startsWith('gitstack-db-') ?
+          (object.roleRef.kind == 'ClusterRole' && object.roleRef.name == {{ $workload | quote }}) :
+          {{ if .Values.apps.enabled }}object.roleRef.name != {{ $workload | quote }}{{ else }}false{{ end }})
+      message: "il ClusterRole modello dei database si lega solo nei namespace gitstack-db-*, e lì solo lui{{ if not .Values.apps.enabled }} (con le app spente nessun RoleBinding altrove){{ end }}"
+    - expression: >-
+        request.resource.resource != 'rolebindings' || !request.namespace.startsWith('gitstack-db-') ||
+        (has(object.subjects) && object.subjects.all(s, s.kind == 'ServiceAccount' &&
+         s.name == {{ $sa | quote }} && s.namespace == {{ .Release.Namespace | quote }}))
+      message: "il RoleBinding dei database può avere come soggetto solo il ServiceAccount di core"
+    - expression: >-
+        request.resource.resource != 'services' || !request.namespace.startsWith('gitstack-db-') ||
+        !has(object.spec.type) || object.spec.type != 'ExternalName'
+      message: "nei namespace dei database un Service non può essere ExternalName"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ $controller }}-scope
+spec:
+  policyName: {{ $controller }}-scope
+  validationActions: ["Deny"]
+{{- end }}

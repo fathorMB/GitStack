@@ -685,6 +685,133 @@ for args in "" "--set apps.enabled=true --set apps.domain=apps.acme.test --set g
 done
 if helm_rc --set apps.enabled=true --set apps.domain=apps.acme.test --set gateway.internalPort=8080; then bad "internalPort uguale a containerPort: helm template doveva fermarsi"; else ok; fi
 
+# ---------------------------------------------------------------------------
+echo "== GIT-565: database gestiti (ADR 0003), RBAC con ClusterRole modello e VAP (DB4, DB23)"
+# DB23: spenti per default, nessun oggetto dei database nei manifest.
+OUT="$(render --namespace prova-ns)" || { bad "helm template di default fallito"; exit 1; }
+expect_eq "databases spenti: nessun oggetto dei database" "$(count 'db-workload|databases-controller|databases-data|GITSTACK_CORE_DATABASES')" "0"
+expect_eq "databases spenti: nessun ClusterRole dei database" "$(docs ClusterRole | grep -c 'gitstack-db-workload')" "0"
+expect_eq "databases spenti: nessuna VAP" "$(docs ValidatingAdmissionPolicy | grep -c '^kind:')" "0"
+# Acceso insieme alle app, per provare anche la policy delle app che esclude gitstack-db-*.
+OUT="$(render --namespace prova-ns --set databases.enabled=true)" || { bad "helm template con databases.enabled fallito"; exit 1; }
+if helm_rc --set databases.enabled=true --set core.enabled=false; then bad "databases.enabled senza core: helm template doveva fermarsi"; else ok; fi
+DB_VERBS_RE='statefulsets|persistentvolumeclaims|networkpolicies|"services"|"secrets"|pods/exec|pods/log'
+# db4_violations: stampa una riga per ogni ClusterRoleBinding che lega il ruolo modello dei database o un
+# ClusterRole con i verbi sui database. Letto da OUT. Vuoto = DB4 rispettato.
+db4_violations() {
+  local role
+  while read -r role; do
+    [ -n "${role}" ] || continue
+    if [ "${role}" = "gitstack-db-workload" ]; then echo "ClusterRoleBinding verso ${role}"; continue; fi
+    if printf '%s\n' "$(doc ClusterRole "${role}")" | grep -Eq "${DB_VERBS_RE}"; then echo "ClusterRoleBinding verso ${role}, che ha i verbi dei database"; fi
+  done < <(docs ClusterRoleBinding | awk '/^roleRef:/ { r = 1 } r && /^  name:/ { print $2; r = 0 }')
+}
+expect_eq "DB4: nessun ClusterRoleBinding verso il ruolo modello né verso ruoli con i verbi dei database" "$(db4_violations)" ""
+crb="$(docs ClusterRoleBinding)"
+expect_eq "DB4: un solo ClusterRoleBinding (quello del controller)" "$(printf '%s\n' "${crb}" | grep -c '^kind: ClusterRoleBinding$')" "1"
+expect_has "DB4: il ClusterRoleBinding è del controller" "${crb}" "name: gitstack-databases-controller"
+expect_has "DB4: il ClusterRoleBinding è per il ServiceAccount di core" "${crb}" "name: gitstack-core"
+expect_lacks "DB4: nessun ClusterRoleBinding verso il ruolo modello" "${crb}" "gitstack-db-workload"
+# Il test deve fallire se si aggiunge un ClusterRoleBinding verso il ruolo modello (o verso un ruolo con i verbi).
+SAVED_OUT="${OUT}"
+OUT="${SAVED_OUT}"$'\n---\napiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\nmetadata:\n  name: cattivo\nsubjects:\n  - kind: ServiceAccount\n    name: gitstack-core\n    namespace: prova-ns\nroleRef:\n  apiGroup: rbac.authorization.k8s.io\n  kind: ClusterRole\n  name: gitstack-db-workload\n'
+if [ -n "$(db4_violations)" ]; then ok; else bad "DB4: un ClusterRoleBinding verso il ruolo modello non e' stato rilevato"; fi
+OUT="${SAVED_OUT}"$'\n---\napiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRole\nmetadata:\n  name: con-secrets\nrules:\n  - apiGroups: [""]\n    resources: ["secrets"]\n    verbs: ["get"]\n---\napiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\nmetadata:\n  name: cattivo\nsubjects:\n  - kind: ServiceAccount\n    name: gitstack-core\n    namespace: prova-ns\nroleRef:\n  apiGroup: rbac.authorization.k8s.io\n  kind: ClusterRole\n  name: con-secrets\n'
+if [ -n "$(db4_violations)" ]; then ok; else bad "DB4: un ClusterRoleBinding verso un ruolo con i verbi dei database non e' stato rilevato"; fi
+OUT="${SAVED_OUT}"
+# Nessun altro oggetto lega il ruolo modello: neanche un RoleBinding nel chart (li crea il controller a runtime).
+expect_eq "DB4: il chart non crea RoleBinding verso il ruolo modello" "$(docs RoleBinding | grep -c 'gitstack-db-workload')" "0"
+# Permessi del controller: namespace, rolebindings e bind sul solo ruolo modello; nessun verbo sui database.
+ctl="$(doc ClusterRole gitstack-databases-controller)"
+expect_eq "controller: namespace" "$(rules_of "${ctl}" | grep '"namespaces"')" '""|"namespaces"|"create", "get", "list", "watch", "update", "delete"|'
+expect_eq "controller: rolebindings" "$(rules_of "${ctl}" | grep '"rolebindings"')" '"rbac.authorization.k8s.io"|"rolebindings"|"create", "get"|'
+expect_eq "controller: bind solo sul ruolo modello" "$(rules_of "${ctl}" | grep '"clusterroles"')" '"rbac.authorization.k8s.io"|"clusterroles"|"bind"|"gitstack-db-workload"'
+expect_eq "controller: tre regole in tutto" "$(rules_of "${ctl}" | grep -c .)" "3"
+expect_eq "controller: nessun verbo sui database" "$(printf '%s\n' "${ctl}" | grep -Ec "${DB_VERBS_RE}")" "0"
+# Ruolo modello: i verbi del controller sui database.
+wl="$(doc ClusterRole gitstack-db-workload)"
+expect_has "modello: etichetta role-template" "${wl}" 'gitstack.io/role-template: "true"'
+expect_eq "modello: risorse" "$(rules_of "${wl}" | cut -d'|' -f2 | sort | tr '\n' ' ')" '"networkpolicies" "persistentvolumeclaims" "pods" "pods/exec" "pods/log" "secrets" "services" "statefulsets" '
+expect_eq "modello: statefulsets" "$(rules_of "${wl}" | grep '"statefulsets"')" '"apps"|"statefulsets"|"create", "get", "list", "update", "delete"|'
+expect_eq "modello: pods/exec" "$(rules_of "${wl}" | grep '"pods/exec"')" '""|"pods/exec"|"create"|'
+expect_eq "modello: pods/log" "$(rules_of "${wl}" | grep '"pods/log"')" '""|"pods/log"|"get"|'
+expect_lacks "modello: nessun permesso su namespaces" "${wl}" "namespaces"
+expect_lacks "modello: nessun permesso su rolebindings" "${wl}" "rolebindings"
+# VAP: sul solo ServiceAccount di core, label gitstack.io/managed-db imposta ai namespace dei database.
+pol="$(doc ValidatingAdmissionPolicy gitstack-databases-controller-scope)"
+bnd="$(doc ValidatingAdmissionPolicyBinding gitstack-databases-controller-scope)"
+expect_has "VAP: matchCondition sul solo ServiceAccount di core" "${pol}" 'request.userInfo.username == "system:serviceaccount:prova-ns:gitstack-core"'
+expect_eq "VAP: una sola matchCondition (nessun altro soggetto)" "$(printf '%s\n' "${pol}" | grep -c 'request.userInfo.username')" "1"
+expect_has "VAP: binding sulla policy" "${bnd}" "policyName: gitstack-databases-controller-scope"
+expect_has "VAP: azione Deny" "${bnd}" 'validationActions: ["Deny"]'
+expect_has "VAP: failurePolicy Fail" "${pol}" "failurePolicy: Fail"
+expect_has "VAP: namespace CREATE UPDATE DELETE" "${pol}" 'operations: ["CREATE", "UPDATE", "DELETE"]'
+expect_has "VAP: i namespace db si riconoscono dal nome" "${pol}" "startsWith('gitstack-db-') ?"
+expect_has "VAP: la label cita gitstack.io/managed-db" "${pol}" "'gitstack.io/managed-db' in object.metadata.labels"
+expect_has "VAP: la label vale solo true" "${pol}" "object.metadata.labels['gitstack.io/managed-db'] == 'true'"
+expect_has "VAP: UPDATE e DELETE controllano oldObject" "${pol}" "oldObject.metadata.labels['gitstack.io/managed-db'] == 'true'"
+expect_has "VAP: RoleBinding solo in namespace con la label" "${pol}" "namespaceObject.metadata.labels['gitstack.io/managed-db'] == 'true'"
+expect_has "VAP: RoleBinding solo verso il ruolo modello" "${pol}" 'object.roleRef.kind == '"'ClusterRole'"' && object.roleRef.name == "gitstack-db-workload"'
+expect_has "VAP: soggetto ammesso" "${pol}" 's.name == "gitstack-core" && s.namespace == "prova-ns"'
+expect_has "VAP: niente ExternalName" "${pol}" "object.spec.type != 'ExternalName'"
+# Il testo non basta (un confronto false == false lasciava passare kube-system): le espressioni si valutano
+# con cel-go sui casi positivi e negativi, con le app spente e accese (admin/internal/vapcheck).
+if command -v go >/dev/null 2>&1; then
+  # TestVAP_*: espressioni CEL delle VAP; TestHelm_*: `gitstack upgrade` con helm vero (abilitazione e tabella dei
+  # database dal rendering, maiuscole di true, -f e --set, schema dei valori). GITSTACK_HELM_BIN gia' impostato
+  # (anche vuoto, per usare GITSTACK_HELM_DOCKER_IMAGE) non si sovrascrive.
+  if (cd "${HERE}/../../admin" && GITSTACK_HELM_BIN="${GITSTACK_HELM_BIN-$(command -v helm)}" go test -count=1 -run 'TestVAP_|TestHelm_' ./internal/vapcheck/ ./internal/upgrade/ >/tmp/vapcheck.$$ 2>&1); then ok; else bad "valutazione CEL delle VAP e prove di upgrade con helm vero: $(tail -30 /tmp/vapcheck.$$)"; fi
+  rm -f /tmp/vapcheck.$$
+else
+  echo "AVVISO: go non trovato, la valutazione CEL delle VAP (admin/internal/vapcheck) non gira"
+fi
+# Volumi RWO di core (databases-data) e Secret con mode 0400: con la sola configurazione minima
+# (allegati e CI spenti) servono fsGroup 65532, strategia Recreate e una sola replica.
+MIN="--set databases.enabled=true --set core.attachments.enabled=false"
+# shellcheck disable=SC2086
+OUT="$(render --namespace prova-ns ${MIN})" || { bad "helm template minimo con databases fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_has "databases soli: fsGroup 65532" "${d}" "fsGroup: 65532"
+expect_has "databases soli: strategia Recreate" "${d}" "type: Recreate"
+expect_has "databases soli: volume databases-data" "${d}" "claimName: gitstack-databases-data"
+# shellcheck disable=SC2086
+if helm_rc ${MIN} --set core.replicaCount=2; then bad "databases.enabled con core.replicaCount=2: helm template doveva fermarsi"; else ok; fi
+# shellcheck disable=SC2086
+expect_has "databases con replicaCount=2: messaggio" "$(helm template gitstack "${CHART}" ${MIN} --set core.replicaCount=2 2>&1)" "databases.enabled=true"
+# Default: senza volumi RWO nessuna di queste garanzie.
+OUT="$(render --namespace prova-ns --set core.attachments.enabled=false)" || { bad "helm template minimo senza databases fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_lacks "senza volumi RWO: nessun fsGroup 65532" "${d}" "fsGroup: 65532"
+expect_lacks "senza volumi RWO: nessuna strategia Recreate" "${d}" "type: Recreate"
+OUT="${SAVED_OUT}"
+# values.schema.json: databases.enabled e' un booleano vero. Helm converte TRUE/True in true, e una stringa
+# ("false" e' truthy nei template) non passa lo schema: ne' per -f ne' per --set-string.
+for v in TRUE True true; do
+  expect_has "databases.enabled=${v}: core riceve il controller" "$(helm template gitstack "${CHART}" --set "databases.enabled=${v}" 2>&1)" "GITSTACK_CORE_DATABASES_ENABLED"
+done
+expect_lacks "databases.enabled=false: nessuna variabile" "$(helm template gitstack "${CHART}" --set databases.enabled=false 2>&1)" "GITSTACK_CORE_DATABASES_ENABLED"
+if helm_rc --set-string databases.enabled=false; then bad "databases.enabled stringa \"false\": lo schema doveva rifiutarlo"; else ok; fi
+expect_has "databases.enabled stringa: messaggio dello schema" "$(helm template gitstack "${CHART}" --set-string databases.enabled=false 2>&1)" "Expected: boolean"
+# Volume databases-data e variabili di core solo con databases.enabled.
+d="$(doc Deployment gitstack-core)"
+expect_has "core: GITSTACK_CORE_DATABASES_ENABLED" "${d}" "GITSTACK_CORE_DATABASES_ENABLED"
+expect_has "core: ruolo modello" "${d}" 'value: "gitstack-db-workload"'
+expect_has "core: volume databases-data" "${d}" "claimName: gitstack-databases-data"
+expect_has "core: CA intermedia opzionale" "${d}" "secretName: gitstack-db-ca"
+expect_has "core: chiave di dump opzionale (volume)" "${d}" "secretName: gitstack-db-dump-key"
+expect_has "core: chiave di dump letta da file" "${d}" "value: /etc/gitstack/db-dump-key/key"
+expect_has "core: digest postgres 16 e 17 nella tabella" "${d}" '\"16\":{\"digest\":\"sha256:'
+expect_eq "PVC databases-data renderizzato" "$(doc PersistentVolumeClaim gitstack-databases-data | grep -c 'name: gitstack-databases-data')" "1"
+expect_eq "il chart non crea i Secret della CA e della chiave di dump (li crea l'installer)" "$(docs Secret | grep -Ec 'name: gitstack-db-(ca|dump-key)')" "0"
+# Insieme alle app: la policy delle app esclude i namespace gitstack-db-*, e ognuna cita il proprio ruolo.
+OUT="$(render --namespace prova-ns --set databases.enabled=true --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template con databases e apps fallito"; exit 1; }
+expect_eq "DB4 con le app: nessuna violazione" "$(db4_violations)" ""
+expect_eq "DB4 con le app: due ClusterRoleBinding (i due controller)" "$(docs ClusterRoleBinding | grep -c '^kind: ClusterRoleBinding$')" "2"
+expect_has "con le app: la policy delle app esclude gitstack-db-*" "$(doc ValidatingAdmissionPolicy gitstack-apps-controller-scope)" "esclude-i-namespace-dei-database"
+expect_eq "con le app: un solo ServiceAccount di core" "$(docs ServiceAccount | grep -c 'name: gitstack-core')" "1"
+OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template apps fallito"; exit 1; }
+expect_lacks "senza databases: la policy delle app non ha l'esclusione" "$(doc ValidatingAdmissionPolicy gitstack-apps-controller-scope)" "esclude-i-namespace-dei-database"
+
 echo
 echo "Passati: ${PASS}  Falliti: ${FAILN}"
 [ "${FAILN}" -eq 0 ]

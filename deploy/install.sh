@@ -1792,6 +1792,24 @@ install_admin() {
   log "Installato ${ADMIN_BIN_PATH} da ${ADMIN_SOURCE_DESC}: $("${ADMIN_BIN_PATH}" version 2>/dev/null || echo 'versione non leggibile')."
 }
 
+# Database gestiti (ADR 0003, GIT-565): con `--set databases.enabled=true` crea la CA intermedia dei
+# database (dalla radice dell'istanza, con name constraints) e la chiave di dump, se mancano. Lo fa il
+# binario gitstack (admin/internal/dbpki): la chiave della radice resta sull'host. core li monta come
+# opzionali, quindi l'ordine rispetto a helm non conta. Idempotente; spento = non fa niente (DB23).
+ensure_database_secrets() {
+  local kv enabled=0
+  for kv in "${extra_helm_set[@]:-}"; do
+    case "${kv}" in
+      databases.enabled=true) enabled=1 ;;
+      databases.enabled=*) enabled=0 ;;
+    esac
+  done
+  [ "${enabled}" = "1" ] || return 0
+  [ -x "${ADMIN_BIN_PATH}" ] || fail "database gestiti accesi ma ${ADMIN_BIN_PATH} non c'è: serve per creare la CA intermedia e la chiave di dump."
+  "${ADMIN_BIN_PATH}" databases ensure --config "${GITSTACK_CONFIG_FILE:-/etc/gitstack/config.yaml}" \
+    || fail "'gitstack databases ensure' fallito: CA intermedia o chiave di dump dei database non create."
+}
+
 # Pubblica le informazioni per Admin · System (ConfigMap system-info, letto da
 # core: GIT-213). Best effort: un errore non fa fallire l'installazione.
 publish_system_info() {
@@ -3616,6 +3634,7 @@ main() {
   persist_chart "${chart_dir}"
   install_admin
   write_config "${image_tag}"
+  ensure_database_secrets
   publish_system_info
   enable_backup_timer
 

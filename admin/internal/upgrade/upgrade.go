@@ -539,6 +539,21 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 		}
 	}
 
+	// Database gestiti (GIT-565, DB5): le immagini postgres non sono nei manifest, si verificano a parte.
+	dbNow, err := databaseStateFromManifests(out)
+	if err != nil {
+		res.Outcome = Refused
+		return res, refused("%v", err)
+	}
+	dbBefore := databaseState{}
+	if dbNow.Enabled {
+		dbBefore = o.databaseStateBefore(ctx, chartDir, valuesFile)
+	}
+	if _, err := o.verifyDatabaseDigests(ctx, dbNow, dbBefore); err != nil {
+		res.Outcome = Refused
+		return res, refused("%v", err)
+	}
+
 	hp, err := o.planHarden()
 	if err != nil {
 		res.Outcome = Refused
@@ -613,6 +628,15 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 				return res, fmt.Errorf("hardening di k3s: %w", err)
 			}
 		}
+	}
+
+	// Database gestiti: CA intermedia e chiave di dump prima del chart, perché core legge la chiave
+	// di dump già al primo avvio (volume opzionale). Solo se i database sono accesi.
+	if err := o.ensureDatabaseSecrets(ctx, res, dbNow); err != nil {
+		res.Outcome = Failed
+		res.Reason = err.Error()
+		res.add("Il backup preventivo è intatto: %s", br.Path)
+		return res, err
 	}
 
 	before, beforeErr := o.migrationState(ctx)

@@ -164,12 +164,18 @@ func signedChartTgzVersion(t *testing.T, chartYAML string) []byte {
 // ("" = il chart, di una release vecchia, non lo contiene).
 func signedChartTgzFiles(t *testing.T, chartYAML, tls string) []byte {
 	t.Helper()
+	return signedChartTgzValues(t, chartYAML, tls, "NUOVO: 1\n")
+}
+
+// signedChartTgzValues è signedChartTgzFiles con values.yaml a scelta.
+func signedChartTgzValues(t *testing.T, chartYAML, tls, values string) []byte {
+	t.Helper()
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gz)
 	files := [][2]string{
 		{"gitstack/Chart.yaml", chartYAML},
-		{"gitstack/values.yaml", "NUOVO: 1\n"},
+		{"gitstack/values.yaml", values},
 		{"gitstack/templates/a.yaml", "x"},
 		{"gitstack/files/traefik-metrics-values.yaml", "# commento\nmetrics:\n  prometheus:\n    entryPoint: metrics\nports:\n  metrics:\n    port: 9100\n"},
 	}
