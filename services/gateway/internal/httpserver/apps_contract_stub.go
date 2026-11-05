@@ -206,3 +206,7 @@ func (s *apiServer) SetAppEgress(w http.ResponseWriter, r *http.Request, owner o
 func (s *apiServer) DeleteAppEgress(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, repo openapi.RepoNameParam, app openapi.AppParam) {
 	s.appsProxy(w, r)
 }
+
+func (s *apiServer) ListUserApps(w http.ResponseWriter, r *http.Request, params openapi.ListUserAppsParams) {
+	s.appsProxy(w, r)
+}

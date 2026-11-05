@@ -7697,6 +7697,16 @@ type UserAccessSourcesItem struct {
 	Sources []AccessSource `json:"sources"`
 }
 
+// UserAppList defines model for UserAppList.
+type UserAppList struct {
+	// HostingEnabled False: l'amministratore ha spento l'hosting delle app; `items` e' vuoto.
+	HostingEnabled bool  `json:"hostingEnabled"`
+	Items          []App `json:"items"`
+	Page           int   `json:"page"`
+	PerPage        int   `json:"perPage"`
+	Total          int   `json:"total"`
+}
+
 // UserList defines model for UserList.
 type UserList struct {
 	Items   []User `json:"items"`
@@ -9098,6 +9108,12 @@ type SearchPullRequestsParams struct {
 
 // SearchPullRequestsParamsSort defines parameters for SearchPullRequests.
 type SearchPullRequestsParamsSort string
+
+// ListUserAppsParams defines parameters for ListUserApps.
+type ListUserAppsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
 
 // ListSshKeysParams defines parameters for ListSshKeys.
 type ListSshKeysParams struct {
@@ -12663,6 +12679,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /search/pulls (the `SearchPullRequests` operationId).
 	SearchPullRequests(ctx context.Context, params *SearchPullRequestsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListUserApps Elenca le app dei repo che il chiamante puo' leggere
+	//
+	// Per la pagina Apps del menu: le app di tutti i repo con permesso `read` per chi chiama (stesso criterio di `GET /repos`), ordinate per owner, repo e nome, con paginazione. I repo non leggibili non compaiono e non si distinguono da quelli inesistenti. Con l'hosting delle app spento di proposito (`hostingEnabled: false`) la risposta e' comunque 200 con elenco vuoto, non 503.
+	//
+	// Corresponds with GET /user/apps (the `ListUserApps` operationId).
+	ListUserApps(ctx context.Context, params *ListUserAppsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ExportOwnData Esporta i dati personali dell'utente corrente
 	//
@@ -20086,6 +20109,23 @@ func (c *Client) SearchIssues(ctx context.Context, params *SearchIssuesParams, r
 // Corresponds with GET /search/pulls (the `SearchPullRequests` operationId).
 func (c *Client) SearchPullRequests(ctx context.Context, params *SearchPullRequestsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchPullRequestsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListUserApps Elenca le app dei repo che il chiamante puo' leggere
+//
+// Per la pagina Apps del menu: le app di tutti i repo con permesso `read` per chi chiama (stesso criterio di `GET /repos`), ordinate per owner, repo e nome, con paginazione. I repo non leggibili non compaiono e non si distinguono da quelli inesistenti. Con l'hosting delle app spento di proposito (`hostingEnabled: false`) la risposta e' comunque 200 con elenco vuoto, non 503.
+//
+// Corresponds with GET /user/apps (the `ListUserApps` operationId).
+func (c *Client) ListUserApps(ctx context.Context, params *ListUserAppsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListUserAppsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -37693,6 +37733,72 @@ func NewSearchPullRequestsRequest(server string, params *SearchPullRequestsParam
 	return req, nil
 }
 
+// NewListUserAppsRequest constructs an http.Request for the ListUserApps method
+func NewListUserAppsRequest(server string, params *ListUserAppsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user/apps")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewExportOwnDataRequest constructs an http.Request for the ExportOwnData method
 func NewExportOwnDataRequest(server string) (*http.Request, error) {
 	var err error
@@ -42316,6 +42422,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /search/pulls (the `SearchPullRequests` operationId).
 	SearchPullRequestsWithResponse(ctx context.Context, params *SearchPullRequestsParams, reqEditors ...RequestEditorFn) (*SearchPullRequestsResponse, error)
+
+	// ListUserAppsWithResponse Elenca le app dei repo che il chiamante puo' leggere
+	//
+	// Per la pagina Apps del menu: le app di tutti i repo con permesso `read` per chi chiama (stesso criterio di `GET /repos`), ordinate per owner, repo e nome, con paginazione. I repo non leggibili non compaiono e non si distinguono da quelli inesistenti. Con l'hosting delle app spento di proposito (`hostingEnabled: false`) la risposta e' comunque 200 con elenco vuoto, non 503.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /user/apps (the `ListUserApps` operationId).
+	ListUserAppsWithResponse(ctx context.Context, params *ListUserAppsParams, reqEditors ...RequestEditorFn) (*ListUserAppsResponse, error)
 
 	// ExportOwnDataWithResponse Esporta i dati personali dell'utente corrente
 	//
@@ -65227,6 +65342,68 @@ func (r SearchPullRequestsResponse) ContentType() string {
 	return ""
 }
 
+type ListUserAppsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserAppList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListUserAppsResponse) GetJSON200() *UserAppList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListUserAppsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListUserAppsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListUserAppsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r ListUserAppsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListUserAppsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListUserAppsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListUserAppsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ExportOwnDataResponse200Headers the declared response headers of an HTTP 200 response for ExportOwnData
 type ExportOwnDataResponse200Headers struct {
 	ContentDisposition *string
@@ -72908,6 +73085,21 @@ func (c *ClientWithResponses) SearchPullRequestsWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseSearchPullRequestsResponse(rsp)
+}
+
+// ListUserAppsWithResponse Elenca le app dei repo che il chiamante puo' leggere
+//
+// Per la pagina Apps del menu: le app di tutti i repo con permesso `read` per chi chiama (stesso criterio di `GET /repos`), ordinate per owner, repo e nome, con paginazione. I repo non leggibili non compaiono e non si distinguono da quelli inesistenti. Con l'hosting delle app spento di proposito (`hostingEnabled: false`) la risposta e' comunque 200 con elenco vuoto, non 503.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /user/apps (the `ListUserApps` operationId).
+func (c *ClientWithResponses) ListUserAppsWithResponse(ctx context.Context, params *ListUserAppsParams, reqEditors ...RequestEditorFn) (*ListUserAppsResponse, error) {
+	rsp, err := c.ListUserApps(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListUserAppsResponse(rsp)
 }
 
 // ExportOwnDataWithResponse Esporta i dati personali dell'utente corrente
@@ -91653,6 +91845,53 @@ func ParseSearchPullRequestsResponse(rsp *http.Response) (*SearchPullRequestsRes
 			return nil, err
 		}
 		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListUserAppsResponse parses an HTTP response from a ListUserAppsWithResponse call
+func ParseListUserAppsResponse(rsp *http.Response) (*ListUserAppsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListUserAppsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserAppList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
 	}
 
