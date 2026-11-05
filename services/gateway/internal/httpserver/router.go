@@ -88,7 +88,7 @@ func newRouter(cfg config.Config, logger *slog.Logger, internal bool, opts ...Op
 	signing := proxy.WithServiceSecret(cfg.IdentityServiceSecret)
 	toCore := proxy.ToCore(cfg.CoreURL, cfg.CoreTimeout, logger,
 		proxy.WithTrustedProxies(cfg.TrustedProxies), signing, proxy.WithDropCredentials(), proxy.WithClock(o.now),
-		proxy.WithBodyLimits(cfg.MaxBodyBytes, cfg.MaxAttachmentBytes))
+		proxy.WithBodyLimits(cfg.MaxBodyBytes, cfg.MaxAttachmentBytes), proxy.WithUploadTimeout(cfg.UploadTimeout))
 	server := &apiServer{proxy: toCore, version: cfg.Version}
 	if cfg.RegistryURL != nil {
 		server.registryKey = proxy.ToRegistrySigningKey(cfg.RegistryURL, logger, proxy.WithTrustedProxies(cfg.TrustedProxies), proxy.WithClock(o.now))

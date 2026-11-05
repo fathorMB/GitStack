@@ -78,6 +78,9 @@ gateway:
     # Timeout complessivo di una richiesta verso core, upload e download di allegati
     # compresi (I9: fino a 10 MB): 30s bastano da ~3 Mbit/s in su.
     coreTimeout: 30s
+    # Timeout dell'upload di un allegato (release e issue), a parte da coreTimeout:
+    # 2 GiB in 30 minuti richiedono circa 9 Mbit/s (GITSTACK_GATEWAY_UPLOAD_TIMEOUT).
+    uploadTimeout: 30m
     identityTimeout: 5s
     # CIDR dei proxy davanti al gateway di cui ci si fida per
     # X-Forwarded-For (GITSTACK_GATEWAY_TRUSTED_PROXIES). Default: rete dei

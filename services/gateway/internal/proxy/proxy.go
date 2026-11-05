@@ -139,7 +139,7 @@ func ToService(name string, coreURL *url.URL, timeout time.Duration, logger *slo
 		if r.Body != nil && r.Body != http.NoBody {
 			r.Body = http.MaxBytesReader(w, r.Body, limit)
 		}
-		ctx, cancel := context.WithTimeout(r.Context(), timeout)
+		ctx, cancel := context.WithTimeout(r.Context(), o.requestTimeout(r, timeout))
 		defer cancel()
 		rp.ServeHTTP(w, r.WithContext(ctx))
 	})

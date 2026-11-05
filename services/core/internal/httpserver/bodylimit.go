@@ -45,9 +45,19 @@ func limitBody(next http.Handler) http.Handler {
 	})
 }
 
+// isAttachmentUpload: upload di un allegato di issue o di release. Entrambi
+// hanno un tetto proprio in streaming negli handler e non si leggono in memoria.
 func isAttachmentUpload(r *http.Request) bool {
-	return r.Method == http.MethodPost &&
-		strings.HasSuffix(strings.TrimSuffix(r.URL.Path, "/"), "/issue-attachments")
+	if r.Method != http.MethodPost {
+		return false
+	}
+	p := strings.TrimSuffix(r.URL.Path, "/")
+	if strings.HasSuffix(p, "/issue-attachments") {
+		return true
+	}
+	parts := strings.Split(strings.TrimPrefix(p, "/"), "/")
+	return len(parts) == 6 && parts[0] == "repos" && parts[1] != "" && parts[2] != "" &&
+		parts[3] == "releases" && parts[4] != "" && parts[5] == "assets"
 }
 
 func writeBodyTooLarge(w http.ResponseWriter) {
