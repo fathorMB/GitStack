@@ -57,7 +57,7 @@ func TestMigration0058_ManagedDBBackups(t *testing.T) {
 		t.Fatalf("dump scritti: %d %v", n, err)
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
 		t.Fatalf("down 0058: %v", err)
 	}
 	var c int

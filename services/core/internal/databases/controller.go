@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -128,6 +129,38 @@ type Controller struct {
 	// liveBackups sono i dump in esecuzione in questo processo (mu).
 	liveBackups map[uuid.UUID]bool
 	dumper      Dumper
+	// runtime sono le scelte della console Admin (GIT-557) che il controller legge a ogni uso.
+	runtime atomic.Pointer[Runtime]
+}
+
+// Runtime sono le impostazioni d'istanza che la console puo' cambiare senza riavviare core: l'intervallo delle
+// porte LAN e quanti dump tenere. Zero = vale la configurazione del chart o il predefinito.
+type Runtime struct {
+	LANPortFrom, LANPortTo       int
+	KeepScheduled, KeepOnDemand int
+}
+
+// SetRuntime applica le scelte della console (GIT-557). Vale dalla prossima assegnazione di una porta e dal
+// prossimo giro della retention; le porte gia' assegnate non si spostano.
+func (c *Controller) SetRuntime(r Runtime) { c.runtime.Store(&r) }
+
+// RuntimeSettings sono le scelte attualmente applicate (zero se nessuna).
+func (c *Controller) RuntimeSettings() Runtime {
+	if rt := c.runtime.Load(); rt != nil {
+		return *rt
+	}
+	return Runtime{}
+}
+
+// EffectiveLANRange e' l'intervallo delle porte LAN in uso adesso (console, chart o predefinito).
+func (c *Controller) EffectiveLANRange() (from, to int) {
+	p := c.LANPortPolicy()
+	return p.From, p.To
+}
+
+// EffectiveKeep e' quanti dump programmati e su richiesta si tengono adesso.
+func (c *Controller) EffectiveKeep() (scheduled, onDemand int) {
+	return c.keepFor(store.BackupScheduled), c.keepFor(store.BackupOnDemand)
 }
 
 // New crea il controller.
