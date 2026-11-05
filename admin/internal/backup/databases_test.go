@@ -34,7 +34,7 @@ type dbCluster struct {
 
 func (c *dbCluster) DumpDatabase(_ context.Context, d DatabaseRef, w io.Writer) error {
 	c.order = append(c.order, "dump "+d.Name)
-	c.fakeCluster.note("dump " + d.Name)
+	c.note("dump " + d.Name)
 	if err := c.dumpErr[d.ID]; err != nil {
 		return err
 	}
@@ -105,8 +105,8 @@ func TestBackupDatabasesEPoiRestoreSuClusterPulito(t *testing.T) {
 		t.Fatal("l'archivio cifrato contiene il dump in chiaro")
 	}
 	// I dump si fanno a finestra chiusa: prima gli ingressi tornano su, poi pg_dump (la finestra resta corta).
-	if up, dump := indexOf(c.fakeCluster.calls, "scale gs-gateway 2"), indexOf(c.fakeCluster.calls, "dump shop"); up < 0 || dump < up {
-		t.Errorf("ordine delle chiamate: %v", c.fakeCluster.calls)
+	if up, dump := indexOf(c.calls, "scale gs-gateway 2"), indexOf(c.calls, "dump shop"); up < 0 || dump < up {
+		t.Errorf("ordine delle chiamate: %v", c.calls)
 	}
 
 	// Restore su un cluster pulito: la prima istanza non e' pronta per due controlli.
