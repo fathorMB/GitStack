@@ -289,17 +289,16 @@ func TestUpgrade_RepoNelCestinoCancellatiConUnaRigaDiLogPerOgnuno(t *testing.T) 
 		}
 	}
 	// Un'app del repo nel cestino: gli id vanno in coda per toglierla dal cluster.
-	port := 8080
-	app, _, err := e.st.CreateApp(ctx, store.NewApp{RepoID: odin, Owner: "admin", Name: "web",
-		Image: store.AppImage{Reference: "registry.example/admin/odin:v1", Source: "registry"},
-		Config: store.AppConfig{Copies: 1, Port: &port, Variables: map[string]string{},
-			Guaranteed: store.AppResourceAmount{CPUMillis: 100, MemoryBytes: 128 << 20},
-			Limit:      store.AppResourceAmount{CPUMillis: 500, MemoryBytes: 512 << 20}},
-	}, time.Now().UTC())
-	if err != nil {
+	// Non usiamo store.CreateApp perché sullo schema 0055 manca core.managed_dbs,
+	// che la quota dell'owner (DB3) legge a partire dalla 0057.
+	now := time.Now().UTC()
+	appID := uuid.New()
+	if _, err := e.pool.Exec(ctx, `INSERT INTO core.apps
+		(id, repo_id, name, port, guaranteed_cpu_millis, guaranteed_memory_bytes, limit_cpu_millis, limit_memory_bytes, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		appID, odin, "web", 8080, 100, 128<<20, 500, 512<<20, now, now); err != nil {
 		t.Fatal(err)
 	}
-	appID := app.ID
 
 	if err := migrate.Up(ctx, e.pool, e.dsn); err != nil {
 		t.Fatalf("up 0056: %v", err)
