@@ -323,6 +323,12 @@ jobs:
         with:
           version: v3.16.3
 
+      # GIT-565: chart_hardening_test.sh valuta con cel-go le VAP dei database (admin/internal/vapcheck).
+      - name: Setup Go (VAP dei database)
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.work
+
       - name: test dell'hardening del chart (F8)
         run: ./deploy/tests/chart_hardening_test.sh
 

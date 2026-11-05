@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"sort"
 	"strings"
 
@@ -73,94 +74,229 @@ func databaseImagesFromValues(data []byte) ([]DatabaseImage, error) {
 	return out, nil
 }
 
-func readDatabaseImages(chartDir string) ([]DatabaseImage, error) {
-	b, err := os.ReadFile(filepath.Join(chartDir, "values.yaml"))
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
+// --- valori effettivi, con la precedenza e la semantica di Helm ----------------------------------------
+//
+// Core riceve la tabella dalla release (deployment.yaml: .Values.databases.postgres.images), cioè dal
+// risultato di: default del chart < valori conservati della release (helm get values) < -f in ordine <
+// --set. Un override può quindi sostituire repository o digest di una major: la firma si verifica sul
+// riferimento repository@digest EFFETTIVO, non sui soli default del chart.
+
+// normalizeYAML porta le mappe di yaml.v3 (chiavi non stringa) a map[string]any, ricorsivamente.
+func normalizeYAML(v any) any {
+	switch x := v.(type) {
+	case map[string]any:
+		for k, e := range x {
+			x[k] = normalizeYAML(e)
+		}
+		return x
+	case map[any]any:
+		m := make(map[string]any, len(x))
+		for k, e := range x {
+			m[fmt.Sprint(k)] = normalizeYAML(e)
+		}
+		return m
+	case []any:
+		for i, e := range x {
+			x[i] = normalizeYAML(e)
+		}
+		return x
 	}
-	if err != nil {
-		return nil, err
-	}
-	return databaseImagesFromValues(b)
+	return v
 }
 
-// databasesEnabledIn dice se databases.enabled è acceso in un albero di valori.
-func databasesEnabledIn(vals map[string]any) (bool, bool) {
-	d, _ := vals["databases"].(map[string]any)
-	if d == nil {
-		return false, false
+// mergeValues sovrappone src a dst come fa Helm: le mappe si fondono, il resto sostituisce, null toglie.
+func mergeValues(dst, src map[string]any) map[string]any {
+	if dst == nil {
+		dst = map[string]any{}
 	}
-	switch e := d["enabled"].(type) {
-	case bool:
-		return e, true
-	case string:
-		return e == "true", true
+	for k, v := range src {
+		if v == nil {
+			delete(dst, k)
+			continue
+		}
+		if sm, ok := v.(map[string]any); ok {
+			if dm, ok := dst[k].(map[string]any); ok {
+				dst[k] = mergeValues(dm, sm)
+				continue
+			}
+			dst[k] = mergeValues(nil, sm)
+			continue
+		}
+		dst[k] = v
 	}
-	return false, false
+	return dst
 }
 
-// databasesEnabled dice se i database gestiti sono accesi con i valori della release (valuesFile, JSON di
-// helm get values), i file -f e i --set di questo aggiornamento (l'ultimo vince, come in helm).
-// before è il valore dei soli valori della release, cioè com'era prima di questo aggiornamento.
-func (o *Options) databasesEnabled(valuesFile string) (now, before bool) {
-	if b, err := os.ReadFile(valuesFile); err == nil {
-		var vals map[string]any
-		if json.Unmarshal(b, &vals) == nil {
-			before, _ = databasesEnabledIn(vals)
+// splitUnescaped divide s su sep, tranne dove è preceduto da una barra rovesciata (come --set di Helm).
+func splitUnescaped(s string, sep byte) []string {
+	var out []string
+	var cur strings.Builder
+	for i := 0; i < len(s); i++ {
+		switch {
+		case s[i] == '\\' && i+1 < len(s) && s[i+1] == sep:
+			cur.WriteByte(sep)
+			i++
+		case s[i] == sep:
+			out = append(out, cur.String())
+			cur.Reset()
+		default:
+			cur.WriteByte(s[i])
 		}
 	}
-	now = before
+	return append(out, cur.String())
+}
+
+// setValue applica un `--set chiave.annidata=valore` (valori scalari: true/false/null/intero/stringa).
+// Le liste (`a[0]=x`) non servono per questa tabella e si ignorano.
+func setValue(vals map[string]any, kv string) {
+	key, raw, ok := strings.Cut(kv, "=")
+	if !ok || strings.Contains(key, "[") {
+		return
+	}
+	var val any = raw
+	switch raw {
+	case "true":
+		val = true
+	case "false":
+		val = false
+	case "null":
+		val = nil
+	default:
+		if n, err := strconv.ParseInt(raw, 10, 64); err == nil && (raw == "0" || !strings.HasPrefix(raw, "0")) {
+			val = n
+		}
+	}
+	parts := splitUnescaped(key, '.')
+	cur := vals
+	for _, p := range parts[:len(parts)-1] {
+		next, ok := cur[p].(map[string]any)
+		if !ok {
+			next = map[string]any{}
+			cur[p] = next
+		}
+		cur = next
+	}
+	last := parts[len(parts)-1]
+	if val == nil {
+		delete(cur, last)
+		return
+	}
+	cur[last] = val
+}
+
+// effectiveValues risolve i valori di una release: default del chart in chartDir, poi i valori
+// conservati (JSON di helm get values), e solo con withInputs i -f e i --set di questo aggiornamento.
+func (o *Options) effectiveValues(chartDir, valuesFile string, withInputs bool) (map[string]any, error) {
+	vals := map[string]any{}
+	if b, err := os.ReadFile(filepath.Join(chartDir, "values.yaml")); err == nil {
+		var m map[string]any
+		if err := yaml.Unmarshal(b, &m); err != nil {
+			return nil, fmt.Errorf("values.yaml del chart %s: %w", chartDir, err)
+		}
+		vals = mergeValues(vals, normalizeYAML(m).(map[string]any))
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+	if b, err := os.ReadFile(valuesFile); err == nil {
+		var m map[string]any
+		if err := json.Unmarshal(b, &m); err != nil {
+			return nil, fmt.Errorf("valori della release: %w", err)
+		}
+		vals = mergeValues(vals, m)
+	}
+	if !withInputs {
+		return vals, nil
+	}
 	for _, f := range o.ValueFiles {
 		b, err := os.ReadFile(f)
 		if err != nil {
-			continue
+			return nil, fmt.Errorf("file di valori %s: %w", f, err)
 		}
-		var vals map[string]any
-		if yaml.Unmarshal(b, &vals) == nil {
-			if e, ok := databasesEnabledIn(vals); ok {
-				now = e
-			}
+		var m map[string]any
+		if err := yaml.Unmarshal(b, &m); err != nil {
+			return nil, fmt.Errorf("file di valori %s: %w", f, err)
+		}
+		if m != nil {
+			vals = mergeValues(vals, normalizeYAML(m).(map[string]any))
 		}
 	}
 	for _, s := range o.Sets {
-		if v, ok := strings.CutPrefix(s, "databases.enabled="); ok {
-			now = v == "true"
+		for _, kv := range splitUnescaped(s, ',') {
+			setValue(vals, kv)
 		}
 	}
-	return now, before
+	return vals, nil
 }
 
-// verifyDatabaseDigests verifica con cosign i digest postgres nuovi della tabella del chart di
-// destinazione. Con i database già accesi si verificano solo le righe che la copia attuale del chart non
-// aveva (digest nuovi); alla prima accensione tutte. Ritorna i riferimenti verificati.
-func (o *Options) verifyDatabaseDigests(ctx context.Context, newChart, chartDir, valuesFile string) ([]string, error) {
-	now, before := o.databasesEnabled(valuesFile)
-	if !now {
+// databaseState è lo stato dei database gestiti in un insieme di valori effettivi.
+type databaseState struct {
+	Enabled bool
+	Images  []DatabaseImage
+}
+
+func databaseStateOf(vals map[string]any) (databaseState, error) {
+	var st databaseState
+	d, _ := vals["databases"].(map[string]any)
+	if d == nil {
+		return st, nil
+	}
+	switch e := d["enabled"].(type) {
+	case bool:
+		st.Enabled = e
+	case string:
+		st.Enabled = e == "true"
+	}
+	b, err := yaml.Marshal(map[string]any{"databases": d})
+	if err != nil {
+		return st, err
+	}
+	st.Images, err = databaseImagesFromValues(b)
+	return st, err
+}
+
+// databaseStates: stato prima (chart attuale + valori conservati) e dopo (chart nuovo + valori conservati
+// + -f + --set) di questo aggiornamento.
+func (o *Options) databaseStates(newChart, chartDir, valuesFile string) (now, before databaseState, err error) {
+	nv, err := o.effectiveValues(newChart, valuesFile, true)
+	if err != nil {
+		return now, before, err
+	}
+	if now, err = databaseStateOf(nv); err != nil {
+		return now, before, fmt.Errorf("tabella dei digest postgres effettiva: %w", err)
+	}
+	ov, err := o.effectiveValues(chartDir, valuesFile, false)
+	if err != nil {
+		return now, before, err
+	}
+	// La tabella di prima illeggibile o incompleta non blocca: vuol dire solo che non si riusa niente.
+	if before, err = databaseStateOf(ov); err != nil {
+		before = databaseState{}
+	}
+	return now, before, nil
+}
+
+// verifyDatabaseDigests verifica con cosign i riferimenti repository@digest postgres EFFETTIVI nuovi.
+// Con i database già accesi si salta ciò che era già nella tabella attuale (stesso repository@digest:
+// riuso); alla prima accensione si verifica tutta. Ritorna i riferimenti verificati.
+func (o *Options) verifyDatabaseDigests(ctx context.Context, now, before databaseState) ([]string, error) {
+	if !now.Enabled {
 		return nil, nil
 	}
-	table, err := readDatabaseImages(newChart)
-	if err != nil {
-		return nil, fmt.Errorf("tabella dei digest postgres del chart: %w", err)
-	}
-	if len(table) == 0 {
-		return nil, errors.New("il chart di destinazione non ha la tabella dei digest postgres (databases.postgres.images) ma i database gestiti sono accesi")
+	if len(now.Images) == 0 {
+		return nil, errors.New("la tabella dei digest postgres (databases.postgres.images) è vuota ma i database gestiti sono accesi")
 	}
 	known := map[string]bool{}
-	if before {
-		old, err := readDatabaseImages(chartDir)
-		if err != nil {
-			return nil, fmt.Errorf("tabella dei digest postgres attuale: %w", err)
-		}
-		for _, im := range old {
-			known[im.Digest] = true
+	if before.Enabled {
+		for _, im := range before.Images {
+			known[im.Ref()] = true
 		}
 	}
 	var done []string
-	for _, im := range table {
-		if known[im.Digest] {
+	for _, im := range now.Images {
+		ref := im.Ref()
+		if known[ref] {
 			continue
 		}
-		ref := im.Ref()
 		if o.v5().AllowUnsigned {
 			o.logf("    ok %s (postgres %s: firma NON verificata: eccezione N9)", ref, im.Major)
 			continue
@@ -177,8 +313,8 @@ func (o *Options) verifyDatabaseDigests(ctx context.Context, newChart, chartDir,
 // ensureDatabaseSecrets crea la CA intermedia dei database e la chiave di dump se mancano (mai se
 // esistono). Senza la radice sull'host (certificato del cliente) l'intermedia non si può creare:
 // avvisa nel riepilogo e prosegue, la chiave di dump c'è comunque.
-func (o *Options) ensureDatabaseSecrets(ctx context.Context, res *Result, valuesFile string) error {
-	if now, _ := o.databasesEnabled(valuesFile); !now {
+func (o *Options) ensureDatabaseSecrets(ctx context.Context, res *Result, now databaseState) error {
+	if !now.Enabled {
 		return nil
 	}
 	tlsDir := o.TLSDir

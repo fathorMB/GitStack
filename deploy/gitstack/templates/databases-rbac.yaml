@@ -121,38 +121,42 @@ spec:
       expression: >-
         request.userInfo.username == {{ printf "system:serviceaccount:%s:%s" .Release.Namespace $sa | quote }}
   validations:
-    # CREATE e UPDATE: nome gitstack-db-* se e solo se c'e' la label gitstack.io/managed-db.
+    # Namespace (CREATE, UPDATE, DELETE). Ogni namespace passa da qui, non c'e' un ramo permissivo:
+    #  - nome gitstack-db-*: serve la label gitstack.io/managed-db=true sull'oggetto (CREATE/UPDATE) e sul
+    #    vecchio oggetto (UPDATE/DELETE), cosi' non si marca un namespace preesistente senza label;
+    #  - qualsiasi altro nome: {{ if .Values.apps.enabled }}con le app accese passa soltanto se non porta la label dei database e poi lo giudica
+    #    la policy delle app (gitstack-app-* con managed-app, DELETE solo se gia' marcato){{ else }}vietato (le app sono spente: core non ha ragione di toccarlo){{ end }}.
     - expression: >-
-        request.resource.resource != 'namespaces' || request.operation == 'DELETE' ||
-        (object.metadata.name.startsWith('gitstack-db-') ==
-         (has(object.metadata.labels) && 'gitstack.io/managed-db' in object.metadata.labels))
-      message: "la label gitstack.io/managed-db compare solo sui namespace gitstack-db-* (e ogni namespace gitstack-db-* la porta)"
-    - expression: >-
-        request.resource.resource != 'namespaces' || request.operation == 'DELETE' ||
-        !(has(object.metadata.labels) && 'gitstack.io/managed-db' in object.metadata.labels) ||
-        object.metadata.labels['gitstack.io/managed-db'] == 'true'
-      message: "gitstack.io/managed-db può valere solo true"
-    # UPDATE e DELETE: il namespace deve essere gia' dei database (creato da core con la label).
-    - expression: >-
-        request.resource.resource != 'namespaces' || request.operation == 'CREATE' ||
-        !oldObject.metadata.name.startsWith('gitstack-db-') ||
-        (has(oldObject.metadata.labels) && 'gitstack.io/managed-db' in oldObject.metadata.labels &&
-         oldObject.metadata.labels['gitstack.io/managed-db'] == 'true')
-      message: "core può modificare ed eliminare un namespace gitstack-db-* solo se è già marcato gitstack.io/managed-db=true"
-    - expression: >-
-        request.resource.resource != 'rolebindings' ||
-        !(object.roleRef.name == {{ $workload | quote }} || request.namespace.startsWith('gitstack-db-')) ||
-        (request.namespace.startsWith('gitstack-db-') && has(namespaceObject.metadata.labels) &&
-         'gitstack.io/managed-db' in namespaceObject.metadata.labels &&
-         namespaceObject.metadata.labels['gitstack.io/managed-db'] == 'true')
-      message: "il ruolo dei database si lega solo nei namespace gitstack-db-* marcati gitstack.io/managed-db=true"
+        request.resource.resource != 'namespaces' ||
+        ((request.operation == 'DELETE' ? oldObject.metadata.name : object.metadata.name).startsWith('gitstack-db-') ?
+          ((request.operation == 'DELETE' ||
+            (has(object.metadata.labels) && 'gitstack.io/managed-db' in object.metadata.labels &&
+             object.metadata.labels['gitstack.io/managed-db'] == 'true')) &&
+           (request.operation == 'CREATE' ||
+            (has(oldObject.metadata.labels) && 'gitstack.io/managed-db' in oldObject.metadata.labels &&
+             oldObject.metadata.labels['gitstack.io/managed-db'] == 'true'))) :
+          {{ if .Values.apps.enabled -}}
+          (request.operation == 'DELETE' ||
+           !(has(object.metadata.labels) && 'gitstack.io/managed-db' in object.metadata.labels))
+          {{- else -}}
+          false
+          {{- end }})
+      message: "core può creare, modificare ed eliminare solo namespace gitstack-db-* con la label gitstack.io/managed-db=true (già presente prima di una modifica o eliminazione); la label non può comparire su nessun altro namespace"
+    # RoleBinding: nei namespace gitstack-db-* con la label si lega solo il ruolo modello, e il ruolo modello
+    # non si lega altrove.{{ if not .Values.apps.enabled }} Con le app spente nessun RoleBinding fuori dai namespace dei database.{{ end }}
     - expression: >-
         request.resource.resource != 'rolebindings' || !request.namespace.startsWith('gitstack-db-') ||
-        (object.roleRef.kind == 'ClusterRole' && object.roleRef.name == {{ $workload | quote }})
-      message: "nei namespace dei database core può legare solo il ClusterRole modello dei database"
+        (has(namespaceObject.metadata.labels) && 'gitstack.io/managed-db' in namespaceObject.metadata.labels &&
+         namespaceObject.metadata.labels['gitstack.io/managed-db'] == 'true')
+      message: "i RoleBinding nei namespace gitstack-db-* si creano solo se il namespace è marcato gitstack.io/managed-db=true"
     - expression: >-
         request.resource.resource != 'rolebindings' ||
-        !(object.roleRef.name == {{ $workload | quote }} || request.namespace.startsWith('gitstack-db-')) ||
+        (request.namespace.startsWith('gitstack-db-') ?
+          (object.roleRef.kind == 'ClusterRole' && object.roleRef.name == {{ $workload | quote }}) :
+          {{ if .Values.apps.enabled }}object.roleRef.name != {{ $workload | quote }}{{ else }}false{{ end }})
+      message: "il ClusterRole modello dei database si lega solo nei namespace gitstack-db-*, e lì solo lui{{ if not .Values.apps.enabled }} (con le app spente nessun RoleBinding altrove){{ end }}"
+    - expression: >-
+        request.resource.resource != 'rolebindings' || !request.namespace.startsWith('gitstack-db-') ||
         (has(object.subjects) && object.subjects.all(s, s.kind == 'ServiceAccount' &&
          s.name == {{ $sa | quote }} && s.namespace == {{ .Release.Namespace | quote }}))
       message: "il RoleBinding dei database può avere come soggetto solo il ServiceAccount di core"

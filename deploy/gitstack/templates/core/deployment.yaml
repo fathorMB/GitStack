@@ -1,6 +1,6 @@
 {{- if .Values.core.enabled -}}
-{{- if and (or .Values.core.attachments.enabled .Values.ci.enabled) (gt (.Values.core.replicaCount | int) 1) -}}
-{{- fail "core.attachments.enabled=true o ci.enabled=true richiedono core.replicaCount=1: i volumi degli allegati e dei log CI sono ReadWriteOnce (core gira a una replica con strategia Recreate)." -}}
+{{- if and (or .Values.core.attachments.enabled .Values.ci.enabled .Values.databases.enabled) (gt (.Values.core.replicaCount | int) 1) -}}
+{{- fail "core.attachments.enabled=true o ci.enabled=true richiedono core.replicaCount=1: i volumi degli allegati e dei log CI sono ReadWriteOnce (core gira a una replica con strategia Recreate). Lo stesso vale per databases.enabled=true (volume databases-data)." -}}
 {{- end -}}
 {{- if not .Values.postgres.enabled -}}
 {{- if or (not .Values.postgres.external.host) (not .Values.postgres.external.database) (not .Values.postgres.external.username) (not .Values.postgres.external.existingSecret) -}}
@@ -23,7 +23,7 @@ metadata:
     {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
 spec:
   replicas: {{ .Values.core.replicaCount }}
-  {{- if or .Values.core.attachments.enabled .Values.ci.enabled }}
+  {{- if or .Values.core.attachments.enabled .Values.ci.enabled .Values.databases.enabled }}
   # Il PVC degli allegati è ReadWriteOnce: il nuovo pod non può montarlo finché
   # il vecchio non è fermo, quindi niente RollingUpdate (limite noto, README).
   strategy:
@@ -57,7 +57,7 @@ spec:
       securityContext:
         # L'immagine gira come nonroot (uid 65532): il volume degli allegati
         # deve essere scrivibile.
-        {{- include "gitstack.podSecurityContext" (dict "runAsUser" 65532 "fsGroup" (ternary 65532 0 (or .Values.core.attachments.enabled .Values.ci.enabled))) | nindent 8 }}
+        {{- include "gitstack.podSecurityContext" (dict "runAsUser" 65532 "fsGroup" (ternary 65532 0 (or .Values.core.attachments.enabled .Values.ci.enabled .Values.databases.enabled))) | nindent 8 }}
       initContainers:
         - name: wait-for-postgres
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.core.waitFor) }}

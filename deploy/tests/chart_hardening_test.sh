@@ -746,7 +746,7 @@ expect_has "VAP: binding sulla policy" "${bnd}" "policyName: gitstack-databases-
 expect_has "VAP: azione Deny" "${bnd}" 'validationActions: ["Deny"]'
 expect_has "VAP: failurePolicy Fail" "${pol}" "failurePolicy: Fail"
 expect_has "VAP: namespace CREATE UPDATE DELETE" "${pol}" 'operations: ["CREATE", "UPDATE", "DELETE"]'
-expect_has "VAP: la label compare solo sui namespace gitstack-db-*" "${pol}" "object.metadata.name.startsWith('gitstack-db-') =="
+expect_has "VAP: i namespace db si riconoscono dal nome" "${pol}" "startsWith('gitstack-db-') ?"
 expect_has "VAP: la label cita gitstack.io/managed-db" "${pol}" "'gitstack.io/managed-db' in object.metadata.labels"
 expect_has "VAP: la label vale solo true" "${pol}" "object.metadata.labels['gitstack.io/managed-db'] == 'true'"
 expect_has "VAP: UPDATE e DELETE controllano oldObject" "${pol}" "oldObject.metadata.labels['gitstack.io/managed-db'] == 'true'"
@@ -754,6 +754,33 @@ expect_has "VAP: RoleBinding solo in namespace con la label" "${pol}" "namespace
 expect_has "VAP: RoleBinding solo verso il ruolo modello" "${pol}" 'object.roleRef.kind == '"'ClusterRole'"' && object.roleRef.name == "gitstack-db-workload"'
 expect_has "VAP: soggetto ammesso" "${pol}" 's.name == "gitstack-core" && s.namespace == "prova-ns"'
 expect_has "VAP: niente ExternalName" "${pol}" "object.spec.type != 'ExternalName'"
+# Il testo non basta (un confronto false == false lasciava passare kube-system): le espressioni si valutano
+# con cel-go sui casi positivi e negativi, con le app spente e accese (admin/internal/vapcheck).
+if command -v go >/dev/null 2>&1; then
+  if (cd "${HERE}/../../admin" && GITSTACK_HELM_BIN="$(command -v helm)" go test -count=1 ./internal/vapcheck/ >/tmp/vapcheck.$$ 2>&1); then ok; else bad "valutazione CEL delle VAP dei database: $(tail -30 /tmp/vapcheck.$$)"; fi
+  rm -f /tmp/vapcheck.$$
+else
+  echo "AVVISO: go non trovato, la valutazione CEL delle VAP (admin/internal/vapcheck) non gira"
+fi
+# Volumi RWO di core (databases-data) e Secret con mode 0400: con la sola configurazione minima
+# (allegati e CI spenti) servono fsGroup 65532, strategia Recreate e una sola replica.
+MIN="--set databases.enabled=true --set core.attachments.enabled=false"
+# shellcheck disable=SC2086
+OUT="$(render --namespace prova-ns ${MIN})" || { bad "helm template minimo con databases fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_has "databases soli: fsGroup 65532" "${d}" "fsGroup: 65532"
+expect_has "databases soli: strategia Recreate" "${d}" "type: Recreate"
+expect_has "databases soli: volume databases-data" "${d}" "claimName: gitstack-databases-data"
+# shellcheck disable=SC2086
+if helm_rc ${MIN} --set core.replicaCount=2; then bad "databases.enabled con core.replicaCount=2: helm template doveva fermarsi"; else ok; fi
+# shellcheck disable=SC2086
+expect_has "databases con replicaCount=2: messaggio" "$(helm template gitstack "${CHART}" ${MIN} --set core.replicaCount=2 2>&1)" "databases.enabled=true"
+# Default: senza volumi RWO nessuna di queste garanzie.
+OUT="$(render --namespace prova-ns --set core.attachments.enabled=false)" || { bad "helm template minimo senza databases fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_lacks "senza volumi RWO: nessun fsGroup 65532" "${d}" "fsGroup: 65532"
+expect_lacks "senza volumi RWO: nessuna strategia Recreate" "${d}" "type: Recreate"
+OUT="${SAVED_OUT}"
 # Volume databases-data e variabili di core solo con databases.enabled.
 d="$(doc Deployment gitstack-core)"
 expect_has "core: GITSTACK_CORE_DATABASES_ENABLED" "${d}" "GITSTACK_CORE_DATABASES_ENABLED"

@@ -540,7 +540,12 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 	}
 
 	// Database gestiti (GIT-565, DB5): le immagini postgres non sono nei manifest, si verificano a parte.
-	if _, err := o.verifyDatabaseDigests(ctx, newChart, chartDir, valuesFile); err != nil {
+	dbNow, dbBefore, err := o.databaseStates(newChart, chartDir, valuesFile)
+	if err != nil {
+		res.Outcome = Refused
+		return res, refused("%v", err)
+	}
+	if _, err := o.verifyDatabaseDigests(ctx, dbNow, dbBefore); err != nil {
 		res.Outcome = Refused
 		return res, refused("%v", err)
 	}
@@ -623,7 +628,7 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 
 	// Database gestiti: CA intermedia e chiave di dump prima del chart, perché core legge la chiave
 	// di dump già al primo avvio (volume opzionale). Solo se i database sono accesi.
-	if err := o.ensureDatabaseSecrets(ctx, res, valuesFile); err != nil {
+	if err := o.ensureDatabaseSecrets(ctx, res, dbNow); err != nil {
 		res.Outcome = Failed
 		res.Reason = err.Error()
 		res.add("Il backup preventivo è intatto: %s", br.Path)

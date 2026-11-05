@@ -251,3 +251,113 @@ func TestDatabaseImagesFromValues(t *testing.T) {
 		t.Errorf("senza tabella: got=%+v err=%v", got, err)
 	}
 }
+
+// --- tabella effettiva: valori conservati, -f e --set (rework 1, DB5) ---
+
+var (
+	ovDigest = "sha256:" + strings.Repeat("b", 64)
+	ovRef16  = "registry.test/postgres@" + ovDigest
+)
+
+// Un override conservato nella release sostituisce il digest della 16: si verifica quello, non il default.
+func TestDatabaseDigests_OverrideConservatoNonFirmatoFermaUpgrade(t *testing.T) {
+	w := dbWorld(t)
+	w.helm.values = `{"databases":{"enabled":true,"postgres":{"images":{"16":{"digest":"` + ovDigest + `"}}}}}`
+	signImages(t, w, validIdentity, pgRef16, pgRef17) // i default sono firmati, l'override no
+	runRefused(t, w, "immagine postgres", ovRef16, "major 16")
+	if w.helm.upgradeValues != "" {
+		t.Errorf("helm upgrade lanciato con un digest effettivo non firmato: %s", w.helm.upgradeValues)
+	}
+	if calledWith(t, pgRef16) {
+		t.Error("il digest di default è sostituito dall'override: non va verificato al suo posto")
+	}
+}
+
+func TestDatabaseDigests_OverrideConservatoFirmatoProcede(t *testing.T) {
+	w := dbWorld(t)
+	w.helm.values = `{"databases":{"enabled":true,"postgres":{"images":{"16":{"digest":"` + ovDigest + `"}}}}}`
+	signImages(t, w, validIdentity, ovRef16, pgRef17)
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if !calledWith(t, ovRef16) {
+		t.Errorf("il riferimento effettivo va verificato: %v", cosignCalls(t))
+	}
+}
+
+// -f e --set hanno la precedenza di Helm: --set vince su -f, che vince sui valori conservati.
+func TestDatabaseDigests_FileEDSetConPrecedenzaDiHelm(t *testing.T) {
+	w := dbWorld(t)
+	setDigest := "sha256:" + strings.Repeat("c", 64)
+	f := filepath.Join(t.TempDir(), "extra.yaml")
+	mustWrite(t, f, "databases:\n  postgres:\n    images:\n      \"17\":\n        digest: "+ovDigest+"\n")
+	w.o.ValueFiles = []string{f}
+	w.o.Sets = []string{"databases.postgres.images.17.digest=" + setDigest}
+	signImages(t, w, validIdentity, pgRef16)
+	// Né quello del file né il default della 17 sono firmati; quello di --set (l'effettivo) nemmeno.
+	runRefused(t, w, "immagine postgres", "registry.test/postgres@"+setDigest, "major 17")
+	if w.helm.upgradeValues != "" {
+		t.Error("helm upgrade lanciato")
+	}
+	// Firmato quello di --set: procede, e gli altri due non servono.
+	w2 := dbWorld(t)
+	w2.o.ValueFiles = []string{f}
+	w2.o.Sets = []string{"databases.postgres.images.17.digest=" + setDigest}
+	signImages(t, w2, validIdentity, pgRef16, "registry.test/postgres@"+setDigest)
+	res, err := Run(context.Background(), w2.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if calledWith(t, ovDigest) || calledWith(t, pgRef17) {
+		t.Errorf("valori scavalcati verificati: %v", cosignCalls(t))
+	}
+}
+
+// Stesso digest ma repository diverso (override con --set): è un riferimento nuovo, va verificato.
+func TestDatabaseDigests_StessoDigestRepositoryDiverso(t *testing.T) {
+	w := dbWorld(t)
+	mustWrite(t, filepath.Join(w.chart, "values.yaml"), dbValues(pgDigest16, pgDigest17))
+	w.o.Sets = []string{"databases.postgres.images.16.repository=altro.test/pg"}
+	signImages(t, w, validIdentity, pgRef17)
+	_, err := Run(context.Background(), w.o)
+	if err == nil || !strings.Contains(err.Error(), "altro.test/pg@"+pgDigest16) {
+		t.Fatalf("atteso rifiuto sul riferimento altro.test/pg@%s, errore: %v", pgDigest16, err)
+	}
+	if w.helm.upgradeValues != "" {
+		t.Error("helm upgrade lanciato")
+	}
+}
+
+// Riferimento effettivo invariato (stesso override già conservato e già nella release): riuso, niente cosign.
+func TestDatabaseDigests_RiferimentoInvariatoRiuso(t *testing.T) {
+	w := dbWorld(t)
+	over := `{"databases":{"enabled":true,"postgres":{"images":{"16":{"digest":"` + ovDigest + `"}}}}}`
+	w.helm.values = over
+	// La copia attuale del chart ha un default diverso, ma l'effettivo di prima era già l'override.
+	mustWrite(t, filepath.Join(w.chart, "values.yaml"), dbValues("sha256:"+strings.Repeat("d", 64), pgDigest17))
+	signImages(t, w, validIdentity) // nessuna firma: tutto deve essere riusato
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if calledWith(t, "registry.test/postgres") {
+		t.Errorf("riferimenti effettivi invariati: non si riverificano: %v", cosignCalls(t))
+	}
+}
+
+func TestSetValueEMergeCoerentiConHelm(t *testing.T) {
+	v := map[string]any{"a": map[string]any{"b": "1", "c": "2"}}
+	v = mergeValues(v, map[string]any{"a": map[string]any{"b": "9", "c": nil}, "d": true})
+	if a := v["a"].(map[string]any); a["b"] != "9" || len(a) != 1 || v["d"] != true {
+		t.Errorf("merge: %v", v)
+	}
+	setValue(v, `x.y\.z.16.digest=sha256:aa`)
+	setValue(v, "databases.enabled=true")
+	if got := v["x"].(map[string]any)["y.z"].(map[string]any)["16"].(map[string]any)["digest"]; got != "sha256:aa" {
+		t.Errorf("set annidato/escape: %v", v)
+	}
+	if v["databases"].(map[string]any)["enabled"] != true {
+		t.Errorf("bool: %v", v)
+	}
+}
