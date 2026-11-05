@@ -347,6 +347,9 @@ func newDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 			if err := e.check(resp.StatusCode(), resp.Body); err != nil {
 				return err
 			}
+			if jo.Enabled() {
+				return jo.Write(f.IO.Out, map[string]any{"owner": owner, "name": name, "deleted": true}, f.IO.OutTTY)
+			}
 			_, _ = fmt.Fprintf(f.IO.Out, "deleted %s\n", full)
 			return nil
 		},
