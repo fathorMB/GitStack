@@ -96,6 +96,9 @@ func (s *Store) PutAppSecret(ctx context.Context, keys AppSealer, appID uuid.UUI
 	if err := lockApp(ctx, tx, appID); err != nil {
 		return AppSecretMeta{}, AppVersion{}, err
 	}
+	if err := guardManagedEnvName(ctx, tx, appID, name); err != nil {
+		return AppSecretMeta{}, AppVersion{}, err
+	}
 	if taken, err := nameTakenByOther(ctx, tx, appID, name, true); err != nil {
 		return AppSecretMeta{}, AppVersion{}, err
 	} else if taken {

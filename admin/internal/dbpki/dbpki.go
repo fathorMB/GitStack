@@ -44,6 +44,9 @@ const (
 	CACertKey   = "tls.crt"
 	CAKeyKey    = "tls.key"
 	DumpKeyData = "key"
+	// RootCertKey e' la radice PUBBLICA dell'istanza nello stesso Secret (GIT-552): core la monta nelle app
+	// collegate come PGSSLROOTCERT; i client si fidano della radice, non dell'intermedia.
+	RootCertKey = "ca.crt"
 )
 
 // ErrNoRootCA: la radice dell'istanza non è sull'host (certificato del cliente, senza CA interna).
@@ -211,6 +214,9 @@ func ReadInstance(tlsDir string) (Instance, error) {
 type Result struct {
 	CreatedCA      bool
 	CreatedDumpKey bool
+	// AddedRoot: il Secret dell'intermedia c'era gia' ma senza la radice pubblica (installazione di GIT-551):
+	// e' stata aggiunta, intermedia e chiave invariate.
+	AddedRoot bool
 }
 
 // Options per Ensure.
@@ -249,8 +255,10 @@ func Ensure(ctx context.Context, o Options) (Result, error) {
 		return res, fmt.Errorf("lettura dei Secret: %w", err)
 	}
 	has := map[string]bool{}
+	raws := map[string]backup.Secret{}
 	for _, s := range existing {
 		has[s.Name] = true
+		raws[s.Name] = s
 	}
 
 	if name := DumpKeySecretName(o.Release); !has[name] {
@@ -285,7 +293,7 @@ func Ensure(ctx context.Context, o Options) (Result, error) {
 		if err != nil {
 			return res, fmt.Errorf("CA intermedia dei database: %w", err)
 		}
-		s, err := secret(name, o.Release, map[string][]byte{CACertKey: cert, CAKeyKey: key})
+		s, err := secret(name, o.Release, map[string][]byte{CACertKey: cert, CAKeyKey: key, RootCertKey: crt})
 		if err != nil {
 			return res, err
 		}
@@ -293,8 +301,48 @@ func Ensure(ctx context.Context, o Options) (Result, error) {
 			return res, fmt.Errorf("creazione del Secret %s: %w", name, err)
 		}
 		res.CreatedCA = true
+	} else if added, err := addRoot(ctx, o, raws[name]); err != nil {
+		return res, err
+	} else {
+		res.AddedRoot = added
 	}
 	return res, nil
+}
+
+// addRoot aggiunge ca.crt (radice pubblica) a un Secret dell'intermedia che non ce l'ha, senza toccare gli altri
+// campi. Senza radice sull'host non fa niente (il certificato del cliente non ha una CA interna).
+func addRoot(ctx context.Context, o Options, cur backup.Secret) (bool, error) {
+	var obj map[string]any
+	if err := json.Unmarshal(cur.Raw, &obj); err != nil {
+		return false, fmt.Errorf("Secret %s: %w", cur.Name, err)
+	}
+	data, _ := obj["data"].(map[string]any)
+	if data == nil {
+		data = map[string]any{}
+	}
+	if v, ok := data[RootCertKey].(string); ok && v != "" {
+		return false, nil
+	}
+	crt, err := os.ReadFile(filepath.Join(o.TLSDir, "ca.crt"))
+	if err != nil || len(crt) == 0 {
+		return false, nil
+	}
+	data[RootCertKey] = base64.StdEncoding.EncodeToString(crt)
+	obj["data"] = data
+	// Un Secret letto dal cluster porta metadati di sola lettura che apply non vuole: si tolgono.
+	if md, ok := obj["metadata"].(map[string]any); ok {
+		for _, k := range []string{"resourceVersion", "uid", "creationTimestamp", "managedFields", "selfLink"} {
+			delete(md, k)
+		}
+	}
+	raw, err := json.Marshal(obj)
+	if err != nil {
+		return false, err
+	}
+	if err := o.Cluster.ApplySecret(ctx, backup.Secret{Name: cur.Name, Raw: raw}); err != nil {
+		return false, fmt.Errorf("aggiornamento del Secret %s: %w", cur.Name, err)
+	}
+	return true, nil
 }
 
 // secret costruisce il Secret come lo restituisce KubectlCluster.Secrets: label part-of=gitstack (così

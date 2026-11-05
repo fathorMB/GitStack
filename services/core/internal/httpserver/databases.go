@@ -33,6 +33,10 @@ type DatabaseController interface {
 	Delete(ctx context.Context, d store.ManagedDB, actor *store.AppActor) error
 	RotateOwner(ctx context.Context, d store.ManagedDB) (string, error)
 	Logs(ctx context.Context, d store.ManagedDB, opts *corev1.PodLogOptions) (io.ReadCloser, error)
+	// Collegamenti con le app (GIT-552): ruolo di login proprio, variabili, scollegamento e rotazione.
+	LinkApp(ctx context.Context, keys store.AppSealer, d store.ManagedDB, app store.App, mode string, actor *store.AppActor) (store.ManagedDBLink, databases.LinkCredentials, error)
+	RotateLink(ctx context.Context, keys store.AppSealer, d store.ManagedDB, link store.ManagedDBLink, actor *store.AppActor) (databases.LinkCredentials, error)
+	Unlink(ctx context.Context, d store.ManagedDB, link store.ManagedDBLink, actor *store.AppActor) (bool, error)
 	Kick()
 }
 
@@ -64,57 +68,70 @@ func ownerDatabaseScope(owner identityclient.Owner) uuid.UUID {
 
 func (s *apiServer) databasesOn() bool { return s.databases.Controller != nil }
 
-// databaseOwner risolve l'owner e verifica `admin` su di esso. Risponde da solo e ritorna false in ogni
-// caso diverso dal permesso: 404 per chi non e' admin dell'owner (DB2), 503 se identity non c'e'.
-func (s *apiServer) databaseOwner(w http.ResponseWriter, r *http.Request, ownerName string) (identityclient.Owner, trustUser, bool) {
+// databaseOwnerAccess risolve l'owner e dice se il chiamante e' `admin` su di esso (isAdmin). Risponde da solo
+// e ritorna ok=false se la funzione e' spenta, l'owner non esiste o identity non risponde; NON risponde 404 a
+// chi non e' admin: serve a chi accetta anche un altro permesso (scollegare, ruotare un collegamento, DB9).
+func (s *apiServer) databaseOwnerAccess(w http.ResponseWriter, r *http.Request, ownerName string) (owner identityclient.Owner, u trustUser, isAdmin, ok bool) {
 	if !s.databasesOn() {
 		databaseDisabled(w)
-		return identityclient.Owner{}, trustUser{}, false
+		return identityclient.Owner{}, trustUser{}, false, false
 	}
 	caller, callerID, ok := callerIdentity(w, r)
 	if !ok {
-		return identityclient.Owner{}, trustUser{}, false
+		return identityclient.Owner{}, trustUser{}, false, false
 	}
 	if s.repoIdentity == nil {
 		writeError(w, http.StatusServiceUnavailable, "identity_unavailable", "Identity non configurata: impossibile applicare i permessi.")
-		return identityclient.Owner{}, trustUser{}, false
+		return identityclient.Owner{}, trustUser{}, false, false
 	}
-	owner, err := s.repoIdentity.ResolveOwner(r.Context(), ownerName)
+	var err error
+	owner, err = s.repoIdentity.ResolveOwner(r.Context(), ownerName)
 	if err != nil {
 		if errors.Is(err, identityclient.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "not_found", "Non trovato.")
-			return identityclient.Owner{}, trustUser{}, false
+			return identityclient.Owner{}, trustUser{}, false, false
 		}
 		slog.Default().Warn("risoluzione dell'owner non riuscita", "err", err)
 		writeError(w, http.StatusServiceUnavailable, "identity_unavailable", "Identity non disponibile.")
-		return identityclient.Owner{}, trustUser{}, false
+		return identityclient.Owner{}, trustUser{}, false, false
 	}
-	u := trustUser{ID: callerID, Username: caller.Username, Type: "human"}
+	u = trustUser{ID: callerID, Username: caller.Username, Type: "human"}
 	if s.readable != nil {
 		isAdmin, _, err := s.readable.ReadableResources(r.Context(), callerID)
 		if err != nil {
 			slog.Default().Warn("verifica dell'amministratore non riuscita", "err", err)
 			writeError(w, http.StatusServiceUnavailable, "identity_unavailable", "Identity non disponibile.")
-			return identityclient.Owner{}, trustUser{}, false
+			return identityclient.Owner{}, trustUser{}, false, false
 		}
 		if isAdmin {
 			u.InstanceAdmin = true
-			return owner, u, true
+			return owner, u, true, true
 		}
 	}
 	scope := ownerDatabaseScope(owner)
 	if err := s.repoIdentity.SetResourceAttributes(r.Context(), scope, owner.Type, owner.ID, "private"); err != nil {
 		slog.Default().Warn("attributi dell'owner dei database non impostati", "err", err)
 		writeError(w, http.StatusServiceUnavailable, "identity_unavailable", "Identity non disponibile.")
-		return identityclient.Owner{}, trustUser{}, false
+		return identityclient.Owner{}, trustUser{}, false, false
 	}
-	allowed, err := s.repoIdentity.HasRole(r.Context(), callerID, scope, "admin")
+	var allowed bool
+	allowed, err = s.repoIdentity.HasRole(r.Context(), callerID, scope, "admin")
 	if err != nil {
 		slog.Default().Warn("verifica del permesso non riuscita", "err", err)
 		writeError(w, http.StatusServiceUnavailable, "identity_unavailable", "Identity non disponibile.")
+		return identityclient.Owner{}, trustUser{}, false, false
+	}
+	return owner, u, allowed, true
+}
+
+// databaseOwner risolve l'owner e verifica `admin` su di esso. Risponde da solo e ritorna false in ogni
+// caso diverso dal permesso: 404 per chi non e' admin dell'owner (DB2), 503 se identity non c'e'.
+func (s *apiServer) databaseOwner(w http.ResponseWriter, r *http.Request, ownerName string) (identityclient.Owner, trustUser, bool) {
+	owner, u, isAdmin, ok := s.databaseOwnerAccess(w, r, ownerName)
+	if !ok {
 		return identityclient.Owner{}, trustUser{}, false
 	}
-	if !allowed {
+	if !isAdmin {
 		writeError(w, http.StatusNotFound, "not_found", "Non trovato.")
 		return identityclient.Owner{}, trustUser{}, false
 	}
