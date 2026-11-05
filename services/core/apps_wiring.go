@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/fathorMB/GitStack/services/core/internal/apps"
+	"github.com/fathorMB/GitStack/services/core/internal/databases"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 	"github.com/fathorMB/GitStack/services/core/internal/trust"
@@ -101,6 +103,10 @@ func startApps(ctx context.Context, pool *pgxpool.Pool, gatewaySecret string, eg
 		logger.Error("apps: GITSTACK_CORE_APPS_GATE_IMAGE vuota, i deploy delle app saranno rifiutati finché non è impostata (GIT-422)")
 	}
 	cfg.Domains = domainCfg
+	// GIT-552: la radice pubblica dei database sta accanto all'intermedia (Secret db-ca); l'app collegata la monta.
+	if dir := strings.TrimSpace(os.Getenv(envDatabasesCADir)); dir != "" {
+		cfg.DatabaseCAFile = filepath.Join(dir, databases.RootCAFileName)
+	}
 	cfg.Gateway = gatewayAccessFrom(os.Getenv)
 	cfg.OnDeployFailed = onDeployFailed
 	cfg.PullCredentials = apps.PullCredentialsFor(trust.ParseKeys(gatewaySecret), time.Now)

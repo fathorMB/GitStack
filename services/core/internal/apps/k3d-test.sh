@@ -161,5 +161,7 @@ cd "$root/services/core"
 export GITSTACK_TEST_K3D_NODE="k3d-$cluster-server-0"
 # GIT-447: la diagnostica dei test H9/H16 viene raccolta nei t.Cleanup prima che i namespace siano eliminati.
 GITSTACK_TEST_KUBECONFIG="$work/kubeconfig" go test -tags integration -count=1 -timeout 25m \
-  -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d|TestApps_SegretiKubernetesERollback|TestApps_IsolamentoSuK3d|TestApps_BarriereInUscitaSuK3d|TestApps_GatewayInternoSuK3d|TestApps_DestinazionePrivataApertaSuK3d|TestApps_CancelloVeroSenzaPolicySuK3d|TestApps_NomiInterniSuK3d|TestApps_VolumiSuK3d|TestApps_SenzaSegretiConRbacDelChartSuK3d|TestApps_RichiesteETraefikSuK3d' -v ./internal/httpserver/
+  -run 'TestApps_DeployPermessiESenzaController|TestApps_ControllerSuK3d|TestApps_SegretiKubernetesERollback|TestApps_IsolamentoSuK3d|TestApps_BarriereInUscitaSuK3d|TestApps_GatewayInternoSuK3d|TestApps_DestinazionePrivataApertaSuK3d|TestApps_CancelloVeroSenzaPolicySuK3d|TestApps_NomiInterniSuK3d|TestApps_VolumiSuK3d|TestApps_SenzaSegretiConRbacDelChartSuK3d|TestApps_RichiesteETraefikSuK3d|TestDatabaseLinks_ReteVariabiliERotazioneSuK3d' -v ./internal/httpserver/
+# GIT-552: TestDatabaseLinks_ReteVariabiliERotazioneSuK3d prova i collegamenti app-database (variabili, rete per
+# label, uscita ristretta, rotazione, scollegamento) con il cancello vero.
 echo "OK: controller, segreti, isolamento, barriere in uscita, nomi interni, volumi e metriche di Traefik (richieste ed errori 5xx) delle app provati su k3d"

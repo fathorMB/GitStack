@@ -86,6 +86,15 @@ func (l *lateController) RotateOwner(ctx context.Context, d store.ManagedDB) (st
 func (l *lateController) Logs(ctx context.Context, d store.ManagedDB, o *corev1.PodLogOptions) (io.ReadCloser, error) {
 	return l.get().Logs(ctx, d, o)
 }
+func (l *lateController) LinkApp(ctx context.Context, k store.AppSealer, d store.ManagedDB, a store.App, mode string, actor *store.AppActor) (store.ManagedDBLink, databases.LinkCredentials, error) {
+	return l.get().LinkApp(ctx, k, d, a, mode, actor)
+}
+func (l *lateController) RotateLink(ctx context.Context, k store.AppSealer, d store.ManagedDB, link store.ManagedDBLink, actor *store.AppActor) (databases.LinkCredentials, error) {
+	return l.get().RotateLink(ctx, k, d, link, actor)
+}
+func (l *lateController) Unlink(ctx context.Context, d store.ManagedDB, link store.ManagedDBLink, actor *store.AppActor) (bool, error) {
+	return l.get().Unlink(ctx, d, link, actor)
+}
 func (l *lateController) Kick() { l.get().Kick() }
 
 func (e *dbEnv) create(user, owner, body string, want int) openapi.DatabaseCreated {

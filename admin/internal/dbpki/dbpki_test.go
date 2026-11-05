@@ -301,3 +301,58 @@ func TestNewIntermediate_RifiutaNomiStrani(t *testing.T) {
 		t.Error("un IP non valido doveva essere rifiutato")
 	}
 }
+
+func TestEnsure_ScriveLaRadicaPubblicaNelSecretDellaCA(t *testing.T) {
+	dir := t.TempDir()
+	newRoot(t, dir, time.Now().Add(10*365*24*time.Hour))
+	f := &fakeCluster{}
+	if _, err := Ensure(context.Background(), Options{Cluster: f, Release: "gitstack", TLSDir: dir}); err != nil {
+		t.Fatal(err)
+	}
+	root, _ := os.ReadFile(filepath.Join(dir, "ca.crt"))
+	sec := f.get(t, "gitstack-db-ca")
+	if string(sec[RootCertKey]) != string(root) {
+		t.Fatalf("ca.crt del Secret dei database deve essere la radice pubblica dell'istanza")
+	}
+	if strings.Contains(string(sec[RootCertKey]), "PRIVATE KEY") {
+		t.Fatal("la radice pubblica non puo' contenere una chiave")
+	}
+}
+
+func TestEnsure_AggiungeLaRadiceAUnaCAEsistenteSenzaToccareLeChiavi(t *testing.T) {
+	// Installazione di GIT-551: l'intermedia c'e', la radice pubblica no.
+	dir := t.TempDir()
+	newRoot(t, dir, time.Now().Add(10*365*24*time.Hour))
+	f := &fakeCluster{}
+	if _, err := Ensure(context.Background(), Options{Cluster: f, Release: "gitstack", TLSDir: dir}); err != nil {
+		t.Fatal(err)
+	}
+	before := f.get(t, "gitstack-db-ca")
+	old, err := secret("gitstack-db-ca", "gitstack", map[string][]byte{CACertKey: before[CACertKey], CAKeyKey: before[CAKeyKey]})
+	must(t, err)
+	for i := range f.secrets {
+		if f.secrets[i].Name == "gitstack-db-ca" {
+			f.secrets[i] = old
+		}
+	}
+	f.applied = nil
+	res, err := Ensure(context.Background(), Options{Cluster: f, Release: "gitstack", TLSDir: dir})
+	must(t, err)
+	if res.CreatedCA || !res.AddedRoot || len(f.applied) != 1 {
+		t.Fatalf("doveva solo aggiungere la radice: %+v applicati=%v", res, f.applied)
+	}
+	after := f.get(t, "gitstack-db-ca")
+	if string(after[CACertKey]) != string(before[CACertKey]) || string(after[CAKeyKey]) != string(before[CAKeyKey]) {
+		t.Fatal("intermedia e chiave devono restare quelle")
+	}
+	if len(after[RootCertKey]) == 0 {
+		t.Fatal("ca.crt non scritto")
+	}
+	// Idempotente: il giro dopo non applica niente.
+	f.applied = nil
+	res, err = Ensure(context.Background(), Options{Cluster: f, Release: "gitstack", TLSDir: dir})
+	must(t, err)
+	if res.AddedRoot || len(f.applied) != 0 {
+		t.Fatalf("secondo giro: %+v applicati=%v", res, f.applied)
+	}
+}

@@ -32,6 +32,7 @@ import (
 
 	"github.com/fathorMB/GitStack/pkg/egress"
 	"github.com/fathorMB/GitStack/pkg/names"
+	"github.com/fathorMB/GitStack/services/core/internal/databases"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
 
@@ -54,8 +55,12 @@ const (
 	WorkloadName   = "app"
 	pullSecretName = "registry-pull"
 	appSecretName  = "app-secrets"
-	containerName  = "app"
-	servicePort    = 80
+	// DatabaseCASecret e' il Secret con la CA pubblica dei database collegati (GIT-552, DB10): montato in
+	// /etc/gitstack/db/ca.crt, e' il PGSSLROOTCERT dell'app. Un Secret e non un ConfigMap perche' il
+	// ClusterRole modello delle app non ha verbi sui ConfigMap; il contenuto e' pubblico.
+	DatabaseCASecret = "db-ca"
+	containerName    = "app"
+	servicePort      = 80
 	// DeclaredPortName è il nome della seconda porta del Service `app`: la porta dichiarata dall'app.
 	DeclaredPortName = "app"
 )
@@ -117,6 +122,8 @@ type BuildOptions struct {
 	// Gateway è il percorso dell'app verso l'API di GitStack (GIT-442, H16): nil = non configurato,
 	// nessuna variabile GITSTACK_API_URL.
 	Gateway *GatewayAccess
+	// DatabaseCA: nome del Secret con la CA dei database collegati (GIT-552); vuoto = app non collegata.
+	DatabaseCA string
 }
 
 // GatewayAccess descrive la porta interna del gateway che le app ospitate raggiungono dentro il
@@ -170,6 +177,9 @@ type NetworkPolicyOptions struct {
 	// Restriction: se non nil l'app esce solo verso questi indirizzi:porta (oltre a peer dello stesso
 	// repo e DNS), senza internet aperto né proxy. Una slice vuota chiude ogni altra uscita.
 	Restriction *[]netip.AddrPort
+	// Databases sono i database collegati all'app (GIT-552, DB11): una regola di uscita verso i soli pod di
+	// ciascuno sulla 5432, per selettore, anche con la restrizione dell'uscita (H16).
+	Databases []uuid.UUID
 }
 
 // BuildDeployment traduce una versione nel Deployment dell'app.
@@ -240,6 +250,10 @@ func BuildDeployment(app store.App, v store.AppVersion, o BuildOptions) *appsv1.
 	strategy := appsv1.DeploymentStrategy{
 		Type:          appsv1.RollingUpdateDeploymentStrategyType,
 		RollingUpdate: &appsv1.RollingUpdateDeployment{MaxUnavailable: &zero, MaxSurge: &one},
+	}
+	if o.DatabaseCA != "" { // GIT-552: la CA pubblica dei database collegati, per verify-full
+		pod.Volumes = append(pod.Volumes, corev1.Volume{Name: "db-ca", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: o.DatabaseCA}}})
+		pod.Containers[0].VolumeMounts = append(pod.Containers[0].VolumeMounts, corev1.VolumeMount{Name: "db-ca", MountPath: databases.CAMountDir, ReadOnly: true})
 	}
 	if len(cfg.Volumes) > 0 {
 		// H3: con i volumi l'app gira in una sola copia e l'aggiornamento è Recreate: il PVC è
@@ -564,6 +578,18 @@ func BuildNetworkPolicy(app store.App, options ...NetworkPolicyOptions) *network
 				PodSelector:       &metav1.LabelSelector{MatchLabels: o.Gateway.PodLabels},
 			}},
 			Ports: []networkingv1.NetworkPolicyPort{{Protocol: proto(corev1.ProtocolTCP), Port: &gwPort}},
+		})
+	}
+	// GIT-552 (DB11): i database collegati, per selettore di namespace e pod, sulla sola 5432. Non passa dalle
+	// barriere H16 sugli indirizzi (e' un pod del cluster scelto dal collegamento) e vale anche con la restrizione.
+	dbPort := intstr.FromInt(databases.PostgresPort)
+	for _, id := range o.Databases {
+		egress = append(egress, networkingv1.NetworkPolicyEgressRule{
+			To: []networkingv1.NetworkPolicyPeer{{
+				NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": databases.Namespace(id)}},
+				PodSelector:       &metav1.LabelSelector{MatchLabels: databases.PodLabels(id)},
+			}},
+			Ports: []networkingv1.NetworkPolicyPort{{Protocol: proto(corev1.ProtocolTCP), Port: &dbPort}},
 		})
 	}
 	if o.Restriction != nil { // uscita ristretta (H16): solo gli indirizzi elencati, niente internet né proxy

@@ -40,7 +40,7 @@ const (
 
 // startDatabases avvia il controller e ritorna l'opzione del router; senza abilitazione ritorna nil e
 // l'API risponde 422 databases_disabled.
-func startDatabases(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger) ([]httpserver.Option, error) {
+func startDatabases(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger, secrets store.AppSealer) ([]httpserver.Option, error) {
 	if on, _ := strconv.ParseBool(strings.TrimSpace(os.Getenv(envDatabasesEnabled))); !on {
 		return nil, nil
 	}
@@ -67,6 +67,7 @@ func startDatabases(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger
 		Exec:                     &databases.SPDYExecutor{Config: rc, Client: kube},
 		Verifier:                 databases.CosignCLI{Binary: strings.TrimSpace(os.Getenv(envDatabasesCosignBin)), IdentityRegexp: strings.TrimSpace(os.Getenv(envDatabasesCosignID)), Issuer: strings.TrimSpace(os.Getenv(envDatabasesCosignIss))},
 		Log:                      logger,
+		Secrets:                  secrets,
 	}
 	if v, err := strconv.Atoi(strings.TrimSpace(os.Getenv(envDatabasesProgressSe))); err == nil && v > 0 {
 		cfg.ProgressTimeout = time.Duration(v) * time.Second
