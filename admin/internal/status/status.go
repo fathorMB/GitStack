@@ -177,13 +177,13 @@ type Collector struct {
 // perché lo stato (API ok, cluster no) resti visibile.
 func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir string) *Report {
 	r := &Report{
-		Host:        cfg.Host,
-		SSHPort:     cfg.SSHPort,
-		AppsDomain:  cfg.AppsDomain,
-		AppsEnabled: cfg.AppsEnabled,
+		Host:             cfg.Host,
+		SSHPort:          cfg.SSHPort,
+		AppsDomain:       cfg.AppsDomain,
+		AppsEnabled:      cfg.AppsEnabled,
 		DatabasesEnabled: cfg.DatabasesEnabled,
-		Release:     cfg.Release,
-		Namespace:   cfg.Namespace,
+		Release:          cfg.Release,
+		Namespace:        cfg.Namespace,
 	}
 	r.K3sVersion = c.k3sVersion(ctx)
 	svcs, err := c.services(ctx, cfg)

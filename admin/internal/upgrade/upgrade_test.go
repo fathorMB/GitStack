@@ -37,16 +37,16 @@ const (
 // fakeCluster implementa backup.Cluster: il database è una stringa
 // (versioni di schema) e il restore la riporta a quella del dump.
 type fakeCluster struct {
-	mu       sync.Mutex
-	calls    []string
-	git      string
-	schema   string // risposta della query sulle migrazioni
-	dumped   string // schema al momento del pg_dump
-	restored bool
-	noSchema bool                          // la query sulle migrazioni fallisce
-	ready    func(deployment string) error // esito di WaitReady (nil: sempre pronto)
-	secrets  []backup.Secret               // Secret di GitStack nel cluster finto (GIT-565)
-	applied  []string                      // nomi dei Secret applicati, in ordine
+	mu        sync.Mutex
+	calls     []string
+	git       string
+	schema    string // risposta della query sulle migrazioni
+	dumped    string // schema al momento del pg_dump
+	restored  bool
+	noSchema  bool                          // la query sulle migrazioni fallisce
+	ready     func(deployment string) error // esito di WaitReady (nil: sempre pronto)
+	secrets   []backup.Secret               // Secret di GitStack nel cluster finto (GIT-565)
+	applied   []string                      // nomi dei Secret applicati, in ordine
 	majors    string                        // major dei database gestiti, una per riga (GIT-557)
 	majorsErr error                         // la lettura delle major fallisce
 }

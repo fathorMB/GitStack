@@ -4,13 +4,13 @@
 package config
 
 import (
-	"strconv"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -36,7 +36,7 @@ type Config struct {
 	// AppsEnabled è l'hosting delle app (chart apps.enabled, GIT-375): core ha il controller delle
 	// app e i permessi Kubernetes minimi dell'ADR 0002. Falso (default) = l'API delle app risponde 503.
 	// Lo scrivono install.sh, `gitstack upgrade --enable-apps` e `gitstack config set apps on|off`.
-	AppsEnabled      bool `yaml:"apps_enabled"`
+	AppsEnabled bool `yaml:"apps_enabled"`
 	// DatabasesEnabled sono i database gestiti (chart databases.enabled, v3-d, ADR 0003, DB23): spenti di
 	// default. Li scrivono install.sh (--enable-databases), `gitstack upgrade --enable-databases` e
 	// `gitstack config set databases on|off`. DatabasesPortFrom/To sono l'intervallo delle porte LAN scelto
@@ -44,8 +44,8 @@ type Config struct {
 	DatabasesEnabled  bool `yaml:"databases_enabled"`
 	DatabasesPortFrom int  `yaml:"databases_port_from"`
 	DatabasesPortTo   int  `yaml:"databases_port_to"`
-	CIGatewayEnabled bool `yaml:"ci_gateway_enabled"`
-	CIGatewayPort    int  `yaml:"ci_gateway_port"`
+	CIGatewayEnabled  bool `yaml:"ci_gateway_enabled"`
+	CIGatewayPort     int  `yaml:"ci_gateway_port"`
 	// SSHPort è la porta SSH del servizio git (mai la 22 dell'host).
 	SSHPort int `yaml:"ssh_port"`
 	// TLS è la modalità HTTPS scelta dall'installer: internal, custom,
