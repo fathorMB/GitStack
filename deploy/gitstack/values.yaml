@@ -814,3 +814,38 @@ apps:
   # con lookup a ogni upgrade); oppure indica un Secret tuo con la stessa chiave.
   signingKeys:
     existingSecret: ""
+
+# --- Database gestiti (v3-d, ADR 0003, GIT-565) --------------------------------
+# Il controller dei database dentro core (GIT-551) crea un namespace gitstack-db-<id> per database
+# con uno StatefulSet PostgreSQL. SPENTO per default (DB23): senza `databases.enabled=true` il chart
+# non rende nessun oggetto dei database. Acceso rende (templates/databases-rbac.yaml):
+#  - un ClusterRole del controller (namespace, rolebindings, `bind` solo sul ruolo modello);
+#  - il ClusterRole MODELLO <release>-db-workload con i verbi sui database, SENZA ClusterRoleBinding:
+#    il controller lo lega con un RoleBinding in ogni namespace gitstack-db-<id> (DB4);
+#  - una ValidatingAdmissionPolicy sul solo ServiceAccount di core (namespace con label
+#    gitstack.io/managed-db=true, mai scritta su un namespace che core non ha creato);
+#  - il volume databases-data di core (dump programmati, come apps-data).
+# La CA intermedia dei database (<release>-db-ca) e la chiave di dump (<release>-db-dump-key) NON sono
+# del chart: le crea l'installer o `gitstack upgrade` (admin/internal/dbpki), perche' la chiave della
+# radice resta sull'host; core le monta come opzionali.
+databases:
+  enabled: false
+  storage:
+    mountPath: /var/lib/gitstack/databases
+    persistence:
+      size: 20Gi
+      accessMode: ReadWriteOnce
+  postgres:
+    # Tabella major -> immagine per DIGEST (DB5). Majors ammesse 16 e 17. `gitstack upgrade`
+    # verifica con cosign il digest di ogni voce nuova prima di applicare il chart (H10). I digest
+    # sono quelli degli indici multi-architettura di Docker Hub letti il 2026-11-05: li aggiorna il
+    # job di pubblicazione del chart a ogni release.
+    images:
+      "16":
+        repository: docker.io/library/postgres
+        tag: 16-alpine
+        digest: sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab
+      "17":
+        repository: docker.io/library/postgres
+        tag: 17-alpine
+        digest: sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b

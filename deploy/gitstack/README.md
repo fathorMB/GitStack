@@ -320,3 +320,22 @@ da core a Traefik apre anche la 443. La prova con Pebble è `deploy/tests/acme_p
 
 Con `apps.enabled=false` (e `apps.domain` vuoto) non si rende nessuna risorsa delle app. Il test è in
 `deploy/tests/chart_hardening_test.sh`. Come accenderlo: [deploy/README.md](../README.md#hosting-delle-app-accenderlo-git-375-adr-0002).
+
+## Database gestiti: `databases.enabled` (v3-d, ADR 0003, GIT-565)
+
+Spenti per default (DB23): con `databases.enabled=false` il chart non rende nessun oggetto dei database. Acceso
+(richiede `core.enabled`) rende, in `templates/databases-rbac.yaml` e `templates/core/databases-data-pvc.yaml`:
+
+| Oggetto | Cosa fa |
+|---|---|
+| ClusterRole `<release>-databases-controller` + ClusterRoleBinding | namespace, `rolebindings` (create/get) e `bind` solo sul ruolo modello. È l'unico ClusterRoleBinding dei database |
+| ClusterRole `<release>-db-workload` | ruolo **modello** con i verbi sui database (statefulsets, PVC, networkpolicies, services, secrets, pods, pods/exec, pods/log). **Nessun ClusterRoleBinding**: il controller (GIT-551) lo lega con un RoleBinding in ogni namespace `gitstack-db-<id>` (DB4) |
+| ValidatingAdmissionPolicy `<release>-databases-controller-scope` | solo per il ServiceAccount di core: namespace `gitstack-db-*` con la label `gitstack.io/managed-db=true`, la label non compare su nessun altro namespace, RoleBinding solo verso il ruolo modello e solo in quei namespace. Con `apps.enabled` la policy delle app esclude i namespace `gitstack-db-*` |
+| PVC `<release>-databases-data` | dump programmati e su richiesta, montato in core |
+| `databases.postgres.images` | tabella major → digest di `postgres:16-alpine` e `postgres:17-alpine` (DB5), passata a core come JSON; `gitstack upgrade` verifica con cosign i digest nuovi prima di applicare il chart |
+
+La **CA intermedia** (`<release>-db-ca`, con `nameConstraints`: solo `svc.cluster.local` e i nomi/IP dell'istanza)
+e la **chiave di dump** (`<release>-db-dump-key`, `helm.sh/resource-policy: keep`) non sono del chart: le crea
+`gitstack databases ensure` (lanciato da `install.sh` con `--set databases.enabled=true`) e `gitstack upgrade`,
+solo se mancano, in `admin/internal/dbpki`. La chiave della radice resta sull'host. Entrambe finiscono in
+`secrets.json` di `gitstack backup` e tornano con `gitstack restore`. Core le monta come volumi opzionali.

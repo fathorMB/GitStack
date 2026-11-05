@@ -45,6 +45,8 @@ type fakeCluster struct {
 	restored bool
 	noSchema bool                          // la query sulle migrazioni fallisce
 	ready    func(deployment string) error // esito di WaitReady (nil: sempre pronto)
+	secrets  []backup.Secret               // Secret di GitStack nel cluster finto (GIT-565)
+	applied  []string                      // nomi dei Secret applicati, in ordine
 }
 
 func (f *fakeCluster) note(s string) { f.mu.Lock(); f.calls = append(f.calls, s); f.mu.Unlock() }
@@ -94,8 +96,24 @@ func (f *fakeCluster) VolumePath(_ context.Context, pvc string) (string, error) 
 	}
 	return "", backup.ErrNotFound
 }
-func (f *fakeCluster) Secrets(context.Context) ([]backup.Secret, error) { return nil, nil }
-func (f *fakeCluster) ApplySecret(context.Context, backup.Secret) error { return nil }
+func (f *fakeCluster) Secrets(context.Context) ([]backup.Secret, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]backup.Secret(nil), f.secrets...), nil
+}
+func (f *fakeCluster) ApplySecret(_ context.Context, s backup.Secret) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.applied = append(f.applied, s.Name)
+	for i, e := range f.secrets {
+		if e.Name == s.Name {
+			f.secrets[i] = s
+			return nil
+		}
+	}
+	f.secrets = append(f.secrets, s)
+	return nil
+}
 
 func (f *fakeCluster) StatefulSetExists(context.Context, string) (bool, error) { return false, nil }
 func (f *fakeCluster) RestartStatefulSet(context.Context, string) error        { return nil }
@@ -242,6 +260,12 @@ const (
 // deploy/gitstack-tls.sh ("" = il commit non lo contiene).
 func chartTarballTLS(t *testing.T, sha, tls string, k3sFile ...string) []byte {
 	t.Helper()
+	return chartTarballValues(t, sha, tls, "NUOVO: 1\n", k3sFile...)
+}
+
+// chartTarballValues è chartTarballTLS con il contenuto di deploy/gitstack/values.yaml a scelta.
+func chartTarballValues(t *testing.T, sha, tls, values string, k3sFile ...string) []byte {
+	t.Helper()
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gz)
@@ -265,7 +289,7 @@ func chartTarballTLS(t *testing.T, sha, tls string, k3sFile ...string) []byte {
 		}
 	}
 	add("GitStack-"+sha+"/deploy/gitstack/Chart.yaml", "name: gitstack\nversion: 0.1.0\n")
-	add("GitStack-"+sha+"/deploy/gitstack/values.yaml", "NUOVO: 1\n")
+	add("GitStack-"+sha+"/deploy/gitstack/values.yaml", values)
 	add("GitStack-"+sha+"/deploy/gitstack/templates/a.yaml", "x")
 	add("GitStack-"+sha+"/deploy/gitstack/files/traefik-metrics-values.yaml", "# commento\nmetrics:\n  prometheus:\n    entryPoint: metrics\nports:\n  metrics:\n    port: 9100\n")
 	_ = tw.Close()
@@ -290,6 +314,7 @@ type world struct {
 	k3sFile string // contenuto di deploy/k3s-version nel commit nuovo
 	tlsSrc  string // contenuto di deploy/gitstack-tls.sh nel commit nuovo
 	tlsBin  string // gitstack-tls installato (percorso di prova)
+	values  string // values.yaml del chart nuovo (vuoto: NUOVO: 1)
 
 	// Firme (V5): la release pubblica i bundle cosign accanto agli artefatti.
 	noBundle   bool   // nessun bundle pubblicato (artefatto non firmato)
@@ -378,7 +403,11 @@ func newWorld(t *testing.T) *world {
 			}
 			_, _ = rw.Write(fakeBundle(signed, w.identity()))
 		case strings.HasSuffix(p, "/tar.gz/"+newSHA), strings.HasSuffix(p, "/gitstack/source/"+newSHA+".tar.gz"):
-			_, _ = rw.Write(chartTarballTLS(t, newSHA, w.tlsSrc, w.k3sFile))
+			vals := w.values
+			if vals == "" {
+				vals = "NUOVO: 1\n"
+			}
+			_, _ = rw.Write(chartTarballValues(t, newSHA, w.tlsSrc, vals, w.k3sFile))
 		default:
 			http.NotFound(rw, r)
 		}

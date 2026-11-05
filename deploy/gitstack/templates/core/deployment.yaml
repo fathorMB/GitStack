@@ -99,6 +99,25 @@ spec:
             {{- include "gitstack.nats.authEnv" . | nindent 12 }}
             - name: GITSTACK_CORE_ADDR
               value: {{ printf ":%d" (.Values.core.containerPort | int) | quote }}
+            {{- if .Values.databases.enabled }}
+            # Database gestiti (ADR 0003, GIT-565): il controller (GIT-551) legge queste variabili.
+            - name: GITSTACK_CORE_DATABASES_ENABLED
+              value: "true"
+            - name: GITSTACK_CORE_DATABASES_CONTROLLER_SA
+              value: {{ printf "%s/%s" .Release.Namespace (include "gitstack.core.serviceAccountName" .) | quote }}
+            - name: GITSTACK_CORE_DATABASES_WORKLOAD_ROLE
+              value: {{ include "gitstack.databases.workloadRoleName" . | quote }}
+            - name: GITSTACK_CORE_DATABASES_DATA_DIR
+              value: {{ .Values.databases.storage.mountPath | quote }}
+            - name: GITSTACK_CORE_DATABASES_POSTGRES_IMAGES
+              value: {{ .Values.databases.postgres.images | toJson | quote }}
+            - name: GITSTACK_CORE_DATABASES_CA_DIR
+              value: /etc/gitstack/db-ca
+            # Chiave di dump (32 byte, file `key`): un volume opzionale e non una variabile, perche' l'installer
+            # crea il Secret anche dopo il primo avvio di core e il volume si aggiorna da solo.
+            - name: GITSTACK_CORE_DATABASES_DUMP_KEY_FILE
+              value: /etc/gitstack/db-dump-key/key
+            {{- end }}
             {{- if .Values.apps.domain }}
             - name: GITSTACK_CORE_APPS_DOMAIN
               value: {{ .Values.apps.domain | quote }}
@@ -406,6 +425,16 @@ spec:
             - name: release-assets
               mountPath: {{ .Values.core.releaseAssets.mountPath | quote }}
             {{- end }}
+            {{- if .Values.databases.enabled }}
+            - name: databases-data
+              mountPath: {{ .Values.databases.storage.mountPath | quote }}
+            - name: db-ca
+              mountPath: /etc/gitstack/db-ca
+              readOnly: true
+            - name: db-dump-key
+              mountPath: /etc/gitstack/db-dump-key
+              readOnly: true
+            {{- end }}
             {{- if .Values.ingress.tls.caConfigMap }}
             - name: ca
               mountPath: /etc/gitstack/ca
@@ -444,6 +473,21 @@ spec:
         - name: release-assets
           persistentVolumeClaim:
             claimName: {{ include "gitstack.fullname" . }}-release-assets-data
+        {{- end }}
+        {{- if .Values.databases.enabled }}
+        - name: databases-data
+          persistentVolumeClaim:
+            claimName: {{ include "gitstack.fullname" . }}-databases-data
+        # CA intermedia dei database: la crea l'installer (admin/internal/dbpki), core parte anche senza.
+        - name: db-ca
+          secret:
+            secretName: {{ include "gitstack.databases.caSecret" . }}
+            optional: true
+        - name: db-dump-key
+          secret:
+            secretName: {{ include "gitstack.databases.dumpKeySecret" . }}
+            optional: true
+            defaultMode: 0400
         {{- end }}
         {{- if .Values.ingress.tls.caConfigMap }}
         # Come in web: cartella intera (un rinnovo arriva senza riavvio) e optional,

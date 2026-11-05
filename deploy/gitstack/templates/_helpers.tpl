@@ -398,7 +398,7 @@ ServiceAccount di core: ci-dispatcher se la CI è accesa (stesso account, un sol
 */}}
 {{- define "gitstack.core.serviceAccountName" -}}
 {{- if .Values.ci.enabled -}}ci-dispatcher
-{{- else if .Values.apps.enabled -}}{{ include "gitstack.componentName" (dict "root" . "component" "core") }}
+{{- else if or .Values.apps.enabled .Values.databases.enabled -}}{{ include "gitstack.componentName" (dict "root" . "component" "core") }}
 {{- end -}}
 {{- end -}}
 
@@ -456,4 +456,22 @@ ServiceAccount di core: ci-dispatcher se la CI è accesa (stesso account, un sol
 {{/* GIT-460, GIT-494: namespace del TLSStore default letto da Traefik (in tutto il cluster ne esiste uno solo). Con le app accese è il namespace dei certificati, dove il chart crea il TLSStore (TLS dell'installer) o core (Let's Encrypt); con le app spente è il namespace del release e nessuno scrive Secret. */}}
 {{- define "gitstack.tlsStoreNamespace" -}}
 {{- if .Values.apps.enabled -}}{{ include "gitstack.certsNamespace" . }}{{- else -}}{{ .Release.Namespace }}{{- end -}}
+{{- end -}}
+
+{{/* Database gestiti (ADR 0003, GIT-565): ClusterRole «modello», legato solo da RoleBinding nei namespace gitstack-db-<id>. */}}
+{{- define "gitstack.databases.workloadRoleName" -}}
+{{- printf "%s-db-workload" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/* ClusterRole del controller dei database (namespace, rolebindings, bind sul solo ruolo modello). */}}
+{{- define "gitstack.databases.controllerName" -}}
+{{- printf "%s-databases-controller" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/* Secret creati dall'installer (admin/internal/dbpki), non dal chart: stessi nomi del codice Go. */}}
+{{- define "gitstack.databases.caSecret" -}}
+{{- printf "%s-db-ca" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- define "gitstack.databases.dumpKeySecret" -}}
+{{- printf "%s-db-dump-key" (include "gitstack.fullname" .) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}

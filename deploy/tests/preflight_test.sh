@@ -509,5 +509,27 @@ expect_has "ingress sets HSTS and a TLS 1.2 minimum: IngressRoute git" "name: {{
 # Nessuna suite CBC, RC4 o 3DES, né TLS < 1.2.
 if grep -E 'CBC|RC4|3DES|VersionTLS1[01]' "${ING}" | grep -v '^#' >/dev/null; then RC=0; OUT="suite o versione debole in ingress.yaml"; bad "ingress sets HSTS and a TLS 1.2 minimum: niente suite deboli"; else ok; fi
 
+# GIT-565: ensure_database_secrets chiama `gitstack databases ensure` solo con databases.enabled=true.
+ADMIN_BIN_PATH="${WORK}/gitstack-finto"
+printf '#!/bin/sh\necho "$@" >> "%s/chiamate"\n' "${WORK}" >"${ADMIN_BIN_PATH}"
+chmod +x "${ADMIN_BIN_PATH}"
+extra_helm_set=()
+run ensure_database_secrets
+expect_ok "database spenti: ensure_database_secrets non fa niente"
+check "database spenti: gitstack non chiamato" test ! -e "${WORK}/chiamate"
+extra_helm_set=("databases.enabled=true")
+run ensure_database_secrets
+expect_ok "database accesi: ensure_database_secrets"
+check "database accesi: gitstack databases ensure chiamato" grep -q '^databases ensure --config ' "${WORK}/chiamate"
+rm -f "${WORK}/chiamate"
+extra_helm_set=("databases.enabled=true" "databases.enabled=false")
+run ensure_database_secrets
+check "database riSpenti dall'ultimo --set: gitstack non chiamato" test ! -e "${WORK}/chiamate"
+extra_helm_set=("databases.enabled=true")
+ADMIN_BIN_PATH="${WORK}/non-esiste"
+run ensure_database_secrets
+expect_fail "database accesi senza il binario gitstack: l'installazione si ferma"
+extra_helm_set=()
+
 printf '\npreflight_test: %s ok, %s falliti\n' "${PASS}" "${FAILN}"
 [ "${FAILN}" -eq 0 ]

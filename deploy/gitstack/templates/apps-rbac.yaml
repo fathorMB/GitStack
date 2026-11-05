@@ -194,6 +194,14 @@ spec:
     - name: solo-il-serviceaccount-di-core
       expression: >-
         request.userInfo.username == {{ printf "system:serviceaccount:%s:%s" .Release.Namespace $sa | quote }}
+    {{- if .Values.databases.enabled }}
+    # GIT-565: i namespace gitstack-db-* (database gestiti, ADR 0003) non sono delle app: li giudica la
+    # policy <release>-databases-controller-scope (databases-rbac.yaml), che richiede la loro label.
+    - name: esclude-i-namespace-dei-database
+      expression: >-
+        !(request.resource.resource == 'namespaces' && request.operation != 'DELETE' ? object.metadata.name :
+          request.resource.resource == 'namespaces' ? oldObject.metadata.name : request.namespace).startsWith('gitstack-db-')
+    {{- end }}
   validations:
     - expression: >-
         request.resource.resource != 'namespaces' || request.operation == 'DELETE' ||

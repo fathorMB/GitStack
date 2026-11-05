@@ -28,7 +28,8 @@ type fakeCluster struct {
 	paths          map[string]string // pvc -> cartella
 	secrets        []Secret
 	applied        []string
-	dump           string
+	appliedRaw     map[string][]byte // Secret applicati, per nome
+	dump          string
 	psqlIn         string
 	failDump       bool
 	failWait       bool
@@ -116,6 +117,10 @@ func (f *fakeCluster) VolumePath(_ context.Context, pvc string) (string, error) 
 func (f *fakeCluster) Secrets(context.Context) ([]Secret, error) { return f.secrets, nil }
 func (f *fakeCluster) ApplySecret(_ context.Context, s Secret) error {
 	f.applied = append(f.applied, s.Name)
+	if f.appliedRaw == nil {
+		f.appliedRaw = map[string][]byte{}
+	}
+	f.appliedRaw[s.Name] = s.Raw
 	return nil
 }
 
