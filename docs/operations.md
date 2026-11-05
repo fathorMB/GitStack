@@ -1840,6 +1840,11 @@ script is the target's; if the upgrade is refused, rolled back or broken the
 domain is left untouched and the output gives the command to run
 (`gitstack config set apps-domain D`). With no new version (NoChange) the script
 is not replaced, so an old one stops the command with the same hint.
+The interval between the Helm upgrade and the wildcard certificate is checked by
+`deploy/ci/apps-domain-transient-e2e.sh` (k3d, real chart templates and real
+`gitstack-tls`; not run in CI): the GitStack name keeps its certificate and answers 200
+throughout, an app name gets the pre-wildcard certificate until `ensure --apps-domain`
+publishes it.
 
 ### CI tests of install, upgrade and restore (N2, V1)
 

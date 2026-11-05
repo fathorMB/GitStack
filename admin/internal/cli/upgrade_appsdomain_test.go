@@ -178,29 +178,89 @@ func TestUpgradeEnableAppsDomainRifiutatoNonApplicaIlDominio(t *testing.T) {
 	}
 }
 
-func TestUpgradeEnableAppsDomainRollbackNonApplicaIlDominio(t *testing.T) {
+// rollbackEnv prepara un upgrade che fallisce dopo l'helm upgrade, con un apps_domain precedente in config.yaml.
+// healthyAfterRollback: la salute torna sana dopo l'helm rollback (RolledBack); failRollback: l'helm rollback
+// stesso fallisce (Broken).
+func rollbackEnv(t *testing.T, healthyAfterRollback, failRollback bool) *domEnv {
+	t.Helper()
 	var e *domEnv
 	e = newDomEnv(t, cliOld, func(o *upgrade.Options) {
 		o.Timeout = 300 * time.Millisecond
 		o.Health = func(context.Context) *status.Report {
-			if !e.r.helmUpgraded {
+			if !e.r.helmUpgraded || (healthyAfterRollback && e.r.helmRolledBack) {
 				return &status.Report{APIHealthy: true, Services: []status.Service{{Name: "s", Desired: 1, Ready: 1}}}
 			}
 			return &status.Report{Services: []status.Service{{Name: "s", Desired: 1, Ready: 0}}}
 		}
 	})
-	code := e.upgrade()
-	if code != ExitRolledBack && code != ExitBroken {
-		t.Fatalf("exit %d (atteso rollback o broken)\nout: %s\nerr: %s", code, e.out, e.errb)
+	e.r.failRollback = failRollback
+	f, err := os.OpenFile(e.cfg, os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		t.Fatal(err)
 	}
+	if _, err := f.WriteString("apps_domain: apps.old.lan\n"); err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close()
+	return e
+}
+
+func assertDominioNonApplicato(t *testing.T, e *domEnv) {
+	t.Helper()
 	if len(e.r.tlsRuns) != 0 {
 		t.Errorf("gitstack-tls non doveva essere chiamato: %v", e.r.tlsRuns)
 	}
-	if c := e.config(t); c.AppsDomain != "" {
-		t.Errorf("apps_domain impostato a metà: %q", c.AppsDomain)
+	if c := e.config(t); c.AppsDomain != "apps.old.lan" {
+		t.Errorf("apps_domain precedente non conservato: %q", c.AppsDomain)
 	}
-	if s := e.errb.String(); !strings.Contains(s, "NON è stato applicato") || !strings.Contains(s, "gitstack config set apps-domain apps.example.lan") {
-		t.Errorf("l'output non dice stato e comando: %s", s)
+	s := e.errb.String()
+	for _, want := range []string{
+		"Il dominio delle app NON è stato applicato (resta \"apps.old.lan\")",
+		"gitstack upgrade --enable-apps --apps-domain apps.example.lan",
+		"gitstack config set apps-domain apps.example.lan",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("manca %q in: %s", want, s)
+		}
+	}
+}
+
+// GIT-559, criterio 2: rollback riuscito (la salute torna sana dopo l'helm rollback) = esattamente ExitRolledBack.
+func TestUpgradeEnableAppsDomainRolledBackNonApplicaIlDominio(t *testing.T) {
+	e := rollbackEnv(t, true, false)
+	if code := e.upgrade(); code != ExitRolledBack {
+		t.Fatalf("exit %d (atteso %d, ExitRolledBack)\nout: %s\nerr: %s", code, ExitRolledBack, e.out, e.errb)
+	}
+	if !e.r.helmRolledBack {
+		t.Error("helm rollback non eseguito")
+	}
+	assertDominioNonApplicato(t, e)
+	if s := e.errb.String(); !strings.Contains(s, "Rollback riuscito") {
+		t.Errorf("l'output non dice che è RolledBack: %s", s)
+	}
+}
+
+// GIT-559, criterio 2: rollback fallito (helm rollback in errore) = esattamente ExitBroken.
+func TestUpgradeEnableAppsDomainBrokenNonApplicaIlDominio(t *testing.T) {
+	e := rollbackEnv(t, false, true)
+	if code := e.upgrade(); code != ExitBroken {
+		t.Fatalf("exit %d (atteso %d, ExitBroken)\nout: %s\nerr: %s", code, ExitBroken, e.out, e.errb)
+	}
+	assertDominioNonApplicato(t, e)
+	if s := e.errb.String(); !strings.Contains(s, "rollback NON riuscito") || !strings.Contains(s, "helm rollback gitstack") {
+		t.Errorf("l'output non dice che è Broken e come recuperare: %s", s)
+	}
+}
+
+// GIT-559, criterio 2: la salute non torna sana neanche dopo il rollback = Broken (nessun helm rollback in errore).
+func TestUpgradeEnableAppsDomainSaluteNonTornaNonApplicaIlDominio(t *testing.T) {
+	e := rollbackEnv(t, false, false)
+	if code := e.upgrade(); code != ExitBroken {
+		t.Fatalf("exit %d (atteso %d, ExitBroken)\nout: %s\nerr: %s", code, ExitBroken, e.out, e.errb)
+	}
+	assertDominioNonApplicato(t, e)
+	if s := e.errb.String(); !strings.Contains(s, "rollback NON riuscito") {
+		t.Errorf("l'output non dice che è Broken: %s", s)
 	}
 }
 
