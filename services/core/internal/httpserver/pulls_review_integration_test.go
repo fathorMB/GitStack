@@ -278,7 +278,7 @@ func TestReview_PR5_CommentiSulleRigheEConversazioni(t *testing.T) {
 			t.Fatalf("conversazioni = %d", len(ths))
 		}
 		first := ths[0]
-		if first.Path != "a.txt" || first.Line != 2 || first.Side != openapi.New || first.Resolved || first.Outdated || first.StartLine != nil {
+		if first.Path != "a.txt" || first.Line != 2 || first.Side != openapi.DiffSideNew || first.Resolved || first.Outdated || first.StartLine != nil {
 			t.Fatalf("conversazione = %+v", first)
 		}
 		// il blocco suggestion arriva com'è: la UI lo mostra come diff, senza «Applica»
@@ -289,7 +289,7 @@ func TestReview_PR5_CommentiSulleRigheEConversazioni(t *testing.T) {
 		if ths[1].StartLine == nil || *ths[1].StartLine != 1 || ths[1].Line != 4 {
 			t.Fatalf("gruppo di righe = %+v", ths[1])
 		}
-		if ths[2].Side != openapi.Old || ths[2].Line != 3 {
+		if ths[2].Side != openapi.DiffSideOld || ths[2].Line != 3 {
 			t.Fatalf("lato vecchio = %+v", ths[2])
 		}
 		_, x := e.decision(n)

@@ -750,18 +750,252 @@ func (e CommitStatusState) Valid() bool {
 	}
 }
 
+// Defines values for DatabaseBackupKind.
+const (
+	OnDemand  DatabaseBackupKind = "on_demand"
+	Scheduled DatabaseBackupKind = "scheduled"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseBackupKind enum.
+func (e DatabaseBackupKind) Valid() bool {
+	switch e {
+	case OnDemand:
+		return true
+	case Scheduled:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseBackupStatus.
+const (
+	DatabaseBackupStatusCompleted  DatabaseBackupStatus = "completed"
+	DatabaseBackupStatusFailed     DatabaseBackupStatus = "failed"
+	DatabaseBackupStatusInProgress DatabaseBackupStatus = "in_progress"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseBackupStatus enum.
+func (e DatabaseBackupStatus) Valid() bool {
+	switch e {
+	case DatabaseBackupStatusCompleted:
+		return true
+	case DatabaseBackupStatusFailed:
+		return true
+	case DatabaseBackupStatusInProgress:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseCredentialsSslMode.
+const (
+	DatabaseCredentialsSslModeVerifyFull DatabaseCredentialsSslMode = "verify-full"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseCredentialsSslMode enum.
+func (e DatabaseCredentialsSslMode) Valid() bool {
+	switch e {
+	case DatabaseCredentialsSslModeVerifyFull:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseLinkCredentialsPort.
+const (
+	N5432 DatabaseLinkCredentialsPort = 5432
+)
+
+// Valid indicates whether the value is a known member of the DatabaseLinkCredentialsPort enum.
+func (e DatabaseLinkCredentialsPort) Valid() bool {
+	switch e {
+	case N5432:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseLinkCredentialsSslMode.
+const (
+	DatabaseLinkCredentialsSslModeVerifyFull DatabaseLinkCredentialsSslMode = "verify-full"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseLinkCredentialsSslMode enum.
+func (e DatabaseLinkCredentialsSslMode) Valid() bool {
+	switch e {
+	case DatabaseLinkCredentialsSslModeVerifyFull:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseLinkMode.
+const (
+	Ro DatabaseLinkMode = "ro"
+	Rw DatabaseLinkMode = "rw"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseLinkMode enum.
+func (e DatabaseLinkMode) Valid() bool {
+	switch e {
+	case Ro:
+		return true
+	case Rw:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseLinkState.
+const (
+	DatabaseLinkStateActive    DatabaseLinkState = "active"
+	DatabaseLinkStateUnlinking DatabaseLinkState = "unlinking"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseLinkState enum.
+func (e DatabaseLinkState) Valid() bool {
+	switch e {
+	case DatabaseLinkStateActive:
+		return true
+	case DatabaseLinkStateUnlinking:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseMetricsRange.
+const (
+	DatabaseMetricsRangeN1h  DatabaseMetricsRange = "1h"
+	DatabaseMetricsRangeN24h DatabaseMetricsRange = "24h"
+	DatabaseMetricsRangeN6h  DatabaseMetricsRange = "6h"
+	DatabaseMetricsRangeN7d  DatabaseMetricsRange = "7d"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseMetricsRange enum.
+func (e DatabaseMetricsRange) Valid() bool {
+	switch e {
+	case DatabaseMetricsRangeN1h:
+		return true
+	case DatabaseMetricsRangeN24h:
+		return true
+	case DatabaseMetricsRangeN6h:
+		return true
+	case DatabaseMetricsRangeN7d:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabasePgMajor.
+const (
+	N16 DatabasePgMajor = 16
+	N17 DatabasePgMajor = 17
+)
+
+// Valid indicates whether the value is a known member of the DatabasePgMajor enum.
+func (e DatabasePgMajor) Valid() bool {
+	switch e {
+	case N16:
+		return true
+	case N17:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseRestoreTarget.
+const (
+	DatabaseRestoreTargetNew  DatabaseRestoreTarget = "new"
+	DatabaseRestoreTargetSame DatabaseRestoreTarget = "same"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseRestoreTarget enum.
+func (e DatabaseRestoreTarget) Valid() bool {
+	switch e {
+	case DatabaseRestoreTargetNew:
+		return true
+	case DatabaseRestoreTargetSame:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseStatus.
+const (
+	DatabaseStatusCreating   DatabaseStatus = "creating"
+	DatabaseStatusDeleting   DatabaseStatus = "deleting"
+	DatabaseStatusFailed     DatabaseStatus = "failed"
+	DatabaseStatusRestarting DatabaseStatus = "restarting"
+	DatabaseStatusRestoring  DatabaseStatus = "restoring"
+	DatabaseStatusRunning    DatabaseStatus = "running"
+	DatabaseStatusUpdating   DatabaseStatus = "updating"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseStatus enum.
+func (e DatabaseStatus) Valid() bool {
+	switch e {
+	case DatabaseStatusCreating:
+		return true
+	case DatabaseStatusDeleting:
+		return true
+	case DatabaseStatusFailed:
+		return true
+	case DatabaseStatusRestarting:
+		return true
+	case DatabaseStatusRestoring:
+		return true
+	case DatabaseStatusRunning:
+		return true
+	case DatabaseStatusUpdating:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseUsageDiskState.
+const (
+	DatabaseUsageDiskStateFull    DatabaseUsageDiskState = "full"
+	DatabaseUsageDiskStateNone    DatabaseUsageDiskState = "none"
+	DatabaseUsageDiskStateWarning DatabaseUsageDiskState = "warning"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseUsageDiskState enum.
+func (e DatabaseUsageDiskState) Valid() bool {
+	switch e {
+	case DatabaseUsageDiskStateFull:
+		return true
+	case DatabaseUsageDiskStateNone:
+		return true
+	case DatabaseUsageDiskStateWarning:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DiffSide.
 const (
-	New DiffSide = "new"
-	Old DiffSide = "old"
+	DiffSideNew DiffSide = "new"
+	DiffSideOld DiffSide = "old"
 )
 
 // Valid indicates whether the value is a known member of the DiffSide enum.
 func (e DiffSide) Valid() bool {
 	switch e {
-	case New:
+	case DiffSideNew:
 		return true
-	case Old:
+	case DiffSideOld:
 		return true
 	default:
 		return false
@@ -2513,16 +2747,16 @@ func (e WebhookWorkflowRunPayloadVersion) Valid() bool {
 
 // Defines values for WorkflowState.
 const (
-	Active   WorkflowState = "active"
-	Disabled WorkflowState = "disabled"
+	WorkflowStateActive   WorkflowState = "active"
+	WorkflowStateDisabled WorkflowState = "disabled"
 )
 
 // Valid indicates whether the value is a known member of the WorkflowState enum.
 func (e WorkflowState) Valid() bool {
 	switch e {
-	case Active:
+	case WorkflowStateActive:
 		return true
-	case Disabled:
+	case WorkflowStateDisabled:
 		return true
 	default:
 		return false
@@ -2736,6 +2970,48 @@ func (e PullStateFilter) Valid() bool {
 	case PullStateFilterMerged:
 		return true
 	case PullStateFilterOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetDatabaseLogsParamsFormat.
+const (
+	GetDatabaseLogsParamsFormatNdjson GetDatabaseLogsParamsFormat = "ndjson"
+	GetDatabaseLogsParamsFormatText   GetDatabaseLogsParamsFormat = "text"
+)
+
+// Valid indicates whether the value is a known member of the GetDatabaseLogsParamsFormat enum.
+func (e GetDatabaseLogsParamsFormat) Valid() bool {
+	switch e {
+	case GetDatabaseLogsParamsFormatNdjson:
+		return true
+	case GetDatabaseLogsParamsFormatText:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetDatabaseMetricsParamsRange.
+const (
+	GetDatabaseMetricsParamsRangeN1h  GetDatabaseMetricsParamsRange = "1h"
+	GetDatabaseMetricsParamsRangeN24h GetDatabaseMetricsParamsRange = "24h"
+	GetDatabaseMetricsParamsRangeN6h  GetDatabaseMetricsParamsRange = "6h"
+	GetDatabaseMetricsParamsRangeN7d  GetDatabaseMetricsParamsRange = "7d"
+)
+
+// Valid indicates whether the value is a known member of the GetDatabaseMetricsParamsRange enum.
+func (e GetDatabaseMetricsParamsRange) Valid() bool {
+	switch e {
+	case GetDatabaseMetricsParamsRangeN1h:
+		return true
+	case GetDatabaseMetricsParamsRangeN24h:
+		return true
+	case GetDatabaseMetricsParamsRangeN6h:
+		return true
+	case GetDatabaseMetricsParamsRangeN7d:
 		return true
 	default:
 		return false
@@ -4808,6 +5084,362 @@ type CreateWebhookInput struct {
 	// Secret Segreto per l'HMAC-SHA256 di `X-GitStack-Signature`. Facoltativo; scritto una volta, mai restituito.
 	Secret *string `json:"secret,omitempty"`
 	Url    string  `json:"url"`
+}
+
+// Database Database gestito PostgreSQL di un owner (ADR 0003, decisione 3). Namespace `gitstack-db-<id>`, immagine `postgres:<major>-alpine` per digest, non root. I segreti (password) non compaiono mai qui (DB22).
+type Database struct {
+	// CpuMillis Richiesta CPU in millesimi di vCPU.
+	CpuMillis int                `json:"cpuMillis"`
+	CreatedAt time.Time          `json:"createdAt"`
+	CreatedBy *AppActor          `json:"createdBy,omitempty"`
+	Id        openapi_types.UUID `json:"id"`
+
+	// LanEnabled Accesso dalla LAN acceso (DB16); spento di default.
+	LanEnabled bool `json:"lanEnabled"`
+
+	// LanPort Porta TCP assegnata; null con la LAN spenta.
+	LanPort *int `json:"lanPort,omitempty"`
+
+	// LinkCount Numero di collegamenti attivi o in scollegamento (DB9).
+	LinkCount   int   `json:"linkCount"`
+	MemoryBytes int64 `json:"memoryBytes"`
+
+	// Name Nome del database (DB1): label DNS normalizzata da `pkg/names`, unica per owner (`name_conflict`). Non si cambia dopo la creazione.
+	//
+	//
+	// Example: shop
+	Name DatabaseName `json:"name"`
+
+	// Owner Owner (utente o organizzazione): su di lui contano le quote, insieme ad app e volumi (DB3).
+	Owner string `json:"owner"`
+
+	// PgMajor Major di PostgreSQL (DB1, DB2 dell'ADR 0003): solo quelle ammesse dall'amministratore (16/17).
+	PgMajor DatabasePgMajor `json:"pgMajor"`
+
+	// SizeBytes Dimensione dichiarata (limite morbido, DB3).
+	SizeBytes int64 `json:"sizeBytes"`
+
+	// Status Stato osservato del database: `creating` (il controller sta creando namespace, StatefulSet e ruoli), `running`, `restarting`, `updating` (ridimensionamento o cambio immagine richiesto), `restoring`, `deleting`, `failed` (nessuna copia sana).
+	Status    DatabaseStatus `json:"status"`
+	UpdatedAt time.Time      `json:"updatedAt"`
+
+	// Usage Uso corrente; null vuol dire metriche non disponibili (DB21).
+	Usage *DatabaseUsage `json:"usage,omitempty"`
+}
+
+// DatabaseBackup Dump `pg_dump -Fc` cifrato AES-256-GCM con la chiave di dump dell'istanza (DB13). I contenuti non si scaricano: i dump servono al ripristino e all'archivio di `gitstack backup`.
+type DatabaseBackup struct {
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	CreatedBy   *AppActor  `json:"createdBy,omitempty"`
+
+	// Error Per `failed`; mai contenuti del dump.
+	Error *string            `json:"error,omitempty"`
+	Id    openapi_types.UUID `json:"id"`
+
+	// Kind `scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13).
+	Kind DatabaseBackupKind `json:"kind"`
+
+	// SizeBytes Dimensione del dump cifrato; null finche' non finisce.
+	SizeBytes *int64               `json:"sizeBytes,omitempty"`
+	Status    DatabaseBackupStatus `json:"status"`
+}
+
+// DatabaseBackupKind `scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13).
+type DatabaseBackupKind string
+
+// DatabaseBackupList defines model for DatabaseBackupList.
+type DatabaseBackupList struct {
+	Items []DatabaseBackup `json:"items"`
+}
+
+// DatabaseBackupStatus defines model for DatabaseBackupStatus.
+type DatabaseBackupStatus string
+
+// DatabaseCreateInput defines model for DatabaseCreateInput.
+type DatabaseCreateInput struct {
+	CpuMillis *int `json:"cpuMillis,omitempty"`
+
+	// MemoryBytes Default 256 MiB.
+	MemoryBytes *int64 `json:"memoryBytes,omitempty"`
+
+	// Name Nome del database (DB1): label DNS normalizzata da `pkg/names`, unica per owner (`name_conflict`). Non si cambia dopo la creazione.
+	//
+	//
+	// Example: shop
+	Name DatabaseName `json:"name"`
+
+	// PgMajor Major di PostgreSQL (DB1, DB2 dell'ADR 0003): solo quelle ammesse dall'amministratore (16/17).
+	PgMajor DatabasePgMajor `json:"pgMajor"`
+
+	// SizeBytes Default 1 GiB (valore proposto dall'ADR 0003, modificabile in GIT-557).
+	SizeBytes *int64 `json:"sizeBytes,omitempty"`
+}
+
+// DatabaseCreated defines model for DatabaseCreated.
+type DatabaseCreated struct {
+	// Credentials Credenziali mostrate una sola volta: alla creazione del database o alla rotazione (DB22). Non esiste alcuna operazione che le rilegga.
+	Credentials DatabaseCredentials `json:"credentials"`
+
+	// Database Database gestito PostgreSQL di un owner (ADR 0003, decisione 3). Namespace `gitstack-db-<id>`, immagine `postgres:<major>-alpine` per digest, non root. I segreti (password) non compaiono mai qui (DB22).
+	Database Database `json:"database"`
+}
+
+// DatabaseCredentials Credenziali mostrate una sola volta: alla creazione del database o alla rotazione (DB22). Non esiste alcuna operazione che le rilegga.
+type DatabaseCredentials struct {
+	// Database Nome del database PostgreSQL dentro l'istanza.
+	Database string `json:"database"`
+
+	// Password Password generata; si vede solo in questa risposta (DB22).
+	Password string `json:"password"`
+
+	// SslMode Solo TLS, dalla CA interna (DB8, DB17).
+	SslMode DatabaseCredentialsSslMode `json:"sslMode"`
+
+	// Username Utente proprietario `<name>_owner` (non superuser, DB7).
+	Username string `json:"username"`
+}
+
+// DatabaseCredentialsSslMode Solo TLS, dalla CA interna (DB8, DB17).
+type DatabaseCredentialsSslMode string
+
+// DatabaseLan Accesso dalla LAN (DB16, DB17). Spento di default; acceso il database ascolta su una porta TCP dell'intervallo configurato, solo TLS (`hostssl`, `scram-sha-256`) con certificato firmato dall'intermedia dei database; `hostnossl` e' rifiutato. Nessuna allow-list per IP sorgente e nessuna modifica di ufw da parte di GitStack: `ufwCommand` e' il comando che l'amministratore dell'host decide di eseguire (DB18).
+type DatabaseLan struct {
+	// CaCertificate Catena pubblica del server (foglia + intermedia) in PEM; i client verificano con la radice. Null con la LAN spenta.
+	CaCertificate *string `json:"caCertificate"`
+
+	// Connections Sessioni attive dalla LAN.
+	Connections *int `json:"connections,omitempty"`
+	Enabled     bool `json:"enabled"`
+
+	// Host Indirizzo con cui la LAN raggiunge l'istanza; null con la LAN spenta.
+	Host *string `json:"host"`
+
+	// Port Porta TCP assegnata; null con la LAN spenta.
+	Port *int `json:"port"`
+
+	// UfwCommand Comando suggerito (`ufw allow from <rete> to any port <porta> proto tcp`); GitStack non tocca ufw (DB18).
+	UfwCommand *string `json:"ufwCommand"`
+}
+
+// DatabaseLanInput defines model for DatabaseLanInput.
+type DatabaseLanInput struct {
+	Enabled bool `json:"enabled"`
+}
+
+// DatabaseLink Collegamento app-database (DB9): ruolo di login proprio, senza CREATEROLE/CREATEDB. Le variabili iniettate nell'app e la password non compaiono mai qui (DB10, DB22).
+type DatabaseLink struct {
+	App struct {
+		Name  string `json:"name"`
+		Owner string `json:"owner"`
+		Repo  string `json:"repo"`
+	} `json:"app"`
+	CreatedAt time.Time          `json:"createdAt"`
+	CreatedBy *AppActor          `json:"createdBy,omitempty"`
+	Id        openapi_types.UUID `json:"id"`
+
+	// Mode Modalita' del collegamento (DB9): `rw` legge e scrive (membro di `<name>_owner`, gli oggetti creati restano del proprietario), `ro` legge (`<name>_ro`).
+	Mode DatabaseLinkMode `json:"mode"`
+
+	// State `active` il collegamento serve l'app; `unlinking` lo scollegamento e' in corso (ruolo ancora presente, DB12) e l'app sta perdendo le variabili.
+	State DatabaseLinkState `json:"state"`
+}
+
+// DatabaseLinkCreateInput defines model for DatabaseLinkCreateInput.
+type DatabaseLinkCreateInput struct {
+	App struct {
+		Name string `json:"name"`
+
+		// Owner Deve coincidere con l'owner del database (DB9).
+		Owner string `json:"owner"`
+		Repo  string `json:"repo"`
+	} `json:"app"`
+
+	// Mode Modalita' del collegamento (DB9): `rw` legge e scrive (membro di `<name>_owner`, gli oggetti creati restano del proprietario), `ro` legge (`<name>_ro`).
+	Mode DatabaseLinkMode `json:"mode"`
+}
+
+// DatabaseLinkCreated defines model for DatabaseLinkCreated.
+type DatabaseLinkCreated struct {
+	// Credentials Credenziali del collegamento, mostrate solo alla creazione o alla rotazione del link (DB22). `sslRootcert` e' il percorso del file montato nell'app dalla CA pubblica (DB10, DB17).
+	Credentials DatabaseLinkCredentials `json:"credentials"`
+
+	// Link Collegamento app-database (DB9): ruolo di login proprio, senza CREATEROLE/CREATEDB. Le variabili iniettate nell'app e la password non compaiono mai qui (DB10, DB22).
+	Link DatabaseLink `json:"link"`
+}
+
+// DatabaseLinkCredentials Credenziali del collegamento, mostrate solo alla creazione o alla rotazione del link (DB22). `sslRootcert` e' il percorso del file montato nell'app dalla CA pubblica (DB10, DB17).
+type DatabaseLinkCredentials struct {
+	Database string `json:"database"`
+
+	// Host Nome interno `pg.gitstack-db-<id>.svc.cluster.local` (nei SAN del certificato, DB9).
+	Host string `json:"host"`
+
+	// Password Password generata; si vede solo in questa risposta (DB22).
+	Password string                         `json:"password"`
+	Port     DatabaseLinkCredentialsPort    `json:"port"`
+	SslMode  DatabaseLinkCredentialsSslMode `json:"sslMode"`
+
+	// SslRootcert Percorso della CA pubblica montata nell'app (DB10).
+	SslRootcert string `json:"sslRootcert"`
+
+	// Username Ruolo di login del collegamento (`l_<id>`).
+	Username string `json:"username"`
+}
+
+// DatabaseLinkCredentialsPort defines model for DatabaseLinkCredentials.Port.
+type DatabaseLinkCredentialsPort int
+
+// DatabaseLinkCredentialsSslMode defines model for DatabaseLinkCredentials.SslMode.
+type DatabaseLinkCredentialsSslMode string
+
+// DatabaseLinkList defines model for DatabaseLinkList.
+type DatabaseLinkList struct {
+	Items []DatabaseLink `json:"items"`
+}
+
+// DatabaseLinkMode Modalita' del collegamento (DB9): `rw` legge e scrive (membro di `<name>_owner`, gli oggetti creati restano del proprietario), `ro` legge (`<name>_ro`).
+type DatabaseLinkMode string
+
+// DatabaseLinkRotated defines model for DatabaseLinkRotated.
+type DatabaseLinkRotated struct {
+	// Credentials Credenziali del collegamento, mostrate solo alla creazione o alla rotazione del link (DB22). `sslRootcert` e' il percorso del file montato nell'app dalla CA pubblica (DB10, DB17).
+	Credentials DatabaseLinkCredentials `json:"credentials"`
+
+	// Link Collegamento app-database (DB9): ruolo di login proprio, senza CREATEROLE/CREATEDB. Le variabili iniettate nell'app e la password non compaiono mai qui (DB10, DB22).
+	Link DatabaseLink `json:"link"`
+}
+
+// DatabaseLinkState `active` il collegamento serve l'app; `unlinking` lo scollegamento e' in corso (ruolo ancora presente, DB12) e l'app sta perdendo le variabili.
+type DatabaseLinkState string
+
+// DatabaseList defines model for DatabaseList.
+type DatabaseList struct {
+	Items []Database `json:"items"`
+}
+
+// DatabaseLogLine defines model for DatabaseLogLine.
+type DatabaseLogLine struct {
+	Message string    `json:"message"`
+	Time    time.Time `json:"time"`
+}
+
+// DatabaseMetrics Metriche minime del database (DB21): CPU, memoria, dimensione logica e riavvii.
+type DatabaseMetrics struct {
+	// Available Falso se la sorgente (metrics-server, `pg_database_size`) non risponde: le serie sono vuote, non zero.
+	Available     bool                 `json:"available"`
+	Cpu           AppMetricSeries      `json:"cpu"`
+	DatabaseBytes AppMetricSeries      `json:"databaseBytes"`
+	Memory        AppMetricSeries      `json:"memory"`
+	Range         DatabaseMetricsRange `json:"range"`
+	Restarts24h   int                  `json:"restarts24h"`
+	StepSeconds   int                  `json:"stepSeconds"`
+
+	// Usage Uso corrente; null vuol dire dimensione non letta.
+	Usage *DatabaseUsage `json:"usage,omitempty"`
+}
+
+// DatabaseMetricsRange defines model for DatabaseMetrics.Range.
+type DatabaseMetricsRange string
+
+// DatabaseName Nome del database (DB1): label DNS normalizzata da `pkg/names`, unica per owner (`name_conflict`). Non si cambia dopo la creazione.
+//
+// Example: shop
+type DatabaseName = string
+
+// DatabasePgMajor Major di PostgreSQL (DB1, DB2 dell'ADR 0003): solo quelle ammesse dall'amministratore (16/17).
+type DatabasePgMajor int
+
+// DatabaseRestoreInput defines model for DatabaseRestoreInput.
+type DatabaseRestoreInput struct {
+	// Confirm Solo per `target: same`: `owner/nome` riscritto; obbligatorio (DB19, G8).
+	Confirm *string `json:"confirm,omitempty"`
+
+	// Name Solo per `target: new`: nome del database di destinazione; assente = stesso nome del backup.
+	Name *string `json:"name,omitempty"`
+
+	// Target `same`: il backup sostituisce questo database (conferma `owner/nome` e dump di sicurezza automatico). `new`: nasce un database nuovo, anche con nome diverso (DB15).
+	Target DatabaseRestoreTarget `json:"target"`
+}
+
+// DatabaseRestoreTarget `same`: il backup sostituisce questo database (conferma `owner/nome` e dump di sicurezza automatico). `new`: nasce un database nuovo, anche con nome diverso (DB15).
+type DatabaseRestoreTarget string
+
+// DatabaseRotated defines model for DatabaseRotated.
+type DatabaseRotated struct {
+	// Credentials Credenziali mostrate una sola volta: alla creazione del database o alla rotazione (DB22). Non esiste alcuna operazione che le rilegga.
+	Credentials DatabaseCredentials `json:"credentials"`
+
+	// Database Database gestito PostgreSQL di un owner (ADR 0003, decisione 3). Namespace `gitstack-db-<id>`, immagine `postgres:<major>-alpine` per digest, non root. I segreti (password) non compaiono mai qui (DB22).
+	Database Database `json:"database"`
+}
+
+// DatabaseStatus Stato osservato del database: `creating` (il controller sta creando namespace, StatefulSet e ruoli), `running`, `restarting`, `updating` (ridimensionamento o cambio immagine richiesto), `restoring`, `deleting`, `failed` (nessuna copia sana).
+type DatabaseStatus string
+
+// DatabaseUpdateInput Ridimensionamento dichiarato (DB3): dimensione, CPU e RAM.
+type DatabaseUpdateInput struct {
+	CpuMillis   *int   `json:"cpuMillis,omitempty"`
+	MemoryBytes *int64 `json:"memoryBytes,omitempty"`
+	SizeBytes   *int64 `json:"sizeBytes,omitempty"`
+}
+
+// DatabaseUsage Uso corrente e avvisi del limite morbido di disco (DB3): `local-path` non applica la dimensione come limite fisico, il controller misura `pg_database_size` e avvisa all'80% (`warning`) e al 100% (`full`), senza bloccare le scritture.
+type DatabaseUsage struct {
+	DatabaseBytes int64                  `json:"databaseBytes"`
+	DiskState     DatabaseUsageDiskState `json:"diskState"`
+}
+
+// DatabaseUsageDiskState defines model for DatabaseUsage.DiskState.
+type DatabaseUsageDiskState string
+
+// DatabasesBackupRetention Quanti dump conserva il controller (DB13).
+type DatabasesBackupRetention struct {
+	OnDemand  int `json:"onDemand"`
+	Scheduled int `json:"scheduled"`
+}
+
+// DatabasesInstanceSettings Impostazioni d'istanza dei database gestiti (solo amministratore, DB23).
+type DatabasesInstanceSettings struct {
+	// AllowedMajors Major di PostgreSQL ammesse (DB1).
+	AllowedMajors []DatabasePgMajor `json:"allowedMajors"`
+
+	// BackupRetention Quanti dump conserva il controller (DB13).
+	BackupRetention DatabasesBackupRetention `json:"backupRetention"`
+
+	// Enabled Interruttore della funzione (DB23): spento di default; le API rispondono 422 `databases_disabled` finche' e' spento.
+	Enabled bool `json:"enabled"`
+
+	// LanPortRange Intervallo di porte TCP assegnate ai database con la LAN accesa (DB16); proposta dell'ADR 0003: 15432-15531.
+	LanPortRange   DatabasesPortRange `json:"lanPortRange"`
+	MaxPerDatabase struct {
+		CpuMillis   int   `json:"cpuMillis"`
+		MemoryBytes int64 `json:"memoryBytes"`
+		SizeBytes   int64 `json:"sizeBytes"`
+	} `json:"maxPerDatabase"`
+}
+
+// DatabasesInstanceSettingsInput defines model for DatabasesInstanceSettingsInput.
+type DatabasesInstanceSettingsInput struct {
+	AllowedMajors []DatabasePgMajor `json:"allowedMajors"`
+
+	// BackupRetention Quanti dump conserva il controller (DB13).
+	BackupRetention DatabasesBackupRetention `json:"backupRetention"`
+	Enabled         bool                     `json:"enabled"`
+
+	// LanPortRange Intervallo di porte TCP assegnate ai database con la LAN accesa (DB16); proposta dell'ADR 0003: 15432-15531.
+	LanPortRange   DatabasesPortRange `json:"lanPortRange"`
+	MaxPerDatabase struct {
+		CpuMillis   int   `json:"cpuMillis"`
+		MemoryBytes int64 `json:"memoryBytes"`
+		SizeBytes   int64 `json:"sizeBytes"`
+	} `json:"maxPerDatabase"`
+}
+
+// DatabasesPortRange Intervallo di porte TCP assegnate ai database con la LAN accesa (DB16); proposta dell'ADR 0003: 15432-15531.
+type DatabasesPortRange struct {
+	From int `json:"from"`
+	To   int `json:"to"`
 }
 
 // DeletedNotifications defines model for DeletedNotifications.
@@ -7067,6 +7699,17 @@ type CommitPerPageParam = int
 // CommitShaParam defines model for CommitShaParam.
 type CommitShaParam = string
 
+// DatabaseBackupIdParam defines model for DatabaseBackupIdParam.
+type DatabaseBackupIdParam = openapi_types.UUID
+
+// DatabaseLinkIdParam defines model for DatabaseLinkIdParam.
+type DatabaseLinkIdParam = openapi_types.UUID
+
+// DatabaseNameParam Nome del database (DB1): label DNS normalizzata da `pkg/names`, unica per owner (`name_conflict`). Non si cambia dopo la creazione.
+//
+// Example: shop
+type DatabaseNameParam = DatabaseName
+
 // DiffFilePathParam defines model for DiffFilePathParam.
 type DiffFilePathParam = string
 
@@ -7284,6 +7927,39 @@ type ListAdminAppsParams struct {
 	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
+
+// DeleteDatabaseParams defines parameters for DeleteDatabase.
+type DeleteDatabaseParams struct {
+	// Confirm Conferma obbligatoria: `owner/nome` del database riscritto.
+	Confirm *string `form:"confirm,omitempty" json:"confirm,omitempty"`
+}
+
+// GetDatabaseLogsParams defines parameters for GetDatabaseLogs.
+type GetDatabaseLogsParams struct {
+	Follow *bool `form:"follow,omitempty" json:"follow,omitempty"`
+
+	// Since Durata (`5m`, `1h`, `7d`) o istante RFC 3339. Assente: dall'inizio della cronologia, o dall'ultima ora con `follow`.
+	Since *string    `form:"since,omitempty" json:"since,omitempty"`
+	Until *time.Time `form:"until,omitempty" json:"until,omitempty"`
+
+	// Grep Testo da cercare nelle righe (sottostringa).
+	Grep *string `form:"grep,omitempty" json:"grep,omitempty"`
+
+	// Limit Al massimo N righe, le piu' recenti.
+	Limit  *int                         `form:"limit,omitempty" json:"limit,omitempty"`
+	Format *GetDatabaseLogsParamsFormat `form:"format,omitempty" json:"format,omitempty"`
+}
+
+// GetDatabaseLogsParamsFormat defines parameters for GetDatabaseLogs.
+type GetDatabaseLogsParamsFormat string
+
+// GetDatabaseMetricsParams defines parameters for GetDatabaseMetrics.
+type GetDatabaseMetricsParams struct {
+	Range *GetDatabaseMetricsParamsRange `form:"range,omitempty" json:"range,omitempty"`
+}
+
+// GetDatabaseMetricsParamsRange defines parameters for GetDatabaseMetrics.
+type GetDatabaseMetricsParamsRange string
 
 // DeleteNotificationsParams defines parameters for DeleteNotifications.
 type DeleteNotificationsParams struct {
@@ -7780,6 +8456,24 @@ type AddAdminAppTrustedKeyJSONRequestBody = AppTrustedKeyInput
 // UpdateCiStorageSettingsJSONRequestBody defines body for UpdateCiStorageSettings for application/json ContentType.
 type UpdateCiStorageSettingsJSONRequestBody = CiStorageSettings
 
+// UpdateAdminDatabasesSettingsJSONRequestBody defines body for UpdateAdminDatabasesSettings for application/json ContentType.
+type UpdateAdminDatabasesSettingsJSONRequestBody = DatabasesInstanceSettingsInput
+
+// CreateDatabaseJSONRequestBody defines body for CreateDatabase for application/json ContentType.
+type CreateDatabaseJSONRequestBody = DatabaseCreateInput
+
+// UpdateDatabaseJSONRequestBody defines body for UpdateDatabase for application/json ContentType.
+type UpdateDatabaseJSONRequestBody = DatabaseUpdateInput
+
+// RestoreDatabaseBackupJSONRequestBody defines body for RestoreDatabaseBackup for application/json ContentType.
+type RestoreDatabaseBackupJSONRequestBody = DatabaseRestoreInput
+
+// SetDatabaseLanJSONRequestBody defines body for SetDatabaseLan for application/json ContentType.
+type SetDatabaseLanJSONRequestBody = DatabaseLanInput
+
+// CreateDatabaseLinkJSONRequestBody defines body for CreateDatabaseLink for application/json ContentType.
+type CreateDatabaseLinkJSONRequestBody = DatabaseLinkCreateInput
+
 // UpdateNotificationJSONRequestBody defines body for UpdateNotification for application/json ContentType.
 type UpdateNotificationJSONRequestBody = UpdateNotificationInput
 
@@ -8067,12 +8761,69 @@ type ServerInterface interface {
 	// UpdateCiStorageSettings Modifica conservazione e limiti di log, artefatti e cache CI (solo amministratore)
 	// (PUT /admin/ci/storage)
 	UpdateCiStorageSettings(w http.ResponseWriter, r *http.Request)
+	// GetAdminDatabasesSettings Legge le impostazioni d'istanza dei database (solo amministratore)
+	// (GET /admin/databases/settings)
+	GetAdminDatabasesSettings(w http.ResponseWriter, r *http.Request)
+	// UpdateAdminDatabasesSettings Aggiorna le impostazioni d'istanza dei database (solo amministratore)
+	// (PATCH /admin/databases/settings)
+	UpdateAdminDatabasesSettings(w http.ResponseWriter, r *http.Request)
 	// GetAdminSystem Stato dell'installazione (Admin · System)
 	// (GET /admin/system)
 	GetAdminSystem(w http.ResponseWriter, r *http.Request)
 	// GetAppAccessMembership Chi chiede e' nella lista di accesso dell'app?
 	// (GET /apps/{appId}/access-membership)
 	GetAppAccessMembership(w http.ResponseWriter, r *http.Request, appId openapi_types.UUID)
+	// ListDatabases Elenca i database gestiti dell'owner
+	// (GET /databases/{owner})
+	ListDatabases(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam)
+	// CreateDatabase Crea un database PostgreSQL gestito
+	// (POST /databases/{owner})
+	CreateDatabase(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam)
+	// DeleteDatabase Elimina un database gestito (immediata, senza cestino)
+	// (DELETE /databases/{owner}/{name})
+	DeleteDatabase(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam, params DeleteDatabaseParams)
+	// GetDatabase Legge un database gestito
+	// (GET /databases/{owner}/{name})
+	GetDatabase(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam)
+	// UpdateDatabase Ridimensiona un database (dimensione, CPU/RAM)
+	// (PATCH /databases/{owner}/{name})
+	UpdateDatabase(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam)
+	// ListDatabaseBackups Elenca i backup del database (programmati e su richiesta)
+	// (GET /databases/{owner}/{name}/backups)
+	ListDatabaseBackups(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam)
+	// CreateDatabaseBackup Avvia un backup su richiesta del database
+	// (POST /databases/{owner}/{name}/backups)
+	CreateDatabaseBackup(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam)
+	// RestoreDatabaseBackup Ripristina un backup (nello stesso database o in uno nuovo)
+	// (POST /databases/{owner}/{name}/backups/{backupId}/restore)
+	RestoreDatabaseBackup(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam, backupId DatabaseBackupIdParam)
+	// RotateDatabaseCredentials Ruota la password dell'utente proprietario del database
+	// (POST /databases/{owner}/{name}/credentials/rotate)
+	RotateDatabaseCredentials(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam)
+	// GetDatabaseLan Legge lo stato dell'accesso dalla LAN
+	// (GET /databases/{owner}/{name}/lan)
+	GetDatabaseLan(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam)
+	// SetDatabaseLan Accende o spegne l'accesso dalla LAN
+	// (PUT /databases/{owner}/{name}/lan)
+	SetDatabaseLan(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam)
+	// ListDatabaseLinks Elenca i collegamenti app del database
+	// (GET /databases/{owner}/{name}/links)
+	ListDatabaseLinks(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam)
+	// CreateDatabaseLink Collega un'app al database (ruolo di login proprio)
+	// (POST /databases/{owner}/{name}/links)
+	CreateDatabaseLink(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam)
+	// DeleteDatabaseLink Scollega un'app dal database
+	// (DELETE /databases/{owner}/{name}/links/{linkId})
+	DeleteDatabaseLink(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam, linkId DatabaseLinkIdParam)
+	// RotateDatabaseLink Ruota la password di un collegamento e riavvia l'app
+	// (POST /databases/{owner}/{name}/links/{linkId}/rotate)
+	RotateDatabaseLink(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam, linkId DatabaseLinkIdParam)
+	// GetDatabaseLogs Legge i log di PostgreSQL
+	// (GET /databases/{owner}/{name}/logs)
+	GetDatabaseLogs(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam, params GetDatabaseLogsParams)
+	// GetDatabaseMetrics Legge le metriche del database
+	// (GET /databases/{owner}/{name}/metrics)
+	GetDatabaseMetrics(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam, params GetDatabaseMetricsParams)
 	// GetHealth Stato del servizio
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
@@ -9125,6 +9876,34 @@ func (siw *ServerInterfaceWrapper) UpdateCiStorageSettings(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// GetAdminDatabasesSettings operation middleware
+func (siw *ServerInterfaceWrapper) GetAdminDatabasesSettings(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAdminDatabasesSettings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateAdminDatabasesSettings operation middleware
+func (siw *ServerInterfaceWrapper) UpdateAdminDatabasesSettings(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateAdminDatabasesSettings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetAdminSystem operation middleware
 func (siw *ServerInterfaceWrapper) GetAdminSystem(w http.ResponseWriter, r *http.Request) {
 
@@ -9156,6 +9935,723 @@ func (siw *ServerInterfaceWrapper) GetAppAccessMembership(w http.ResponseWriter,
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAppAccessMembership(w, r, appId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListDatabases operation middleware
+func (siw *ServerInterfaceWrapper) ListDatabases(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListDatabases(w, r, owner)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateDatabase operation middleware
+func (siw *ServerInterfaceWrapper) CreateDatabase(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateDatabase(w, r, owner)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteDatabase operation middleware
+func (siw *ServerInterfaceWrapper) DeleteDatabase(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name DatabaseNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteDatabaseParams
+
+	// ------------- Optional query parameter "confirm" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "confirm", r.URL.Query(), &params.Confirm, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "confirm"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "confirm", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteDatabase(w, r, owner, name, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetDatabase operation middleware
+func (siw *ServerInterfaceWrapper) GetDatabase(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name DatabaseNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetDatabase(w, r, owner, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateDatabase operation middleware
+func (siw *ServerInterfaceWrapper) UpdateDatabase(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name DatabaseNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateDatabase(w, r, owner, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListDatabaseBackups operation middleware
+func (siw *ServerInterfaceWrapper) ListDatabaseBackups(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name DatabaseNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListDatabaseBackups(w, r, owner, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateDatabaseBackup operation middleware
+func (siw *ServerInterfaceWrapper) CreateDatabaseBackup(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name DatabaseNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateDatabaseBackup(w, r, owner, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RestoreDatabaseBackup operation middleware
+func (siw *ServerInterfaceWrapper) RestoreDatabaseBackup(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name DatabaseNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "backupId" -------------
+	var backupId DatabaseBackupIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "backupId", r.PathValue("backupId"), &backupId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "backupId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RestoreDatabaseBackup(w, r, owner, name, backupId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RotateDatabaseCredentials operation middleware
+func (siw *ServerInterfaceWrapper) RotateDatabaseCredentials(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name DatabaseNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RotateDatabaseCredentials(w, r, owner, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetDatabaseLan operation middleware
+func (siw *ServerInterfaceWrapper) GetDatabaseLan(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name DatabaseNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetDatabaseLan(w, r, owner, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetDatabaseLan operation middleware
+func (siw *ServerInterfaceWrapper) SetDatabaseLan(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name DatabaseNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetDatabaseLan(w, r, owner, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListDatabaseLinks operation middleware
+func (siw *ServerInterfaceWrapper) ListDatabaseLinks(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name DatabaseNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListDatabaseLinks(w, r, owner, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateDatabaseLink operation middleware
+func (siw *ServerInterfaceWrapper) CreateDatabaseLink(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name DatabaseNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateDatabaseLink(w, r, owner, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteDatabaseLink operation middleware
+func (siw *ServerInterfaceWrapper) DeleteDatabaseLink(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name DatabaseNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "linkId" -------------
+	var linkId DatabaseLinkIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "linkId", r.PathValue("linkId"), &linkId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "linkId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteDatabaseLink(w, r, owner, name, linkId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RotateDatabaseLink operation middleware
+func (siw *ServerInterfaceWrapper) RotateDatabaseLink(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name DatabaseNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "linkId" -------------
+	var linkId DatabaseLinkIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "linkId", r.PathValue("linkId"), &linkId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "linkId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RotateDatabaseLink(w, r, owner, name, linkId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetDatabaseLogs operation middleware
+func (siw *ServerInterfaceWrapper) GetDatabaseLogs(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name DatabaseNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetDatabaseLogsParams
+
+	// ------------- Optional query parameter "follow" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "follow", r.URL.Query(), &params.Follow, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "follow"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "follow", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "since" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "since", r.URL.Query(), &params.Since, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "since"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "since", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "until" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "until", r.URL.Query(), &params.Until, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "until"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "until", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "grep" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "grep", r.URL.Query(), &params.Grep, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "grep"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "grep", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "format" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "format", r.URL.Query(), &params.Format, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "format"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "format", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetDatabaseLogs(w, r, owner, name, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetDatabaseMetrics operation middleware
+func (siw *ServerInterfaceWrapper) GetDatabaseMetrics(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name DatabaseNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetDatabaseMetricsParams
+
+	// ------------- Optional query parameter "range" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "range", r.URL.Query(), &params.Range, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "range"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "range", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetDatabaseMetrics(w, r, owner, name, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -20257,6 +21753,25 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps/trusted-keys", wrapper.ListAdminAppTrustedKeys)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/admin/apps/trusted-keys", wrapper.AddAdminAppTrustedKey)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/admin/apps/trusted-keys/{keyId}", wrapper.DeleteAdminAppTrustedKey)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/databases/{owner}", wrapper.ListDatabases)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/databases/{owner}", wrapper.CreateDatabase)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/databases/{owner}/{name}", wrapper.DeleteDatabase)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/databases/{owner}/{name}", wrapper.GetDatabase)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/databases/{owner}/{name}", wrapper.UpdateDatabase)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/databases/{owner}/{name}/credentials/rotate", wrapper.RotateDatabaseCredentials)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/databases/{owner}/{name}/links", wrapper.ListDatabaseLinks)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/databases/{owner}/{name}/links", wrapper.CreateDatabaseLink)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/databases/{owner}/{name}/links/{linkId}", wrapper.DeleteDatabaseLink)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/databases/{owner}/{name}/links/{linkId}/rotate", wrapper.RotateDatabaseLink)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/databases/{owner}/{name}/backups", wrapper.ListDatabaseBackups)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/databases/{owner}/{name}/backups", wrapper.CreateDatabaseBackup)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/databases/{owner}/{name}/backups/{backupId}/restore", wrapper.RestoreDatabaseBackup)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/databases/{owner}/{name}/lan", wrapper.GetDatabaseLan)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/databases/{owner}/{name}/lan", wrapper.SetDatabaseLan)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/databases/{owner}/{name}/logs", wrapper.GetDatabaseLogs)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/databases/{owner}/{name}/metrics", wrapper.GetDatabaseMetrics)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/databases/settings", wrapper.GetAdminDatabasesSettings)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/admin/databases/settings", wrapper.UpdateAdminDatabasesSettings)
 
 	return m
 }

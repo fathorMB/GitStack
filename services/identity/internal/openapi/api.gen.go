@@ -647,6 +647,11 @@ type CurrentSession struct {
 // CurrentSessionAuthMethod Come e' stato autenticato il chiamante.
 type CurrentSessionAuthMethod string
 
+// DatabaseName Nome del database (DB1): label DNS normalizzata da `pkg/names`, unica per owner (`name_conflict`). Non si cambia dopo la creazione.
+//
+// Example: shop
+type DatabaseName = string
+
 // EffectivePermission defines model for EffectivePermission.
 type EffectivePermission struct {
 	ResourceId openapi_types.UUID `json:"resourceId"`
@@ -1321,6 +1326,17 @@ type CacheIdParam = openapi_types.UUID
 
 // CommitShaParam defines model for CommitShaParam.
 type CommitShaParam = string
+
+// DatabaseBackupIdParam defines model for DatabaseBackupIdParam.
+type DatabaseBackupIdParam = openapi_types.UUID
+
+// DatabaseLinkIdParam defines model for DatabaseLinkIdParam.
+type DatabaseLinkIdParam = openapi_types.UUID
+
+// DatabaseNameParam Nome del database (DB1): label DNS normalizzata da `pkg/names`, unica per owner (`name_conflict`). Non si cambia dopo la creazione.
+//
+// Example: shop
+type DatabaseNameParam = DatabaseName
 
 // GitRepoIdParam defines model for GitRepoIdParam.
 type GitRepoIdParam = openapi_types.UUID

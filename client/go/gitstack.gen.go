@@ -837,18 +837,252 @@ func (e CurrentSessionAuthMethod) Valid() bool {
 	}
 }
 
+// Defines values for DatabaseBackupKind.
+const (
+	OnDemand  DatabaseBackupKind = "on_demand"
+	Scheduled DatabaseBackupKind = "scheduled"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseBackupKind enum.
+func (e DatabaseBackupKind) Valid() bool {
+	switch e {
+	case OnDemand:
+		return true
+	case Scheduled:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseBackupStatus.
+const (
+	DatabaseBackupStatusCompleted  DatabaseBackupStatus = "completed"
+	DatabaseBackupStatusFailed     DatabaseBackupStatus = "failed"
+	DatabaseBackupStatusInProgress DatabaseBackupStatus = "in_progress"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseBackupStatus enum.
+func (e DatabaseBackupStatus) Valid() bool {
+	switch e {
+	case DatabaseBackupStatusCompleted:
+		return true
+	case DatabaseBackupStatusFailed:
+		return true
+	case DatabaseBackupStatusInProgress:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseCredentialsSslMode.
+const (
+	DatabaseCredentialsSslModeVerifyFull DatabaseCredentialsSslMode = "verify-full"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseCredentialsSslMode enum.
+func (e DatabaseCredentialsSslMode) Valid() bool {
+	switch e {
+	case DatabaseCredentialsSslModeVerifyFull:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseLinkCredentialsPort.
+const (
+	N5432 DatabaseLinkCredentialsPort = 5432
+)
+
+// Valid indicates whether the value is a known member of the DatabaseLinkCredentialsPort enum.
+func (e DatabaseLinkCredentialsPort) Valid() bool {
+	switch e {
+	case N5432:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseLinkCredentialsSslMode.
+const (
+	DatabaseLinkCredentialsSslModeVerifyFull DatabaseLinkCredentialsSslMode = "verify-full"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseLinkCredentialsSslMode enum.
+func (e DatabaseLinkCredentialsSslMode) Valid() bool {
+	switch e {
+	case DatabaseLinkCredentialsSslModeVerifyFull:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseLinkMode.
+const (
+	Ro DatabaseLinkMode = "ro"
+	Rw DatabaseLinkMode = "rw"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseLinkMode enum.
+func (e DatabaseLinkMode) Valid() bool {
+	switch e {
+	case Ro:
+		return true
+	case Rw:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseLinkState.
+const (
+	DatabaseLinkStateActive    DatabaseLinkState = "active"
+	DatabaseLinkStateUnlinking DatabaseLinkState = "unlinking"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseLinkState enum.
+func (e DatabaseLinkState) Valid() bool {
+	switch e {
+	case DatabaseLinkStateActive:
+		return true
+	case DatabaseLinkStateUnlinking:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseMetricsRange.
+const (
+	DatabaseMetricsRangeN1h  DatabaseMetricsRange = "1h"
+	DatabaseMetricsRangeN24h DatabaseMetricsRange = "24h"
+	DatabaseMetricsRangeN6h  DatabaseMetricsRange = "6h"
+	DatabaseMetricsRangeN7d  DatabaseMetricsRange = "7d"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseMetricsRange enum.
+func (e DatabaseMetricsRange) Valid() bool {
+	switch e {
+	case DatabaseMetricsRangeN1h:
+		return true
+	case DatabaseMetricsRangeN24h:
+		return true
+	case DatabaseMetricsRangeN6h:
+		return true
+	case DatabaseMetricsRangeN7d:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabasePgMajor.
+const (
+	N16 DatabasePgMajor = 16
+	N17 DatabasePgMajor = 17
+)
+
+// Valid indicates whether the value is a known member of the DatabasePgMajor enum.
+func (e DatabasePgMajor) Valid() bool {
+	switch e {
+	case N16:
+		return true
+	case N17:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseRestoreTarget.
+const (
+	DatabaseRestoreTargetNew  DatabaseRestoreTarget = "new"
+	DatabaseRestoreTargetSame DatabaseRestoreTarget = "same"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseRestoreTarget enum.
+func (e DatabaseRestoreTarget) Valid() bool {
+	switch e {
+	case DatabaseRestoreTargetNew:
+		return true
+	case DatabaseRestoreTargetSame:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseStatus.
+const (
+	DatabaseStatusCreating   DatabaseStatus = "creating"
+	DatabaseStatusDeleting   DatabaseStatus = "deleting"
+	DatabaseStatusFailed     DatabaseStatus = "failed"
+	DatabaseStatusRestarting DatabaseStatus = "restarting"
+	DatabaseStatusRestoring  DatabaseStatus = "restoring"
+	DatabaseStatusRunning    DatabaseStatus = "running"
+	DatabaseStatusUpdating   DatabaseStatus = "updating"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseStatus enum.
+func (e DatabaseStatus) Valid() bool {
+	switch e {
+	case DatabaseStatusCreating:
+		return true
+	case DatabaseStatusDeleting:
+		return true
+	case DatabaseStatusFailed:
+		return true
+	case DatabaseStatusRestarting:
+		return true
+	case DatabaseStatusRestoring:
+		return true
+	case DatabaseStatusRunning:
+		return true
+	case DatabaseStatusUpdating:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DatabaseUsageDiskState.
+const (
+	DatabaseUsageDiskStateFull    DatabaseUsageDiskState = "full"
+	DatabaseUsageDiskStateNone    DatabaseUsageDiskState = "none"
+	DatabaseUsageDiskStateWarning DatabaseUsageDiskState = "warning"
+)
+
+// Valid indicates whether the value is a known member of the DatabaseUsageDiskState enum.
+func (e DatabaseUsageDiskState) Valid() bool {
+	switch e {
+	case DatabaseUsageDiskStateFull:
+		return true
+	case DatabaseUsageDiskStateNone:
+		return true
+	case DatabaseUsageDiskStateWarning:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DiffSide.
 const (
-	New DiffSide = "new"
-	Old DiffSide = "old"
+	DiffSideNew DiffSide = "new"
+	DiffSideOld DiffSide = "old"
 )
 
 // Valid indicates whether the value is a known member of the DiffSide enum.
 func (e DiffSide) Valid() bool {
 	switch e {
-	case New:
+	case DiffSideNew:
 		return true
-	case Old:
+	case DiffSideOld:
 		return true
 	default:
 		return false
@@ -2879,16 +3113,16 @@ func (e WebhookWorkflowRunPayloadVersion) Valid() bool {
 
 // Defines values for WorkflowState.
 const (
-	Active   WorkflowState = "active"
-	Disabled WorkflowState = "disabled"
+	WorkflowStateActive   WorkflowState = "active"
+	WorkflowStateDisabled WorkflowState = "disabled"
 )
 
 // Valid indicates whether the value is a known member of the WorkflowState enum.
 func (e WorkflowState) Valid() bool {
 	switch e {
-	case Active:
+	case WorkflowStateActive:
 		return true
-	case Disabled:
+	case WorkflowStateDisabled:
 		return true
 	default:
 		return false
@@ -3102,6 +3336,48 @@ func (e PullStateFilter) Valid() bool {
 	case PullStateFilterMerged:
 		return true
 	case PullStateFilterOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetDatabaseLogsParamsFormat.
+const (
+	GetDatabaseLogsParamsFormatNdjson GetDatabaseLogsParamsFormat = "ndjson"
+	GetDatabaseLogsParamsFormatText   GetDatabaseLogsParamsFormat = "text"
+)
+
+// Valid indicates whether the value is a known member of the GetDatabaseLogsParamsFormat enum.
+func (e GetDatabaseLogsParamsFormat) Valid() bool {
+	switch e {
+	case GetDatabaseLogsParamsFormatNdjson:
+		return true
+	case GetDatabaseLogsParamsFormatText:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetDatabaseMetricsParamsRange.
+const (
+	GetDatabaseMetricsParamsRangeN1h  GetDatabaseMetricsParamsRange = "1h"
+	GetDatabaseMetricsParamsRangeN24h GetDatabaseMetricsParamsRange = "24h"
+	GetDatabaseMetricsParamsRangeN6h  GetDatabaseMetricsParamsRange = "6h"
+	GetDatabaseMetricsParamsRangeN7d  GetDatabaseMetricsParamsRange = "7d"
+)
+
+// Valid indicates whether the value is a known member of the GetDatabaseMetricsParamsRange enum.
+func (e GetDatabaseMetricsParamsRange) Valid() bool {
+	switch e {
+	case GetDatabaseMetricsParamsRangeN1h:
+		return true
+	case GetDatabaseMetricsParamsRangeN24h:
+		return true
+	case GetDatabaseMetricsParamsRangeN6h:
+		return true
+	case GetDatabaseMetricsParamsRangeN7d:
 		return true
 	default:
 		return false
@@ -5349,6 +5625,362 @@ type CurrentSession struct {
 
 // CurrentSessionAuthMethod Come e' stato autenticato il chiamante.
 type CurrentSessionAuthMethod string
+
+// Database Database gestito PostgreSQL di un owner (ADR 0003, decisione 3). Namespace `gitstack-db-<id>`, immagine `postgres:<major>-alpine` per digest, non root. I segreti (password) non compaiono mai qui (DB22).
+type Database struct {
+	// CpuMillis Richiesta CPU in millesimi di vCPU.
+	CpuMillis int                `json:"cpuMillis"`
+	CreatedAt time.Time          `json:"createdAt"`
+	CreatedBy *AppActor          `json:"createdBy,omitempty"`
+	Id        openapi_types.UUID `json:"id"`
+
+	// LanEnabled Accesso dalla LAN acceso (DB16); spento di default.
+	LanEnabled bool `json:"lanEnabled"`
+
+	// LanPort Porta TCP assegnata; null con la LAN spenta.
+	LanPort *int `json:"lanPort,omitempty"`
+
+	// LinkCount Numero di collegamenti attivi o in scollegamento (DB9).
+	LinkCount   int   `json:"linkCount"`
+	MemoryBytes int64 `json:"memoryBytes"`
+
+	// Name Nome del database (DB1): label DNS normalizzata da `pkg/names`, unica per owner (`name_conflict`). Non si cambia dopo la creazione.
+	//
+	//
+	// Example: shop
+	Name DatabaseName `json:"name"`
+
+	// Owner Owner (utente o organizzazione): su di lui contano le quote, insieme ad app e volumi (DB3).
+	Owner string `json:"owner"`
+
+	// PgMajor Major di PostgreSQL (DB1, DB2 dell'ADR 0003): solo quelle ammesse dall'amministratore (16/17).
+	PgMajor DatabasePgMajor `json:"pgMajor"`
+
+	// SizeBytes Dimensione dichiarata (limite morbido, DB3).
+	SizeBytes int64 `json:"sizeBytes"`
+
+	// Status Stato osservato del database: `creating` (il controller sta creando namespace, StatefulSet e ruoli), `running`, `restarting`, `updating` (ridimensionamento o cambio immagine richiesto), `restoring`, `deleting`, `failed` (nessuna copia sana).
+	Status    DatabaseStatus `json:"status"`
+	UpdatedAt time.Time      `json:"updatedAt"`
+
+	// Usage Uso corrente; null vuol dire metriche non disponibili (DB21).
+	Usage *DatabaseUsage `json:"usage,omitempty"`
+}
+
+// DatabaseBackup Dump `pg_dump -Fc` cifrato AES-256-GCM con la chiave di dump dell'istanza (DB13). I contenuti non si scaricano: i dump servono al ripristino e all'archivio di `gitstack backup`.
+type DatabaseBackup struct {
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	CreatedBy   *AppActor  `json:"createdBy,omitempty"`
+
+	// Error Per `failed`; mai contenuti del dump.
+	Error *string            `json:"error,omitempty"`
+	Id    openapi_types.UUID `json:"id"`
+
+	// Kind `scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13).
+	Kind DatabaseBackupKind `json:"kind"`
+
+	// SizeBytes Dimensione del dump cifrato; null finche' non finisce.
+	SizeBytes *int64               `json:"sizeBytes,omitempty"`
+	Status    DatabaseBackupStatus `json:"status"`
+}
+
+// DatabaseBackupKind `scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13).
+type DatabaseBackupKind string
+
+// DatabaseBackupList defines model for DatabaseBackupList.
+type DatabaseBackupList struct {
+	Items []DatabaseBackup `json:"items"`
+}
+
+// DatabaseBackupStatus defines model for DatabaseBackupStatus.
+type DatabaseBackupStatus string
+
+// DatabaseCreateInput defines model for DatabaseCreateInput.
+type DatabaseCreateInput struct {
+	CpuMillis *int `json:"cpuMillis,omitempty"`
+
+	// MemoryBytes Default 256 MiB.
+	MemoryBytes *int64 `json:"memoryBytes,omitempty"`
+
+	// Name Nome del database (DB1): label DNS normalizzata da `pkg/names`, unica per owner (`name_conflict`). Non si cambia dopo la creazione.
+	//
+	//
+	// Example: shop
+	Name DatabaseName `json:"name"`
+
+	// PgMajor Major di PostgreSQL (DB1, DB2 dell'ADR 0003): solo quelle ammesse dall'amministratore (16/17).
+	PgMajor DatabasePgMajor `json:"pgMajor"`
+
+	// SizeBytes Default 1 GiB (valore proposto dall'ADR 0003, modificabile in GIT-557).
+	SizeBytes *int64 `json:"sizeBytes,omitempty"`
+}
+
+// DatabaseCreated defines model for DatabaseCreated.
+type DatabaseCreated struct {
+	// Credentials Credenziali mostrate una sola volta: alla creazione del database o alla rotazione (DB22). Non esiste alcuna operazione che le rilegga.
+	Credentials DatabaseCredentials `json:"credentials"`
+
+	// Database Database gestito PostgreSQL di un owner (ADR 0003, decisione 3). Namespace `gitstack-db-<id>`, immagine `postgres:<major>-alpine` per digest, non root. I segreti (password) non compaiono mai qui (DB22).
+	Database Database `json:"database"`
+}
+
+// DatabaseCredentials Credenziali mostrate una sola volta: alla creazione del database o alla rotazione (DB22). Non esiste alcuna operazione che le rilegga.
+type DatabaseCredentials struct {
+	// Database Nome del database PostgreSQL dentro l'istanza.
+	Database string `json:"database"`
+
+	// Password Password generata; si vede solo in questa risposta (DB22).
+	Password string `json:"password"`
+
+	// SslMode Solo TLS, dalla CA interna (DB8, DB17).
+	SslMode DatabaseCredentialsSslMode `json:"sslMode"`
+
+	// Username Utente proprietario `<name>_owner` (non superuser, DB7).
+	Username string `json:"username"`
+}
+
+// DatabaseCredentialsSslMode Solo TLS, dalla CA interna (DB8, DB17).
+type DatabaseCredentialsSslMode string
+
+// DatabaseLan Accesso dalla LAN (DB16, DB17). Spento di default; acceso il database ascolta su una porta TCP dell'intervallo configurato, solo TLS (`hostssl`, `scram-sha-256`) con certificato firmato dall'intermedia dei database; `hostnossl` e' rifiutato. Nessuna allow-list per IP sorgente e nessuna modifica di ufw da parte di GitStack: `ufwCommand` e' il comando che l'amministratore dell'host decide di eseguire (DB18).
+type DatabaseLan struct {
+	// CaCertificate Catena pubblica del server (foglia + intermedia) in PEM; i client verificano con la radice. Null con la LAN spenta.
+	CaCertificate *string `json:"caCertificate"`
+
+	// Connections Sessioni attive dalla LAN.
+	Connections *int `json:"connections,omitempty"`
+	Enabled     bool `json:"enabled"`
+
+	// Host Indirizzo con cui la LAN raggiunge l'istanza; null con la LAN spenta.
+	Host *string `json:"host"`
+
+	// Port Porta TCP assegnata; null con la LAN spenta.
+	Port *int `json:"port"`
+
+	// UfwCommand Comando suggerito (`ufw allow from <rete> to any port <porta> proto tcp`); GitStack non tocca ufw (DB18).
+	UfwCommand *string `json:"ufwCommand"`
+}
+
+// DatabaseLanInput defines model for DatabaseLanInput.
+type DatabaseLanInput struct {
+	Enabled bool `json:"enabled"`
+}
+
+// DatabaseLink Collegamento app-database (DB9): ruolo di login proprio, senza CREATEROLE/CREATEDB. Le variabili iniettate nell'app e la password non compaiono mai qui (DB10, DB22).
+type DatabaseLink struct {
+	App struct {
+		Name  string `json:"name"`
+		Owner string `json:"owner"`
+		Repo  string `json:"repo"`
+	} `json:"app"`
+	CreatedAt time.Time          `json:"createdAt"`
+	CreatedBy *AppActor          `json:"createdBy,omitempty"`
+	Id        openapi_types.UUID `json:"id"`
+
+	// Mode Modalita' del collegamento (DB9): `rw` legge e scrive (membro di `<name>_owner`, gli oggetti creati restano del proprietario), `ro` legge (`<name>_ro`).
+	Mode DatabaseLinkMode `json:"mode"`
+
+	// State `active` il collegamento serve l'app; `unlinking` lo scollegamento e' in corso (ruolo ancora presente, DB12) e l'app sta perdendo le variabili.
+	State DatabaseLinkState `json:"state"`
+}
+
+// DatabaseLinkCreateInput defines model for DatabaseLinkCreateInput.
+type DatabaseLinkCreateInput struct {
+	App struct {
+		Name string `json:"name"`
+
+		// Owner Deve coincidere con l'owner del database (DB9).
+		Owner string `json:"owner"`
+		Repo  string `json:"repo"`
+	} `json:"app"`
+
+	// Mode Modalita' del collegamento (DB9): `rw` legge e scrive (membro di `<name>_owner`, gli oggetti creati restano del proprietario), `ro` legge (`<name>_ro`).
+	Mode DatabaseLinkMode `json:"mode"`
+}
+
+// DatabaseLinkCreated defines model for DatabaseLinkCreated.
+type DatabaseLinkCreated struct {
+	// Credentials Credenziali del collegamento, mostrate solo alla creazione o alla rotazione del link (DB22). `sslRootcert` e' il percorso del file montato nell'app dalla CA pubblica (DB10, DB17).
+	Credentials DatabaseLinkCredentials `json:"credentials"`
+
+	// Link Collegamento app-database (DB9): ruolo di login proprio, senza CREATEROLE/CREATEDB. Le variabili iniettate nell'app e la password non compaiono mai qui (DB10, DB22).
+	Link DatabaseLink `json:"link"`
+}
+
+// DatabaseLinkCredentials Credenziali del collegamento, mostrate solo alla creazione o alla rotazione del link (DB22). `sslRootcert` e' il percorso del file montato nell'app dalla CA pubblica (DB10, DB17).
+type DatabaseLinkCredentials struct {
+	Database string `json:"database"`
+
+	// Host Nome interno `pg.gitstack-db-<id>.svc.cluster.local` (nei SAN del certificato, DB9).
+	Host string `json:"host"`
+
+	// Password Password generata; si vede solo in questa risposta (DB22).
+	Password string                         `json:"password"`
+	Port     DatabaseLinkCredentialsPort    `json:"port"`
+	SslMode  DatabaseLinkCredentialsSslMode `json:"sslMode"`
+
+	// SslRootcert Percorso della CA pubblica montata nell'app (DB10).
+	SslRootcert string `json:"sslRootcert"`
+
+	// Username Ruolo di login del collegamento (`l_<id>`).
+	Username string `json:"username"`
+}
+
+// DatabaseLinkCredentialsPort defines model for DatabaseLinkCredentials.Port.
+type DatabaseLinkCredentialsPort int
+
+// DatabaseLinkCredentialsSslMode defines model for DatabaseLinkCredentials.SslMode.
+type DatabaseLinkCredentialsSslMode string
+
+// DatabaseLinkList defines model for DatabaseLinkList.
+type DatabaseLinkList struct {
+	Items []DatabaseLink `json:"items"`
+}
+
+// DatabaseLinkMode Modalita' del collegamento (DB9): `rw` legge e scrive (membro di `<name>_owner`, gli oggetti creati restano del proprietario), `ro` legge (`<name>_ro`).
+type DatabaseLinkMode string
+
+// DatabaseLinkRotated defines model for DatabaseLinkRotated.
+type DatabaseLinkRotated struct {
+	// Credentials Credenziali del collegamento, mostrate solo alla creazione o alla rotazione del link (DB22). `sslRootcert` e' il percorso del file montato nell'app dalla CA pubblica (DB10, DB17).
+	Credentials DatabaseLinkCredentials `json:"credentials"`
+
+	// Link Collegamento app-database (DB9): ruolo di login proprio, senza CREATEROLE/CREATEDB. Le variabili iniettate nell'app e la password non compaiono mai qui (DB10, DB22).
+	Link DatabaseLink `json:"link"`
+}
+
+// DatabaseLinkState `active` il collegamento serve l'app; `unlinking` lo scollegamento e' in corso (ruolo ancora presente, DB12) e l'app sta perdendo le variabili.
+type DatabaseLinkState string
+
+// DatabaseList defines model for DatabaseList.
+type DatabaseList struct {
+	Items []Database `json:"items"`
+}
+
+// DatabaseLogLine defines model for DatabaseLogLine.
+type DatabaseLogLine struct {
+	Message string    `json:"message"`
+	Time    time.Time `json:"time"`
+}
+
+// DatabaseMetrics Metriche minime del database (DB21): CPU, memoria, dimensione logica e riavvii.
+type DatabaseMetrics struct {
+	// Available Falso se la sorgente (metrics-server, `pg_database_size`) non risponde: le serie sono vuote, non zero.
+	Available     bool                 `json:"available"`
+	Cpu           AppMetricSeries      `json:"cpu"`
+	DatabaseBytes AppMetricSeries      `json:"databaseBytes"`
+	Memory        AppMetricSeries      `json:"memory"`
+	Range         DatabaseMetricsRange `json:"range"`
+	Restarts24h   int                  `json:"restarts24h"`
+	StepSeconds   int                  `json:"stepSeconds"`
+
+	// Usage Uso corrente; null vuol dire dimensione non letta.
+	Usage *DatabaseUsage `json:"usage,omitempty"`
+}
+
+// DatabaseMetricsRange defines model for DatabaseMetrics.Range.
+type DatabaseMetricsRange string
+
+// DatabaseName Nome del database (DB1): label DNS normalizzata da `pkg/names`, unica per owner (`name_conflict`). Non si cambia dopo la creazione.
+//
+// Example: shop
+type DatabaseName = string
+
+// DatabasePgMajor Major di PostgreSQL (DB1, DB2 dell'ADR 0003): solo quelle ammesse dall'amministratore (16/17).
+type DatabasePgMajor int
+
+// DatabaseRestoreInput defines model for DatabaseRestoreInput.
+type DatabaseRestoreInput struct {
+	// Confirm Solo per `target: same`: `owner/nome` riscritto; obbligatorio (DB19, G8).
+	Confirm *string `json:"confirm,omitempty"`
+
+	// Name Solo per `target: new`: nome del database di destinazione; assente = stesso nome del backup.
+	Name *string `json:"name,omitempty"`
+
+	// Target `same`: il backup sostituisce questo database (conferma `owner/nome` e dump di sicurezza automatico). `new`: nasce un database nuovo, anche con nome diverso (DB15).
+	Target DatabaseRestoreTarget `json:"target"`
+}
+
+// DatabaseRestoreTarget `same`: il backup sostituisce questo database (conferma `owner/nome` e dump di sicurezza automatico). `new`: nasce un database nuovo, anche con nome diverso (DB15).
+type DatabaseRestoreTarget string
+
+// DatabaseRotated defines model for DatabaseRotated.
+type DatabaseRotated struct {
+	// Credentials Credenziali mostrate una sola volta: alla creazione del database o alla rotazione (DB22). Non esiste alcuna operazione che le rilegga.
+	Credentials DatabaseCredentials `json:"credentials"`
+
+	// Database Database gestito PostgreSQL di un owner (ADR 0003, decisione 3). Namespace `gitstack-db-<id>`, immagine `postgres:<major>-alpine` per digest, non root. I segreti (password) non compaiono mai qui (DB22).
+	Database Database `json:"database"`
+}
+
+// DatabaseStatus Stato osservato del database: `creating` (il controller sta creando namespace, StatefulSet e ruoli), `running`, `restarting`, `updating` (ridimensionamento o cambio immagine richiesto), `restoring`, `deleting`, `failed` (nessuna copia sana).
+type DatabaseStatus string
+
+// DatabaseUpdateInput Ridimensionamento dichiarato (DB3): dimensione, CPU e RAM.
+type DatabaseUpdateInput struct {
+	CpuMillis   *int   `json:"cpuMillis,omitempty"`
+	MemoryBytes *int64 `json:"memoryBytes,omitempty"`
+	SizeBytes   *int64 `json:"sizeBytes,omitempty"`
+}
+
+// DatabaseUsage Uso corrente e avvisi del limite morbido di disco (DB3): `local-path` non applica la dimensione come limite fisico, il controller misura `pg_database_size` e avvisa all'80% (`warning`) e al 100% (`full`), senza bloccare le scritture.
+type DatabaseUsage struct {
+	DatabaseBytes int64                  `json:"databaseBytes"`
+	DiskState     DatabaseUsageDiskState `json:"diskState"`
+}
+
+// DatabaseUsageDiskState defines model for DatabaseUsage.DiskState.
+type DatabaseUsageDiskState string
+
+// DatabasesBackupRetention Quanti dump conserva il controller (DB13).
+type DatabasesBackupRetention struct {
+	OnDemand  int `json:"onDemand"`
+	Scheduled int `json:"scheduled"`
+}
+
+// DatabasesInstanceSettings Impostazioni d'istanza dei database gestiti (solo amministratore, DB23).
+type DatabasesInstanceSettings struct {
+	// AllowedMajors Major di PostgreSQL ammesse (DB1).
+	AllowedMajors []DatabasePgMajor `json:"allowedMajors"`
+
+	// BackupRetention Quanti dump conserva il controller (DB13).
+	BackupRetention DatabasesBackupRetention `json:"backupRetention"`
+
+	// Enabled Interruttore della funzione (DB23): spento di default; le API rispondono 422 `databases_disabled` finche' e' spento.
+	Enabled bool `json:"enabled"`
+
+	// LanPortRange Intervallo di porte TCP assegnate ai database con la LAN accesa (DB16); proposta dell'ADR 0003: 15432-15531.
+	LanPortRange   DatabasesPortRange `json:"lanPortRange"`
+	MaxPerDatabase struct {
+		CpuMillis   int   `json:"cpuMillis"`
+		MemoryBytes int64 `json:"memoryBytes"`
+		SizeBytes   int64 `json:"sizeBytes"`
+	} `json:"maxPerDatabase"`
+}
+
+// DatabasesInstanceSettingsInput defines model for DatabasesInstanceSettingsInput.
+type DatabasesInstanceSettingsInput struct {
+	AllowedMajors []DatabasePgMajor `json:"allowedMajors"`
+
+	// BackupRetention Quanti dump conserva il controller (DB13).
+	BackupRetention DatabasesBackupRetention `json:"backupRetention"`
+	Enabled         bool                     `json:"enabled"`
+
+	// LanPortRange Intervallo di porte TCP assegnate ai database con la LAN accesa (DB16); proposta dell'ADR 0003: 15432-15531.
+	LanPortRange   DatabasesPortRange `json:"lanPortRange"`
+	MaxPerDatabase struct {
+		CpuMillis   int   `json:"cpuMillis"`
+		MemoryBytes int64 `json:"memoryBytes"`
+		SizeBytes   int64 `json:"sizeBytes"`
+	} `json:"maxPerDatabase"`
+}
+
+// DatabasesPortRange Intervallo di porte TCP assegnate ai database con la LAN accesa (DB16); proposta dell'ADR 0003: 15432-15531.
+type DatabasesPortRange struct {
+	From int `json:"from"`
+	To   int `json:"to"`
+}
 
 // DeletedNotifications defines model for DeletedNotifications.
 type DeletedNotifications struct {
@@ -8254,6 +8886,17 @@ type CommitPerPageParam = int
 // CommitShaParam defines model for CommitShaParam.
 type CommitShaParam = string
 
+// DatabaseBackupIdParam defines model for DatabaseBackupIdParam.
+type DatabaseBackupIdParam = openapi_types.UUID
+
+// DatabaseLinkIdParam defines model for DatabaseLinkIdParam.
+type DatabaseLinkIdParam = openapi_types.UUID
+
+// DatabaseNameParam Nome del database (DB1): label DNS normalizzata da `pkg/names`, unica per owner (`name_conflict`). Non si cambia dopo la creazione.
+//
+// Example: shop
+type DatabaseNameParam = DatabaseName
+
 // DiffFilePathParam defines model for DiffFilePathParam.
 type DiffFilePathParam = string
 
@@ -8488,6 +9131,39 @@ type FinishOidcLoginParams struct {
 type StartOidcLoginParams struct {
 	RedirectTo *string `form:"redirectTo,omitempty" json:"redirectTo,omitempty"`
 }
+
+// DeleteDatabaseParams defines parameters for DeleteDatabase.
+type DeleteDatabaseParams struct {
+	// Confirm Conferma obbligatoria: `owner/nome` del database riscritto.
+	Confirm *string `form:"confirm,omitempty" json:"confirm,omitempty"`
+}
+
+// GetDatabaseLogsParams defines parameters for GetDatabaseLogs.
+type GetDatabaseLogsParams struct {
+	Follow *bool `form:"follow,omitempty" json:"follow,omitempty"`
+
+	// Since Durata (`5m`, `1h`, `7d`) o istante RFC 3339. Assente: dall'inizio della cronologia, o dall'ultima ora con `follow`.
+	Since *string    `form:"since,omitempty" json:"since,omitempty"`
+	Until *time.Time `form:"until,omitempty" json:"until,omitempty"`
+
+	// Grep Testo da cercare nelle righe (sottostringa).
+	Grep *string `form:"grep,omitempty" json:"grep,omitempty"`
+
+	// Limit Al massimo N righe, le piu' recenti.
+	Limit  *int                         `form:"limit,omitempty" json:"limit,omitempty"`
+	Format *GetDatabaseLogsParamsFormat `form:"format,omitempty" json:"format,omitempty"`
+}
+
+// GetDatabaseLogsParamsFormat defines parameters for GetDatabaseLogs.
+type GetDatabaseLogsParamsFormat string
+
+// GetDatabaseMetricsParams defines parameters for GetDatabaseMetrics.
+type GetDatabaseMetricsParams struct {
+	Range *GetDatabaseMetricsParamsRange `form:"range,omitempty" json:"range,omitempty"`
+}
+
+// GetDatabaseMetricsParamsRange defines parameters for GetDatabaseMetrics.
+type GetDatabaseMetricsParamsRange string
 
 // ListCredentialEventsParams defines parameters for ListCredentialEvents.
 type ListCredentialEventsParams struct {
@@ -9165,6 +9841,9 @@ type AddAdminAppTrustedKeyJSONRequestBody = AppTrustedKeyInput
 // UpdateCiStorageSettingsJSONRequestBody defines body for UpdateCiStorageSettings for application/json ContentType.
 type UpdateCiStorageSettingsJSONRequestBody = CiStorageSettings
 
+// UpdateAdminDatabasesSettingsJSONRequestBody defines body for UpdateAdminDatabasesSettings for application/json ContentType.
+type UpdateAdminDatabasesSettingsJSONRequestBody = DatabasesInstanceSettingsInput
+
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginInput
 
@@ -9173,6 +9852,21 @@ type DisableTotpJSONRequestBody = TotpDisableInput
 
 // VerifyTotpJSONRequestBody defines body for VerifyTotp for application/json ContentType.
 type VerifyTotpJSONRequestBody = TotpCodeInput
+
+// CreateDatabaseJSONRequestBody defines body for CreateDatabase for application/json ContentType.
+type CreateDatabaseJSONRequestBody = DatabaseCreateInput
+
+// UpdateDatabaseJSONRequestBody defines body for UpdateDatabase for application/json ContentType.
+type UpdateDatabaseJSONRequestBody = DatabaseUpdateInput
+
+// RestoreDatabaseBackupJSONRequestBody defines body for RestoreDatabaseBackup for application/json ContentType.
+type RestoreDatabaseBackupJSONRequestBody = DatabaseRestoreInput
+
+// SetDatabaseLanJSONRequestBody defines body for SetDatabaseLan for application/json ContentType.
+type SetDatabaseLanJSONRequestBody = DatabaseLanInput
+
+// CreateDatabaseLinkJSONRequestBody defines body for CreateDatabaseLink for application/json ContentType.
+type CreateDatabaseLinkJSONRequestBody = DatabaseLinkCreateInput
 
 // AckCredentialEventsJSONRequestBody defines body for AckCredentialEvents for application/json ContentType.
 type AckCredentialEventsJSONRequestBody = CredentialEventsAckInput
@@ -9757,6 +10451,31 @@ type ClientInterface interface {
 	// Corresponds with PUT /admin/ci/storage (the `UpdateCiStorageSettings` operationId).
 	UpdateCiStorageSettings(ctx context.Context, body UpdateCiStorageSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetAdminDatabasesSettings Legge le impostazioni d'istanza dei database (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Interruttore della funzione (`enabled`, spento di default, DB23), major ammesse (16/17, DB1), limiti per database (dimensione, CPU/RAM), intervallo delle porte LAN (DB16) e conservazione dei backup (programmati e su richiesta, DB13). L'interruttore si accende anche con `gitstack config set databases` (DB23). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config`.
+	//
+	// Corresponds with GET /admin/databases/settings (the `GetAdminDatabasesSettings` operationId).
+	GetAdminDatabasesSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAdminDatabasesSettingsWithBody Aggiorna le impostazioni d'istanza dei database (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /admin/databases/settings (the `UpdateAdminDatabasesSettings` operationId).
+	UpdateAdminDatabasesSettingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAdminDatabasesSettings Aggiorna le impostazioni d'istanza dei database (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /admin/databases/settings (the `UpdateAdminDatabasesSettings` operationId).
+	UpdateAdminDatabasesSettings(ctx context.Context, body UpdateAdminDatabasesSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetAdminSystem Stato dell'installazione (Admin · System)
 	//
 	// Database (interno o esterno, N8), backup locale e S3 con l'esito dell'ultimo caricamento (N7), rete aziendale (N9) e versioni di GitStack e k3s con l'aggiornamento disponibile (N10). Solo l'amministratore dell'installazione. Le informazioni dell'host le pubblica `gitstack` in un ConfigMap che core legge da un file montato: niente accesso all'host dai servizi. La versione del server Postgres è quella letta ora da core sulla sua connessione. Mai segreti: né password, né chiavi S3, né credenziali del proxy.
@@ -9875,6 +10594,180 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /auth/totp/verify (the `VerifyTotp` operationId).
 	VerifyTotp(ctx context.Context, body VerifyTotpJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListDatabases Elenca i database gestiti dell'owner
+	//
+	// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404 (`not_found`, come i repo privati). L'amministratore dell'istanza legge tutto. Per ogni database: stato, major, dimensione dichiarata, CPU/RAM, LAN e uso (DB21). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Corresponds with GET /databases/{owner} (the `ListDatabases` operationId).
+	ListDatabases(ctx context.Context, owner RepoOwnerParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateDatabaseWithBody Crea un database PostgreSQL gestito
+	//
+	// Serve `admin` sull'owner (DB2). Il `name` e' una label DNS normalizzata, unica per owner: 409 `name_conflict` se e' gia' usato (DB1). Solo le major ammesse dall'amministratore (16/17, DB1): 422 `pg_major_not_allowed` altrimenti. CPU, RAM e disco contano nella stessa quota dell'owner delle app: oltre il tetto 409 `insufficient_capacity` con `details.missing` (DB3). La password dell'utente proprietario (`<name>_owner`) si vede solo in questa risposta e non si rilegge (DB22). Risponde 202: il database nasce `creating` e il controller lo porta `running`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /databases/{owner} (the `CreateDatabase` operationId).
+	CreateDatabaseWithBody(ctx context.Context, owner RepoOwnerParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateDatabase Crea un database PostgreSQL gestito
+	//
+	// Serve `admin` sull'owner (DB2). Il `name` e' una label DNS normalizzata, unica per owner: 409 `name_conflict` se e' gia' usato (DB1). Solo le major ammesse dall'amministratore (16/17, DB1): 422 `pg_major_not_allowed` altrimenti. CPU, RAM e disco contano nella stessa quota dell'owner delle app: oltre il tetto 409 `insufficient_capacity` con `details.missing` (DB3). La password dell'utente proprietario (`<name>_owner`) si vede solo in questa risposta e non si rilegge (DB22). Risponde 202: il database nasce `creating` e il controller lo porta `running`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /databases/{owner} (the `CreateDatabase` operationId).
+	CreateDatabase(ctx context.Context, owner RepoOwnerParam, body CreateDatabaseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteDatabase Elimina un database gestito (immediata, senza cestino)
+	//
+	// Serve `admin` sull'owner (DB2); l'amministratore dell'istanza puo' eliminare qualunque database. Eliminazione immediata e irreversibile, senza cestino (DB19, come i repo, R2): spariscono namespace, StatefulSet, PVC, link (le app collegate perdono le variabili e riavviano), porta LAN e i dump programmati e su richiesta; il nome si libera alla risposta. Resta solo il backup dell'istanza (`gitstack backup`). Conferma obbligatoria: `confirm` deve valere `owner/nome`; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch` e non si tocca nulla (G8). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Corresponds with DELETE /databases/{owner}/{name} (the `DeleteDatabase` operationId).
+	DeleteDatabase(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, params *DeleteDatabaseParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetDatabase Legge un database gestito
+	//
+	// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404, cosi' chi non e' admin dell'owner non scopre nemmeno che il database esiste. L'amministratore dell'istanza legge tutto. Stato, major, dimensione dichiarata e uso con gli avvisi all'80% e al 100% del limite morbido (DB3, DB21), LAN, numero di link. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Corresponds with GET /databases/{owner}/{name} (the `GetDatabase` operationId).
+	GetDatabase(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateDatabaseWithBody Ridimensiona un database (dimensione, CPU/RAM)
+	//
+	// Serve `admin` sull'owner (DB2). Il ridimensionamento cambia la dimensione dichiarata: il PVC `local-path` non espande e non limita fisicamente, il controller misura `pg_database_size` e da avvisi all'80% e al 100% senza bloccare le scritture (limite morbido, DB3). CPU, RAM e disco contano nella quota dell'owner insieme ad app e volumi: oltre il tetto 409 `insufficient_capacity` (DB3). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /databases/{owner}/{name} (the `UpdateDatabase` operationId).
+	UpdateDatabaseWithBody(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateDatabase Ridimensiona un database (dimensione, CPU/RAM)
+	//
+	// Serve `admin` sull'owner (DB2). Il ridimensionamento cambia la dimensione dichiarata: il PVC `local-path` non espande e non limita fisicamente, il controller misura `pg_database_size` e da avvisi all'80% e al 100% senza bloccare le scritture (limite morbido, DB3). CPU, RAM e disco contano nella quota dell'owner insieme ad app e volumi: oltre il tetto 409 `insufficient_capacity` (DB3). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /databases/{owner}/{name} (the `UpdateDatabase` operationId).
+	UpdateDatabase(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, body UpdateDatabaseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListDatabaseBackups Elenca i backup del database (programmati e su richiesta)
+	//
+	// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. I dump `pg_dump -Fc` cifrati AES-256-GCM: il programmato ne tiene gli ultimi 7, quello su richiesta gli ultimi 5 (DB13); l'impostazione e' dell'amministratore. I contenuti dei dump non si scaricano da qui: si usano per il ripristino. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Corresponds with GET /databases/{owner}/{name}/backups (the `ListDatabaseBackups` operationId).
+	ListDatabaseBackups(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateDatabaseBackup Avvia un backup su richiesta del database
+	//
+	// Serve `admin` sull'owner (DB2). `pg_dump -Fc` cifrato con la chiave di dump dell'istanza (DB13); la directory dati non si copia mai. 409 `backup_in_progress` se un dump e' gia' in corso. Risponde 202 con il backup `in_progress`; l'esito si legge da `listDatabaseBackups` (stato ed evento `database.backup_completed`/`backup_failed`, DB20). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Corresponds with POST /databases/{owner}/{name}/backups (the `CreateDatabaseBackup` operationId).
+	CreateDatabaseBackup(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RestoreDatabaseBackupWithBody Ripristina un backup (nello stesso database o in uno nuovo)
+	//
+	// Serve `admin` sull'owner (DB2). Il ripristino e' sempre `pg_restore --no-owner --no-acl --role=<name>_owner`: il controller ricrea i ruoli (`<name>_owner` non superuser, `<name>_ro`), li applica e ricrea i link con password nuove, riavviando le app (DB15). Con `target: same` il database viene sostituito: serve la conferma `confirm` = `owner/nome` e il controller fa prima un dump di sicurezza; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch`. Con `target: new` nasce un database nuovo (anche con nome diverso: il nome della destinazione sostituisce `<name>` nei ruoli); se il nome e' gia' usato 409 `name_conflict`. I GRANT personalizzati dell'owner su oggetti non sopravvivono (`--no-acl`): l'owner li rifa. Risponde 202 con il database di destinazione in `restoring`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /databases/{owner}/{name}/backups/{backupId}/restore (the `RestoreDatabaseBackup` operationId).
+	RestoreDatabaseBackupWithBody(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, backupId DatabaseBackupIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RestoreDatabaseBackup Ripristina un backup (nello stesso database o in uno nuovo)
+	//
+	// Serve `admin` sull'owner (DB2). Il ripristino e' sempre `pg_restore --no-owner --no-acl --role=<name>_owner`: il controller ricrea i ruoli (`<name>_owner` non superuser, `<name>_ro`), li applica e ricrea i link con password nuove, riavviando le app (DB15). Con `target: same` il database viene sostituito: serve la conferma `confirm` = `owner/nome` e il controller fa prima un dump di sicurezza; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch`. Con `target: new` nasce un database nuovo (anche con nome diverso: il nome della destinazione sostituisce `<name>` nei ruoli); se il nome e' gia' usato 409 `name_conflict`. I GRANT personalizzati dell'owner su oggetti non sopravvivono (`--no-acl`): l'owner li rifa. Risponde 202 con il database di destinazione in `restoring`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /databases/{owner}/{name}/backups/{backupId}/restore (the `RestoreDatabaseBackup` operationId).
+	RestoreDatabaseBackup(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, backupId DatabaseBackupIdParam, body RestoreDatabaseBackupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RotateDatabaseCredentials Ruota la password dell'utente proprietario del database
+	//
+	// Serve `admin` sull'owner (DB2). Nuova password per `<name>_owner`: la risposta e' l'unico momento in cui si vede (DB22). Le connessioni aperte con la vecchia password restano valide finche' non si chiudono: per chiuderle subito ruotare i link (DB12) o riavviare il database. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Corresponds with POST /databases/{owner}/{name}/credentials/rotate (the `RotateDatabaseCredentials` operationId).
+	RotateDatabaseCredentials(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetDatabaseLan Legge lo stato dell'accesso dalla LAN
+	//
+	// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. Spenta di default (DB16): accesa assegna una porta dell'intervallo configurato e la risposta da indirizzo, porta, la catena di certificati pubblica (foglia firmata dall'intermedia dei database + intermedia; i client si fidano della radice, DB17) e il comando `ufw` da eseguire sull'host: GitStack non modifica ufw e non c'e' allow-list per IP sorgente (DB18). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Corresponds with GET /databases/{owner}/{name}/lan (the `GetDatabaseLan` operationId).
+	GetDatabaseLan(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetDatabaseLanWithBody Accende o spegne l'accesso dalla LAN
+	//
+	// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /databases/{owner}/{name}/lan (the `SetDatabaseLan` operationId).
+	SetDatabaseLanWithBody(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetDatabaseLan Accende o spegne l'accesso dalla LAN
+	//
+	// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /databases/{owner}/{name}/lan (the `SetDatabaseLan` operationId).
+	SetDatabaseLan(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, body SetDatabaseLanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListDatabaseLinks Elenca i collegamenti app del database
+	//
+	// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. Per ogni collegamento: app (`owner/repo/nome`), modalita' `rw` o `ro`, stato. Le password dei link non si rileggono (DB22): si ruotano. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Corresponds with GET /databases/{owner}/{name}/links (the `ListDatabaseLinks` operationId).
+	ListDatabaseLinks(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateDatabaseLinkWithBody Collega un'app al database (ruolo di login proprio)
+	//
+	// Serve `admin` sull'app (H5) e `admin` sull'owner del database (DB2); app e database devono avere lo stesso owner, anche se repo diversi: 422 `owner_mismatch` altrimenti (DB9). Ogni collegamento ha il proprio ruolo di login, mai condiviso: `rw` membro di `<name>_owner` con `SET role` al proprietario (gli oggetti creati restano dell'owner), `ro` membro di `<name>_ro`; niente `CREATEROLE` (DB9). Variabili iniettate nell'app come segreti (`DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE`, `PGSSLROOTCERT`), mai nelle risposte API ne' nei log (DB10): se l'app ha gia' una variabile con uno di quei nomi il collegamento e' rifiutato con 409 `variable_conflict` e l'app non si tocca. La password del link si vede solo in questa risposta (DB22). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /databases/{owner}/{name}/links (the `CreateDatabaseLink` operationId).
+	CreateDatabaseLinkWithBody(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateDatabaseLink Collega un'app al database (ruolo di login proprio)
+	//
+	// Serve `admin` sull'app (H5) e `admin` sull'owner del database (DB2); app e database devono avere lo stesso owner, anche se repo diversi: 422 `owner_mismatch` altrimenti (DB9). Ogni collegamento ha il proprio ruolo di login, mai condiviso: `rw` membro di `<name>_owner` con `SET role` al proprietario (gli oggetti creati restano dell'owner), `ro` membro di `<name>_ro`; niente `CREATEROLE` (DB9). Variabili iniettate nell'app come segreti (`DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE`, `PGSSLROOTCERT`), mai nelle risposte API ne' nei log (DB10): se l'app ha gia' una variabile con uno di quei nomi il collegamento e' rifiutato con 409 `variable_conflict` e l'app non si tocca. La password del link si vede solo in questa risposta (DB22). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /databases/{owner}/{name}/links (the `CreateDatabaseLink` operationId).
+	CreateDatabaseLink(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, body CreateDatabaseLinkJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteDatabaseLink Scollega un'app dal database
+	//
+	// Chiunque abbia `admin` sull'app o `admin` sull'owner del database (DB2, DB9). Lo scollegamento segue l'ordine obbligatorio: `NOLOGIN` del ruolo, `pg_terminate_backend` fino a zero sessioni, `DROP OWNED`/`DROP ROLE`, e solo dopo variabili, Secret, label di rete e regola di uscita (DB12): finche' il ruolo esiste il collegamento resta `unlinking` e la risposta e' 202 con lo stato `unlinking`; l'app perde le variabili e riavvia. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Corresponds with DELETE /databases/{owner}/{name}/links/{linkId} (the `DeleteDatabaseLink` operationId).
+	DeleteDatabaseLink(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, linkId DatabaseLinkIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RotateDatabaseLink Ruota la password di un collegamento e riavvia l'app
+	//
+	// Serve `admin` sull'owner del database o `admin` sull'app (DB2, DB9). Password nuova, Secret dell'app riscritto, app riavviata e sessioni del link terminate: nessuna connessione sopravvive alla password vecchia (DB12). La nuova password si vede solo in questa risposta (DB22). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Corresponds with POST /databases/{owner}/{name}/links/{linkId}/rotate (the `RotateDatabaseLink` operationId).
+	RotateDatabaseLink(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, linkId DatabaseLinkIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetDatabaseLogs Legge i log di PostgreSQL
+	//
+	// Serve `admin` sull'owner (DB2, DB21): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. I log possono contenere query e dati, quindi niente lettura condivisa. Righe di `pods/log` conservate come i log delle app su `apps-data`. `follow=true` tiene la connessione aperta (streaming); senza, risponde con le righe fra `since` e `until`. Formato `text` oppure `ndjson` (un oggetto `DatabaseLogLine` per riga). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Corresponds with GET /databases/{owner}/{name}/logs (the `GetDatabaseLogs` operationId).
+	GetDatabaseLogs(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, params *GetDatabaseLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetDatabaseMetrics Legge le metriche del database
+	//
+	// Serve `admin` sull'owner (DB2, DB21): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. CPU e RAM da metrics-server, dimensione logica da `pg_database_size` a intervalli, riavvii dallo stato del pod; se metrics-server manca la risposta e' comunque 200 con `available: false` e serie vuote (non zeri), come per le app. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Corresponds with GET /databases/{owner}/{name}/metrics (the `GetDatabaseMetrics` operationId).
+	GetDatabaseMetrics(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, params *GetDatabaseMetricsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetHealth Stato del servizio
 	//
@@ -13386,6 +14279,61 @@ func (c *Client) UpdateCiStorageSettings(ctx context.Context, body UpdateCiStora
 	return c.Client.Do(req)
 }
 
+// GetAdminDatabasesSettings Legge le impostazioni d'istanza dei database (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Interruttore della funzione (`enabled`, spento di default, DB23), major ammesse (16/17, DB1), limiti per database (dimensione, CPU/RAM), intervallo delle porte LAN (DB16) e conservazione dei backup (programmati e su richiesta, DB13). L'interruttore si accende anche con `gitstack config set databases` (DB23). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config`.
+//
+// Corresponds with GET /admin/databases/settings (the `GetAdminDatabasesSettings` operationId).
+func (c *Client) GetAdminDatabasesSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAdminDatabasesSettingsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAdminDatabasesSettingsWithBody Aggiorna le impostazioni d'istanza dei database (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /admin/databases/settings (the `UpdateAdminDatabasesSettings` operationId).
+func (c *Client) UpdateAdminDatabasesSettingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAdminDatabasesSettingsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAdminDatabasesSettings Aggiorna le impostazioni d'istanza dei database (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /admin/databases/settings (the `UpdateAdminDatabasesSettings` operationId).
+func (c *Client) UpdateAdminDatabasesSettings(ctx context.Context, body UpdateAdminDatabasesSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAdminDatabasesSettingsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetAdminSystem Stato dell'installazione (Admin · System)
 //
 // Database (interno o esterno, N8), backup locale e S3 con l'esito dell'ultimo caricamento (N7), rete aziendale (N9) e versioni di GitStack e k3s con l'aggiornamento disponibile (N10). Solo l'amministratore dell'installazione. Le informazioni dell'host le pubblica `gitstack` in un ConfigMap che core legge da un file montato: niente accesso all'host dai servizi. La versione del server Postgres è quella letta ora da core sulla sua connessione. Mai segreti: né password, né chiavi S3, né credenziali del proxy.
@@ -13645,6 +14593,400 @@ func (c *Client) VerifyTotpWithBody(ctx context.Context, contentType string, bod
 // Corresponds with POST /auth/totp/verify (the `VerifyTotp` operationId).
 func (c *Client) VerifyTotp(ctx context.Context, body VerifyTotpJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewVerifyTotpRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListDatabases Elenca i database gestiti dell'owner
+//
+// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404 (`not_found`, come i repo privati). L'amministratore dell'istanza legge tutto. Per ogni database: stato, major, dimensione dichiarata, CPU/RAM, LAN e uso (DB21). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Corresponds with GET /databases/{owner} (the `ListDatabases` operationId).
+func (c *Client) ListDatabases(ctx context.Context, owner RepoOwnerParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListDatabasesRequest(c.Server, owner)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateDatabaseWithBody Crea un database PostgreSQL gestito
+//
+// Serve `admin` sull'owner (DB2). Il `name` e' una label DNS normalizzata, unica per owner: 409 `name_conflict` se e' gia' usato (DB1). Solo le major ammesse dall'amministratore (16/17, DB1): 422 `pg_major_not_allowed` altrimenti. CPU, RAM e disco contano nella stessa quota dell'owner delle app: oltre il tetto 409 `insufficient_capacity` con `details.missing` (DB3). La password dell'utente proprietario (`<name>_owner`) si vede solo in questa risposta e non si rilegge (DB22). Risponde 202: il database nasce `creating` e il controller lo porta `running`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /databases/{owner} (the `CreateDatabase` operationId).
+func (c *Client) CreateDatabaseWithBody(ctx context.Context, owner RepoOwnerParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateDatabaseRequestWithBody(c.Server, owner, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateDatabase Crea un database PostgreSQL gestito
+//
+// Serve `admin` sull'owner (DB2). Il `name` e' una label DNS normalizzata, unica per owner: 409 `name_conflict` se e' gia' usato (DB1). Solo le major ammesse dall'amministratore (16/17, DB1): 422 `pg_major_not_allowed` altrimenti. CPU, RAM e disco contano nella stessa quota dell'owner delle app: oltre il tetto 409 `insufficient_capacity` con `details.missing` (DB3). La password dell'utente proprietario (`<name>_owner`) si vede solo in questa risposta e non si rilegge (DB22). Risponde 202: il database nasce `creating` e il controller lo porta `running`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /databases/{owner} (the `CreateDatabase` operationId).
+func (c *Client) CreateDatabase(ctx context.Context, owner RepoOwnerParam, body CreateDatabaseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateDatabaseRequest(c.Server, owner, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteDatabase Elimina un database gestito (immediata, senza cestino)
+//
+// Serve `admin` sull'owner (DB2); l'amministratore dell'istanza puo' eliminare qualunque database. Eliminazione immediata e irreversibile, senza cestino (DB19, come i repo, R2): spariscono namespace, StatefulSet, PVC, link (le app collegate perdono le variabili e riavviano), porta LAN e i dump programmati e su richiesta; il nome si libera alla risposta. Resta solo il backup dell'istanza (`gitstack backup`). Conferma obbligatoria: `confirm` deve valere `owner/nome`; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch` e non si tocca nulla (G8). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Corresponds with DELETE /databases/{owner}/{name} (the `DeleteDatabase` operationId).
+func (c *Client) DeleteDatabase(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, params *DeleteDatabaseParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteDatabaseRequest(c.Server, owner, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetDatabase Legge un database gestito
+//
+// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404, cosi' chi non e' admin dell'owner non scopre nemmeno che il database esiste. L'amministratore dell'istanza legge tutto. Stato, major, dimensione dichiarata e uso con gli avvisi all'80% e al 100% del limite morbido (DB3, DB21), LAN, numero di link. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Corresponds with GET /databases/{owner}/{name} (the `GetDatabase` operationId).
+func (c *Client) GetDatabase(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDatabaseRequest(c.Server, owner, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateDatabaseWithBody Ridimensiona un database (dimensione, CPU/RAM)
+//
+// Serve `admin` sull'owner (DB2). Il ridimensionamento cambia la dimensione dichiarata: il PVC `local-path` non espande e non limita fisicamente, il controller misura `pg_database_size` e da avvisi all'80% e al 100% senza bloccare le scritture (limite morbido, DB3). CPU, RAM e disco contano nella quota dell'owner insieme ad app e volumi: oltre il tetto 409 `insufficient_capacity` (DB3). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /databases/{owner}/{name} (the `UpdateDatabase` operationId).
+func (c *Client) UpdateDatabaseWithBody(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateDatabaseRequestWithBody(c.Server, owner, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateDatabase Ridimensiona un database (dimensione, CPU/RAM)
+//
+// Serve `admin` sull'owner (DB2). Il ridimensionamento cambia la dimensione dichiarata: il PVC `local-path` non espande e non limita fisicamente, il controller misura `pg_database_size` e da avvisi all'80% e al 100% senza bloccare le scritture (limite morbido, DB3). CPU, RAM e disco contano nella quota dell'owner insieme ad app e volumi: oltre il tetto 409 `insufficient_capacity` (DB3). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /databases/{owner}/{name} (the `UpdateDatabase` operationId).
+func (c *Client) UpdateDatabase(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, body UpdateDatabaseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateDatabaseRequest(c.Server, owner, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListDatabaseBackups Elenca i backup del database (programmati e su richiesta)
+//
+// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. I dump `pg_dump -Fc` cifrati AES-256-GCM: il programmato ne tiene gli ultimi 7, quello su richiesta gli ultimi 5 (DB13); l'impostazione e' dell'amministratore. I contenuti dei dump non si scaricano da qui: si usano per il ripristino. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Corresponds with GET /databases/{owner}/{name}/backups (the `ListDatabaseBackups` operationId).
+func (c *Client) ListDatabaseBackups(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListDatabaseBackupsRequest(c.Server, owner, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateDatabaseBackup Avvia un backup su richiesta del database
+//
+// Serve `admin` sull'owner (DB2). `pg_dump -Fc` cifrato con la chiave di dump dell'istanza (DB13); la directory dati non si copia mai. 409 `backup_in_progress` se un dump e' gia' in corso. Risponde 202 con il backup `in_progress`; l'esito si legge da `listDatabaseBackups` (stato ed evento `database.backup_completed`/`backup_failed`, DB20). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Corresponds with POST /databases/{owner}/{name}/backups (the `CreateDatabaseBackup` operationId).
+func (c *Client) CreateDatabaseBackup(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateDatabaseBackupRequest(c.Server, owner, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RestoreDatabaseBackupWithBody Ripristina un backup (nello stesso database o in uno nuovo)
+//
+// Serve `admin` sull'owner (DB2). Il ripristino e' sempre `pg_restore --no-owner --no-acl --role=<name>_owner`: il controller ricrea i ruoli (`<name>_owner` non superuser, `<name>_ro`), li applica e ricrea i link con password nuove, riavviando le app (DB15). Con `target: same` il database viene sostituito: serve la conferma `confirm` = `owner/nome` e il controller fa prima un dump di sicurezza; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch`. Con `target: new` nasce un database nuovo (anche con nome diverso: il nome della destinazione sostituisce `<name>` nei ruoli); se il nome e' gia' usato 409 `name_conflict`. I GRANT personalizzati dell'owner su oggetti non sopravvivono (`--no-acl`): l'owner li rifa. Risponde 202 con il database di destinazione in `restoring`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /databases/{owner}/{name}/backups/{backupId}/restore (the `RestoreDatabaseBackup` operationId).
+func (c *Client) RestoreDatabaseBackupWithBody(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, backupId DatabaseBackupIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRestoreDatabaseBackupRequestWithBody(c.Server, owner, name, backupId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RestoreDatabaseBackup Ripristina un backup (nello stesso database o in uno nuovo)
+//
+// Serve `admin` sull'owner (DB2). Il ripristino e' sempre `pg_restore --no-owner --no-acl --role=<name>_owner`: il controller ricrea i ruoli (`<name>_owner` non superuser, `<name>_ro`), li applica e ricrea i link con password nuove, riavviando le app (DB15). Con `target: same` il database viene sostituito: serve la conferma `confirm` = `owner/nome` e il controller fa prima un dump di sicurezza; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch`. Con `target: new` nasce un database nuovo (anche con nome diverso: il nome della destinazione sostituisce `<name>` nei ruoli); se il nome e' gia' usato 409 `name_conflict`. I GRANT personalizzati dell'owner su oggetti non sopravvivono (`--no-acl`): l'owner li rifa. Risponde 202 con il database di destinazione in `restoring`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /databases/{owner}/{name}/backups/{backupId}/restore (the `RestoreDatabaseBackup` operationId).
+func (c *Client) RestoreDatabaseBackup(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, backupId DatabaseBackupIdParam, body RestoreDatabaseBackupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRestoreDatabaseBackupRequest(c.Server, owner, name, backupId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RotateDatabaseCredentials Ruota la password dell'utente proprietario del database
+//
+// Serve `admin` sull'owner (DB2). Nuova password per `<name>_owner`: la risposta e' l'unico momento in cui si vede (DB22). Le connessioni aperte con la vecchia password restano valide finche' non si chiudono: per chiuderle subito ruotare i link (DB12) o riavviare il database. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Corresponds with POST /databases/{owner}/{name}/credentials/rotate (the `RotateDatabaseCredentials` operationId).
+func (c *Client) RotateDatabaseCredentials(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRotateDatabaseCredentialsRequest(c.Server, owner, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetDatabaseLan Legge lo stato dell'accesso dalla LAN
+//
+// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. Spenta di default (DB16): accesa assegna una porta dell'intervallo configurato e la risposta da indirizzo, porta, la catena di certificati pubblica (foglia firmata dall'intermedia dei database + intermedia; i client si fidano della radice, DB17) e il comando `ufw` da eseguire sull'host: GitStack non modifica ufw e non c'e' allow-list per IP sorgente (DB18). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Corresponds with GET /databases/{owner}/{name}/lan (the `GetDatabaseLan` operationId).
+func (c *Client) GetDatabaseLan(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDatabaseLanRequest(c.Server, owner, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetDatabaseLanWithBody Accende o spegne l'accesso dalla LAN
+//
+// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /databases/{owner}/{name}/lan (the `SetDatabaseLan` operationId).
+func (c *Client) SetDatabaseLanWithBody(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetDatabaseLanRequestWithBody(c.Server, owner, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetDatabaseLan Accende o spegne l'accesso dalla LAN
+//
+// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /databases/{owner}/{name}/lan (the `SetDatabaseLan` operationId).
+func (c *Client) SetDatabaseLan(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, body SetDatabaseLanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetDatabaseLanRequest(c.Server, owner, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListDatabaseLinks Elenca i collegamenti app del database
+//
+// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. Per ogni collegamento: app (`owner/repo/nome`), modalita' `rw` o `ro`, stato. Le password dei link non si rileggono (DB22): si ruotano. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Corresponds with GET /databases/{owner}/{name}/links (the `ListDatabaseLinks` operationId).
+func (c *Client) ListDatabaseLinks(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListDatabaseLinksRequest(c.Server, owner, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateDatabaseLinkWithBody Collega un'app al database (ruolo di login proprio)
+//
+// Serve `admin` sull'app (H5) e `admin` sull'owner del database (DB2); app e database devono avere lo stesso owner, anche se repo diversi: 422 `owner_mismatch` altrimenti (DB9). Ogni collegamento ha il proprio ruolo di login, mai condiviso: `rw` membro di `<name>_owner` con `SET role` al proprietario (gli oggetti creati restano dell'owner), `ro` membro di `<name>_ro`; niente `CREATEROLE` (DB9). Variabili iniettate nell'app come segreti (`DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE`, `PGSSLROOTCERT`), mai nelle risposte API ne' nei log (DB10): se l'app ha gia' una variabile con uno di quei nomi il collegamento e' rifiutato con 409 `variable_conflict` e l'app non si tocca. La password del link si vede solo in questa risposta (DB22). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /databases/{owner}/{name}/links (the `CreateDatabaseLink` operationId).
+func (c *Client) CreateDatabaseLinkWithBody(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateDatabaseLinkRequestWithBody(c.Server, owner, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateDatabaseLink Collega un'app al database (ruolo di login proprio)
+//
+// Serve `admin` sull'app (H5) e `admin` sull'owner del database (DB2); app e database devono avere lo stesso owner, anche se repo diversi: 422 `owner_mismatch` altrimenti (DB9). Ogni collegamento ha il proprio ruolo di login, mai condiviso: `rw` membro di `<name>_owner` con `SET role` al proprietario (gli oggetti creati restano dell'owner), `ro` membro di `<name>_ro`; niente `CREATEROLE` (DB9). Variabili iniettate nell'app come segreti (`DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE`, `PGSSLROOTCERT`), mai nelle risposte API ne' nei log (DB10): se l'app ha gia' una variabile con uno di quei nomi il collegamento e' rifiutato con 409 `variable_conflict` e l'app non si tocca. La password del link si vede solo in questa risposta (DB22). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /databases/{owner}/{name}/links (the `CreateDatabaseLink` operationId).
+func (c *Client) CreateDatabaseLink(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, body CreateDatabaseLinkJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateDatabaseLinkRequest(c.Server, owner, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteDatabaseLink Scollega un'app dal database
+//
+// Chiunque abbia `admin` sull'app o `admin` sull'owner del database (DB2, DB9). Lo scollegamento segue l'ordine obbligatorio: `NOLOGIN` del ruolo, `pg_terminate_backend` fino a zero sessioni, `DROP OWNED`/`DROP ROLE`, e solo dopo variabili, Secret, label di rete e regola di uscita (DB12): finche' il ruolo esiste il collegamento resta `unlinking` e la risposta e' 202 con lo stato `unlinking`; l'app perde le variabili e riavvia. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Corresponds with DELETE /databases/{owner}/{name}/links/{linkId} (the `DeleteDatabaseLink` operationId).
+func (c *Client) DeleteDatabaseLink(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, linkId DatabaseLinkIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteDatabaseLinkRequest(c.Server, owner, name, linkId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RotateDatabaseLink Ruota la password di un collegamento e riavvia l'app
+//
+// Serve `admin` sull'owner del database o `admin` sull'app (DB2, DB9). Password nuova, Secret dell'app riscritto, app riavviata e sessioni del link terminate: nessuna connessione sopravvive alla password vecchia (DB12). La nuova password si vede solo in questa risposta (DB22). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Corresponds with POST /databases/{owner}/{name}/links/{linkId}/rotate (the `RotateDatabaseLink` operationId).
+func (c *Client) RotateDatabaseLink(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, linkId DatabaseLinkIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRotateDatabaseLinkRequest(c.Server, owner, name, linkId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetDatabaseLogs Legge i log di PostgreSQL
+//
+// Serve `admin` sull'owner (DB2, DB21): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. I log possono contenere query e dati, quindi niente lettura condivisa. Righe di `pods/log` conservate come i log delle app su `apps-data`. `follow=true` tiene la connessione aperta (streaming); senza, risponde con le righe fra `since` e `until`. Formato `text` oppure `ndjson` (un oggetto `DatabaseLogLine` per riga). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Corresponds with GET /databases/{owner}/{name}/logs (the `GetDatabaseLogs` operationId).
+func (c *Client) GetDatabaseLogs(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, params *GetDatabaseLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDatabaseLogsRequest(c.Server, owner, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetDatabaseMetrics Legge le metriche del database
+//
+// Serve `admin` sull'owner (DB2, DB21): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. CPU e RAM da metrics-server, dimensione logica da `pg_database_size` a intervalli, riavvii dallo stato del pod; se metrics-server manca la risposta e' comunque 200 con `available: false` e serie vuote (non zeri), come per le app. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Corresponds with GET /databases/{owner}/{name}/metrics (the `GetDatabaseMetrics` operationId).
+func (c *Client) GetDatabaseMetrics(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, params *GetDatabaseMetricsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDatabaseMetricsRequest(c.Server, owner, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -21353,6 +22695,73 @@ func NewUpdateCiStorageSettingsRequestWithBody(server string, contentType string
 	return req, nil
 }
 
+// NewGetAdminDatabasesSettingsRequest constructs an http.Request for the GetAdminDatabasesSettings method
+func NewGetAdminDatabasesSettingsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/databases/settings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateAdminDatabasesSettingsRequest calls the generic UpdateAdminDatabasesSettings builder with application/json body
+func NewUpdateAdminDatabasesSettingsRequest(server string, body UpdateAdminDatabasesSettingsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateAdminDatabasesSettingsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateAdminDatabasesSettingsRequestWithBody constructs an http.Request for the UpdateAdminDatabasesSettings method, with any body, and a specified content type
+func NewUpdateAdminDatabasesSettingsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/databases/settings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetAdminSystemRequest constructs an http.Request for the GetAdminSystem method
 func NewGetAdminSystemRequest(server string) (*http.Request, error) {
 	var err error
@@ -21791,6 +23200,916 @@ func NewVerifyTotpRequestWithBody(server string, contentType string, body io.Rea
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListDatabasesRequest constructs an http.Request for the ListDatabases method
+func NewListDatabasesRequest(server string, owner RepoOwnerParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateDatabaseRequest calls the generic CreateDatabase builder with application/json body
+func NewCreateDatabaseRequest(server string, owner RepoOwnerParam, body CreateDatabaseJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateDatabaseRequestWithBody(server, owner, "application/json", bodyReader)
+}
+
+// NewCreateDatabaseRequestWithBody constructs an http.Request for the CreateDatabase method, with any body, and a specified content type
+func NewCreateDatabaseRequestWithBody(server string, owner RepoOwnerParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteDatabaseRequest constructs an http.Request for the DeleteDatabase method
+func NewDeleteDatabaseRequest(server string, owner RepoOwnerParam, name DatabaseNameParam, params *DeleteDatabaseParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Confirm != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "confirm", *params.Confirm, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetDatabaseRequest constructs an http.Request for the GetDatabase method
+func NewGetDatabaseRequest(server string, owner RepoOwnerParam, name DatabaseNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateDatabaseRequest calls the generic UpdateDatabase builder with application/json body
+func NewUpdateDatabaseRequest(server string, owner RepoOwnerParam, name DatabaseNameParam, body UpdateDatabaseJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateDatabaseRequestWithBody(server, owner, name, "application/json", bodyReader)
+}
+
+// NewUpdateDatabaseRequestWithBody constructs an http.Request for the UpdateDatabase method, with any body, and a specified content type
+func NewUpdateDatabaseRequestWithBody(server string, owner RepoOwnerParam, name DatabaseNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListDatabaseBackupsRequest constructs an http.Request for the ListDatabaseBackups method
+func NewListDatabaseBackupsRequest(server string, owner RepoOwnerParam, name DatabaseNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s/%s/backups", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateDatabaseBackupRequest constructs an http.Request for the CreateDatabaseBackup method
+func NewCreateDatabaseBackupRequest(server string, owner RepoOwnerParam, name DatabaseNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s/%s/backups", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRestoreDatabaseBackupRequest calls the generic RestoreDatabaseBackup builder with application/json body
+func NewRestoreDatabaseBackupRequest(server string, owner RepoOwnerParam, name DatabaseNameParam, backupId DatabaseBackupIdParam, body RestoreDatabaseBackupJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRestoreDatabaseBackupRequestWithBody(server, owner, name, backupId, "application/json", bodyReader)
+}
+
+// NewRestoreDatabaseBackupRequestWithBody constructs an http.Request for the RestoreDatabaseBackup method, with any body, and a specified content type
+func NewRestoreDatabaseBackupRequestWithBody(server string, owner RepoOwnerParam, name DatabaseNameParam, backupId DatabaseBackupIdParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "backupId", backupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s/%s/backups/%s/restore", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRotateDatabaseCredentialsRequest constructs an http.Request for the RotateDatabaseCredentials method
+func NewRotateDatabaseCredentialsRequest(server string, owner RepoOwnerParam, name DatabaseNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s/%s/credentials/rotate", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetDatabaseLanRequest constructs an http.Request for the GetDatabaseLan method
+func NewGetDatabaseLanRequest(server string, owner RepoOwnerParam, name DatabaseNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s/%s/lan", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetDatabaseLanRequest calls the generic SetDatabaseLan builder with application/json body
+func NewSetDatabaseLanRequest(server string, owner RepoOwnerParam, name DatabaseNameParam, body SetDatabaseLanJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetDatabaseLanRequestWithBody(server, owner, name, "application/json", bodyReader)
+}
+
+// NewSetDatabaseLanRequestWithBody constructs an http.Request for the SetDatabaseLan method, with any body, and a specified content type
+func NewSetDatabaseLanRequestWithBody(server string, owner RepoOwnerParam, name DatabaseNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s/%s/lan", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListDatabaseLinksRequest constructs an http.Request for the ListDatabaseLinks method
+func NewListDatabaseLinksRequest(server string, owner RepoOwnerParam, name DatabaseNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s/%s/links", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateDatabaseLinkRequest calls the generic CreateDatabaseLink builder with application/json body
+func NewCreateDatabaseLinkRequest(server string, owner RepoOwnerParam, name DatabaseNameParam, body CreateDatabaseLinkJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateDatabaseLinkRequestWithBody(server, owner, name, "application/json", bodyReader)
+}
+
+// NewCreateDatabaseLinkRequestWithBody constructs an http.Request for the CreateDatabaseLink method, with any body, and a specified content type
+func NewCreateDatabaseLinkRequestWithBody(server string, owner RepoOwnerParam, name DatabaseNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s/%s/links", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteDatabaseLinkRequest constructs an http.Request for the DeleteDatabaseLink method
+func NewDeleteDatabaseLinkRequest(server string, owner RepoOwnerParam, name DatabaseNameParam, linkId DatabaseLinkIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "linkId", linkId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s/%s/links/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRotateDatabaseLinkRequest constructs an http.Request for the RotateDatabaseLink method
+func NewRotateDatabaseLinkRequest(server string, owner RepoOwnerParam, name DatabaseNameParam, linkId DatabaseLinkIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "linkId", linkId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s/%s/links/%s/rotate", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetDatabaseLogsRequest constructs an http.Request for the GetDatabaseLogs method
+func NewGetDatabaseLogsRequest(server string, owner RepoOwnerParam, name DatabaseNameParam, params *GetDatabaseLogsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s/%s/logs", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Follow != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "follow", *params.Follow, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Since != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "since", *params.Since, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Until != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "until", *params.Until, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Grep != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "grep", *params.Grep, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Format != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "format", *params.Format, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetDatabaseMetricsRequest constructs an http.Request for the GetDatabaseMetrics method
+func NewGetDatabaseMetricsRequest(server string, owner RepoOwnerParam, name DatabaseNameParam, params *GetDatabaseMetricsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s/%s/metrics", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Range != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "range", *params.Range, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -39094,6 +41413,33 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /admin/ci/storage (the `UpdateCiStorageSettings` operationId).
 	UpdateCiStorageSettingsWithResponse(ctx context.Context, body UpdateCiStorageSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCiStorageSettingsResponse, error)
 
+	// GetAdminDatabasesSettingsWithResponse Legge le impostazioni d'istanza dei database (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Interruttore della funzione (`enabled`, spento di default, DB23), major ammesse (16/17, DB1), limiti per database (dimensione, CPU/RAM), intervallo delle porte LAN (DB16) e conservazione dei backup (programmati e su richiesta, DB13). L'interruttore si accende anche con `gitstack config set databases` (DB23). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/databases/settings (the `GetAdminDatabasesSettings` operationId).
+	GetAdminDatabasesSettingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAdminDatabasesSettingsResponse, error)
+
+	// UpdateAdminDatabasesSettingsWithBodyWithResponse Aggiorna le impostazioni d'istanza dei database (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /admin/databases/settings (the `UpdateAdminDatabasesSettings` operationId).
+	UpdateAdminDatabasesSettingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAdminDatabasesSettingsResponse, error)
+
+	// UpdateAdminDatabasesSettingsWithResponse Aggiorna le impostazioni d'istanza dei database (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /admin/databases/settings (the `UpdateAdminDatabasesSettings` operationId).
+	UpdateAdminDatabasesSettingsWithResponse(ctx context.Context, body UpdateAdminDatabasesSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAdminDatabasesSettingsResponse, error)
+
 	// GetAdminSystemWithResponse Stato dell'installazione (Admin · System)
 	//
 	// Database (interno o esterno, N8), backup locale e S3 con l'esito dell'ultimo caricamento (N7), rete aziendale (N9) e versioni di GitStack e k3s con l'aggiornamento disponibile (N10). Solo l'amministratore dell'installazione. Le informazioni dell'host le pubblica `gitstack` in un ConfigMap che core legge da un file montato: niente accesso all'host dai servizi. La versione del server Postgres è quella letta ora da core sulla sua connessione. Mai segreti: né password, né chiavi S3, né credenziali del proxy.
@@ -39230,6 +41576,204 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /auth/totp/verify (the `VerifyTotp` operationId).
 	VerifyTotpWithResponse(ctx context.Context, body VerifyTotpJSONRequestBody, reqEditors ...RequestEditorFn) (*VerifyTotpResponse, error)
+
+	// ListDatabasesWithResponse Elenca i database gestiti dell'owner
+	//
+	// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404 (`not_found`, come i repo privati). L'amministratore dell'istanza legge tutto. Per ogni database: stato, major, dimensione dichiarata, CPU/RAM, LAN e uso (DB21). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /databases/{owner} (the `ListDatabases` operationId).
+	ListDatabasesWithResponse(ctx context.Context, owner RepoOwnerParam, reqEditors ...RequestEditorFn) (*ListDatabasesResponse, error)
+
+	// CreateDatabaseWithBodyWithResponse Crea un database PostgreSQL gestito
+	//
+	// Serve `admin` sull'owner (DB2). Il `name` e' una label DNS normalizzata, unica per owner: 409 `name_conflict` se e' gia' usato (DB1). Solo le major ammesse dall'amministratore (16/17, DB1): 422 `pg_major_not_allowed` altrimenti. CPU, RAM e disco contano nella stessa quota dell'owner delle app: oltre il tetto 409 `insufficient_capacity` con `details.missing` (DB3). La password dell'utente proprietario (`<name>_owner`) si vede solo in questa risposta e non si rilegge (DB22). Risponde 202: il database nasce `creating` e il controller lo porta `running`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /databases/{owner} (the `CreateDatabase` operationId).
+	CreateDatabaseWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDatabaseResponse, error)
+
+	// CreateDatabaseWithResponse Crea un database PostgreSQL gestito
+	//
+	// Serve `admin` sull'owner (DB2). Il `name` e' una label DNS normalizzata, unica per owner: 409 `name_conflict` se e' gia' usato (DB1). Solo le major ammesse dall'amministratore (16/17, DB1): 422 `pg_major_not_allowed` altrimenti. CPU, RAM e disco contano nella stessa quota dell'owner delle app: oltre il tetto 409 `insufficient_capacity` con `details.missing` (DB3). La password dell'utente proprietario (`<name>_owner`) si vede solo in questa risposta e non si rilegge (DB22). Risponde 202: il database nasce `creating` e il controller lo porta `running`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /databases/{owner} (the `CreateDatabase` operationId).
+	CreateDatabaseWithResponse(ctx context.Context, owner RepoOwnerParam, body CreateDatabaseJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDatabaseResponse, error)
+
+	// DeleteDatabaseWithResponse Elimina un database gestito (immediata, senza cestino)
+	//
+	// Serve `admin` sull'owner (DB2); l'amministratore dell'istanza puo' eliminare qualunque database. Eliminazione immediata e irreversibile, senza cestino (DB19, come i repo, R2): spariscono namespace, StatefulSet, PVC, link (le app collegate perdono le variabili e riavviano), porta LAN e i dump programmati e su richiesta; il nome si libera alla risposta. Resta solo il backup dell'istanza (`gitstack backup`). Conferma obbligatoria: `confirm` deve valere `owner/nome`; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch` e non si tocca nulla (G8). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /databases/{owner}/{name} (the `DeleteDatabase` operationId).
+	DeleteDatabaseWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, params *DeleteDatabaseParams, reqEditors ...RequestEditorFn) (*DeleteDatabaseResponse, error)
+
+	// GetDatabaseWithResponse Legge un database gestito
+	//
+	// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404, cosi' chi non e' admin dell'owner non scopre nemmeno che il database esiste. L'amministratore dell'istanza legge tutto. Stato, major, dimensione dichiarata e uso con gli avvisi all'80% e al 100% del limite morbido (DB3, DB21), LAN, numero di link. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /databases/{owner}/{name} (the `GetDatabase` operationId).
+	GetDatabaseWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*GetDatabaseResponse, error)
+
+	// UpdateDatabaseWithBodyWithResponse Ridimensiona un database (dimensione, CPU/RAM)
+	//
+	// Serve `admin` sull'owner (DB2). Il ridimensionamento cambia la dimensione dichiarata: il PVC `local-path` non espande e non limita fisicamente, il controller misura `pg_database_size` e da avvisi all'80% e al 100% senza bloccare le scritture (limite morbido, DB3). CPU, RAM e disco contano nella quota dell'owner insieme ad app e volumi: oltre il tetto 409 `insufficient_capacity` (DB3). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /databases/{owner}/{name} (the `UpdateDatabase` operationId).
+	UpdateDatabaseWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDatabaseResponse, error)
+
+	// UpdateDatabaseWithResponse Ridimensiona un database (dimensione, CPU/RAM)
+	//
+	// Serve `admin` sull'owner (DB2). Il ridimensionamento cambia la dimensione dichiarata: il PVC `local-path` non espande e non limita fisicamente, il controller misura `pg_database_size` e da avvisi all'80% e al 100% senza bloccare le scritture (limite morbido, DB3). CPU, RAM e disco contano nella quota dell'owner insieme ad app e volumi: oltre il tetto 409 `insufficient_capacity` (DB3). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /databases/{owner}/{name} (the `UpdateDatabase` operationId).
+	UpdateDatabaseWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, body UpdateDatabaseJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDatabaseResponse, error)
+
+	// ListDatabaseBackupsWithResponse Elenca i backup del database (programmati e su richiesta)
+	//
+	// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. I dump `pg_dump -Fc` cifrati AES-256-GCM: il programmato ne tiene gli ultimi 7, quello su richiesta gli ultimi 5 (DB13); l'impostazione e' dell'amministratore. I contenuti dei dump non si scaricano da qui: si usano per il ripristino. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /databases/{owner}/{name}/backups (the `ListDatabaseBackups` operationId).
+	ListDatabaseBackupsWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*ListDatabaseBackupsResponse, error)
+
+	// CreateDatabaseBackupWithResponse Avvia un backup su richiesta del database
+	//
+	// Serve `admin` sull'owner (DB2). `pg_dump -Fc` cifrato con la chiave di dump dell'istanza (DB13); la directory dati non si copia mai. 409 `backup_in_progress` se un dump e' gia' in corso. Risponde 202 con il backup `in_progress`; l'esito si legge da `listDatabaseBackups` (stato ed evento `database.backup_completed`/`backup_failed`, DB20). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /databases/{owner}/{name}/backups (the `CreateDatabaseBackup` operationId).
+	CreateDatabaseBackupWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*CreateDatabaseBackupResponse, error)
+
+	// RestoreDatabaseBackupWithBodyWithResponse Ripristina un backup (nello stesso database o in uno nuovo)
+	//
+	// Serve `admin` sull'owner (DB2). Il ripristino e' sempre `pg_restore --no-owner --no-acl --role=<name>_owner`: il controller ricrea i ruoli (`<name>_owner` non superuser, `<name>_ro`), li applica e ricrea i link con password nuove, riavviando le app (DB15). Con `target: same` il database viene sostituito: serve la conferma `confirm` = `owner/nome` e il controller fa prima un dump di sicurezza; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch`. Con `target: new` nasce un database nuovo (anche con nome diverso: il nome della destinazione sostituisce `<name>` nei ruoli); se il nome e' gia' usato 409 `name_conflict`. I GRANT personalizzati dell'owner su oggetti non sopravvivono (`--no-acl`): l'owner li rifa. Risponde 202 con il database di destinazione in `restoring`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /databases/{owner}/{name}/backups/{backupId}/restore (the `RestoreDatabaseBackup` operationId).
+	RestoreDatabaseBackupWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, backupId DatabaseBackupIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RestoreDatabaseBackupResponse, error)
+
+	// RestoreDatabaseBackupWithResponse Ripristina un backup (nello stesso database o in uno nuovo)
+	//
+	// Serve `admin` sull'owner (DB2). Il ripristino e' sempre `pg_restore --no-owner --no-acl --role=<name>_owner`: il controller ricrea i ruoli (`<name>_owner` non superuser, `<name>_ro`), li applica e ricrea i link con password nuove, riavviando le app (DB15). Con `target: same` il database viene sostituito: serve la conferma `confirm` = `owner/nome` e il controller fa prima un dump di sicurezza; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch`. Con `target: new` nasce un database nuovo (anche con nome diverso: il nome della destinazione sostituisce `<name>` nei ruoli); se il nome e' gia' usato 409 `name_conflict`. I GRANT personalizzati dell'owner su oggetti non sopravvivono (`--no-acl`): l'owner li rifa. Risponde 202 con il database di destinazione in `restoring`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /databases/{owner}/{name}/backups/{backupId}/restore (the `RestoreDatabaseBackup` operationId).
+	RestoreDatabaseBackupWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, backupId DatabaseBackupIdParam, body RestoreDatabaseBackupJSONRequestBody, reqEditors ...RequestEditorFn) (*RestoreDatabaseBackupResponse, error)
+
+	// RotateDatabaseCredentialsWithResponse Ruota la password dell'utente proprietario del database
+	//
+	// Serve `admin` sull'owner (DB2). Nuova password per `<name>_owner`: la risposta e' l'unico momento in cui si vede (DB22). Le connessioni aperte con la vecchia password restano valide finche' non si chiudono: per chiuderle subito ruotare i link (DB12) o riavviare il database. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /databases/{owner}/{name}/credentials/rotate (the `RotateDatabaseCredentials` operationId).
+	RotateDatabaseCredentialsWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*RotateDatabaseCredentialsResponse, error)
+
+	// GetDatabaseLanWithResponse Legge lo stato dell'accesso dalla LAN
+	//
+	// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. Spenta di default (DB16): accesa assegna una porta dell'intervallo configurato e la risposta da indirizzo, porta, la catena di certificati pubblica (foglia firmata dall'intermedia dei database + intermedia; i client si fidano della radice, DB17) e il comando `ufw` da eseguire sull'host: GitStack non modifica ufw e non c'e' allow-list per IP sorgente (DB18). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /databases/{owner}/{name}/lan (the `GetDatabaseLan` operationId).
+	GetDatabaseLanWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*GetDatabaseLanResponse, error)
+
+	// SetDatabaseLanWithBodyWithResponse Accende o spegne l'accesso dalla LAN
+	//
+	// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /databases/{owner}/{name}/lan (the `SetDatabaseLan` operationId).
+	SetDatabaseLanWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetDatabaseLanResponse, error)
+
+	// SetDatabaseLanWithResponse Accende o spegne l'accesso dalla LAN
+	//
+	// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /databases/{owner}/{name}/lan (the `SetDatabaseLan` operationId).
+	SetDatabaseLanWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, body SetDatabaseLanJSONRequestBody, reqEditors ...RequestEditorFn) (*SetDatabaseLanResponse, error)
+
+	// ListDatabaseLinksWithResponse Elenca i collegamenti app del database
+	//
+	// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. Per ogni collegamento: app (`owner/repo/nome`), modalita' `rw` o `ro`, stato. Le password dei link non si rileggono (DB22): si ruotano. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /databases/{owner}/{name}/links (the `ListDatabaseLinks` operationId).
+	ListDatabaseLinksWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*ListDatabaseLinksResponse, error)
+
+	// CreateDatabaseLinkWithBodyWithResponse Collega un'app al database (ruolo di login proprio)
+	//
+	// Serve `admin` sull'app (H5) e `admin` sull'owner del database (DB2); app e database devono avere lo stesso owner, anche se repo diversi: 422 `owner_mismatch` altrimenti (DB9). Ogni collegamento ha il proprio ruolo di login, mai condiviso: `rw` membro di `<name>_owner` con `SET role` al proprietario (gli oggetti creati restano dell'owner), `ro` membro di `<name>_ro`; niente `CREATEROLE` (DB9). Variabili iniettate nell'app come segreti (`DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE`, `PGSSLROOTCERT`), mai nelle risposte API ne' nei log (DB10): se l'app ha gia' una variabile con uno di quei nomi il collegamento e' rifiutato con 409 `variable_conflict` e l'app non si tocca. La password del link si vede solo in questa risposta (DB22). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /databases/{owner}/{name}/links (the `CreateDatabaseLink` operationId).
+	CreateDatabaseLinkWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDatabaseLinkResponse, error)
+
+	// CreateDatabaseLinkWithResponse Collega un'app al database (ruolo di login proprio)
+	//
+	// Serve `admin` sull'app (H5) e `admin` sull'owner del database (DB2); app e database devono avere lo stesso owner, anche se repo diversi: 422 `owner_mismatch` altrimenti (DB9). Ogni collegamento ha il proprio ruolo di login, mai condiviso: `rw` membro di `<name>_owner` con `SET role` al proprietario (gli oggetti creati restano dell'owner), `ro` membro di `<name>_ro`; niente `CREATEROLE` (DB9). Variabili iniettate nell'app come segreti (`DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE`, `PGSSLROOTCERT`), mai nelle risposte API ne' nei log (DB10): se l'app ha gia' una variabile con uno di quei nomi il collegamento e' rifiutato con 409 `variable_conflict` e l'app non si tocca. La password del link si vede solo in questa risposta (DB22). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /databases/{owner}/{name}/links (the `CreateDatabaseLink` operationId).
+	CreateDatabaseLinkWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, body CreateDatabaseLinkJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDatabaseLinkResponse, error)
+
+	// DeleteDatabaseLinkWithResponse Scollega un'app dal database
+	//
+	// Chiunque abbia `admin` sull'app o `admin` sull'owner del database (DB2, DB9). Lo scollegamento segue l'ordine obbligatorio: `NOLOGIN` del ruolo, `pg_terminate_backend` fino a zero sessioni, `DROP OWNED`/`DROP ROLE`, e solo dopo variabili, Secret, label di rete e regola di uscita (DB12): finche' il ruolo esiste il collegamento resta `unlinking` e la risposta e' 202 con lo stato `unlinking`; l'app perde le variabili e riavvia. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /databases/{owner}/{name}/links/{linkId} (the `DeleteDatabaseLink` operationId).
+	DeleteDatabaseLinkWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, linkId DatabaseLinkIdParam, reqEditors ...RequestEditorFn) (*DeleteDatabaseLinkResponse, error)
+
+	// RotateDatabaseLinkWithResponse Ruota la password di un collegamento e riavvia l'app
+	//
+	// Serve `admin` sull'owner del database o `admin` sull'app (DB2, DB9). Password nuova, Secret dell'app riscritto, app riavviata e sessioni del link terminate: nessuna connessione sopravvive alla password vecchia (DB12). La nuova password si vede solo in questa risposta (DB22). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /databases/{owner}/{name}/links/{linkId}/rotate (the `RotateDatabaseLink` operationId).
+	RotateDatabaseLinkWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, linkId DatabaseLinkIdParam, reqEditors ...RequestEditorFn) (*RotateDatabaseLinkResponse, error)
+
+	// GetDatabaseLogsWithResponse Legge i log di PostgreSQL
+	//
+	// Serve `admin` sull'owner (DB2, DB21): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. I log possono contenere query e dati, quindi niente lettura condivisa. Righe di `pods/log` conservate come i log delle app su `apps-data`. `follow=true` tiene la connessione aperta (streaming); senza, risponde con le righe fra `since` e `until`. Formato `text` oppure `ndjson` (un oggetto `DatabaseLogLine` per riga). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /databases/{owner}/{name}/logs (the `GetDatabaseLogs` operationId).
+	GetDatabaseLogsWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, params *GetDatabaseLogsParams, reqEditors ...RequestEditorFn) (*GetDatabaseLogsResponse, error)
+
+	// GetDatabaseMetricsWithResponse Legge le metriche del database
+	//
+	// Serve `admin` sull'owner (DB2, DB21): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. CPU e RAM da metrics-server, dimensione logica da `pg_database_size` a intervalli, riavvii dallo stato del pod; se metrics-server manca la risposta e' comunque 200 con `available: false` e serie vuote (non zeri), come per le app. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /databases/{owner}/{name}/metrics (the `GetDatabaseMetrics` operationId).
+	GetDatabaseMetricsWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, params *GetDatabaseMetricsParams, reqEditors ...RequestEditorFn) (*GetDatabaseMetricsResponse, error)
 
 	// GetHealthWithResponse Stato del servizio
 	//
@@ -43909,6 +46453,137 @@ func (r UpdateCiStorageSettingsResponse) ContentType() string {
 	return ""
 }
 
+type GetAdminDatabasesSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DatabasesInstanceSettings
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAdminDatabasesSettingsResponse) GetJSON200() *DatabasesInstanceSettings {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAdminDatabasesSettingsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAdminDatabasesSettingsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetAdminDatabasesSettingsResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAdminDatabasesSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAdminDatabasesSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAdminDatabasesSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAdminDatabasesSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateAdminDatabasesSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DatabasesInstanceSettings
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateAdminDatabasesSettingsResponse) GetJSON200() *DatabasesInstanceSettings {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateAdminDatabasesSettingsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateAdminDatabasesSettingsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateAdminDatabasesSettingsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateAdminDatabasesSettingsResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateAdminDatabasesSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateAdminDatabasesSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateAdminDatabasesSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateAdminDatabasesSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetAdminSystemResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -44690,6 +47365,1270 @@ func (r VerifyTotpResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r VerifyTotpResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListDatabasesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DatabaseList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListDatabasesResponse) GetJSON200() *DatabaseList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListDatabasesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListDatabasesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListDatabasesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListDatabasesResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r ListDatabasesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListDatabasesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListDatabasesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListDatabasesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateDatabaseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *DatabaseCreated
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r CreateDatabaseResponse) GetJSON202() *DatabaseCreated {
+	return r.JSON202
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateDatabaseResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateDatabaseResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateDatabaseResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateDatabaseResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateDatabaseResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateDatabaseResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateDatabaseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateDatabaseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateDatabaseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateDatabaseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteDatabaseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteDatabaseResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteDatabaseResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteDatabaseResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteDatabaseResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteDatabaseResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteDatabaseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteDatabaseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteDatabaseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteDatabaseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetDatabaseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Database
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetDatabaseResponse) GetJSON200() *Database {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetDatabaseResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetDatabaseResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetDatabaseResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetDatabaseResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r GetDatabaseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDatabaseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDatabaseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetDatabaseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateDatabaseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Database
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateDatabaseResponse) GetJSON200() *Database {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateDatabaseResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateDatabaseResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateDatabaseResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateDatabaseResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateDatabaseResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateDatabaseResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateDatabaseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateDatabaseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateDatabaseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateDatabaseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListDatabaseBackupsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DatabaseBackupList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListDatabaseBackupsResponse) GetJSON200() *DatabaseBackupList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListDatabaseBackupsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListDatabaseBackupsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListDatabaseBackupsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListDatabaseBackupsResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r ListDatabaseBackupsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListDatabaseBackupsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListDatabaseBackupsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListDatabaseBackupsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateDatabaseBackupResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *DatabaseBackup
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r CreateDatabaseBackupResponse) GetJSON202() *DatabaseBackup {
+	return r.JSON202
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateDatabaseBackupResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateDatabaseBackupResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateDatabaseBackupResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateDatabaseBackupResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateDatabaseBackupResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateDatabaseBackupResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateDatabaseBackupResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateDatabaseBackupResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateDatabaseBackupResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RestoreDatabaseBackupResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *Database
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r RestoreDatabaseBackupResponse) GetJSON202() *Database {
+	return r.JSON202
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RestoreDatabaseBackupResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RestoreDatabaseBackupResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RestoreDatabaseBackupResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RestoreDatabaseBackupResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r RestoreDatabaseBackupResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RestoreDatabaseBackupResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r RestoreDatabaseBackupResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RestoreDatabaseBackupResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RestoreDatabaseBackupResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RestoreDatabaseBackupResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RotateDatabaseCredentialsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DatabaseRotated
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RotateDatabaseCredentialsResponse) GetJSON200() *DatabaseRotated {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RotateDatabaseCredentialsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RotateDatabaseCredentialsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RotateDatabaseCredentialsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RotateDatabaseCredentialsResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r RotateDatabaseCredentialsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RotateDatabaseCredentialsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RotateDatabaseCredentialsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RotateDatabaseCredentialsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetDatabaseLanResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DatabaseLan
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetDatabaseLanResponse) GetJSON200() *DatabaseLan {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetDatabaseLanResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetDatabaseLanResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetDatabaseLanResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetDatabaseLanResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r GetDatabaseLanResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDatabaseLanResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDatabaseLanResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetDatabaseLanResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetDatabaseLanResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DatabaseLan
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetDatabaseLanResponse) GetJSON200() *DatabaseLan {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SetDatabaseLanResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SetDatabaseLanResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SetDatabaseLanResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SetDatabaseLanResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SetDatabaseLanResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SetDatabaseLanResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r SetDatabaseLanResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetDatabaseLanResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetDatabaseLanResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetDatabaseLanResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListDatabaseLinksResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DatabaseLinkList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListDatabaseLinksResponse) GetJSON200() *DatabaseLinkList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListDatabaseLinksResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListDatabaseLinksResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListDatabaseLinksResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListDatabaseLinksResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r ListDatabaseLinksResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListDatabaseLinksResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListDatabaseLinksResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListDatabaseLinksResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateDatabaseLinkResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *DatabaseLinkCreated
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateDatabaseLinkResponse) GetJSON201() *DatabaseLinkCreated {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateDatabaseLinkResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateDatabaseLinkResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateDatabaseLinkResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateDatabaseLinkResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateDatabaseLinkResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateDatabaseLinkResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateDatabaseLinkResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateDatabaseLinkResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateDatabaseLinkResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateDatabaseLinkResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteDatabaseLinkResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *DatabaseLink
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r DeleteDatabaseLinkResponse) GetJSON202() *DatabaseLink {
+	return r.JSON202
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteDatabaseLinkResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteDatabaseLinkResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteDatabaseLinkResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteDatabaseLinkResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteDatabaseLinkResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteDatabaseLinkResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteDatabaseLinkResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteDatabaseLinkResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteDatabaseLinkResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RotateDatabaseLinkResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DatabaseLinkRotated
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RotateDatabaseLinkResponse) GetJSON200() *DatabaseLinkRotated {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RotateDatabaseLinkResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RotateDatabaseLinkResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RotateDatabaseLinkResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RotateDatabaseLinkResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r RotateDatabaseLinkResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RotateDatabaseLinkResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RotateDatabaseLinkResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RotateDatabaseLinkResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetDatabaseLogsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetDatabaseLogsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetDatabaseLogsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetDatabaseLogsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetDatabaseLogsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetDatabaseLogsResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r GetDatabaseLogsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDatabaseLogsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDatabaseLogsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetDatabaseLogsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetDatabaseMetricsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DatabaseMetrics
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetDatabaseMetricsResponse) GetJSON200() *DatabaseMetrics {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetDatabaseMetricsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetDatabaseMetricsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetDatabaseMetricsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetDatabaseMetricsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetDatabaseMetricsResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r GetDatabaseMetricsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDatabaseMetricsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDatabaseMetricsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetDatabaseMetricsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -67472,6 +71411,51 @@ func (c *ClientWithResponses) UpdateCiStorageSettingsWithResponse(ctx context.Co
 	return ParseUpdateCiStorageSettingsResponse(rsp)
 }
 
+// GetAdminDatabasesSettingsWithResponse Legge le impostazioni d'istanza dei database (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Interruttore della funzione (`enabled`, spento di default, DB23), major ammesse (16/17, DB1), limiti per database (dimensione, CPU/RAM), intervallo delle porte LAN (DB16) e conservazione dei backup (programmati e su richiesta, DB13). L'interruttore si accende anche con `gitstack config set databases` (DB23). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/databases/settings (the `GetAdminDatabasesSettings` operationId).
+func (c *ClientWithResponses) GetAdminDatabasesSettingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAdminDatabasesSettingsResponse, error) {
+	rsp, err := c.GetAdminDatabasesSettings(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAdminDatabasesSettingsResponse(rsp)
+}
+
+// UpdateAdminDatabasesSettingsWithBodyWithResponse Aggiorna le impostazioni d'istanza dei database (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /admin/databases/settings (the `UpdateAdminDatabasesSettings` operationId).
+func (c *ClientWithResponses) UpdateAdminDatabasesSettingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAdminDatabasesSettingsResponse, error) {
+	rsp, err := c.UpdateAdminDatabasesSettingsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAdminDatabasesSettingsResponse(rsp)
+}
+
+// UpdateAdminDatabasesSettingsWithResponse Aggiorna le impostazioni d'istanza dei database (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /admin/databases/settings (the `UpdateAdminDatabasesSettings` operationId).
+func (c *ClientWithResponses) UpdateAdminDatabasesSettingsWithResponse(ctx context.Context, body UpdateAdminDatabasesSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAdminDatabasesSettingsResponse, error) {
+	rsp, err := c.UpdateAdminDatabasesSettings(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAdminDatabasesSettingsResponse(rsp)
+}
+
 // GetAdminSystemWithResponse Stato dell'installazione (Admin · System)
 //
 // Database (interno o esterno, N8), backup locale e S3 con l'esito dell'ultimo caricamento (N7), rete aziendale (N9) e versioni di GitStack e k3s con l'aggiornamento disponibile (N10). Solo l'amministratore dell'installazione. Le informazioni dell'host le pubblica `gitstack` in un ConfigMap che core legge da un file montato: niente accesso all'host dai servizi. La versione del server Postgres è quella letta ora da core sulla sua connessione. Mai segreti: né password, né chiavi S3, né credenziali del proxy.
@@ -67697,6 +71681,336 @@ func (c *ClientWithResponses) VerifyTotpWithResponse(ctx context.Context, body V
 		return nil, err
 	}
 	return ParseVerifyTotpResponse(rsp)
+}
+
+// ListDatabasesWithResponse Elenca i database gestiti dell'owner
+//
+// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404 (`not_found`, come i repo privati). L'amministratore dell'istanza legge tutto. Per ogni database: stato, major, dimensione dichiarata, CPU/RAM, LAN e uso (DB21). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /databases/{owner} (the `ListDatabases` operationId).
+func (c *ClientWithResponses) ListDatabasesWithResponse(ctx context.Context, owner RepoOwnerParam, reqEditors ...RequestEditorFn) (*ListDatabasesResponse, error) {
+	rsp, err := c.ListDatabases(ctx, owner, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListDatabasesResponse(rsp)
+}
+
+// CreateDatabaseWithBodyWithResponse Crea un database PostgreSQL gestito
+//
+// Serve `admin` sull'owner (DB2). Il `name` e' una label DNS normalizzata, unica per owner: 409 `name_conflict` se e' gia' usato (DB1). Solo le major ammesse dall'amministratore (16/17, DB1): 422 `pg_major_not_allowed` altrimenti. CPU, RAM e disco contano nella stessa quota dell'owner delle app: oltre il tetto 409 `insufficient_capacity` con `details.missing` (DB3). La password dell'utente proprietario (`<name>_owner`) si vede solo in questa risposta e non si rilegge (DB22). Risponde 202: il database nasce `creating` e il controller lo porta `running`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /databases/{owner} (the `CreateDatabase` operationId).
+func (c *ClientWithResponses) CreateDatabaseWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDatabaseResponse, error) {
+	rsp, err := c.CreateDatabaseWithBody(ctx, owner, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateDatabaseResponse(rsp)
+}
+
+// CreateDatabaseWithResponse Crea un database PostgreSQL gestito
+//
+// Serve `admin` sull'owner (DB2). Il `name` e' una label DNS normalizzata, unica per owner: 409 `name_conflict` se e' gia' usato (DB1). Solo le major ammesse dall'amministratore (16/17, DB1): 422 `pg_major_not_allowed` altrimenti. CPU, RAM e disco contano nella stessa quota dell'owner delle app: oltre il tetto 409 `insufficient_capacity` con `details.missing` (DB3). La password dell'utente proprietario (`<name>_owner`) si vede solo in questa risposta e non si rilegge (DB22). Risponde 202: il database nasce `creating` e il controller lo porta `running`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /databases/{owner} (the `CreateDatabase` operationId).
+func (c *ClientWithResponses) CreateDatabaseWithResponse(ctx context.Context, owner RepoOwnerParam, body CreateDatabaseJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDatabaseResponse, error) {
+	rsp, err := c.CreateDatabase(ctx, owner, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateDatabaseResponse(rsp)
+}
+
+// DeleteDatabaseWithResponse Elimina un database gestito (immediata, senza cestino)
+//
+// Serve `admin` sull'owner (DB2); l'amministratore dell'istanza puo' eliminare qualunque database. Eliminazione immediata e irreversibile, senza cestino (DB19, come i repo, R2): spariscono namespace, StatefulSet, PVC, link (le app collegate perdono le variabili e riavviano), porta LAN e i dump programmati e su richiesta; il nome si libera alla risposta. Resta solo il backup dell'istanza (`gitstack backup`). Conferma obbligatoria: `confirm` deve valere `owner/nome`; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch` e non si tocca nulla (G8). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /databases/{owner}/{name} (the `DeleteDatabase` operationId).
+func (c *ClientWithResponses) DeleteDatabaseWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, params *DeleteDatabaseParams, reqEditors ...RequestEditorFn) (*DeleteDatabaseResponse, error) {
+	rsp, err := c.DeleteDatabase(ctx, owner, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteDatabaseResponse(rsp)
+}
+
+// GetDatabaseWithResponse Legge un database gestito
+//
+// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404, cosi' chi non e' admin dell'owner non scopre nemmeno che il database esiste. L'amministratore dell'istanza legge tutto. Stato, major, dimensione dichiarata e uso con gli avvisi all'80% e al 100% del limite morbido (DB3, DB21), LAN, numero di link. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /databases/{owner}/{name} (the `GetDatabase` operationId).
+func (c *ClientWithResponses) GetDatabaseWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*GetDatabaseResponse, error) {
+	rsp, err := c.GetDatabase(ctx, owner, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDatabaseResponse(rsp)
+}
+
+// UpdateDatabaseWithBodyWithResponse Ridimensiona un database (dimensione, CPU/RAM)
+//
+// Serve `admin` sull'owner (DB2). Il ridimensionamento cambia la dimensione dichiarata: il PVC `local-path` non espande e non limita fisicamente, il controller misura `pg_database_size` e da avvisi all'80% e al 100% senza bloccare le scritture (limite morbido, DB3). CPU, RAM e disco contano nella quota dell'owner insieme ad app e volumi: oltre il tetto 409 `insufficient_capacity` (DB3). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /databases/{owner}/{name} (the `UpdateDatabase` operationId).
+func (c *ClientWithResponses) UpdateDatabaseWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDatabaseResponse, error) {
+	rsp, err := c.UpdateDatabaseWithBody(ctx, owner, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateDatabaseResponse(rsp)
+}
+
+// UpdateDatabaseWithResponse Ridimensiona un database (dimensione, CPU/RAM)
+//
+// Serve `admin` sull'owner (DB2). Il ridimensionamento cambia la dimensione dichiarata: il PVC `local-path` non espande e non limita fisicamente, il controller misura `pg_database_size` e da avvisi all'80% e al 100% senza bloccare le scritture (limite morbido, DB3). CPU, RAM e disco contano nella quota dell'owner insieme ad app e volumi: oltre il tetto 409 `insufficient_capacity` (DB3). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /databases/{owner}/{name} (the `UpdateDatabase` operationId).
+func (c *ClientWithResponses) UpdateDatabaseWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, body UpdateDatabaseJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDatabaseResponse, error) {
+	rsp, err := c.UpdateDatabase(ctx, owner, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateDatabaseResponse(rsp)
+}
+
+// ListDatabaseBackupsWithResponse Elenca i backup del database (programmati e su richiesta)
+//
+// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. I dump `pg_dump -Fc` cifrati AES-256-GCM: il programmato ne tiene gli ultimi 7, quello su richiesta gli ultimi 5 (DB13); l'impostazione e' dell'amministratore. I contenuti dei dump non si scaricano da qui: si usano per il ripristino. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /databases/{owner}/{name}/backups (the `ListDatabaseBackups` operationId).
+func (c *ClientWithResponses) ListDatabaseBackupsWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*ListDatabaseBackupsResponse, error) {
+	rsp, err := c.ListDatabaseBackups(ctx, owner, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListDatabaseBackupsResponse(rsp)
+}
+
+// CreateDatabaseBackupWithResponse Avvia un backup su richiesta del database
+//
+// Serve `admin` sull'owner (DB2). `pg_dump -Fc` cifrato con la chiave di dump dell'istanza (DB13); la directory dati non si copia mai. 409 `backup_in_progress` se un dump e' gia' in corso. Risponde 202 con il backup `in_progress`; l'esito si legge da `listDatabaseBackups` (stato ed evento `database.backup_completed`/`backup_failed`, DB20). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /databases/{owner}/{name}/backups (the `CreateDatabaseBackup` operationId).
+func (c *ClientWithResponses) CreateDatabaseBackupWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*CreateDatabaseBackupResponse, error) {
+	rsp, err := c.CreateDatabaseBackup(ctx, owner, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateDatabaseBackupResponse(rsp)
+}
+
+// RestoreDatabaseBackupWithBodyWithResponse Ripristina un backup (nello stesso database o in uno nuovo)
+//
+// Serve `admin` sull'owner (DB2). Il ripristino e' sempre `pg_restore --no-owner --no-acl --role=<name>_owner`: il controller ricrea i ruoli (`<name>_owner` non superuser, `<name>_ro`), li applica e ricrea i link con password nuove, riavviando le app (DB15). Con `target: same` il database viene sostituito: serve la conferma `confirm` = `owner/nome` e il controller fa prima un dump di sicurezza; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch`. Con `target: new` nasce un database nuovo (anche con nome diverso: il nome della destinazione sostituisce `<name>` nei ruoli); se il nome e' gia' usato 409 `name_conflict`. I GRANT personalizzati dell'owner su oggetti non sopravvivono (`--no-acl`): l'owner li rifa. Risponde 202 con il database di destinazione in `restoring`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /databases/{owner}/{name}/backups/{backupId}/restore (the `RestoreDatabaseBackup` operationId).
+func (c *ClientWithResponses) RestoreDatabaseBackupWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, backupId DatabaseBackupIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RestoreDatabaseBackupResponse, error) {
+	rsp, err := c.RestoreDatabaseBackupWithBody(ctx, owner, name, backupId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRestoreDatabaseBackupResponse(rsp)
+}
+
+// RestoreDatabaseBackupWithResponse Ripristina un backup (nello stesso database o in uno nuovo)
+//
+// Serve `admin` sull'owner (DB2). Il ripristino e' sempre `pg_restore --no-owner --no-acl --role=<name>_owner`: il controller ricrea i ruoli (`<name>_owner` non superuser, `<name>_ro`), li applica e ricrea i link con password nuove, riavviando le app (DB15). Con `target: same` il database viene sostituito: serve la conferma `confirm` = `owner/nome` e il controller fa prima un dump di sicurezza; mancante o diverso e' 422 `confirmation_required` o `confirmation_mismatch`. Con `target: new` nasce un database nuovo (anche con nome diverso: il nome della destinazione sostituisce `<name>` nei ruoli); se il nome e' gia' usato 409 `name_conflict`. I GRANT personalizzati dell'owner su oggetti non sopravvivono (`--no-acl`): l'owner li rifa. Risponde 202 con il database di destinazione in `restoring`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /databases/{owner}/{name}/backups/{backupId}/restore (the `RestoreDatabaseBackup` operationId).
+func (c *ClientWithResponses) RestoreDatabaseBackupWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, backupId DatabaseBackupIdParam, body RestoreDatabaseBackupJSONRequestBody, reqEditors ...RequestEditorFn) (*RestoreDatabaseBackupResponse, error) {
+	rsp, err := c.RestoreDatabaseBackup(ctx, owner, name, backupId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRestoreDatabaseBackupResponse(rsp)
+}
+
+// RotateDatabaseCredentialsWithResponse Ruota la password dell'utente proprietario del database
+//
+// Serve `admin` sull'owner (DB2). Nuova password per `<name>_owner`: la risposta e' l'unico momento in cui si vede (DB22). Le connessioni aperte con la vecchia password restano valide finche' non si chiudono: per chiuderle subito ruotare i link (DB12) o riavviare il database. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /databases/{owner}/{name}/credentials/rotate (the `RotateDatabaseCredentials` operationId).
+func (c *ClientWithResponses) RotateDatabaseCredentialsWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*RotateDatabaseCredentialsResponse, error) {
+	rsp, err := c.RotateDatabaseCredentials(ctx, owner, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRotateDatabaseCredentialsResponse(rsp)
+}
+
+// GetDatabaseLanWithResponse Legge lo stato dell'accesso dalla LAN
+//
+// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. Spenta di default (DB16): accesa assegna una porta dell'intervallo configurato e la risposta da indirizzo, porta, la catena di certificati pubblica (foglia firmata dall'intermedia dei database + intermedia; i client si fidano della radice, DB17) e il comando `ufw` da eseguire sull'host: GitStack non modifica ufw e non c'e' allow-list per IP sorgente (DB18). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /databases/{owner}/{name}/lan (the `GetDatabaseLan` operationId).
+func (c *ClientWithResponses) GetDatabaseLanWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*GetDatabaseLanResponse, error) {
+	rsp, err := c.GetDatabaseLan(ctx, owner, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDatabaseLanResponse(rsp)
+}
+
+// SetDatabaseLanWithBodyWithResponse Accende o spegne l'accesso dalla LAN
+//
+// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /databases/{owner}/{name}/lan (the `SetDatabaseLan` operationId).
+func (c *ClientWithResponses) SetDatabaseLanWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetDatabaseLanResponse, error) {
+	rsp, err := c.SetDatabaseLanWithBody(ctx, owner, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetDatabaseLanResponse(rsp)
+}
+
+// SetDatabaseLanWithResponse Accende o spegne l'accesso dalla LAN
+//
+// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /databases/{owner}/{name}/lan (the `SetDatabaseLan` operationId).
+func (c *ClientWithResponses) SetDatabaseLanWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, body SetDatabaseLanJSONRequestBody, reqEditors ...RequestEditorFn) (*SetDatabaseLanResponse, error) {
+	rsp, err := c.SetDatabaseLan(ctx, owner, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetDatabaseLanResponse(rsp)
+}
+
+// ListDatabaseLinksWithResponse Elenca i collegamenti app del database
+//
+// Serve `admin` sull'owner (DB2): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. Per ogni collegamento: app (`owner/repo/nome`), modalita' `rw` o `ro`, stato. Le password dei link non si rileggono (DB22): si ruotano. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /databases/{owner}/{name}/links (the `ListDatabaseLinks` operationId).
+func (c *ClientWithResponses) ListDatabaseLinksWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*ListDatabaseLinksResponse, error) {
+	rsp, err := c.ListDatabaseLinks(ctx, owner, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListDatabaseLinksResponse(rsp)
+}
+
+// CreateDatabaseLinkWithBodyWithResponse Collega un'app al database (ruolo di login proprio)
+//
+// Serve `admin` sull'app (H5) e `admin` sull'owner del database (DB2); app e database devono avere lo stesso owner, anche se repo diversi: 422 `owner_mismatch` altrimenti (DB9). Ogni collegamento ha il proprio ruolo di login, mai condiviso: `rw` membro di `<name>_owner` con `SET role` al proprietario (gli oggetti creati restano dell'owner), `ro` membro di `<name>_ro`; niente `CREATEROLE` (DB9). Variabili iniettate nell'app come segreti (`DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE`, `PGSSLROOTCERT`), mai nelle risposte API ne' nei log (DB10): se l'app ha gia' una variabile con uno di quei nomi il collegamento e' rifiutato con 409 `variable_conflict` e l'app non si tocca. La password del link si vede solo in questa risposta (DB22). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /databases/{owner}/{name}/links (the `CreateDatabaseLink` operationId).
+func (c *ClientWithResponses) CreateDatabaseLinkWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDatabaseLinkResponse, error) {
+	rsp, err := c.CreateDatabaseLinkWithBody(ctx, owner, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateDatabaseLinkResponse(rsp)
+}
+
+// CreateDatabaseLinkWithResponse Collega un'app al database (ruolo di login proprio)
+//
+// Serve `admin` sull'app (H5) e `admin` sull'owner del database (DB2); app e database devono avere lo stesso owner, anche se repo diversi: 422 `owner_mismatch` altrimenti (DB9). Ogni collegamento ha il proprio ruolo di login, mai condiviso: `rw` membro di `<name>_owner` con `SET role` al proprietario (gli oggetti creati restano dell'owner), `ro` membro di `<name>_ro`; niente `CREATEROLE` (DB9). Variabili iniettate nell'app come segreti (`DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE`, `PGSSLROOTCERT`), mai nelle risposte API ne' nei log (DB10): se l'app ha gia' una variabile con uno di quei nomi il collegamento e' rifiutato con 409 `variable_conflict` e l'app non si tocca. La password del link si vede solo in questa risposta (DB22). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /databases/{owner}/{name}/links (the `CreateDatabaseLink` operationId).
+func (c *ClientWithResponses) CreateDatabaseLinkWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, body CreateDatabaseLinkJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDatabaseLinkResponse, error) {
+	rsp, err := c.CreateDatabaseLink(ctx, owner, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateDatabaseLinkResponse(rsp)
+}
+
+// DeleteDatabaseLinkWithResponse Scollega un'app dal database
+//
+// Chiunque abbia `admin` sull'app o `admin` sull'owner del database (DB2, DB9). Lo scollegamento segue l'ordine obbligatorio: `NOLOGIN` del ruolo, `pg_terminate_backend` fino a zero sessioni, `DROP OWNED`/`DROP ROLE`, e solo dopo variabili, Secret, label di rete e regola di uscita (DB12): finche' il ruolo esiste il collegamento resta `unlinking` e la risposta e' 202 con lo stato `unlinking`; l'app perde le variabili e riavvia. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /databases/{owner}/{name}/links/{linkId} (the `DeleteDatabaseLink` operationId).
+func (c *ClientWithResponses) DeleteDatabaseLinkWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, linkId DatabaseLinkIdParam, reqEditors ...RequestEditorFn) (*DeleteDatabaseLinkResponse, error) {
+	rsp, err := c.DeleteDatabaseLink(ctx, owner, name, linkId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteDatabaseLinkResponse(rsp)
+}
+
+// RotateDatabaseLinkWithResponse Ruota la password di un collegamento e riavvia l'app
+//
+// Serve `admin` sull'owner del database o `admin` sull'app (DB2, DB9). Password nuova, Secret dell'app riscritto, app riavviata e sessioni del link terminate: nessuna connessione sopravvive alla password vecchia (DB12). La nuova password si vede solo in questa risposta (DB22). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /databases/{owner}/{name}/links/{linkId}/rotate (the `RotateDatabaseLink` operationId).
+func (c *ClientWithResponses) RotateDatabaseLinkWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, linkId DatabaseLinkIdParam, reqEditors ...RequestEditorFn) (*RotateDatabaseLinkResponse, error) {
+	rsp, err := c.RotateDatabaseLink(ctx, owner, name, linkId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRotateDatabaseLinkResponse(rsp)
+}
+
+// GetDatabaseLogsWithResponse Legge i log di PostgreSQL
+//
+// Serve `admin` sull'owner (DB2, DB21): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. I log possono contenere query e dati, quindi niente lettura condivisa. Righe di `pods/log` conservate come i log delle app su `apps-data`. `follow=true` tiene la connessione aperta (streaming); senza, risponde con le righe fra `since` e `until`. Formato `text` oppure `ndjson` (un oggetto `DatabaseLogLine` per riga). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /databases/{owner}/{name}/logs (the `GetDatabaseLogs` operationId).
+func (c *ClientWithResponses) GetDatabaseLogsWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, params *GetDatabaseLogsParams, reqEditors ...RequestEditorFn) (*GetDatabaseLogsResponse, error) {
+	rsp, err := c.GetDatabaseLogs(ctx, owner, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDatabaseLogsResponse(rsp)
+}
+
+// GetDatabaseMetricsWithResponse Legge le metriche del database
+//
+// Serve `admin` sull'owner (DB2, DB21): l'owner stesso e gli amministratori della sua organizzazione leggono; un membro dell'organizzazione che non e' amministratore e un estraneo ricevono 404. CPU e RAM da metrics-server, dimensione logica da `pg_database_size` a intervalli, riavvii dallo stato del pod; se metrics-server manca la risposta e' comunque 200 con `available: false` e serie vuote (non zeri), come per le app. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /databases/{owner}/{name}/metrics (the `GetDatabaseMetrics` operationId).
+func (c *ClientWithResponses) GetDatabaseMetricsWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, params *GetDatabaseMetricsParams, reqEditors ...RequestEditorFn) (*GetDatabaseMetricsResponse, error) {
+	rsp, err := c.GetDatabaseMetrics(ctx, owner, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDatabaseMetricsResponse(rsp)
 }
 
 // GetHealthWithResponse Stato del servizio
@@ -74467,6 +78781,107 @@ func ParseUpdateCiStorageSettingsResponse(rsp *http.Response) (*UpdateCiStorageS
 	return response, nil
 }
 
+// ParseGetAdminDatabasesSettingsResponse parses an HTTP response from a GetAdminDatabasesSettingsWithResponse call
+func ParseGetAdminDatabasesSettingsResponse(rsp *http.Response) (*GetAdminDatabasesSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAdminDatabasesSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DatabasesInstanceSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateAdminDatabasesSettingsResponse parses an HTTP response from a UpdateAdminDatabasesSettingsWithResponse call
+func ParseUpdateAdminDatabasesSettingsResponse(rsp *http.Response) (*UpdateAdminDatabasesSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateAdminDatabasesSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DatabasesInstanceSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetAdminSystemResponse parses an HTTP response from a GetAdminSystemWithResponse call
 func ParseGetAdminSystemResponse(rsp *http.Response) (*GetAdminSystemResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -75120,6 +79535,1018 @@ func ParseVerifyTotpResponse(rsp *http.Response) (*VerifyTotpResponse, error) {
 			headers.RetryAfter = &value
 		}
 		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseListDatabasesResponse parses an HTTP response from a ListDatabasesWithResponse call
+func ParseListDatabasesResponse(rsp *http.Response) (*ListDatabasesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListDatabasesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DatabaseList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateDatabaseResponse parses an HTTP response from a CreateDatabaseWithResponse call
+func ParseCreateDatabaseResponse(rsp *http.Response) (*CreateDatabaseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateDatabaseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DatabaseCreated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteDatabaseResponse parses an HTTP response from a DeleteDatabaseWithResponse call
+func ParseDeleteDatabaseResponse(rsp *http.Response) (*DeleteDatabaseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteDatabaseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDatabaseResponse parses an HTTP response from a GetDatabaseWithResponse call
+func ParseGetDatabaseResponse(rsp *http.Response) (*GetDatabaseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDatabaseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Database
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateDatabaseResponse parses an HTTP response from a UpdateDatabaseWithResponse call
+func ParseUpdateDatabaseResponse(rsp *http.Response) (*UpdateDatabaseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateDatabaseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Database
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListDatabaseBackupsResponse parses an HTTP response from a ListDatabaseBackupsWithResponse call
+func ParseListDatabaseBackupsResponse(rsp *http.Response) (*ListDatabaseBackupsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListDatabaseBackupsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DatabaseBackupList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateDatabaseBackupResponse parses an HTTP response from a CreateDatabaseBackupWithResponse call
+func ParseCreateDatabaseBackupResponse(rsp *http.Response) (*CreateDatabaseBackupResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateDatabaseBackupResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DatabaseBackup
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRestoreDatabaseBackupResponse parses an HTTP response from a RestoreDatabaseBackupWithResponse call
+func ParseRestoreDatabaseBackupResponse(rsp *http.Response) (*RestoreDatabaseBackupResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RestoreDatabaseBackupResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest Database
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRotateDatabaseCredentialsResponse parses an HTTP response from a RotateDatabaseCredentialsWithResponse call
+func ParseRotateDatabaseCredentialsResponse(rsp *http.Response) (*RotateDatabaseCredentialsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RotateDatabaseCredentialsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DatabaseRotated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDatabaseLanResponse parses an HTTP response from a GetDatabaseLanWithResponse call
+func ParseGetDatabaseLanResponse(rsp *http.Response) (*GetDatabaseLanResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDatabaseLanResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DatabaseLan
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetDatabaseLanResponse parses an HTTP response from a SetDatabaseLanWithResponse call
+func ParseSetDatabaseLanResponse(rsp *http.Response) (*SetDatabaseLanResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetDatabaseLanResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DatabaseLan
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListDatabaseLinksResponse parses an HTTP response from a ListDatabaseLinksWithResponse call
+func ParseListDatabaseLinksResponse(rsp *http.Response) (*ListDatabaseLinksResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListDatabaseLinksResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DatabaseLinkList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateDatabaseLinkResponse parses an HTTP response from a CreateDatabaseLinkWithResponse call
+func ParseCreateDatabaseLinkResponse(rsp *http.Response) (*CreateDatabaseLinkResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateDatabaseLinkResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest DatabaseLinkCreated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteDatabaseLinkResponse parses an HTTP response from a DeleteDatabaseLinkWithResponse call
+func ParseDeleteDatabaseLinkResponse(rsp *http.Response) (*DeleteDatabaseLinkResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteDatabaseLinkResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DatabaseLink
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRotateDatabaseLinkResponse parses an HTTP response from a RotateDatabaseLinkWithResponse call
+func ParseRotateDatabaseLinkResponse(rsp *http.Response) (*RotateDatabaseLinkResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RotateDatabaseLinkResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DatabaseLinkRotated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDatabaseLogsResponse parses an HTTP response from a GetDatabaseLogsWithResponse call
+func ParseGetDatabaseLogsResponse(rsp *http.Response) (*GetDatabaseLogsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDatabaseLogsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDatabaseMetricsResponse parses an HTTP response from a GetDatabaseMetricsWithResponse call
+func ParseGetDatabaseMetricsResponse(rsp *http.Response) (*GetDatabaseMetricsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDatabaseMetricsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DatabaseMetrics
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	}
 
 	return response, nil

@@ -454,6 +454,44 @@ dall'outbox di core (`core.event_outbox`, con un segno di lettura ciascuno:
 `notified_at`, `webhooked_at`), nella stessa transazione in cui scrivono il loro
 risultato. Nomi stabili: cambiarli riparte da zero.
 
+## Eventi di dominio di core (v3-d): `database.*`
+
+Database gestiti (ADR 0003, GIT-550): li pubblica il servizio `core` dopo aver
+confermato la transazione, con l'outbox transazionale come gli altri eventi di
+dominio. Famiglia e schema dei payload sono fissati qui (regola DB20); la
+pubblicazione dall'implementazione è di GIT-551.
+
+- Stream `DATABASE` (subject `database.>`), versione **1**.
+- Azioni: `created`, `updated`, `deleted`, `linked`, `unlinked`, `lan_enabled`,
+  `lan_disabled`, `backup_completed`, `backup_failed`, `restored`.
+- `quota.warning`: avviso di quota dell'owner (CPU/RAM/disco contano nella stessa
+  quota di app e volumi, DB3) dalle stesse regole delle app (soglia 80%).
+
+### Campi comuni del payload
+
+| Campo | Significato |
+|---|---|
+| `database` | `{ id, owner, name, pgMajor }`, istantanea minima della risorsa |
+| `actor` | `{ id, username, type }` chi ha agito (`human` o `agent`); `null` per gli eventi di sistema |
+
+I payload non contengono mai segreti: niente password (né dell'utente proprietario
+né dei collegamenti), niente credenziali, niente contenuti dei dump (DB20, DB22).
+
+| Evento | Campi in più | Note |
+|---|---|---|
+| `database.created` | `sizeBytes`, `cpuMillis`, `memoryBytes` | creazione (DB1) |
+| `database.updated` | `changes`: `{ sizeBytes?: { from }, cpuMillis?: { from }, memoryBytes?: { from } }` | ridimensionamento dichiarato (DB3) |
+| `database.deleted` | `deletedAt` | eliminazione immediata, senza cestino (DB19) |
+| `database.linked`, `database.unlinked` | `link`: `{ id, app: { owner, repo, name }, mode }` | `mode` `rw`/`ro`; per `unlinked` lo stato dopo lo scollegamento (DB9, DB12) |
+| `database.lan_enabled`, `database.lan_disabled` | `port` | porta TCP assegnata; assente con la LAN spenta (DB16) |
+| `database.backup_completed`, `database.backup_failed` | `backup`: `{ id, kind, sizeBytes? }`, `error?` solo per `failed` | `kind` `scheduled`/`on_demand` (DB13) |
+| `database.restored` | `backupId`, `target` (`same`/`new`) | ripristino sempre `--no-owner --no-acl` (DB15) |
+
+Webhooks e notifiche seguono le regole delle app (C3, C6, C7): un webhook
+`database` per azione, firmato come gli altri, e notifiche di stato a chi
+amministra l'owner; lo schema esatto dei payload webhook si fissa con
+l'implementazione (GIT-551), i payload rispettano lo stesso divieto di segreti.
+
 ## Come si avvia NATS per i test
 
 Il test d'integrazione di `pkg/events` (tag di build `integration`, vedi
