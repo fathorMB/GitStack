@@ -45,6 +45,7 @@ Ports required on the host:
 | 443 | HTTPS (GitStack web UI, API, Git HTTPS) |
 | 2222 | Git SSH (the `git` Service inside the cluster; never the host's port 22) |
 | 80 | Redirected to 443 by Traefik (except `/downloads/ca.crt`) |
+| 15432-15531 | Optional, only with managed databases on: one TCP port per database with LAN access switched on (range set by `databases.lan.portRange`); open it in the firewall only to the network that needs it, see [Database gestiti: accesso dalla LAN e firewall](#database-gestiti-accesso-dalla-lan-e-firewall-git-554) |
 
 The installer also needs outbound HTTPS to GitHub, Docker Hub, and the k3s/Helm
 download mirrors.
@@ -2273,6 +2274,54 @@ con `-f`/`--set` (per esempio
 Il job di copia gira su GitHub Actions e prende SEMPRE da Docker Hub come
 sorgente: il digest nei values resta la prova di quale immagine ufficiale si
 distribuisce.
+
+### Database gestiti: accesso dalla LAN e firewall (GIT-554)
+
+Di default un database gestito è raggiungibile **solo dalle app collegate**. Un interruttore per database
+(portale o `PUT /databases/{owner}/{nome}/lan`) apre l'accesso dalla LAN per pgAdmin, DBeaver e le migrazioni
+dal PC. Acceso, core assegna al database **una porta TCP propria** dall'intervallo dell'installazione e crea
+un Service `LoadBalancer` (ServiceLB di k3s, come la porta SSH di git) più la NetworkPolicy `db-lan`, che
+ammette la 5432 da fuori dal CIDR dei pod: la rete delle app resta fuori. Spento, Service e policy spariscono
+prima della risposta e la porta smette di rispondere.
+
+**Cosa aprire nel firewall.** L'installer non modifica mai ufw (`deploy/README.md`) e core non può farlo: lo
+fa chi amministra l'host. Con i database accesi (`databases.enabled=true`) l'installer stampa il comando e
+avvisa se una porta dell'intervallo è già in ascolto sull'host. Serve una regola per l'intero intervallo (default
+**15432-15531**, una porta per database con la LAN accesa), alla sola rete di chi deve collegarsi:
+
+```sh
+sudo ufw allow from 192.168.1.0/24 to any port 15432:15531 proto tcp
+```
+
+La risposta di `GET /databases/{owner}/{nome}/lan` (e il portale) dà il comando già con la porta del database
+(`ufw allow from <rete> to any port <porta> proto tcp`). **Non provato:** se ufw filtri il traffico di ServiceLB
+(instradato via DNAT, quindi dalla catena FORWARD) va controllato su homehub: k3d non ha ufw. Non c'è
+un'allow-list per IP sorgente: Postgres vede come sorgente il nodo (SNAT), quindi l'unico filtro è il firewall.
+
+**Intervallo e porte riservate.** L'intervallo si sceglie con `--set databases.lan.portRange.from=N --set
+databases.lan.portRange.to=M` (da 1024 a 65535, `da <= a`); il CIDR dei pod, se non è quello di k3s
+(`10.42.0.0/16`), con `databases.lan.podCIDR`. Core non assegna mai 22, 80, 443, 2222, 6443, 8443, 10250, né
+`git.ssh.port` né la porta del gateway della CI, anche se cadono nell'intervallo. Ogni porta è di un solo
+database (indice unico su `managed_dbs.lan_port`); se l'intervallo è finito l'accensione risponde
+`409 port_unavailable`. La porta resta la stessa dopo un riavvio di core o un upgrade e si libera solo
+spegnendo; `Database.lanPort` la mostra, e l'amministratore dell'istanza vede ogni database (con la sua porta)
+dall'API. L'installer, se k3s non c'è ancora, avvisa quando una porta dell'intervallo è occupata da un altro
+processo dell'host: ServiceLB non potrebbe aprirla.
+
+**TLS.** PostgreSQL fa TLS da sé con una foglia firmata dall'**intermedia dei database** (name constraints:
+`*.svc.cluster.local` e i nomi e gli IP dell'istanza, GIT-565). Con la LAN accesa la foglia porta come SAN anche
+quei nomi e IP, e viene riemessa (e ricaricata con `pg_reload_conf`, senza riavvio) **prima** di aprire la porta.
+`pg_hba` ammette solo `hostssl` con `scram-sha-256`: senza TLS, con `gitstack_admin` o con una password
+sbagliata la connessione è rifiutata. Il client si fida della radice dell'istanza (`/help/ca`):
+
+```sh
+psql "host=<indirizzo> port=<porta> dbname=<nome> user=<nome>_owner sslmode=verify-full sslrootcert=ca.crt"
+```
+
+L'indirizzo deve essere uno dei nomi (o IP) con cui è stata creata l'intermedia: con un altro `verify-full`
+fallisce («does not match host name»). La password è quella generata alla creazione (32 caratteri esadecimali,
+mostrata una volta): si cambia con la rotazione. Un database sulla LAN è una superficie di attacco: non c'è
+rate limit.
 
 ### Rilascio con versione (`vX.Y.Z`, GIT-222)
 
