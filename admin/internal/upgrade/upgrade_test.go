@@ -160,8 +160,8 @@ type fakeHelm struct {
 	patches       int
 	manifest      string // manifest della revisione di destinazione (vuoto: quello di prova)
 
-	dbNew, dbOld string                              // rendering dei database del chart nuovo e di quello attuale (GIT-565)
-	dbForced     string                              // rendering della release con databases.enabled=true (tabella da spenti)
+	dbNew, dbOld string // rendering dei database del chart nuovo e di quello attuale (GIT-565)
+	dbForced     string // rendering della release con databases.enabled=true (tabella da spenti)
 	dbForcedErr  error
 	real         func(args []string) ([]byte, error) // helm template vero (databases_helm_test.go)
 }
