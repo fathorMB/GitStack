@@ -87,6 +87,22 @@ func (l *lateController) Logs(ctx context.Context, d store.ManagedDB, o *corev1.
 	return l.get().Logs(ctx, d, o)
 }
 func (l *lateController) Kick() { l.get().Kick() }
+func (l *lateController) StartBackup(ctx context.Context, d store.ManagedDB, a *store.AppActor) (store.ManagedDBBackup, error) {
+	return l.get().StartBackup(ctx, d, a)
+}
+func (l *lateController) RestoreBackup(ctx context.Context, d store.ManagedDB, b store.ManagedDBBackup, mode string, a *store.AppActor) error {
+	return l.get().RestoreBackup(ctx, d, b, mode, a)
+}
+func (l *lateController) DumpExists(rel string) bool { return l.get().DumpExists(rel) }
+func (l *lateController) RequestMinorUpgrade(ctx context.Context, d store.ManagedDB, a *store.AppActor) error {
+	return l.get().RequestMinorUpgrade(ctx, d, a)
+}
+func (l *lateController) RequestMinorUpgradeAll(ctx context.Context, a *store.AppActor) (int, error) {
+	return l.get().RequestMinorUpgradeAll(ctx, a)
+}
+func (l *lateController) MinorUpdateAvailable(d store.ManagedDB) bool {
+	return l.get().MinorUpdateAvailable(d)
+}
 
 func (e *dbEnv) create(user, owner, body string, want int) openapi.DatabaseCreated {
 	e.t.Helper()

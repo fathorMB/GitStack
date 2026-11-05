@@ -23,8 +23,8 @@ func (s *stubCluster) Scale(context.Context, string, int) error            { ret
 func (s *stubCluster) WaitStopped(context.Context, string) error           { return nil }
 func (s *stubCluster) WaitReady(context.Context, string) error             { return nil }
 func (s *stubCluster) PGExec(_ context.Context, _ io.Reader, w io.Writer, args ...string) error {
-	if strings.Contains(strings.Join(args, " "), "core.app_versions") || strings.Contains(strings.Join(args, " "), "core.app_volumes") {
-		return nil // immagini in uso dalle app (H4): nessuna app nel test
+	if strings.Contains(strings.Join(args, " "), "core.app_versions") || strings.Contains(strings.Join(args, " "), "core.app_volumes") || strings.Contains(strings.Join(args, " "), "core.managed_dbs") {
+		return nil // immagini in uso dalle app (H4), volumi e database gestiti (GIT-553): nessuno nel test
 	}
 	_, err := io.WriteString(w, "-- dump\n")
 	return err

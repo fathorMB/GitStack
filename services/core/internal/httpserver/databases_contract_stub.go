@@ -32,18 +32,6 @@ func (s *apiServer) RotateDatabaseLink(w http.ResponseWriter, r *http.Request, o
 	databaseDisabled(w)
 }
 
-func (s *apiServer) ListDatabaseBackups(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.DatabaseNameParam) {
-	databaseDisabled(w)
-}
-
-func (s *apiServer) CreateDatabaseBackup(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.DatabaseNameParam) {
-	databaseDisabled(w)
-}
-
-func (s *apiServer) RestoreDatabaseBackup(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.DatabaseNameParam, backupId openapi.DatabaseBackupIdParam) {
-	databaseDisabled(w)
-}
-
 func (s *apiServer) GetDatabaseLan(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.DatabaseNameParam) {
 	databaseDisabled(w)
 }

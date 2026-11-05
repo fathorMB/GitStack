@@ -89,3 +89,11 @@ func (s *apiServer) GetAdminDatabasesSettings(w http.ResponseWriter, r *http.Req
 func (s *apiServer) UpdateAdminDatabasesSettings(w http.ResponseWriter, r *http.Request) {
 	s.databasesProxy(w, r)
 }
+
+func (s *apiServer) UpgradeDatabaseMinor(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.DatabaseNameParam) {
+	s.databasesProxy(w, r)
+}
+
+func (s *apiServer) UpgradeAllDatabasesMinor(w http.ResponseWriter, r *http.Request) {
+	s.databasesProxy(w, r)
+}

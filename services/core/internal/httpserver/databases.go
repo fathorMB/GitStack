@@ -34,6 +34,13 @@ type DatabaseController interface {
 	RotateOwner(ctx context.Context, d store.ManagedDB) (string, error)
 	Logs(ctx context.Context, d store.ManagedDB, opts *corev1.PodLogOptions) (io.ReadCloser, error)
 	Kick()
+	// Backup, ripristino e aggiornamento minor (GIT-553).
+	StartBackup(ctx context.Context, d store.ManagedDB, actor *store.AppActor) (store.ManagedDBBackup, error)
+	RestoreBackup(ctx context.Context, d store.ManagedDB, b store.ManagedDBBackup, mode string, actor *store.AppActor) error
+	DumpExists(rel string) bool
+	RequestMinorUpgrade(ctx context.Context, d store.ManagedDB, actor *store.AppActor) error
+	RequestMinorUpgradeAll(ctx context.Context, actor *store.AppActor) (int, error)
+	MinorUpdateAvailable(d store.ManagedDB) bool
 }
 
 var _ DatabaseController = (*databases.Controller)(nil)
@@ -210,7 +217,7 @@ func (s *apiServer) ListDatabases(w http.ResponseWriter, r *http.Request, ownerP
 	}
 	out := openapi.DatabaseList{Items: make([]openapi.Database, 0, len(dbs))}
 	for _, d := range dbs {
-		out.Items = append(out.Items, databaseToAPI(d))
+		out.Items = append(out.Items, s.apiDatabase(r.Context(), d))
 	}
 	writeJSON(w, http.StatusOK, out)
 }
@@ -292,7 +299,7 @@ func (s *apiServer) GetDatabase(w http.ResponseWriter, r *http.Request, owner op
 	if !ok {
 		return
 	}
-	writeJSON(w, http.StatusOK, databaseToAPI(d))
+	writeJSON(w, http.StatusOK, s.apiDatabase(r.Context(), d))
 }
 
 // UpdateDatabase implementa PATCH /databases/{owner}/{name}: ridimensionamento dichiarato (DB3).

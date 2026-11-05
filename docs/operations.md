@@ -951,6 +951,7 @@ sudo gitstack backup --dest /mnt/backup/gitstack --retention 14
 | `git-data.tar` | All Git repositories (the `git-data` volume) |
 | `attachments.tar` | Issue attachments (only if the directory exists) |
 | `app-volumes/<app-id>/<volume>.tar` | One entry per persistent volume of a hosted app that is **in backups** (the default; see [Volumes and databases](#volumes-and-databases)). The manifest lists them under `app_volumes` |
+| `databases/<db-id>/<name>.dump` | A fresh `pg_dump -Fc` of each **managed database** (v3-d) that is running. The manifest lists them under `databases`. See [Managed databases: backup and restore](#managed-databases-backup-and-restore) |
 | `secrets.json` | Kubernetes secrets used by GitStack (certificate data, SSH host keys, OIDC keys, etc.) |
 | `config/` | Copy of the contents of `/etc/gitstack/` (CA certificate, CA key, configuration files) |
 
@@ -1006,7 +1007,10 @@ path, the volume name or the image looks like a database, and the "Volumes & res
 4. After a restore, start the database from the dump: restore it into a fresh data directory
    (`psql`, `mysql`, `mongorestore`) instead of trusting the copied files.
 
-GitStack v3 has no managed databases and does not run the dump for you.
+GitStack does not run this dump for you. The PostgreSQL databases that GitStack itself hosts (managed
+databases) are different: they are dumped by GitStack, see [Managed databases: backup and
+restore](#managed-databases-backup-and-restore). The data directory of a managed database is never
+copied (its volume is not an app volume and never enters the archive).
 
 **Restore.** `gitstack restore` puts each volume back where it was and the app restarts with its
 data. On a clean machine it first recreates the app's namespace, the volume and the claim (same
@@ -1015,6 +1019,78 @@ together with the images in use that the archive carries (rule H4). An app that 
 the target is scaled to zero while its volume is written; `core` brings the copies back when it
 starts again. An archive with app volumes cannot be restored on a cluster that does not support
 them: the command stops before touching anything.
+
+### Managed databases: backup and restore
+
+Managed PostgreSQL databases (v3-d, ADR 0003, rules DB6 and DB13-DB15) have their own backups, on top of the
+nightly `gitstack backup`.
+
+**What is dumped.** `pg_dump -Fc` run inside the database pod: a consistent snapshot while the database
+is running, compressed. The data directory is never copied. Dumps are encrypted with AES-256-GCM (the same
+format as the archive) using the **dump key** of the instance, the Secret `<release>-db-dump-key`
+(created by the installer, `helm.sh/resource-policy: keep`). That Secret is in `secrets.json` of every
+`gitstack backup` and comes back with `gitstack restore`, so dumps written before stay readable. Without
+the key (or without the `databases-data` volume) backups are **not available**: the API answers
+`422 backup_unavailable`, never an unencrypted dump.
+
+**Scheduled and on demand.** `core` dumps each running database **once a day** (24 hours after the
+last scheduled dump; after a failure it retries every hour) and keeps the last **7**. A dump on request
+(portal or `POST /databases/{owner}/{name}/backups`) keeps the last **5**, separately. A
+`safety` dump (before an in-place restore or a minor update) keeps the last 3. Dump files live on the
+`databases-data` volume of `core`; they do not count against the owner's quota and disappear with the
+database. `GET /databases/{owner}/{name}/backups` lists them with size and outcome.
+
+**A failed backup is never silent.** The failed dump stays in the list with its error, the database shows
+`operations.backupError` (until a dump of the same kind succeeds), the audit and the
+`database.backup_failed` event record it, and `gitstack status` prints it:
+
+```text
+Database gestiti: problemi aperti
+  alice/shop: BACKUP FALLITO: pg_dump: connection refused
+```
+
+**In `gitstack backup`.** Every run adds a **fresh** dump of each running database to the archive, outside
+the read-only window (after gateway and git are back). It follows the archive's encryption, retention and
+S3 upload with no extra setup. A dump that fails makes the whole backup fail, naming the database;
+a database that is not running is named in the log and left out. Consistency is per database, not across
+databases or with the `core` database.
+
+**Restore into the same database.** `POST /databases/{owner}/{name}/backups/{backupId}/restore` with
+`{"target":"same","confirm":"owner/name"}`. GitStack first takes a `safety` dump (if that fails nothing is
+touched), then runs `pg_restore --no-owner --no-acl --role=<name>_owner --clean --if-exists` in a single
+transaction: on error the database is as it was. Objects that are in the dump are replaced; objects created
+after the dump and not in it are left alone. Ownership goes to `<name>_owner`, the privileges of
+`<name>_ro` are re-applied. **Custom GRANTs the owner made on objects do not survive** (`--no-acl`):
+the owner redoes them. `ALTER DATABASE ... SET` and `ALTER ROLE ... IN DATABASE` are not in the dump.
+Active sessions that hold locks can make the restore wait; it gives up after 60 seconds of waiting
+for a lock and the database stays as it was.
+
+**Restore into a new database.** `{"target":"new","name":"copy"}` creates a new database (same owner,
+size and major; `409 name_conflict` if the name is taken; it counts against the quota) and fills it from the
+dump. The name of the destination replaces `<name>` in the roles. The new database has **new credentials**:
+rotate the password to see it. A different **major** is never changed in place: restore a dump into a new
+database of the new major instead.
+
+**Minor updates on request (DB6).** A database keeps the image digest it was created with, even when the
+release changes the digest table of the instance. `POST /databases/{owner}/{name}/upgrade-minor` (or, for
+every database, `POST /admin/databases/upgrade-minor` as instance administrator after `gitstack upgrade`)
+takes a `safety` dump and **only if it succeeds** moves the database to the current digest for its
+**major**, on the same volume, with a restart. If the dump fails the image does not change and
+`operations.upgradeError` says why. A table entry that is not of the database's major is refused.
+
+**`gitstack restore` on a clean cluster.** After `core` is back up its controller recreates each
+database instance empty (namespace, StatefulSet, roles); `gitstack restore` waits for each one (10 minutes at
+most) and applies its dump (`pg_restore --no-owner --no-acl --role=<name>_owner`, then the `<name>_ro`
+privileges). The dump files in `databases-data` are not in the archive, so their rows are removed from
+`core` by the restore. **No database secret travels in a backup**: after the restore every database has a
+new owner password (rotate it to read it) and app links need to be re-created by their admins (the link
+roles are not in the dump).
+
+**Manual end-to-end check (VM).** 1) Create a database `shop` and put known rows in it. 2) `sudo gitstack backup`
+and check `databases/<id>/shop.dump` is listed in `manifest.json`. 3) Change the rows. 4) Request a restore into
+the same database with the confirmation and check the known rows are back and a `safety` backup exists. 5) On a
+clean VM install the same version, `sudo gitstack restore <archive>` and check that `shop` is `running` with the
+known rows (connect as `shop_owner` after rotating the password).
 
 ### Retention
 

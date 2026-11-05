@@ -840,6 +840,7 @@ func (e CurrentSessionAuthMethod) Valid() bool {
 // Defines values for DatabaseBackupKind.
 const (
 	OnDemand  DatabaseBackupKind = "on_demand"
+	Safety    DatabaseBackupKind = "safety"
 	Scheduled DatabaseBackupKind = "scheduled"
 )
 
@@ -847,6 +848,8 @@ const (
 func (e DatabaseBackupKind) Valid() bool {
 	switch e {
 	case OnDemand:
+		return true
+	case Safety:
 		return true
 	case Scheduled:
 		return true
@@ -5650,6 +5653,9 @@ type Database struct {
 	// Example: shop
 	Name DatabaseName `json:"name"`
 
+	// Operations Stato di backup, ripristino e aggiornamento minor (GIT-553). Un errore resta qui finche' un'operazione dello stesso tipo non riesce: un backup fallito non passa in silenzio (`gitstack status` lo mostra).
+	Operations *DatabaseOperations `json:"operations,omitempty"`
+
 	// Owner Owner (utente o organizzazione): su di lui contano le quote, insieme ad app e volumi (DB3).
 	Owner string `json:"owner"`
 
@@ -5677,7 +5683,7 @@ type DatabaseBackup struct {
 	Error *string            `json:"error,omitempty"`
 	Id    openapi_types.UUID `json:"id"`
 
-	// Kind `scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13).
+	// Kind `scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13). `safety`: dump di sicurezza prima di un ripristino sul posto o di un aggiornamento minor (ultimi 3).
 	Kind DatabaseBackupKind `json:"kind"`
 
 	// SizeBytes Dimensione del dump cifrato; null finche' non finisce.
@@ -5685,7 +5691,7 @@ type DatabaseBackup struct {
 	Status    DatabaseBackupStatus `json:"status"`
 }
 
-// DatabaseBackupKind `scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13).
+// DatabaseBackupKind `scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13). `safety`: dump di sicurezza prima di un ripristino sul posto o di un aggiornamento minor (ultimi 3).
 type DatabaseBackupKind string
 
 // DatabaseBackupList defines model for DatabaseBackupList.
@@ -5882,10 +5888,40 @@ type DatabaseMetrics struct {
 // DatabaseMetricsRange defines model for DatabaseMetrics.Range.
 type DatabaseMetricsRange string
 
+// DatabaseMinorUpgradeRequested defines model for DatabaseMinorUpgradeRequested.
+type DatabaseMinorUpgradeRequested struct {
+	// Requested Database messi in coda per l'aggiornamento minor.
+	Requested int `json:"requested"`
+}
+
 // DatabaseName Nome del database (DB1): label DNS normalizzata da `pkg/names`, unica per owner (`name_conflict`). Non si cambia dopo la creazione.
 //
 // Example: shop
 type DatabaseName = string
+
+// DatabaseOperations Stato di backup, ripristino e aggiornamento minor (GIT-553). Un errore resta qui finche' un'operazione dello stesso tipo non riesce: un backup fallito non passa in silenzio (`gitstack status` lo mostra).
+type DatabaseOperations struct {
+	// BackupError Motivo dell'ultimo dump fallito, finche' un dump dello stesso tipo non riesce.
+	BackupError *string `json:"backupError,omitempty"`
+
+	// LastBackupAt Ultimo dump riuscito (qualunque tipo).
+	LastBackupAt *time.Time `json:"lastBackupAt,omitempty"`
+
+	// MinorUpdateAvailable La tabella delle immagini ha un digest diverso per la major del database (DB6).
+	MinorUpdateAvailable bool `json:"minorUpdateAvailable"`
+
+	// RestoreError Motivo dell'ultimo ripristino fallito.
+	RestoreError *string `json:"restoreError,omitempty"`
+
+	// RestoreInProgress C'e' un ripristino in attesa o in corso.
+	RestoreInProgress *bool `json:"restoreInProgress,omitempty"`
+
+	// UpgradeError Motivo dell'ultimo aggiornamento minor non eseguito: l'immagine non e' cambiata.
+	UpgradeError *string `json:"upgradeError,omitempty"`
+
+	// UpgradeRequested Un aggiornamento minor e' stato chiesto e non e' ancora finito.
+	UpgradeRequested *bool `json:"upgradeRequested,omitempty"`
+}
 
 // DatabasePgMajor Major di PostgreSQL (DB1, DB2 dell'ADR 0003): solo quelle ammesse dall'amministratore (16/17).
 type DatabasePgMajor int
@@ -10476,6 +10512,13 @@ type ClientInterface interface {
 	// Corresponds with PATCH /admin/databases/settings (the `UpdateAdminDatabasesSettings` operationId).
 	UpdateAdminDatabasesSettings(ctx context.Context, body UpdateAdminDatabasesSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UpgradeAllDatabasesMinor Chiede l'aggiornamento minor di tutti i database (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Dopo `gitstack upgrade` la tabella delle immagini dell'istanza puo' avere un digest nuovo per una major; i database esistenti restano sul loro digest (DB6) finche' non lo si chiede. Questa operazione lo chiede per ogni database `running` con un aggiornamento disponibile: ognuno fa prima il dump di sicurezza e, solo se riesce, passa al digest corrente (stesso PVC, riavvio). La major non cambia mai sul posto. Risponde 202 con quanti database sono stati messi in coda. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Corresponds with POST /admin/databases/upgrade-minor (the `UpgradeAllDatabasesMinor` operationId).
+	UpgradeAllDatabasesMinor(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetAdminSystem Stato dell'installazione (Admin · System)
 	//
 	// Database (interno o esterno, N8), backup locale e S3 con l'esito dell'ultimo caricamento (N7), rete aziendale (N9) e versioni di GitStack e k3s con l'aggiornamento disponibile (N10). Solo l'amministratore dell'installazione. Le informazioni dell'host le pubblica `gitstack` in un ConfigMap che core legge da un file montato: niente accesso all'host dai servizi. La versione del server Postgres è quella letta ora da core sulla sua connessione. Mai segreti: né password, né chiavi S3, né credenziali del proxy.
@@ -10768,6 +10811,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /databases/{owner}/{name}/metrics (the `GetDatabaseMetrics` operationId).
 	GetDatabaseMetrics(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, params *GetDatabaseMetricsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpgradeDatabaseMinor Chiede l'aggiornamento minor del database all'immagine corrente
+	//
+	// Serve `admin` sull'owner (DB2). Il database resta sul digest scelto alla creazione anche quando la tabella delle immagini dell'istanza cambia (DB6); questa e' la richiesta esplicita: il controller fa prima il dump di sicurezza (`safety`, stesso strumento del backup) e solo se riesce passa al digest corrente della tabella per la stessa major (stesso PVC, riavvio del pod, le app collegate si riconnettono). Se il dump fallisce l'immagine non cambia e `operations.upgradeError` dice perche'. La major non si cambia mai sul posto (nuovo database da dump, `restoreDatabaseBackup` con `target: new`). 202 con il database; 409 `no_update` se e' gia' sul digest corrente; 422 `database_not_ready` se non e' `running`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Corresponds with POST /databases/{owner}/{name}/upgrade-minor (the `UpgradeDatabaseMinor` operationId).
+	UpgradeDatabaseMinor(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetHealth Stato del servizio
 	//
@@ -14334,6 +14384,23 @@ func (c *Client) UpdateAdminDatabasesSettings(ctx context.Context, body UpdateAd
 	return c.Client.Do(req)
 }
 
+// UpgradeAllDatabasesMinor Chiede l'aggiornamento minor di tutti i database (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Dopo `gitstack upgrade` la tabella delle immagini dell'istanza puo' avere un digest nuovo per una major; i database esistenti restano sul loro digest (DB6) finche' non lo si chiede. Questa operazione lo chiede per ogni database `running` con un aggiornamento disponibile: ognuno fa prima il dump di sicurezza e, solo se riesce, passa al digest corrente (stesso PVC, riavvio). La major non cambia mai sul posto. Risponde 202 con quanti database sono stati messi in coda. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Corresponds with POST /admin/databases/upgrade-minor (the `UpgradeAllDatabasesMinor` operationId).
+func (c *Client) UpgradeAllDatabasesMinor(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpgradeAllDatabasesMinorRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetAdminSystem Stato dell'installazione (Admin · System)
 //
 // Database (interno o esterno, N8), backup locale e S3 con l'esito dell'ultimo caricamento (N7), rete aziendale (N9) e versioni di GitStack e k3s con l'aggiornamento disponibile (N10). Solo l'amministratore dell'installazione. Le informazioni dell'host le pubblica `gitstack` in un ConfigMap che core legge da un file montato: niente accesso all'host dai servizi. La versione del server Postgres è quella letta ora da core sulla sua connessione. Mai segreti: né password, né chiavi S3, né credenziali del proxy.
@@ -14987,6 +15054,23 @@ func (c *Client) GetDatabaseLogs(ctx context.Context, owner RepoOwnerParam, name
 // Corresponds with GET /databases/{owner}/{name}/metrics (the `GetDatabaseMetrics` operationId).
 func (c *Client) GetDatabaseMetrics(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, params *GetDatabaseMetricsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDatabaseMetricsRequest(c.Server, owner, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpgradeDatabaseMinor Chiede l'aggiornamento minor del database all'immagine corrente
+//
+// Serve `admin` sull'owner (DB2). Il database resta sul digest scelto alla creazione anche quando la tabella delle immagini dell'istanza cambia (DB6); questa e' la richiesta esplicita: il controller fa prima il dump di sicurezza (`safety`, stesso strumento del backup) e solo se riesce passa al digest corrente della tabella per la stessa major (stesso PVC, riavvio del pod, le app collegate si riconnettono). Se il dump fallisce l'immagine non cambia e `operations.upgradeError` dice perche'. La major non si cambia mai sul posto (nuovo database da dump, `restoreDatabaseBackup` con `target: new`). 202 con il database; 409 `no_update` se e' gia' sul digest corrente; 422 `database_not_ready` se non e' `running`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Corresponds with POST /databases/{owner}/{name}/upgrade-minor (the `UpgradeDatabaseMinor` operationId).
+func (c *Client) UpgradeDatabaseMinor(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpgradeDatabaseMinorRequest(c.Server, owner, name)
 	if err != nil {
 		return nil, err
 	}
@@ -22762,6 +22846,33 @@ func NewUpdateAdminDatabasesSettingsRequestWithBody(server string, contentType s
 	return req, nil
 }
 
+// NewUpgradeAllDatabasesMinorRequest constructs an http.Request for the UpgradeAllDatabasesMinor method
+func NewUpgradeAllDatabasesMinorRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/databases/upgrade-minor")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetAdminSystemRequest constructs an http.Request for the GetAdminSystem method
 func NewGetAdminSystemRequest(server string) (*http.Request, error) {
 	var err error
@@ -24107,6 +24218,47 @@ func NewGetDatabaseMetricsRequest(server string, owner RepoOwnerParam, name Data
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpgradeDatabaseMinorRequest constructs an http.Request for the UpgradeDatabaseMinor method
+func NewUpgradeDatabaseMinorRequest(server string, owner RepoOwnerParam, name DatabaseNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/databases/%s/%s/upgrade-minor", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -41440,6 +41592,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PATCH /admin/databases/settings (the `UpdateAdminDatabasesSettings` operationId).
 	UpdateAdminDatabasesSettingsWithResponse(ctx context.Context, body UpdateAdminDatabasesSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAdminDatabasesSettingsResponse, error)
 
+	// UpgradeAllDatabasesMinorWithResponse Chiede l'aggiornamento minor di tutti i database (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Dopo `gitstack upgrade` la tabella delle immagini dell'istanza puo' avere un digest nuovo per una major; i database esistenti restano sul loro digest (DB6) finche' non lo si chiede. Questa operazione lo chiede per ogni database `running` con un aggiornamento disponibile: ognuno fa prima il dump di sicurezza e, solo se riesce, passa al digest corrente (stesso PVC, riavvio). La major non cambia mai sul posto. Risponde 202 con quanti database sono stati messi in coda. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/databases/upgrade-minor (the `UpgradeAllDatabasesMinor` operationId).
+	UpgradeAllDatabasesMinorWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UpgradeAllDatabasesMinorResponse, error)
+
 	// GetAdminSystemWithResponse Stato dell'installazione (Admin · System)
 	//
 	// Database (interno o esterno, N8), backup locale e S3 con l'esito dell'ultimo caricamento (N7), rete aziendale (N9) e versioni di GitStack e k3s con l'aggiornamento disponibile (N10). Solo l'amministratore dell'installazione. Le informazioni dell'host le pubblica `gitstack` in un ConfigMap che core legge da un file montato: niente accesso all'host dai servizi. La versione del server Postgres è quella letta ora da core sulla sua connessione. Mai segreti: né password, né chiavi S3, né credenziali del proxy.
@@ -41774,6 +41935,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /databases/{owner}/{name}/metrics (the `GetDatabaseMetrics` operationId).
 	GetDatabaseMetricsWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, params *GetDatabaseMetricsParams, reqEditors ...RequestEditorFn) (*GetDatabaseMetricsResponse, error)
+
+	// UpgradeDatabaseMinorWithResponse Chiede l'aggiornamento minor del database all'immagine corrente
+	//
+	// Serve `admin` sull'owner (DB2). Il database resta sul digest scelto alla creazione anche quando la tabella delle immagini dell'istanza cambia (DB6); questa e' la richiesta esplicita: il controller fa prima il dump di sicurezza (`safety`, stesso strumento del backup) e solo se riesce passa al digest corrente della tabella per la stessa major (stesso PVC, riavvio del pod, le app collegate si riconnettono). Se il dump fallisce l'immagine non cambia e `operations.upgradeError` dice perche'. La major non si cambia mai sul posto (nuovo database da dump, `restoreDatabaseBackup` con `target: new`). 202 con il database; 409 `no_update` se e' gia' sul digest corrente; 422 `database_not_ready` se non e' `running`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /databases/{owner}/{name}/upgrade-minor (the `UpgradeDatabaseMinor` operationId).
+	UpgradeDatabaseMinorWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*UpgradeDatabaseMinorResponse, error)
 
 	// GetHealthWithResponse Stato del servizio
 	//
@@ -46584,6 +46754,68 @@ func (r UpdateAdminDatabasesSettingsResponse) ContentType() string {
 	return ""
 }
 
+type UpgradeAllDatabasesMinorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *DatabaseMinorUpgradeRequested
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r UpgradeAllDatabasesMinorResponse) GetJSON202() *DatabaseMinorUpgradeRequested {
+	return r.JSON202
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpgradeAllDatabasesMinorResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpgradeAllDatabasesMinorResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpgradeAllDatabasesMinorResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UpgradeAllDatabasesMinorResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpgradeAllDatabasesMinorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpgradeAllDatabasesMinorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpgradeAllDatabasesMinorResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetAdminSystemResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -48629,6 +48861,82 @@ func (r GetDatabaseMetricsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetDatabaseMetricsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpgradeDatabaseMinorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *Database
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r UpgradeDatabaseMinorResponse) GetJSON202() *Database {
+	return r.JSON202
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpgradeDatabaseMinorResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpgradeDatabaseMinorResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpgradeDatabaseMinorResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpgradeDatabaseMinorResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpgradeDatabaseMinorResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UpgradeDatabaseMinorResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpgradeDatabaseMinorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpgradeDatabaseMinorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpgradeDatabaseMinorResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -71456,6 +71764,21 @@ func (c *ClientWithResponses) UpdateAdminDatabasesSettingsWithResponse(ctx conte
 	return ParseUpdateAdminDatabasesSettingsResponse(rsp)
 }
 
+// UpgradeAllDatabasesMinorWithResponse Chiede l'aggiornamento minor di tutti i database (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Dopo `gitstack upgrade` la tabella delle immagini dell'istanza puo' avere un digest nuovo per una major; i database esistenti restano sul loro digest (DB6) finche' non lo si chiede. Questa operazione lo chiede per ogni database `running` con un aggiornamento disponibile: ognuno fa prima il dump di sicurezza e, solo se riesce, passa al digest corrente (stesso PVC, riavvio). La major non cambia mai sul posto. Risponde 202 con quanti database sono stati messi in coda. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/databases/upgrade-minor (the `UpgradeAllDatabasesMinor` operationId).
+func (c *ClientWithResponses) UpgradeAllDatabasesMinorWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UpgradeAllDatabasesMinorResponse, error) {
+	rsp, err := c.UpgradeAllDatabasesMinor(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpgradeAllDatabasesMinorResponse(rsp)
+}
+
 // GetAdminSystemWithResponse Stato dell'installazione (Admin · System)
 //
 // Database (interno o esterno, N8), backup locale e S3 con l'esito dell'ultimo caricamento (N7), rete aziendale (N9) e versioni di GitStack e k3s con l'aggiornamento disponibile (N10). Solo l'amministratore dell'installazione. Le informazioni dell'host le pubblica `gitstack` in un ConfigMap che core legge da un file montato: niente accesso all'host dai servizi. La versione del server Postgres è quella letta ora da core sulla sua connessione. Mai segreti: né password, né chiavi S3, né credenziali del proxy.
@@ -72011,6 +72334,21 @@ func (c *ClientWithResponses) GetDatabaseMetricsWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseGetDatabaseMetricsResponse(rsp)
+}
+
+// UpgradeDatabaseMinorWithResponse Chiede l'aggiornamento minor del database all'immagine corrente
+//
+// Serve `admin` sull'owner (DB2). Il database resta sul digest scelto alla creazione anche quando la tabella delle immagini dell'istanza cambia (DB6); questa e' la richiesta esplicita: il controller fa prima il dump di sicurezza (`safety`, stesso strumento del backup) e solo se riesce passa al digest corrente della tabella per la stessa major (stesso PVC, riavvio del pod, le app collegate si riconnettono). Se il dump fallisce l'immagine non cambia e `operations.upgradeError` dice perche'. La major non si cambia mai sul posto (nuovo database da dump, `restoreDatabaseBackup` con `target: new`). 202 con il database; 409 `no_update` se e' gia' sul digest corrente; 422 `database_not_ready` se non e' `running`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /databases/{owner}/{name}/upgrade-minor (the `UpgradeDatabaseMinor` operationId).
+func (c *ClientWithResponses) UpgradeDatabaseMinorWithResponse(ctx context.Context, owner RepoOwnerParam, name DatabaseNameParam, reqEditors ...RequestEditorFn) (*UpgradeDatabaseMinorResponse, error) {
+	rsp, err := c.UpgradeDatabaseMinor(ctx, owner, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpgradeDatabaseMinorResponse(rsp)
 }
 
 // GetHealthWithResponse Stato del servizio
@@ -78882,6 +79220,53 @@ func ParseUpdateAdminDatabasesSettingsResponse(rsp *http.Response) (*UpdateAdmin
 	return response, nil
 }
 
+// ParseUpgradeAllDatabasesMinorResponse parses an HTTP response from a UpgradeAllDatabasesMinorWithResponse call
+func ParseUpgradeAllDatabasesMinorResponse(rsp *http.Response) (*UpgradeAllDatabasesMinorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpgradeAllDatabasesMinorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DatabaseMinorUpgradeRequested
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetAdminSystemResponse parses an HTTP response from a GetAdminSystemWithResponse call
 func ParseGetAdminSystemResponse(rsp *http.Response) (*GetAdminSystemResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -80539,6 +80924,67 @@ func ParseGetDatabaseMetricsResponse(rsp *http.Response) (*GetDatabaseMetricsRes
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpgradeDatabaseMinorResponse parses an HTTP response from a UpgradeDatabaseMinorWithResponse call
+func ParseUpgradeDatabaseMinorResponse(rsp *http.Response) (*UpgradeDatabaseMinorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpgradeDatabaseMinorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest Database
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest UnprocessableEntity

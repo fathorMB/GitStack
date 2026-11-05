@@ -105,6 +105,10 @@ type Report struct {
 	// Database dice se Postgres è quello interno o uno esterno (N8) e la
 	// versione del server.
 	Database Database `json:"database"`
+	// DatabaseIssues sono i backup, i ripristini e gli aggiornamenti minor non riusciti dei database gestiti
+	// (v3-d, GIT-553). Non rendono l'installazione «non sana» (non fermano il servizio) ma si leggono qui:
+	// un backup fallito non passa in silenzio.
+	DatabaseIssues []ManagedDatabaseIssue `json:"database_issues,omitempty"`
 }
 
 // Database descrive il Postgres in uso.
@@ -183,6 +187,9 @@ func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir s
 	r.APIHealthy, r.APIDetail = c.api(ctx, cfg)
 	r.Database = c.database(ctx, cfg, r.ClusterError == "")
 	r.Database.warnClientMismatch(svcs)
+	if r.ClusterError == "" {
+		r.DatabaseIssues = c.managedIssues(ctx, cfg)
+	}
 	r.LastBackup = lastBackupState(configDir)
 	if cfg.Backup.S3 != nil {
 		r.BackupUpload, r.BackupUploadFailed = lastUploadState(configDir)

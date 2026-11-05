@@ -108,6 +108,19 @@ func Restore(ctx context.Context, o *Options, archive string) (err error) {
 			return errors.New("l'archivio ha volumi di app ma questo cluster non sa ripristinarli")
 		}
 	}
+	if len(m.Databases) > 0 {
+		if _, ok := o.Cluster.(DatabaseCluster); !ok {
+			return errors.New("l'archivio ha database gestiti ma questo cluster non sa ripristinarli")
+		}
+		for _, d := range m.Databases {
+			if err := d.validate(); err != nil {
+				return refused("archivio non valido: %v", err)
+			}
+			if d.Entry != d.entryName() || !has[d.Entry] {
+				return refused("archivio incompleto: manca %s", d.entryName())
+			}
+		}
+	}
 	attPath := ""
 	if has[AttachmentsName] {
 		if attPath, err = o.Cluster.VolumePath(ctx, o.Cfg.Release+"-attachments-data"); err != nil {
@@ -177,7 +190,7 @@ func Restore(ctx context.Context, o *Options, archive string) (err error) {
 		return err
 	}
 	defer func() { _ = dump.Close() }()
-	if e := o.Cluster.PGExec(ctx, io.MultiReader(strings.NewReader(restorePrelude), dump), io.Discard, "sh", "-c", psqlCmd); e != nil {
+	if e := o.Cluster.PGExec(ctx, io.MultiReader(strings.NewReader(restorePrelude), dump, strings.NewReader(restoreDatabasesTail)), io.Discard, "sh", "-c", psqlCmd); e != nil {
 		return failed(fmt.Errorf("ripristino del database: %w", e))
 	}
 
@@ -259,6 +272,13 @@ func Restore(ctx context.Context, o *Options, archive string) (err error) {
 			if e := o.Cluster.WaitReady(ctx, o.deployment(c)); e != nil {
 				return errors.Join(tlsErr, fmt.Errorf("%s non è tornato pronto dopo il restore: %w", c, e))
 			}
+		}
+	}
+	// Database gestiti (DB15): core e' tornato su, il suo controller ricrea le istanze vuote; qui si aspetta che
+	// siano pronte e si applicano i dump. Un errore non rimette fermo niente: i servizi sono gia' accesi.
+	if len(m.Databases) > 0 {
+		if e := o.restoreDatabases(ctx, stage, m.Databases, has); e != nil {
+			return errors.Join(tlsErr, e)
 		}
 	}
 	if o.PublishTLS != nil && tlsErr == nil {
