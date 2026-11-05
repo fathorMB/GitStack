@@ -471,7 +471,7 @@ pubblicazione dall'implementazione è di GIT-551.
 
 | Campo | Significato |
 |---|---|
-| `database` | `{ id, owner, name, pgMajor }`, istantanea minima della risorsa |
+| `database` | `{ id, owner, ownerId, ownerType, name, pgMajor }`, istantanea minima della risorsa; `ownerId`/`ownerType` (`user`/`organization`) non sono segreti e servono ai consumer a cui manca la riga (webhook dopo `deleted`) |
 | `actor` | `{ id, username, type }` chi ha agito (`human` o `agent`); `null` per gli eventi di sistema |
 
 I payload non contengono mai segreti: niente password (né dell'utente proprietario

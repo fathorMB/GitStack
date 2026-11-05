@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -102,12 +103,17 @@ func startDatabases(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger
 	if err != nil {
 		return nil, fmt.Errorf("client Kubernetes: %w", err)
 	}
+	dyn, err := dynamic.NewForConfig(rc)
+	if err != nil {
+		return nil, fmt.Errorf("client Kubernetes dinamico: %w", err)
+	}
 	cfg := databases.Config{
 		ControllerServiceAccount: strings.TrimSpace(os.Getenv(envDatabasesSA)),
 		WorkloadRole:             strings.TrimSpace(os.Getenv(envDatabasesRole)),
 		Images:                   images,
 		CADir:                    strings.TrimSpace(os.Getenv(envDatabasesCADir)),
 		Exec:                     &databases.SPDYExecutor{Config: rc, Client: kube},
+		Dyn:                      dyn,
 		Verifier:                 databases.CosignCLI{Binary: strings.TrimSpace(os.Getenv(envDatabasesCosignBin)), IdentityRegexp: strings.TrimSpace(os.Getenv(envDatabasesCosignID)), Issuer: strings.TrimSpace(os.Getenv(envDatabasesCosignIss))},
 		Log:                      logger,
 		// Secrets e' anche cio' che attiva l'AfterRestore predefinito (RelinkAfterRestore): dopo un ripristino i

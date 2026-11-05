@@ -14,9 +14,9 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
 
-// DB21: senza una sorgente di CPU/RAM (metrics-server non letto da core in GIT-551, GIT-568) le metriche
-// dichiarano l'assenza: available=false e serie vuote, non zeri, anche quando la dimensione e' nota. Mai
-// available=true solo perche' esiste un uso del disco.
+// DB21: senza campioni con CPU/RAM nell'intervallo (metrics-server non raccolto o mai risposto) le
+// metriche dichiarano l'assenza: available=false e serie vuote, non zeri, anche quando la
+// dimensione e' nota. Mai available=true solo perche' esiste un uso del disco.
 func TestDatabases_MetricheDichiaranoAssenzaDiCpuERam(t *testing.T) {
 	e := newDBEnv(t)
 	created := e.create("alice", "alice", `{"name":"shop","pgMajor":17}`, http.StatusAccepted)
