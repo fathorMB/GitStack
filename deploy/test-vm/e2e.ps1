@@ -135,6 +135,14 @@
          (h-pub) e, dopo `gitstack restore`, quattro (i-pub): dominio, certificato e impronta
          ancora quelli di prima, app raggiungibile. Log di Pebble/Traefik/CoreDNS in
          app-pubblica/diag.log.
+      h-db, i-db. (GIT-558, v3-d, solo con -WithDatabases) dopo h-app e prima del backup: database
+         PostgreSQL e2edb (e2e/gs-db.sh) creato e running, collegato all'app e2edbapp (DATABASE_URL
+         e PG* fra i segreti), marcatore scritto dal pod, accesso LAN dalla VM con verify-full e la CA
+         (respinti senza CA, senza TLS, con un nome host fuori dai SAN), backup su richiesta; poi lo
+         spec Playwright web/e2e/databases.spec.ts con E2E_BASE_URL, E2E_ADMIN_USERNAME/PASSWORD
+         dell'utente di prova, E2E_DATABASE_APP_REPO ed E2E_DATABASE_APP_NAME (app e2edbspec). Dopo
+         `gitstack restore` su VM pulita: database running, marcatore presente (password ruotata),
+         collegamento ricreato, LAN con verify-full. Log in backup-restore/database*.
       j. (GIT-148, DF/F) reset, installazione del commit precedente
          (-PreviousRef, default: il primo genitore di -Ref), dati, restore
          di un archivio di un'altra versione rifiutato (exit 6), `gitstack
@@ -166,6 +174,17 @@
     serve: le app non si raggiungono dal nome, il passo guarda il cluster e
     l'API). Stringa vuota: hosting spento e passi dell'app non eseguiti. Ignorato
     con -SkipBackupRestore.
+
+.PARAMETER WithDatabases
+    Database gestiti (GIT-558, v3-d): l'installer parte anche con --enable-databases e il passo h/i
+    prova un database vero (h-db, i-db, vedi sopra). Richiede l'hosting delle app (-AppsDomain non
+    vuoto, senza -SkipBackupRestore), `pnpm` e Node sull'host per lo spec Playwright di
+    web/e2e/databases.spec.ts, e una VM con almeno 12 GB di RAM e 30 GB liberi (preflight dell'installer).
+    Spenti di default: l'esecuzione sulla VM vera la fa il board.
+
+.PARAMETER DatabasesSkipPreflight
+    Con -WithDatabases: aggiunge --skip-preflight all'installer, per una VM sotto i 12 GB di RAM.
+    Solo per una prova consapevole.
 
 .PARAMETER SkipUpgrade
     Salta il passo j (upgrade dal commit precedente). Per il debug.
@@ -213,6 +232,8 @@ param(
     [switch]$SkipReset,
     [switch]$SkipBackupRestore,
     [switch]$SkipUpgrade,
+    [switch]$WithDatabases,
+    [switch]$DatabasesSkipPreflight,
     [string]$AppsDomain = 'apps.e2e.test',
     [string]$PreviousRef,
     [int]$ResetBootTimeoutSeconds = 300,
@@ -231,6 +252,7 @@ param(
 . (Join-Path $PSScriptRoot 'lib\http.ps1')
 . (Join-Path $PSScriptRoot 'lib\tls.ps1')
 . (Join-Path $PSScriptRoot 'lib\phases.ps1')
+. (Join-Path $PSScriptRoot 'lib\databases.ps1')
 . (Join-Path $PSScriptRoot 'lib\pilot.ps1')
 . (Join-Path $PSScriptRoot 'lib\ci-gateway.ps1')
 
@@ -531,7 +553,11 @@ function Main {
         # Hosting delle app (GIT-388): acceso solo se il passo h/i li prova; le riesecuzioni
         # senza opzioni (f) e con --ci conservano la scelta.
         $script:AppsDomain = if ($SkipBackupRestore) { '' } else { $AppsDomain }
+        $script:E2eDatabasesOn = [bool]($WithDatabases -and $script:AppsDomain)
+        $script:E2eDatabasesSkipPreflight = [bool]$DatabasesSkipPreflight
+        if ($WithDatabases -and -not $script:AppsDomain) { Write-Log 'ATTENZIONE: -WithDatabases richiede l''hosting delle app (-AppsDomain, senza -SkipBackupRestore): i database restano spenti.' }
         $installFirst = if ($script:AppsDomain) { "$installCmd -s -- --enable-apps --apps-domain $script:AppsDomain" } else { $installCmd }
+        if ($script:E2eDatabasesOn) { $installFirst += ' --enable-databases'; if ($script:E2eDatabasesSkipPreflight) { $installFirst += ' --skip-preflight' } }
         Write-Log "Comando: $installFirst"
         $install1 = Invoke-VmSsh -Command $installFirst -TimeoutSeconds $InstallTimeoutSeconds
         $install1Log = Join-Path $OutDir 'installer-run1.log'

@@ -87,7 +87,7 @@ Ogni container di un'app perde tutte le capability (`drop: ALL`), non può aumen
 
 Le immagini ufficiali come `postgres:16` e `postgis/postgis` possono partire come root e tentare poi `chmod` e il cambio utente con `gosu` o `su-exec`. Senza le capability necessarie il container può uscire subito con codice 1, entrare in `CrashLoopBackOff` e mostrare errori di `chmod` o messaggi come `failed switching to 'postgres': operation not permitted`.
 
-Per PostgreSQL costruisci nel repo un'immagine derivata che parta direttamente come utente `postgres`:
+Se ti serve un PostgreSQL per un'app, di norma non serve ospitarlo come app: GitStack ha i **database gestiti** (backup, TLS, accesso dalla LAN), vedi [`databases.md`](databases.md), che spiega anche come migrare da un Postgres-app con volume. Se invece vuoi o devi eseguirlo tu come app (per esempio per un'estensione come PostGIS), costruisci nel repo un'immagine derivata che parta direttamente come utente `postgres`:
 
 ```dockerfile
 FROM postgres:16
@@ -153,7 +153,7 @@ Un **database gestito** collegato all'app (sezione sotto) si raggiunge anche con
 
 Un database gestito (`/databases/{owner}/{nome}`) è dell'owner e si collega alle app di **qualunque repo di quell'owner**; un'app di un altro owner è rifiutata (**422 `owner_mismatch`**). Collegare serve `admin` sull'app **e** `admin` sull'owner del database; scollegare e ruotare la password del collegamento bastano `admin` sull'app **o** `admin` sull'owner.
 
-`POST /databases/{owner}/{nome}/links` con `{"app":{"owner":"…","repo":"…","name":"…"},"mode":"rw"|"ro"}` (la CLI `gs` e la console arrivano con gli item successivi di v3-d). Il database deve essere `running`.
+`POST /databases/{owner}/{nome}/links` con `{"app":{"owner":"…","repo":"…","name":"…"},"mode":"rw"|"ro"}` (la CLI è `gs db link`, la console ha la scheda *Databases* dell'app; la guida completa è in [`databases.md`](databases.md)). Il database deve essere `running`.
 
 - **Ruolo proprio.** Ogni collegamento ha un ruolo di login suo (`l_<id>`), mai condiviso, senza `CREATEROLE`, `CREATEDB` né superuser: `rw` è membro del proprietario (gli oggetti creati restano suoi), `ro` può solo leggere.
 - **Variabili.** All'app arrivano come **segreti gestiti** `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE=verify-full` e `PGSSLROOTCERT=/etc/gitstack/db/ca.crt` (la CA pubblica, montata dal Secret `db-ca` del namespace dell'app). I valori non compaiono mai in API, log o versioni: si vedono solo i nomi, come per ogni segreto. L'app si connette con `DATABASE_URL` senza altra configurazione. Se l'app ha già una variabile o un segreto con uno di quei nomi il collegamento è rifiutato con **409 `variable_conflict`** (i nomi sono in `details.names`) e l'app non cambia. Un'app ha quindi un solo database collegato per volta. Finché c'è il collegamento, quei segreti non si cambiano né si tolgono a mano (**409 `managed_by_database_link`**).

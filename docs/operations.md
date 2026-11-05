@@ -2432,6 +2432,70 @@ fallisce («does not match host name»). La password è quella generata alla cre
 mostrata una volta): si cambia con la rotazione. Un database sulla LAN è una superficie di attacco: non c'è
 rate limit.
 
+### Accendere i database gestiti su homehub (GIT-558)
+
+Guida per chi amministra homehub: cosa lanciare, nell'ordine, per accendere i database gestiti
+(v3-d, [ADR 0003](adr/0003-database-gestiti.md)). La funzione è **spenta di default**; gli utenti poi
+seguono [`databases.md`](databases.md). Nessun passo qui è stato eseguito su homehub da un agente: li
+fa il board, e l'esito va riportato nell'item.
+
+1. **Controlla che l'host regga.** Ogni database è un suo PostgreSQL e usa la stessa riserva delle app:
+   servono almeno **12 GB di RAM e 30 GB liberi** (consigliati 16 GB e 100 GB).
+
+   ```sh
+   free -h && df -h /var/lib/rancher /srv
+   ```
+
+2. **Controlla che la versione abbia i database.** `curl -sk https://homehub.local/api/v1/meta` dà
+   `server_version=sha-<commit>`. Il commit deve contenere il controller (GIT-551…GIT-557) e la guida
+   (`git merge-base --is-ancestor <commit del merge> <commit di homehub>`). Se no, si fa prima l'upgrade
+   alla release `sha-` di quel merge con la CI verde (non all'ultimo `main`).
+3. **Backup preventivo.** `sudo gitstack backup` e controlla che l'archivio sia in
+   `/srv/backup/gitstack` con il suo `.sha256`.
+4. **Prova a secco, poi accendi.** Un solo comando porta anche chart e binario alla versione:
+
+   ```sh
+   sudo gitstack upgrade --dry-run --enable-databases
+   sudo gitstack upgrade --enable-databases [--databases-port-range 15432-15531]
+   ```
+
+   Se homehub è già alla versione giusta: `sudo gitstack config set databases on`. Crea la CA
+   intermedia e la chiave dei dump se mancano e cambia solo i valori `databases.*`: repo, app e il
+   Postgres di GitStack non si toccano. Il preflight di risorse si ferma prima di cambiare qualcosa
+   (`--skip-preflight` a proprio rischio).
+5. **Verifica che sia acceso.** `sudo gitstack status` deve stampare «Database gestiti: acceso» e
+   `Stato: sano`; in Admin · Database settings (`/admin/databases`) l'intervallo di porte è quello scelto.
+6. **Firewall, solo se vuoi la LAN.** Una regola per l'intero intervallo, alla sola rete di casa (GitStack
+   non tocca ufw):
+
+   ```sh
+   sudo ufw allow from 192.168.1.0/24 to any port 15432:15531 proto tcp
+   ```
+
+7. **Primo database di prova** (da un PC con `gs`, come utente con `admin` sul proprio owner):
+
+   ```sh
+   gs db create prova --pg 17 --owner <owner>      # annota la password
+   gs db view <owner>/prova                         # attendi status running
+   gs db access lan <owner>/prova on                # annota la porta
+   gs db connect <owner>/prova -- -c 'select 1'     # psql con verify-full e la CA
+   ```
+
+   Poi dal PC con pgAdmin o DBeaver (`databases.md`, «Accedere dalla LAN»). **Punto da verificare qui:**
+   se ufw filtra il traffico di ServiceLB (instradato via DNAT, catena FORWARD) la connessione dal PC
+   potrebbe non arrivare anche con la regola aperta; su k3d non c'è ufw e non è stato provato. Se
+   succede, annotalo nell'item (DB18).
+8. **Collega un'app e fai un backup.** `gs db link <owner>/prova --app <owner>/<repo>/<app>`;
+   `gs db backup run <owner>/prova`; `sudo gitstack backup` e controlla che `manifest.json` elenchi
+   `databases/<id>/prova.dump`.
+9. **Ripristino su una VM** (almeno una volta, come per il dogfooding, vedi «Registro della tappa 1 di
+   V7»): il passo `e2e.ps1 -WithDatabases` di `deploy/test-vm` fa il giro completo su una VM pulita (crea,
+   collega, scrive, backup, restore, dati presenti, LAN con `verify-full`, spec del portale); vedi il suo
+   [README](../deploy/test-vm/README.md), «h-db / i-db».
+10. **Pulizia o marcia indietro.** `gs db delete <owner>/prova` (immediata, senza cestino). Spegnere con
+    `sudo gitstack config set databases off` non cancella nulla: i database già creati restano nei loro
+    namespace con i volumi, ma `core` non li gestisce finché non si riaccende.
+
 ### Rilascio con versione (`vX.Y.Z`, GIT-222)
 
 Oltre alle build `sha-<commit>` di ogni push su `main`, un tag Git `vX.Y.Z` o
