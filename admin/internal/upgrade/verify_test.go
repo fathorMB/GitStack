@@ -385,12 +385,12 @@ func TestV5IdentityRegexp(t *testing.T) {
 
 func TestIsGitstackImage(t *testing.T) {
 	for img, want := range map[string]bool{
-		"ghcr.io/fathormb/gitstack-core:sha-abc":          true,
-		"mirror.example/x/gitstack-web@sha256:abc":        true,
-		"ghcr.io/fathormb/gitstack-gateway":               true,
-		"ghcr.io/fathormb/gitstack-postgres:16-alpine":    true,
-		"ghcr.io/fathormb/gitstack-postgres@sha256:abc":   true,
-		"mirror.example/x/gitstack-postgres:17-alpine":    true,
+		"ghcr.io/fathormb/gitstack-core:sha-abc":        true,
+		"mirror.example/x/gitstack-web@sha256:abc":      true,
+		"ghcr.io/fathormb/gitstack-gateway":             true,
+		"ghcr.io/fathormb/gitstack-postgres:16-alpine":  true,
+		"ghcr.io/fathormb/gitstack-postgres@sha256:abc": true,
+		"mirror.example/x/gitstack-postgres:17-alpine":  true,
 		"postgres:16":                                     false,
 		"docker.io/library/postgres:16-alpine":            false,
 		"docker.io/library/postgres@sha256:abc":           false,
