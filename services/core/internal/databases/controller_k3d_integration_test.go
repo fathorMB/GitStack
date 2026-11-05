@@ -184,14 +184,19 @@ func TestDatabases_IsolamentoSuK3d(t *testing.T) {
 	// qualche secondo (ADR 0003, kube-router aggiorna gli ipset in ritardo), quindi ritentare con pod nuovi
 	// non vedrebbe mai la policy applicata.
 	//
-	// Collegato: ogni giro dura al piu' 2 s (pg_isready -t 2) + 2 s di pausa; 24 giri = tetto di circa 96 s.
-	linkedScript := fmt.Sprintf(`i=0; while [ $i -lt 24 ]; do
+	// pg_isready -t 2 e' un timeout MASSIMO: un rifiuto immediato puo' terminare subito. La durata minima della
+	// finestra viene quindi dalla pausa obbligatoria dopo ogni esito negativo, non da -t.
+	//
+	// Collegato: 32 giri con sleep 2 dopo ogni esito negativo = almeno 64 s (>= 60 s) anche se pg_isready fallisce
+	// subito; al massimo circa 128 s se ogni giro consuma il timeout.
+	linkedScript := fmt.Sprintf(`i=0; while [ $i -lt 32 ]; do
   if pg_isready -h %s -p 5432 -t 2; then echo RAGGIUNTO giro=$i; exit 0; fi
   i=$((i+1)); sleep 2
 done; echo NON-RAGGIUNTO; exit 1`, host)
-	// Non collegato: deve restare negativo per tutta la finestra (20 giri da almeno 3 s = oltre 60 s, ben piu'
-	// dei 30 s del ritardo di ammissione). Esce 0 se non ha mai raggiunto la porta, 1 alla prima riuscita.
-	isolatedScript := fmt.Sprintf(`i=0; while [ $i -lt 20 ]; do
+	// Non collegato: 30 giri con sleep 1 dopo ogni esito negativo = almeno 30 s dall'avvio del pod, anche se
+	// pg_isready fallisce subito (piu' dei secondi di ammissione di kube-router). Esce 1 subito alla prima
+	// riuscita, 0 solo dopo tutta la finestra.
+	isolatedScript := fmt.Sprintf(`i=0; while [ $i -lt 30 ]; do
   if pg_isready -h %s -p 5432 -t 2; then echo RAGGIUNTO giro=$i; exit 1; fi
   i=$((i+1)); sleep 1
 done; echo ISOLATO; exit 0`, host)
@@ -246,7 +251,7 @@ done; echo ISOLATO; exit 0`, host)
 		t.Fatal("un namespace non collegato ha raggiunto la 5432 (o la sonda e' fallita): vedi log del pod e NetworkPolicy sopra")
 	}
 	if !probe("collegato", true, linkedScript) {
-		t.Fatal("un namespace con la label db-link non ha raggiunto la 5432 entro circa 96 s: vedi log del pod e NetworkPolicy sopra")
+		t.Fatal("un namespace con la label db-link non ha raggiunto la 5432 in 32 giri (almeno 64 s): vedi log del pod e NetworkPolicy sopra")
 	}
 }
 
