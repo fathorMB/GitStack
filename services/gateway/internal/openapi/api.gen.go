@@ -753,6 +753,7 @@ func (e CommitStatusState) Valid() bool {
 // Defines values for DatabaseBackupKind.
 const (
 	OnDemand  DatabaseBackupKind = "on_demand"
+	Safety    DatabaseBackupKind = "safety"
 	Scheduled DatabaseBackupKind = "scheduled"
 )
 
@@ -760,6 +761,8 @@ const (
 func (e DatabaseBackupKind) Valid() bool {
 	switch e {
 	case OnDemand:
+		return true
+	case Safety:
 		return true
 	case Scheduled:
 		return true
@@ -5110,6 +5113,9 @@ type Database struct {
 	// Example: shop
 	Name DatabaseName `json:"name"`
 
+	// Operations Stato di backup, ripristino e aggiornamento minor (GIT-553). Un errore resta qui finche' un'operazione dello stesso tipo non riesce: un backup fallito non passa in silenzio (`gitstack status` lo mostra).
+	Operations *DatabaseOperations `json:"operations,omitempty"`
+
 	// Owner Owner (utente o organizzazione): su di lui contano le quote, insieme ad app e volumi (DB3).
 	Owner string `json:"owner"`
 
@@ -5137,7 +5143,7 @@ type DatabaseBackup struct {
 	Error *string            `json:"error,omitempty"`
 	Id    openapi_types.UUID `json:"id"`
 
-	// Kind `scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13).
+	// Kind `scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13). `safety`: dump di sicurezza prima di un ripristino sul posto o di un aggiornamento minor (ultimi 3).
 	Kind DatabaseBackupKind `json:"kind"`
 
 	// SizeBytes Dimensione del dump cifrato; null finche' non finisce.
@@ -5145,7 +5151,7 @@ type DatabaseBackup struct {
 	Status    DatabaseBackupStatus `json:"status"`
 }
 
-// DatabaseBackupKind `scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13).
+// DatabaseBackupKind `scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13). `safety`: dump di sicurezza prima di un ripristino sul posto o di un aggiornamento minor (ultimi 3).
 type DatabaseBackupKind string
 
 // DatabaseBackupList defines model for DatabaseBackupList.
@@ -5342,10 +5348,40 @@ type DatabaseMetrics struct {
 // DatabaseMetricsRange defines model for DatabaseMetrics.Range.
 type DatabaseMetricsRange string
 
+// DatabaseMinorUpgradeRequested defines model for DatabaseMinorUpgradeRequested.
+type DatabaseMinorUpgradeRequested struct {
+	// Requested Database messi in coda per l'aggiornamento minor.
+	Requested int `json:"requested"`
+}
+
 // DatabaseName Nome del database (DB1): label DNS normalizzata da `pkg/names`, unica per owner (`name_conflict`). Non si cambia dopo la creazione.
 //
 // Example: shop
 type DatabaseName = string
+
+// DatabaseOperations Stato di backup, ripristino e aggiornamento minor (GIT-553). Un errore resta qui finche' un'operazione dello stesso tipo non riesce: un backup fallito non passa in silenzio (`gitstack status` lo mostra).
+type DatabaseOperations struct {
+	// BackupError Motivo dell'ultimo dump fallito, finche' un dump dello stesso tipo non riesce.
+	BackupError *string `json:"backupError,omitempty"`
+
+	// LastBackupAt Ultimo dump riuscito (qualunque tipo).
+	LastBackupAt *time.Time `json:"lastBackupAt,omitempty"`
+
+	// MinorUpdateAvailable La tabella delle immagini ha un digest diverso per la major del database (DB6).
+	MinorUpdateAvailable bool `json:"minorUpdateAvailable"`
+
+	// RestoreError Motivo dell'ultimo ripristino fallito.
+	RestoreError *string `json:"restoreError,omitempty"`
+
+	// RestoreInProgress C'e' un ripristino in attesa o in corso.
+	RestoreInProgress *bool `json:"restoreInProgress,omitempty"`
+
+	// UpgradeError Motivo dell'ultimo aggiornamento minor non eseguito: l'immagine non e' cambiata.
+	UpgradeError *string `json:"upgradeError,omitempty"`
+
+	// UpgradeRequested Un aggiornamento minor e' stato chiesto e non e' ancora finito.
+	UpgradeRequested *bool `json:"upgradeRequested,omitempty"`
+}
 
 // DatabasePgMajor Major di PostgreSQL (DB1, DB2 dell'ADR 0003): solo quelle ammesse dall'amministratore (16/17).
 type DatabasePgMajor int
@@ -8767,6 +8803,9 @@ type ServerInterface interface {
 	// UpdateAdminDatabasesSettings Aggiorna le impostazioni d'istanza dei database (solo amministratore)
 	// (PATCH /admin/databases/settings)
 	UpdateAdminDatabasesSettings(w http.ResponseWriter, r *http.Request)
+	// UpgradeAllDatabasesMinor Chiede l'aggiornamento minor di tutti i database (solo amministratore)
+	// (POST /admin/databases/upgrade-minor)
+	UpgradeAllDatabasesMinor(w http.ResponseWriter, r *http.Request)
 	// GetAdminSystem Stato dell'installazione (Admin · System)
 	// (GET /admin/system)
 	GetAdminSystem(w http.ResponseWriter, r *http.Request)
@@ -8824,6 +8863,9 @@ type ServerInterface interface {
 	// GetDatabaseMetrics Legge le metriche del database
 	// (GET /databases/{owner}/{name}/metrics)
 	GetDatabaseMetrics(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam, params GetDatabaseMetricsParams)
+	// UpgradeDatabaseMinor Chiede l'aggiornamento minor del database all'immagine corrente
+	// (POST /databases/{owner}/{name}/upgrade-minor)
+	UpgradeDatabaseMinor(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, name DatabaseNameParam)
 	// GetHealth Stato del servizio
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
@@ -9904,6 +9946,20 @@ func (siw *ServerInterfaceWrapper) UpdateAdminDatabasesSettings(w http.ResponseW
 	handler.ServeHTTP(w, r)
 }
 
+// UpgradeAllDatabasesMinor operation middleware
+func (siw *ServerInterfaceWrapper) UpgradeAllDatabasesMinor(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpgradeAllDatabasesMinor(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetAdminSystem operation middleware
 func (siw *ServerInterfaceWrapper) GetAdminSystem(w http.ResponseWriter, r *http.Request) {
 
@@ -10652,6 +10708,41 @@ func (siw *ServerInterfaceWrapper) GetDatabaseMetrics(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetDatabaseMetrics(w, r, owner, name, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpgradeDatabaseMinor operation middleware
+func (siw *ServerInterfaceWrapper) UpgradeDatabaseMinor(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name DatabaseNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpgradeDatabaseMinor(w, r, owner, name)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -21758,6 +21849,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/databases/{owner}/{name}", wrapper.DeleteDatabase)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/databases/{owner}/{name}", wrapper.GetDatabase)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/databases/{owner}/{name}", wrapper.UpdateDatabase)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/databases/{owner}/{name}/upgrade-minor", wrapper.UpgradeDatabaseMinor)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/databases/{owner}/{name}/credentials/rotate", wrapper.RotateDatabaseCredentials)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/databases/{owner}/{name}/links", wrapper.ListDatabaseLinks)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/databases/{owner}/{name}/links", wrapper.CreateDatabaseLink)
@@ -21770,6 +21862,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/databases/{owner}/{name}/lan", wrapper.SetDatabaseLan)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/databases/{owner}/{name}/logs", wrapper.GetDatabaseLogs)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/databases/{owner}/{name}/metrics", wrapper.GetDatabaseMetrics)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/admin/databases/upgrade-minor", wrapper.UpgradeAllDatabasesMinor)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/databases/settings", wrapper.GetAdminDatabasesSettings)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/admin/databases/settings", wrapper.UpdateAdminDatabasesSettings)
 

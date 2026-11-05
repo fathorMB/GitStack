@@ -4610,9 +4610,52 @@ export type Database = {
      * Uso corrente; null vuol dire metriche non disponibili (DB21).
      */
     usage?: DatabaseUsage | null;
+    operations?: DatabaseOperations;
     createdAt: string;
     createdBy?: AppActor | null;
     updatedAt: string;
+};
+
+/**
+ * Stato di backup, ripristino e aggiornamento minor (GIT-553). Un errore resta qui finche' un'operazione dello stesso tipo non riesce: un backup fallito non passa in silenzio (`gitstack status` lo mostra).
+ *
+ */
+export type DatabaseOperations = {
+    /**
+     * Ultimo dump riuscito (qualunque tipo).
+     */
+    lastBackupAt?: string | null;
+    /**
+     * Motivo dell'ultimo dump fallito, finche' un dump dello stesso tipo non riesce.
+     */
+    backupError?: string | null;
+    /**
+     * C'e' un ripristino in attesa o in corso.
+     */
+    restoreInProgress?: boolean;
+    /**
+     * Motivo dell'ultimo ripristino fallito.
+     */
+    restoreError?: string | null;
+    /**
+     * La tabella delle immagini ha un digest diverso per la major del database (DB6).
+     */
+    minorUpdateAvailable: boolean;
+    /**
+     * Un aggiornamento minor e' stato chiesto e non e' ancora finito.
+     */
+    upgradeRequested?: boolean;
+    /**
+     * Motivo dell'ultimo aggiornamento minor non eseguito: l'immagine non e' cambiata.
+     */
+    upgradeError?: string | null;
+};
+
+export type DatabaseMinorUpgradeRequested = {
+    /**
+     * Database messi in coda per l'aggiornamento minor.
+     */
+    requested: number;
 };
 
 export type DatabaseList = {
@@ -4757,9 +4800,9 @@ export type DatabaseLinkRotated = {
 };
 
 /**
- * `scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13).
+ * `scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13). `safety`: dump di sicurezza prima di un ripristino sul posto o di un aggiornamento minor (ultimi 3).
  */
-export type DatabaseBackupKind = 'scheduled' | 'on_demand';
+export type DatabaseBackupKind = 'scheduled' | 'on_demand' | 'safety';
 
 export type DatabaseBackupStatus = 'in_progress' | 'completed' | 'failed';
 
@@ -22804,6 +22847,58 @@ export type UpdateDatabaseResponses = {
 
 export type UpdateDatabaseResponse = UpdateDatabaseResponses[keyof UpdateDatabaseResponses];
 
+export type UpgradeDatabaseMinorData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del database gestito (DB1), unico per owner.
+         */
+        name: DatabaseName;
+    };
+    query?: never;
+    url: '/databases/{owner}/{name}/upgrade-minor';
+};
+
+export type UpgradeDatabaseMinorErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type UpgradeDatabaseMinorError = UpgradeDatabaseMinorErrors[keyof UpgradeDatabaseMinorErrors];
+
+export type UpgradeDatabaseMinorResponses = {
+    /**
+     * Richiesta registrata.
+     */
+    202: Database;
+};
+
+export type UpgradeDatabaseMinorResponse = UpgradeDatabaseMinorResponses[keyof UpgradeDatabaseMinorResponses];
+
 export type RotateDatabaseCredentialsData = {
     body?: never;
     path: {
@@ -23449,6 +23544,41 @@ export type GetDatabaseMetricsResponses = {
 };
 
 export type GetDatabaseMetricsResponse = GetDatabaseMetricsResponses[keyof GetDatabaseMetricsResponses];
+
+export type UpgradeAllDatabasesMinorData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/databases/upgrade-minor';
+};
+
+export type UpgradeAllDatabasesMinorErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type UpgradeAllDatabasesMinorError = UpgradeAllDatabasesMinorErrors[keyof UpgradeAllDatabasesMinorErrors];
+
+export type UpgradeAllDatabasesMinorResponses = {
+    /**
+     * Richiesta registrata.
+     */
+    202: DatabaseMinorUpgradeRequested;
+};
+
+export type UpgradeAllDatabasesMinorResponse = UpgradeAllDatabasesMinorResponses[keyof UpgradeAllDatabasesMinorResponses];
 
 export type GetAdminDatabasesSettingsData = {
     body?: never;

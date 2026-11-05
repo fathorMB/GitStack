@@ -44,6 +44,23 @@ type Config struct {
 	// PodLogs legge i log del pod; nil usa l'API di Kubernetes.
 	PodLogs func(ctx context.Context, ns, pod string, opts *corev1.PodLogOptions) (io.ReadCloser, error)
 
+	// Backup e ripristino (GIT-553, DB13, DB15). DumpKey e' la chiave di dump dell'istanza (Secret
+	// <release>-db-dump-key, GIT-565) e DataDir la cartella databases-data; senza entrambe i backup non sono
+	// disponibili (mai in chiaro). Dumper nil usa PodDumper su Exec, se e' uno StreamExecutor.
+	DumpKey []byte
+	DataDir string
+	Dumper  Dumper
+	// BackupEvery: ogni quanto il dump programmato (default 24 h); BackupRetryEvery: dopo un fallimento (1 h).
+	// KeepScheduled/KeepOnDemand/KeepSafety: dump completati tenuti per tipo (default 7, 5 e 3, ADR punto 5).
+	BackupEvery      time.Duration
+	BackupRetryEvery time.Duration
+	KeepScheduled    int
+	KeepOnDemand     int
+	KeepSafety       int
+	// AfterRestore e' chiamato dopo un ripristino riuscito: GIT-552 vi ricrea i ruoli dei collegamenti con
+	// password nuove, riscrive i Secret delle app e le riavvia (DB15, passo 4).
+	AfterRestore func(ctx context.Context, d store.ManagedDB) error
+
 	PriorityClass string
 	StorageClass  string
 	// LoopInterval: ogni quanto si riconciliano i database (default 3 s). UsageEvery: ogni quanto si misura
@@ -106,13 +123,20 @@ type Controller struct {
 	secrets []string
 	// tlsLoaded: impronta della catena che PostgreSQL ha ricaricato, per database (mu).
 	tlsLoaded map[uuid.UUID]string
+	// liveBackups sono i dump in esecuzione in questo processo (mu).
+	liveBackups map[uuid.UUID]bool
+	dumper      Dumper
 }
 
 // New crea il controller.
 func New(st *store.Store, kube kubernetes.Interface, cfg Config) *Controller {
 	cfg.defaults()
-	c := &Controller{st: st, kube: kube, cfg: cfg, kick: make(chan struct{}, 1), running: map[uuid.UUID]bool{}, usageAt: map[uuid.UUID]time.Time{}, sweepAt: map[uuid.UUID]time.Time{}, tlsLoaded: map[uuid.UUID]string{}}
+	c := &Controller{st: st, kube: kube, cfg: cfg, kick: make(chan struct{}, 1), running: map[uuid.UUID]bool{}, usageAt: map[uuid.UUID]time.Time{}, sweepAt: map[uuid.UUID]time.Time{}, liveBackups: map[uuid.UUID]bool{}, tlsLoaded: map[uuid.UUID]string{}}
 	c.sql = cfg.SQL
+	c.dumper = cfg.Dumper
+	if se, ok := cfg.Exec.(StreamExecutor); ok && c.dumper == nil {
+		c.dumper = &PodDumper{Exec: se}
+	}
 	if c.sql == nil && cfg.Exec != nil {
 		c.sql = &PsqlRunner{Pod: cfg.Exec, Redact: c.redactions}
 	}
@@ -169,6 +193,7 @@ func (c *Controller) Once(ctx context.Context) {
 		}
 		return
 	}
+	c.failStaleBackups(ctx)
 	var wg sync.WaitGroup
 	for _, d := range dbs {
 		c.mu.Lock()
@@ -213,6 +238,13 @@ func (c *Controller) Reconcile(ctx context.Context, d store.ManagedDB) {
 	status, reason, err := c.ensure(ctx, d)
 	if ctx.Err() != nil {
 		return
+	}
+	if err == nil && status == store.DBRunning {
+		// Operazioni pendenti su un database pronto: ripristino, aggiornamento minor, dump giornaliero (GIT-553).
+		status, reason = c.afterRunning(ctx, d)
+		if ctx.Err() != nil {
+			return
+		}
 	}
 	if err != nil {
 		var fatal *fatalError
@@ -558,6 +590,7 @@ func (c *Controller) teardown(ctx context.Context, d store.ManagedDB, actor *sto
 	cur, err := c.kube.CoreV1().Namespaces().Get(ctx, ns, metav1.GetOptions{})
 	switch {
 	case apierrors.IsNotFound(err):
+		c.removeDumps(d.ID)
 		return true, c.st.RemoveManagedDB(ctx, d.ID, actor, c.cfg.Now())
 	case err != nil:
 		return false, err
@@ -572,7 +605,8 @@ func (c *Controller) teardown(ctx context.Context, d store.ManagedDB, actor *sto
 		}
 	}
 	// Il nome si libera alla risposta (DB19): il namespace e' per id, mai riusato da un database nuovo,
-	// e la sua terminazione prosegue in Kubernetes.
+	// e la sua terminazione prosegue in Kubernetes. I dump spariscono con il database.
+	c.removeDumps(d.ID)
 	return true, c.st.RemoveManagedDB(ctx, d.ID, actor, c.cfg.Now())
 }
 
@@ -642,6 +676,24 @@ func (c *Controller) Logs(ctx context.Context, d store.ManagedDB, opts *corev1.P
 		return c.cfg.PodLogs(ctx, Namespace(d.ID), PodName, opts)
 	}
 	return c.kube.CoreV1().Pods(Namespace(d.ID)).GetLogs(PodName, opts).Stream(ctx)
+}
+
+// afterRunning esegue le operazioni pendenti di un database pronto, nell'ordine: ripristino, aggiornamento minor,
+// dump programmato. Ritorna lo stato da scrivere (di norma running).
+func (c *Controller) afterRunning(ctx context.Context, d store.ManagedDB) (string, *string) {
+	ops, err := c.st.ManagedDBOperations(ctx, d.ID)
+	if err != nil {
+		c.cfg.Log.Warn("databases: stato delle operazioni non letto", "db", d.ID, "err", err)
+		return store.DBRunning, nil
+	}
+	switch {
+	case ops.Restore != nil:
+		return c.runRestore(ctx, d, *ops.Restore)
+	case ops.UpgradeRequest != nil:
+		return c.runMinorUpgrade(ctx, d, *ops.UpgradeRequest)
+	}
+	c.maybeScheduledBackup(ctx, d)
+	return store.DBRunning, nil
 }
 
 // failedRetryEvery e' ogni quanto si riprova un database in `failed`.

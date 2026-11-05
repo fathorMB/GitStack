@@ -25,6 +25,13 @@ type Executor interface {
 	Exec(ctx context.Context, namespace, pod, container string, cmd []string, stdin io.Reader) (stdout string, err error)
 }
 
+// StreamExecutor e' un Executor che sa anche scrivere lo stdout su un io.Writer: serve a pg_dump, il cui output
+// non deve stare tutto in memoria (ADR 0003, punto 5).
+type StreamExecutor interface {
+	Executor
+	ExecStream(ctx context.Context, namespace, pod, container string, cmd []string, stdin io.Reader, stdout io.Writer) error
+}
+
 // SPDYExecutor e' l'Executor di produzione e dei test su k3d.
 type SPDYExecutor struct {
 	Config *rest.Config
@@ -33,17 +40,24 @@ type SPDYExecutor struct {
 
 // Exec implementa Executor.
 func (e *SPDYExecutor) Exec(ctx context.Context, namespace, pod, container string, cmd []string, stdin io.Reader) (string, error) {
+	var out bytes.Buffer
+	err := e.ExecStream(ctx, namespace, pod, container, cmd, stdin, &out)
+	return out.String(), err
+}
+
+// ExecStream implementa StreamExecutor: lo stdout va a w senza passare dalla memoria (dump grandi).
+func (e *SPDYExecutor) ExecStream(ctx context.Context, namespace, pod, container string, cmd []string, stdin io.Reader, stdout io.Writer) error {
 	req := e.Client.CoreV1().RESTClient().Post().Resource("pods").Namespace(namespace).Name(pod).SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{Container: container, Command: cmd, Stdin: stdin != nil, Stdout: true, Stderr: true}, scheme.ParameterCodec)
 	ex, err := remotecommand.NewSPDYExecutor(e.Config, http.MethodPost, req.URL())
 	if err != nil {
-		return "", err
+		return err
 	}
-	var out, errb bytes.Buffer
-	if err := ex.StreamWithContext(ctx, remotecommand.StreamOptions{Stdin: stdin, Stdout: &out, Stderr: &errb}); err != nil {
-		return out.String(), fmt.Errorf("%w: %s", err, strings.TrimSpace(errb.String()))
+	var errb bytes.Buffer
+	if err := ex.StreamWithContext(ctx, remotecommand.StreamOptions{Stdin: stdin, Stdout: stdout, Stderr: &errb}); err != nil {
+		return fmt.Errorf("%w: %s", err, strings.TrimSpace(errb.String()))
 	}
-	return out.String(), nil
+	return nil
 }
 
 // SQLRunner esegue SQL come gitstack_admin dentro il database. In produzione e' psql nel pod sul socket

@@ -42,6 +42,9 @@ const (
 	envDatabasesLANPorts    = "GITSTACK_CORE_DATABASES_LAN_PORT_RANGE"
 	envDatabasesLANReserved = "GITSTACK_CORE_DATABASES_LAN_RESERVED_PORTS"
 	envDatabasesPodCIDR     = "GITSTACK_CORE_DATABASES_POD_CIDR"
+	// GIT-553: chiave di dump (file con i 32 byte del Secret <release>-db-dump-key) e cartella databases-data.
+	envDatabasesDumpKeyFile = "GITSTACK_CORE_DATABASES_DUMP_KEY_FILE"
+	envDatabasesDataDir     = "GITSTACK_CORE_DATABASES_DATA_DIR"
 )
 
 // lanConfig legge intervallo, porte riservate e CIDR dei pod; un valore non valido ferma l'avvio (meglio che
@@ -107,7 +110,19 @@ func startDatabases(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger
 		Exec:                     &databases.SPDYExecutor{Config: rc, Client: kube},
 		Verifier:                 databases.CosignCLI{Binary: strings.TrimSpace(os.Getenv(envDatabasesCosignBin)), IdentityRegexp: strings.TrimSpace(os.Getenv(envDatabasesCosignID)), Issuer: strings.TrimSpace(os.Getenv(envDatabasesCosignIss))},
 		Log:                      logger,
-		Secrets:                  secrets,
+		// Secrets e' anche cio' che attiva l'AfterRestore predefinito (RelinkAfterRestore): dopo un ripristino i
+		// collegamenti ripartono con password nuove e le app collegate sono ridistribuite (DB15, passo 4).
+		Secrets: secrets,
+	}
+	cfg.DataDir = strings.TrimSpace(os.Getenv(envDatabasesDataDir))
+	if f := strings.TrimSpace(os.Getenv(envDatabasesDumpKeyFile)); f != "" {
+		key, err := os.ReadFile(f)
+		if err != nil || len(key) < databases.MinDumpKeyLen {
+			// Senza chiave i backup dei database non partono (mai in chiaro): l'API risponde backup_unavailable.
+			logger.Error("databases: chiave di dump assente o troppo corta, i backup dei database sono disattivati", "file", f, "err", err)
+		} else {
+			cfg.DumpKey = key
+		}
 	}
 	if err := lanConfig(&cfg); err != nil {
 		return nil, err

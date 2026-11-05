@@ -11112,6 +11112,33 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
         "409": {$ref: "#/components/responses/Conflict"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
+  /databases/{owner}/{name}/upgrade-minor:
+    parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/DatabaseNameParam"}]
+    post:
+      operationId: upgradeDatabaseMinor
+      tags: [databases]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: database_upgrade_minor
+        destructive: true
+      summary: "Chiede l'aggiornamento minor del database all'immagine corrente"
+      description: >
+        Serve `admin` sull'owner (DB2). Il database resta sul digest scelto alla creazione anche
+        quando la tabella delle immagini dell'istanza cambia (DB6); questa e' la richiesta esplicita:
+        il controller fa prima il dump di sicurezza (`safety`, stesso strumento del backup) e solo se
+        riesce passa al digest corrente della tabella per la stessa major (stesso PVC, riavvio del pod,
+        le app collegate si riconnettono). Se il dump fallisce l'immagine non cambia e `operations.upgradeError`
+        dice perche'. La major non si cambia mai sul posto (nuovo database da dump, `restoreDatabaseBackup`
+        con `target: new`). 202 con il database; 409 `no_update` se e' gia' sul digest corrente; 422
+        `database_not_ready` se non e' `running`. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+      responses:
+        "202": {description: "Richiesta registrata.", content: {application/json: {schema: {$ref: "#/components/schemas/Database"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
   /databases/{owner}/{name}/credentials/rotate:
     parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/DatabaseNameParam"}]
     post:
@@ -11412,6 +11439,29 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+  /admin/databases/upgrade-minor:
+    post:
+      operationId: upgradeAllDatabasesMinor
+      tags: [databases]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: admin_database_upgrade_minor
+        destructive: true
+      summary: "Chiede l'aggiornamento minor di tutti i database (solo amministratore)"
+      description: >
+        Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Dopo `gitstack
+        upgrade` la tabella delle immagini dell'istanza puo' avere un digest nuovo per una major; i
+        database esistenti restano sul loro digest (DB6) finche' non lo si chiede. Questa operazione
+        lo chiede per ogni database `running` con un aggiornamento disponibile: ognuno fa prima il
+        dump di sicurezza e, solo se riesce, passa al digest corrente (stesso PVC, riavvio). La major
+        non cambia mai sul posto. Risponde 202 con quanti database sono stati messi in coda. Con la
+        funzione spenta risponde 422 `databases_disabled` (DB23).
+      responses:
+        "202": {description: "Richiesta registrata.", content: {application/json: {schema: {$ref: "#/components/schemas/DatabaseMinorUpgradeRequested"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
   /admin/databases/settings:
     get:
@@ -18828,9 +18878,31 @@ components:
         lanPort: {type: integer, minimum: 1, maximum: 65535, nullable: true, description: "Porta TCP assegnata; null con la LAN spenta."}
         linkCount: {type: integer, minimum: 0, description: "Numero di collegamenti attivi o in scollegamento (DB9)."}
         usage: {allOf: [{$ref: "#/components/schemas/DatabaseUsage"}], nullable: true, type: object, description: "Uso corrente; null vuol dire metriche non disponibili (DB21)."}
+        operations: {$ref: "#/components/schemas/DatabaseOperations"}
         createdAt: {type: string, format: date-time}
         createdBy: {allOf: [{$ref: "#/components/schemas/AppActor"}], nullable: true, type: object}
         updatedAt: {type: string, format: date-time}
+    DatabaseOperations:
+      type: object
+      description: >
+        Stato di backup, ripristino e aggiornamento minor (GIT-553). Un errore resta qui finche' un'operazione
+        dello stesso tipo non riesce: un backup fallito non passa in silenzio (`gitstack status` lo mostra).
+      additionalProperties: false
+      required: [minorUpdateAvailable]
+      properties:
+        lastBackupAt: {type: string, format: date-time, nullable: true, description: "Ultimo dump riuscito (qualunque tipo)."}
+        backupError: {type: string, nullable: true, description: "Motivo dell'ultimo dump fallito, finche' un dump dello stesso tipo non riesce."}
+        restoreInProgress: {type: boolean, description: "C'e' un ripristino in attesa o in corso."}
+        restoreError: {type: string, nullable: true, description: "Motivo dell'ultimo ripristino fallito."}
+        minorUpdateAvailable: {type: boolean, description: "La tabella delle immagini ha un digest diverso per la major del database (DB6)."}
+        upgradeRequested: {type: boolean, description: "Un aggiornamento minor e' stato chiesto e non e' ancora finito."}
+        upgradeError: {type: string, nullable: true, description: "Motivo dell'ultimo aggiornamento minor non eseguito: l'immagine non e' cambiata."}
+    DatabaseMinorUpgradeRequested:
+      type: object
+      additionalProperties: false
+      required: [requested]
+      properties:
+        requested: {type: integer, minimum: 0, description: "Database messi in coda per l'aggiornamento minor."}
     DatabaseList:
       type: object
       additionalProperties: false
@@ -18966,8 +19038,8 @@ components:
         credentials: {$ref: "#/components/schemas/DatabaseLinkCredentials"}
     DatabaseBackupKind:
       type: string
-      description: "`scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13)."
-      enum: [scheduled, on_demand]
+      description: "`scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13). `safety`: dump di sicurezza prima di un ripristino sul posto o di un aggiornamento minor (ultimi 3)."
+      enum: [scheduled, on_demand, safety]
     DatabaseBackupStatus:
       type: string
       enum: [in_progress, completed, failed]

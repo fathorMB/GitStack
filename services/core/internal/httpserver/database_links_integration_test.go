@@ -130,11 +130,16 @@ type linkEnv struct {
 	ca   string
 	keys *webhooks.Keyring
 	db   openapi.Database
+	dsn  string
 }
 
-func newLinkEnv(t *testing.T) *linkEnv {
+func newLinkEnv(t *testing.T) *linkEnv { return newLinkEnvWith(t, nil, nil) }
+
+// newLinkEnvWith e' newLinkEnv con un SQLRunner e una configurazione del controller a scelta (GIT-553: Postgres
+// vero, dump e cartella dei dump). realSQL nil = linkSpy, come per tutti gli altri test.
+func newLinkEnvWith(t *testing.T, realSQL func(dsn string) databases.SQLRunner, tune func(*databases.Config)) *linkEnv {
 	t.Helper()
-	pool, _ := dbtest.NewPool(t)
+	pool, dsn := dbtest.NewPool(t)
 	id := &issuesIdentity{fakeIdentity: newFakeIdentity(), writers: map[uuid.UUID][]string{}}
 	base := &issuesEnv{t: t, pool: pool, id: id}
 	keys, err := webhooks.NewKeyring("k1", hookSecretKey, "")
@@ -156,10 +161,17 @@ func newLinkEnv(t *testing.T) *linkEnv {
 	spy := &linkSpy{roles: map[string]bool{}, rolePw: map[string]string{}}
 	st := store.New(pool)
 	kube := fake.NewSimpleClientset()
-	ctl := databases.New(st, kube, databases.Config{SQL: spy, CADir: ca, Images: map[int]databases.Image{}, Secrets: keys,
-		Unlink: databases.UnlinkOptions{Timeout: 150 * time.Millisecond, Every: 10 * time.Millisecond}, SweepEvery: time.Nanosecond})
+	cfg := databases.Config{SQL: spy, CADir: ca, Images: map[int]databases.Image{}, Secrets: keys,
+		Unlink: databases.UnlinkOptions{Timeout: 150 * time.Millisecond, Every: 10 * time.Millisecond}, SweepEvery: time.Nanosecond}
+	if realSQL != nil {
+		cfg.SQL = realSQL(dsn)
+	}
+	if tune != nil {
+		tune(&cfg)
+	}
+	ctl := databases.New(st, kube, cfg)
 	proxy.set(ctl)
-	e := &linkEnv{appsEnv: &appsEnv{issuesEnv: base, clock: clock, git: nil}, spy: spy, ctl: ctl, st: st, kube: kube, ca: ca, keys: keys}
+	e := &linkEnv{appsEnv: &appsEnv{issuesEnv: base, clock: clock, git: nil}, spy: spy, ctl: ctl, st: st, kube: kube, ca: ca, keys: keys, dsn: dsn}
 	e.db = (&dbEnv{appsEnv: e.appsEnv}).create("alice", "alice", `{"name":"shop","pgMajor":17}`, http.StatusAccepted).Database
 	if err := st.SetManagedDBStatus(context.Background(), uuid.UUID(e.db.Id), store.DBRunning, nil, clock.Now()); err != nil {
 		t.Fatal(err)
