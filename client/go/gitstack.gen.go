@@ -10955,7 +10955,7 @@ type ClientInterface interface {
 
 	// SetDatabaseLanWithBody Accende o spegne l'accesso dalla LAN
 	//
-	// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude prima della risposta. Se Kubernetes non riesce a toglierli risponde 503 `lan_close_failed`, mai 200: la LAN risulta spenta (`enabled` false, `port` null in lettura) ma la chiusura e' pendente e la porta resta riservata, quindi nessun altro database la riceve finche' il Service esiste. Un nuovo PUT con `enabled` false, o il ciclo di riconciliazione, completa la chiusura e solo allora libera la porta; riaccendere nel frattempo riusa la stessa porta. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -10964,7 +10964,7 @@ type ClientInterface interface {
 
 	// SetDatabaseLan Accende o spegne l'accesso dalla LAN
 	//
-	// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude prima della risposta. Se Kubernetes non riesce a toglierli risponde 503 `lan_close_failed`, mai 200: la LAN risulta spenta (`enabled` false, `port` null in lettura) ma la chiusura e' pendente e la porta resta riservata, quindi nessun altro database la riceve finche' il Service esiste. Un nuovo PUT con `enabled` false, o il ciclo di riconciliazione, completa la chiusura e solo allora libera la porta; riaccendere nel frattempo riusa la stessa porta. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -15117,7 +15117,7 @@ func (c *Client) GetDatabaseLan(ctx context.Context, owner RepoOwnerParam, name 
 
 // SetDatabaseLanWithBody Accende o spegne l'accesso dalla LAN
 //
-// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude prima della risposta. Se Kubernetes non riesce a toglierli risponde 503 `lan_close_failed`, mai 200: la LAN risulta spenta (`enabled` false, `port` null in lettura) ma la chiusura e' pendente e la porta resta riservata, quindi nessun altro database la riceve finche' il Service esiste. Un nuovo PUT con `enabled` false, o il ciclo di riconciliazione, completa la chiusura e solo allora libera la porta; riaccendere nel frattempo riusa la stessa porta. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
 //
 // Takes any type of body and a specified content type.
 //
@@ -15136,7 +15136,7 @@ func (c *Client) SetDatabaseLanWithBody(ctx context.Context, owner RepoOwnerPara
 
 // SetDatabaseLan Accende o spegne l'accesso dalla LAN
 //
-// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude prima della risposta. Se Kubernetes non riesce a toglierli risponde 503 `lan_close_failed`, mai 200: la LAN risulta spenta (`enabled` false, `port` null in lettura) ma la chiusura e' pendente e la porta resta riservata, quindi nessun altro database la riceve finche' il Service esiste. Un nuovo PUT con `enabled` false, o il ciclo di riconciliazione, completa la chiusura e solo allora libera la porta; riaccendere nel frattempo riusa la stessa porta. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
 //
 // Takes a body of the `application/json` content type.
 //
@@ -42069,7 +42069,7 @@ type ClientWithResponsesInterface interface {
 
 	// SetDatabaseLanWithBodyWithResponse Accende o spegne l'accesso dalla LAN
 	//
-	// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude prima della risposta. Se Kubernetes non riesce a toglierli risponde 503 `lan_close_failed`, mai 200: la LAN risulta spenta (`enabled` false, `port` null in lettura) ma la chiusura e' pendente e la porta resta riservata, quindi nessun altro database la riceve finche' il Service esiste. Un nuovo PUT con `enabled` false, o il ciclo di riconciliazione, completa la chiusura e solo allora libera la porta; riaccendere nel frattempo riusa la stessa porta. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -42078,7 +42078,7 @@ type ClientWithResponsesInterface interface {
 
 	// SetDatabaseLanWithResponse Accende o spegne l'accesso dalla LAN
 	//
-	// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude prima della risposta. Se Kubernetes non riesce a toglierli risponde 503 `lan_close_failed`, mai 200: la LAN risulta spenta (`enabled` false, `port` null in lettura) ma la chiusura e' pendente e la porta resta riservata, quindi nessun altro database la riceve finche' il Service esiste. Un nuovo PUT con `enabled` false, o il ciclo di riconciliazione, completa la chiusura e solo allora libera la porta; riaccendere nel frattempo riusa la stessa porta. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -48571,6 +48571,8 @@ type SetDatabaseLanResponse struct {
 	JSON409 *Conflict
 	// JSON422 the response for an HTTP 422 `application/json` response
 	JSON422 *UnprocessableEntity
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *Error
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -48606,6 +48608,11 @@ func (r SetDatabaseLanResponse) GetJSON409() *Conflict {
 // GetJSON422 returns the response for an HTTP 422 `application/json` response
 func (r SetDatabaseLanResponse) GetJSON422() *UnprocessableEntity {
 	return r.JSON422
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r SetDatabaseLanResponse) GetJSON503() *Error {
+	return r.JSON503
 }
 
 // GetBody returns the raw response body bytes
@@ -72415,7 +72422,7 @@ func (c *ClientWithResponses) GetDatabaseLanWithResponse(ctx context.Context, ow
 
 // SetDatabaseLanWithBodyWithResponse Accende o spegne l'accesso dalla LAN
 //
-// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude prima della risposta. Se Kubernetes non riesce a toglierli risponde 503 `lan_close_failed`, mai 200: la LAN risulta spenta (`enabled` false, `port` null in lettura) ma la chiusura e' pendente e la porta resta riservata, quindi nessun altro database la riceve finche' il Service esiste. Un nuovo PUT con `enabled` false, o il ciclo di riconciliazione, completa la chiusura e solo allora libera la porta; riaccendere nel frattempo riusa la stessa porta. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -72430,7 +72437,7 @@ func (c *ClientWithResponses) SetDatabaseLanWithBodyWithResponse(ctx context.Con
 
 // SetDatabaseLanWithResponse Accende o spegne l'accesso dalla LAN
 //
-// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+// Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude prima della risposta. Se Kubernetes non riesce a toglierli risponde 503 `lan_close_failed`, mai 200: la LAN risulta spenta (`enabled` false, `port` null in lettura) ma la chiusura e' pendente e la porta resta riservata, quindi nessun altro database la riceve finche' il Service esiste. Un nuovo PUT con `enabled` false, o il ciclo di riconciliazione, completa la chiusura e solo allora libera la porta; riaccendere nel frattempo riusa la stessa porta. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -80791,6 +80798,13 @@ func ParseSetDatabaseLanResponse(rsp *http.Response) (*SetDatabaseLanResponse, e
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
 
 	}
 

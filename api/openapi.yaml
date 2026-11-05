@@ -11396,8 +11396,12 @@ paths:
         dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS
         (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata
         (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service
-        e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422
-        `databases_disabled` (DB23).
+        e policy spariscono e la porta si chiude prima della risposta. Se Kubernetes non riesce a toglierli
+        risponde 503 `lan_close_failed`, mai 200: la LAN risulta spenta (`enabled` false, `port` null
+        in lettura) ma la chiusura e' pendente e la porta resta riservata, quindi nessun altro database
+        la riceve finche' il Service esiste. Un nuovo PUT con `enabled` false, o il ciclo di
+        riconciliazione, completa la chiusura e solo allora libera la porta; riaccendere nel frattempo
+        riusa la stessa porta. Con la funzione spenta risponde 422 `databases_disabled` (DB23).
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/DatabaseLanInput"}}}}
       responses:
         "200": {description: "Stato LAN aggiornato.", content: {application/json: {schema: {$ref: "#/components/schemas/DatabaseLan"}}}}
@@ -11407,6 +11411,12 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
         "409": {$ref: "#/components/responses/Conflict"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
+        "503":
+          description: Chiusura pendente (`lan_close_failed`), Service o NetworkPolicy ancora presenti e porta riservata. Ripetere la richiesta.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /databases/{owner}/{name}/logs:
     parameters: [{$ref: "#/components/parameters/RepoOwnerParam"}, {$ref: "#/components/parameters/DatabaseNameParam"}]
     get:

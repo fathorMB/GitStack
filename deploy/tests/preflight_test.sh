@@ -531,5 +531,29 @@ run ensure_database_secrets
 expect_fail "database accesi senza il binario gitstack: l'installazione si ferma"
 extra_helm_set=()
 
-printf '\npreflight_test: %s ok, %s falliti\n' "${PASS}" "${FAILN}"
+# GIT-554: database_lan_hint dice quali porte aprire nel firewall, solo con databases.enabled=true.
+k3s_already_installed() { return 1; }
+ss() { printf 'LISTEN 0 4096 0.0.0.0:15440 0.0.0.0:*\nLISTEN 0 4096 0.0.0.0:443 0.0.0.0:*\n'; }
+extra_helm_set=()
+run database_lan_hint
+expect_ok "database spenti: database_lan_hint non fa niente"
+expect_lacks "database spenti: nessun avviso sulle porte" "15432"
+extra_helm_set=("databases.enabled=true")
+run database_lan_hint
+expect_ok "database accesi: database_lan_hint"
+expect_has "database accesi: intervallo di default nel comando ufw" "ufw allow from <rete> to any port 15432:15531 proto tcp"
+expect_has "database accesi: avviso sulla porta dell'intervallo già in ascolto" "già in ascolto sull'host: 15440"
+expect_lacks "database accesi: la 443 non e' nell'intervallo" "443"
+extra_helm_set=("databases.enabled=true" "databases.lan.portRange.from=20000" "databases.lan.portRange.to=20010")
+run database_lan_hint
+expect_has "intervallo scelto con --set nel comando ufw" "port 20000:20010 proto tcp"
+expect_lacks "fuori dall'intervallo scelto nessun avviso" "già in ascolto"
+k3s_already_installed() { return 0; }
+extra_helm_set=("databases.enabled=true")
+run database_lan_hint
+expect_lacks "installazione esistente: nessun avviso sulle porte in ascolto" "già in ascolto"
+unset -f ss k3s_already_installed
+extra_helm_set=()
+
+printf '\npreflight_test:%s ok, %s falliti\n' "${PASS}" "${FAILN}"
 [ "${FAILN}" -eq 0 ]

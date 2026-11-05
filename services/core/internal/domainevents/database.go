@@ -50,4 +50,6 @@ type DatabasePayload struct {
 	Link        json.RawMessage `json:"link,omitempty"`
 	DiskState   string          `json:"diskState,omitempty"`
 	UsageBytes  *int64          `json:"usageBytes,omitempty"`
+	// Port: porta TCP della LAN, solo in lan_enabled (assente con la LAN spenta, DB16).
+	Port *int `json:"port,omitempty"`
 }

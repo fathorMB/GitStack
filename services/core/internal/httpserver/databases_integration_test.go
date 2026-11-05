@@ -90,6 +90,12 @@ func (l *lateController) RotateLink(ctx context.Context, k store.AppSealer, d st
 func (l *lateController) Unlink(ctx context.Context, d store.ManagedDB, link store.ManagedDBLink, actor *store.AppActor) (bool, error) {
 	return l.get().Unlink(ctx, d, link, actor)
 }
+func (l *lateController) SetLAN(ctx context.Context, d store.ManagedDB, enable bool, a *store.AppActor) (store.ManagedDB, error) {
+	return l.get().SetLAN(ctx, d, enable, a)
+}
+func (l *lateController) LANInfo(ctx context.Context, d store.ManagedDB, host string) (databases.LANInfo, error) {
+	return l.get().LANInfo(ctx, d, host)
+}
 func (l *lateController) Kick() { l.get().Kick() }
 func (l *lateController) StartBackup(ctx context.Context, d store.ManagedDB, a *store.AppActor) (store.ManagedDBBackup, error) {
 	return l.get().StartBackup(ctx, d, a)

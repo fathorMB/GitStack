@@ -23481,6 +23481,10 @@ export type SetDatabaseLanErrors = {
      *
      */
     422: Error;
+    /**
+     * Chiusura pendente (`lan_close_failed`), Service o NetworkPolicy ancora presenti e porta riservata. Ripetere la richiesta.
+     */
+    503: Error;
 };
 
 export type SetDatabaseLanError = SetDatabaseLanErrors[keyof SetDatabaseLanErrors];

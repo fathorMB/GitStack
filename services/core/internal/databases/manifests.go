@@ -173,6 +173,41 @@ func BuildNetworkPolicy(db store.ManagedDB) *networkingv1.NetworkPolicy {
 		}}
 }
 
+// Accesso dalla LAN (GIT-554, ADR 0003 punto 6): Service LoadBalancer (ServiceLB di k3s, come la porta SSH
+// di git) sulla porta assegnata al database, piu' la NetworkPolicy db-lan che ammette l'ingresso da fuori dal
+// CIDR dei pod. db-isolation resta com'e': le app non collegate restano respinte.
+const (
+	LANServiceName       = "pg-lan"
+	LANNetworkPolicyName = "db-lan"
+	// DefaultPodCIDR e' il CIDR dei pod di k3s: la LAN non e' la rete delle app, quindi e' escluso.
+	DefaultPodCIDR = "10.42.0.0/16"
+)
+
+// BuildLANService e' il Service LoadBalancer del database sulla porta LAN assegnata.
+func BuildLANService(db store.ManagedDB, port int) *corev1.Service {
+	return &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: LANServiceName, Namespace: Namespace(db.ID), Labels: objectLabels(db.ID)},
+		Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer, Selector: selectorLabels(db.ID),
+			Ports: []corev1.ServicePort{{Name: "postgres-lan", Port: int32(port), TargetPort: intstr.FromInt32(PostgresPort), Protocol: corev1.ProtocolTCP}}}}
+}
+
+// BuildLANNetworkPolicy ammette la 5432 da qualunque sorgente tranne il CIDR dei pod (la rete delle app).
+func BuildLANNetworkPolicy(db store.ManagedDB, podCIDR string) *networkingv1.NetworkPolicy {
+	if podCIDR == "" {
+		podCIDR = DefaultPodCIDR
+	}
+	tcp := corev1.ProtocolTCP
+	port := intstr.FromInt32(PostgresPort)
+	return &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: LANNetworkPolicyName, Namespace: Namespace(db.ID), Labels: objectLabels(db.ID)},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{{
+				From:  []networkingv1.NetworkPolicyPeer{{IPBlock: &networkingv1.IPBlock{CIDR: "0.0.0.0/0", Except: []string{podCIDR}}}},
+				Ports: []networkingv1.NetworkPolicyPort{{Protocol: &tcp, Port: &port}},
+			}},
+		}}
+}
+
 // StatefulSetOptions sono le scelte d'istanza che entrano nello StatefulSet.
 type StatefulSetOptions struct {
 	Image         Image

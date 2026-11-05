@@ -1810,6 +1810,39 @@ ensure_database_secrets() {
     || fail "'gitstack databases ensure' fallito: CA intermedia o chiave di dump dei database non create."
 }
 
+# Accesso dalla LAN dei database (ADR 0003 punto 6, GIT-554). Con i database accesi dice quali porte aprire
+# nel firewall (l'installer non modifica mai ufw) e avvisa se qualcuna dell'intervallo e' gia' in ascolto
+# sull'host: ServiceLB non potrebbe aprirla. Intervallo: --set databases.lan.portRange.from=N / .to=N
+# (default 15432-15531). Solo informativo: la LAN di ogni database e' spenta finche' non la accende il portale.
+database_lan_hint() {
+  local kv enabled=0 from=15432 to=15531
+  for kv in "${extra_helm_set[@]:-}"; do
+    case "${kv}" in
+      databases.enabled=true) enabled=1 ;;
+      databases.enabled=*) enabled=0 ;;
+      databases.lan.portRange.from=*) from="${kv#databases.lan.portRange.from=}" ;;
+      databases.lan.portRange.to=*) to="${kv#databases.lan.portRange.to=}" ;;
+    esac
+  done
+  [ "${enabled}" = "1" ] || return 0
+  case "${from}${to}" in
+    ''|*[!0-9]*) warn "databases.lan.portRange non valido (${from}-${to}): servono due numeri di porta."; return 0 ;;
+  esac
+  log "Database gestiti: l'accesso dalla LAN (spento per ogni database, lo accende il portale) usa una porta TCP per database tra ${from} e ${to}."
+  log "  Se usi ufw, aprile solo alla tua rete (l'installer non lo modifica): ufw allow from <rete> to any port ${from}:${to} proto tcp"
+  # Su un'installazione esistente le porte in ascolto sono dei database con la LAN accesa: niente avviso.
+  if ! k3s_already_installed && command -v ss >/dev/null 2>&1; then
+    local port busy="" n=0
+    for port in $(ss -ltnH 2>/dev/null | awk '{ n = split($4, a, ":"); print a[n] }' | sort -un); do
+      if [ "${port}" -ge "${from}" ] && [ "${port}" -le "${to}" ]; then
+        busy="${busy} ${port}"
+        n=$((n + 1))
+      fi
+    done
+    [ "${n}" = "0" ] || warn "porte dell'intervallo ${from}-${to} già in ascolto sull'host:${busy}. Un database con la LAN accesa su una di queste non si raggiunge: sposta l'intervallo con --set databases.lan.portRange.from=N --set databases.lan.portRange.to=M."
+  fi
+}
+
 # Pubblica le informazioni per Admin · System (ConfigMap system-info, letto da
 # core: GIT-213). Best effort: un errore non fa fallire l'installazione.
 publish_system_info() {
@@ -3635,6 +3668,7 @@ main() {
   install_admin
   write_config "${image_tag}"
   ensure_database_secrets
+  database_lan_hint
   publish_system_info
   enable_backup_timer
 

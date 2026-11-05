@@ -8,6 +8,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,7 +16,7 @@ import (
 )
 
 // writeTestCA crea una radice e un'intermedia (come l'installer, con name constraints su
-// *.svc.cluster.local) in una cartella temporanea: ritorna la radice e la cartella dell'intermedia.
+// *.svc.cluster.local e sui nomi dell'istanza gitstack.test, 192.0.2.10) in una cartella temporanea: ritorna la radice e la cartella dell'intermedia.
 func writeTestCA(t *testing.T) (*x509.Certificate, string) {
 	t.Helper()
 	rootKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -29,7 +30,8 @@ func writeTestCA(t *testing.T) (*x509.Certificate, string) {
 	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	tmpl := &x509.Certificate{SerialNumber: big.NewInt(2), Subject: pkix.Name{CommonName: "Test Database CA"}, NotBefore: time.Now().Add(-time.Hour),
 		NotAfter: time.Now().Add(5 * 365 * 24 * time.Hour), IsCA: true, BasicConstraintsValid: true, MaxPathLen: 0, MaxPathLenZero: true,
-		KeyUsage: x509.KeyUsageCertSign, PermittedDNSDomainsCritical: true, PermittedDNSDomains: []string{"svc.cluster.local"}}
+		KeyUsage: x509.KeyUsageCertSign, PermittedDNSDomainsCritical: true, PermittedDNSDomains: []string{"svc.cluster.local", "gitstack.test"},
+		PermittedIPRanges: []*net.IPNet{{IP: net.IPv4(192, 0, 2, 10).To4(), Mask: net.CIDRMask(32, 32)}, {IP: net.IPv4(127, 0, 0, 1).To4(), Mask: net.CIDRMask(32, 32)}}}
 	der, err := x509.CreateCertificate(rand.Reader, tmpl, root, &key.PublicKey, rootKey)
 	if err != nil {
 		t.Fatal(err)
