@@ -4547,7 +4547,7 @@ export type WebhookAppDomainPayload = {
 };
 
 /**
- * Payload del webhook `database` (v3-d, DB20). Si configura sul webhook dell'organizzazione proprietaria del database (C6): un database di un utente non ha webhook. `action`: `created` (con `sizeBytes`, `cpuMillis`, `memoryBytes` dichiarati), `updated` (con `changes`: i valori precedenti), `deleted` (con `deletedAt`), `linked`/`unlinked` (con `link`), `lan_enabled` (con la `port` TCP assegnata), `lan_disabled`, `backup_completed` (con `sizeBytes` del dump) e `backup_failed`; `restored`. I dettagli di backup e ripristino (`backup{id,kind}`, `error`, `backupId`, `target`) arrivano con GIT-572. I campi opzionali dipendono dall'azione. Nessun segreto: mai password (ne' dell'owner ne' dei collegamenti), ne' Secret, ne' DATABASE_URL (DB20, DB22).
+ * Payload del webhook `database` (v3-d, DB20). Si configura sul webhook dell'organizzazione proprietaria del database (C6): un database di un utente non ha webhook. `action`: `created` (con `sizeBytes`, `cpuMillis`, `memoryBytes` dichiarati), `updated` (con `changes`: i valori precedenti), `deleted` (con `deletedAt`), `linked`/`unlinked` (con `link`), `lan_enabled` (con la `port` TCP assegnata), `lan_disabled`, `backup_completed` (con `backup`: id, kind e `sizeBytes` del dump) e `backup_failed` (con `backup` senza `sizeBytes` e il motivo in `error`); `restored` (con `backupId` del dump e `target` `same`/`new`). I campi opzionali dipendono dall'azione. Nessun segreto: mai password (ne' dell'owner ne' dei collegamenti), ne' Secret, ne' DATABASE_URL; l'`error` di `backup_failed` rispetta lo stesso divieto (DB20, DB22).
  *
  */
 export type WebhookDatabasePayload = {
@@ -4566,7 +4566,7 @@ export type WebhookDatabasePayload = {
         pgMajor: 16 | 17;
     };
     /**
-     * Dimensione dichiarata alla creazione, o del dump per `backup_completed`.
+     * Dimensione dichiarata alla creazione, solo per `created`.
      */
     sizeBytes?: number;
     /**
@@ -4619,6 +4619,29 @@ export type WebhookDatabasePayload = {
      * Porta TCP della LAN assegnata, solo per `lan_enabled`.
      */
     port?: number;
+    /**
+     * Riferimento al dump, solo per `backup_completed`/`backup_failed`.
+     */
+    backup?: {
+        id: string;
+        kind: 'scheduled' | 'on_demand' | 'safety';
+        /**
+         * Dimensione del dump cifrato, solo per `backup_completed`.
+         */
+        sizeBytes?: number;
+    };
+    /**
+     * Motivo del fallimento, solo per `backup_failed`: niente password ne' DATABASE_URL (DB20).
+     */
+    error?: string;
+    /**
+     * Dump ripristinato, solo per `restored`.
+     */
+    backupId?: string;
+    /**
+     * Destinazione del ripristino, solo per `restored` (DB15).
+     */
+    target?: 'same' | 'new';
 };
 
 /**

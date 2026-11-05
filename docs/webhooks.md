@@ -336,9 +336,10 @@ dell'organizzazione proprietaria del database (C6): un database di un utente non
 corpo comune, intestazioni, firma e tentativi. `action` è `created` (con `sizeBytes`, `cpuMillis` e
 `memoryBytes` dichiarati), `updated` (con `changes`: i valori precedenti), `deleted` (con `deletedAt`),
 `linked`/`unlinked` (con `link`: id, app `owner`/`repo`/`name` e `mode` `rw`/`ro`), `lan_enabled`
-(con la porta TCP assegnata in `port`), `lan_disabled`, `backup_completed` (con `sizeBytes` del dump)
-e `backup_failed`; `restored`. I dettagli di backup e ripristino (`backup{id,kind}`, `error`,
-`backupId`, `target`) arrivano con GIT-572. `database` è l'istantanea minima `{id, owner, name, pgMajor}`.
+(con la porta TCP assegnata in `port`), `lan_disabled`, `backup_completed` (con `backup`: `id` e
+`kind` del dump e la sua `sizeBytes`) e `backup_failed` (con `backup` senza `sizeBytes` e il motivo
+in `error`, che non contiene mai password né `DATABASE_URL`); `restored` (con `backupId` del dump e
+`target` `same`/`new`). `database` è l'istantanea minima `{id, owner, name, pgMajor}`.
 Il payload non contiene mai segreti: niente password (né dell'owner né dei collegamenti), niente Secret,
 niente `DATABASE_URL` (DB20, DB22); i nomi e lo schema degli eventi di dominio sono in `docs/events.md`
 (famiglia `database.*`, stream `DATABASE`).

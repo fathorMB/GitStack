@@ -18887,10 +18887,11 @@ components:
         proprietaria del database (C6): un database di un utente non ha webhook. `action`: `created`
         (con `sizeBytes`, `cpuMillis`, `memoryBytes` dichiarati), `updated` (con `changes`: i valori
         precedenti), `deleted` (con `deletedAt`), `linked`/`unlinked` (con `link`), `lan_enabled`
-        (con la `port` TCP assegnata), `lan_disabled`, `backup_completed` (con `sizeBytes` del dump)
-        e `backup_failed`; `restored`. I dettagli di backup e ripristino (`backup{id,kind}`, `error`,
-        `backupId`, `target`) arrivano con GIT-572. I campi opzionali dipendono dall'azione. Nessun
-        segreto: mai password (ne' dell'owner ne' dei collegamenti), ne' Secret, ne' DATABASE_URL (DB20, DB22).
+        (con la `port` TCP assegnata), `lan_disabled`, `backup_completed` (con `backup`: id, kind e
+        `sizeBytes` del dump) e `backup_failed` (con `backup` senza `sizeBytes` e il motivo in
+        `error`); `restored` (con `backupId` del dump e `target` `same`/`new`). I campi opzionali
+        dipendono dall'azione. Nessun segreto: mai password (ne' dell'owner ne' dei collegamenti),
+        ne' Secret, ne' DATABASE_URL; l'`error` di `backup_failed` rispetta lo stesso divieto (DB20, DB22).
       additionalProperties: false
       required: [version, event, action, time, sender, database]
       properties:
@@ -18908,7 +18909,7 @@ components:
             owner: {type: string, description: "Nome dell'owner (utente o organizzazione)."}
             name: {type: string}
             pgMajor: {type: integer, enum: [16, 17]}
-        sizeBytes: {type: integer, format: int64, description: "Dimensione dichiarata alla creazione, o del dump per `backup_completed`."}
+        sizeBytes: {type: integer, format: int64, description: "Dimensione dichiarata alla creazione, solo per `created`."}
         cpuMillis: {type: integer, description: "CPU dichiarata alla creazione (millicore), solo per `created`."}
         memoryBytes: {type: integer, format: int64, description: "Memoria dichiarata alla creazione, solo per `created`."}
         changes:
@@ -18939,6 +18940,18 @@ components:
         diskState: {type: string, enum: [none, warning, full], description: "Stato del limite morbido di disco (80%/100%)."}
         usageBytes: {type: integer, format: int64, description: "Dimensione misurata (pg_database_size)."}
         port: {type: integer, minimum: 1, maximum: 65535, description: "Porta TCP della LAN assegnata, solo per `lan_enabled`."}
+        backup:
+          type: object
+          additionalProperties: false
+          description: "Riferimento al dump, solo per `backup_completed`/`backup_failed`."
+          required: [id, kind]
+          properties:
+            id: {type: string, format: uuid}
+            kind: {type: string, enum: [scheduled, on_demand, safety]}
+            sizeBytes: {type: integer, format: int64, description: "Dimensione del dump cifrato, solo per `backup_completed`."}
+        error: {type: string, description: "Motivo del fallimento, solo per `backup_failed`: niente password ne' DATABASE_URL (DB20)."}
+        backupId: {type: string, format: uuid, description: "Dump ripristinato, solo per `restored`."}
+        target: {type: string, enum: [same, new], description: "Destinazione del ripristino, solo per `restored` (DB15)."}
 
     # Database gestiti (v3-d, ADR 0003, DB1-DB24).
     DatabaseName:

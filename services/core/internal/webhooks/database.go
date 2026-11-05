@@ -122,6 +122,22 @@ func (e *Engine) dispatchDatabase(ctx context.Context, tx pgx.Tx, ev outboxEvent
 	if p.Port != nil {
 		b.body["port"] = *p.Port
 	}
+	if p.Backup != nil {
+		backup := obj{"id": p.Backup.ID, "kind": p.Backup.Kind}
+		if p.Backup.SizeBytes != nil {
+			backup["sizeBytes"] = *p.Backup.SizeBytes
+		}
+		b.body["backup"] = backup
+	}
+	if p.Error != "" {
+		b.body["error"] = p.Error
+	}
+	if p.BackupID != "" {
+		b.body["backupId"] = p.BackupID
+	}
+	if p.Target != "" {
+		b.body["target"] = p.Target
+	}
 	raw, err := json.Marshal(b.body)
 	if err != nil {
 		return &badEventError{err}
