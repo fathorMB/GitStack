@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 
-// Richiede un'installazione con database abilitati e un'app già pronta dello stesso owner.
+// Richiede database abilitati e un'app pronta dello stesso owner: E2E_BASE_URL,
+// E2E_ADMIN_PASSWORD, E2E_DATABASE_APP_REPO e E2E_DATABASE_APP_NAME.
+// E2E_ADMIN_USERNAME è facoltativa (default: admin).
+test.skip(!process.env.E2E_DATABASE_APP_REPO || !process.env.E2E_DATABASE_APP_NAME, "richiede un'istanza con database abilitati: lo lancia il passo e2e su VM di GIT-558");
+
 test('gestione database dal portale', async ({ page }) => {
   test.setTimeout(600_000);
   const owner = process.env.E2E_ADMIN_USERNAME ?? 'admin';
@@ -8,8 +12,6 @@ test('gestione database dal portale', async ({ page }) => {
   const repo = process.env.E2E_DATABASE_APP_REPO ?? '';
   const app = process.env.E2E_DATABASE_APP_NAME ?? '';
   expect(password, 'E2E_ADMIN_PASSWORD richiesta').not.toBe('');
-  expect(repo, 'E2E_DATABASE_APP_REPO richiesto').not.toBe('');
-  expect(app, 'E2E_DATABASE_APP_NAME richiesto').not.toBe('');
   const name = `e2e-${Date.now()}`;
 
   await page.goto('/login');
