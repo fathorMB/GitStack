@@ -161,6 +161,8 @@ type fakeHelm struct {
 	manifest      string // manifest della revisione di destinazione (vuoto: quello di prova)
 
 	dbNew, dbOld string                              // rendering dei database del chart nuovo e di quello attuale (GIT-565)
+	dbForced     string                              // rendering della release con databases.enabled=true (tabella da spenti)
+	dbForcedErr  error
 	real         func(args []string) ([]byte, error) // helm template vero (databases_helm_test.go)
 }
 
@@ -240,6 +242,17 @@ func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...strin
 				return out, err
 			}
 			return []byte(h.images + "\n---\n" + stripImageLines(string(out))), nil
+		}
+		// GIT-557 (DB6): rendering con databases.enabled=true forzato, per ricavare la tabella da spenti.
+		if h.dbForced != "" || h.dbForcedErr != nil {
+			for i, a := range args {
+				if a == "--set" && i+1 < len(args) && args[i+1] == "databases.enabled=true" {
+					if h.dbForcedErr != nil {
+						return nil, h.dbForcedErr
+					}
+					return []byte(h.images + h.dbForced), nil
+				}
+			}
 		}
 		if len(args) > 2 && strings.HasSuffix(strings.TrimRight(args[2], "/\\"), ".new") {
 			return []byte(h.images + h.dbNew), nil
