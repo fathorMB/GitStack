@@ -55,7 +55,7 @@ func TestRun_RepositoryNonValidoNonEntraInConfig(t *testing.T) {
 // passi valgono owner/nome del repo del run.
 func TestRun_ActVero_Repository(t *testing.T) {
 	act := realAct(t)
-	wf := "name: repo\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"CTX=${{ github.repository }} ENV=$GITHUB_REPOSITORY\"\n"
+	wf := "name: repo\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: echo \"CTX=${{ github.repository }} ENV=$GITHUB_REPOSITORY\"\n"
 	g := &fakeGateway{workflow: wf, archive: tarball(t, map[string]string{"README.md": "x"}),
 		extra: map[string]any{"repository": "admin/odin", "ref": "refs/tags/v1.0.1"}}
 	cfg := cfgFor(t, start(t, g))
@@ -72,4 +72,5 @@ func TestRun_ActVero_Repository(t *testing.T) {
 	if res.Conclusion != runnerv1.Result_RESULT_SUCCESS || !strings.Contains(log, "CTX=admin/odin ENV=admin/odin") {
 		t.Fatalf("esito %v\n%s", res.Conclusion, log)
 	}
+	t.Logf("esito %v\n%s", res.Conclusion, log)
 }
