@@ -82,9 +82,9 @@ type Config struct {
 	MetricsEvery time.Duration
 	LogRetention time.Duration
 	LogMaxBytes  int64
-	Unlink          UnlinkOptions
-	Now             func() time.Time
-	Log             *slog.Logger
+	Unlink       UnlinkOptions
+	Now          func() time.Time
+	Log          *slog.Logger
 	// Secrets: portachiavi dei segreti (come le app): cifra l'intento di rotazione dei collegamenti. Nil: le
 	// rotazioni interrotte non si riprendono da sole.
 	Secrets store.AppSealer

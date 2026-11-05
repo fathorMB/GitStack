@@ -13,11 +13,11 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
 )
 
-// TestMigration0058_DBTelemetry (GIT-568, ADR 0003 DB21): i campioni di CPU/RAM e le righe di log
+// TestMigration0059_DBTelemetry (GIT-568, ADR 0003 DB21): i campioni di CPU/RAM e le righe di log
 // dei database si conservano con la stessa semantica dei log delle app: campione senza CPU = la
 // sorgente non ha risposto (mai zero), vincoli non negativi, a cascata sul database (con
 // l'eliminazione sparisce la telemetria) e down senza residui.
-func TestMigration0058_DBTelemetry(t *testing.T) {
+func TestMigration0059_DBTelemetry(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 	now := time.Now().UTC()
@@ -71,7 +71,7 @@ func TestMigration0058_DBTelemetry(t *testing.T) {
 	}
 
 	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("down 0058: %v", err)
+		t.Fatalf("down 0059: %v", err)
 	}
 	for _, table := range []string{"managed_db_log_lines", "managed_db_metric_samples"} {
 		var c int
@@ -80,6 +80,6 @@ func TestMigration0058_DBTelemetry(t *testing.T) {
 		}
 	}
 	if err := migrate.Up(ctx, pool, dsn); err != nil {
-		t.Fatalf("up 0058 dopo il down: %v", err)
+		t.Fatalf("up 0059 dopo il down: %v", err)
 	}
 }

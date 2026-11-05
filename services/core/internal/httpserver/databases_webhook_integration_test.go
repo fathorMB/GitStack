@@ -125,11 +125,11 @@ func TestDatabases_WebhookConsegnaSenzaSegreti(t *testing.T) {
 	}
 
 	type payload struct {
-		Version   int    `json:"version"`
-		Event     string `json:"event"`
-		Action    string `json:"action"`
-		Time      string `json:"time"`
-		Sender    struct {
+		Version int    `json:"version"`
+		Event   string `json:"event"`
+		Action  string `json:"action"`
+		Time    string `json:"time"`
+		Sender  struct {
 			ID       string `json:"id"`
 			Username string `json:"username"`
 		} `json:"sender"`
