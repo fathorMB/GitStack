@@ -112,6 +112,7 @@ func newDomEnv(t *testing.T, installed string, tune func(*upgrade.Options)) *dom
 		o.APIBase, o.CodeloadURL, o.ReleaseURL = srv.URL, srv.URL, srv.URL
 		o.Poll = 10 * time.Millisecond
 		o.CheckCA = nil
+		o.Backup.DestDir = filepath.Join(dir, "backups")
 		o.ImageCheck = func(context.Context, string) error { return nil }
 		o.Health = func(context.Context) *status.Report {
 			return &status.Report{APIHealthy: true, Services: []status.Service{{Name: "s", Desired: 1, Ready: 1}}}
