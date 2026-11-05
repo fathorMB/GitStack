@@ -65,6 +65,15 @@ func fakeAct(args []string) int {
 		head, _ := os.ReadFile(filepath.Join(".git", "HEAD"))
 		_ = os.WriteFile(f, []byte(string(ev)+"\n"+strings.TrimSpace(string(head))), 0o600)
 	}
+	if f := os.Getenv("CIRUNNER_FAKE_ACT_REPO"); f != "" { // github.repository come lo ricava act: dal remote di .git/config
+		cfg, _ := os.ReadFile(filepath.Join(".git", "config"))
+		m := regexp.MustCompile(`(?m)^\s*url = https?://.*github\.com.*/(.+)/(.+?)(?:\.git)?\s*$`).FindStringSubmatch(string(cfg))
+		repo := ""
+		if m != nil {
+			repo = m[1] + "/" + m[2]
+		}
+		_ = os.WriteFile(f, []byte(repo), 0o600)
+	}
 	if f := os.Getenv("CIRUNNER_FAKE_ACT_ARGS"); f != "" {
 		_ = os.WriteFile(f, []byte(strings.Join(args, "\n")), 0o600)
 	}
