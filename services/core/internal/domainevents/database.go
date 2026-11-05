@@ -24,11 +24,16 @@ const (
 const DomainDatabase = "database"
 
 // Database e' l'istantanea minima della risorsa nei payload (`database` in docs/events.md).
+// OwnerID e OwnerType (non segreti) servono ai consumer fuori dal database di core — il motore dei
+// webhook li usa per trovare i webhook dell'organizzazione anche quando la riga del database e'
+// gia' stata eliminata (database.deleted) e i repo non bastano (un'org puo' non averne, GIT-568).
 type Database struct {
-	ID      string `json:"id"`
-	Owner   string `json:"owner"`
-	Name    string `json:"name"`
-	PgMajor int    `json:"pgMajor"`
+	ID        string `json:"id"`
+	Owner     string `json:"owner"`
+	OwnerID   string `json:"ownerId"`
+	OwnerType string `json:"ownerType"`
+	Name      string `json:"name"`
+	PgMajor   int    `json:"pgMajor"`
 }
 
 // DatabasePayload e' lo schema interno di database.*. I campi opzionali dipendono dall'evento:

@@ -24,6 +24,11 @@ sono compatibili, quindi un ricevitore ignora i campi che non conosce.
 | `issue_comment` | cambia un commento di una issue | `created`, `edited`, `deleted` |
 | `repository` | cambia un repo | `created`, `deleted`, `archived`, `unarchived`, `visibility_changed` |
 | `pull_request`, `pull_request_review`, `commit_status` | v1.1 (PR11): vedi la sezione dedicata | |
+| `database` | cambia un database gestito (v3-d, DB20) | `created`, `updated`, `deleted`, `linked`, `unlinked`, `lan_enabled`, `lan_disabled`, `backup_completed`, `backup_failed`, `restored` |
+
+**Solo webhook d'organizzazione**: `database` si configura sul webhook dell'organizzazione
+proprietaria del database e riceve gli eventi di tutti i suoi database. Un database di un
+**utente** non ha webhook: C6 non prevede uno scope «utente».
 
 Nessun webhook per una issue nascosta (I4) né per i suoi commenti. Nella v1
 non c'è l'evento `ping`: si prova un webhook con una consegna vera e si
@@ -35,7 +40,7 @@ rinvia dal log (`redeliver`).
 |---|---|
 | `Content-Type` | `application/json` |
 | `User-Agent` | `GitStack-Webhook/1` |
-| `X-GitStack-Event` | l'evento: `push`, `issues`, `issue_comment`, `repository`, `pull_request`, `pull_request_review`, `commit_status`, `workflow_run`, `workflow_job`, `deployment` o `app_domain` |
+| `X-GitStack-Event` | l'evento: `push`, `issues`, `issue_comment`, `repository`, `pull_request`, `pull_request_review`, `commit_status`, `workflow_run`, `workflow_job`, `deployment`, `app_domain` o `database` |
 | `X-GitStack-Delivery` | uuid della consegna: è l'`id` nel log (`…/deliveries`); una *Redeliver* ne ha uno nuovo |
 | `X-GitStack-Payload-Version` | `1` |
 | `X-GitStack-Signature` | `sha256=<hex>`, solo se il webhook ha un segreto |
@@ -324,13 +329,28 @@ dell'app, come `deployment`; stessi corpo comune, intestazioni, firma e tentativ
 `sender` è sempre `null`. Un solo invio per guasto o scadenza (la stessa deduplica delle notifiche di
 GIT-461). Il payload non porta mai chiavi né il contenuto dei certificati.
 
+## `database` (v3-d, DB20, GIT-568)
+
+Contratto: schema `WebhookDatabasePayload` in `api/openapi.yaml`. Si seleziona **solo** sul webhook
+dell'organizzazione proprietaria del database (C6): un database di un utente non ha webhook. Stessi
+corpo comune, intestazioni, firma e tentativi. `action` è `created` (con `sizeBytes`, `cpuMillis` e
+`memoryBytes` dichiarati), `updated` (con `changes`: i valori precedenti), `deleted` (con `deletedAt`),
+`linked`/`unlinked` (con `link`: id, app `owner`/`repo`/`name` e `mode` `rw`/`ro`), `lan_enabled`
+(con la porta TCP assegnata in `port`), `lan_disabled`, `backup_completed` (con `sizeBytes` del dump)
+e `backup_failed`; `restored`. I dettagli di backup e ripristino (`backup{id,kind}`, `error`,
+`backupId`, `target`) arrivano con GIT-572. `database` è l'istantanea minima `{id, owner, name, pgMajor}`.
+Il payload non contiene mai segreti: niente password (né dell'owner né dei collegamenti), niente Secret,
+niente `DATABASE_URL` (DB20, DB22); i nomi e lo schema degli eventi di dominio sono in `docs/events.md`
+(famiglia `database.*`, stream `DATABASE`).
+
 ## Da dove nascono
 
 I webhook li produce core dagli eventi di dominio (`docs/events.md`):
 `git.push` (letto da NATS con il consumer durevole `core-webhooks-git`) per
 `push`; `issue.*`, `issue_comment.*` e `repository.*` dall'outbox
 transazionale di core (`core.event_outbox`), lo stesso da cui li pubblica il
-relay, per `issues`, `issue_comment` e `repository`. Le tabelle sono
+relay, per `issues`, `issue_comment` e `repository`; la famiglia
+`database.*` dallo stesso outbox per `database` (GIT-568). Le tabelle sono
 `core.webhooks` e `core.webhook_deliveries` (migrazione
 `0006_notifications_webhooks`; `0012_webhook_outbox` aggiunge il segno di
 lettura dell'outbox). La coda delle consegne è la tabella stessa: le consegne

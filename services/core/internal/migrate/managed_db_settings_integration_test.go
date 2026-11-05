@@ -48,7 +48,7 @@ func TestMigration0059_ManagedDBSettings(t *testing.T) {
 		lan_port_from = 20000, lan_port_to = 20010, keep_scheduled = 1, keep_on_demand = 1`); err != nil {
 		t.Fatalf("valori validi: %v", err)
 	}
-	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
 		t.Fatalf("down 0059: %v", err)
 	}
 	var n int

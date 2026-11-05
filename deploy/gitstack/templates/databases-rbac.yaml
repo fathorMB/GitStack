@@ -78,6 +78,12 @@ rules:
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list"]
+  # Uso di CPU e memoria del pod (metrics-server): readPodMetrics (services/core/internal/databases/
+  # metrics.go) fa List su metrics.k8s.io/v1beta1 pods nel namespace del database. Solo lettura,
+  # legata per namespace dal RoleBinding, come il ruolo delle app (GIT-427, DB21).
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods"]
+    verbs: ["get", "list"]
   # pg_dump e ripristino con exec nel pod del database, e log del pod (ADR 0003 punto 5).
   - apiGroups: [""]
     resources: ["pods/exec"]

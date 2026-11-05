@@ -731,7 +731,8 @@ expect_eq "controller: nessun verbo sui database" "$(printf '%s\n' "${ctl}" | gr
 # Ruolo modello: i verbi del controller sui database.
 wl="$(doc ClusterRole gitstack-db-workload)"
 expect_has "modello: etichetta role-template" "${wl}" 'gitstack.io/role-template: "true"'
-expect_eq "modello: risorse" "$(rules_of "${wl}" | cut -d'|' -f2 | sort | tr '\n' ' ')" '"networkpolicies" "persistentvolumeclaims" "pods" "pods/exec" "pods/log" "secrets" "services" "statefulsets" '
+expect_eq "modello: risorse" "$(rules_of "${wl}" | cut -d'|' -f2 | sort | tr '\n' ' ')" '"networkpolicies" "persistentvolumeclaims" "pods" "pods" "pods/exec" "pods/log" "secrets" "services" "statefulsets" '
+expect_eq "modello: metriche dei pod (metrics.k8s.io, solo get e list, DB21/GIT-568)" "$(rules_of "${wl}" | grep '"metrics.k8s.io"')" '"metrics.k8s.io"|"pods"|"get", "list"|'
 expect_eq "modello: statefulsets" "$(rules_of "${wl}" | grep '"statefulsets"')" '"apps"|"statefulsets"|"create", "get", "list", "update", "delete"|'
 expect_eq "modello: pods/exec" "$(rules_of "${wl}" | grep '"pods/exec"')" '""|"pods/exec"|"create"|'
 expect_eq "modello: pods/log" "$(rules_of "${wl}" | grep '"pods/log"')" '""|"pods/log"|"get"|'

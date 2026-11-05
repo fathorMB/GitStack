@@ -2369,10 +2369,10 @@ export type IssueSubscription = {
 export type WebhookScope = 'repo' | 'org';
 
 /**
- * Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS, rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`.
+ * Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS, rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`. `database` (v3-d, DB20): database gestito creato, ridimensionato, eliminato, collegato/scollegato a un'app, LAN accesa/spenta, backup completato/fallito o ripristinato, payload `WebhookDatabasePayload`. Solo webhook d'organizzazione: un database di un utente non ha webhook.
  *
  */
-export type WebhookEvent = 'push' | 'issues' | 'issue_comment' | 'repository' | 'pull_request' | 'pull_request_review' | 'commit_status' | 'workflow_run' | 'workflow_job' | 'release' | 'deployment' | 'app_domain';
+export type WebhookEvent = 'push' | 'issues' | 'issue_comment' | 'repository' | 'pull_request' | 'pull_request_review' | 'commit_status' | 'workflow_run' | 'workflow_job' | 'release' | 'deployment' | 'app_domain' | 'database';
 
 /**
  * Stato di un mirror in push. `pending`: in coda (mai spinto, o un push nuovo da fare); `syncing`: un worker lo sta spingendo; `in_sync`: la destinazione ha lo stato dell'ultimo push riuscito; `error`: l'ultimo tentativo e' fallito (rete, credenziale, destinazione non ammessa...), si ritenta con attesa crescente 30 s, 2 min, 10 min, 1 ora fino a 6 ore, tranne un blocco egress (C8) che non si ritenta; `diverged`: la destinazione ha una storia diversa (non fast-forward, o un tag gia' presente con un altro commit): fermo, nessun tentativo automatico e nessuna sovrascrittura, gli admin del repo ricevono una notifica `mirror`; riparte solo con `syncRepoMirror`.
@@ -4544,6 +4544,81 @@ export type WebhookAppDomainPayload = {
      * Scadenza del certificato, solo per `certificate_expiring`.
      */
     validUntil?: string;
+};
+
+/**
+ * Payload del webhook `database` (v3-d, DB20). Si configura sul webhook dell'organizzazione proprietaria del database (C6): un database di un utente non ha webhook. `action`: `created` (con `sizeBytes`, `cpuMillis`, `memoryBytes` dichiarati), `updated` (con `changes`: i valori precedenti), `deleted` (con `deletedAt`), `linked`/`unlinked` (con `link`), `lan_enabled` (con la `port` TCP assegnata), `lan_disabled`, `backup_completed` (con `sizeBytes` del dump) e `backup_failed`; `restored`. I dettagli di backup e ripristino (`backup{id,kind}`, `error`, `backupId`, `target`) arrivano con GIT-572. I campi opzionali dipendono dall'azione. Nessun segreto: mai password (ne' dell'owner ne' dei collegamenti), ne' Secret, ne' DATABASE_URL (DB20, DB22).
+ *
+ */
+export type WebhookDatabasePayload = {
+    version: 1;
+    event: 'database';
+    action: 'created' | 'updated' | 'deleted' | 'linked' | 'unlinked' | 'lan_enabled' | 'lan_disabled' | 'backup_completed' | 'backup_failed' | 'restored';
+    time: string;
+    sender: WebhookSender | null;
+    database: {
+        id: string;
+        /**
+         * Nome dell'owner (utente o organizzazione).
+         */
+        owner: string;
+        name: string;
+        pgMajor: 16 | 17;
+    };
+    /**
+     * Dimensione dichiarata alla creazione, o del dump per `backup_completed`.
+     */
+    sizeBytes?: number;
+    /**
+     * CPU dichiarata alla creazione (millicore), solo per `created`.
+     */
+    cpuMillis?: number;
+    /**
+     * Memoria dichiarata alla creazione, solo per `created`.
+     */
+    memoryBytes?: number;
+    /**
+     * Valori precedenti, solo per `updated`.
+     */
+    changes?: {
+        sizeBytes?: {
+            from: number;
+        };
+        cpuMillis?: {
+            from: number;
+        };
+        memoryBytes?: {
+            from: number;
+        };
+    };
+    /**
+     * Istante dell'eliminazione, solo per `deleted`.
+     */
+    deletedAt?: string;
+    /**
+     * Collegamento con un'app, solo per `linked`/`unlinked`.
+     */
+    link?: {
+        id: string;
+        app: {
+            owner: string;
+            repo: string;
+            name: string;
+        };
+        mode: 'rw' | 'ro';
+    };
+    /**
+     * Stato del limite morbido di disco (80%/100%).
+     */
+    diskState?: 'none' | 'warning' | 'full';
+    /**
+     * Dimensione misurata (pg_database_size).
+     */
+    usageBytes?: number;
+    /**
+     * Porta TCP della LAN assegnata, solo per `lan_enabled`.
+     */
+    port?: number;
 };
 
 /**
