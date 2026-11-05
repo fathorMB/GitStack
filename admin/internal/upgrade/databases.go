@@ -40,6 +40,7 @@ type DatabaseImage struct {
 func (d DatabaseImage) Ref() string { return d.Repository + "@" + d.Digest }
 
 var digestRe = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+
 // --- stato dei database da ciò che Helm RENDE -----------------------------------------------------------
 //
 // Né l'abilitazione né la tabella si ricalcolano qui dai valori: sarebbe una seconda interpretazione di
@@ -161,7 +162,6 @@ func (o *Options) databaseStateBefore(ctx context.Context, chartDir, valuesFile 
 	}
 	return st
 }
-
 
 // verifyDatabaseDigests verifica con cosign i riferimenti repository@digest postgres EFFETTIVI nuovi.
 // Con i database già accesi si salta ciò che era già nella tabella attuale (stesso repository@digest:
