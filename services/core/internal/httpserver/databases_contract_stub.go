@@ -8,7 +8,7 @@ import (
 
 // Database gestiti (v3-d, ADR 0003). Elenco, creazione, lettura, ridimensionamento, eliminazione,
 // rotazione, log e metriche sono in databases.go (GIT-551). Le altre operazioni arrivano con
-// GIT-553 (backup), GIT-554 (LAN) e GIT-557 (impostazioni d'istanza): finche'
+// GIT-553 (backup) e GIT-557 (impostazioni d'istanza): finche'
 // non sono implementate rispondono 422 `databases_disabled`, l'errore stabile del contratto — mai
 // 501 (difetto di GIT-547).
 func databaseDisabled(w http.ResponseWriter) {
@@ -25,14 +25,6 @@ func (s *apiServer) CreateDatabaseBackup(w http.ResponseWriter, r *http.Request,
 }
 
 func (s *apiServer) RestoreDatabaseBackup(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.DatabaseNameParam, backupId openapi.DatabaseBackupIdParam) {
-	databaseDisabled(w)
-}
-
-func (s *apiServer) GetDatabaseLan(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.DatabaseNameParam) {
-	databaseDisabled(w)
-}
-
-func (s *apiServer) SetDatabaseLan(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.DatabaseNameParam) {
 	databaseDisabled(w)
 }
 

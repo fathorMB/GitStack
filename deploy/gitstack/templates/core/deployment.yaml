@@ -113,6 +113,13 @@ spec:
               value: {{ .Values.databases.postgres.images | toJson | quote }}
             - name: GITSTACK_CORE_DATABASES_CA_DIR
               value: /etc/gitstack/db-ca
+            # Accesso dalla LAN (GIT-554): intervallo delle porte, porte dell'installazione da non assegnare, CIDR dei pod.
+            - name: GITSTACK_CORE_DATABASES_LAN_PORT_RANGE
+              value: {{ printf "%d-%d" (.Values.databases.lan.portRange.from | int) (.Values.databases.lan.portRange.to | int) | quote }}
+            - name: GITSTACK_CORE_DATABASES_LAN_RESERVED_PORTS
+              value: {{ $dbReserved := list }}{{ if .Values.git.ssh.enabled }}{{ $dbReserved = append $dbReserved (.Values.git.ssh.port | int) }}{{ end }}{{ if .Values.ci.externalGateway.enabled }}{{ $dbReserved = append $dbReserved (.Values.ci.externalGateway.port | int) }}{{ end }}{{ $dbReserved | join "," | quote }}
+            - name: GITSTACK_CORE_DATABASES_POD_CIDR
+              value: {{ .Values.databases.lan.podCIDR | quote }}
             # Firma keyless delle immagini PostgreSQL (GIT-551, DB5): identita' e issuer della CI che firma.
             - name: GITSTACK_CORE_DATABASES_COSIGN_IDENTITY_REGEXP
               value: {{ .Values.databases.cosign.identityRegexp | quote }}

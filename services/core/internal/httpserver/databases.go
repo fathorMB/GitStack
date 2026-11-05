@@ -37,6 +37,9 @@ type DatabaseController interface {
 	LinkApp(ctx context.Context, keys store.AppSealer, d store.ManagedDB, app store.App, mode string, actor *store.AppActor) (store.ManagedDBLink, databases.LinkCredentials, error)
 	RotateLink(ctx context.Context, keys store.AppSealer, d store.ManagedDB, link store.ManagedDBLink, actor *store.AppActor) (databases.LinkCredentials, error)
 	Unlink(ctx context.Context, d store.ManagedDB, link store.ManagedDBLink, actor *store.AppActor) (bool, error)
+	// Accesso dalla LAN (GIT-554): SetLAN assegna o libera la porta e, spegnendo, chiude subito il Service.
+	SetLAN(ctx context.Context, d store.ManagedDB, enable bool, actor *store.AppActor) (store.ManagedDB, error)
+	LANInfo(ctx context.Context, d store.ManagedDB, requestHost string) (databases.LANInfo, error)
 	Kick()
 }
 

@@ -830,6 +830,17 @@ apps:
 # radice resta sull'host; core le monta come opzionali.
 databases:
   enabled: false
+  # Accesso dalla LAN di un database (ADR 0003 punto 6, GIT-554): spento per database, lo accende il
+  # portale. Acceso, core assegna al database una porta TCP di portRange (mai 22, 80, 443, 2222, 6443,
+  # 8443, 10250 ne' git.ssh.port e la porta del gateway CI) e crea un Service LoadBalancer (ServiceLB di
+  # k3s). Quelle porte vanno aperte nel firewall dell'host (ufw): l'installer non tocca ufw, vedi
+  # docs/operations.md. podCIDR e' il CIDR dei pod (k3s: 10.42.0.0/16), escluso dall'ingresso LAN: la
+  # rete delle app non e' la LAN.
+  lan:
+    portRange:
+      from: 15432
+      to: 15531
+    podCIDR: 10.42.0.0/16
   storage:
     mountPath: /var/lib/gitstack/databases
     persistence:

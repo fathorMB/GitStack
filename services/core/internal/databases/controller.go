@@ -59,6 +59,11 @@ type Config struct {
 	Secrets store.AppSealer
 	// SweepEvery: ogni quanto si cercano ruoli di collegamento senza collegamento (default LinkSweepEvery).
 	SweepEvery time.Duration
+	// Accesso dalla LAN (GIT-554): intervallo delle porte assegnabili (0-0: 15432-15531), porte in piu' da non
+	// assegnare mai (oltre a DefaultReservedPorts) e CIDR dei pod escluso da db-lan (default DefaultPodCIDR).
+	LANPortFrom, LANPortTo int
+	ReservedPorts          []int
+	PodCIDR                string
 }
 
 func (c *Config) defaults() {
@@ -99,12 +104,14 @@ type Controller struct {
 	linkLocks sync.Map
 	// secrets sono le password appena generate, da togliere dagli errori (mu).
 	secrets []string
+	// tlsLoaded: impronta della catena che PostgreSQL ha ricaricato, per database (mu).
+	tlsLoaded map[uuid.UUID]string
 }
 
 // New crea il controller.
 func New(st *store.Store, kube kubernetes.Interface, cfg Config) *Controller {
 	cfg.defaults()
-	c := &Controller{st: st, kube: kube, cfg: cfg, kick: make(chan struct{}, 1), running: map[uuid.UUID]bool{}, usageAt: map[uuid.UUID]time.Time{}, sweepAt: map[uuid.UUID]time.Time{}}
+	c := &Controller{st: st, kube: kube, cfg: cfg, kick: make(chan struct{}, 1), running: map[uuid.UUID]bool{}, usageAt: map[uuid.UUID]time.Time{}, sweepAt: map[uuid.UUID]time.Time{}, tlsLoaded: map[uuid.UUID]string{}}
 	c.sql = cfg.SQL
 	if c.sql == nil && cfg.Exec != nil {
 		c.sql = &PsqlRunner{Pod: cfg.Exec, Redact: c.redactions}
@@ -268,8 +275,13 @@ func (c *Controller) ensure(ctx context.Context, d store.ManagedDB) (string, *st
 	if _, err := c.ensureAuthSecret(ctx, d, ""); err != nil {
 		return "", nil, err
 	}
-	renewed, err := c.ensureTLS(ctx, d)
-	if err != nil {
+	// LAN spenta: la porta si chiude prima di qualunque altro passo (GIT-554), anche se il pod non e' pronto.
+	if !d.LANEnabled {
+		if err := c.closeLAN(ctx, d); err != nil {
+			return "", nil, err
+		}
+	}
+	if _, err := c.ensureTLS(ctx, d); err != nil {
 		return "", nil, err
 	}
 	if err := c.ensureOwned(ctx, ns, BuildConfigSecret(d)); err != nil {
@@ -312,8 +324,16 @@ func (c *Controller) ensure(ctx context.Context, d store.ManagedDB) (string, *st
 	if err := c.ensureRoles(ctx, d); err != nil {
 		return "", nil, err
 	}
-	if renewed {
-		_ = c.sql.Exec(ctx, d, "postgres", `SELECT pg_reload_conf()`)
+	// Certificato nuovo (rinnovo o SAN della LAN): PostgreSQL lo ricarica appena e' montato, senza riavvio.
+	tlsReady, err := c.reloadTLS(ctx, d)
+	if err != nil {
+		return "", nil, err
+	}
+	// LAN accesa: Service e db-lan solo con la catena giusta caricata (GIT-554).
+	if d.LANEnabled && tlsReady {
+		if err := c.openLAN(ctx, d); err != nil {
+			return "", nil, err
+		}
 	}
 	// Collegamenti (GIT-552): riprende gli scollegamenti rimasti a meta' e toglie i ruoli senza collegamento.
 	c.ResumeUnlinks(ctx, d)
@@ -380,6 +400,9 @@ func (c *Controller) ensureRoleBinding(ctx context.Context, ns string) error {
 
 const annotationRoles = "gitstack.io/roles-ready"
 
+// annotationSANs elenca i SAN della foglia emessa (sanKey).
+const annotationSANs = "gitstack.io/sans"
+
 // ensureAuthSecret garantisce il Secret con la password del proprietario. Se manca lo crea con `password`
 // (o una nuova se vuota); ritorna la password presente nel Secret.
 func (c *Controller) ensureAuthSecret(ctx context.Context, d store.ManagedDB, password string) (string, error) {
@@ -436,14 +459,28 @@ func (c *Controller) ensureTLS(ctx context.Context, d store.ManagedDB) (bool, er
 		return false, err
 	}
 	exists := err == nil
+	dns, ips, err := c.serverSANs(d)
+	if err != nil {
+		if errors.Is(err, ErrNoDatabaseCA) {
+			return false, fatalf("%v", err)
+		}
+		return false, err
+	}
+	wantSANs := sanKey(dns, ips)
 	if exists {
-		if na := cur.Annotations["gitstack.io/not-after"]; na != "" {
+		// Rinnovo a 30 giorni dalla scadenza, o quando cambiano i SAN voluti (LAN accesa o spenta, GIT-554).
+		// Un certificato senza l'annotazione dei SAN e' quello col solo nome interno.
+		haveSANs := cur.Annotations[annotationSANs]
+		if haveSANs == "" {
+			haveSANs = sanKey([]string{ServiceHost(d.ID)}, nil)
+		}
+		if na := cur.Annotations["gitstack.io/not-after"]; na != "" && haveSANs == wantSANs {
 			if t, perr := time.Parse(time.RFC3339, na); perr == nil && t.Sub(c.cfg.Now()) > RenewBefore {
 				return false, nil
 			}
 		}
 	}
-	cert, err := IssueServerCert(c.cfg.CADir, []string{ServiceHost(d.ID)}, c.cfg.Now())
+	cert, err := IssueServerCert(c.cfg.CADir, dns, ips, c.cfg.Now())
 	if err != nil {
 		if errors.Is(err, ErrNoDatabaseCA) {
 			return false, fatalf("%v", err)
@@ -451,7 +488,7 @@ func (c *Controller) ensureTLS(ctx context.Context, d store.ManagedDB) (bool, er
 		return false, err
 	}
 	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: SecretTLS, Namespace: ns, Labels: objectLabels(d.ID),
-		Annotations: map[string]string{"gitstack.io/not-after": cert.NotAfter.UTC().Format(time.RFC3339)}},
+		Annotations: map[string]string{"gitstack.io/not-after": cert.NotAfter.UTC().Format(time.RFC3339), annotationSANs: wantSANs}},
 		Type: corev1.SecretTypeTLS, Data: map[string][]byte{"tls.crt": cert.ChainPEM, "tls.key": cert.KeyPEM}}
 	if !exists {
 		_, err = secrets.Create(ctx, sec, metav1.CreateOptions{})

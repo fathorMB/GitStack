@@ -10,8 +10,11 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -36,8 +39,52 @@ type ServerCert struct {
 	NotAfter time.Time
 }
 
+// LANNames sono i nomi DNS e gli IP dell'istanza che l'intermedia puo' firmare (le sue name constraints,
+// senza *.svc.cluster.local e senza il loopback): sono i SAN della foglia con la LAN accesa, cosi' un
+// client con sslmode=verify-full si connette all'indirizzo con cui raggiunge l'istanza (GIT-554, DB17).
+func LANNames(caDir string) (dns []string, ips []net.IP, err error) {
+	certPEM, err := os.ReadFile(filepath.Join(caDir, "tls.crt"))
+	if err != nil {
+		return nil, nil, fmt.Errorf("%w: %v", ErrNoDatabaseCA, err)
+	}
+	cb, _ := pem.Decode(certPEM)
+	if cb == nil {
+		return nil, nil, errors.New("CA intermedia dei database: PEM non valido")
+	}
+	ca, err := x509.ParseCertificate(cb.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("certificato dell'intermedia: %w", err)
+	}
+	for _, n := range ca.PermittedDNSDomains {
+		if n == "" || n == "svc.cluster.local" || strings.HasSuffix(n, ".svc.cluster.local") {
+			continue
+		}
+		dns = append(dns, strings.TrimPrefix(n, "."))
+	}
+	for _, r := range ca.PermittedIPRanges {
+		ones, bits := r.Mask.Size()
+		if ones != bits || r.IP.IsLoopback() {
+			continue
+		}
+		ips = append(ips, r.IP)
+	}
+	sort.Strings(dns)
+	sort.Slice(ips, func(i, j int) bool { return ips[i].String() < ips[j].String() })
+	return dns, ips, nil
+}
+
+// sanKey e' l'elenco ordinato dei SAN di una foglia: serve a riemettere il certificato quando cambia.
+func sanKey(dns []string, ips []net.IP) string {
+	all := append([]string(nil), dns...)
+	for _, ip := range ips {
+		all = append(all, ip.String())
+	}
+	sort.Strings(all)
+	return strings.Join(all, ",")
+}
+
 // IssueServerCert firma la foglia con l'intermedia in caDir.
-func IssueServerCert(caDir string, dnsNames []string, now time.Time) (ServerCert, error) {
+func IssueServerCert(caDir string, dnsNames []string, ips []net.IP, now time.Time) (ServerCert, error) {
 	certPEM, err := os.ReadFile(filepath.Join(caDir, "tls.crt"))
 	if err != nil {
 		return ServerCert{}, fmt.Errorf("%w: %v", ErrNoDatabaseCA, err)
@@ -82,7 +129,8 @@ func IssueServerCert(caDir string, dnsNames []string, now time.Time) (ServerCert
 		SerialNumber: serial,
 		Subject:      pkix.Name{CommonName: dnsNames[0], Organization: []string{"GitStack"}},
 		DNSNames:     dnsNames,
-		NotBefore:    now.Add(-time.Hour),
+		IPAddresses:  ips,
+		NotBefore:   now.Add(-time.Hour),
 		NotAfter:     notAfter,
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
