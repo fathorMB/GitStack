@@ -58,7 +58,6 @@ jobs:
       CARGO_TARGET_DIR: ${{ vars.CARGO_TARGET_DIR }}
       TAG: ${{ github.ref_name }}
       GS_API: ${{ vars.GS_API_URL }}
-      GS_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -120,11 +119,11 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $h = @{ Authorization = "Bearer $env:GS_TOKEN" }
           $rel = Invoke-RestMethod -Method Post -Headers $h -ContentType 'application/json' `
-            -Uri "$env:GS_API/repos/$env:GS_REPO/releases" `
+            -Uri "$env:GS_API/repos/$env:GITSTACK_REPOSITORY/releases" `
             -Body (@{ tagName = $env:TAG; name = $env:TAG; draft = $false } | ConvertTo-Json)
           foreach ($f in Get-ChildItem 'release-assets') {
             $a = Invoke-RestMethod -Method Post -Headers $h -ContentType 'application/octet-stream' `
-              -Uri "$env:GS_API/repos/$env:GS_REPO/releases/$($rel.id)/assets?name=$([uri]::EscapeDataString($f.Name))" `
+              -Uri "$env:GS_API/repos/$env:GITSTACK_REPOSITORY/releases/$($rel.id)/assets?name=$([uri]::EscapeDataString($f.Name))" `
               -InFile $f.FullName
             $local = (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower()
             if ($a.sha256.ToLower() -ne $local) { throw "SHA-256 diverso per $($f.Name): server $($a.sha256), locale $local" }
@@ -159,6 +158,12 @@ jobs:
 Se l'app ha già `scripts/make-latest-json.mjs` (Odin), il passo «latest.json» può chiamarlo con l'URL base dei download invece di
 costruire il JSON in PowerShell: il file prodotto deve avere la forma sopra (`version`, `pub_date`, `platforms.windows-x86_64.signature`
 e `.url`). Gli argomenti dello script sono quelli del repo dell'app, non di GitStack.
+
+## Come si legge owner/nome del repo nei passi (GIT-563)
+
+Per `POST /repos/{owner}/{repo}/releases` il token del job vale solo per il repo del run, e `owner/nome` deve essere quello esatto: un altro dà `404 Repo non trovato.` Nei passi leggi il repo da **`$env:GITSTACK_REPOSITORY`** (`$GITSTACK_REPOSITORY` in bash), che il runner imposta sempre al repo del run, anche per un mirror (`admin/odin`).
+
+`github.repository` e `GITHUB_REPOSITORY` non sono affidabili su un runner che non ha questa correzione: `act` non conosce il repo e ne sceglie uno suo, per cui la release cadeva con il 404. Dalla correzione il runner scrive il repo del run nel remote del `.git` minimo del workspace e `act` lo prende da lì, ma un runner esterno già installato va aggiornato per averla. La ricetta usa `GITSTACK_REPOSITORY`, che funziona con ogni versione. Non metterlo in `env:` del job con `${{ ... }}`: esiste solo nell'ambiente dei passi.
 
 ## Cosa fa ogni passo
 
