@@ -5,7 +5,7 @@
 # esito completo prima del backup, errore a meta (le righe dopo non verificate, diagnostica), spec
 # Playwright (variabili d'ambiente, "1 passed", spec saltato = ko, ambiente ripristinato) e i controlli
 # dopo il restore. Test Pester (Describe/It, Pester 3.4+); da lanciare con Windows PowerShell 5.1:
-#   powershell.exe -NoProfile -Command "Invoke-Pester -Path deploy	est-vm	estsdatabases.Tests.ps1 -EnableExit"
+#   powershell.exe -NoProfile -Command "Invoke-Pester -Path deploy\test-vm\tests\databases.Tests.ps1 -EnableExit"
 # Lo script shell e' provato a parte, con sudo/kubectl e psql finti: bash deploy/test-vm/e2e/gs-db.test.sh
 # Esce con codice != 0 se un It fallisce. Solo ASCII.
 
