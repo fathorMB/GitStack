@@ -209,7 +209,7 @@ func runConfigSetHost(ctx context.Context, a *App, args []string) int {
 		_, _ = fmt.Fprintf(a.Stdout, "==> Rigenero il certificato (SAN: %s)\n", strings.Trim(names+","+ips, ","))
 		out, err := a.Runner.Run(ctx, []string{"GITSTACK_TLS_DIR=" + tlsDir}, tlsBin, "ensure", "--names", names, "--ips", ips)
 		if err != nil {
-			a.errorf("config set host: gitstack-tls: %v\n%s", err, strings.TrimSpace(string(out)))
+			a.tlsToolFailed("config set host", err, out)
 			return ExitUnexpected
 		}
 		if len(out) > 0 {
@@ -334,6 +334,17 @@ func updateInstallConf(tlsDir, host string) {
 		}
 	}
 	_ = os.WriteFile(p, []byte(strings.Join(lines, "\n")), 0o600)
+}
+
+// tlsToolOutdatedHint è il suggerimento quando gitstack-tls non conosce un'opzione (GIT-559).
+const tlsToolOutdatedHint = "gitstack-tls installato è più vecchio del binario: lancia di nuovo `sudo gitstack upgrade` o reinstalla deploy/gitstack-tls.sh"
+
+// tlsToolFailed stampa l'errore di gitstack-tls; se è «opzione sconosciuta» aggiunge il suggerimento.
+func (a *App) tlsToolFailed(cmd string, err error, out []byte) {
+	a.errorf("%s: gitstack-tls: %v\n%s", cmd, err, strings.TrimSpace(string(out)))
+	if strings.Contains(string(out), "opzione sconosciuta") {
+		_, _ = fmt.Fprintln(a.Stderr, tlsToolOutdatedHint)
+	}
 }
 
 // tlsToolPath è il percorso di gitstack-tls: GITSTACK_TLS_BIN o l'installato.

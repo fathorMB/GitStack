@@ -32,8 +32,11 @@ const (
 // al momento della chiamata, e rifiuta --apps-domain se lo script non lo conosce.
 type tlsRunner struct {
 	recRunner
-	tlsBin  string
-	tlsRuns []string
+	tlsBin         string
+	tlsRuns        []string
+	helmUpgraded   bool
+	helmRolledBack bool
+	failRollback   bool
 }
 
 func (r *tlsRunner) Run(ctx context.Context, env []string, name string, args ...string) ([]byte, error) {
@@ -48,7 +51,19 @@ func (r *tlsRunner) Run(ctx context.Context, env []string, name string, args ...
 		}
 		return nil, nil
 	}
+	if name == "k3s" && strings.Contains(strings.Join(args, " "), "get deployments") {
+		return []byte(`{"items":[]}`), nil
+	}
 	if strings.HasSuffix(name, "helm") && len(args) > 0 {
+		if args[0] == "upgrade" {
+			r.helmUpgraded = true
+		}
+		if args[0] == "rollback" {
+			r.helmRolledBack = true
+			if r.failRollback {
+				return []byte("rollback rifiutato"), errors.New("exit status 1")
+			}
+		}
 		switch args[0] {
 		case "history":
 			return []byte(`[{"revision":2,"status":"deployed"}]`), nil
