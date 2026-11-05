@@ -1083,8 +1083,9 @@ database instance empty (namespace, StatefulSet, roles); `gitstack restore` wait
 most) and applies its dump (`pg_restore --no-owner --no-acl --role=<name>_owner`, then the `<name>_ro`
 privileges). The dump files in `databases-data` are not in the archive, so their rows are removed from
 `core` by the restore. **No database secret travels in a backup**: after the restore every database has a
-new owner password (rotate it to read it) and app links need to be re-created by their admins (the link
-roles are not in the dump).
+new owner password (rotate it to read it). Linked apps are re-linked automatically: after a restore
+(in place or on a clean cluster) each active link gets a **new** password, the role is re-created if it is
+missing, the app secrets are rewritten and the app is redeployed; the old password stops working.
 
 **Manual end-to-end check (VM).** 1) Create a database `shop` and put known rows in it. 2) `sudo gitstack backup`
 and check `databases/<id>/shop.dump` is listed in `manifest.json`. 3) Change the rows. 4) Request a restore into

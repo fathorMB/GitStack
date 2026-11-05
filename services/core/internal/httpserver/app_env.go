@@ -50,6 +50,8 @@ func appEnvFailure(w http.ResponseWriter, what string, err error) {
 	switch {
 	case errors.Is(err, store.ErrNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "Non trovato.")
+	case errors.Is(err, store.ErrManagedEnvName):
+		writeError(w, http.StatusConflict, "managed_by_database_link", "Il nome e' una variabile gestita dal collegamento con un database: si cambia ruotando o scollegando il collegamento.")
 	case errors.Is(err, store.ErrEnvNameInUse):
 		writeError(w, http.StatusConflict, "name_in_use", "Il nome è già usato da una variabile o da un segreto dell'app.")
 	case errors.Is(err, webhooks.ErrNoKey):

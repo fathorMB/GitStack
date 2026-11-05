@@ -472,10 +472,8 @@ func (c *Controller) runRestore(ctx context.Context, d store.ManagedDB, p store.
 			return finish(fmt.Errorf("privilegi di %s non riapplicati: %s", ReadOnlyRole(d.Name), shortErr(err)))
 		}
 	}
-	if c.cfg.AfterRestore != nil {
-		if err := c.cfg.AfterRestore(ctx, d); err != nil {
-			return finish(fmt.Errorf("dati ripristinati, ma i collegamenti non sono stati ricreati: %s", shortErr(err)))
-		}
+	if err := c.afterRestore()(ctx, d); err != nil {
+		return finish(fmt.Errorf("dati ripristinati, ma i collegamenti non sono stati ricreati: %s", shortErr(err)))
 	}
 	return finish(nil)
 }

@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,6 +29,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
 
+	"github.com/fathorMB/GitStack/services/core/internal/databases"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
 
@@ -97,6 +100,9 @@ type Config struct {
 	EgressDeny []string
 	// Resolver risolve i nomi delle destinazioni di uscita (H16); nil usa il DNS del sistema.
 	Resolver Resolver
+	// DatabaseCAFile: la radice pubblica dei database (GIT-552): si copia nel Secret db-ca dei namespace delle
+	// app collegate a un database. Vuoto: un'app collegata non si applica (errore chiaro nel deploy).
+	DatabaseCAFile string
 	// Secrets decifra i valori correnti dei segreti dell'app: si iniettano nei pod e si usano per
 	// mascherarli nei log (GIT-348, GIT-350). Nil: le righe delle copie non si raccolgono, e nei pod
 	// non entra nessun segreto.
@@ -446,8 +452,12 @@ func (c *Controller) apply(ctx context.Context, app store.App, v store.AppVersio
 		}
 		restricted = rs != nil
 	}
+	dbCA, err := c.ensureDatabaseCA(ctx, ns, app)
+	if err != nil {
+		return err
+	}
 	deps := c.kube.AppsV1().Deployments(ns)
-	opts := BuildOptions{EgressRestricted: restricted, Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret, ProxyEnv: c.cfg.ProxyEnv, GateImage: c.cfg.GateImage, Gateway: c.cfg.Gateway}
+	opts := BuildOptions{DatabaseCA: dbCA, EgressRestricted: restricted, Replicas: desiredReplicas(app), ProgressDeadlineSeconds: int32(c.cfg.ProgressTimeout / time.Second), PullSecret: pull, AppSecret: appSecret, ProxyEnv: c.cfg.ProxyEnv, GateImage: c.cfg.GateImage, Gateway: c.cfg.Gateway}
 	// Get+Build+Update a ogni tentativo: il deployment controller di Kubernetes aggiorna lo stesso
 	// oggetto (status, revisione, rollout precedente) e l'Update con un ResourceVersion vecchio
 	// riceve 409.
@@ -481,7 +491,11 @@ func (c *Controller) ensureNetworkPolicy(ctx context.Context, app store.App) err
 		}
 		proxyIPs[endpoint.host] = ips
 	}
-	np := NetworkPolicyOptions{Gateway: c.cfg.Gateway, TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs, ClusterCIDRs: c.cfg.EgressClusterCIDRs, NodeAddresses: c.cfg.EgressNodeAddresses, Deny: c.cfg.EgressDeny}
+	dbs, err := c.linkedDatabases(ctx, app)
+	if err != nil {
+		return err
+	}
+	np := NetworkPolicyOptions{Databases: dbs, Gateway: c.cfg.Gateway, TraefikNamespace: c.cfg.TraefikNamespace, ProxyEnv: c.cfg.ProxyEnv, ProxyIPs: proxyIPs, ClusterCIDRs: c.cfg.EgressClusterCIDRs, NodeAddresses: c.cfg.EgressNodeAddresses, Deny: c.cfg.EgressDeny}
 	// Destinazioni private aperte dall'amministratore e restrizione dell'app (H16, GIT-385): gli indirizzi
 	// si risolvono ora, a ogni applicazione della policy (deploy o modifica delle impostazioni).
 	if c.st != nil { // senza store (prove del solo cluster) nessuna apertura e nessuna restrizione
@@ -610,8 +624,76 @@ func (c *Controller) deleteAppSecret(ctx context.Context, ns string) error {
 	return err
 }
 
+// linkedDatabases sono i database collegati all'app (anche in scollegamento: finche' il ruolo esiste la rete
+// resta, DB12), in ordine stabile. Senza store (prove del solo cluster) nessuno.
+func (c *Controller) linkedDatabases(ctx context.Context, app store.App) ([]uuid.UUID, error) {
+	if c.st == nil {
+		return nil, nil
+	}
+	links, err := c.st.ListAppDBLinks(ctx, app.ID)
+	if err != nil {
+		return nil, fmt.Errorf("collegamenti ai database: %w", err)
+	}
+	out := make([]uuid.UUID, 0, len(links))
+	for _, l := range links {
+		out = append(out, l.DBID)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].String() < out[j].String() })
+	return out, nil
+}
+
+// ensureDatabaseCA scrive il Secret db-ca con la radice pubblica se l'app ha un database collegato, altrimenti
+// lo toglie. Ritorna il nome da montare ("" se l'app non e' collegata).
+func (c *Controller) ensureDatabaseCA(ctx context.Context, ns string, app store.App) (string, error) {
+	dbs, err := c.linkedDatabases(ctx, app)
+	if err != nil {
+		return "", err
+	}
+	secrets := c.kube.CoreV1().Secrets(ns)
+	if len(dbs) == 0 {
+		if err := secrets.Delete(ctx, DatabaseCASecret, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+			return "", fmt.Errorf("rimozione della CA dei database: %w", err)
+		}
+		return "", nil
+	}
+	if c.cfg.DatabaseCAFile == "" {
+		return "", errors.New("CA dei database non configurata: l'app collegata a un database non si applica")
+	}
+	pem, err := os.ReadFile(c.cfg.DatabaseCAFile)
+	if err != nil || len(pem) == 0 {
+		return "", fmt.Errorf("CA dei database non leggibile (%s): esegui gitstack databases ensure", c.cfg.DatabaseCAFile)
+	}
+	want := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: DatabaseCASecret, Namespace: ns, Labels: objectLabels(app.ID)}, Type: corev1.SecretTypeOpaque, Data: map[string][]byte{"ca.crt": pem}}
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		cur, err := secrets.Get(ctx, DatabaseCASecret, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			_, err = secrets.Create(ctx, want.DeepCopy(), metav1.CreateOptions{})
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		cur.Labels, cur.Data = want.Labels, want.Data
+		_, err = secrets.Update(ctx, cur, metav1.UpdateOptions{})
+		return err
+	})
+	if err != nil {
+		return "", fmt.Errorf("CA dei database: %w", err)
+	}
+	return DatabaseCASecret, nil
+}
+
 func (c *Controller) ensureNamespace(ctx context.Context, app store.App, restricted bool) error {
 	want := BuildNamespace(app, restricted)
+	// GIT-552 (DB11): la label gitstack.io/db-link-<id>=true per ogni database collegato apre l'ingresso della
+	// NetworkPolicy del database. Quelle di collegamenti spariti si tolgono.
+	dbs, err := c.linkedDatabases(ctx, app)
+	if err != nil {
+		return err
+	}
+	for _, id := range dbs {
+		want.Labels[databases.LinkLabel(id)] = "true"
+	}
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		cur, err := c.kube.CoreV1().Namespaces().Get(ctx, want.Name, metav1.GetOptions{})
 		if apierrors.IsNotFound(err) {
@@ -624,7 +706,20 @@ func (c *Controller) ensureNamespace(ctx context.Context, app store.App, restric
 		if cur.Labels[LabelManaged] != "true" || cur.Labels[LabelAppID] != app.ID.String() || (cur.Labels[LabelRepoID] != "" && cur.Labels[LabelRepoID] != app.RepoID.String()) {
 			return fmt.Errorf("il namespace %s esiste ma non è di questa app", want.Name)
 		}
-		if cur.Labels["pod-security.kubernetes.io/enforce"] == want.Labels["pod-security.kubernetes.io/enforce"] && cur.Labels[LabelRepoID] == app.RepoID.String() {
+		same := cur.Labels["pod-security.kubernetes.io/enforce"] == want.Labels["pod-security.kubernetes.io/enforce"] && cur.Labels[LabelRepoID] == app.RepoID.String()
+		for k := range cur.Labels {
+			if strings.HasPrefix(k, databases.LabelDBLinkPrefix) && want.Labels[k] == "" {
+				delete(cur.Labels, k)
+				same = false
+			}
+		}
+		for k, v := range want.Labels {
+			if strings.HasPrefix(k, databases.LabelDBLinkPrefix) && cur.Labels[k] != v {
+				cur.Labels[k] = v
+				same = false
+			}
+		}
+		if same {
 			return nil
 		}
 		cur.Labels["pod-security.kubernetes.io/enforce"] = want.Labels["pod-security.kubernetes.io/enforce"]

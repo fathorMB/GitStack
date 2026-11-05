@@ -43,7 +43,7 @@ const (
 
 // startDatabases avvia il controller e ritorna l'opzione del router; senza abilitazione ritorna nil e
 // l'API risponde 422 databases_disabled.
-func startDatabases(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger) ([]httpserver.Option, error) {
+func startDatabases(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger, secrets store.AppSealer) ([]httpserver.Option, error) {
 	if on, _ := strconv.ParseBool(strings.TrimSpace(os.Getenv(envDatabasesEnabled))); !on {
 		return nil, nil
 	}
@@ -70,6 +70,9 @@ func startDatabases(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger
 		Exec:                     &databases.SPDYExecutor{Config: rc, Client: kube},
 		Verifier:                 databases.CosignCLI{Binary: strings.TrimSpace(os.Getenv(envDatabasesCosignBin)), IdentityRegexp: strings.TrimSpace(os.Getenv(envDatabasesCosignID)), Issuer: strings.TrimSpace(os.Getenv(envDatabasesCosignIss))},
 		Log:                      logger,
+		// Secrets e' anche cio' che attiva l'AfterRestore predefinito (RelinkAfterRestore): dopo un ripristino i
+		// collegamenti ripartono con password nuove e le app collegate sono ridistribuite (DB15, passo 4).
+		Secrets:                  secrets,
 	}
 	cfg.DataDir = strings.TrimSpace(os.Getenv(envDatabasesDataDir))
 	if f := strings.TrimSpace(os.Getenv(envDatabasesDumpKeyFile)); f != "" {

@@ -71,6 +71,11 @@ type Config struct {
 	Unlink          UnlinkOptions
 	Now             func() time.Time
 	Log             *slog.Logger
+	// Secrets: portachiavi dei segreti (come le app): cifra l'intento di rotazione dei collegamenti. Nil: le
+	// rotazioni interrotte non si riprendono da sole.
+	Secrets store.AppSealer
+	// SweepEvery: ogni quanto si cercano ruoli di collegamento senza collegamento (default LinkSweepEvery).
+	SweepEvery time.Duration
 }
 
 func (c *Config) defaults() {
@@ -82,6 +87,9 @@ func (c *Config) defaults() {
 	}
 	if c.ProgressTimeout <= 0 {
 		c.ProgressTimeout = 5 * time.Minute
+	}
+	if c.SweepEvery <= 0 {
+		c.SweepEvery = LinkSweepEvery
 	}
 	if c.Now == nil {
 		c.Now = func() time.Time { return time.Now().UTC() }
@@ -102,6 +110,10 @@ type Controller struct {
 	mu      sync.Mutex
 	running map[uuid.UUID]bool
 	usageAt map[uuid.UUID]time.Time
+	// sweepAt: ultima ricerca di ruoli senza collegamento (mu); linkLocks: una serratura per database che
+	// serializza collegamento, scollegamento e pulizia dei ruoli.
+	sweepAt   map[uuid.UUID]time.Time
+	linkLocks sync.Map
 	// secrets sono le password appena generate, da togliere dagli errori (mu).
 	secrets []string
 	// liveBackups sono i dump in esecuzione in questo processo (mu).
@@ -112,7 +124,7 @@ type Controller struct {
 // New crea il controller.
 func New(st *store.Store, kube kubernetes.Interface, cfg Config) *Controller {
 	cfg.defaults()
-	c := &Controller{st: st, kube: kube, cfg: cfg, kick: make(chan struct{}, 1), running: map[uuid.UUID]bool{}, usageAt: map[uuid.UUID]time.Time{}, liveBackups: map[uuid.UUID]bool{}}
+	c := &Controller{st: st, kube: kube, cfg: cfg, kick: make(chan struct{}, 1), running: map[uuid.UUID]bool{}, usageAt: map[uuid.UUID]time.Time{}, sweepAt: map[uuid.UUID]time.Time{}, liveBackups: map[uuid.UUID]bool{}}
 	c.sql = cfg.SQL
 	c.dumper = cfg.Dumper
 	if se, ok := cfg.Exec.(StreamExecutor); ok && c.dumper == nil {
@@ -335,6 +347,10 @@ func (c *Controller) ensure(ctx context.Context, d store.ManagedDB) (string, *st
 	if renewed {
 		_ = c.sql.Exec(ctx, d, "postgres", `SELECT pg_reload_conf()`)
 	}
+	// Collegamenti (GIT-552): riprende gli scollegamenti rimasti a meta' e toglie i ruoli senza collegamento.
+	c.ResumeUnlinks(ctx, d)
+	c.ResumeRotations(ctx, d)
+	c.SweepOrphanRoles(ctx, d)
 	c.measure(ctx, d)
 	return store.DBRunning, nil, nil
 }
@@ -529,6 +545,10 @@ func (c *Controller) Delete(ctx context.Context, d store.ManagedDB, actor *store
 
 // teardown toglie il namespace e, quando non c'e' piu', la riga. Ritorna true a eliminazione completa.
 func (c *Controller) teardown(ctx context.Context, d store.ManagedDB, actor *store.AppActor) (bool, error) {
+	// Le app collegate perdono variabili e rete prima che il database sparisca (DB19).
+	if err := c.detachApps(ctx, d, actor); err != nil {
+		return false, err
+	}
 	ns := Namespace(d.ID)
 	cur, err := c.kube.CoreV1().Namespaces().Get(ctx, ns, metav1.GetOptions{})
 	switch {

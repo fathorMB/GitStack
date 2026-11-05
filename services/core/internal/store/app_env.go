@@ -239,6 +239,9 @@ func (s *Store) removeAppEnv(ctx context.Context, appID uuid.UUID, name string, 
 	table, kind := "core.app_variables", "variabile "
 	if secret {
 		table, kind = "core.app_secrets", "segreto "
+		if err := guardManagedEnvName(ctx, tx, appID, name); err != nil {
+			return AppVersion{}, err
+		}
 	}
 	tag, err := tx.Exec(ctx, `DELETE FROM `+table+` WHERE app_id = $1 AND name = $2`, appID, name)
 	if err != nil {
