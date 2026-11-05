@@ -52,10 +52,10 @@ type Config struct {
 	UsageEvery      time.Duration
 	ProgressTimeout time.Duration
 	Unlink          UnlinkOptions
-	// SweepEvery: ogni quanto si cercano ruoli di collegamento senza collegamento (default LinkSweepEvery).
-	SweepEvery time.Duration
 	Now             func() time.Time
 	Log             *slog.Logger
+	// SweepEvery: ogni quanto si cercano ruoli di collegamento senza collegamento (default LinkSweepEvery).
+	SweepEvery time.Duration
 }
 
 func (c *Config) defaults() {
