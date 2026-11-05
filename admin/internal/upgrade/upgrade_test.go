@@ -150,6 +150,21 @@ type fakeHelm struct {
 	ignorePatches int
 	patches       int
 	manifest      string // manifest della revisione di destinazione (vuoto: quello di prova)
+
+	dbNew, dbOld string                              // rendering dei database del chart nuovo e di quello attuale (GIT-565)
+	real         func(args []string) ([]byte, error) // helm template vero (databases_helm_test.go)
+}
+
+// stripImageLines toglie le righe image: dal rendering di helm vero: le immagini del test le dà fakeHelm.images.
+func stripImageLines(s string) string {
+	var keep []string
+	for _, l := range strings.Split(s, "\n") {
+		if strings.HasPrefix(strings.TrimPrefix(strings.TrimSpace(l), "- "), "image:") {
+			continue
+		}
+		keep = append(keep, l)
+	}
+	return strings.Join(keep, "\n")
 }
 
 func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...string) ([]byte, error) {
@@ -208,7 +223,19 @@ func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...strin
 		}
 		return []byte(`{"global":{"image":{"registry":"mirror.example"}}}`), nil
 	case "template":
-		return []byte(h.images), nil
+		// GIT-565: il rendering dei database (variabili del Deployment di core) arriva da dbNew per il
+		// chart nuovo (cartella .new) e da dbOld per quello attuale; con real impostato lo produce helm vero.
+		if h.real != nil {
+			out, err := h.real(args)
+			if err != nil {
+				return out, err
+			}
+			return []byte(h.images + "\n---\n" + stripImageLines(string(out))), nil
+		}
+		if len(args) > 2 && strings.HasSuffix(strings.TrimRight(args[2], "/\\"), ".new") {
+			return []byte(h.images + h.dbNew), nil
+		}
+		return []byte(h.images + h.dbOld), nil
 	case "upgrade":
 		for i, a := range args {
 			if a == "-f" && i+1 < len(args) {
@@ -414,7 +441,7 @@ func newWorld(t *testing.T) *world {
 	}
 	cfg.Backup.Destination = w.dest
 	w.cl = &fakeCluster{git: git, schema: "identity|5|f\ncore|11|f"}
-	w.helm = &fakeHelm{cluster: w.cl, images: "image: \"mirror.example/fathormb/gitstack-core:sha-" + newSHA + "\"\n      - image: busybox:1\n"}
+	w.helm = &fakeHelm{cluster: w.cl, images: "kind: Pod\nspec:\n  containers:\n    - image: \"mirror.example/fathormb/gitstack-core:sha-" + newSHA + "\"\n    - image: busybox:1\n"}
 	w.healthy = func() bool { return true }
 	w.chartTgz = signedChartTgz(t)
 	w.o = &Options{

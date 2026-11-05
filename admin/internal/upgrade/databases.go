@@ -1,15 +1,15 @@
 package upgrade
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
+	"io"
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -40,240 +40,128 @@ type DatabaseImage struct {
 func (d DatabaseImage) Ref() string { return d.Repository + "@" + d.Digest }
 
 var digestRe = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
-
-// databaseImagesFromValues legge databases.postgres.images da un values.yaml. Ordinata per major.
-func databaseImagesFromValues(data []byte) ([]DatabaseImage, error) {
-	var v struct {
-		Databases struct {
-			Postgres struct {
-				Images map[string]struct {
-					Repository string `yaml:"repository"`
-					Tag        string `yaml:"tag"`
-					Digest     string `yaml:"digest"`
-				} `yaml:"images"`
-			} `yaml:"postgres"`
-		} `yaml:"databases"`
-	}
-	if err := yaml.Unmarshal(data, &v); err != nil {
-		return nil, err
-	}
-	var out []DatabaseImage
-	for major, im := range v.Databases.Postgres.Images {
-		if im.Digest == "" {
-			continue
-		}
-		if !digestRe.MatchString(im.Digest) {
-			return nil, fmt.Errorf("databases.postgres.images[%s].digest %q non è un digest sha256", major, im.Digest)
-		}
-		if im.Repository == "" {
-			return nil, fmt.Errorf("databases.postgres.images[%s].repository mancante", major)
-		}
-		out = append(out, DatabaseImage{Major: major, Repository: im.Repository, Tag: im.Tag, Digest: im.Digest})
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Major < out[j].Major })
-	return out, nil
-}
-
-// --- valori effettivi, con la precedenza e la semantica di Helm ----------------------------------------
+// --- stato dei database da ciò che Helm RENDE -----------------------------------------------------------
 //
-// Core riceve la tabella dalla release (deployment.yaml: .Values.databases.postgres.images), cioè dal
-// risultato di: default del chart < valori conservati della release (helm get values) < -f in ordine <
-// --set. Un override può quindi sostituire repository o digest di una major: la firma si verifica sul
-// riferimento repository@digest EFFETTIVO, non sui soli default del chart.
+// Né l'abilitazione né la tabella si ricalcolano qui dai valori: sarebbe una seconda interpretazione di
+// Helm (maiuscole di `true`, stringhe truthy, precedenza di -f e --set). Si legge invece il rendering che
+// `helm template` ha già prodotto con gli stessi valori dell'upgrade: le variabili del Deployment di core
+// (GITSTACK_CORE_DATABASES_ENABLED e GITSTACK_CORE_DATABASES_POSTGRES_IMAGES, templates/core/deployment.yaml)
+// sono esattamente ciò che il controller riceve. Il chart ha poi values.schema.json, che rifiuta un
+// databases.enabled non booleano prima del rendering. Un rendering che non si riesce a leggere, o con i
+// database accesi e la tabella incompleta, ferma l'upgrade: mai ignorato.
 
-// normalizeYAML porta le mappe di yaml.v3 (chiavi non stringa) a map[string]any, ricorsivamente.
-func normalizeYAML(v any) any {
-	switch x := v.(type) {
-	case map[string]any:
-		for k, e := range x {
-			x[k] = normalizeYAML(e)
-		}
-		return x
-	case map[any]any:
-		m := make(map[string]any, len(x))
-		for k, e := range x {
-			m[fmt.Sprint(k)] = normalizeYAML(e)
-		}
-		return m
-	case []any:
-		for i, e := range x {
-			x[i] = normalizeYAML(e)
-		}
-		return x
-	}
-	return v
-}
+const (
+	envDatabasesEnabled = "GITSTACK_CORE_DATABASES_ENABLED"
+	envDatabasesImages  = "GITSTACK_CORE_DATABASES_POSTGRES_IMAGES"
+)
 
-// mergeValues sovrappone src a dst come fa Helm: le mappe si fondono, il resto sostituisce, null toglie.
-func mergeValues(dst, src map[string]any) map[string]any {
-	if dst == nil {
-		dst = map[string]any{}
-	}
-	for k, v := range src {
-		if v == nil {
-			delete(dst, k)
-			continue
-		}
-		if sm, ok := v.(map[string]any); ok {
-			if dm, ok := dst[k].(map[string]any); ok {
-				dst[k] = mergeValues(dm, sm)
-				continue
-			}
-			dst[k] = mergeValues(nil, sm)
-			continue
-		}
-		dst[k] = v
-	}
-	return dst
-}
-
-// splitUnescaped divide s su sep, tranne dove è preceduto da una barra rovesciata (come --set di Helm).
-func splitUnescaped(s string, sep byte) []string {
-	var out []string
-	var cur strings.Builder
-	for i := 0; i < len(s); i++ {
-		switch {
-		case s[i] == '\\' && i+1 < len(s) && s[i+1] == sep:
-			cur.WriteByte(sep)
-			i++
-		case s[i] == sep:
-			out = append(out, cur.String())
-			cur.Reset()
-		default:
-			cur.WriteByte(s[i])
-		}
-	}
-	return append(out, cur.String())
-}
-
-// setValue applica un `--set chiave.annidata=valore` (valori scalari: true/false/null/intero/stringa).
-// Le liste (`a[0]=x`) non servono per questa tabella e si ignorano.
-func setValue(vals map[string]any, kv string) {
-	key, raw, ok := strings.Cut(kv, "=")
-	if !ok || strings.Contains(key, "[") {
-		return
-	}
-	var val any = raw
-	switch raw {
-	case "true":
-		val = true
-	case "false":
-		val = false
-	case "null":
-		val = nil
-	default:
-		if n, err := strconv.ParseInt(raw, 10, 64); err == nil && (raw == "0" || !strings.HasPrefix(raw, "0")) {
-			val = n
-		}
-	}
-	parts := splitUnescaped(key, '.')
-	cur := vals
-	for _, p := range parts[:len(parts)-1] {
-		next, ok := cur[p].(map[string]any)
-		if !ok {
-			next = map[string]any{}
-			cur[p] = next
-		}
-		cur = next
-	}
-	last := parts[len(parts)-1]
-	if val == nil {
-		delete(cur, last)
-		return
-	}
-	cur[last] = val
-}
-
-// effectiveValues risolve i valori di una release: default del chart in chartDir, poi i valori
-// conservati (JSON di helm get values), e solo con withInputs i -f e i --set di questo aggiornamento.
-func (o *Options) effectiveValues(chartDir, valuesFile string, withInputs bool) (map[string]any, error) {
-	vals := map[string]any{}
-	if b, err := os.ReadFile(filepath.Join(chartDir, "values.yaml")); err == nil {
-		var m map[string]any
-		if err := yaml.Unmarshal(b, &m); err != nil {
-			return nil, fmt.Errorf("values.yaml del chart %s: %w", chartDir, err)
-		}
-		vals = mergeValues(vals, normalizeYAML(m).(map[string]any))
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return nil, err
-	}
-	if b, err := os.ReadFile(valuesFile); err == nil {
-		var m map[string]any
-		if err := json.Unmarshal(b, &m); err != nil {
-			return nil, fmt.Errorf("valori della release: %w", err)
-		}
-		vals = mergeValues(vals, m)
-	}
-	if !withInputs {
-		return vals, nil
-	}
-	for _, f := range o.ValueFiles {
-		b, err := os.ReadFile(f)
-		if err != nil {
-			return nil, fmt.Errorf("file di valori %s: %w", f, err)
-		}
-		var m map[string]any
-		if err := yaml.Unmarshal(b, &m); err != nil {
-			return nil, fmt.Errorf("file di valori %s: %w", f, err)
-		}
-		if m != nil {
-			vals = mergeValues(vals, normalizeYAML(m).(map[string]any))
-		}
-	}
-	for _, s := range o.Sets {
-		for _, kv := range splitUnescaped(s, ',') {
-			setValue(vals, kv)
-		}
-	}
-	return vals, nil
-}
-
-// databaseState è lo stato dei database gestiti in un insieme di valori effettivi.
+// databaseState è lo stato dei database gestiti in un rendering.
 type databaseState struct {
 	Enabled bool
 	Images  []DatabaseImage
 }
 
-func databaseStateOf(vals map[string]any) (databaseState, error) {
+// databaseStateFromManifests legge lo stato dai manifest di helm template.
+func databaseStateFromManifests(out []byte) (databaseState, error) {
 	var st databaseState
-	d, _ := vals["databases"].(map[string]any)
-	if d == nil {
+	var imagesJSON string
+	roleSeen := false
+	dec := yaml.NewDecoder(bytes.NewReader(bytes.ReplaceAll(out, []byte("\r\n"), []byte("\n"))))
+	for {
+		var doc map[string]any
+		err := dec.Decode(&doc)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return st, fmt.Errorf("manifest di helm template non leggibili: %w", err)
+		}
+		switch yamlStr(doc, "kind") {
+		case "ClusterRole":
+			if strings.HasSuffix(yamlStr(doc, "metadata", "name"), "-db-workload") {
+				roleSeen = true
+			}
+		case "Deployment":
+			pod, _ := yamlGet(doc, "spec", "template", "spec").(map[string]any)
+			for _, key := range []string{"containers", "initContainers"} {
+				cs, _ := pod[key].([]any)
+				for _, c := range cs {
+					envs, _ := yamlGet(c, "env").([]any)
+					for _, e := range envs {
+						switch yamlStr(e, "name") {
+						case envDatabasesEnabled:
+							if strings.EqualFold(yamlStr(e, "value"), "true") {
+								st.Enabled = true
+							}
+						case envDatabasesImages:
+							imagesJSON = yamlStr(e, "value")
+						}
+					}
+				}
+			}
+		}
+	}
+	if roleSeen {
+		st.Enabled = true
+	}
+	if !st.Enabled {
 		return st, nil
 	}
-	switch e := d["enabled"].(type) {
-	case bool:
-		st.Enabled = e
-	case string:
-		st.Enabled = e == "true"
+	if imagesJSON == "" {
+		return st, errors.New("i database gestiti sono accesi ma il Deployment di core non riceve la tabella dei digest postgres (" + envDatabasesImages + ")")
 	}
-	b, err := yaml.Marshal(map[string]any{"databases": d})
-	if err != nil {
-		return st, err
+	var table map[string]struct {
+		Repository string `json:"repository"`
+		Tag        string `json:"tag"`
+		Digest     string `json:"digest"`
 	}
-	st.Images, err = databaseImagesFromValues(b)
-	return st, err
+	if err := json.Unmarshal([]byte(imagesJSON), &table); err != nil {
+		return st, fmt.Errorf("tabella dei digest postgres non leggibile: %w", err)
+	}
+	if len(table) == 0 {
+		return st, errors.New("la tabella dei digest postgres (databases.postgres.images) è vuota ma i database gestiti sono accesi")
+	}
+	for major, im := range table {
+		if im.Repository == "" || !digestRe.MatchString(im.Digest) {
+			return st, fmt.Errorf("databases.postgres.images[%s]: servono repository e un digest sha256 (trovati %q e %q)", major, im.Repository, im.Digest)
+		}
+		st.Images = append(st.Images, DatabaseImage{Major: major, Repository: im.Repository, Tag: im.Tag, Digest: im.Digest})
+	}
+	sort.Slice(st.Images, func(i, j int) bool { return st.Images[i].Major < st.Images[j].Major })
+	return st, nil
 }
 
-// databaseStates: stato prima (chart attuale + valori conservati) e dopo (chart nuovo + valori conservati
-// + -f + --set) di questo aggiornamento.
-func (o *Options) databaseStates(newChart, chartDir, valuesFile string) (now, before databaseState, err error) {
-	nv, err := o.effectiveValues(newChart, valuesFile, true)
-	if err != nil {
-		return now, before, err
+func yamlGet(m any, path ...string) any {
+	for _, p := range path {
+		mm, ok := m.(map[string]any)
+		if !ok {
+			return nil
+		}
+		m = mm[p]
 	}
-	if now, err = databaseStateOf(nv); err != nil {
-		return now, before, fmt.Errorf("tabella dei digest postgres effettiva: %w", err)
-	}
-	ov, err := o.effectiveValues(chartDir, valuesFile, false)
-	if err != nil {
-		return now, before, err
-	}
-	// La tabella di prima illeggibile o incompleta non blocca: vuol dire solo che non si riusa niente.
-	if before, err = databaseStateOf(ov); err != nil {
-		before = databaseState{}
-	}
-	return now, before, nil
+	return m
 }
+
+func yamlStr(m any, path ...string) string {
+	s, _ := yamlGet(m, path...).(string)
+	return s
+}
+
+// databaseStateBefore rende il chart ATTUALE con i soli valori conservati della release: com'era prima
+// di questo aggiornamento. Illeggibile o assente = nessun riuso (si verifica tutto).
+func (o *Options) databaseStateBefore(ctx context.Context, chartDir, valuesFile string) databaseState {
+	args := []string{"template", o.Cfg.Release, chartDir, "-n", o.Cfg.Namespace, "-f", valuesFile, "--set", "global.image.tag=" + o.Cfg.ImageTag}
+	out, err := o.helmRun(ctx, args...)
+	if err != nil {
+		return databaseState{}
+	}
+	st, err := databaseStateFromManifests(out)
+	if err != nil {
+		return databaseState{}
+	}
+	return st
+}
+
 
 // verifyDatabaseDigests verifica con cosign i riferimenti repository@digest postgres EFFETTIVI nuovi.
 // Con i database già accesi si salta ciò che era già nella tabella attuale (stesso repository@digest:

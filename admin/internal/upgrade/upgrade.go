@@ -540,10 +540,14 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 	}
 
 	// Database gestiti (GIT-565, DB5): le immagini postgres non sono nei manifest, si verificano a parte.
-	dbNow, dbBefore, err := o.databaseStates(newChart, chartDir, valuesFile)
+	dbNow, err := databaseStateFromManifests(out)
 	if err != nil {
 		res.Outcome = Refused
 		return res, refused("%v", err)
+	}
+	dbBefore := databaseState{}
+	if dbNow.Enabled {
+		dbBefore = o.databaseStateBefore(ctx, chartDir, valuesFile)
 	}
 	if _, err := o.verifyDatabaseDigests(ctx, dbNow, dbBefore); err != nil {
 		res.Outcome = Refused

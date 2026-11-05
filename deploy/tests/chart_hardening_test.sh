@@ -757,7 +757,10 @@ expect_has "VAP: niente ExternalName" "${pol}" "object.spec.type != 'ExternalNam
 # Il testo non basta (un confronto false == false lasciava passare kube-system): le espressioni si valutano
 # con cel-go sui casi positivi e negativi, con le app spente e accese (admin/internal/vapcheck).
 if command -v go >/dev/null 2>&1; then
-  if (cd "${HERE}/../../admin" && GITSTACK_HELM_BIN="$(command -v helm)" go test -count=1 ./internal/vapcheck/ >/tmp/vapcheck.$$ 2>&1); then ok; else bad "valutazione CEL delle VAP dei database: $(tail -30 /tmp/vapcheck.$$)"; fi
+  # TestVAP_*: espressioni CEL delle VAP; TestHelm_*: `gitstack upgrade` con helm vero (abilitazione e tabella dei
+  # database dal rendering, maiuscole di true, -f e --set, schema dei valori). GITSTACK_HELM_BIN gia' impostato
+  # (anche vuoto, per usare GITSTACK_HELM_DOCKER_IMAGE) non si sovrascrive.
+  if (cd "${HERE}/../../admin" && GITSTACK_HELM_BIN="${GITSTACK_HELM_BIN-$(command -v helm)}" go test -count=1 -run 'TestVAP_|TestHelm_' ./internal/vapcheck/ ./internal/upgrade/ >/tmp/vapcheck.$$ 2>&1); then ok; else bad "valutazione CEL delle VAP e prove di upgrade con helm vero: $(tail -30 /tmp/vapcheck.$$)"; fi
   rm -f /tmp/vapcheck.$$
 else
   echo "AVVISO: go non trovato, la valutazione CEL delle VAP (admin/internal/vapcheck) non gira"
@@ -781,6 +784,14 @@ d="$(doc Deployment gitstack-core)"
 expect_lacks "senza volumi RWO: nessun fsGroup 65532" "${d}" "fsGroup: 65532"
 expect_lacks "senza volumi RWO: nessuna strategia Recreate" "${d}" "type: Recreate"
 OUT="${SAVED_OUT}"
+# values.schema.json: databases.enabled e' un booleano vero. Helm converte TRUE/True in true, e una stringa
+# ("false" e' truthy nei template) non passa lo schema: ne' per -f ne' per --set-string.
+for v in TRUE True true; do
+  expect_has "databases.enabled=${v}: core riceve il controller" "$(helm template gitstack "${CHART}" --set "databases.enabled=${v}" 2>&1)" "GITSTACK_CORE_DATABASES_ENABLED"
+done
+expect_lacks "databases.enabled=false: nessuna variabile" "$(helm template gitstack "${CHART}" --set databases.enabled=false 2>&1)" "GITSTACK_CORE_DATABASES_ENABLED"
+if helm_rc --set-string databases.enabled=false; then bad "databases.enabled stringa \"false\": lo schema doveva rifiutarlo"; else ok; fi
+expect_has "databases.enabled stringa: messaggio dello schema" "$(helm template gitstack "${CHART}" --set-string databases.enabled=false 2>&1)" "Expected: boolean"
 # Volume databases-data e variabili di core solo con databases.enabled.
 d="$(doc Deployment gitstack-core)"
 expect_has "core: GITSTACK_CORE_DATABASES_ENABLED" "${d}" "GITSTACK_CORE_DATABASES_ENABLED"
