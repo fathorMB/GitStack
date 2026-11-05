@@ -543,3 +543,56 @@ func TestDatabaseLAN_SpegnimentoAspettaIlGiroInCorso(t *testing.T) {
 		t.Fatalf("modello: %+v", got)
 	}
 }
+
+// Rework 2, interleaving opposto: il giro parte con lo snapshot SPENTO (foglia col solo nome interno), il PUT true
+// arriva mentre il giro e' a meta', e il giro vecchio arriva a syncLAN: non apre finche' la foglia con i SAN LAN
+// non e' emessa, montata e ricaricata. Il giro successivo apre, e verify-full verifica il nome LAN.
+func TestDatabaseLAN_GiroVecchioSpentoNonApreConFogliaSenzaSanLAN(t *testing.T) {
+	e := lanEnv(t)
+	ctx := context.Background()
+	d := e.running("alice", "shop") // spenta, foglia col solo nome interno gia' caricata
+	stale := e.reload(d.ID)
+	if stale.LANEnabled {
+		t.Fatal("lo snapshot deve essere spento")
+	}
+	var armed atomic.Bool
+	armed.Store(true)
+	atPods, release := make(chan struct{}), make(chan struct{})
+	// Il giro legge il pod dopo ensureTLS e prima del passo LAN: li' si ferma.
+	e.kube.PrependReactor("get", "pods", func(k8stesting.Action) (bool, runtime.Object, error) {
+		if armed.CompareAndSwap(true, false) {
+			close(atPods)
+			<-release
+		}
+		return false, nil, nil
+	})
+	done := make(chan struct{})
+	go func() { e.ctl.Reconcile(ctx, stale); close(done) }()
+	<-atPods
+	if _, err := e.ctl.SetLAN(ctx, e.reload(d.ID), true, nil); err != nil {
+		t.Fatal(err)
+	}
+	close(release)
+	<-done
+	if svc, pol := e.lanObjects(d); svc != nil || pol {
+		t.Fatalf("il giro vecchio ha aperto con una foglia senza SAN LAN: svc=%v policy=%v", svc, pol)
+	}
+	tls, _ := e.kube.CoreV1().Secrets(Namespace(d.ID)).Get(ctx, SecretTLS, metav1.GetOptions{})
+	if c := parseChain(t, tls.Data["tls.crt"]); len(c[0].IPAddresses) != 0 {
+		t.Fatalf("la foglia non doveva avere i SAN LAN prima del giro nuovo: %v", c[0].IPAddresses)
+	}
+	// Giro successivo, da uno snapshot acceso: emette, ricarica, apre.
+	e.ctl.Reconcile(ctx, e.reload(d.ID))
+	svc, pol := e.lanObjects(d)
+	if svc == nil || !pol {
+		t.Fatalf("il giro successivo doveva aprire: svc=%v policy=%v", svc, pol)
+	}
+	tls, _ = e.kube.CoreV1().Secrets(Namespace(d.ID)).Get(ctx, SecretTLS, metav1.GetOptions{})
+	chain := parseChain(t, tls.Data["tls.crt"])
+	inter, roots := x509.NewCertPool(), x509.NewCertPool()
+	inter.AddCert(chain[1])
+	roots.AddCert(e.root)
+	if _, err := chain[0].Verify(x509.VerifyOptions{Roots: roots, Intermediates: inter, DNSName: "gitstack.test"}); err != nil {
+		t.Fatalf("verify-full sul nome LAN con la foglia servita: %v", err)
+	}
+}

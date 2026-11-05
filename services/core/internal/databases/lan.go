@@ -118,7 +118,46 @@ func (c *Controller) syncLAN(ctx context.Context, snapshot store.ManagedDB, tlsR
 	if !tlsReady {
 		return nil
 	}
+	// tlsReady viene dallo snapshot del giro: il certificato puo' essere stato emesso quando la LAN era ancora
+	// spenta (solo nome interno) e il PUT true arrivato dopo. Con lo stato di OGGI si verifica che la catena
+	// CARICATA da PostgreSQL abbia i SAN richiesti; altrimenti non si apre e il giro successivo (che parte da
+	// uno snapshot acceso) emette, monta e ricarica la foglia giusta.
+	ok, err := c.servedTLSMatches(ctx, d)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		c.Kick()
+		return nil
+	}
 	return c.openLAN(ctx, d)
+}
+
+// servedTLSMatches dice se il Secret pg-tls ha i SAN voluti dallo stato corrente di d e se PostgreSQL ha
+// ricaricato proprio quella catena.
+func (c *Controller) servedTLSMatches(ctx context.Context, d store.ManagedDB) (bool, error) {
+	dns, ips, err := c.serverSANs(d)
+	if err != nil {
+		return false, err
+	}
+	sec, err := c.kube.CoreV1().Secrets(Namespace(d.ID)).Get(ctx, SecretTLS, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	have := sec.Annotations[annotationSANs]
+	if have == "" {
+		have = sanKey([]string{ServiceHost(d.ID)}, nil)
+	}
+	if have != sanKey(dns, ips) {
+		return false, nil
+	}
+	c.mu.Lock()
+	loaded := c.tlsLoaded[d.ID]
+	c.mu.Unlock()
+	return loaded == chainHash(sec.Data["tls.crt"]), nil
 }
 
 // LANInfo e' cio' che il portale mostra con la LAN accesa.
