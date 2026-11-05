@@ -129,7 +129,7 @@ type linkEnv struct {
 	kube *fake.Clientset
 	ca   string
 	keys *webhooks.Keyring
-	db  openapi.Database
+	db   openapi.Database
 }
 
 func newLinkEnv(t *testing.T) *linkEnv {
