@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -123,20 +124,49 @@ func pipeWriter(size, chunk int, delay time.Duration, written *atomic.Int64) (*i
 func TestReleaseAssetUpload_5MiBInStreaming(t *testing.T) {
 	for _, token := range []string{"gst_prova", "gsj_token-del-job"} {
 		t.Run(token, func(t *testing.T) {
-			const size = 5 << 20
-			core := newAssetCore(t, 256<<10)
+			const (
+				size   = 5 << 20
+				prefix = 256 << 10
+			)
+			// core segnala quando ha letto 192 KiB: meno del prefisso, perché il
+			// trasporto tiene in un buffer da 4 KiB l'ultimo pezzo non ancora scritto.
+			core := newAssetCore(t, 192<<10)
 			h := newAssetRouter(t, core.srv.URL, 5*time.Second, 0)
-			var written atomic.Int64
-			body, data := pipeWriter(size, 64<<10, 0, &written)
 
-			var atSignal atomic.Int64
+			data := make([]byte, size)
+			for i := range data {
+				data[i] = byte(i*31 + 7)
+			}
+			pr, pw := io.Pipe()
+			t.Cleanup(func() { _ = pr.Close() })
+
+			// Il writer manda solo il prefisso, poi aspetta (al massimo 5 s) che core
+			// confermi di averlo ricevuto: se il gateway bufferizzasse tutto il corpo,
+			// core non riceverebbe nulla finché il writer non finisce, e qui scade.
+			writerDone := make(chan error, 1)
 			go func() {
-				<-core.signal
-				atSignal.Store(written.Load())
+				if _, err := pw.Write(data[:prefix]); err != nil {
+					writerDone <- err
+					return
+				}
+				select {
+				case <-core.signal:
+				case <-time.After(5 * time.Second):
+					err := errors.New("core non ha ricevuto il prefisso mentre il client non aveva finito di scrivere: il gateway bufferizza il corpo")
+					_ = pw.CloseWithError(err)
+					writerDone <- err
+					return
+				}
+				_, err := pw.Write(data[prefix:])
+				_ = pw.Close()
+				writerDone <- err
 			}()
 
 			rec := httptest.NewRecorder()
-			h.ServeHTTP(rec, assetRequest(relAssetPath, token, body, size))
+			h.ServeHTTP(rec, assetRequest(relAssetPath, token, pr, size))
+			if err := <-writerDone; err != nil {
+				t.Fatalf("streaming: %v", err)
+			}
 			if rec.Code != http.StatusCreated {
 				t.Fatalf("status %d, voluto 201: %s", rec.Code, rec.Body.String())
 			}
@@ -150,11 +180,6 @@ func TestReleaseAssetUpload_5MiBInStreaming(t *testing.T) {
 			}
 			if got.Sha256 != hex.EncodeToString(sum[:]) || got.SizeBytes != size {
 				t.Errorf("core ha visto sha256=%s size=%d", got.Sha256, got.SizeBytes)
-			}
-			// Streaming: quando core aveva letto 256 KiB il client non aveva
-			// ancora scritto tutto (un gateway che bufferizza avrebbe già letto 5 MiB).
-			if w := atSignal.Load(); w == 0 || w >= size/2 {
-				t.Errorf("a core i primi 256 KiB sono arrivati con %d byte scritti dal client su %d: il corpo non passa in streaming", w, size)
 			}
 		})
 	}
