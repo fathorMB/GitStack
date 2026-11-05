@@ -4,6 +4,7 @@ package databases
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -178,7 +179,36 @@ func TestDatabases_IsolamentoSuK3d(t *testing.T) {
 	if err != nil || len(np.Spec.Egress) != 0 || len(np.Spec.PolicyTypes) != 2 {
 		t.Fatalf("NetworkPolicy deny di default: %+v %v", np, err)
 	}
-	probe := func(label string, linked bool) bool {
+	host := ServiceHost(d.ID)
+	// Un solo pod per sonda: i tentativi stanno dentro il container. Un pod appena creato non e' ammesso per
+	// qualche secondo (ADR 0003, kube-router aggiorna gli ipset in ritardo), quindi ritentare con pod nuovi
+	// non vedrebbe mai la policy applicata.
+	//
+	// Collegato: ogni giro dura al piu' 2 s (pg_isready -t 2) + 2 s di pausa; 24 giri = tetto di circa 96 s.
+	linkedScript := fmt.Sprintf(`i=0; while [ $i -lt 24 ]; do
+  if pg_isready -h %s -p 5432 -t 2; then echo RAGGIUNTO giro=$i; exit 0; fi
+  i=$((i+1)); sleep 2
+done; echo NON-RAGGIUNTO; exit 1`, host)
+	// Non collegato: deve restare negativo per tutta la finestra (20 giri da almeno 3 s = oltre 60 s, ben piu'
+	// dei 30 s del ritardo di ammissione). Esce 0 se non ha mai raggiunto la porta, 1 alla prima riuscita.
+	isolatedScript := fmt.Sprintf(`i=0; while [ $i -lt 20 ]; do
+  if pg_isready -h %s -p 5432 -t 2; then echo RAGGIUNTO giro=$i; exit 1; fi
+  i=$((i+1)); sleep 1
+done; echo ISOLATO; exit 0`, host)
+
+	// dump stampa i log del pod di prova e lo spec della NetworkPolicy, per leggere un rosso dal job.
+	dump := func(ns, name string) {
+		logs, err := e.kube.CoreV1().Pods(ns).GetLogs(name, &corev1.PodLogOptions{}).DoRaw(context.Background())
+		t.Logf("log del pod %s/%s (err=%v):\n%s", ns, name, err, logs)
+		if np, err := e.kube.NetworkingV1().NetworkPolicies(Namespace(d.ID)).Get(context.Background(), NetworkPolicyName, metav1.GetOptions{}); err == nil {
+			spec, _ := json.MarshalIndent(np.Spec, "", "  ")
+			t.Logf("NetworkPolicy %s/%s spec:\n%s", np.Namespace, np.Name, spec)
+		} else {
+			t.Logf("NetworkPolicy %s non leggibile: %v", NetworkPolicyName, err)
+		}
+	}
+	// probe crea il namespace e un solo pod; torna true se il container termina con successo.
+	probe := func(label string, linked bool, script string) bool {
 		ns := "gitstack-dbtest-" + label + "-" + d.ID.String()[:8]
 		labels := map[string]string{}
 		if linked {
@@ -188,44 +218,35 @@ func TestDatabases_IsolamentoSuK3d(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() { _ = e.kube.CoreV1().Namespaces().Delete(context.Background(), ns, metav1.DeleteOptions{}) })
-		reach := func() bool {
-			name := fmt.Sprintf("probe-%d", time.Now().UnixNano())
-			pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns}, Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever,
-				Containers: []corev1.Container{{Name: "p", Image: "docker.io/library/postgres@" + k3dImageDigest,
-					Command: []string{"pg_isready", "-h", ServiceHost(d.ID), "-p", "5432", "-t", "8"}}}}}
-			if _, err := e.kube.CoreV1().Pods(ns).Create(context.Background(), pod, metav1.CreateOptions{}); err != nil {
-				t.Fatal(err)
-			}
-			deadline := time.Now().Add(3 * time.Minute)
-			for time.Now().Before(deadline) {
-				p, _ := e.kube.CoreV1().Pods(ns).Get(context.Background(), name, metav1.GetOptions{})
-				if p.Status.Phase == corev1.PodSucceeded {
-					return true
-				}
-				if p.Status.Phase == corev1.PodFailed {
-					return false
-				}
-				time.Sleep(2 * time.Second)
-			}
-			t.Fatal("il pod di prova non e' terminato")
-			return false
+		name := "probe-" + label
+		pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns}, Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever,
+			Containers: []corev1.Container{{Name: "p", Image: "docker.io/library/postgres@" + k3dImageDigest,
+				Command: []string{"sh", "-c", script}}}}}
+		if _, err := e.kube.CoreV1().Pods(ns).Create(context.Background(), pod, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
 		}
-		if !linked {
-			return reach()
-		}
-		// Un pod appena creato non e' ammesso per qualche secondo (ADR 0003): si ritenta.
-		for i := 0; i < 6; i++ {
-			if reach() {
+		// Tetto di attesa: pull dell'immagine + al piu' circa 100 s di sonda.
+		deadline := time.Now().Add(4 * time.Minute)
+		for time.Now().Before(deadline) {
+			p, _ := e.kube.CoreV1().Pods(ns).Get(context.Background(), name, metav1.GetOptions{})
+			switch p.Status.Phase {
+			case corev1.PodSucceeded:
 				return true
+			case corev1.PodFailed:
+				dump(ns, name)
+				return false
 			}
+			time.Sleep(2 * time.Second)
 		}
+		dump(ns, name)
+		t.Fatal("il pod di prova non e' terminato")
 		return false
 	}
-	if probe("altro", false) {
-		t.Fatal("un namespace non collegato ha raggiunto la 5432")
+	if !probe("altro", false, isolatedScript) {
+		t.Fatal("un namespace non collegato ha raggiunto la 5432 (o la sonda e' fallita): vedi log del pod e NetworkPolicy sopra")
 	}
-	if !probe("collegato", true) {
-		t.Fatal("un namespace con la label db-link non ha raggiunto la 5432")
+	if !probe("collegato", true, linkedScript) {
+		t.Fatal("un namespace con la label db-link non ha raggiunto la 5432 entro circa 96 s: vedi log del pod e NetworkPolicy sopra")
 	}
 }
 
