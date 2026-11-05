@@ -17,15 +17,23 @@ $script:E2eAcmeEmail = 'e2e@example.test'
 # averlo, altrimenti Traefik non ha il volume di acme.json e il backup dell'archivio ACME non si ripristina.
 $script:E2eAcmeOn = $false
 $script:E2ePubCtx = $null
+# Database gestiti (GIT-558): e2e.ps1 -WithDatabases li accende nell'installer e abilita i passi h-db/i-db.
+$script:E2eDatabasesOn = $false
+$script:E2eDatabasesSkipPreflight = $false
 
 function Get-E2eInstallCommand {
     # -AppsDomain: accende l'hosting delle app (GIT-375, --enable-apps) con quel dominio.
     # -AcmeCaServer: resolver ACME di Traefik verso quel server (GITSTACK_ACME_CA_SERVER, Pebble nelle prove).
-    param([Parameter(Mandatory)][string]$InstallRef, [string]$AppsDomain, [string]$AcmeCaServer)
+    param([Parameter(Mandatory)][string]$InstallRef, [string]$AppsDomain, [string]$AcmeCaServer, [switch]$Databases)
     $acmeEnv = ''
     if ($AcmeCaServer) { $acmeEnv = " GITSTACK_ACME_CA_SERVER=$AcmeCaServer GITSTACK_TLS_EMAIL=$script:E2eAcmeEmail" }
     $cmd = "curl -fsSL https://raw.githubusercontent.com/$script:GitStackRepo/$InstallRef/deploy/install.sh | sudo GITSTACK_REF=$InstallRef GITSTACK_ADMIN_REQUIRED=1$acmeEnv bash"
     if ($AppsDomain) { $cmd += " -s -- --enable-apps --apps-domain $AppsDomain" }
+    # database gestiti (GIT-558): servono le app per collegarli; --skip-preflight solo se il board lo chiede (RAM e disco della VM)
+    if ($Databases -and $AppsDomain) {
+        $cmd += " --enable-databases"
+        if ($script:E2eDatabasesSkipPreflight) { $cmd += " --skip-preflight" }
+    }
     return $cmd
 }
 
@@ -58,8 +66,8 @@ function Invoke-E2eVmReset {
 
 # Installer di GIT-9 al commit indicato. Ritorna $null se ok, altrimenti il motivo.
 function Invoke-E2eInstall {
-    param([Parameter(Mandatory)][string]$InstallRef, [Parameter(Mandatory)][string]$LogName, [string]$AppsDomain, [string]$AcmeCaServer)
-    $r = Invoke-VmSsh -Command (Get-E2eInstallCommand -InstallRef $InstallRef -AppsDomain $AppsDomain -AcmeCaServer $AcmeCaServer) -TimeoutSeconds $script:InstallTimeoutSeconds
+    param([Parameter(Mandatory)][string]$InstallRef, [Parameter(Mandatory)][string]$LogName, [string]$AppsDomain, [string]$AcmeCaServer, [switch]$Databases)
+    $r = Invoke-VmSsh -Command (Get-E2eInstallCommand -InstallRef $InstallRef -AppsDomain $AppsDomain -AcmeCaServer $AcmeCaServer -Databases:$Databases) -TimeoutSeconds $script:InstallTimeoutSeconds
     $log = Join-Path $script:OutDir $LogName
     Write-E2eText -Path $log -Stdout $r.StdOut -Stderr $r.StdErr
     if ($r.ExitCode -ne 0) { return "installer di ${InstallRef}: exit $($r.ExitCode) (log: $log)" }
@@ -1155,7 +1163,7 @@ function Invoke-E2eBackupRestorePhase {
     # --- h. dati di prova e backup (sullo stato dell'installazione appena provata) ---
     Write-Log "==> Passo h: dati di prova e gitstack backup cifrato ..."
     $hOk = $true; $hDetails = @()
-    $data = $null; $fpBefore = $null; $oldIp = $script:VmIp; $appCtx = $null
+    $data = $null; $fpBefore = $null; $oldIp = $script:VmIp; $appCtx = $null; $dbCtx = $null
     try {
         $fpBefore = Get-CertSha256Fingerprint -Path $CaPath
         $adminCk = Get-E2eAdminCookie -BaseUrl $BaseUrl -Password $AdminPassword
@@ -1187,6 +1195,21 @@ function Invoke-E2eBackupRestorePhase {
                 Add-StepResult -Name "h-pub. esito complessivo: $pubOk/$(@($pubRows).Count) controlli ok" -Ok ($pubOk -eq @($pubRows).Count) -Detail "$(@($pubRows).Count - $pubOk) controlli ko (vedi le righe h-pub sopra; log di Pebble, Traefik e CoreDNS in app-pubblica\diag.log)"
             } else {
                 Add-StepResult -Name 'h-pub. esito complessivo' -Ok $false -Detail 'l''app di prova non e stata preparata: passo non eseguito'
+            }
+        }
+
+        # database gestiti (GIT-558): creati, collegati, con dati e LAN prima del backup, cosi' entrano nell'archivio
+        if ($script:E2eDatabasesOn) {
+            if ($appCtx) {
+                $dbRun = Test-E2eDatabases -BaseUrl $BaseUrl -CaPath $CaPath -Data $data -WorkDir (Join-Path $phaseDir 'database')
+                $dbCtx = $dbRun.Ctx
+                foreach ($dr in $dbRun.Rows) { Add-StepResult -Name $dr.Name -Ok $dr.Ok -Detail $dr.Detail }
+                $dbOk = @($dbRun.Rows | Where-Object { $_.Ok }).Count
+                Add-StepResult -Name "h-db. esito complessivo: $dbOk/$(@($dbRun.Rows).Count) controlli ok" -Ok ($dbOk -eq @($dbRun.Rows).Count) -Detail "$(@($dbRun.Rows).Count - $dbOk) controlli ko (vedi le righe h-db sopra; pod in database/diag.log)"
+                $specRow = Invoke-E2eDatabasesSpec -BaseUrl $BaseUrl -Data $data -WorkDir (Join-Path $phaseDir 'database-spec')
+                Add-StepResult -Name $specRow.Name -Ok $specRow.Ok -Detail $specRow.Detail
+            } else {
+                Add-StepResult -Name 'h-db. esito complessivo' -Ok $false -Detail 'l''app di prova non e stata preparata: passo dei database non eseguito'
             }
         }
 
@@ -1257,7 +1280,7 @@ function Invoke-E2eBackupRestorePhase {
         # con Pebble nel passo h-pub: il resolver ACME (e il volume di acme.json) deve esserci anche qui,
         # altrimenti l'archivio ACME del backup non ha dove tornare
         $acmeServer = if ($script:E2eAcmeOn) { $script:E2eAcmeCaServer } else { '' }
-        $why = Invoke-E2eInstall -InstallRef $InstallRef -LogName 'installer-restore.log' -AppsDomain $script:AppsDomain -AcmeCaServer $acmeServer
+        $why = Invoke-E2eInstall -InstallRef $InstallRef -LogName 'installer-restore.log' -AppsDomain $script:AppsDomain -AcmeCaServer $acmeServer -Databases:$script:E2eDatabasesOn
         if ($why) { throw $why }
         $baseUrl2 = "https://$script:VmIp"
         $caPath2 = Join-Path $phaseDir 'ca-nuova-installazione.crt'
@@ -1319,6 +1342,21 @@ function Invoke-E2eBackupRestorePhase {
         }
     } elseif ($script:E2eAcmeOn) {
         Add-StepResult -Name 'i-pub. dominio e certificato dopo il restore' -Ok $false -Detail 'il passo h-pub non e arrivato al certificato: niente da verificare dopo il restore'
+    }
+
+    # --- i-db. i database dopo il restore (GIT-558): quattro righe ok/ko e l'esito ---
+    if ($dbCtx) {
+        Write-Log "==> Passo i-db: database gestiti dopo il restore (quattro controlli) ..."
+        if (-not $script:RestoredBaseUrl -or $script:RestoredBaseUrl -ne "https://$script:VmIp") {
+            Add-StepResult -Name 'i-db. database dopo il restore' -Ok $false -Detail 'il restore non e arrivato in fondo (passo i fallito): controlli dei database non eseguiti'
+        } else {
+            $dbRows = Test-E2eDatabasesAfterRestore -BaseUrl $script:RestoredBaseUrl -CaPath $caPath3 -Data $data -Ctx $dbCtx -WorkDir (Join-Path $phaseDir 'database-dopo-restore')
+            foreach ($dr in $dbRows) { Add-StepResult -Name $dr.Name -Ok $dr.Ok -Detail $dr.Detail }
+            $dbAfterOk = @($dbRows | Where-Object { $_.Ok }).Count
+            Add-StepResult -Name "i-db. esito complessivo: $dbAfterOk/$(@($dbRows).Count) controlli ok" -Ok ($dbAfterOk -eq @($dbRows).Count) -Detail "$(@($dbRows).Count - $dbAfterOk) controlli ko (vedi le righe i-db sopra)"
+        }
+    } elseif ($script:E2eDatabasesOn) {
+        Add-StepResult -Name 'i-db. database dopo il restore' -Ok $false -Detail 'il database di prova non e arrivato ai dati (passo h-db fallito prima): niente da verificare dopo il restore'
     }
 
     # --- i-app. l'app col suo stato dopo il restore (GIT-388): sette righe ok/ko e l'esito ---
