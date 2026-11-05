@@ -397,6 +397,29 @@ func (c *Controller) RestoreBackup(ctx context.Context, d store.ManagedDB, b sto
 	return nil
 }
 
+// pruneAfterRestore applica la retention ai tipi di dump toccati da un ripristino: quelli del database
+// ripristinato (il dump di sicurezza ha superato il limite) e quelli del database sorgente.
+func (c *Controller) pruneAfterRestore(ctx context.Context, d store.ManagedDB, p store.PendingRestore) {
+	dbs := []uuid.UUID{d.ID}
+	if src, err := c.st.GetManagedDBBackupByID(ctx, p.BackupID); err == nil && src.DBID != d.ID {
+		dbs = append(dbs, src.DBID)
+	}
+	for _, id := range dbs {
+		for _, kind := range []string{store.BackupScheduled, store.BackupOnDemand, store.BackupSafety} {
+			files, err := c.st.PruneManagedDBBackups(ctx, id, kind, c.keepFor(kind), c.cfg.Now())
+			if err != nil {
+				c.cfg.Log.Warn("databases: retention dopo il ripristino non applicata", "db", id, "err", err)
+				continue
+			}
+			for _, f := range files {
+				if fp, perr := c.dumpPath(f); perr == nil {
+					_ = os.Remove(fp)
+				}
+			}
+		}
+	}
+}
+
 // runRestore esegue il ripristino pendente (DB15) e ritorna lo stato con cui il database torna a girare. Sul posto
 // fa prima un dump di sicurezza: se non riesce non tocca niente. Un errore e' in restore_error del database.
 func (c *Controller) runRestore(ctx context.Context, d store.ManagedDB, p store.PendingRestore) (string, *string) {
@@ -409,6 +432,8 @@ func (c *Controller) runRestore(ctx context.Context, d store.ManagedDB, p store.
 		if err != nil {
 			c.cfg.Log.Warn("databases: ripristino non riuscito", "db", d.ID, "err", err)
 		}
+		// Finito (bene o male) il dump sorgente non e' piu' prenotato: la retention rimasta in sospeso si applica ora.
+		c.pruneAfterRestore(wctx, d, p)
 		return store.DBRunning, nil
 	}
 	if !c.backupConfigured() {
@@ -431,8 +456,11 @@ func (c *Controller) runRestore(ctx context.Context, d store.ManagedDB, p store.
 	if err != nil {
 		return finish(err)
 	}
-	defer closeFn()
-	if err := c.dumper.Restore(ctx, d, r, RestoreOptions{Clean: p.Mode == store.RestoreSame}); err != nil {
+	// Il file va chiuso PRIMA di concludere: finish applica la retention e su Windows un file aperto non si elimina.
+	rerr := c.dumper.Restore(ctx, d, r, RestoreOptions{Clean: p.Mode == store.RestoreSame})
+	closeFn()
+	if rerr != nil {
+		err := rerr
 		msg := "pg_restore: " + shortErr(err)
 		if safety != "" {
 			msg += " (il ripristino e' una sola transazione: il database e' com'era; dump di sicurezza " + safety + ")"

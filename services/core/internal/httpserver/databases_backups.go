@@ -89,7 +89,7 @@ func (s *apiServer) writeBackupError(w http.ResponseWriter, err error) bool {
 		writeError(w, http.StatusUnprocessableEntity, "database_not_ready", "Il database non e' ancora pronto: riprova quando e' `running`.")
 	case errors.Is(err, databases.ErrBackupUnavailable):
 		writeError(w, http.StatusUnprocessableEntity, "backup_unavailable", "I backup dei database non sono configurati in questa installazione (manca la chiave di dump o il volume databases-data).")
-	case errors.Is(err, databases.ErrBackupFileMissing):
+	case errors.Is(err, databases.ErrBackupFileMissing), errors.Is(err, store.ErrBackupNotFound):
 		writeError(w, http.StatusUnprocessableEntity, "backup_file_missing", "Il file di questo backup non c'e' piu': scegline un altro.")
 	case errors.Is(err, databases.ErrNoMinorUpdate):
 		writeError(w, http.StatusConflict, "no_update", "Il database e' gia' sull'immagine corrente dell'istanza.")

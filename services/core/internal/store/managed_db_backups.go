@@ -189,8 +189,17 @@ func (s *Store) PruneManagedDBBackups(ctx context.Context, dbID uuid.UUID, kind 
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	// Stessa chiave di RequestManagedDBRestore: la prenotazione di un ripristino e la scelta dei dump da potare
+	// non si sovrappongono mai (il ripristino vede il dump prima della potatura, o la potatura vede la prenotazione).
+	if err := lockBackupRetention(ctx, tx, dbID); err != nil {
+		return nil, err
+	}
+	// I dump prenotati da un ripristino in attesa o in corso (restore_backup_id di QUALUNQUE database: un
+	// ripristino in un database nuovo ha per sorgente il dump di un altro) non si potano: restano oltre `keep`
+	// finche' il ripristino non finisce, poi tornano potabili (PruneManagedDBBackupsAfterRestore).
 	rows, err := tx.Query(ctx, `DELETE FROM core.managed_db_backups WHERE id IN (
 		SELECT id FROM core.managed_db_backups WHERE db_id = $1 AND kind = $2 AND status = 'completed'
+		AND id NOT IN (SELECT restore_backup_id FROM core.managed_dbs WHERE restore_backup_id IS NOT NULL)
 		ORDER BY created_at DESC, id DESC OFFSET $3) RETURNING file`, dbID, kind, keep)
 	if err != nil {
 		return nil, err
@@ -312,6 +321,17 @@ func (s *Store) ManagedDBsWithBackupProblems(ctx context.Context) ([]ManagedDB, 
 	return s.listManagedDBs(ctx, `WHERE d.backup_error IS NOT NULL OR d.restore_error IS NOT NULL OR d.upgrade_error IS NOT NULL`)
 }
 
+// lockBackupRetention serializza prenotazioni e potature dei dump di un database sorgente.
+func lockBackupRetention(ctx context.Context, tx pgx.Tx, srcDB uuid.UUID) error {
+	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('db-backup-retention:' || $1::text, 0))`, srcDB.String())
+	return err
+}
+
+// GetManagedDBBackupByID legge un dump per id, di qualunque database.
+func (s *Store) GetManagedDBBackupByID(ctx context.Context, id uuid.UUID) (ManagedDBBackup, error) {
+	return scanBackup(s.pool.QueryRow(ctx, `SELECT `+backupCols+` FROM core.managed_db_backups b WHERE b.id = $1`, id))
+}
+
 // RequestManagedDBRestore mette un ripristino in attesa sul database `d` (il controller lo esegue quando il
 // database e' `running`). Mode `same` porta il database in `restoring`; per `new` il database nasce gia' in
 // `creating` e resta tale finche' non e' pronto. ErrDBBusy se c'e' gia' un ripristino o un aggiornamento in attesa.
@@ -321,6 +341,25 @@ func (s *Store) RequestManagedDBRestore(ctx context.Context, d ManagedDB, backup
 		return err
 	}
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	// Prenotazione atomica con la retention: si blocca il database SORGENTE (quello del dump, che per un
+	// ripristino in un database nuovo non e' `d`) e si ricontrolla che il dump esista ancora e sia completo.
+	var srcDB uuid.UUID
+	if err := tx.QueryRow(ctx, `SELECT db_id FROM core.managed_db_backups WHERE id = $1`, backupID).Scan(&srcDB); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrBackupNotFound
+		}
+		return err
+	}
+	if err := lockBackupRetention(ctx, tx, srcDB); err != nil {
+		return err
+	}
+	var still bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM core.managed_db_backups WHERE id = $1 AND status = 'completed')`, backupID).Scan(&still); err != nil {
+		return err
+	}
+	if !still {
+		return ErrBackupNotFound
+	}
 	tag, err := tx.Exec(ctx, `UPDATE core.managed_dbs SET restore_backup_id = $2, restore_file = $3, restore_mode = $4, restore_requested_by = $5,
 		restore_error = NULL, updated_at = $6,
 		status = CASE WHEN $4 = 'same' THEN 'restoring' ELSE status END,
