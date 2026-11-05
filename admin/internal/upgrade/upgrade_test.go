@@ -37,16 +37,18 @@ const (
 // fakeCluster implementa backup.Cluster: il database è una stringa
 // (versioni di schema) e il restore la riporta a quella del dump.
 type fakeCluster struct {
-	mu       sync.Mutex
-	calls    []string
-	git      string
-	schema   string // risposta della query sulle migrazioni
-	dumped   string // schema al momento del pg_dump
-	restored bool
-	noSchema bool                          // la query sulle migrazioni fallisce
-	ready    func(deployment string) error // esito di WaitReady (nil: sempre pronto)
-	secrets  []backup.Secret               // Secret di GitStack nel cluster finto (GIT-565)
-	applied  []string                      // nomi dei Secret applicati, in ordine
+	mu        sync.Mutex
+	calls     []string
+	git       string
+	schema    string // risposta della query sulle migrazioni
+	dumped    string // schema al momento del pg_dump
+	restored  bool
+	noSchema  bool                          // la query sulle migrazioni fallisce
+	ready     func(deployment string) error // esito di WaitReady (nil: sempre pronto)
+	secrets   []backup.Secret               // Secret di GitStack nel cluster finto (GIT-565)
+	applied   []string                      // nomi dei Secret applicati, in ordine
+	majors    string                        // major dei database gestiti, una per riga (GIT-557)
+	majorsErr error                         // la lettura delle major fallisce
 }
 
 func (f *fakeCluster) note(s string) { f.mu.Lock(); f.calls = append(f.calls, s); f.mu.Unlock() }
@@ -71,6 +73,13 @@ func (f *fakeCluster) PGExec(_ context.Context, stdin io.Reader, stdout io.Write
 		f.note("pg_dump")
 		f.dumped = f.schema
 		_, err := io.WriteString(stdout, "-- dump\n")
+		return err
+	case strings.Contains(cmd, "SELECT DISTINCT pg_major"):
+		// Major di PostgreSQL usate dai database gestiti (DB6, GIT-557).
+		if f.majorsErr != nil {
+			return f.majorsErr
+		}
+		_, err := io.WriteString(stdout, f.majors)
 		return err
 	case strings.Contains(cmd, "repo_package_settings"):
 		return nil // elenco dei repo con le immagini nel backup (GIT-325): nessuno
@@ -151,7 +160,9 @@ type fakeHelm struct {
 	patches       int
 	manifest      string // manifest della revisione di destinazione (vuoto: quello di prova)
 
-	dbNew, dbOld string                              // rendering dei database del chart nuovo e di quello attuale (GIT-565)
+	dbNew, dbOld string // rendering dei database del chart nuovo e di quello attuale (GIT-565)
+	dbForced     string // rendering della release con databases.enabled=true (tabella da spenti)
+	dbForcedErr  error
 	real         func(args []string) ([]byte, error) // helm template vero (databases_helm_test.go)
 }
 
@@ -231,6 +242,17 @@ func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...strin
 				return out, err
 			}
 			return []byte(h.images + "\n---\n" + stripImageLines(string(out))), nil
+		}
+		// GIT-557 (DB6): rendering con databases.enabled=true forzato, per ricavare la tabella da spenti.
+		if h.dbForced != "" || h.dbForcedErr != nil {
+			for i, a := range args {
+				if a == "--set" && i+1 < len(args) && args[i+1] == "databases.enabled=true" {
+					if h.dbForcedErr != nil {
+						return nil, h.dbForcedErr
+					}
+					return []byte(h.images + h.dbForced), nil
+				}
+			}
 		}
 		if len(args) > 2 && strings.HasSuffix(strings.TrimRight(args[2], "/\\"), ".new") {
 			return []byte(h.images + h.dbNew), nil

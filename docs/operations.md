@@ -277,6 +277,37 @@ flags a mismatch). The login in front of apps (GIT-347,
 the apps domain and the public URL. Without the keys `/_appauth/verify` answers
 503 and no `login` app would pass.
 
+**Managed databases (GIT-557, ADR 0003, DB23).** The PostgreSQL controller lives in `core` and is **off by
+default** (`databases.enabled=false` in the chart): nothing is created in the cluster and every database API
+answers `422 databases_disabled`. Turn it on at install time with `install.sh --enable-databases
+[--databases-port-range FROM-TO]`, or on an existing installation with `sudo gitstack config set databases on
+[--databases-port-range FROM-TO]` or `sudo gitstack upgrade --enable-databases` (the upgrade brings the chart,
+the auxiliary scripts and the binary of the target version first, GIT-543). It creates the intermediate CA and the
+dump key if missing, then changes only the `databases.*` values of the chart: apps, repositories and the
+GitStack Postgres are not touched. The choice survives re-running the installer (`DATABASES_ENABLED` in
+`install.conf`, `databases_enabled` in `config.yaml`); `--disable-databases` turns it off.
+
+* **Resources.** Every database is its own Postgres and uses the same reserve as apps, so the host needs more than
+  the minimum profile: at least **12 GB of RAM and 30 GB free** (recommended 16 GB and 100 GB). Below that the
+  installer, `config set databases on` and `upgrade --enable-databases` stop before changing anything
+  (`--skip-preflight` overrides it at your own risk).
+* **LAN ports.** The default range is `15432-15531`; the range chosen with `--databases-port-range` (ports 1024 to
+  65535) is saved and reused. Open it in the firewall only to your network, see [Database gestiti: accesso dalla
+  LAN e firewall](#database-gestiti-accesso-dalla-lan-e-firewall-git-554).
+* **Turning off never deletes anything.** `gitstack config set databases off` changes only `databases.enabled`:
+  databases already created keep running in their `gitstack-db-*` namespaces with their volumes, the dumps
+  (volume `databases-data`, kept by Helm with `resource-policy: keep`), the intermediate CA and the dump key stay.
+  `core` stops managing them and the API answers `422 databases_disabled` until you turn the feature on again.
+* **Upgrade preflight (DB6).** `gitstack upgrade` refuses a release whose `databases.postgres.images` no longer
+  has a PostgreSQL major that a database still uses (checked also with `--dry-run`, before the backup; if the
+  majors in use cannot be read the upgrade stops too). Delete or migrate those databases first.
+* **Status and console.** `gitstack status` prints "Database gestiti: acceso" or "spento" (read from the `core`
+  Deployment, with a hint if it differs from `config.yaml`), the number of databases and of failed backups.
+  Admin · Database settings (`/admin/databases`) shows allowed PostgreSQL versions, limits per database, the LAN
+  port range, how many dumps are kept, the quota by owner (shared with apps) and every database of the instance;
+  the settings are `GET/PATCH /admin/databases/settings` and take effect without restarting `core`. The switch
+  itself is not in the console: turning off removes Kubernetes permissions, so it goes through the chart.
+
 **Network gate, fail-closed (GIT-418, GIT-422).** Every app pod starts with the
 init container `core apps-gate`, so the app runs only once its NetworkPolicy is
 enforced (kube-router applies it after the pod starts). The chart sets
@@ -2108,6 +2139,7 @@ On Linux/macOS/Git Bash: `scripts/cleanup-test-containers.sh [--dry-run] [--all]
 | `gitstack config set host NEWNAME` | yes | Change the host name (certificates, services, config) |
 | `gitstack config set apps-domain DOMAIN` | yes | Set or change the apps domain and reissue the wildcard certificate (see [Apps domain](#apps-domain-and-wildcard-dns-v3-h2)) |
 | `gitstack config set apps on\|off [--apps-domain D] ` | yes | Turn app hosting on or off (see [Apps domain](#apps-domain-and-wildcard-dns-v3-h2)); `gitstack upgrade --enable-apps` does the same during an upgrade |
+| `gitstack config set databases on\|off [--databases-port-range FROM-TO]` | yes | Turn managed databases on or off (see **Managed databases** in the apps section above); off never deletes databases or data; `gitstack upgrade --enable-databases` does the same during an upgrade |
 | `gitstack config set network [options]` | yes | Change proxy, registry mirror, download mirror and corporate CA (see [Corporate network](#corporate-network-proxy-mirrors-and-ca)) |
 
 \* `gitstack status` reads `/etc/gitstack/config.yaml` (mode `0600`),

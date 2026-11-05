@@ -109,6 +109,16 @@ type Report struct {
 	// (v3-d, GIT-553). Non rendono l'installazione «non sana» (non fermano il servizio) ma si leggono qui:
 	// un backup fallito non passa in silenzio.
 	DatabaseIssues []ManagedDatabaseIssue `json:"database_issues,omitempty"`
+	// DatabasesEnabled sono i database gestiti come scritti in config.yaml (databases_enabled); DatabasesLive
+	// quello che il cluster fa davvero ("on", "off", "" se non leggibile): core ha
+	// GITSTACK_CORE_DATABASES_ENABLED=true o no. DatabasesCount e DatabasesFailedBackups (v3-d, GIT-557)
+	// sono i database dell'istanza e quelli con l'ultimo backup fallito; DatabasesPortRange e' l'intervallo
+	// delle porte LAN scelto con l'installer ("" = quello del chart).
+	DatabasesEnabled       bool   `json:"databases_enabled"`
+	DatabasesLive          string `json:"databases_live,omitempty"`
+	DatabasesCount         int    `json:"databases_count"`
+	DatabasesFailedBackups int    `json:"databases_failed_backups"`
+	DatabasesPortRange     string `json:"databases_port_range,omitempty"`
 }
 
 // Database descrive il Postgres in uso.
@@ -167,12 +177,13 @@ type Collector struct {
 // perché lo stato (API ok, cluster no) resti visibile.
 func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir string) *Report {
 	r := &Report{
-		Host:        cfg.Host,
-		SSHPort:     cfg.SSHPort,
-		AppsDomain:  cfg.AppsDomain,
-		AppsEnabled: cfg.AppsEnabled,
-		Release:     cfg.Release,
-		Namespace:   cfg.Namespace,
+		Host:             cfg.Host,
+		SSHPort:          cfg.SSHPort,
+		AppsDomain:       cfg.AppsDomain,
+		AppsEnabled:      cfg.AppsEnabled,
+		DatabasesEnabled: cfg.DatabasesEnabled,
+		Release:          cfg.Release,
+		Namespace:        cfg.Namespace,
 	}
 	r.K3sVersion = c.k3sVersion(ctx)
 	svcs, err := c.services(ctx, cfg)
@@ -182,13 +193,20 @@ func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir s
 	r.Services = svcs
 	if r.ClusterError == "" {
 		r.AppsLive = c.appsLive(ctx, cfg)
+		r.DatabasesLive = c.coreEnvLive(ctx, cfg, "GITSTACK_CORE_DATABASES_ENABLED")
+	}
+	if cfg.DatabasesPortFrom > 0 && cfg.DatabasesPortTo > 0 {
+		r.DatabasesPortRange = fmt.Sprintf("%d-%d", cfg.DatabasesPortFrom, cfg.DatabasesPortTo)
 	}
 	r.ServerVersion = serverVersion(svcs, cfg)
 	r.APIHealthy, r.APIDetail = c.api(ctx, cfg)
 	r.Database = c.database(ctx, cfg, r.ClusterError == "")
 	r.Database.warnClientMismatch(svcs)
 	if r.ClusterError == "" {
-		r.DatabaseIssues = c.managedIssues(ctx, cfg)
+		m, _ := c.managedSummary(ctx, cfg)
+		r.DatabaseIssues = m.Issues
+		r.DatabasesCount = m.Count
+		r.DatabasesFailedBackups = m.FailedBackups()
 	}
 	r.LastBackup = lastBackupState(configDir)
 	if cfg.Backup.S3 != nil {
@@ -203,12 +221,17 @@ func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir s
 // appsLive legge da core se l'hosting delle app è acceso davvero (GITSTACK_CORE_APPS_ENABLED nel
 // Deployment): "on", "off" o "" se il cluster non risponde.
 func (c *Collector) appsLive(ctx context.Context, cfg *config.Config) string {
+	return c.coreEnvLive(ctx, cfg, "GITSTACK_CORE_APPS_ENABLED")
+}
+
+// coreEnvLive legge da core una variabile booleana del Deployment: "on", "off" o "" se il cluster non risponde.
+func (c *Collector) coreEnvLive(ctx context.Context, cfg *config.Config, name string) string {
 	bin, pre, err := c.kubectlCommand()
 	if err != nil {
 		return ""
 	}
 	args := append(append([]string{}, pre...), "get", "deployment", cfg.Release+"-core", "-n", cfg.Namespace,
-		"-o", `jsonpath={.spec.template.spec.containers[0].env[?(@.name=="GITSTACK_CORE_APPS_ENABLED")].value}`)
+		"-o", `jsonpath={.spec.template.spec.containers[0].env[?(@.name=="`+name+`")].value}`)
 	cctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	out, err := c.Runner.Run(cctx, []string{"KUBECONFIG=" + cfg.Kubeconfig}, bin, args...)

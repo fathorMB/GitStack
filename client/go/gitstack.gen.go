@@ -10487,16 +10487,23 @@ type ClientInterface interface {
 	// Corresponds with PUT /admin/ci/storage (the `UpdateCiStorageSettings` operationId).
 	UpdateCiStorageSettings(ctx context.Context, body UpdateCiStorageSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListAdminDatabases Elenca i database di tutta l'istanza (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Console Admin · Databases (GIT-557): tutti i database gestiti dell'istanza, di ogni owner, con stato, major, risorse, uso e operazioni (ultimo backup e backup fallito). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Corresponds with GET /admin/databases (the `ListAdminDatabases` operationId).
+	ListAdminDatabases(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetAdminDatabasesSettings Legge le impostazioni d'istanza dei database (solo amministratore)
 	//
-	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Interruttore della funzione (`enabled`, spento di default, DB23), major ammesse (16/17, DB1), limiti per database (dimensione, CPU/RAM), intervallo delle porte LAN (DB16) e conservazione dei backup (programmati e su richiesta, DB13). L'interruttore si accende anche con `gitstack config set databases` (DB23). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config`.
+	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Interruttore della funzione (`enabled`, spento di default, DB23), major ammesse (16/17, DB1), limiti per database (dimensione, CPU/RAM), intervallo delle porte LAN (DB16) e conservazione dei backup (programmati e su richiesta, DB13). L'interruttore si accende anche con `gitstack config set databases` (DB23). Con la funzione spenta risponde 422 `databases_disabled`: l'amministratore la accende con `gitstack config set databases on`. Un valore mai cambiato dalla console e' quello del chart (major, porte LAN) o il predefinito (limiti, conservazione dei backup).
 	//
 	// Corresponds with GET /admin/databases/settings (the `GetAdminDatabasesSettings` operationId).
 	GetAdminDatabasesSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateAdminDatabasesSettingsWithBody Aggiorna le impostazioni d'istanza dei database (solo amministratore)
 	//
-	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). `enabled` deve restare `true`: l'interruttore non si spegne da qui, perche' toglie permessi Kubernetes e va fatto dal chart con `gitstack config set databases off` (422 `databases_switch_cli`). Una major ammessa deve avere un'immagine nella tabella del chart e le major in uso da un database non si tolgono (422 `major_in_use`). Un limite sotto quanto un database usa gia' non e' un errore: vale dalle prossime richieste. L'intervallo delle porte LAN non puo' lasciare fuori una porta gia' assegnata (422 `lan_port_outside_range`). Con la funzione spenta risponde 422 `databases_disabled`.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -10505,7 +10512,7 @@ type ClientInterface interface {
 
 	// UpdateAdminDatabasesSettings Aggiorna le impostazioni d'istanza dei database (solo amministratore)
 	//
-	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). `enabled` deve restare `true`: l'interruttore non si spegne da qui, perche' toglie permessi Kubernetes e va fatto dal chart con `gitstack config set databases off` (422 `databases_switch_cli`). Una major ammessa deve avere un'immagine nella tabella del chart e le major in uso da un database non si tolgono (422 `major_in_use`). Un limite sotto quanto un database usa gia' non e' un errore: vale dalle prossime richieste. L'intervallo delle porte LAN non puo' lasciare fuori una porta gia' assegnata (422 `lan_port_outside_range`). Con la funzione spenta risponde 422 `databases_disabled`.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -14329,9 +14336,26 @@ func (c *Client) UpdateCiStorageSettings(ctx context.Context, body UpdateCiStora
 	return c.Client.Do(req)
 }
 
+// ListAdminDatabases Elenca i database di tutta l'istanza (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Console Admin · Databases (GIT-557): tutti i database gestiti dell'istanza, di ogni owner, con stato, major, risorse, uso e operazioni (ultimo backup e backup fallito). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Corresponds with GET /admin/databases (the `ListAdminDatabases` operationId).
+func (c *Client) ListAdminDatabases(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAdminDatabasesRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetAdminDatabasesSettings Legge le impostazioni d'istanza dei database (solo amministratore)
 //
-// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Interruttore della funzione (`enabled`, spento di default, DB23), major ammesse (16/17, DB1), limiti per database (dimensione, CPU/RAM), intervallo delle porte LAN (DB16) e conservazione dei backup (programmati e su richiesta, DB13). L'interruttore si accende anche con `gitstack config set databases` (DB23). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config`.
+// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Interruttore della funzione (`enabled`, spento di default, DB23), major ammesse (16/17, DB1), limiti per database (dimensione, CPU/RAM), intervallo delle porte LAN (DB16) e conservazione dei backup (programmati e su richiesta, DB13). L'interruttore si accende anche con `gitstack config set databases` (DB23). Con la funzione spenta risponde 422 `databases_disabled`: l'amministratore la accende con `gitstack config set databases on`. Un valore mai cambiato dalla console e' quello del chart (major, porte LAN) o il predefinito (limiti, conservazione dei backup).
 //
 // Corresponds with GET /admin/databases/settings (the `GetAdminDatabasesSettings` operationId).
 func (c *Client) GetAdminDatabasesSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -14348,7 +14372,7 @@ func (c *Client) GetAdminDatabasesSettings(ctx context.Context, reqEditors ...Re
 
 // UpdateAdminDatabasesSettingsWithBody Aggiorna le impostazioni d'istanza dei database (solo amministratore)
 //
-// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). `enabled` deve restare `true`: l'interruttore non si spegne da qui, perche' toglie permessi Kubernetes e va fatto dal chart con `gitstack config set databases off` (422 `databases_switch_cli`). Una major ammessa deve avere un'immagine nella tabella del chart e le major in uso da un database non si tolgono (422 `major_in_use`). Un limite sotto quanto un database usa gia' non e' un errore: vale dalle prossime richieste. L'intervallo delle porte LAN non puo' lasciare fuori una porta gia' assegnata (422 `lan_port_outside_range`). Con la funzione spenta risponde 422 `databases_disabled`.
 //
 // Takes any type of body and a specified content type.
 //
@@ -14367,7 +14391,7 @@ func (c *Client) UpdateAdminDatabasesSettingsWithBody(ctx context.Context, conte
 
 // UpdateAdminDatabasesSettings Aggiorna le impostazioni d'istanza dei database (solo amministratore)
 //
-// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). `enabled` deve restare `true`: l'interruttore non si spegne da qui, perche' toglie permessi Kubernetes e va fatto dal chart con `gitstack config set databases off` (422 `databases_switch_cli`). Una major ammessa deve avere un'immagine nella tabella del chart e le major in uso da un database non si tolgono (422 `major_in_use`). Un limite sotto quanto un database usa gia' non e' un errore: vale dalle prossime richieste. L'intervallo delle porte LAN non puo' lasciare fuori una porta gia' assegnata (422 `lan_port_outside_range`). Con la funzione spenta risponde 422 `databases_disabled`.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -22775,6 +22799,33 @@ func NewUpdateCiStorageSettingsRequestWithBody(server string, contentType string
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListAdminDatabasesRequest constructs an http.Request for the ListAdminDatabases method
+func NewListAdminDatabasesRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/databases")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -41565,9 +41616,18 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /admin/ci/storage (the `UpdateCiStorageSettings` operationId).
 	UpdateCiStorageSettingsWithResponse(ctx context.Context, body UpdateCiStorageSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCiStorageSettingsResponse, error)
 
+	// ListAdminDatabasesWithResponse Elenca i database di tutta l'istanza (solo amministratore)
+	//
+	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Console Admin · Databases (GIT-557): tutti i database gestiti dell'istanza, di ogni owner, con stato, major, risorse, uso e operazioni (ultimo backup e backup fallito). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/databases (the `ListAdminDatabases` operationId).
+	ListAdminDatabasesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAdminDatabasesResponse, error)
+
 	// GetAdminDatabasesSettingsWithResponse Legge le impostazioni d'istanza dei database (solo amministratore)
 	//
-	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Interruttore della funzione (`enabled`, spento di default, DB23), major ammesse (16/17, DB1), limiti per database (dimensione, CPU/RAM), intervallo delle porte LAN (DB16) e conservazione dei backup (programmati e su richiesta, DB13). L'interruttore si accende anche con `gitstack config set databases` (DB23). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config`.
+	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Interruttore della funzione (`enabled`, spento di default, DB23), major ammesse (16/17, DB1), limiti per database (dimensione, CPU/RAM), intervallo delle porte LAN (DB16) e conservazione dei backup (programmati e su richiesta, DB13). L'interruttore si accende anche con `gitstack config set databases` (DB23). Con la funzione spenta risponde 422 `databases_disabled`: l'amministratore la accende con `gitstack config set databases on`. Un valore mai cambiato dalla console e' quello del chart (major, porte LAN) o il predefinito (limiti, conservazione dei backup).
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -41576,7 +41636,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateAdminDatabasesSettingsWithBodyWithResponse Aggiorna le impostazioni d'istanza dei database (solo amministratore)
 	//
-	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). `enabled` deve restare `true`: l'interruttore non si spegne da qui, perche' toglie permessi Kubernetes e va fatto dal chart con `gitstack config set databases off` (422 `databases_switch_cli`). Una major ammessa deve avere un'immagine nella tabella del chart e le major in uso da un database non si tolgono (422 `major_in_use`). Un limite sotto quanto un database usa gia' non e' un errore: vale dalle prossime richieste. L'intervallo delle porte LAN non puo' lasciare fuori una porta gia' assegnata (422 `lan_port_outside_range`). Con la funzione spenta risponde 422 `databases_disabled`.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -41585,7 +41645,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateAdminDatabasesSettingsWithResponse Aggiorna le impostazioni d'istanza dei database (solo amministratore)
 	//
-	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+	// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). `enabled` deve restare `true`: l'interruttore non si spegne da qui, perche' toglie permessi Kubernetes e va fatto dal chart con `gitstack config set databases off` (422 `databases_switch_cli`). Una major ammessa deve avere un'immagine nella tabella del chart e le major in uso da un database non si tolgono (422 `major_in_use`). Un limite sotto quanto un database usa gia' non e' un errore: vale dalle prossime richieste. L'intervallo delle porte LAN non puo' lasciare fuori una porta gia' assegnata (422 `lan_port_outside_range`). Con la funzione spenta risponde 422 `databases_disabled`.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -46617,6 +46677,68 @@ func (r UpdateCiStorageSettingsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateCiStorageSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListAdminDatabasesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DatabaseList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAdminDatabasesResponse) GetJSON200() *DatabaseList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListAdminDatabasesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListAdminDatabasesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListAdminDatabasesResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAdminDatabasesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAdminDatabasesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAdminDatabasesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAdminDatabasesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -71726,9 +71848,24 @@ func (c *ClientWithResponses) UpdateCiStorageSettingsWithResponse(ctx context.Co
 	return ParseUpdateCiStorageSettingsResponse(rsp)
 }
 
+// ListAdminDatabasesWithResponse Elenca i database di tutta l'istanza (solo amministratore)
+//
+// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Console Admin · Databases (GIT-557): tutti i database gestiti dell'istanza, di ogni owner, con stato, major, risorse, uso e operazioni (ultimo backup e backup fallito). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/databases (the `ListAdminDatabases` operationId).
+func (c *ClientWithResponses) ListAdminDatabasesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAdminDatabasesResponse, error) {
+	rsp, err := c.ListAdminDatabases(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAdminDatabasesResponse(rsp)
+}
+
 // GetAdminDatabasesSettingsWithResponse Legge le impostazioni d'istanza dei database (solo amministratore)
 //
-// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Interruttore della funzione (`enabled`, spento di default, DB23), major ammesse (16/17, DB1), limiti per database (dimensione, CPU/RAM), intervallo delle porte LAN (DB16) e conservazione dei backup (programmati e su richiesta, DB13). L'interruttore si accende anche con `gitstack config set databases` (DB23). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config`.
+// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Interruttore della funzione (`enabled`, spento di default, DB23), major ammesse (16/17, DB1), limiti per database (dimensione, CPU/RAM), intervallo delle porte LAN (DB16) e conservazione dei backup (programmati e su richiesta, DB13). L'interruttore si accende anche con `gitstack config set databases` (DB23). Con la funzione spenta risponde 422 `databases_disabled`: l'amministratore la accende con `gitstack config set databases on`. Un valore mai cambiato dalla console e' quello del chart (major, porte LAN) o il predefinito (limiti, conservazione dei backup).
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -71743,7 +71880,7 @@ func (c *ClientWithResponses) GetAdminDatabasesSettingsWithResponse(ctx context.
 
 // UpdateAdminDatabasesSettingsWithBodyWithResponse Aggiorna le impostazioni d'istanza dei database (solo amministratore)
 //
-// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). `enabled` deve restare `true`: l'interruttore non si spegne da qui, perche' toglie permessi Kubernetes e va fatto dal chart con `gitstack config set databases off` (422 `databases_switch_cli`). Una major ammessa deve avere un'immagine nella tabella del chart e le major in uso da un database non si tolgono (422 `major_in_use`). Un limite sotto quanto un database usa gia' non e' un errore: vale dalle prossime richieste. L'intervallo delle porte LAN non puo' lasciare fuori una porta gia' assegnata (422 `lan_port_outside_range`). Con la funzione spenta risponde 422 `databases_disabled`.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -71758,7 +71895,7 @@ func (c *ClientWithResponses) UpdateAdminDatabasesSettingsWithBodyWithResponse(c
 
 // UpdateAdminDatabasesSettingsWithResponse Aggiorna le impostazioni d'istanza dei database (solo amministratore)
 //
-// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+// Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). `enabled` deve restare `true`: l'interruttore non si spegne da qui, perche' toglie permessi Kubernetes e va fatto dal chart con `gitstack config set databases off` (422 `databases_switch_cli`). Una major ammessa deve avere un'immagine nella tabella del chart e le major in uso da un database non si tolgono (422 `major_in_use`). Un limite sotto quanto un database usa gia' non e' un errore: vale dalle prossime richieste. L'intervallo delle porte LAN non puo' lasciare fuori una porta gia' assegnata (422 `lan_port_outside_range`). Con la funzione spenta risponde 422 `databases_disabled`.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -79099,6 +79236,53 @@ func ParseUpdateCiStorageSettingsResponse(rsp *http.Response) (*UpdateCiStorageS
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAdminDatabasesResponse parses an HTTP response from a ListAdminDatabasesWithResponse call
+func ParseListAdminDatabasesResponse(rsp *http.Response) (*ListAdminDatabasesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAdminDatabasesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DatabaseList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized

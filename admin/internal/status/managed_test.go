@@ -44,3 +44,20 @@ func TestManagedIssues_LeggeIProblemiAperti(t *testing.T) {
 		t.Error("un backup fallito non deve far fallire la salute (gitstack upgrade la usa per decidere)")
 	}
 }
+
+// GIT-557: `gitstack status` mostra quanti database ci sono e quanti backup sono falliti.
+func TestManagedSummary_ContaIDatabaseEIBackupFalliti(t *testing.T) {
+	r := &execRunner{out: "count|5\nbackup|alice/shop|x\nbackup|acme/erp|y\nripristino|acme/erp|z\n"}
+	c := &Collector{Runner: r, LookPath: func(string) (string, error) { return "/usr/bin/kubectl", nil }}
+	m, ok := c.managedSummary(context.Background(), &config.Config{Release: "gs", Namespace: "ns"})
+	if !ok || m.Count != 5 || len(m.Issues) != 3 || m.FailedBackups() != 2 {
+		t.Fatalf("summary: ok=%v %+v falliti=%d", ok, m, m.FailedBackups())
+	}
+	if parseManagedCount("rumore\ncount|abc\n") != 0 || parseManagedCount("") != 0 {
+		t.Error("un conteggio illeggibile vale 0")
+	}
+	c2 := &Collector{Runner: &execRunner{err: errors.New("boom")}, LookPath: func(string) (string, error) { return "/usr/bin/kubectl", nil }}
+	if _, ok := c2.managedSummary(context.Background(), &config.Config{Release: "gs", Namespace: "ns"}); ok {
+		t.Error("errore di lettura: ok deve essere falso")
+	}
+}

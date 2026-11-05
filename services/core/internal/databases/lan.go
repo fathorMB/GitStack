@@ -45,6 +45,9 @@ func ValidatePortRange(from, to int) error {
 // LANPortPolicy e' la politica di assegnazione delle porte di questa istanza.
 func (c *Controller) LANPortPolicy() store.LANPortPolicy {
 	from, to := c.cfg.LANPortFrom, c.cfg.LANPortTo
+	if rt := c.runtime.Load(); rt != nil && rt.LANPortFrom > 0 && rt.LANPortTo > 0 {
+		from, to = rt.LANPortFrom, rt.LANPortTo
+	}
 	if from == 0 && to == 0 {
 		from, to = DefaultLANPortFrom, DefaultLANPortTo
 	}

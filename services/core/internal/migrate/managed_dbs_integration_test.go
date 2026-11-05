@@ -71,7 +71,7 @@ func TestMigration0057_ManagedDBs(t *testing.T) {
 		t.Fatalf("l'audit sopravvive all'eliminazione: %d %v", n, err)
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
 		t.Fatalf("down 0057: %v", err)
 	}
 	for _, table := range []string{"managed_dbs", "managed_db_links", "managed_db_audit"} {

@@ -555,5 +555,102 @@ expect_lacks "installazione esistente: nessun avviso sulle porte in ascolto" "gi
 unset -f ss k3s_already_installed
 extra_helm_set=()
 
+# GIT-557: --enable-databases / --disable-databases e l'intervallo delle porte (DB23). Spenti di default; una
+# riesecuzione conserva la scelta (install.conf, poi config.yaml); un --set databases.enabled=true la accende.
+DBW="$(mktemp -d "${WORK}/dbconf.XXXXXX")"
+TLS_DIR="${DBW}/tls"
+GITSTACK_CONFIG_FILE="${DBW}/config.yaml"
+mkdir -p "${TLS_DIR}"
+reset_db() { GITSTACK_ENABLE_DATABASES=""; GITSTACK_DATABASES_PORT_RANGE=""; extra_helm_set=(); rm -f "${TLS_DIR}/install.conf" "${GITSTACK_CONFIG_FILE}"; }
+reset_db
+resolve_databases
+check "database: spenti di default" test "${DATABASES_ENABLED}" = 0
+check "database: spenti = databases.enabled=false" test "${DATABASES_HELM_SETS[*]}" = "databases.enabled=false"
+GITSTACK_ENABLE_DATABASES=1
+resolve_databases
+check "database: --enable-databases accende" test "${DATABASES_ENABLED}" = 1
+check "database: acceso senza intervallo = default del chart" test "${DATABASES_HELM_SETS[*]}" = "databases.enabled=true"
+GITSTACK_DATABASES_PORT_RANGE="20000-20010"
+resolve_databases
+check "database: intervallo scelto va al chart" test "${DATABASES_HELM_SETS[*]}" = "databases.enabled=true databases.lan.portRange.from=20000 databases.lan.portRange.to=20010"
+check "database: intervallo letto" test "${DATABASES_PORT_FROM}-${DATABASES_PORT_TO}" = "20000-20010"
+for bad_range in "20010-20000" "80-90" "abc" "20000" "1024-70000" "-" "20000-"; do
+  GITSTACK_DATABASES_PORT_RANGE="${bad_range}"
+  run resolve_databases
+  expect_fail "database: intervallo non valido '${bad_range}' ferma l'installazione"
+done
+# Riesecuzione senza opzioni: conserva la scelta salvata in install.conf.
+printf 'DATABASES_ENABLED=true\nDATABASES_PORT_RANGE=20000-20010\n' >"${TLS_DIR}/install.conf"
+GITSTACK_ENABLE_DATABASES=""
+GITSTACK_DATABASES_PORT_RANGE=""
+resolve_databases
+check "database: la riesecuzione conserva acceso" test "${DATABASES_ENABLED}" = 1
+check "database: la riesecuzione conserva l'intervallo" test "${DATABASES_PORT_FROM}-${DATABASES_PORT_TO}" = "20000-20010"
+GITSTACK_ENABLE_DATABASES=0
+resolve_databases
+check "database: --disable-databases spegne anche con la scelta salvata" test "${DATABASES_ENABLED}" = 0
+check "database: spento = nessuna porta al chart" test "${DATABASES_HELM_SETS[*]}" = "databases.enabled=false"
+# Senza install.conf si legge config.yaml (installazione precedente a questa opzione: manca la chiave = spento).
+reset_db
+printf 'version: 1\ndatabases_enabled: true\n' >"${GITSTACK_CONFIG_FILE}"
+resolve_databases
+check "database: config.yaml databases_enabled=true" test "${DATABASES_ENABLED}" = 1
+reset_db
+printf 'version: 1\nhost: x\n' >"${GITSTACK_CONFIG_FILE}"
+resolve_databases
+check "database: installazione senza la chiave = spento" test "${DATABASES_ENABLED}" = 0
+# Compatibilita' con GIT-565: --set databases.enabled=true accende e le funzioni lo vedono.
+reset_db
+extra_helm_set=("databases.enabled=true")
+resolve_databases
+check "database: --set databases.enabled=true accende" test "${DATABASES_ENABLED}" = 1
+# I --set dell'utente vincono sui valori dell'installer (come nel comando helm).
+reset_db
+GITSTACK_ENABLE_DATABASES=1
+extra_helm_set=("databases.enabled=false")
+resolve_databases
+check "database: l'ultimo --set databases.enabled=false vince" test "$(database_values)" = "0 - -"
+extra_helm_set=()
+check "database_values con --enable-databases" test "$(database_values)" = "1 - -"
+GITSTACK_DATABASES_PORT_RANGE="20000-20010"
+resolve_databases
+check "database_values con intervallo" test "$(database_values)" = "1 20000 20010"
+k3s_already_installed() { return 0; }
+run database_lan_hint
+expect_has "database_lan_hint usa l'intervallo di --databases-port-range" "port 20000:20010 proto tcp"
+reset_db
+DATABASES_HELM_SETS=()
+DATABASES_ENABLED=0
+
+# GIT-557: preflight di risorse dei database, solo se accesi (12 GB di RAM e 30 GB liberi). Le letture
+# dell'hardware tornano finte: sopra, install.sh e' stato caricato di nuovo.
+mem_total_kib() { awk -v g="${T_RAM_GB}" 'BEGIN { printf "%d", g * 1000000000 / 1024 }'; }
+disk_target() { printf '/var/lib/rancher'; }
+fs_avail_bytes() { awk -v g="${T_FREE_GB}" 'BEGIN { printf "%.0f", g * 1000000000 }'; }
+DATABASES_ENABLED=0
+profile 4 8 60 25 0
+run preflight_databases
+expect_ok "database spenti: il profilo minimo passa senza controlli"
+DATABASES_ENABLED=1
+profile 8 16 200 150 0
+run preflight_databases
+expect_ok "database accesi sul profilo consigliato"
+expect_lacks "database accesi sul profilo consigliato: nessun avviso" "ATTENZIONE"
+profile 4 8 60 25 0
+run preflight_databases
+expect_fail "database accesi sul profilo minimo: RAM insufficiente"
+expect_has "database accesi: messaggio RAM" "RAM insufficiente per i database gestiti"
+profile 8 12 200 25 0
+run preflight_databases
+expect_fail "database accesi: disco libero insufficiente"
+expect_has "database accesi: messaggio disco" "disco libero insufficiente per i database gestiti"
+profile 8 12 200 40 0
+run preflight_databases
+expect_ok "database accesi: 12 GB e 30 GB liberi passano"
+expect_has "database accesi: avviso RAM sotto il consigliato" "RAM sotto il profilo consigliato per i database gestiti"
+expect_has "database accesi: avviso disco sotto il consigliato" "disco libero sotto il profilo consigliato per i database gestiti"
+DATABASES_ENABLED=0
+profile 8 16 200 150 0
+
 printf '\npreflight_test:%s ok, %s falliti\n' "${PASS}" "${FAILN}"
 [ "${FAILN}" -eq 0 ]

@@ -95,11 +95,17 @@ func (c *Controller) backupConfigured() bool {
 func (c *Controller) keepFor(kind string) int {
 	switch kind {
 	case store.BackupScheduled:
+		if rt := c.runtime.Load(); rt != nil && rt.KeepScheduled > 0 {
+			return rt.KeepScheduled
+		}
 		if c.cfg.KeepScheduled > 0 {
 			return c.cfg.KeepScheduled
 		}
 		return store.KeepScheduled
 	case store.BackupOnDemand:
+		if rt := c.runtime.Load(); rt != nil && rt.KeepOnDemand > 0 {
+			return rt.KeepOnDemand
+		}
 		if c.cfg.KeepOnDemand > 0 {
 			return c.cfg.KeepOnDemand
 		}

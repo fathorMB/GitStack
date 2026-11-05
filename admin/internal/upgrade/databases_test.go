@@ -9,6 +9,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -319,5 +320,143 @@ func TestDatabaseSecrets_SenzaRadiceAvvisaEProsegue(t *testing.T) {
 	}
 	if len(w.cl.applied) != 1 || !strings.HasSuffix(w.cl.applied[0], "-db-dump-key") {
 		t.Errorf("la chiave di dump va creata comunque: %v", w.cl.applied)
+	}
+}
+
+// DB6 (GIT-557): una release che toglie dalla tabella una major ancora usata da un database è rifiutata,
+// prima di qualunque modifica (nemmeno il backup preventivo o i Secret).
+func TestDatabaseMajors_ReleaseCheTogliUnaMajorInUsoERifiutata(t *testing.T) {
+	w := dbWorld(t)
+	signImages(t, w, validIdentity, pgRef16, pgRef17)
+	w.cl.majors = "16\n17\n"
+	w.helm.dbNew = renderDB(map[string]pgEntry{"17": {Repository: pgRepo, Tag: "17-alpine", Digest: pgDigest17}})
+	refusedNoUpgrade(t, w, "major PostgreSQL 16", "DB6")
+	for _, c := range w.cl.calls {
+		if c == "pg_dump" {
+			t.Error("il backup preventivo non deve partire se la release è rifiutata")
+		}
+	}
+}
+
+func TestDatabaseMajors_DryRunRifiutaComunque(t *testing.T) {
+	w := dbWorld(t)
+	signImages(t, w, validIdentity, pgRef16, pgRef17)
+	w.o.DryRun = true
+	w.cl.majors = "16\n"
+	w.helm.dbNew = renderDB(map[string]pgEntry{"17": {Repository: pgRepo, Tag: "17-alpine", Digest: pgDigest17}})
+	refusedNoUpgrade(t, w, "major PostgreSQL 16")
+}
+
+// La major tolta ma non usata da nessun database non blocca l'aggiornamento.
+func TestDatabaseMajors_MajorNonInUsoSiPuoTogliere(t *testing.T) {
+	w := dbWorld(t)
+	signImages(t, w, validIdentity, pgRef17)
+	w.cl.majors = "17\n"
+	w.helm.dbNew = renderDB(map[string]pgEntry{"17": {Repository: pgRepo, Tag: "17-alpine", Digest: pgDigest17}})
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+}
+
+func TestDatabaseMajors_TabellaCompletaPassa(t *testing.T) {
+	w := dbWorld(t)
+	signImages(t, w, validIdentity, pgRef16, pgRef17)
+	w.cl.majors = "16\n17\n"
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+}
+
+// Lettura impossibile: l'aggiornamento non la ignora.
+func TestDatabaseMajors_LetturaImpossibileFerma(t *testing.T) {
+	w := dbWorld(t)
+	signImages(t, w, validIdentity, pgRef16, pgRef17)
+	w.cl.majorsErr = errors.New("pod non raggiungibile")
+	refusedNoUpgrade(t, w, "non riesco a leggere le major")
+}
+
+// Funzione spenta nella destinazione (o già spenta): spegnere conserva i database, quindi una release non può
+// togliere una major ancora in uso. La tabella si ricava da Helm con databases.enabled=true forzato.
+func spentiWorld(t *testing.T, forced map[string]pgEntry) *world {
+	t.Helper()
+	w := dbWorld(t)
+	w.helm.dbNew = ""
+	w.helm.dbForced = renderDB(forced)
+	return w
+}
+
+func noPgDump(t *testing.T, w *world) {
+	t.Helper()
+	for _, c := range w.cl.calls {
+		if c == "pg_dump" {
+			t.Error("il backup preventivo non deve partire se la release è rifiutata")
+		}
+	}
+}
+
+func TestDatabaseMajors_SpentiMajorInUsoTolta(t *testing.T) {
+	w := spentiWorld(t, map[string]pgEntry{"17": {Repository: pgRepo, Tag: "17-alpine", Digest: pgDigest17}})
+	w.cl.majors = "16\n"
+	refusedNoUpgrade(t, w, "major PostgreSQL 16", "DB6")
+	noPgDump(t, w)
+}
+
+func TestDatabaseMajors_SpentiDryRunRifiutaComunque(t *testing.T) {
+	w := spentiWorld(t, map[string]pgEntry{"17": {Repository: pgRepo, Tag: "17-alpine", Digest: pgDigest17}})
+	w.o.DryRun = true
+	w.cl.majors = "16\n"
+	refusedNoUpgrade(t, w, "major PostgreSQL 16")
+	noPgDump(t, w)
+}
+
+func TestDatabaseMajors_SpentiTabellaChePreservaLaMajorPassa(t *testing.T) {
+	w := spentiWorld(t, defaultTable(pgDigest16, pgDigest17))
+	w.cl.majors = "16\n"
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+}
+
+func TestDatabaseMajors_SpentiMajorNonUsataSiPuoTogliere(t *testing.T) {
+	w := spentiWorld(t, map[string]pgEntry{"17": {Repository: pgRepo, Tag: "17-alpine", Digest: pgDigest17}})
+	w.cl.majors = "17\n"
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+}
+
+// Nessun database: nessun rendering forzato necessario, l'upgrade da spento passa.
+func TestDatabaseMajors_SpentiSenzaDatabasePassa(t *testing.T) {
+	w := spentiWorld(t, nil)
+	w.helm.dbForcedErr = errors.New("non deve servire")
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+}
+
+// Major in uso ma tabella della release non ricavabile: rifiuto, mai silenzio.
+func TestDatabaseMajors_SpentiTabellaNonRicavabileFerma(t *testing.T) {
+	w := spentiWorld(t, nil)
+	w.helm.dbForced = ""
+	w.helm.dbForcedErr = errors.New("helm template fallito")
+	w.cl.majors = "16\n"
+	refusedNoUpgrade(t, w, "non riesco a ricavare la tabella")
+}
+
+func TestDatabaseMajors_SpentiLetturaImpossibileFerma(t *testing.T) {
+	w := spentiWorld(t, defaultTable(pgDigest16, pgDigest17))
+	w.cl.majorsErr = errors.New("pod non raggiungibile")
+	refusedNoUpgrade(t, w, "non riesco a leggere le major")
+}
+
+func TestParseMajors(t *testing.T) {
+	got := parseMajors("17\r\n16\n\nx\n")
+	if len(got) != 2 || got[0] != 16 || got[1] != 17 {
+		t.Errorf("parseMajors = %v", got)
 	}
 }

@@ -11450,6 +11450,25 @@ paths:
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
+  /admin/databases:
+    get:
+      operationId: listAdminDatabases
+      tags: [databases]
+      x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: admin_database_list
+        destructive: false
+      summary: "Elenca i database di tutta l'istanza (solo amministratore)"
+      description: >
+        Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Console Admin · Databases
+        (GIT-557): tutti i database gestiti dell'istanza, di ogni owner, con stato, major, risorse, uso e
+        operazioni (ultimo backup e backup fallito). Con la funzione spenta risponde 422 `databases_disabled` (DB23).
+      responses:
+        "200": {description: "Database dell'istanza.", content: {application/json: {schema: {$ref: "#/components/schemas/DatabaseList"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
   /admin/databases/upgrade-minor:
     post:
       operationId: upgradeAllDatabasesMinor
@@ -11488,9 +11507,9 @@ paths:
         della funzione (`enabled`, spento di default, DB23), major ammesse (16/17, DB1), limiti per
         database (dimensione, CPU/RAM), intervallo delle porte LAN (DB16) e conservazione dei backup
         (programmati e su richiesta, DB13). L'interruttore si accende anche con `gitstack config set
-        databases` (DB23). Con la funzione spenta questa operazione risponde comunque 422
-        `databases_disabled` finche' l'implementazione non arriva (GIT-557): l'amministratore usa
-        `gitstack config`.
+        databases` (DB23). Con la funzione spenta risponde 422 `databases_disabled`: l'amministratore
+        la accende con `gitstack config set databases on`. Un valore mai cambiato dalla console e' quello
+        del chart (major, porte LAN) o il predefinito (limiti, conservazione dei backup).
       responses:
         "200": {description: "Impostazioni.", content: {application/json: {schema: {$ref: "#/components/schemas/DatabasesInstanceSettings"}}}}
         "401": {$ref: "#/components/responses/Unauthorized"}
@@ -11508,9 +11527,13 @@ paths:
       description: >
         Solo l'amministratore dell'installazione: gli altri ricevono 403 `forbidden`. Cambia
         l'interruttore `enabled`, le major ammesse, i limiti per database, l'intervallo delle porte
-        LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). Con la funzione
-        spenta questa operazione risponde comunque 422 `databases_disabled` finche' l'implementazione
-        non arriva (GIT-557): l'amministratore usa `gitstack config set databases` (DB23).
+        LAN e la conservazione dei backup; ogni cambiamento e' auditato (DB20). `enabled` deve restare
+        `true`: l'interruttore non si spegne da qui, perche' toglie permessi Kubernetes e va fatto dal
+        chart con `gitstack config set databases off` (422 `databases_switch_cli`). Una major ammessa
+        deve avere un'immagine nella tabella del chart e le major in uso da un database non si tolgono
+        (422 `major_in_use`). Un limite sotto quanto un database usa gia' non e' un errore: vale dalle
+        prossime richieste. L'intervallo delle porte LAN non puo' lasciare fuori una porta gia'
+        assegnata (422 `lan_port_outside_range`). Con la funzione spenta risponde 422 `databases_disabled`.
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/DatabasesInstanceSettingsInput"}}}}
       responses:
         "200": {description: "Impostazioni aggiornate.", content: {application/json: {schema: {$ref: "#/components/schemas/DatabasesInstanceSettings"}}}}
