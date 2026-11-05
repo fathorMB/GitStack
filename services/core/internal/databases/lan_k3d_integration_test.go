@@ -44,6 +44,8 @@ func (e *k3dEnv) lanConnect(port int, host, sslmode, rootPEM, user, password, db
 	if err != nil {
 		e.t.Fatal(err)
 	}
+	// Il nome (verificato nel certificato) non e' nel DNS: si risolve al load balancer di k3d, come hostaddr di psql.
+	cfg.LookupFunc = func(context.Context, string) ([]string, error) { return []string{"127.0.0.1"}, nil }
 	cfg.DialFunc = func(ctx context.Context, network, _ string) (net.Conn, error) {
 		var d net.Dialer
 		return d.DialContext(ctx, network, fmt.Sprintf("127.0.0.1:%d", port))
