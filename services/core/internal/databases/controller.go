@@ -136,7 +136,7 @@ type Controller struct {
 // Runtime sono le impostazioni d'istanza che la console puo' cambiare senza riavviare core: l'intervallo delle
 // porte LAN e quanti dump tenere. Zero = vale la configurazione del chart o il predefinito.
 type Runtime struct {
-	LANPortFrom, LANPortTo       int
+	LANPortFrom, LANPortTo      int
 	KeepScheduled, KeepOnDemand int
 }
 
