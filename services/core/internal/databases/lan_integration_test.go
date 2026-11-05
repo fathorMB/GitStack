@@ -9,12 +9,15 @@ import (
 	"errors"
 	"io"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
@@ -363,4 +366,180 @@ type execFunc func(ctx context.Context, ns string, cmd []string) (string, error)
 
 func (f execFunc) Exec(ctx context.Context, ns, _, _ string, cmd []string, _ io.Reader) (string, error) {
 	return f(ctx, ns, cmd)
+}
+
+// failDeleteServices fa fallire ogni Delete di Service finche' *fail e' vero (Kubernetes che non risponde).
+func failDeleteServices(e *ctlEnv, fail *atomic.Bool) {
+	e.kube.PrependReactor("delete", "services", func(k8stesting.Action) (bool, runtime.Object, error) {
+		if fail.Load() {
+			return true, nil, errors.New("apiserver non raggiungibile")
+		}
+		return false, nil, nil
+	})
+}
+
+// Rework 1: se la chiusura fallisce lo spegnimento NON riesce (ErrLANCloseFailed), la porta resta riservata
+// (un altro database non la riceve mentre il vecchio Service esiste) e il retry completa la chiusura.
+func TestDatabaseLAN_ChiusuraFallitaTienePortaERiprova(t *testing.T) {
+	e := lanEnv(t) // assegnabili 15432, 15434, 15435
+	ctx := context.Background()
+	var fail atomic.Bool
+	failDeleteServices(e, &fail)
+	a := e.running("alice", "a")
+	b := e.create("alice", "b", 17)
+	got, err := e.ctl.SetLAN(ctx, a, true, nil)
+	if err != nil || *got.LANPort != 15432 {
+		t.Fatalf("accensione: %+v %v", got, err)
+	}
+	e.ctl.Reconcile(ctx, e.reload(a.ID))
+	if svc, _ := e.lanObjects(a); svc == nil {
+		t.Fatal("la LAN doveva essere aperta")
+	}
+
+	fail.Store(true)
+	out, err := e.ctl.SetLAN(ctx, e.reload(a.ID), false, nil)
+	if !errors.Is(err, ErrLANCloseFailed) {
+		t.Fatalf("la chiusura fallita deve essere un errore, non un successo: %v", err)
+	}
+	if out.LANEnabled || out.LANPort == nil || *out.LANPort != 15432 {
+		t.Fatalf("modello dopo la chiusura fallita: enabled=%v port=%v (la porta resta riservata)", out.LANEnabled, out.LANPort)
+	}
+	if svc, _ := e.lanObjects(a); svc == nil {
+		t.Fatal("il Service esiste ancora: la porta e' aperta")
+	}
+	// La porta non e' riassegnabile mentre il Service esiste.
+	nb, err := e.ctl.SetLAN(ctx, b, true, nil)
+	if err != nil || *nb.LANPort == 15432 {
+		t.Fatalf("la porta 15432 e' stata riassegnata a b con il Service ancora aperto: %+v %v", nb.LANPort, err)
+	}
+	// Il giro del reconciler, con Kubernetes ancora giu', non libera la porta ne' riapre.
+	e.ctl.Reconcile(ctx, e.reload(a.ID))
+	if again := e.reload(a.ID); again.LANPort == nil || again.LANEnabled {
+		t.Fatalf("modello dopo un giro con Kubernetes giu': %+v", again)
+	}
+	// Retry riuscito (secondo PUT false): Service e policy spariti, porta libera, riassegnabile.
+	fail.Store(false)
+	out, err = e.ctl.SetLAN(ctx, e.reload(a.ID), false, nil)
+	if err != nil || out.LANPort != nil || out.LANEnabled {
+		t.Fatalf("retry: %+v %v", out, err)
+	}
+	if svc, pol := e.lanObjects(a); svc != nil || pol {
+		t.Fatalf("dopo il retry restano: svc=%v policy=%v", svc, pol)
+	}
+	c := e.create("bob", "c", 17)
+	if nc, err := e.ctl.SetLAN(ctx, c, true, nil); err != nil || *nc.LANPort != 15432 {
+		t.Fatalf("la porta liberata va riassegnata: %+v %v", nc.LANPort, err)
+	}
+}
+
+// Rework 1: anche senza un secondo PUT, il giro del reconciler completa la chiusura e libera la porta.
+func TestDatabaseLAN_ChiusuraFallitaLaCompletaIlReconciler(t *testing.T) {
+	e := lanEnv(t)
+	ctx := context.Background()
+	var fail atomic.Bool
+	failDeleteServices(e, &fail)
+	a := e.running("alice", "a")
+	if _, err := e.ctl.SetLAN(ctx, a, true, nil); err != nil {
+		t.Fatal(err)
+	}
+	e.ctl.Reconcile(ctx, e.reload(a.ID))
+	fail.Store(true)
+	if _, err := e.ctl.SetLAN(ctx, e.reload(a.ID), false, nil); !errors.Is(err, ErrLANCloseFailed) {
+		t.Fatal(err)
+	}
+	fail.Store(false)
+	e.ctl.Reconcile(ctx, e.reload(a.ID))
+	if got := e.reload(a.ID); got.LANPort != nil || got.LANEnabled {
+		t.Fatalf("il reconciler doveva completare la chiusura: %+v", got)
+	}
+	if svc, pol := e.lanObjects(a); svc != nil || pol {
+		t.Fatalf("restano: svc=%v policy=%v", svc, pol)
+	}
+}
+
+// Riaccendere prima che la chiusura sia completata riusa la stessa porta.
+func TestDatabaseLAN_RiaccensioneDuranteChiusuraRiusaLaPorta(t *testing.T) {
+	e := lanEnv(t)
+	ctx := context.Background()
+	var fail atomic.Bool
+	failDeleteServices(e, &fail)
+	a := e.running("alice", "a")
+	on, _ := e.ctl.SetLAN(ctx, a, true, nil)
+	e.ctl.Reconcile(ctx, e.reload(a.ID))
+	fail.Store(true)
+	_, _ = e.ctl.SetLAN(ctx, e.reload(a.ID), false, nil)
+	fail.Store(false)
+	again, err := e.ctl.SetLAN(ctx, e.reload(a.ID), true, nil)
+	if err != nil || !again.LANEnabled || *again.LANPort != *on.LANPort {
+		t.Fatalf("riaccensione: %+v %v", again, err)
+	}
+}
+
+// Rework 1, interleaving 1: un giro con lo snapshot LANEnabled=true che parte DOPO un PUT false riuscito non
+// ricrea Service ne' policy.
+func TestDatabaseLAN_GiroConSnapshotVecchioNonRiapre(t *testing.T) {
+	e := lanEnv(t)
+	ctx := context.Background()
+	a := e.running("alice", "a")
+	if _, err := e.ctl.SetLAN(ctx, a, true, nil); err != nil {
+		t.Fatal(err)
+	}
+	stale := e.reload(a.ID) // LANEnabled=true
+	e.ctl.Reconcile(ctx, stale)
+	if _, err := e.ctl.SetLAN(ctx, e.reload(a.ID), false, nil); err != nil {
+		t.Fatal(err)
+	}
+	e.ctl.Reconcile(ctx, stale)
+	if svc, pol := e.lanObjects(a); svc != nil || pol {
+		t.Fatalf("un giro con snapshot vecchio ha riaperto la LAN: svc=%v policy=%v", svc, pol)
+	}
+	if got := e.reload(a.ID); got.LANEnabled || got.LANPort != nil {
+		t.Fatalf("modello: %+v", got)
+	}
+}
+
+// Rework 1, interleaving 2 (deterministico): il giro e' DENTRO openLAN (bloccato sulla Create del Service)
+// quando arriva il PUT false; il PUT aspetta la serratura, e quando il giro finisce chiude tutto.
+func TestDatabaseLAN_SpegnimentoAspettaIlGiroInCorso(t *testing.T) {
+	e := lanEnv(t)
+	ctx := context.Background()
+	a := e.running("alice", "a")
+	if _, err := e.ctl.SetLAN(ctx, a, true, nil); err != nil {
+		t.Fatal(err)
+	}
+	inCreate, release := make(chan struct{}), make(chan struct{})
+	e.kube.PrependReactor("create", "services", func(act k8stesting.Action) (bool, runtime.Object, error) {
+		if act.(k8stesting.CreateAction).GetObject().(*corev1.Service).Name == LANServiceName {
+			close(inCreate)
+			<-release
+		}
+		return false, nil, nil
+	})
+	reconciled := make(chan struct{})
+	go func() { e.ctl.Reconcile(ctx, e.reload(a.ID)); close(reconciled) }()
+	<-inCreate
+	disabled := make(chan error, 1)
+	go func() {
+		_, err := e.ctl.SetLAN(ctx, e.reload(a.ID), false, nil)
+		disabled <- err
+	}()
+	select {
+	case err := <-disabled:
+		t.Fatalf("lo spegnimento non puo' finire mentre il giro apre la LAN (%v)", err)
+	case <-time.After(300 * time.Millisecond):
+	}
+	if got := e.reload(a.ID); !got.LANEnabled {
+		t.Fatal("il modello non va toccato prima di avere la serratura")
+	}
+	close(release)
+	<-reconciled
+	if err := <-disabled; err != nil {
+		t.Fatal(err)
+	}
+	if svc, pol := e.lanObjects(a); svc != nil || pol {
+		t.Fatalf("dopo lo spegnimento restano: svc=%v policy=%v", svc, pol)
+	}
+	if got := e.reload(a.ID); got.LANEnabled || got.LANPort != nil {
+		t.Fatalf("modello: %+v", got)
+	}
 }

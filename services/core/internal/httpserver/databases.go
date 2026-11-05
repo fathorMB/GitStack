@@ -182,7 +182,7 @@ func databaseToAPI(d store.ManagedDB) openapi.Database {
 	out := openapi.Database{
 		Id: openapi_types.UUID(d.ID), Owner: d.OwnerName, Name: openapi.DatabaseName(d.Name), PgMajor: openapi.DatabasePgMajor(d.PgMajor),
 		Status: openapi.DatabaseStatus(d.Status), SizeBytes: d.SizeBytes, CpuMillis: d.CPUMillis, MemoryBytes: d.MemoryBytes,
-		LanEnabled: d.LANEnabled, LanPort: d.LANPort, LinkCount: d.LinkCount, CreatedAt: d.CreatedAt, UpdatedAt: d.UpdatedAt,
+		LanEnabled: d.LANEnabled, LanPort: lanPortIfOn(d), LinkCount: d.LinkCount, CreatedAt: d.CreatedAt, UpdatedAt: d.UpdatedAt,
 	}
 	if d.CreatedBy != nil {
 		out.CreatedBy = &openapi.AppActor{Id: openapi_types.UUID(d.CreatedBy.ID), Username: d.CreatedBy.Username, Type: openapi.AppActorType(d.CreatedBy.Type)}

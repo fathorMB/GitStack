@@ -123,6 +123,8 @@ type Controller struct {
 	secrets []string
 	// tlsLoaded: impronta della catena che PostgreSQL ha ricaricato, per database (mu).
 	tlsLoaded map[uuid.UUID]string
+	// lanLocks: una serratura LAN per database (lanLock).
+	lanLocks sync.Map
 	// liveBackups sono i dump in esecuzione in questo processo (mu).
 	liveBackups map[uuid.UUID]bool
 	dumper      Dumper
@@ -222,6 +224,12 @@ func (c *Controller) Reconcile(ctx context.Context, d store.ManagedDB) {
 		}
 		return
 	}
+	// LAN spenta: la chiusura (e la liberazione della porta) non aspetta il pod ne' il ritmo dei `failed`.
+	if !d.LANEnabled || d.LANPort != nil {
+		if err := c.syncLAN(ctx, d, false); err != nil && ctx.Err() == nil {
+			c.cfg.Log.Warn("databases: chiusura della LAN non completata, si ritenta", "db", d.ID, "err", err)
+		}
+	}
 	// Un database `failed` si riprova ogni minuto, non a ogni giro: cosign e il cluster non vanno martellati.
 	if d.Status == store.DBFailed {
 		c.mu.Lock()
@@ -307,12 +315,6 @@ func (c *Controller) ensure(ctx context.Context, d store.ManagedDB) (string, *st
 	if _, err := c.ensureAuthSecret(ctx, d, ""); err != nil {
 		return "", nil, err
 	}
-	// LAN spenta: la porta si chiude prima di qualunque altro passo (GIT-554), anche se il pod non e' pronto.
-	if !d.LANEnabled {
-		if err := c.closeLAN(ctx, d); err != nil {
-			return "", nil, err
-		}
-	}
 	if _, err := c.ensureTLS(ctx, d); err != nil {
 		return "", nil, err
 	}
@@ -361,11 +363,10 @@ func (c *Controller) ensure(ctx context.Context, d store.ManagedDB) (string, *st
 	if err != nil {
 		return "", nil, err
 	}
-	// LAN accesa: Service e db-lan solo con la catena giusta caricata (GIT-554).
-	if d.LANEnabled && tlsReady {
-		if err := c.openLAN(ctx, d); err != nil {
-			return "", nil, err
-		}
+	// LAN: lo stato voluto si rilegge sotto serratura (un PUT false riuscito non si annulla); apre solo con la
+	// catena giusta caricata (GIT-554).
+	if err := c.syncLAN(ctx, d, tlsReady); err != nil {
+		return "", nil, err
 	}
 	// Collegamenti (GIT-552): riprende gli scollegamenti rimasti a meta' e toglie i ruoli senza collegamento.
 	c.ResumeUnlinks(ctx, d)

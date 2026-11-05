@@ -4,10 +4,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 
+	"github.com/google/uuid"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -49,20 +52,73 @@ func (c *Controller) LANPortPolicy() store.LANPortPolicy {
 	return store.LANPortPolicy{From: from, To: to, Reserved: reserved}
 }
 
-// SetLAN accende o spegne la LAN del database. Spegnere chiude la porta prima di rispondere; accendere
-// assegna la porta e sveglia il ciclo, che apre il Service appena il certificato e' caricato.
+// lanLock serializza, per database, SetLAN e il passo LAN del reconciler: un giro che ha letto LANEnabled=true
+// non puo' ricreare Service e policy dopo che uno spegnimento e' riuscito.
+func (c *Controller) lanLock(id uuid.UUID) *sync.Mutex {
+	m, _ := c.lanLocks.LoadOrStore(id, &sync.Mutex{})
+	return m.(*sync.Mutex)
+}
+
+// SetLAN accende o spegne la LAN del database. Spegnere chiude la porta prima di rispondere: se la chiusura
+// fallisce ritorna l'errore (l'API risponde con un errore, mai 200) e la porta RESTA riservata nel modello;
+// il retry (un altro PUT false, o il giro del reconciler) completa la chiusura e solo allora la libera.
+// Accendere assegna la porta e sveglia il ciclo, che apre il Service appena il certificato e' caricato.
 func (c *Controller) SetLAN(ctx context.Context, d store.ManagedDB, enable bool, actor *store.AppActor) (store.ManagedDB, error) {
+	mu := c.lanLock(d.ID)
+	mu.Lock()
+	defer mu.Unlock()
 	out, err := c.st.SetManagedDBLAN(ctx, d.ID, enable, c.LANPortPolicy(), actor, c.cfg.Now())
 	if err != nil {
 		return store.ManagedDB{}, err
 	}
 	if !enable {
-		if err := c.closeLAN(ctx, out); err != nil {
-			return out, err
+		released, err := c.closeAndRelease(ctx, out)
+		if err != nil {
+			return out, fmt.Errorf("%w: %v", ErrLANCloseFailed, err)
 		}
+		out = released
 	}
 	c.Kick()
 	return out, nil
+}
+
+// ErrLANCloseFailed: la LAN e' spenta nel modello ma Service o policy non sono stati rimossi; la porta
+// resta riservata e la chiusura si ritenta.
+var ErrLANCloseFailed = errors.New("accesso LAN non chiuso: Service o NetworkPolicy ancora presenti, si ritenta")
+
+// closeAndRelease toglie Service e policy e, solo a chiusura riuscita, libera la porta. Chiamarlo con la
+// serratura LAN del database.
+func (c *Controller) closeAndRelease(ctx context.Context, d store.ManagedDB) (store.ManagedDB, error) {
+	if err := c.closeLAN(ctx, d); err != nil {
+		return d, err
+	}
+	if d.LANPort == nil {
+		return d, nil
+	}
+	return c.st.ReleaseManagedDBLANPort(ctx, d.ID)
+}
+
+// syncLAN porta la LAN allo stato scritto OGGI nel modello (non a quello dello snapshot del giro): spenta
+// chiude e libera la porta, accesa e con il certificato caricato apre. Sotto la serratura LAN.
+func (c *Controller) syncLAN(ctx context.Context, snapshot store.ManagedDB, tlsReady bool) error {
+	mu := c.lanLock(snapshot.ID)
+	mu.Lock()
+	defer mu.Unlock()
+	d, err := c.st.GetManagedDBByID(ctx, snapshot.ID)
+	if errors.Is(err, store.ErrManagedDBNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !d.LANEnabled {
+		_, err := c.closeAndRelease(ctx, d)
+		return err
+	}
+	if !tlsReady {
+		return nil
+	}
+	return c.openLAN(ctx, d)
 }
 
 // LANInfo e' cio' che il portale mostra con la LAN accesa.

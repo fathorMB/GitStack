@@ -10,16 +10,20 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/fathorMB/GitStack/services/core/internal/databases"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
@@ -164,4 +168,45 @@ func TestDatabaseLAN_ApiFunzioneSpenta(t *testing.T) {
 	e := newAppsEnv(t)
 	e.want(e.do(http.MethodGet, "/databases/alice/shop/lan", "alice", ""), http.StatusUnprocessableEntity, "databases_disabled")
 	e.want(e.do(http.MethodPut, "/databases/alice/shop/lan", "alice", `{"enabled":true}`), http.StatusUnprocessableEntity, "databases_disabled")
+}
+
+// Rework 1: se Kubernetes non riesce a togliere il Service, PUT enabled=false NON risponde 200 (503
+// lan_close_failed), l'API non mostra la porta come libera per altri database, e il retry riesce.
+func TestDatabaseLAN_ApiChiusuraFallita(t *testing.T) {
+	e := newLANEnv(t) // intervallo 15432-15433
+	e.create("alice", "alice", `{"name":"uno","pgMajor":17}`, http.StatusAccepted)
+	e.create("alice", "alice", `{"name":"due","pgMajor":17}`, http.StatusAccepted)
+	e.create("alice", "alice", `{"name":"tre","pgMajor":17}`, http.StatusAccepted)
+	on := e.lan(http.MethodPut, "/databases/alice/uno/lan", "alice", `{"enabled":true}`, http.StatusOK, "")
+	var fail atomic.Bool
+	e.kube.PrependReactor("delete", "services", func(k8stesting.Action) (bool, runtime.Object, error) {
+		if fail.Load() {
+			return true, nil, errors.New("apiserver non raggiungibile")
+		}
+		return false, nil, nil
+	})
+	fail.Store(true)
+	e.want(e.do(http.MethodPut, "/databases/alice/uno/lan", "alice", `{"enabled":false}`), http.StatusServiceUnavailable, "lan_close_failed")
+	// L'API mostra la LAN spenta (porta null), ma la porta e' ancora riservata: due prende l'altra, tre trova l'intervallo finito.
+	var db openapi.Database
+	rec := e.do(http.MethodGet, "/databases/alice/uno", "alice", "")
+	e.want(rec, http.StatusOK, "")
+	_ = json.Unmarshal(rec.Body.Bytes(), &db)
+	if db.LanEnabled || db.LanPort != nil {
+		t.Fatalf("database dopo la chiusura fallita: %+v", db)
+	}
+	due := e.lan(http.MethodPut, "/databases/alice/due/lan", "alice", `{"enabled":true}`, http.StatusOK, "")
+	if *due.Port == *on.Port {
+		t.Fatalf("la porta %d e' stata riassegnata con il Service ancora aperto", *on.Port)
+	}
+	e.lan(http.MethodPut, "/databases/alice/tre/lan", "alice", `{"enabled":true}`, http.StatusConflict, "port_unavailable")
+	// Retry riuscito.
+	fail.Store(false)
+	off := e.lan(http.MethodPut, "/databases/alice/uno/lan", "alice", `{"enabled":false}`, http.StatusOK, "")
+	if off.Enabled || off.Port != nil {
+		t.Fatalf("retry: %+v", off)
+	}
+	if tre := e.lan(http.MethodPut, "/databases/alice/tre/lan", "alice", `{"enabled":true}`, http.StatusOK, ""); *tre.Port != *on.Port {
+		t.Fatalf("porta liberata dal retry: %d, attesa %d", *tre.Port, *on.Port)
+	}
 }

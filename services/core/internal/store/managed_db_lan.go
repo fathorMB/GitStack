@@ -39,7 +39,10 @@ func (p LANPortPolicy) Pick(used map[int]bool) (int, bool) {
 }
 
 // SetManagedDBLAN accende o spegne l'accesso dalla LAN. Accendere assegna la porta (la stessa se gia'
-// accesa: idempotente); spegnere la libera. Scrive audit ed evento database.lan_enabled|lan_disabled.
+// accesa: idempotente; la stessa anche se uno spegnimento non e' ancora stato chiuso). Spegnere mette
+// lan_enabled=false ma TIENE la porta: resta riservata finche' il Service non e' davvero sparito
+// (ReleaseManagedDBLANPort), cosi' un errore di Kubernetes non la rende riassegnabile con il vecchio Service
+// ancora aperto. Scrive audit ed evento database.lan_enabled|lan_disabled.
 func (s *Store) SetManagedDBLAN(ctx context.Context, id uuid.UUID, enable bool, pol LANPortPolicy, actor *AppActor, now time.Time) (ManagedDB, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -61,6 +64,21 @@ func (s *Store) SetManagedDBLAN(ctx context.Context, id uuid.UUID, enable bool, 
 	if enable {
 		if d.LANEnabled && d.LANPort != nil {
 			return d, nil
+		}
+		if d.LANPort != nil {
+			// Riaccensione prima che la chiusura sia completata: la porta e' ancora sua.
+			port := *d.LANPort
+			if _, err := tx.Exec(ctx, `UPDATE core.managed_dbs SET lan_enabled = true, updated_at = $2 WHERE id = $1`, id, now); err != nil {
+				return ManagedDB{}, err
+			}
+			d.LANEnabled = true
+			if err := dbAudit(ctx, tx, d, "lan_enabled", actor, map[string]any{"port": port}, now); err != nil {
+				return ManagedDB{}, err
+			}
+			if err := dbEvent(ctx, tx, domainevents.DatabaseLanEnabled, d, actor, func(p *domainevents.DatabasePayload) { p.Port = &port }); err != nil {
+				return ManagedDB{}, err
+			}
+			return d, tx.Commit(ctx)
 		}
 		rows, err := tx.Query(ctx, `SELECT lan_port FROM core.managed_dbs WHERE lan_port IS NOT NULL`)
 		if err != nil {
@@ -95,17 +113,17 @@ func (s *Store) SetManagedDBLAN(ctx context.Context, id uuid.UUID, enable bool, 
 		}
 		return d, tx.Commit(ctx)
 	}
-	if !d.LANEnabled && d.LANPort == nil {
+	if !d.LANEnabled {
+		// Gia' spenta (anche con la chiusura ancora da completare): niente audit doppio.
 		return d, nil
 	}
-	old := d.LANPort
-	if _, err := tx.Exec(ctx, `UPDATE core.managed_dbs SET lan_enabled = false, lan_port = NULL, updated_at = $2 WHERE id = $1`, id, now); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE core.managed_dbs SET lan_enabled = false, updated_at = $2 WHERE id = $1`, id, now); err != nil {
 		return ManagedDB{}, err
 	}
-	d.LANEnabled, d.LANPort = false, nil
+	d.LANEnabled = false
 	var detail map[string]any
-	if old != nil {
-		detail = map[string]any{"port": *old}
+	if d.LANPort != nil {
+		detail = map[string]any{"port": *d.LANPort}
 	}
 	if err := dbAudit(ctx, tx, d, "lan_disabled", actor, detail, now); err != nil {
 		return ManagedDB{}, err
@@ -114,6 +132,15 @@ func (s *Store) SetManagedDBLAN(ctx context.Context, id uuid.UUID, enable bool, 
 		return ManagedDB{}, err
 	}
 	return d, tx.Commit(ctx)
+}
+
+// ReleaseManagedDBLANPort libera la porta di un database con la LAN spenta: lo chiama solo chi ha appena
+// verificato che Service e NetworkPolicy non esistono piu'. Con la LAN riaccesa nel frattempo non fa nulla.
+func (s *Store) ReleaseManagedDBLANPort(ctx context.Context, id uuid.UUID) (ManagedDB, error) {
+	if _, err := s.pool.Exec(ctx, `UPDATE core.managed_dbs SET lan_port = NULL WHERE id = $1 AND lan_enabled = false AND lan_port IS NOT NULL`, id); err != nil {
+		return ManagedDB{}, err
+	}
+	return s.GetManagedDBByID(ctx, id)
 }
 
 // ListManagedDBLANPorts elenca le porte LAN in uso (per l'amministratore: nessun segreto).

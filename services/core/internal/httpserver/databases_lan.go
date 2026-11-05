@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/fathorMB/GitStack/services/core/internal/databases"
@@ -72,15 +73,29 @@ func (s *apiServer) SetDatabaseLan(w http.ResponseWriter, r *http.Request, owner
 	case errors.Is(err, store.ErrManagedDBNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "Non trovato.")
 		return
-	case err != nil && next.ID != d.ID:
+	case errors.Is(err, databases.ErrLANCloseFailed):
+		// Spento nel modello ma Service/policy ancora presenti: la porta puo' rispondere e resta riservata.
+		// Mai 200: chi chiama deve sapere che non e' chiusa. Il ciclo e un nuovo PUT false ritentano.
+		slog.Default().Error("chiusura della LAN non riuscita", "db", d.ID, "err", err)
+		writeError(w, http.StatusServiceUnavailable, "lan_close_failed", "L'accesso LAN e' spento ma la porta non e' ancora chiusa: Kubernetes non ha risposto. Si ritenta da solo; ripeti la richiesta per conferma.")
+		return
+	case err != nil:
 		appInternalError(w, "accesso LAN del database", err)
 		return
 	}
-	// Con la riga aggiornata ma la chiusura non riuscita il ciclo la ritenta a ogni giro: si risponde comunque.
 	out, verr := s.databaseLanView(r, next)
 	if verr != nil {
 		appInternalError(w, "lettura dell'accesso LAN del database", verr)
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// lanPortIfOn: con la LAN spenta la porta e' null nell'API anche se il modello la tiene ancora riservata
+// perche' la chiusura non e' completata.
+func lanPortIfOn(d store.ManagedDB) *int {
+	if !d.LANEnabled {
+		return nil
+	}
+	return d.LANPort
 }
