@@ -1,21 +1,17 @@
 package httpserver
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
-	corev1 "k8s.io/api/core/v1"
 
 	"github.com/fathorMB/GitStack/services/core/internal/databases"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
@@ -29,10 +25,9 @@ import (
 
 // DatabaseController e' cio' che l'API chiede al controller dei database (internal/databases).
 type DatabaseController interface {
-	Provision(ctx context.Context, d store.ManagedDB, ownerPassword string) error
+	Provision(ctx context.Context, d store.ManagedDB, ownerPassword string) (string, error)
 	Delete(ctx context.Context, d store.ManagedDB, actor *store.AppActor) error
 	RotateOwner(ctx context.Context, d store.ManagedDB) (string, error)
-	Logs(ctx context.Context, d store.ManagedDB, opts *corev1.PodLogOptions) (io.ReadCloser, error)
 	Kick()
 }
 
@@ -268,7 +263,9 @@ func (s *apiServer) CreateDatabase(w http.ResponseWriter, r *http.Request, owner
 		appInternalError(w, "creazione del database", err)
 		return
 	}
-	if err := s.databases.Controller.Provision(r.Context(), d, pw); err != nil {
+	// Provision ritorna la password persistita nel Secret: se il reconciler ha preceduto questa chiamata vale la sua.
+	pw, err = s.databases.Controller.Provision(r.Context(), d, pw)
+	if err != nil {
 		// Namespace, RoleBinding o Secret non preparati: il database non nasce (il nome torna libero).
 		slog.Default().Error("preparazione del database non riuscita", "db", d.ID, "err", err)
 		if rerr := s.resources.RemoveManagedDB(context.WithoutCancel(r.Context()), d.ID, u.actor(), s.now()); rerr != nil {
@@ -371,8 +368,9 @@ func (s *apiServer) RotateDatabaseCredentials(w http.ResponseWriter, r *http.Req
 	writeJSON(w, http.StatusOK, openapi.DatabaseRotated{Database: databaseToAPI(d), Credentials: databaseCredentials(d, pw)})
 }
 
-// GetDatabaseMetrics implementa GET /databases/{owner}/{name}/metrics: dimensione logica e riavvii dal
-// modello; CPU e RAM restano `available: false` (serie vuote, non zeri) finche' metrics-server non e' letto.
+// GetDatabaseMetrics implementa GET /databases/{owner}/{name}/metrics (DB21): CPU e RAM dai campioni di
+// metrics-server raccolti dal controller, dimensione da pg_database_size, riavvii dal pod. Se metrics-server
+// non ha mai risposto nell'intervallo `available` e' false e le serie CPU/RAM sono vuote, non zeri.
 func (s *apiServer) GetDatabaseMetrics(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.DatabaseNameParam, params openapi.GetDatabaseMetricsParams) {
 	d, _, ok := s.databaseFor(w, r, string(owner), string(name))
 	if !ok {
@@ -382,78 +380,111 @@ func (s *apiServer) GetDatabaseMetrics(w http.ResponseWriter, r *http.Request, o
 	if params.Range != nil {
 		rng = string(*params.Range)
 	}
-	steps := map[string]int{"1h": 60, "6h": 300, "24h": 900, "7d": 3600}
-	step, ok := steps[rng]
+	spans := map[string]struct {
+		span time.Duration
+		step int
+	}{"1h": {time.Hour, 60}, "6h": {6 * time.Hour, 300}, "24h": {24 * time.Hour, 900}, "7d": {7 * 24 * time.Hour, 3600}}
+	spec, ok := spans[rng]
 	if !ok {
 		writeError(w, http.StatusBadRequest, "bad_request", "range: 1h, 6h, 24h o 7d.")
 		return
 	}
-	out := openapi.DatabaseMetrics{Range: openapi.DatabaseMetricsRange(rng), StepSeconds: step, Restarts24h: d.Restarts,
+	buckets, err := s.resources.ManagedDBBuckets(r.Context(), d.ID, s.now().Add(-spec.span), spec.step)
+	if err != nil {
+		appInternalError(w, "lettura delle metriche del database", err)
+		return
+	}
+	out := openapi.DatabaseMetrics{Range: openapi.DatabaseMetricsRange(rng), StepSeconds: spec.step, Restarts24h: d.Restarts,
 		Cpu:           openapi.AppMetricSeries{Unit: openapi.Millicores, Points: []openapi.AppMetricPoint{}},
 		Memory:        openapi.AppMetricSeries{Unit: openapi.Bytes, Points: []openapi.AppMetricPoint{}},
 		DatabaseBytes: openapi.AppMetricSeries{Unit: openapi.Bytes, Points: []openapi.AppMetricPoint{}}}
+	for _, b := range buckets {
+		if b.CPUMillis != nil {
+			out.Cpu.Points = append(out.Cpu.Points, openapi.AppMetricPoint{Time: b.At.UTC(), Value: float32(*b.CPUMillis)})
+		}
+		if b.MemoryBytes != nil {
+			out.Memory.Points = append(out.Memory.Points, openapi.AppMetricPoint{Time: b.At.UTC(), Value: float32(*b.MemoryBytes)})
+		}
+		if b.DBBytes != nil {
+			out.DatabaseBytes.Points = append(out.DatabaseBytes.Points, openapi.AppMetricPoint{Time: b.At.UTC(), Value: float32(*b.DBBytes)})
+		}
+	}
+	out.Available = len(out.Cpu.Points) > 0 && len(out.Memory.Points) > 0
 	if d.UsageBytes != nil {
-		out.Available = true
-		out.DatabaseBytes.Points = append(out.DatabaseBytes.Points, openapi.AppMetricPoint{Time: s.now().UTC(), Value: float32(*d.UsageBytes)})
 		out.Usage = &openapi.DatabaseUsage{DatabaseBytes: *d.UsageBytes, DiskState: openapi.DatabaseUsageDiskState(d.DiskState)}
 	}
 	writeJSON(w, http.StatusOK, out)
 }
 
-// GetDatabaseLogs implementa GET /databases/{owner}/{name}/logs: righe di pods/log del pod di Postgres (DB21).
+// GetDatabaseLogs implementa GET /databases/{owner}/{name}/logs (DB21): le righe di PostgreSQL raccolte da
+// pods/log e conservate nel database di core (7 giorni), quindi disponibili anche dopo la sostituzione del pod.
 func (s *apiServer) GetDatabaseLogs(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.DatabaseNameParam, params openapi.GetDatabaseLogsParams) {
 	d, _, ok := s.databaseFor(w, r, string(owner), string(name))
 	if !ok {
 		return
 	}
-	limit := int64(1000)
+	f := store.ManagedDBLogFilter{Limit: 1000}
 	if params.Limit != nil {
-		limit = int64(*params.Limit)
+		f.Limit = *params.Limit
 	}
-	opts := &corev1.PodLogOptions{Container: databases.WorkloadName, Timestamps: true, TailLines: &limit}
-	if params.Follow != nil && *params.Follow {
-		opts.Follow = true
+	if params.Grep != nil {
+		f.Grep = *params.Grep
 	}
+	follow := params.Follow != nil && *params.Follow
 	if params.Since != nil && *params.Since != "" {
 		if dur, err := time.ParseDuration(*params.Since); err == nil && dur > 0 {
-			secs := int64(dur.Seconds())
-			opts.SinceSeconds = &secs
+			f.Since = s.now().Add(-dur)
+		} else if t, err := time.Parse(time.RFC3339, *params.Since); err == nil {
+			f.Since = t
+		} else {
+			writeError(w, http.StatusBadRequest, "bad_request", "since: durata (5m, 1h) o istante RFC 3339.")
+			return
 		}
+	} else if follow {
+		f.Since = s.now().Add(-time.Hour)
 	}
-	rc, err := s.databases.Controller.Logs(r.Context(), d, opts)
-	if err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "database_not_ready", "I log non sono disponibili: il database non ha un pod in esecuzione.")
-		return
+	if params.Until != nil {
+		f.Until = *params.Until
 	}
-	defer func() { _ = rc.Close() }()
 	ndjson := params.Format != nil && string(*params.Format) == "ndjson"
 	if ndjson {
 		w.Header().Set("Content-Type", "application/x-ndjson")
 	} else {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	}
-	grep := ""
-	if params.Grep != nil {
-		grep = *params.Grep
-	}
-	sc := bufio.NewScanner(rc)
-	sc.Buffer(make([]byte, 0, 64<<10), 1<<20)
-	for sc.Scan() {
-		ts, msg, _ := strings.Cut(sc.Text(), " ")
-		if grep != "" && !strings.Contains(msg, grep) {
-			continue
-		}
-		if ndjson {
-			t, perr := time.Parse(time.RFC3339Nano, ts)
-			if perr != nil {
-				t = s.now()
+	write := func(lines []store.ManagedDBLogLine) int64 {
+		var last int64
+		for _, l := range lines {
+			last = l.ID
+			if ndjson {
+				_, _ = fmt.Fprintf(w, `{"time":%s,"message":%s}`+"\n", strconv.Quote(l.At.UTC().Format(time.RFC3339Nano)), strconv.Quote(l.Message))
+			} else {
+				_, _ = fmt.Fprintln(w, l.Message)
 			}
-			_, _ = fmt.Fprintf(w, `{"time":%s,"message":%s}`+"\n", strconv.Quote(t.UTC().Format(time.RFC3339Nano)), strconv.Quote(msg))
-		} else {
-			_, _ = fmt.Fprintln(w, msg)
 		}
-		if f, ok := w.(http.Flusher); ok && opts.Follow {
-			f.Flush()
+		if fl, ok := w.(http.Flusher); ok {
+			fl.Flush()
+		}
+		return last
+	}
+	lines, err := s.resources.ListManagedDBLogs(r.Context(), d.ID, f)
+	if err != nil {
+		appInternalError(w, "lettura dei log del database", err)
+		return
+	}
+	cursor := write(lines)
+	for follow {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-time.After(time.Second):
+		}
+		more, err := s.resources.ListManagedDBLogs(r.Context(), d.ID, store.ManagedDBLogFilter{Since: f.Since, Grep: f.Grep, Limit: 1000, AfterID: cursor})
+		if err != nil {
+			return
+		}
+		if last := write(more); last > cursor {
+			cursor = last
 		}
 	}
 }

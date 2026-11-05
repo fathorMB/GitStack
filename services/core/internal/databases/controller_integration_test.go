@@ -80,7 +80,7 @@ func (e *ctlEnv) create(owner, name string, major int) store.ManagedDB {
 	if err != nil {
 		e.t.Fatal(err)
 	}
-	if err := e.ctl.Provision(context.Background(), d, "owner-pw-"+name); err != nil {
+	if _, err := e.ctl.Provision(context.Background(), d, "owner-pw-"+name); err != nil {
 		e.t.Fatal(err)
 	}
 	return d

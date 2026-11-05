@@ -28,4 +28,4 @@ created=true
 export GITSTACK_TEST_KUBECONFIG="$work/kubeconfig"
 cd "$root/services/core"
 # Mirata ai soli test su k3d (direttiva del quaderno del repo): niente pacchetti interi, niente ./...
-go test -tags integration -count=1 -timeout 25m -run 'TestDatabases_(ContestoDiSicurezza|ConnessioneTls|Isolamento|Eliminazione)SuK3d' ./internal/databases/
+go test -tags integration -count=1 -timeout 25m -v -run 'TestDatabases_(ContestoDiSicurezza|ConnessioneTls|Isolamento|Eliminazione)SuK3d' ./internal/databases/ ./internal/httpserver/

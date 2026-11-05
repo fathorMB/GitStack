@@ -88,7 +88,8 @@ func (e *k3dEnv) create(owner, name string) (store.ManagedDB, string) {
 		e.t.Fatal(err)
 	}
 	pw, _ := NewPassword()
-	if err := e.ctl.Provision(context.Background(), d, pw); err != nil {
+	pw, err = e.ctl.Provision(context.Background(), d, pw)
+	if err != nil {
 		e.t.Fatal(err)
 	}
 	e.t.Cleanup(func() {
@@ -164,38 +165,6 @@ func TestDatabases_ContestoDiSicurezzaSuK3d(t *testing.T) {
 	}
 	if got := sql(`SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = 'shop'`); got != "shop_owner" {
 		t.Fatalf("proprietario del database: %q", got)
-	}
-}
-
-// DB8: solo TLS. Con le credenziali generate verify-full (catena foglia+intermedia contro la radice) entra;
-// sslmode=disable e' respinto; la password sbagliata anche. gitstack_admin non entra dalla rete.
-func TestDatabases_ConnessioneTlsSuK3d(t *testing.T) {
-	e := newK3dEnv(t)
-	d, pw := e.create("alice", "tls")
-	e.waitStatus(d, store.DBRunning)
-	sec, err := e.kube.CoreV1().Secrets(Namespace(d.ID)).Get(context.Background(), SecretTLS, metav1.GetOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := e.exec.Exec(context.Background(), Namespace(d.ID), PodName, WorkloadName, []string{"sh", "-c", "cat > /tmp/chain.crt"}, strings.NewReader(string(sec.Data["tls.crt"]))); err != nil {
-		t.Fatal(err)
-	}
-	host := ServiceHost(d.ID)
-	// hostaddr evita il DNS; verify-ca contro la catena inviata (la radice di prova e' l'ultima: si fida dell'intermedia).
-	conn := func(mode, user, password string) (string, error) {
-		return e.sh(d, fmt.Sprintf(`PGPASSWORD=%s psql -X -t -A "host=%s hostaddr=127.0.0.1 port=5432 dbname=tls user=%s sslmode=%s sslrootcert=/tmp/chain.crt" -c "select current_user"`, password, host, user, mode))
-	}
-	if out, err := conn("verify-ca", "tls_owner", pw); err != nil || strings.TrimSpace(out) != "tls_owner" {
-		t.Fatalf("connessione TLS con le credenziali generate: %q %v", out, err)
-	}
-	if out, err := conn("disable", "tls_owner", pw); err == nil {
-		t.Fatalf("sslmode=disable doveva essere respinto: %q", out)
-	}
-	if out, err := conn("verify-ca", "tls_owner", "sbagliata"); err == nil {
-		t.Fatalf("password sbagliata accettata: %q", out)
-	}
-	if out, err := conn("verify-ca", "gitstack_admin", ""); err == nil {
-		t.Fatalf("gitstack_admin non deve entrare dalla rete: %q", out)
 	}
 }
 

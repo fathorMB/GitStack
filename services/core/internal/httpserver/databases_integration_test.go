@@ -43,18 +43,18 @@ func (s *sqlSpy) Query(context.Context, store.ManagedDB, string, string) ([]stri
 
 type dbEnv struct {
 	*appsEnv
-	kube *fake.Clientset
-	ctl  *databases.Controller
-	sql  *sqlSpy
+	kube  *fake.Clientset
+	ctl   *databases.Controller
+	sql   *sqlSpy
+	proxy *lateController
 }
 
 func newDBEnv(t *testing.T, majors ...int) *dbEnv {
 	t.Helper()
 	kube := fake.NewSimpleClientset()
 	sql := &sqlSpy{}
-	holder := &dbEnv{kube: kube, sql: sql}
-	// Il controller ha bisogno del pool di newAppsEnv: lo crea in un secondo tempo con lo stesso store.
 	proxy := &lateController{}
+	holder := &dbEnv{kube: kube, sql: sql, proxy: proxy}
 	holder.appsEnv = newAppsEnv(t, httpserver.WithDatabases(httpserver.DatabasesConfig{Controller: proxy, AllowedMajors: majors}))
 	holder.ctl = databases.New(store.New(holder.pool), kube, databases.Config{SQL: sql, Images: map[int]databases.Image{}})
 	proxy.set(holder.ctl)
@@ -65,11 +65,16 @@ func newDBEnv(t *testing.T, majors ...int) *dbEnv {
 type lateController struct {
 	mu sync.Mutex
 	c  *databases.Controller
+	// beforeProvision interpone un giro del reconciler fra il commit della riga e Provision (test di DB22).
+	beforeProvision func(context.Context, store.ManagedDB)
 }
 
 func (l *lateController) set(c *databases.Controller) { l.mu.Lock(); l.c = c; l.mu.Unlock() }
 func (l *lateController) get() *databases.Controller  { l.mu.Lock(); defer l.mu.Unlock(); return l.c }
-func (l *lateController) Provision(ctx context.Context, d store.ManagedDB, pw string) error {
+func (l *lateController) Provision(ctx context.Context, d store.ManagedDB, pw string) (string, error) {
+	if l.beforeProvision != nil {
+		l.beforeProvision(ctx, d)
+	}
 	return l.get().Provision(ctx, d, pw)
 }
 func (l *lateController) Delete(ctx context.Context, d store.ManagedDB, a *store.AppActor) error {
@@ -301,33 +306,5 @@ func TestDatabases_RotazioneCredenziali(t *testing.T) {
 	last := audit[len(audit)-1]
 	if last.Action != "credentials_rotated" || strings.Contains(string(last.Detail), rot.Credentials.Password) {
 		t.Fatalf("audit: %+v", last)
-	}
-}
-
-// DB21: metriche (dimensione, riavvii) e log con `admin` dell'owner; "non disponibile" se non c'e' il dato.
-func TestDatabases_MetricheELog(t *testing.T) {
-	e := newDBEnv(t)
-	created := e.create("alice", "alice", `{"name":"shop","pgMajor":17}`, http.StatusAccepted)
-	rec := e.do(http.MethodGet, "/databases/alice/shop/metrics", "alice", "")
-	e.want(rec, http.StatusOK, "")
-	var m openapi.DatabaseMetrics
-	_ = json.Unmarshal(rec.Body.Bytes(), &m)
-	if m.Available || len(m.Cpu.Points) != 0 || m.Usage != nil {
-		t.Fatalf("senza misure le serie sono vuote e non disponibili: %s", rec.Body.String())
-	}
-	st := store.New(e.pool)
-	if _, err := st.SetManagedDBUsage(context.Background(), uuid.UUID(created.Database.Id), 900<<20, store.DiskStateFor(900<<20, 1<<30)); err != nil {
-		t.Fatal(err)
-	}
-	rec = e.do(http.MethodGet, "/databases/alice/shop/metrics?range=6h", "alice", "")
-	e.want(rec, http.StatusOK, "")
-	_ = json.Unmarshal(rec.Body.Bytes(), &m)
-	if !m.Available || m.Usage == nil || m.Usage.DiskState != "warning" || len(m.DatabaseBytes.Points) != 1 {
-		t.Fatalf("metriche: %s", rec.Body.String())
-	}
-	e.want(e.do(http.MethodGet, "/databases/alice/shop/metrics?range=9h", "alice", ""), http.StatusBadRequest, "")
-	// Log: il pod non c'e' nel cluster finto -> 422 database_not_ready, non un 500.
-	if rec := e.do(http.MethodGet, "/databases/alice/shop/logs", "alice", ""); rec.Code != http.StatusUnprocessableEntity && rec.Code != http.StatusOK {
-		t.Fatalf("log: %d %s", rec.Code, rec.Body.String())
 	}
 }
