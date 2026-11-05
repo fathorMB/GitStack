@@ -12,6 +12,7 @@ import { DownloadsPage } from './pages/DownloadsPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { ResourcesPage } from './pages/ResourcesPage';
+import { UserAppsPage } from './pages/UserAppsPage';
 import { NewRepoPage } from "./pages/repos/NewRepoPage";
 import { RepoSettingsPage } from './pages/repos/RepoSettingsPage';
 import { RepoSettingsSecretsPage } from './pages/repos/RepoSettingsSecretsPage';
@@ -85,6 +86,16 @@ export function AppRoutes() {
           <RequireAuth>
             <AppShell crumb="System">
               <SystemPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/apps"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Apps">
+              <UserAppsPage />
             </AppShell>
           </RequireAuth>
         }

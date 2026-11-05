@@ -64,7 +64,7 @@ export function Sidebar() {
       <SidebarItem icon={<Bell size={18} strokeWidth={1.8} />} label="Notifications" to="/notifications" count={unread} />
 
       <div className="sb-grp">Platform</div>
-      <SidebarItem icon={<Grid2x2 size={18} strokeWidth={1.8} />} label="Apps" disabled soon />
+      <SidebarItem icon={<Grid2x2 size={18} strokeWidth={1.8} />} label="Apps" to="/apps" />
       <SidebarItem icon={<Database size={18} strokeWidth={1.8} />} label="Databases" disabled soon />
 
       <div className="sb-grp">Administration</div>
