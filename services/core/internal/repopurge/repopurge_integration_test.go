@@ -276,7 +276,7 @@ func TestUpgrade_RepoNelCestinoCancellatiConUnaRigaDiLogPerOgnuno(t *testing.T) 
 	e := newEnv(t)
 	ctx := context.Background()
 	// Torna allo schema precedente (0055), dove il cestino esisteva.
-	if err := migrate.Down(ctx, e.pool, e.dsn, 1); err != nil {
+	if err := migrate.Down(ctx, e.pool, e.dsn, 2); err != nil {
 		t.Fatal(err)
 	}
 	odin := e.add(t, "admin", "odin")

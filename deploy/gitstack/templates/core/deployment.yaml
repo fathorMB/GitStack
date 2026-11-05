@@ -113,6 +113,11 @@ spec:
               value: {{ .Values.databases.postgres.images | toJson | quote }}
             - name: GITSTACK_CORE_DATABASES_CA_DIR
               value: /etc/gitstack/db-ca
+            # Firma keyless delle immagini PostgreSQL (GIT-551, DB5): identita' e issuer della CI che firma.
+            - name: GITSTACK_CORE_DATABASES_COSIGN_IDENTITY_REGEXP
+              value: {{ .Values.databases.cosign.identityRegexp | quote }}
+            - name: GITSTACK_CORE_DATABASES_COSIGN_ISSUER
+              value: {{ .Values.databases.cosign.issuer | quote }}
             # Chiave di dump (32 byte, file `key`): un volume opzionale e non una variabile, perche' l'installer
             # crea il Secret anche dopo il primo avvio di core e il volume si aggiorna da solo.
             - name: GITSTACK_CORE_DATABASES_DUMP_KEY_FILE

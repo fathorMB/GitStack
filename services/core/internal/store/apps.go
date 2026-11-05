@@ -326,6 +326,16 @@ func ownerAppQuota(ctx context.Context, q queryer, owner string) (limits, used A
 	err = q.QueryRow(ctx, `SELECT COALESCE(sum(v.size_bytes), 0)::bigint FROM core.app_volumes v
 		JOIN core.apps a ON a.id = v.app_id JOIN core.repositories r ON r.resource_id = a.repo_id
 		WHERE lower(r.owner_name) = lower($1)`, owner).Scan(&used.DiskBytes)
+	if err != nil {
+		return limits, used, isDefault, err
+	}
+	// Database gestiti (v3-d, DB3): CPU, RAM e disco dichiarati contano nella stessa quota di app e volumi.
+	var dbCPU, dbMem, dbDisk int64
+	err = q.QueryRow(ctx, `SELECT COALESCE(sum(cpu_millis), 0)::bigint, COALESCE(sum(memory_bytes), 0)::bigint,
+			COALESCE(sum(size_bytes), 0)::bigint FROM core.managed_dbs WHERE owner_name = lower($1)`, owner).Scan(&dbCPU, &dbMem, &dbDisk)
+	used.CPUMillis += int(dbCPU)
+	used.MemoryBytes += dbMem
+	used.DiskBytes += dbDisk
 	return limits, used, isDefault, err
 }
 

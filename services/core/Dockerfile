@@ -34,9 +34,14 @@ RUN sh /src/scripts/docker-local-replace.sh /src \
 # distroless "static", non "base": il binario è staticamente linkato
 # (CGO_ENABLED=0) e non ha bisogno di libc. Nessuna shell, nessun package
 # manager: superficie d'attacco minima. Utente non privilegiato (nonroot).
+FROM gcr.io/projectsigstore/cosign:v2.4.0 AS cosign
+
 FROM gcr.io/distroless/static-debian12:nonroot
 
 COPY --from=build /out/core /usr/local/bin/core
+# cosign per la verifica KEYLESS delle immagini PostgreSQL prima di ogni StatefulSet (GIT-551, DB5): stessa
+# versione che la CI usa per firmare (ci.yml, cosign-release v2.4.0); binario statico, nessuna libc richiesta.
+COPY --from=cosign /ko-app/cosign /usr/local/bin/cosign
 
 USER nonroot:nonroot
 
