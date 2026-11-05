@@ -130,7 +130,7 @@ func IssueServerCert(caDir string, dnsNames []string, ips []net.IP, now time.Tim
 		Subject:      pkix.Name{CommonName: dnsNames[0], Organization: []string{"GitStack"}},
 		DNSNames:     dnsNames,
 		IPAddresses:  ips,
-		NotBefore:   now.Add(-time.Hour),
+		NotBefore:    now.Add(-time.Hour),
 		NotAfter:     notAfter,
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
