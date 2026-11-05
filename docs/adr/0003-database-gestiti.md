@@ -145,8 +145,8 @@ chiunque abbia uno dei due permessi.
 **Variabili iniettate** (segreti dell'app, mai nelle risposte API né nei log):
 `DATABASE_URL` (`postgresql://utente:password@host:5432/db?sslmode=verify-full&sslrootcert=/etc/gitstack/db/ca.crt`),
 `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE=verify-full`,
-`PGSSLROOTCERT=/etc/gitstack/db/ca.crt`. La CA (pubblica) è montata da un ConfigMap nel namespace
-dell'app. Se l'app ha già una variabile con uno di quei nomi il collegamento è rifiutato
+`PGSSLROOTCERT=/etc/gitstack/db/ca.crt`. La CA (pubblica, la radice dell'istanza: `ca.crt` nel Secret `<release>-db-ca` accanto all'intermedia) è montata
+da un Secret `db-ca` nel namespace dell'app (GIT-552: il ClusterRole modello delle app non ha verbi sui ConfigMap). Se l'app ha già una variabile con uno di quei nomi il collegamento è rifiutato
 (409 `variable_conflict`), come per il prefisso riservato `GITSTACK_`.
 
 **Nome interno.** `pg.gitstack-db-<id>.svc.cluster.local:5432` (il Service `pg`): è nei SAN del
