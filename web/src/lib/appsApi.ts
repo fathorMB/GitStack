@@ -15,6 +15,7 @@ import {
   listAppVariables as sdkListAppVariables,
   listAppVersions as sdkListAppVersions,
   listApps as sdkListApps,
+  listUserApps as sdkListUserApps,
   restartApp as sdkRestartApp,
   rollbackApp as sdkRollbackApp,
   scaleApp as sdkScaleApp,
@@ -51,6 +52,7 @@ import type {
   AppCreateInput,
   AppCreated,
   AppList,
+  UserAppList,
   AppMetrics,
   AppUpdateInput,
   AppVersion,
@@ -68,13 +70,18 @@ import type {
 } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
-export type { App, AppAccess, AppAccessInvite, AppAccessMember, AppAccessMode, AppCreateInput, AppCreated, AppList, AppMetrics, AppUpdateInput, AppVersion, AppVersionList, AppLogLine, AppSecretList, AppVariableList, AppVolume, AppVolumeChange, AppVolumeList, AppResources, AppResourcesInput, AppEgress, AppEgressDestination, AppDomain, AppDomainList };
+export type { App, AppAccess, AppAccessInvite, AppAccessMember, AppAccessMode, AppCreateInput, AppCreated, AppList, UserAppList, AppMetrics, AppUpdateInput, AppVersion, AppVersionList, AppLogLine, AppSecretList, AppVariableList, AppVolume, AppVolumeChange, AppVolumeList, AppResources, AppResourcesInput, AppEgress, AppEgressDestination, AppDomain, AppDomainList };
 
 const at = (owner: string, repo: string) => ({ baseUrl: API_BASE_URL, path: { owner, repo } });
 const atApp = (owner: string, repo: string, app: string) => ({ baseUrl: API_BASE_URL, path: { owner, repo, app } });
 
 export async function fetchApps(owner: string, repo: string): Promise<AppList> {
   return unwrap(await sdkListApps(at(owner, repo)));
+}
+
+/** App dei repo leggibili dall'utente (pagina Apps del menu), paginate. */
+export async function fetchUserApps(page: number, perPage: number): Promise<UserAppList> {
+  return unwrap(await sdkListUserApps({ baseUrl: API_BASE_URL, query: { page, perPage } }));
 }
 
 /** Numero di app del repo (contatore della scheda). */

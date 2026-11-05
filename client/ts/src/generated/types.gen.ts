@@ -4478,6 +4478,17 @@ export type AdminPublicAppList = {
     total: number;
 };
 
+export type UserAppList = {
+    items: Array<App>;
+    page: number;
+    perPage: number;
+    total: number;
+    /**
+     * False: l'amministratore ha spento l'hosting delle app; `items` e' vuoto.
+     */
+    hostingEnabled: boolean;
+};
+
 export type AdminAppList = {
     items: Array<AdminApp>;
     total: number;
@@ -5411,6 +5422,17 @@ export type AppDomainCertificateInputWritable = {
      * Chiave privata in PEM (PKCS#8, PKCS#1 o EC), senza passphrase. Solo scrittura.
      */
     privateKey: string;
+};
+
+export type UserAppListWritable = {
+    items: Array<AppWritable>;
+    page: number;
+    perPage: number;
+    total: number;
+    /**
+     * False: l'amministratore ha spento l'hosting delle app; `items` e' vuoto.
+     */
+    hostingEnabled: boolean;
 };
 
 /**
@@ -21983,6 +22005,43 @@ export type GetAppMetricsResponses = {
 };
 
 export type GetAppMetricsResponse = GetAppMetricsResponses[keyof GetAppMetricsResponses];
+
+export type ListUserAppsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/user/apps';
+};
+
+export type ListUserAppsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+};
+
+export type ListUserAppsError = ListUserAppsErrors[keyof ListUserAppsErrors];
+
+export type ListUserAppsResponses = {
+    /**
+     * App visibili al chiamante.
+     */
+    200: UserAppList;
+};
+
+export type ListUserAppsResponse = ListUserAppsResponses[keyof ListUserAppsResponses];
 
 export type ListAdminAppsData = {
     body?: never;

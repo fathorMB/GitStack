@@ -135,8 +135,8 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 		archiveURL = cfg.GatewayURL + archivePath
 	}
 	cfg.ActEnv = append(append([]string{}, cfg.ActEnv...), CacheEnv(archiveURL, token)...)
-	// act non conosce il repo (il workspace e' un archivio senza .git) e sceglie da solo
-	// GITHUB_REPOSITORY: i passi leggono owner/nome vero da qui (gitstack-build, GIT-371).
+	// github.repository e GITHUB_REPOSITORY act li ricava dal remote del .git minimo (writeGitHead,
+	// GIT-563). GITSTACK_REPOSITORY resta per chi lo legge fuori da act (gitstack-build, GIT-371).
 	if repo, _ := cx["repository"].(string); repo != "" {
 		cfg.ActEnv = append(cfg.ActEnv, "GITSTACK_REPOSITORY="+repo)
 	}
@@ -145,6 +145,7 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 	// minimo. Nell'ambiente restano comunque, per chi li legge fuori da act (GIT-439).
 	runSHA, _ := cx["sha"].(string)
 	runRef, _ := cx["ref"].(string)
+	runRepo, _ := cx["repository"].(string)
 	if runSHA != "" {
 		cfg.ActEnv = append(cfg.ActEnv, "GITHUB_SHA="+runSHA)
 	}
@@ -160,7 +161,7 @@ func Run(ctx context.Context, cfg Config) (Result, error) {
 		if err := downloadArchive(ctx, cfg.HTTP, archiveURL, token, ws); err != nil {
 			return fmt.Errorf("download del codice: %w", err)
 		}
-		if err := writeGitHead(ws, runSHA, runRef); err != nil {
+		if err := writeGitHead(ws, runSHA, runRef, runRepo); err != nil {
 			return fmt.Errorf("sha del run: %w", err)
 		}
 		if err := writeEventFile(filepath.Join(cfg.WorkDir, "workflow", eventFileName), cx); err != nil {
@@ -297,7 +298,7 @@ func validBranchRef(b string) bool {
 // Per un ref di ramo (refs/heads/x) HEAD e' simbolico e il ramo punta allo sha: act ricava
 // GITHUB_REF da li' (con HEAD staccato lo lasciava senza il ramo, e il job vedeva un valore
 // non completo, GIT-448). Per tag, sha o ref vuoto HEAD resta staccato.
-func writeGitHead(ws, sha, ref string) error {
+func writeGitHead(ws, sha, ref, repo string) error {
 	if !sha1Hex.MatchString(sha) {
 		return nil
 	}
@@ -310,7 +311,7 @@ func writeGitHead(ws, sha, ref string) error {
 			return err
 		}
 	}
-	if err := os.WriteFile(filepath.Join(dir, "config"), []byte("[core]\n\trepositoryformatversion = 0\n"), 0o640); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "config"), []byte(gitConfig(repo)), 0o640); err != nil {
 		return err
 	}
 	if branch, ok := strings.CutPrefix(ref, "refs/heads/"); ok && validBranchRef(branch) {
@@ -323,6 +324,20 @@ func writeGitHead(ws, sha, ref string) error {
 		return os.WriteFile(filepath.Join(dir, "HEAD"), []byte("ref: refs/heads/"+branch+"\n"), 0o640)
 	}
 	return os.WriteFile(filepath.Join(dir, "HEAD"), []byte(sha+"\n"), 0o640)
+}
+
+var repoSlug = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_.-]*/[A-Za-z0-9_][A-Za-z0-9_.-]*$`)
+
+// gitConfig e' il .git/config del repo minimo. Con un owner/nome valido ha il remote «origin»:
+// act ricava github.repository e GITHUB_REPOSITORY dall'URL del remote (git.FindGithubRepo) e,
+// senza, ne sceglie uno suo (GIT-563). L'URL serve solo a dare owner/nome ad act (host
+// github.com, che act riconosce di default): nessun job lo contatta.
+func gitConfig(repo string) string {
+	cfg := "[core]\n\trepositoryformatversion = 0\n"
+	if repoSlug.MatchString(repo) && !strings.Contains(repo, "..") {
+		cfg += "[remote \"origin\"]\n\turl = https://github.com/" + repo + ".git\n"
+	}
+	return cfg
 }
 
 // writeEventFile scrive il payload dell'evento per `act -e`: gli input del run (workflow_dispatch,

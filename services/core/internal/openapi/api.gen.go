@@ -7198,6 +7198,16 @@ type UserAccessList struct {
 	Total   int              `json:"total"`
 }
 
+// UserAppList defines model for UserAppList.
+type UserAppList struct {
+	// HostingEnabled False: l'amministratore ha spento l'hosting delle app; `items` e' vuoto.
+	HostingEnabled bool  `json:"hostingEnabled"`
+	Items          []App `json:"items"`
+	Page           int   `json:"page"`
+	PerPage        int   `json:"perPage"`
+	Total          int   `json:"total"`
+}
+
 // Webhook defines model for Webhook.
 type Webhook struct {
 	Active    bool       `json:"active"`
@@ -8416,6 +8426,12 @@ type SearchPullRequestsParams struct {
 // SearchPullRequestsParamsSort defines parameters for SearchPullRequests.
 type SearchPullRequestsParamsSort string
 
+// ListUserAppsParams defines parameters for ListUserApps.
+type ListUserAppsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // GetUserAccessParams defines parameters for GetUserAccess.
 type GetUserAccessParams struct {
 	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
@@ -9474,6 +9490,9 @@ type ServerInterface interface {
 	// SearchPullRequests Cerca Pull Request su tutta l'installazione
 	// (GET /search/pulls)
 	SearchPullRequests(w http.ResponseWriter, r *http.Request, params SearchPullRequestsParams)
+	// ListUserApps Elenca le app dei repo che il chiamante puo' leggere
+	// (GET /user/apps)
+	ListUserApps(w http.ResponseWriter, r *http.Request, params ListUserAppsParams)
 	// GetNotificationPreferences Preferenze email delle notifiche
 	// (GET /user/notification-preferences)
 	GetNotificationPreferences(w http.ResponseWriter, r *http.Request)
@@ -21219,6 +21238,52 @@ func (siw *ServerInterfaceWrapper) SearchPullRequests(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
+// ListUserApps operation middleware
+func (siw *ServerInterfaceWrapper) ListUserApps(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListUserAppsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListUserApps(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetNotificationPreferences operation middleware
 func (siw *ServerInterfaceWrapper) GetNotificationPreferences(w http.ResponseWriter, r *http.Request) {
 
@@ -21655,6 +21720,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/volumes/{volume}", wrapper.UpdateAppVolume)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/logs", wrapper.GetAppLogs)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/apps/{app}/metrics", wrapper.GetAppMetrics)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/apps", wrapper.ListUserApps)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps", wrapper.ListAdminApps)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps/public", wrapper.ListAdminPublicApps)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/apps/capacity", wrapper.GetAdminAppsCapacity)

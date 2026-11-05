@@ -10666,6 +10666,27 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+  /user/apps:
+    get:
+      operationId: listUserApps
+      tags: [apps]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: user_app_list
+        destructive: false
+      summary: "Elenca le app dei repo che il chiamante puo' leggere"
+      description: >
+        Per la pagina Apps del menu: le app di tutti i repo con permesso `read` per chi chiama (stesso
+        criterio di `GET /repos`), ordinate per owner, repo e nome, con paginazione. I repo non leggibili
+        non compaiono e non si distinguono da quelli inesistenti. Con l'hosting delle app spento di
+        proposito (`hostingEnabled: false`) la risposta e' comunque 200 con elenco vuoto, non 503.
+      parameters: [{$ref: "#/components/parameters/PageParam"}, {$ref: "#/components/parameters/PerPageParam"}]
+      responses:
+        "200": {description: "App visibili al chiamante.", content: {application/json: {schema: {$ref: "#/components/schemas/UserAppList"}}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
   /admin/apps:
     get:
       operationId: listAdminApps
@@ -18691,6 +18712,16 @@ components:
       properties:
         items: {type: array, items: {$ref: "#/components/schemas/AdminPublicApp"}}
         total: {type: integer}
+    UserAppList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total, hostingEnabled]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/App"}}
+        page: {type: integer}
+        perPage: {type: integer}
+        total: {type: integer}
+        hostingEnabled: {type: boolean, description: "False: l'amministratore ha spento l'hosting delle app; `items` e' vuoto."}
     AdminAppList:
       type: object
       additionalProperties: false

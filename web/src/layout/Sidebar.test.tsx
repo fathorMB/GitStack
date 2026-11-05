@@ -44,6 +44,19 @@ describe('Sidebar: voce Notifications', () => {
     expect(link.querySelector('.counter')).toBeNull();
   });
 
+  it('Apps e\' un link attivo su /apps; Databases e Home restano disattivate con Soon', async () => {
+    mockedCount.mockResolvedValue(0);
+    renderAt('/apps');
+    const link = await screen.findByRole('link', { name: 'Apps' });
+    expect(link).toHaveAttribute('href', '/apps');
+    expect(link).toHaveClass('active');
+    for (const name of [/Databases/, /Home/]) {
+      const btn = screen.getByRole('button', { name });
+      expect(btn).toBeDisabled();
+      expect(btn).toHaveTextContent('Soon');
+    }
+  });
+
   it('raggiunge Apps & resources dal gruppo Administration', async () => {
     mockedCount.mockResolvedValue(0);
     renderAt('/admin/apps');

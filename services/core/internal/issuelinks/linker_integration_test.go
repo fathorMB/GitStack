@@ -131,7 +131,12 @@ func startNATS(t *testing.T) jetstream.JetStream {
 	if !srv.ReadyForConnections(10 * time.Second) {
 		t.Fatal("nats-server non pronto")
 	}
-	t.Cleanup(srv.Shutdown)
+	// LIFO: nc.Close (registrato dopo) gira prima; poi il server si ferma del
+	// tutto, prima del RemoveAll di t.TempDir().
+	t.Cleanup(func() {
+		srv.Shutdown()
+		srv.WaitForShutdown()
+	})
 	nc, err := nats.Connect(srv.ClientURL())
 	if err != nil {
 		t.Fatal(err)
@@ -205,8 +210,20 @@ func newEnv(t *testing.T) *env {
 	log := testLogger(t)
 	linker := &issuelinks.Linker{Pool: pool, Identity: e.id, Notifier: e.eng, Git: e.git, Log: log}
 	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-	go func() { _ = gitpush.Run(ctx, e.js, gitpush.DurableIssueLinks, linker.HandlePush, log) }()
+	done := make(chan struct{})
+	// Registrato dopo startNATS: in LIFO gira prima della chiusura di nc e del server.
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case <-done:
+		case <-time.After(10 * time.Second):
+			t.Error("gitpush.Run non è uscito entro 10s dalla cancellazione")
+		}
+	})
+	go func() {
+		defer close(done)
+		_ = gitpush.Run(ctx, e.js, gitpush.DurableIssueLinks, linker.HandlePush, log)
+	}()
 	return e
 }
 

@@ -122,3 +122,63 @@ func (s *apiServer) SetAppResources(w http.ResponseWriter, r *http.Request, owne
 	}
 	s.writeAppResources(w, r, updated)
 }
+
+// ListUserApps implementa GET /user/apps: le app dei repo che il chiamante può leggere (stesso
+// criterio di GET /repos: readable-resources di identity), paginate. Con l'hosting spento di
+// proposito risponde 200 con elenco vuoto e hostingEnabled=false, non 503 (GIT-548).
+func (s *apiServer) ListUserApps(w http.ResponseWriter, r *http.Request, params openapi.ListUserAppsParams) {
+	page, perPage, ok := pageArgs(w, params.Page, params.PerPage)
+	if !ok {
+		return
+	}
+	_, userID, ok := callerIdentity(w, r)
+	if !ok {
+		return
+	}
+	if s.appsOff {
+		writeJSON(w, http.StatusOK, openapi.UserAppList{Items: []openapi.App{}, Page: page, PerPage: perPage, HostingEnabled: false})
+		return
+	}
+	if s.repoIdentity == nil {
+		writeError(w, http.StatusServiceUnavailable, "identity_unavailable", "Identity non configurata: impossibile filtrare le app per permesso.")
+		return
+	}
+	all, ids, err := s.repoIdentity.ReadableResources(r.Context(), userID)
+	if err != nil {
+		appInternalError(w, "elenco delle risorse leggibili", err)
+		return
+	}
+	filter := store.AppListFilter{}
+	if !all {
+		filter.RepoIDs = ids
+		if filter.RepoIDs == nil {
+			filter.RepoIDs = []uuid.UUID{}
+		}
+	}
+	apps, total, err := s.resources.ListInstanceApps(r.Context(), filter, perPage, (page-1)*perPage)
+	if err != nil {
+		appInternalError(w, "elenco delle app dell'utente", err)
+		return
+	}
+	publicOn, err := s.resources.PublicAppsEnabled(r.Context())
+	if err != nil {
+		appInternalError(w, "lettura delle app pubbliche", err)
+		return
+	}
+	byApp := map[uuid.UUID][]store.AppDomain{}
+	if publicOn {
+		domains, err := s.resources.ListAppDomainsForCheck(r.Context())
+		if err != nil {
+			appInternalError(w, "lettura dei domini", err)
+			return
+		}
+		for _, d := range domains {
+			byApp[d.AppID] = append(byApp[d.AppID], d)
+		}
+	}
+	out := openapi.UserAppList{Items: make([]openapi.App, 0, len(apps)), Page: page, PerPage: perPage, Total: total, HostingEnabled: true}
+	for _, a := range apps {
+		out.Items = append(out.Items, s.appToAPIWith(a, publicOn, byApp[a.ID]))
+	}
+	writeJSON(w, http.StatusOK, out)
+}

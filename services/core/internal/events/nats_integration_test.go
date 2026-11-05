@@ -45,7 +45,12 @@ func startTestServer(t *testing.T) *server.Server {
 	if !srv.ReadyForConnections(10 * time.Second) {
 		t.Fatal("nats-server embedded non pronto entro 10s")
 	}
-	t.Cleanup(srv.Shutdown)
+	// Registrato prima dei client (LIFO: le connessioni si chiudono prima) e
+	// dopo t.TempDir (il RemoveAll gira per ultimo, a server fermo del tutto).
+	t.Cleanup(func() {
+		srv.Shutdown()
+		srv.WaitForShutdown()
+	})
 	return srv
 }
 
