@@ -4535,6 +4535,373 @@ export type WebhookAppDomainPayload = {
     validUntil?: string;
 };
 
+/**
+ * Nome del database (DB1): label DNS normalizzata da `pkg/names`, unica per owner (`name_conflict`). Non si cambia dopo la creazione.
+ *
+ */
+export type DatabaseName = string;
+
+/**
+ * Major di PostgreSQL (DB1, DB2 dell'ADR 0003): solo quelle ammesse dall'amministratore (16/17).
+ */
+export type DatabasePgMajor = 16 | 17;
+
+/**
+ * Stato osservato del database: `creating` (il controller sta creando namespace, StatefulSet e ruoli), `running`, `restarting`, `updating` (ridimensionamento o cambio immagine richiesto), `restoring`, `deleting`, `failed` (nessuna copia sana).
+ *
+ */
+export type DatabaseStatus = 'creating' | 'running' | 'restarting' | 'updating' | 'restoring' | 'deleting' | 'failed';
+
+/**
+ * Uso corrente e avvisi del limite morbido di disco (DB3): `local-path` non applica la dimensione come limite fisico, il controller misura `pg_database_size` e avvisa all'80% (`warning`) e al 100% (`full`), senza bloccare le scritture.
+ *
+ */
+export type DatabaseUsage = {
+    databaseBytes: number;
+    diskState: 'none' | 'warning' | 'full';
+};
+
+/**
+ * Database gestito PostgreSQL di un owner (ADR 0003, decisione 3). Namespace `gitstack-db-<id>`, immagine `postgres:<major>-alpine` per digest, non root. I segreti (password) non compaiono mai qui (DB22).
+ *
+ */
+export type Database = {
+    id: string;
+    /**
+     * Owner (utente o organizzazione): su di lui contano le quote, insieme ad app e volumi (DB3).
+     */
+    owner: string;
+    name: DatabaseName;
+    pgMajor: DatabasePgMajor;
+    status: DatabaseStatus;
+    /**
+     * Dimensione dichiarata (limite morbido, DB3).
+     */
+    sizeBytes: number;
+    /**
+     * Richiesta CPU in millesimi di vCPU.
+     */
+    cpuMillis: number;
+    memoryBytes: number;
+    /**
+     * Accesso dalla LAN acceso (DB16); spento di default.
+     */
+    lanEnabled: boolean;
+    /**
+     * Porta TCP assegnata; null con la LAN spenta.
+     */
+    lanPort?: number | null;
+    /**
+     * Numero di collegamenti attivi o in scollegamento (DB9).
+     */
+    linkCount: number;
+    /**
+     * Uso corrente; null vuol dire metriche non disponibili (DB21).
+     */
+    usage?: DatabaseUsage | null;
+    createdAt: string;
+    createdBy?: AppActor | null;
+    updatedAt: string;
+};
+
+export type DatabaseList = {
+    items: Array<Database>;
+};
+
+/**
+ * Credenziali mostrate una sola volta: alla creazione del database o alla rotazione (DB22). Non esiste alcuna operazione che le rilegga.
+ *
+ */
+export type DatabaseCredentials = {
+    /**
+     * Utente proprietario `<name>_owner` (non superuser, DB7).
+     */
+    username: string;
+    /**
+     * Password generata; si vede solo in questa risposta (DB22).
+     */
+    password: string;
+    /**
+     * Nome del database PostgreSQL dentro l'istanza.
+     */
+    database: string;
+    /**
+     * Solo TLS, dalla CA interna (DB8, DB17).
+     */
+    sslMode: 'verify-full';
+};
+
+export type DatabaseCreateInput = {
+    name: DatabaseName;
+    pgMajor: DatabasePgMajor;
+    /**
+     * Default 1 GiB (valore proposto dall'ADR 0003, modificabile in GIT-557).
+     */
+    sizeBytes?: number;
+    cpuMillis?: number;
+    /**
+     * Default 256 MiB.
+     */
+    memoryBytes?: number;
+};
+
+export type DatabaseCreated = {
+    database: Database;
+    credentials: DatabaseCredentials;
+};
+
+/**
+ * Ridimensionamento dichiarato (DB3): dimensione, CPU e RAM.
+ */
+export type DatabaseUpdateInput = {
+    sizeBytes?: number;
+    cpuMillis?: number;
+    memoryBytes?: number;
+};
+
+export type DatabaseRotated = {
+    database: Database;
+    credentials: DatabaseCredentials;
+};
+
+/**
+ * Modalita' del collegamento (DB9): `rw` legge e scrive (membro di `<name>_owner`, gli oggetti creati restano del proprietario), `ro` legge (`<name>_ro`).
+ *
+ */
+export type DatabaseLinkMode = 'rw' | 'ro';
+
+/**
+ * `active` il collegamento serve l'app; `unlinking` lo scollegamento e' in corso (ruolo ancora presente, DB12) e l'app sta perdendo le variabili.
+ *
+ */
+export type DatabaseLinkState = 'active' | 'unlinking';
+
+/**
+ * Collegamento app-database (DB9): ruolo di login proprio, senza CREATEROLE/CREATEDB. Le variabili iniettate nell'app e la password non compaiono mai qui (DB10, DB22).
+ *
+ */
+export type DatabaseLink = {
+    id: string;
+    app: {
+        owner: string;
+        repo: string;
+        name: string;
+    };
+    mode: DatabaseLinkMode;
+    state: DatabaseLinkState;
+    createdAt: string;
+    createdBy?: AppActor | null;
+};
+
+export type DatabaseLinkList = {
+    items: Array<DatabaseLink>;
+};
+
+/**
+ * Credenziali del collegamento, mostrate solo alla creazione o alla rotazione del link (DB22). `sslRootcert` e' il percorso del file montato nell'app dalla CA pubblica (DB10, DB17).
+ *
+ */
+export type DatabaseLinkCredentials = {
+    /**
+     * Ruolo di login del collegamento (`l_<id>`).
+     */
+    username: string;
+    /**
+     * Password generata; si vede solo in questa risposta (DB22).
+     */
+    password: string;
+    /**
+     * Nome interno `pg.gitstack-db-<id>.svc.cluster.local` (nei SAN del certificato, DB9).
+     */
+    host: string;
+    port: 5432;
+    database: string;
+    sslMode: 'verify-full';
+    /**
+     * Percorso della CA pubblica montata nell'app (DB10).
+     */
+    sslRootcert: string;
+};
+
+export type DatabaseLinkCreateInput = {
+    app: {
+        /**
+         * Deve coincidere con l'owner del database (DB9).
+         */
+        owner: string;
+        repo: string;
+        name: string;
+    };
+    mode: DatabaseLinkMode;
+};
+
+export type DatabaseLinkCreated = {
+    link: DatabaseLink;
+    credentials: DatabaseLinkCredentials;
+};
+
+export type DatabaseLinkRotated = {
+    link: DatabaseLink;
+    credentials: DatabaseLinkCredentials;
+};
+
+/**
+ * `scheduled`: dump giornaliero (ultimi 7). `on_demand`: su richiesta (ultimi 5), a parte (DB13).
+ */
+export type DatabaseBackupKind = 'scheduled' | 'on_demand';
+
+export type DatabaseBackupStatus = 'in_progress' | 'completed' | 'failed';
+
+/**
+ * Dump `pg_dump -Fc` cifrato AES-256-GCM con la chiave di dump dell'istanza (DB13). I contenuti non si scaricano: i dump servono al ripristino e all'archivio di `gitstack backup`.
+ *
+ */
+export type DatabaseBackup = {
+    id: string;
+    kind: DatabaseBackupKind;
+    status: DatabaseBackupStatus;
+    /**
+     * Dimensione del dump cifrato; null finche' non finisce.
+     */
+    sizeBytes?: number | null;
+    /**
+     * Per `failed`; mai contenuti del dump.
+     */
+    error?: string | null;
+    createdAt: string;
+    completedAt?: string | null;
+    createdBy?: AppActor | null;
+};
+
+export type DatabaseBackupList = {
+    items: Array<DatabaseBackup>;
+};
+
+/**
+ * `same`: il backup sostituisce questo database (conferma `owner/nome` e dump di sicurezza automatico). `new`: nasce un database nuovo, anche con nome diverso (DB15).
+ *
+ */
+export type DatabaseRestoreTarget = 'same' | 'new';
+
+export type DatabaseRestoreInput = {
+    target: DatabaseRestoreTarget;
+    /**
+     * Solo per `target: new`: nome del database di destinazione; assente = stesso nome del backup.
+     */
+    name?: string | null;
+    /**
+     * Solo per `target: same`: `owner/nome` riscritto; obbligatorio (DB19, G8).
+     */
+    confirm?: string | null;
+};
+
+/**
+ * Accesso dalla LAN (DB16, DB17). Spento di default; acceso il database ascolta su una porta TCP dell'intervallo configurato, solo TLS (`hostssl`, `scram-sha-256`) con certificato firmato dall'intermedia dei database; `hostnossl` e' rifiutato. Nessuna allow-list per IP sorgente e nessuna modifica di ufw da parte di GitStack: `ufwCommand` e' il comando che l'amministratore dell'host decide di eseguire (DB18).
+ *
+ */
+export type DatabaseLan = {
+    enabled: boolean;
+    /**
+     * Porta TCP assegnata; null con la LAN spenta.
+     */
+    port: number | null;
+    /**
+     * Indirizzo con cui la LAN raggiunge l'istanza; null con la LAN spenta.
+     */
+    host: string | null;
+    /**
+     * Catena pubblica del server (foglia + intermedia) in PEM; i client verificano con la radice. Null con la LAN spenta.
+     */
+    caCertificate: string | null;
+    /**
+     * Comando suggerito (`ufw allow from <rete> to any port <porta> proto tcp`); GitStack non tocca ufw (DB18).
+     */
+    ufwCommand: string | null;
+    /**
+     * Sessioni attive dalla LAN.
+     */
+    connections?: number;
+};
+
+export type DatabaseLanInput = {
+    enabled: boolean;
+};
+
+export type DatabaseLogLine = {
+    time: string;
+    message: string;
+};
+
+/**
+ * Metriche minime del database (DB21): CPU, memoria, dimensione logica e riavvii.
+ *
+ */
+export type DatabaseMetrics = {
+    /**
+     * Falso se la sorgente (metrics-server, `pg_database_size`) non risponde: le serie sono vuote, non zero.
+     */
+    available: boolean;
+    range: '1h' | '6h' | '24h' | '7d';
+    stepSeconds: number;
+    cpu: AppMetricSeries;
+    memory: AppMetricSeries;
+    databaseBytes: AppMetricSeries;
+    restarts24h: number;
+    /**
+     * Uso corrente; null vuol dire dimensione non letta.
+     */
+    usage?: DatabaseUsage | null;
+};
+
+/**
+ * Intervallo di porte TCP assegnate ai database con la LAN accesa (DB16); proposta dell'ADR 0003: 15432-15531.
+ */
+export type DatabasesPortRange = {
+    from: number;
+    to: number;
+};
+
+/**
+ * Quanti dump conserva il controller (DB13).
+ */
+export type DatabasesBackupRetention = {
+    scheduled: number;
+    onDemand: number;
+};
+
+/**
+ * Impostazioni d'istanza dei database gestiti (solo amministratore, DB23).
+ */
+export type DatabasesInstanceSettings = {
+    /**
+     * Interruttore della funzione (DB23): spento di default; le API rispondono 422 `databases_disabled` finche' e' spento.
+     */
+    enabled: boolean;
+    /**
+     * Major di PostgreSQL ammesse (DB1).
+     */
+    allowedMajors: Array<DatabasePgMajor>;
+    maxPerDatabase: {
+        sizeBytes: number;
+        cpuMillis: number;
+        memoryBytes: number;
+    };
+    lanPortRange: DatabasesPortRange;
+    backupRetention: DatabasesBackupRetention;
+};
+
+export type DatabasesInstanceSettingsInput = {
+    enabled: boolean;
+    allowedMajors: Array<DatabasePgMajor>;
+    maxPerDatabase: {
+        sizeBytes: number;
+        cpuMillis: number;
+        memoryBytes: number;
+    };
+    lanPortRange: DatabasesPortRange;
+    backupRetention: DatabasesBackupRetention;
+};
+
 export type ActionsSecretInputWritable = {
     name: string;
     value: string;
@@ -5343,6 +5710,21 @@ export type AppDomainParam = AppDomainName;
  * Nome dell'app dentro il repo (H5).
  */
 export type AppParam = AppName;
+
+/**
+ * Nome del database gestito (DB1), unico per owner.
+ */
+export type DatabaseNameParam = DatabaseName;
+
+/**
+ * Id del collegamento app-database.
+ */
+export type DatabaseLinkIdParam = string;
+
+/**
+ * Id del backup del database.
+ */
+export type DatabaseBackupIdParam = string;
 
 /**
  * Numero della versione dell'app.
@@ -22105,3 +22487,980 @@ export type DeleteAdminAppTrustedKeyResponses = {
 };
 
 export type DeleteAdminAppTrustedKeyResponse = DeleteAdminAppTrustedKeyResponses[keyof DeleteAdminAppTrustedKeyResponses];
+
+export type ListDatabasesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+    };
+    query?: never;
+    url: '/databases/{owner}';
+};
+
+export type ListDatabasesErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type ListDatabasesError = ListDatabasesErrors[keyof ListDatabasesErrors];
+
+export type ListDatabasesResponses = {
+    /**
+     * Database dell'owner.
+     */
+    200: DatabaseList;
+};
+
+export type ListDatabasesResponse = ListDatabasesResponses[keyof ListDatabasesResponses];
+
+export type CreateDatabaseData = {
+    body: DatabaseCreateInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+    };
+    query?: never;
+    url: '/databases/{owner}';
+};
+
+export type CreateDatabaseErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type CreateDatabaseError = CreateDatabaseErrors[keyof CreateDatabaseErrors];
+
+export type CreateDatabaseResponses = {
+    /**
+     * Database creato, avvio in corso.
+     */
+    202: DatabaseCreated;
+};
+
+export type CreateDatabaseResponse = CreateDatabaseResponses[keyof CreateDatabaseResponses];
+
+export type DeleteDatabaseData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del database gestito (DB1), unico per owner.
+         */
+        name: DatabaseName;
+    };
+    query?: {
+        /**
+         * Conferma obbligatoria: `owner/nome` del database riscritto.
+         */
+        confirm?: string;
+    };
+    url: '/databases/{owner}/{name}';
+};
+
+export type DeleteDatabaseErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type DeleteDatabaseError = DeleteDatabaseErrors[keyof DeleteDatabaseErrors];
+
+export type DeleteDatabaseResponses = {
+    /**
+     * Database eliminato.
+     */
+    204: void;
+};
+
+export type DeleteDatabaseResponse = DeleteDatabaseResponses[keyof DeleteDatabaseResponses];
+
+export type GetDatabaseData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del database gestito (DB1), unico per owner.
+         */
+        name: DatabaseName;
+    };
+    query?: never;
+    url: '/databases/{owner}/{name}';
+};
+
+export type GetDatabaseErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type GetDatabaseError = GetDatabaseErrors[keyof GetDatabaseErrors];
+
+export type GetDatabaseResponses = {
+    /**
+     * Database.
+     */
+    200: Database;
+};
+
+export type GetDatabaseResponse = GetDatabaseResponses[keyof GetDatabaseResponses];
+
+export type UpdateDatabaseData = {
+    body: DatabaseUpdateInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del database gestito (DB1), unico per owner.
+         */
+        name: DatabaseName;
+    };
+    query?: never;
+    url: '/databases/{owner}/{name}';
+};
+
+export type UpdateDatabaseErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type UpdateDatabaseError = UpdateDatabaseErrors[keyof UpdateDatabaseErrors];
+
+export type UpdateDatabaseResponses = {
+    /**
+     * Database aggiornato.
+     */
+    200: Database;
+};
+
+export type UpdateDatabaseResponse = UpdateDatabaseResponses[keyof UpdateDatabaseResponses];
+
+export type RotateDatabaseCredentialsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del database gestito (DB1), unico per owner.
+         */
+        name: DatabaseName;
+    };
+    query?: never;
+    url: '/databases/{owner}/{name}/credentials/rotate';
+};
+
+export type RotateDatabaseCredentialsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type RotateDatabaseCredentialsError = RotateDatabaseCredentialsErrors[keyof RotateDatabaseCredentialsErrors];
+
+export type RotateDatabaseCredentialsResponses = {
+    /**
+     * Nuove credenziali (una tantum).
+     */
+    200: DatabaseRotated;
+};
+
+export type RotateDatabaseCredentialsResponse = RotateDatabaseCredentialsResponses[keyof RotateDatabaseCredentialsResponses];
+
+export type ListDatabaseLinksData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del database gestito (DB1), unico per owner.
+         */
+        name: DatabaseName;
+    };
+    query?: never;
+    url: '/databases/{owner}/{name}/links';
+};
+
+export type ListDatabaseLinksErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type ListDatabaseLinksError = ListDatabaseLinksErrors[keyof ListDatabaseLinksErrors];
+
+export type ListDatabaseLinksResponses = {
+    /**
+     * Collegamenti del database.
+     */
+    200: DatabaseLinkList;
+};
+
+export type ListDatabaseLinksResponse = ListDatabaseLinksResponses[keyof ListDatabaseLinksResponses];
+
+export type CreateDatabaseLinkData = {
+    body: DatabaseLinkCreateInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del database gestito (DB1), unico per owner.
+         */
+        name: DatabaseName;
+    };
+    query?: never;
+    url: '/databases/{owner}/{name}/links';
+};
+
+export type CreateDatabaseLinkErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type CreateDatabaseLinkError = CreateDatabaseLinkErrors[keyof CreateDatabaseLinkErrors];
+
+export type CreateDatabaseLinkResponses = {
+    /**
+     * Collegamento creato.
+     */
+    201: DatabaseLinkCreated;
+};
+
+export type CreateDatabaseLinkResponse = CreateDatabaseLinkResponses[keyof CreateDatabaseLinkResponses];
+
+export type DeleteDatabaseLinkData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del database gestito (DB1), unico per owner.
+         */
+        name: DatabaseName;
+        /**
+         * Id del collegamento app-database.
+         */
+        linkId: string;
+    };
+    query?: never;
+    url: '/databases/{owner}/{name}/links/{linkId}';
+};
+
+export type DeleteDatabaseLinkErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type DeleteDatabaseLinkError = DeleteDatabaseLinkErrors[keyof DeleteDatabaseLinkErrors];
+
+export type DeleteDatabaseLinkResponses = {
+    /**
+     * Scollegamento avviato.
+     */
+    202: DatabaseLink;
+};
+
+export type DeleteDatabaseLinkResponse = DeleteDatabaseLinkResponses[keyof DeleteDatabaseLinkResponses];
+
+export type RotateDatabaseLinkData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del database gestito (DB1), unico per owner.
+         */
+        name: DatabaseName;
+        /**
+         * Id del collegamento app-database.
+         */
+        linkId: string;
+    };
+    query?: never;
+    url: '/databases/{owner}/{name}/links/{linkId}/rotate';
+};
+
+export type RotateDatabaseLinkErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type RotateDatabaseLinkError = RotateDatabaseLinkErrors[keyof RotateDatabaseLinkErrors];
+
+export type RotateDatabaseLinkResponses = {
+    /**
+     * Collegamento con la nuova password (una tantum).
+     */
+    200: DatabaseLinkRotated;
+};
+
+export type RotateDatabaseLinkResponse = RotateDatabaseLinkResponses[keyof RotateDatabaseLinkResponses];
+
+export type ListDatabaseBackupsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del database gestito (DB1), unico per owner.
+         */
+        name: DatabaseName;
+    };
+    query?: never;
+    url: '/databases/{owner}/{name}/backups';
+};
+
+export type ListDatabaseBackupsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type ListDatabaseBackupsError = ListDatabaseBackupsErrors[keyof ListDatabaseBackupsErrors];
+
+export type ListDatabaseBackupsResponses = {
+    /**
+     * Backup del database.
+     */
+    200: DatabaseBackupList;
+};
+
+export type ListDatabaseBackupsResponse = ListDatabaseBackupsResponses[keyof ListDatabaseBackupsResponses];
+
+export type CreateDatabaseBackupData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del database gestito (DB1), unico per owner.
+         */
+        name: DatabaseName;
+    };
+    query?: never;
+    url: '/databases/{owner}/{name}/backups';
+};
+
+export type CreateDatabaseBackupErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type CreateDatabaseBackupError = CreateDatabaseBackupErrors[keyof CreateDatabaseBackupErrors];
+
+export type CreateDatabaseBackupResponses = {
+    /**
+     * Backup avviato.
+     */
+    202: DatabaseBackup;
+};
+
+export type CreateDatabaseBackupResponse = CreateDatabaseBackupResponses[keyof CreateDatabaseBackupResponses];
+
+export type RestoreDatabaseBackupData = {
+    body: DatabaseRestoreInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del database gestito (DB1), unico per owner.
+         */
+        name: DatabaseName;
+        /**
+         * Id del backup del database.
+         */
+        backupId: string;
+    };
+    query?: never;
+    url: '/databases/{owner}/{name}/backups/{backupId}/restore';
+};
+
+export type RestoreDatabaseBackupErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type RestoreDatabaseBackupError = RestoreDatabaseBackupErrors[keyof RestoreDatabaseBackupErrors];
+
+export type RestoreDatabaseBackupResponses = {
+    /**
+     * Ripristino avviato.
+     */
+    202: Database;
+};
+
+export type RestoreDatabaseBackupResponse = RestoreDatabaseBackupResponses[keyof RestoreDatabaseBackupResponses];
+
+export type GetDatabaseLanData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del database gestito (DB1), unico per owner.
+         */
+        name: DatabaseName;
+    };
+    query?: never;
+    url: '/databases/{owner}/{name}/lan';
+};
+
+export type GetDatabaseLanErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type GetDatabaseLanError = GetDatabaseLanErrors[keyof GetDatabaseLanErrors];
+
+export type GetDatabaseLanResponses = {
+    /**
+     * Stato LAN.
+     */
+    200: DatabaseLan;
+};
+
+export type GetDatabaseLanResponse = GetDatabaseLanResponses[keyof GetDatabaseLanResponses];
+
+export type SetDatabaseLanData = {
+    body: DatabaseLanInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del database gestito (DB1), unico per owner.
+         */
+        name: DatabaseName;
+    };
+    query?: never;
+    url: '/databases/{owner}/{name}/lan';
+};
+
+export type SetDatabaseLanErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type SetDatabaseLanError = SetDatabaseLanErrors[keyof SetDatabaseLanErrors];
+
+export type SetDatabaseLanResponses = {
+    /**
+     * Stato LAN aggiornato.
+     */
+    200: DatabaseLan;
+};
+
+export type SetDatabaseLanResponse = SetDatabaseLanResponses[keyof SetDatabaseLanResponses];
+
+export type GetDatabaseLogsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del database gestito (DB1), unico per owner.
+         */
+        name: DatabaseName;
+    };
+    query?: {
+        follow?: boolean;
+        /**
+         * Durata (`5m`, `1h`, `7d`) o istante RFC 3339. Assente: dall'inizio della cronologia, o dall'ultima ora con `follow`.
+         */
+        since?: string;
+        until?: string;
+        /**
+         * Testo da cercare nelle righe (sottostringa).
+         */
+        grep?: string;
+        /**
+         * Al massimo N righe, le piu' recenti.
+         */
+        limit?: number;
+        format?: 'text' | 'ndjson';
+    };
+    url: '/databases/{owner}/{name}/logs';
+};
+
+export type GetDatabaseLogsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type GetDatabaseLogsError = GetDatabaseLogsErrors[keyof GetDatabaseLogsErrors];
+
+export type GetDatabaseLogsResponses = {
+    /**
+     * Log.
+     */
+    200: string;
+};
+
+export type GetDatabaseLogsResponse = GetDatabaseLogsResponses[keyof GetDatabaseLogsResponses];
+
+export type GetDatabaseMetricsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del database gestito (DB1), unico per owner.
+         */
+        name: DatabaseName;
+    };
+    query?: {
+        range?: '1h' | '6h' | '24h' | '7d';
+    };
+    url: '/databases/{owner}/{name}/metrics';
+};
+
+export type GetDatabaseMetricsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type GetDatabaseMetricsError = GetDatabaseMetricsErrors[keyof GetDatabaseMetricsErrors];
+
+export type GetDatabaseMetricsResponses = {
+    /**
+     * Metriche.
+     */
+    200: DatabaseMetrics;
+};
+
+export type GetDatabaseMetricsResponse = GetDatabaseMetricsResponses[keyof GetDatabaseMetricsResponses];
+
+export type GetAdminDatabasesSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/databases/settings';
+};
+
+export type GetAdminDatabasesSettingsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type GetAdminDatabasesSettingsError = GetAdminDatabasesSettingsErrors[keyof GetAdminDatabasesSettingsErrors];
+
+export type GetAdminDatabasesSettingsResponses = {
+    /**
+     * Impostazioni.
+     */
+    200: DatabasesInstanceSettings;
+};
+
+export type GetAdminDatabasesSettingsResponse = GetAdminDatabasesSettingsResponses[keyof GetAdminDatabasesSettingsResponses];
+
+export type UpdateAdminDatabasesSettingsData = {
+    body: DatabasesInstanceSettingsInput;
+    path?: never;
+    query?: never;
+    url: '/admin/databases/settings';
+};
+
+export type UpdateAdminDatabasesSettingsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+};
+
+export type UpdateAdminDatabasesSettingsError = UpdateAdminDatabasesSettingsErrors[keyof UpdateAdminDatabasesSettingsErrors];
+
+export type UpdateAdminDatabasesSettingsResponses = {
+    /**
+     * Impostazioni aggiornate.
+     */
+    200: DatabasesInstanceSettings;
+};
+
+export type UpdateAdminDatabasesSettingsResponse = UpdateAdminDatabasesSettingsResponses[keyof UpdateAdminDatabasesSettingsResponses];

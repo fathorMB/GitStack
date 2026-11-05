@@ -60,7 +60,7 @@ func (h diffHunk) span(newSide bool) (from, to int, ok bool) {
 
 // dbSide traduce il lato del contratto (old/new) in quello dello schema.
 func dbSide(s openapi.DiffSide) string {
-	if s == openapi.Old {
+	if s == openapi.DiffSideOld {
 		return "left"
 	}
 	return "right"
@@ -68,15 +68,15 @@ func dbSide(s openapi.DiffSide) string {
 
 func apiSide(s string) openapi.DiffSide {
 	if s == "left" {
-		return openapi.Old
+		return openapi.DiffSideOld
 	}
-	return openapi.New
+	return openapi.DiffSideNew
 }
 
 // lineProblem controlla che le righe stiano nel diff della PR: un messaggio
 // vuoto vuol dire valide. start=0 per una riga sola.
 func lineProblem(c pullCompare, path string, side openapi.DiffSide, start, line int) (msg string, notInDiff bool) {
-	if side != openapi.Old && side != openapi.New {
+	if side != openapi.DiffSideOld && side != openapi.DiffSideNew {
 		return "side: old o new.", false
 	}
 	if line < 1 || start < 0 {
@@ -86,7 +86,7 @@ func lineProblem(c pullCompare, path string, side openapi.DiffSide, start, line 
 		return "startLine: deve essere minore di line.", false
 	}
 	for _, f := range c.Files {
-		match := f.Path == path || (side == openapi.Old && f.OldPath != nil && *f.OldPath == path)
+		match := f.Path == path || (side == openapi.DiffSideOld && f.OldPath != nil && *f.OldPath == path)
 		if !match {
 			continue
 		}
@@ -98,7 +98,7 @@ func lineProblem(c pullCompare, path string, side openapi.DiffSide, start, line 
 			from = start
 		}
 		for _, h := range parseHunks(*f.Patch) {
-			if a, b, ok := h.span(side == openapi.New); ok && from >= a && line <= b {
+			if a, b, ok := h.span(side == openapi.DiffSideNew); ok && from >= a && line <= b {
 				return "", false
 			}
 		}

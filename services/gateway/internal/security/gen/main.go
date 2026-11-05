@@ -47,7 +47,8 @@ var methods = map[string]string{
 
 var coreTags = map[string]bool{"system": true, "resources": true, "repos": true, "issues": true,
 	"notifications": true, "webhooks": true, "mirrors": true, "pulls": true,
-	"ci": true, "registry": true, "registry-public": true, "releases": true, "apps": true}
+	"ci": true, "registry": true, "registry-public": true, "releases": true, "apps": true,
+	"databases": true}
 
 var identityTags = map[string]bool{
 	"auth": true, "users": true, "tokens": true, "ssh-keys": true,

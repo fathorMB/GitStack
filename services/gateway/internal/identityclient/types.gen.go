@@ -413,6 +413,11 @@ type CredentialEventsAckInput struct {
 	Ids []int64 `json:"ids"`
 }
 
+// DatabaseName Nome del database (DB1): label DNS normalizzata da `pkg/names`, unica per owner (`name_conflict`). Non si cambia dopo la creazione.
+//
+// Example: shop
+type DatabaseName = string
+
 // Error Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type Error struct {
 	Error struct {
@@ -778,6 +783,17 @@ type CacheIdParam = openapi_types.UUID
 
 // CommitShaParam defines model for CommitShaParam.
 type CommitShaParam = string
+
+// DatabaseBackupIdParam defines model for DatabaseBackupIdParam.
+type DatabaseBackupIdParam = openapi_types.UUID
+
+// DatabaseLinkIdParam defines model for DatabaseLinkIdParam.
+type DatabaseLinkIdParam = openapi_types.UUID
+
+// DatabaseNameParam Nome del database (DB1): label DNS normalizzata da `pkg/names`, unica per owner (`name_conflict`). Non si cambia dopo la creazione.
+//
+// Example: shop
+type DatabaseNameParam = DatabaseName
 
 // GitRepoIdParam defines model for GitRepoIdParam.
 type GitRepoIdParam = openapi_types.UUID
