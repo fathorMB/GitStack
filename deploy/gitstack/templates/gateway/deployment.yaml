@@ -91,9 +91,15 @@ spec:
               value: {{ .Values.gateway.env.rateLimit.ipBurst | quote }}
             - name: GITSTACK_CORE_TIMEOUT
               value: {{ .Values.gateway.env.coreTimeout | quote }}
+            # Timeout degli upload di allegati (release e issue), al posto di coreTimeout.
+            - name: GITSTACK_GATEWAY_UPLOAD_TIMEOUT
+              value: {{ .Values.gateway.env.uploadTimeout | default "30m" | quote }}
             # Tetto al corpo di un upload di allegato: lo stesso valore di core
             # (core.attachments.maxBytes), così i due non possono divergere. Il
             # resto dei corpi è tenuto a 1 MiB (GITSTACK_GATEWAY_MAX_BODY_BYTES).
+            # Fa eccezione anche l'upload di un allegato di release (POST
+            # .../releases/{id}/assets): niente tetto da 1 MiB, passa in streaming
+            # con il tetto fisso di 2 GiB (lo stesso di core).
             - name: GITSTACK_GATEWAY_ATTACHMENTS_MAX_BYTES
               value: {{ .Values.core.attachments.maxBytes | int64 | quote }}
             {{- if .Values.gateway.env.trustedProxies }}

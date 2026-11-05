@@ -33,6 +33,10 @@ type Config struct {
 	// CoreTimeout è il timeout per le richieste instradate verso core.
 	CoreTimeout time.Duration
 
+	// UploadTimeout è il timeout dell'upload di un allegato di release o di
+	// issue (GITSTACK_GATEWAY_UPLOAD_TIMEOUT, 0 = 30m): non è tagliato da CoreTimeout.
+	UploadTimeout time.Duration
+
 	// IdentityURL è la base URL del servizio identity (es.
 	// "http://identity:8080"), verso cui il gateway instrada le rotte dei tag
 	// auth, users, tokens, ssh-keys, organizations, teams e permissions del
@@ -113,12 +117,13 @@ type RateLimitConfig struct {
 }
 
 const (
-	envAddr         = "GITSTACK_GATEWAY_ADDR"
-	envInternalAddr = "GITSTACK_GATEWAY_INTERNAL_ADDR"
-	envCoreURL      = "GITSTACK_CORE_URL"
-	envCoreTimeout  = "GITSTACK_CORE_TIMEOUT"
-	envLogLevel     = "GITSTACK_LOG_LEVEL"
-	envVersion      = "GITSTACK_VERSION"
+	envAddr          = "GITSTACK_GATEWAY_ADDR"
+	envInternalAddr  = "GITSTACK_GATEWAY_INTERNAL_ADDR"
+	envCoreURL       = "GITSTACK_CORE_URL"
+	envCoreTimeout   = "GITSTACK_CORE_TIMEOUT"
+	envUploadTimeout = "GITSTACK_GATEWAY_UPLOAD_TIMEOUT"
+	envLogLevel      = "GITSTACK_LOG_LEVEL"
+	envVersion       = "GITSTACK_VERSION"
 
 	// envTrustedProxies: CIDR separati da virgola (es. "10.42.0.0/16").
 	envTrustedProxies = "GITSTACK_GATEWAY_TRUSTED_PROXIES"
@@ -265,6 +270,15 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 			errs = append(errs, fmt.Sprintf("%s non è una durata valida: %q", envCoreTimeout, v))
 		} else {
 			cfg.CoreTimeout = d
+		}
+	}
+
+	if v, ok := lookup(envUploadTimeout); ok && strings.TrimSpace(v) != "" {
+		d, err := time.ParseDuration(strings.TrimSpace(v))
+		if err != nil || d <= 0 {
+			errs = append(errs, fmt.Sprintf("%s non è una durata valida: %q", envUploadTimeout, v))
+		} else {
+			cfg.UploadTimeout = d
 		}
 	}
 
