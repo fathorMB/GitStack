@@ -20,6 +20,7 @@ const data = {
   capacity: { server: { cpuMillis: 8000, memoryBytes: 16 * 1024 ** 3, profile: 'recommended' }, services: { reserved: { cpuMillis: 2000, memoryBytes: 5 * 1024 ** 3 } }, apps: { share: { cpuMillis: 4000, memoryBytes: 8 * 1024 ** 3 }, guaranteed: { cpuMillis: 3300, memoryBytes: 6 * 1024 ** 3 } }, ci: { guaranteedCpuMillis: 2000, usedCpuMillis: 1000, slots: 3 }, appsShareWarning: false },
   egress: { privateDestinations: [{ host: 'smtp.acme.lan', port: 587, note: 'mail relay' }] },
   quotas: [ownerQuota], settings, keys: [{ id: 'k1', name: 'Instance CI key', fingerprint: 'SHA256:abc', instanceKey: true, createdAt: '2026-10-01T00:00:00Z' }],
+  errors: {},
   apps: [{ owner: 'acme', repo: 'handbook', name: 'web', status: 'running', copies: 2, guaranteed: { cpuMillis: 1000, memoryBytes: 1024 ** 3 }, limit: { cpuMillis: 2000, memoryBytes: 2 * 1024 ** 3 }, usage: { cpuMillis: 1240, memoryBytes: 820 * 1024 ** 2 }, verified: true, runsAsRoot: false, aboveGuaranteed: true }],
 };
 
@@ -116,6 +117,31 @@ describe('AppsResourcesPage', { timeout: 30000 }, () => {
     expect(within(quotaSection).getByText('acme')).toBeInTheDocument();
     expect(within(quotaSection).getByText(/5 vCPU/)).toBeInTheDocument();
     expect(within(quotaSection).queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
+  });
+
+  it('GIT-547: se solo l’elenco delle app fallisce, mostra il suo errore e le altre sezioni restano visibili', async () => {
+    setup(true, { ...data, apps: null, errors: { apps: 'Not implemented' } } as never);
+    expect(await screen.findByText('Apps: Not implemented')).toBeInTheDocument();
+    expect(screen.getByText('Quotas by owner')).toBeInTheDocument();
+    expect(screen.getByText('acme')).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Public apps' })).toBeInTheDocument();
+    expect(screen.getByText('Server capacity · priority GitStack services › apps › CI jobs')).toBeInTheDocument();
+    expect(screen.queryByText('acme/handbook/web')).not.toBeInTheDocument();
+  });
+
+  it('GIT-547: se falliscono capacità e quote, le impostazioni e le app si vedono ancora', async () => {
+    setup(true, { ...data, capacity: null, quotas: null, errors: { capacity: 'boom', quotas: 'boom2' } } as never);
+    expect(await screen.findByText('Server capacity: boom')).toBeInTheDocument();
+    expect(screen.getByText('Quotas by owner: boom2')).toBeInTheDocument();
+    expect(screen.getByText('acme/handbook/web')).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Only signed images' })).toBeInTheDocument();
+  });
+
+  it('GIT-547: se falliscono le impostazioni, restano capacità, quote e app', async () => {
+    setup(true, { ...data, settings: null, errors: { settings: 'down' } } as never);
+    expect(await screen.findByText('Instance settings: down')).toBeInTheDocument();
+    expect(screen.getByText('acme/handbook/web')).toBeInTheDocument();
+    expect(screen.getByText('Quotas by owner')).toBeInTheDocument();
   });
 
   it('does not load admin resources for non-admins', async () => {

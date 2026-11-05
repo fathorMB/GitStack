@@ -493,13 +493,14 @@ ul.list{margin:0;padding:0;list-style:none}
 @media (prefers-reduced-motion: reduce){.st.run{animation:st-pulse 1.6s ease-in-out infinite}}
 @keyframes st-pulse{50%{opacity:.4}}
 .log{background:var(--log-bg);color:var(--log-fg);font:12.5px/1.65 var(--font-mono);border-radius:0 0 var(--r-lg) var(--r-lg);padding:8px 0;overflow:auto;max-height:560px}
-.log div{padding:0 14px;white-space:pre}.log .n{color:#6c6584;display:inline-block;width:34px;text-align:right;margin-right:12px;user-select:none}
+.log div{padding:0 14px;white-space:pre-wrap;overflow-wrap:anywhere}.log div.l{display:grid;grid-template-columns:46px minmax(0,1fr)}.log .n{color:#6c6584;width:34px;text-align:right;user-select:none}.log .log-text{min-width:0;overflow-wrap:anywhere}
+.log-follow{display:flex;justify-content:flex-end;padding:6px 10px;background:var(--log-bg);border-radius:0 0 var(--r-lg) var(--r-lg)}
 .log .er{background:rgba(255,107,118,.14);color:#ff8f98}.log .gr{color:#9479ff}
 .jobs a{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r);color:var(--text);font-size:13px}
 .jobs a.active{background:var(--surface);border:1px solid var(--border);box-shadow:inset 3px 0 0 var(--accent)}
 .jobs a:hover{background:var(--surface-2);text-decoration:none}
-.two{display:grid;grid-template-columns:240px 1fr;gap:24px;align-items:start}
-@media (max-width:1100px){.two{grid-template-columns:1fr}}
+.two{display:grid;grid-template-columns:240px minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:1100px){.two{grid-template-columns:minmax(0,1fr)}}
 
 /* Segreti e variabili (mockup B3) e Admin · CI & runners (mockup B4): card di
    solo valore, griglia di quattro stat, definizione termine/valore. */
@@ -516,6 +517,7 @@ ul.list{margin:0;padding:0;list-style:none}
 /* Scheda Apps (v3-a, mockup .prisma/design/mockups-v3-hosting). Solo token esistenti. */
 .repo-h{border-bottom:1px solid var(--border);margin-bottom:20px}
 .repo-h .tabs{border-bottom:0;margin-top:6px;margin-bottom:0}
+.repo-tabs{overflow-x:auto}
 .app-h{display:flex;align-items:center;gap:12px;margin-bottom:4px;flex-wrap:wrap}
 .app-h h1{font-size:20px;font-weight:600}
 .badge-info{background:var(--accent-soft);border-color:transparent;color:var(--accent)}

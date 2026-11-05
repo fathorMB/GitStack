@@ -190,6 +190,7 @@ workflow del repo (un passo `type %AppData%\gitstack-runner\config.json`). Il ru
   Un segreto su più righe (chiave minisign `TAURI_SIGNING_PRIVATE_KEY`, certificato) arriva intero. Il gateway li **maschera riga per riga** nei log.
   Un segreto messo **in linea** nel testo dello script (`echo ${{ secrets.X }}`) lo trasforma la shell prima che il masker lo veda, come su GitHub:
   passalo con `env:`. Prima di GIT-526 il runner passava a act solo `GITHUB_TOKEN`: `secrets.X` e `vars.X` erano vuoti.
+- **Nomi riservati**: i segreti e le variabili del repo non possono iniziare per `GITHUB_` o `GITSTACK_`. L'API li rifiuta con 422 `validation_failed` sul campo `name` ("name: maiuscole, cifre e _, senza iniziare per cifra o per GITHUB_/GITSTACK_ (al massimo 100 caratteri)."). Per l'indirizzo dell'API usa `GS_API_URL`: vedi [ci-release-desktop.md](ci-release-desktop.md).
 - **`.env`, `.secrets`, `.vars` del repo non sono letti**: act li caricava dalla cartella corrente (il codice del repo) come ambiente e segreti del job.
 - **Cartella di lavoro**: `workspace/`, `workflow/`, `actenv/` e `outputs/` si cancellano prima di ogni job, con qualche tentativo (su Windows un file può
   restare aperto un attimo); se la pulizia non riesce il runner **non prende job** e ritenta. La cartella predefinita sta in `%LocalAppData%\gitstack-runner\work`

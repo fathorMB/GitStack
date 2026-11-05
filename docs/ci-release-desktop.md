@@ -15,7 +15,7 @@ in pull). Il repo dell'app, nel caso tipico di Odin, è un **mirror in pull** di
 | Un runner esterno su Windows con etichetta `windows` (`--labels windows`) e il ci-gateway esposto | [ci-runner-esterno.md](ci-runner-esterno.md), sezioni 0 e «Windows» |
 | La CI accesa sul repo (sul mirror in pull: «Accendi la CI», fa un admin o chi ha `write`) | [ci-mirror-in-pull.md](ci-mirror-in-pull.md) |
 | PC del runner: Node (`actions/setup-node` lo scarica), Rust MSVC, Build Tools 2022, `pwsh` 7, `git`/`bash` | tabella «Requisiti del PC» di ci-runner-esterno.md |
-| Il PC del runner si fida della CA dell'istanza (serve a `Invoke-RestMethod` verso `GITSTACK_API_URL`) | «Fiducia nella CA interna» di ci-runner-esterno.md |
+| Il PC del runner si fida della CA dell'istanza (serve a `Invoke-RestMethod` verso `GS_API_URL`) | «Fiducia nella CA interna» di ci-runner-esterno.md |
 | Un repo GitHub **di sole release** (pubblico), con almeno un commit sul ramo predefinito | GitHub |
 
 ### Segreti del repo (Impostazioni → Segreti)
@@ -29,11 +29,13 @@ in pull). Il repo dell'app, nel caso tipico di Odin, è un **mirror in pull** di
 
 | Variabile | Esempio | Perché |
 |---|---|---|
-| `GITSTACK_API_URL` | `https://homehub.local/api/v1` | l'API di GitStack raggiunta dal PC del runner (il job non la riceve da solo: il runner parla con il ci-gateway, non con l'API) |
+| `GS_API_URL` | `https://homehub.local/api/v1` | l'API di GitStack raggiunta dal PC del runner (il job non la riceve da solo: il runner parla con il ci-gateway, non con l'API). Non va chiamata con il prefisso `GITSTACK_`, che è riservato: vedi sotto |
 | `GH_RELEASES_REPO` | `fathorMB/odin-releases` | repo GitHub di sole release |
 | `CARGO_TARGET_DIR` | `C:\gsr-target` | `target/` fuori dal workspace, che si cancella a ogni job (build a caldo: circa 4 min 37 s invece di 6 min 39 s, GIT-526) |
 
 `GITHUB_TOKEN` non va creato: è il token del job (`gsj_`) che il runner passa da solo.
+
+I nomi delle variabili e dei segreti del repo non possono iniziare per `GITHUB_` o `GITSTACK_`: l'API li rifiuta con 422 `validation_failed` sul campo `name` ("name: maiuscole, cifre e _, senza iniziare per cifra o per GITHUB_/GITSTACK_ (al massimo 100 caratteri)."). Il validatore non si cambia: per l'indirizzo dell'API si usa `GS_API_URL`. Il prefisso `GITSTACK_` resta alle variabili di sistema che GitStack passa alle app ospitate (vedi [apps.md](apps.md)).
 
 ## Il workflow
 
@@ -55,7 +57,7 @@ jobs:
     env:
       CARGO_TARGET_DIR: ${{ vars.CARGO_TARGET_DIR }}
       TAG: ${{ github.ref_name }}
-      GS_API: ${{ vars.GITSTACK_API_URL }}
+      GS_API: ${{ vars.GS_API_URL }}
       GS_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
@@ -175,7 +177,7 @@ e `.url`). Gli argomenti dello script sono quelli del repo dell'app, non di GitS
 - **Nomi degli allegati senza spazi.** GitHub sostituisce gli spazi con punti nel nome del file, e l'URL scritto in `latest.json` non troverebbe più il file. Usare `productName` senza spazi.
 - **Il token GitHub è un segreto del repo**: chi può scrivere workflow sul repo lo legge. Limitarlo al repo di release e a `Contents: write`, e registrare il runner solo per repo fidati.
 - **La chiave di firma**: è mascherata nei log (anche su più righe) e il runner passa i segreti ad `act` con un file dotenv `0600` tolto a fine job (GIT-526); questo workflow non scrive la chiave in nessun file e la mette nell'ambiente solo del passo di build. Il runner non separa l'utente del processo da quello dei passi: chi scrive il workflow può comunque leggerla (limite di GIT-526). La build lascia sul PC la cache di Cargo/npm e `CARGO_TARGET_DIR`, mai la chiave.
-- **`GITSTACK_API_URL` va indicata a mano** e il PC deve fidarsi della sua CA. Il token del job vale solo sul repo del run e al più quanto i permessi di chi ha acceso la CI (CI4).
+- **`GS_API_URL` va indicata a mano** e il PC deve fidarsi della sua CA. Il token del job vale solo sul repo del run e al più quanto i permessi di chi ha acceso la CI (CI4).
 - **`actions/upload-artifact@v4` non c'è** (501 del ci-gateway): qui non serve, gli allegati sono quelli della release.
 - **Build a freddo** circa 6 min 40 s su un PC di prova; `timeout-minutes: 90` lascia margine.
 
@@ -183,7 +185,7 @@ e `.url`). Gli argomenti dello script sono quelli del repo dell'app, non di GitS
 
 Pagina e workflow sono scritti ma **non ancora eseguiti** su un'istanza vera. Per decisione del board (4/11) non si usano repo GitHub di prova: la prova si fa su Odin, che ora è dell'azienda.
 
-- **GIT-541** (prima uscita di Odin, in bozza): release GitStack con allegati e SHA-256, copia su GitHub, `latest.json` scaricato, chiave assente dal disco del runner. Conferma anche i punti ancora aperti: `GITSTACK_API_URL` raggiungibile dal runner con il token `gsj_` come Bearer e formato di `id` e `sha256` nelle risposte.
+- **GIT-541** (prima uscita di Odin, in bozza): release GitStack con allegati e SHA-256, copia su GitHub, `latest.json` scaricato, chiave assente dal disco del runner. Conferma anche i punti ancora aperti: `GS_API_URL` raggiungibile dal runner con il token `gsj_` come Bearer e formato di `id` e `sha256` nelle risposte.
 - **GIT-540** (CI di Odin sul runner `pc-board`): la prova del runner Windows contro il gateway esterno, rimasta da GIT-526.
 
 Le correzioni emerse dai run vanno riportate in questa pagina.

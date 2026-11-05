@@ -135,7 +135,7 @@ export function RepoHeader({ repo, mode, admin }: { repo: Repository; mode: Repo
         <RepoWatchSelect owner={owner} repo={name} />
       </div>
       {repo.description ? <p className="muted">{repo.description}</p> : null}
-      <nav className="tabs" aria-label="Repository sections">
+      <nav className="tabs repo-tabs" aria-label="Repository sections">
         <NavLink className={tab(CODE_MODES.includes(mode))} to={base} end>
           <FileCode size={16} aria-hidden="true" />
           Code
