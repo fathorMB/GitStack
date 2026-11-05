@@ -554,6 +554,12 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 		return res, refused("%v", err)
 	}
 
+	// DB6: la release non può togliere una major di PostgreSQL ancora usata da un database.
+	if err := o.checkDatabaseMajors(ctx, dbNow); err != nil {
+		res.Outcome = Refused
+		return res, refused("%v", err)
+	}
+
 	hp, err := o.planHarden()
 	if err != nil {
 		res.Outcome = Refused

@@ -110,7 +110,7 @@ func init() {
 		{name: "backup", summary: "archivio coerente di database, repo, allegati e configurazione", needsRoot: true, run: runBackup},
 		{name: "restore", summary: "ripristina un archivio su un'installazione pulita della stessa versione", needsRoot: true, run: runRestore},
 		{name: "upgrade", summary: "aggiorna GitStack con backup preventivo, controllo di salute e rollback automatico", needsRoot: true, run: runUpgrade},
-		{name: "config", summary: "config set host <nome> | config set apps-domain <dominio> | config set apps on|off | config set network | config set backup.s3 …: nome dell'host, rete aziendale (proxy, mirror, CA), copia dei backup su S3", needsRoot: true, run: runConfig},
+		{name: "config", summary: "config set host <nome> | config set apps-domain <dominio> | config set apps on|off | config set databases on|off | config set network | config set backup.s3 …: nome dell'host, rete aziendale (proxy, mirror, CA), copia dei backup su S3", needsRoot: true, run: runConfig},
 		{name: "databases", summary: "databases ensure: crea la CA intermedia e la chiave di dump dei database gestiti, se mancano", needsRoot: true, run: runDatabases},
 		{name: "postgres", summary: "postgres check: preflight del Postgres esterno (versione 15-17, connessione, permessi)", run: runPostgres},
 		{name: "system-info", summary: "system-info publish|show: pubblica (o stampa) le informazioni per Admin · System", needsRoot: true, run: runSystemInfo},

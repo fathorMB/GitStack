@@ -41,6 +41,9 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 	k3sMinor := fs.Bool("k3s", false, "consente l'aggiornamento di k3s a una nuova minore (una alla volta); le patch si applicano da sole")
 	enableApps := fs.Bool("enable-apps", false, "accende l'hosting delle app (chart apps.enabled): core riceve il controller delle app e i permessi Kubernetes minimi dell'ADR 0002")
 	appsDomain := fs.String("apps-domain", "", "con --enable-apps: dominio delle app (default: quello già impostato, altrimenti apps.<host> con avviso)")
+	enableDatabases := fs.Bool("enable-databases", false, "accende i database gestiti (chart databases.enabled, ADR 0003): core riceve il controller dei database PostgreSQL e i suoi permessi; richiede RAM e disco oltre il profilo minimo")
+	dbPortRange := fs.String("databases-port-range", "", "con --enable-databases: intervallo DA-A delle porte TCP per l'accesso LAN dei database (default: quello già impostato, altrimenti "+defaultDatabasesPortRange+")")
+	skipPreflight := fs.Bool("skip-preflight", false, "con --enable-databases: non controllare RAM e disco libero (a tuo rischio)")
 	var sets, values multiFlag
 	fs.Var(&sets, "set", "valore del chart (chiave=valore), ripetibile")
 	fs.Var(&values, "values", "file di valori del chart, ripetibile")
@@ -103,6 +106,34 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 			_, _ = fmt.Fprintf(a.Stdout, "==> --dry-run: l'hosting delle app si accenderebbe con il dominio %s.\n", d)
 		}
 	}
+	// Database gestiti (GIT-557, DB23): valori del chart e config.yaml, con il preflight di risorse.
+	var dbSets []string
+	var dbConfig map[string]string
+	dbFrom, dbTo := 0, 0
+	if *dbPortRange != "" && !*enableDatabases {
+		a.errorf("upgrade: --databases-port-range vale solo con --enable-databases")
+		return ExitUsage
+	}
+	if *enableDatabases {
+		var ok bool
+		if dbFrom, dbTo, ok = portRangeOf(cfg, *dbPortRange, "upgrade", a); !ok {
+			return ExitUsage
+		}
+		if cfg.ChartDir != "" && dirHasChart(cfg.ChartDir) && !chartHasDatabases(cfg.ChartDir) && *reexecReq == "" {
+			_, _ = fmt.Fprintln(a.Stderr, "Il chart sul disco è precedente ai database gestiti: l'aggiornamento porta quello della destinazione.")
+		}
+		if *reexecReq == "" && !a.databasesPreflight("upgrade", *skipPreflight) {
+			return ExitRefused
+		}
+		dbSets = databasesSets(true, dbFrom, dbTo)
+		dbConfig = databasesConfigFields(true, dbFrom, dbTo)
+		if *dry {
+			_, _ = fmt.Fprintln(a.Stdout, "==> --dry-run: i database gestiti si accenderebbero.")
+		}
+	} else if *skipPreflight {
+		a.errorf("upgrade: --skip-preflight vale solo con --enable-databases")
+		return ExitUsage
+	}
 	var key []byte
 	if *keyFile != "" {
 		var err error
@@ -139,8 +170,8 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		DryRun:          *dry,
 		AllowK3sMinor:   *k3sMinor,
 		Timeout:         *timeout,
-		Sets:            append(append([]string{}, sets...), appsSets...),
-		ExtraConfig:     appsConfig,
+		Sets:            append(append(append([]string{}, sets...), appsSets...), dbSets...),
+		ExtraConfig:     mergeConfigFields(appsConfig, dbConfig),
 		ValueFiles:      values,
 		HelmBin:         a.helmBin(),
 		ExePath:         a.exePath(),
@@ -240,6 +271,11 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 			pendingDomain()
 		}
 	}
+	if *enableDatabases && !*dry {
+		if c := a.finishEnableDatabases(ctx, cfg, path, res, dbSets, dbConfig, dbFrom, dbTo); c != ExitOK {
+			return c
+		}
+	}
 	a.autoPublish(ctx, cfg, path)
 	w := a.Stdout
 	if res.Outcome == upgrade.RolledBack || res.Outcome == upgrade.Broken {
@@ -256,6 +292,53 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		a.errorf("rollback: %s", res.RollbackErr)
 		return ExitBroken
 	}
+	return ExitOK
+}
+
+// mergeConfigFields unisce le chiavi di config.yaml da scrivere con l'aggiornamento (nil se non ce n'è).
+func mergeConfigFields(maps ...map[string]string) map[string]string {
+	var out map[string]string
+	for _, m := range maps {
+		for k, v := range m {
+			if out == nil {
+				out = map[string]string{}
+			}
+			out[k] = v
+		}
+	}
+	return out
+}
+
+// finishEnableDatabases chiude `upgrade --enable-databases` (GIT-557). Con l'aggiornamento riuscito il chart ha
+// già i valori e config.yaml li ha scritti upgrade.Run (ExtraConfig); resta install.conf. Se la versione era già
+// quella richiesta (NoChange) non c'è stato helm upgrade: si creano i segreti e si applicano i soli valori.
+func (a *App) finishEnableDatabases(ctx context.Context, cfg *config.Config, path string, res *upgrade.Result, sets []string, fields map[string]string, from, to int) int {
+	switch res.Outcome {
+	case upgrade.Upgraded:
+	case upgrade.NoChange:
+		if c := a.ensureDatabaseSecrets(ctx, cfg, path, "upgrade"); c != ExitOK {
+			return c
+		}
+		if !chartHasDatabases(cfg.ChartDir) {
+			a.errorf("upgrade: il chart in %s non conosce i database gestiti: serve un aggiornamento a una versione che li porta.", cfg.ChartDir)
+			return ExitConfig
+		}
+		if c := a.helmSets(ctx, cfg, "upgrade", sets...); c != ExitOK {
+			return c
+		}
+		if err := config.SetFields(path, fields); err != nil {
+			a.errorf("upgrade: database gestiti accesi ma config.yaml non aggiornato: %v", err)
+			return ExitUnexpected
+		}
+	default:
+		return ExitOK
+	}
+	updateInstallConfKey(a.tlsDirFor(path), "DATABASES_ENABLED", "true")
+	if from > 0 && to > 0 {
+		updateInstallConfKey(a.tlsDirFor(path), "DATABASES_PORT_RANGE", fmt.Sprintf("%d-%d", from, to))
+	}
+	_, _ = fmt.Fprintln(a.Stdout, "Database gestiti accesi.")
+	a.databasesFirewallHint(from, to)
 	return ExitOK
 }
 

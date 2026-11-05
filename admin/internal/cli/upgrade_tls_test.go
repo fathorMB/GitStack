@@ -37,6 +37,7 @@ type tlsRunner struct {
 	helmUpgraded   bool
 	helmRolledBack bool
 	failRollback   bool
+	helmCalls      []string // argomenti di ogni chiamata a helm (GIT-557)
 }
 
 func (r *tlsRunner) Run(ctx context.Context, env []string, name string, args ...string) ([]byte, error) {
@@ -55,6 +56,7 @@ func (r *tlsRunner) Run(ctx context.Context, env []string, name string, args ...
 		return []byte(`{"items":[]}`), nil
 	}
 	if strings.HasSuffix(name, "helm") && len(args) > 0 {
+		r.helmCalls = append(r.helmCalls, strings.Join(args, " "))
 		if args[0] == "upgrade" {
 			r.helmUpgraded = true
 		}

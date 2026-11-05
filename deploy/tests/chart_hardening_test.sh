@@ -774,6 +774,8 @@ d="$(doc Deployment gitstack-core)"
 expect_has "databases soli: fsGroup 65532" "${d}" "fsGroup: 65532"
 expect_has "databases soli: strategia Recreate" "${d}" "type: Recreate"
 expect_has "databases soli: volume databases-data" "${d}" "claimName: gitstack-databases-data"
+# GIT-557: spegnere i database non cancella i dump: il PVC databases-data sopravvive a helm upgrade.
+expect_has "databases: PVC dei dump con resource-policy keep" "$(doc PersistentVolumeClaim gitstack-databases-data)" "helm.sh/resource-policy: keep"
 # shellcheck disable=SC2086
 if helm_rc ${MIN} --set core.replicaCount=2; then bad "databases.enabled con core.replicaCount=2: helm template doveva fermarsi"; else ok; fi
 # shellcheck disable=SC2086

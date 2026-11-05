@@ -50,12 +50,18 @@ func (a *App) tlsDirFor(configPath string) string {
 
 // helmApps applica valori del chart (--reuse-values) alla release e aspetta che sia sana.
 func (a *App) helmApps(ctx context.Context, cfg *config.Config, cmd string, sets ...string) int {
-	if cfg.ChartDir == "" || !dirHasChart(cfg.ChartDir) {
-		a.errorf("%s: il chart di GitStack non è sul disco (chart_dir %q): rilancia deploy/install.sh, che lo copia.", cmd, cfg.ChartDir)
+	if cfg.ChartDir != "" && dirHasChart(cfg.ChartDir) && !chartHasApps(cfg.ChartDir) {
+		a.errorf("%s: il chart in %s non conosce l'hosting delle app (installazione precedente): aggiorna prima con «gitstack upgrade --enable-apps».", cmd, cfg.ChartDir)
 		return ExitConfig
 	}
-	if !chartHasApps(cfg.ChartDir) {
-		a.errorf("%s: il chart in %s non conosce l'hosting delle app (installazione precedente): aggiorna prima con «gitstack upgrade --enable-apps».", cmd, cfg.ChartDir)
+	return a.helmSets(ctx, cfg, cmd, sets...)
+}
+
+// helmSets applica valori del chart (--reuse-values) alla release e aspetta che sia sana. Chi lo chiama ha
+// già verificato che il chart sul disco conosca le chiavi (chartHasApps, chartHasDatabases).
+func (a *App) helmSets(ctx context.Context, cfg *config.Config, cmd string, sets ...string) int {
+	if cfg.ChartDir == "" || !dirHasChart(cfg.ChartDir) {
+		a.errorf("%s: il chart di GitStack non è sul disco (chart_dir %q): rilancia deploy/install.sh, che lo copia.", cmd, cfg.ChartDir)
 		return ExitConfig
 	}
 	args := []string{"upgrade", cfg.Release, cfg.ChartDir, "--namespace", cfg.Namespace, "--reuse-values"}

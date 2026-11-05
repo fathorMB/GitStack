@@ -47,6 +47,8 @@ type fakeCluster struct {
 	ready    func(deployment string) error // esito di WaitReady (nil: sempre pronto)
 	secrets  []backup.Secret               // Secret di GitStack nel cluster finto (GIT-565)
 	applied  []string                      // nomi dei Secret applicati, in ordine
+	majors    string                        // major dei database gestiti, una per riga (GIT-557)
+	majorsErr error                         // la lettura delle major fallisce
 }
 
 func (f *fakeCluster) note(s string) { f.mu.Lock(); f.calls = append(f.calls, s); f.mu.Unlock() }
@@ -71,6 +73,13 @@ func (f *fakeCluster) PGExec(_ context.Context, stdin io.Reader, stdout io.Write
 		f.note("pg_dump")
 		f.dumped = f.schema
 		_, err := io.WriteString(stdout, "-- dump\n")
+		return err
+	case strings.Contains(cmd, "SELECT DISTINCT pg_major"):
+		// Major di PostgreSQL usate dai database gestiti (DB6, GIT-557).
+		if f.majorsErr != nil {
+			return f.majorsErr
+		}
+		_, err := io.WriteString(stdout, f.majors)
 		return err
 	case strings.Contains(cmd, "repo_package_settings"):
 		return nil // elenco dei repo con le immagini nel backup (GIT-325): nessuno
