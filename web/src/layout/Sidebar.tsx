@@ -65,7 +65,7 @@ export function Sidebar() {
 
       <div className="sb-grp">Platform</div>
       <SidebarItem icon={<Grid2x2 size={18} strokeWidth={1.8} />} label="Apps" to="/apps" />
-      <SidebarItem icon={<Database size={18} strokeWidth={1.8} />} label="Databases" disabled soon />
+      <SidebarItem icon={<Database size={18} strokeWidth={1.8} />} label="Databases" to="/databases" />
 
       <div className="sb-grp">Administration</div>
       <SidebarItem icon={<Users size={18} strokeWidth={1.8} />} label="Organization" to="/orgs" />

@@ -44,13 +44,14 @@ describe('Sidebar: voce Notifications', () => {
     expect(link.querySelector('.counter')).toBeNull();
   });
 
-  it('Apps e\' un link attivo su /apps; Databases e Home restano disattivate con Soon', async () => {
+  it('Apps e Databases sono link; Home resta disattivata', async () => {
     mockedCount.mockResolvedValue(0);
     renderAt('/apps');
     const link = await screen.findByRole('link', { name: 'Apps' });
     expect(link).toHaveAttribute('href', '/apps');
     expect(link).toHaveClass('active');
-    for (const name of [/Databases/, /Home/]) {
+    expect(screen.getByRole('link', { name: 'Databases' })).toHaveAttribute('href', '/databases');
+    for (const name of [/Home/]) {
       const btn = screen.getByRole('button', { name });
       expect(btn).toBeDisabled();
       expect(btn).toHaveTextContent('Soon');
