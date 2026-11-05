@@ -29,7 +29,7 @@ type fakeCluster struct {
 	secrets        []Secret
 	applied        []string
 	appliedRaw     map[string][]byte // Secret applicati, per nome
-	dump          string
+	dump           string
 	psqlIn         string
 	failDump       bool
 	failWait       bool

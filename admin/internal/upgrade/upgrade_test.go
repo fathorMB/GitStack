@@ -256,14 +256,8 @@ const (
 	signedTLS = "#!/bin/sh\n# gitstack-tls del chart firmato: --apps-domain\n"
 )
 
-// chartTarballTLS è il sorgente del commit di prova, con il contenuto di
-// deploy/gitstack-tls.sh ("" = il commit non lo contiene).
-func chartTarballTLS(t *testing.T, sha, tls string, k3sFile ...string) []byte {
-	t.Helper()
-	return chartTarballValues(t, sha, tls, "NUOVO: 1\n", k3sFile...)
-}
-
-// chartTarballValues è chartTarballTLS con il contenuto di deploy/gitstack/values.yaml a scelta.
+// chartTarballValues è il sorgente del commit di prova, con il contenuto di
+// deploy/gitstack-tls.sh ("" = il commit non lo contiene) e di deploy/gitstack/values.yaml.
 func chartTarballValues(t *testing.T, sha, tls, values string, k3sFile ...string) []byte {
 	t.Helper()
 	var buf bytes.Buffer
