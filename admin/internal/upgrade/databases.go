@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"sort"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
