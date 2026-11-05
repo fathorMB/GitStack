@@ -812,6 +812,43 @@ expect_eq "con le app: un solo ServiceAccount di core" "$(docs ServiceAccount | 
 OUT="$(render --namespace prova-ns --set apps.enabled=true --set apps.domain=apps.acme.test)" || { bad "helm template apps fallito"; exit 1; }
 expect_lacks "senza databases: la policy delle app non ha l'esclusione" "$(doc ValidatingAdmissionPolicy gitstack-apps-controller-scope)" "esclude-i-namespace-dei-database"
 
+echo "== GIT-566: la tabella dei digest dei database gestiti punta al repository GitStack"
+# I valori di default di databases.postgres.images devono puntare all'immagine
+# COPIATA sul registry GitStack dal job «registry-databases» di ci.yml (skopeo
+# --preserve-digests) e FIRMATA dal job «sign»: solo lì la firma con l'identità
+# del workflow esiste e `gitstack upgrade` la verifica (H10). Se puntassero a
+# Docker Hub la firma mancherebbe e l'upgrade con databases.enabled=true
+# rifiuterebbe. I digest restano quelli dell'immagine ufficiale, copiati invariati.
+command -v yq >/dev/null 2>&1 || { echo "ERRORE: yq non trovato nel PATH" >&2; exit 2; }
+N_MAJOR=0
+while IFS= read -r major; do
+  N_MAJOR=$((N_MAJOR + 1))
+  repo="$(yq -r ".databases.postgres.images.\"${major}\".repository" "${CHART}/values.yaml")"
+  tag="$(yq -r ".databases.postgres.images.\"${major}\".tag" "${CHART}/values.yaml")"
+  digest="$(yq -r ".databases.postgres.images.\"${major}\".digest" "${CHART}/values.yaml")"
+  case "${repo}" in
+    */gitstack-postgres) ok ;;
+    *) bad "major ${major}: repository della tabella non è gitstack-postgres: ${repo}" ;;
+  esac
+  case "${repo}" in
+    docker.io/*|*.docker.io/*) bad "major ${major}: il default della tabella non deve puntare a Docker Hub: ${repo}" ;;
+    *) ok ;;
+  esac
+  expect_eq "major ${major}: tag <major>-alpine" "${tag}" "${major}-alpine"
+  if printf '%s' "${digest}" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+    ok
+  else
+    bad "major ${major}: digest non sha256 a 64 esadecimali: ${digest}"
+  fi
+done < <(yq -r '.databases.postgres.images | keys | .[]' "${CHART}/values.yaml")
+expect_eq "major presenti nella tabella" "${N_MAJOR}" "2"
+# Nei manifest (con i database accesi) la tabella che core riceve è quella dei
+# valori: stesso repository GitStack, mai Docker Hub.
+OUT="$(render --namespace prova-ns --set databases.enabled=true)" || { bad "helm template con databases fallito"; exit 1; }
+d="$(doc Deployment gitstack-core)"
+expect_has "tabella nei manifest: core riceve gitstack-postgres" "${d}" 'gitstack-postgres'
+expect_lacks "tabella nei manifest: core non riceve Docker Hub" "${d}" "docker.io/library/postgres"
+
 echo
 echo "Passati: ${PASS}  Falliti: ${FAILN}"
 [ "${FAILN}" -eq 0 ]

@@ -188,9 +188,12 @@ var execCommand = func(ctx context.Context, name string, args ...string) *exec.C
 	return exec.CommandContext(ctx, name, args...)
 }
 
-var gitstackImageRe = regexp.MustCompile(`(^|/)gitstack-(gateway|identity|git|core|web|ci-runner)([:@]|$)`)
+var gitstackImageRe = regexp.MustCompile(`(^|/)gitstack-(gateway|identity|git|core|web|ci-runner|postgres)([:@]|$)`)
 
 // IsGitstackImage dice se l'immagine è una di quelle firmate dalla CI di
-// GitStack (gitstack-gateway/identity/git/core/web). Postgres e NATS sono
-// immagini di terzi: non le firma GitStack e non si verificano qui.
+// GitStack: gitstack-gateway/identity/git/core/web e gitstack-postgres, la
+// copia per digest (firmata, non derivata: GIT-566, ADR 0003) dell'immagine
+// ufficiale usata dai database gestiti. Postgres e NATS del database di
+// istanza sono immagini di terzi: non le firma GitStack e non si verificano
+// qui.
 func IsGitstackImage(image string) bool { return gitstackImageRe.MatchString(image) }

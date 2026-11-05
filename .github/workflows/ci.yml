@@ -670,6 +670,102 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  # GIT-566 (ADR 0003, «Rischi»: la tabella dei digest la tiene aggiornata il
+  # job di pubblicazione): copia sul registry GitStack, per DIGEST invariato,
+  # le immagini ufficiali postgres:<major>-alpine dei database gestiti (DB5),
+  # così il job «sign» le firma con l'identità del workflow e `gitstack upgrade`
+  # le verifica come le altre immagini GitStack (H10). Copia, non build: ADR
+  # 0003 «Scartate» (niente immagine derivata). La lista delle major si legge
+  # dai values del chart con yq: non si ricopia nel workflow. Stesse condizioni
+  # e needs del job «registry»: gira solo su push a main o tag.
+  registry-databases:
+    name: Registry — copia digest postgres dei database gestiti
+    needs: [go, ts, security]
+    if: >-
+      !cancelled() && needs.go.result == 'success' && needs.ts.result == 'success'
+      && (needs.security.result == 'success' || needs.security.result == 'skipped')
+      && github.event_name == 'push'
+      && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-24.04
+    # Il push di main e quello del tag sullo stesso commit avviano due run:
+    # copiano lo stesso digest sullo stesso tag, quindi si mettono in fila.
+    concurrency:
+      group: publish-registry-databases-${{ github.sha }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
+    env:
+      # Parametro, non hard-coded: così un repo di prova con IMAGE_NAMESPACE
+      # pubblica altrove (come gli altri job di pubblicazione).
+      REGISTRY: ${{ vars.CONTAINER_REGISTRY || 'ghcr.io' }}
+      IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE || github.repository_owner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      # La tabella major -> digest si legge dal values del chart (yq): il
+      # workflow non conosce le major. yq è preinstallato sui runner
+      # ubuntu-24.04; il controllo esplicito dà un errore chiaro se sparisse.
+      - name: Tabella dei digest dal values (yq)
+        run: |
+          set -euo pipefail
+          command -v yq >/dev/null 2>&1 || { echo "ERRORE: yq non trovato nel runner" >&2; exit 1; }
+          : > pg-images.tsv
+          while IFS= read -r major; do
+            tag="$(yq -r ".databases.postgres.images.\"${major}\".tag" deploy/gitstack/values.yaml)"
+            digest="$(yq -r ".databases.postgres.images.\"${major}\".digest" deploy/gitstack/values.yaml)"
+            if [ -z "${tag}" ] || [ "${tag}" = "null" ]; then
+              echo "ERRORE: databases.postgres.images[${major}]: tag mancante" >&2
+              exit 1
+            fi
+            if ! printf '%s' "${digest}" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+              echo "ERRORE: databases.postgres.images[${major}]: digest non sha256: '${digest}'" >&2
+              exit 1
+            fi
+            printf '%s\t%s\t%s\n' "${major}" "${tag}" "${digest}" >> pg-images.tsv
+          done < <(yq -r '.databases.postgres.images | keys | .[]' deploy/gitstack/values.yaml)
+          if [ ! -s pg-images.tsv ]; then
+            echo "ERRORE: databases.postgres.images è vuota in deploy/gitstack/values.yaml" >&2
+            exit 1
+          fi
+          echo "Tabella delle major da copiare:"
+          cat pg-images.tsv
+
+      - name: Login a ${{ env.REGISTRY }}
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Namespace immagini in minuscolo (richiesto da Docker/OCI)
+        id: owner
+        run: echo "owner=$(echo "${IMAGE_NAMESPACE}" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      # skopeo copia byte per byte (--preserve-digests, come il job «registry»
+      # per i tag di versione): l'indice multi-architettura non si ricostruisce
+      # e il digest di arrivo deve coincidere con quello di Docker Hub, altrimenti
+      # i valori del chart punterebbero a un'immagine diversa da quella verificata.
+      - name: Copia per digest le immagini postgres (skopeo)
+        run: |
+          set -euo pipefail
+          skopeo_img="quay.io/skopeo/stable@sha256:be15097a3e99a1fe72838b3d626d1c283db38626536fff5e04ab6bbb814baeca"
+          while IFS=$'\t' read -r major tag digest; do
+            src="docker.io/library/postgres@${digest}"
+            dst="${REGISTRY}/${{ steps.owner.outputs.owner }}/gitstack-postgres:${tag}"
+            echo "=== Copia postgres ${major}: ${src} -> ${dst}"
+            docker run --rm -v "${HOME}/.docker/config.json:/auth.json:ro" \
+              "${skopeo_img}" \
+              copy --all --preserve-digests --authfile /auth.json "docker://${src}" "docker://${dst}"
+            got="$(docker buildx imagetools inspect "${dst}" --format '{{json .Manifest}}' | jq -er '.digest')"
+            if [ "${got}" != "${digest}" ]; then
+              echo "ERRORE: digest di arrivo diverso per ${dst}: atteso ${digest}, trovato ${got}" >&2
+              exit 1
+            fi
+            echo "OK: digest coincidente ${got}"
+          done < pg-images.tsv
+
   # Comando di amministrazione `gitstack` (admin/, GIT-142): costruisce il
   # binario Linux e lo pubblica come asset della release GitHub
   # "sha-<sha completo>", lo STESSO tag delle immagini (IMAGE_TAG): deploy/
@@ -781,9 +877,10 @@ jobs:
   # (OIDC keyless), packages: write (attestazioni), contents: write (upload release).
   sign:
     name: Sign — cosign (immagini, chart, binari) + SBOM (syft)
-    needs: [registry, admin-binary, gs-binaries]
+    needs: [registry, registry-databases, admin-binary, gs-binaries]
     if: >-
       !cancelled() && needs.registry.result == 'success'
+      && needs.registry-databases.result == 'success'
       && needs.admin-binary.result == 'success'
       && needs.gs-binaries.result == 'success'
       && github.event_name == 'push'
@@ -876,6 +973,38 @@ jobs:
             echo "OK: immagine trovata ${svc}: ${ref}"
           done
 
+          # GIT-566: immagini postgres dei database gestiti, copiate dal job
+          # «registry-databases» con lo stesso digest di Docker Hub. Come le
+          # altre, si firmano per digest (img@sha256:..., mai il tag) e la
+          # lista delle major si rilegge dai values con yq: il workflow non
+          # conosce le major. I riferimenti viaggiano in un file letto dai
+          # passi di firma e verifica.
+          : > postgres-image-refs.txt
+          while IFS= read -r major; do
+            digest="$(yq -r ".databases.postgres.images.\"${major}\".digest" deploy/gitstack/values.yaml)"
+            if ! printf '%s' "${digest}" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+              echo "ERRORE: digest non valido nella tabella postgres (major ${major}): '${digest}'" >&2
+              exit 1
+            fi
+            ref="${{ env.REGISTRY }}/${owner}/gitstack-postgres@${digest}"
+            if ! manifest=$(docker buildx imagetools inspect "${ref}" --format '{{json .Manifest}}' 2>&1); then
+              echo "ERRORE: immagine postgres ${major} non trovata sul registry (manca la copia del job «registry-databases»?): ${ref}" >&2
+              echo "docker buildx imagetools inspect: ${manifest}" >&2
+              exit 1
+            fi
+            got="$(printf '%s' "${manifest}" | jq -er '.digest')"
+            if [ "${got}" != "${digest}" ]; then
+              echo "ERRORE: digest di ${ref} inatteso: ${got}, la tabella dei values ha ${digest}" >&2
+              exit 1
+            fi
+            echo "${ref}" >> postgres-image-refs.txt
+            echo "OK: postgres ${major} da firmare: ${ref}"
+          done < <(yq -r '.databases.postgres.images | keys | .[]' deploy/gitstack/values.yaml)
+          if [ ! -s postgres-image-refs.txt ]; then
+            echo "ERRORE: databases.postgres.images è vuota in deploy/gitstack/values.yaml" >&2
+            exit 1
+          fi
+
       # --- SBOM delle immagini su file (riusato per attestazione, artifact, release) ---
       # syft gira come comando normale, senza process substitution: un errore
       # ferma il passo col suo messaggio. Scope esplicito "squashed" (default per
@@ -931,6 +1060,22 @@ jobs:
             retry 4 cosign sign --yes --recursive "${ref}"
             echo "OK: immagine firmata e attestata ${ref}"
           done
+
+      # --- Firma keyless delle immagini postgres dei database gestiti (GIT-566) ---
+      # Copia firmata (non derivata, ADR 0003 «Scartate») dell'immagine ufficiale:
+      # la firma con la stessa identità OIDC delle altre immagini è ciò che
+      # permette a `gitstack upgrade` di verificarle con H10 come le immagini
+      # GitStack. Riferimenti per digest da postgres-image-refs.txt.
+      - name: Firma keyless immagini postgres dei database gestiti
+        run: |
+          set -euo pipefail
+          source scripts/ci/retry.sh
+          while IFS= read -r ref; do
+            [ -n "${ref}" ] || continue
+            echo "Firma keyless postgres per ${ref}..."
+            retry 4 cosign sign --yes --recursive "${ref}"
+            echo "OK: immagine postgres firmata ${ref}"
+          done < postgres-image-refs.txt
 
       # --- Firma del chart Helm ---
       - name: Firma chart Helm
@@ -1072,6 +1217,29 @@ jobs:
               "${img}"
           fi
           echo "OK: firma immagine verificata"
+
+      - name: Verifica firma immagini postgres dei database gestiti
+        run: |
+          set -euo pipefail
+          issuer="https://token.actions.githubusercontent.com"
+          identity="${{ steps.wf-id.outputs.identity }}"
+          identity_regexp="${{ steps.wf-id.outputs.regexp }}"
+          while IFS= read -r ref; do
+            [ -n "${ref}" ] || continue
+            echo "Verifica firma immagine postgres (per digest): ${ref}"
+            if [ -n "${identity}" ]; then
+              cosign verify \
+                --certificate-identity "${identity}" \
+                --certificate-oidc-issuer "${issuer}" \
+                "${ref}"
+            else
+              cosign verify \
+                --certificate-identity-regexp "${identity_regexp}" \
+                --certificate-oidc-issuer "${issuer}" \
+                "${ref}"
+            fi
+          done < postgres-image-refs.txt
+          echo "OK: firme immagini postgres verificate"
 
       - name: Verifica firma chart Helm
         run: |
