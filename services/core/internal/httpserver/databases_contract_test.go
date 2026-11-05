@@ -33,13 +33,17 @@ func TestDatabases_FunzioneSpentaErroreStabile(t *testing.T) {
 		{"link_list", func(w http.ResponseWriter) { s.ListDatabaseLinks(w, req, "alice", "shop") }},
 		{"link_create", func(w http.ResponseWriter) { s.CreateDatabaseLink(w, req, "alice", "shop") }},
 		{"link_delete", func(w http.ResponseWriter) { s.DeleteDatabaseLink(w, req, "alice", "shop", linkID) }},
-		{"link_rotate", func(w http.ResponseWriter) { s.RotateDatabaseLink(w, req, "alice", "shop", linkID) }},		{"backup_list", func(w http.ResponseWriter) { s.ListDatabaseBackups(w, req, "alice", "shop") }},
+		{"link_rotate", func(w http.ResponseWriter) { s.RotateDatabaseLink(w, req, "alice", "shop", linkID) }}, {"backup_list", func(w http.ResponseWriter) { s.ListDatabaseBackups(w, req, "alice", "shop") }},
 		{"backup_create", func(w http.ResponseWriter) { s.CreateDatabaseBackup(w, req, "alice", "shop") }},
 		{"backup_restore", func(w http.ResponseWriter) { s.RestoreDatabaseBackup(w, req, "alice", "shop", backupID) }},
 		{"lan_get", func(w http.ResponseWriter) { s.GetDatabaseLan(w, req, "alice", "shop") }},
 		{"lan_set", func(w http.ResponseWriter) { s.SetDatabaseLan(w, req, "alice", "shop") }},
-		{"logs", func(w http.ResponseWriter) { s.GetDatabaseLogs(w, req, "alice", "shop", openapi.GetDatabaseLogsParams{}) }},
-		{"metrics", func(w http.ResponseWriter) { s.GetDatabaseMetrics(w, req, "alice", "shop", openapi.GetDatabaseMetricsParams{}) }},
+		{"logs", func(w http.ResponseWriter) {
+			s.GetDatabaseLogs(w, req, "alice", "shop", openapi.GetDatabaseLogsParams{})
+		}},
+		{"metrics", func(w http.ResponseWriter) {
+			s.GetDatabaseMetrics(w, req, "alice", "shop", openapi.GetDatabaseMetricsParams{})
+		}},
 		{"admin_settings_get", func(w http.ResponseWriter) { s.GetAdminDatabasesSettings(w, req) }},
 		{"admin_settings_update", func(w http.ResponseWriter) { s.UpdateAdminDatabasesSettings(w, req) }},
 	}
