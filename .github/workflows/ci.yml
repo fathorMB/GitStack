@@ -1698,7 +1698,7 @@ jobs:
       - name: Database gestiti (k3d)
         # GIT-551 (ADR 0003, DB4/DB5/DB8/DB19): creazione da API fino a running, TLS con le credenziali generate
         # (sslmode=disable respinto), contesto di sicurezza, NetworkPolicy deny e eliminazione con PVC/Secret.
-        # Lo script crea un cluster suo e FALLISCE se uno dei 4 test *SuK3d e' SKIP o non e' PASS.
+        # Lo script crea un cluster suo e FALLISCE se uno dei 5 test *SuK3d e' SKIP o non e' PASS.
         run: services/core/internal/databases/k3d-test.sh
 
       # GIT-21: "k3d cluster create --wait" sopra attende solo che il nodo

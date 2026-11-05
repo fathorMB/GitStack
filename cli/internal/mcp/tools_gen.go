@@ -610,7 +610,7 @@ var Tools = []Tool{
 		Operation:   "setDatabaseLan",
 		Method:      "PUT",
 		Path:        "/databases/{owner}/{name}/lan",
-		Description: "Accende o spegne l'accesso dalla LAN. Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude. Con la funzione spenta risponde 422 `databases_disabled` (DB23).",
+		Description: "Accende o spegne l'accesso dalla LAN. Serve `admin` sull'owner (DB2). Accesa: porta TCP dall'intervallo configurato dall'amministratore, Service `LoadBalancer` e NetworkPolicy `db-lan`; solo TLS (`hostssl`, `scram-sha-256`, `sslmode=verify-full` con la CA), password forte generata (DB16, DB17). 409 `port_unavailable` se la porta e' gia' usata (preflight). Spenta: Service e policy spariscono e la porta si chiude prima della risposta. Se Kubernetes non riesce a toglierli risponde 503 `lan_close_failed`, mai 200: la LAN risulta spenta…",
 		Destructive: true,
 		PathParams:  []string{"name", "owner"},
 		QueryParams: nil,

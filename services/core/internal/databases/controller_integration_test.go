@@ -4,6 +4,7 @@ package databases
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"strings"
 	"sync/atomic"
@@ -39,6 +40,7 @@ type ctlEnv struct {
 	st    *store.Store
 	kube  *fake.Clientset
 	ctl   *Controller
+	root  *x509.Certificate
 	sql   *recorder
 	ver   *fakeVerifier
 	order []string // eventi in ordine: "verify", "create statefulsets"...
@@ -47,8 +49,8 @@ type ctlEnv struct {
 func newCtlEnv(t *testing.T, tune func(*Config)) *ctlEnv {
 	t.Helper()
 	pool, _ := dbtest.NewPool(t)
-	_, caDir := writeTestCA(t)
-	e := &ctlEnv{t: t, pool: pool, st: store.New(pool), kube: fake.NewSimpleClientset(), sql: &recorder{}, ver: &fakeVerifier{}}
+	root, caDir := writeTestCA(t)
+	e := &ctlEnv{t: t, root: root, pool: pool, st: store.New(pool), kube: fake.NewSimpleClientset(), sql: &recorder{}, ver: &fakeVerifier{}}
 	e.kube.PrependReactor("create", "statefulsets", func(k8stesting.Action) (bool, runtime.Object, error) {
 		e.order = append(e.order, "create statefulsets")
 		return false, nil, nil

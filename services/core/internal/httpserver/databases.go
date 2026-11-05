@@ -37,6 +37,9 @@ type DatabaseController interface {
 	LinkApp(ctx context.Context, keys store.AppSealer, d store.ManagedDB, app store.App, mode string, actor *store.AppActor) (store.ManagedDBLink, databases.LinkCredentials, error)
 	RotateLink(ctx context.Context, keys store.AppSealer, d store.ManagedDB, link store.ManagedDBLink, actor *store.AppActor) (databases.LinkCredentials, error)
 	Unlink(ctx context.Context, d store.ManagedDB, link store.ManagedDBLink, actor *store.AppActor) (bool, error)
+	// Accesso dalla LAN (GIT-554): SetLAN assegna o libera la porta e, spegnendo, chiude subito il Service.
+	SetLAN(ctx context.Context, d store.ManagedDB, enable bool, actor *store.AppActor) (store.ManagedDB, error)
+	LANInfo(ctx context.Context, d store.ManagedDB, requestHost string) (databases.LANInfo, error)
 	Kick()
 	// Backup, ripristino e aggiornamento minor (GIT-553).
 	StartBackup(ctx context.Context, d store.ManagedDB, actor *store.AppActor) (store.ManagedDBBackup, error)
@@ -179,7 +182,7 @@ func databaseToAPI(d store.ManagedDB) openapi.Database {
 	out := openapi.Database{
 		Id: openapi_types.UUID(d.ID), Owner: d.OwnerName, Name: openapi.DatabaseName(d.Name), PgMajor: openapi.DatabasePgMajor(d.PgMajor),
 		Status: openapi.DatabaseStatus(d.Status), SizeBytes: d.SizeBytes, CpuMillis: d.CPUMillis, MemoryBytes: d.MemoryBytes,
-		LanEnabled: d.LANEnabled, LanPort: d.LANPort, LinkCount: d.LinkCount, CreatedAt: d.CreatedAt, UpdatedAt: d.UpdatedAt,
+		LanEnabled: d.LANEnabled, LanPort: lanPortIfOn(d), LinkCount: d.LinkCount, CreatedAt: d.CreatedAt, UpdatedAt: d.UpdatedAt,
 	}
 	if d.CreatedBy != nil {
 		out.CreatedBy = &openapi.AppActor{Id: openapi_types.UUID(d.CreatedBy.ID), Username: d.CreatedBy.Username, Type: openapi.AppActorType(d.CreatedBy.Type)}

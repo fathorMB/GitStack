@@ -4,6 +4,7 @@ package databases
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -30,6 +31,10 @@ import (
 // dell'istanza. La verifica vera e' provata dai test del controller (ordine verifica -> StatefulSet).
 
 const (
+	// k3dLANPortFrom e k3dLANPortTo: le porte che k3d-test.sh mappa dall'host al load balancer.
+	k3dLANPortFrom = 15432
+	k3dLANPortTo   = 15439
+
 	envKubeconfig = "GITSTACK_TEST_KUBECONFIG"
 	// Digest dell'indice multi-architettura di postgres:17-alpine, quello di deploy/gitstack/values.yaml.
 	k3dImageDigest = "sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b"
@@ -42,6 +47,8 @@ type k3dEnv struct {
 	st   *store.Store
 	exec *SPDYExecutor
 	ctx  context.Context
+	// root e' la radice di prova: i client LAN si fidano solo di lei (GIT-554).
+	root *x509.Certificate
 }
 
 func newK3dEnv(t *testing.T) *k3dEnv {
@@ -66,13 +73,15 @@ func newK3dEnv(t *testing.T) *k3dEnv {
 		}
 	}
 	pool, _ := dbtest.NewPool(t)
-	_, caDir := writeTestCA(t)
+	root, caDir := writeTestCA(t)
 	exec := &SPDYExecutor{Config: rc, Client: kube}
-	e := &k3dEnv{t: t, kube: kube, st: store.New(pool), exec: exec}
+	e := &k3dEnv{t: t, kube: kube, st: store.New(pool), exec: exec, root: root}
 	e.ctl = New(e.st, kube, Config{
 		Images: map[int]Image{17: {Repository: "docker.io/library/postgres", Tag: "17-alpine", Digest: k3dImageDigest}},
 		CADir:  caDir, Exec: exec, Verifier: verifierFunc(func(context.Context, string) error { return nil }),
 		LoopInterval: time.Second, UsageEvery: 5 * time.Second, ProgressTimeout: 4 * time.Minute, Log: nil,
+		// Le porte mappate sul load balancer da k3d-test.sh.
+		LANPortFrom: k3dLANPortFrom, LANPortTo: k3dLANPortTo,
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)

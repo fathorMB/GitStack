@@ -179,7 +179,7 @@ func TestParseImages(t *testing.T) {
 func TestPKI_CertificatoFirmatoDallIntermedia(t *testing.T) {
 	root, caDir := writeTestCA(t)
 	d := testDB()
-	cert, err := IssueServerCert(caDir, []string{ServiceHost(d.ID)}, time.Now())
+	cert, err := IssueServerCert(caDir, []string{ServiceHost(d.ID)}, nil, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
