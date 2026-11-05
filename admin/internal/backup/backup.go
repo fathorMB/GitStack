@@ -81,6 +81,9 @@ type Manifest struct {
 	// AppVolumes sono i volumi delle app nell'archivio (H3, D19): quelli non esclusi dall'app, copiati
 	// con l'app accesa. Il restore li rimette al loro posto.
 	AppVolumes []AppVolumeRef `json:"app_volumes,omitempty"`
+	// Databases sono i database gestiti nell'archivio (v3-d, DB14): un dump fresco `pg_dump -Fc` ciascuno in
+	// databases/<id>/<nome>.dump. Il restore li rimette nelle istanze che il controller ricrea.
+	Databases []DatabaseRef `json:"databases,omitempty"`
 }
 
 // RefusedError è un rifiuto motivato (versione diversa, archivio corrotto,
@@ -143,6 +146,12 @@ type Options struct {
 	// AppVolumes dà i volumi delle app da includere (H3, D19): quelli con include_in_backup. nil = li
 	// legge dal database (core.app_volumes).
 	AppVolumes func(ctx context.Context) ([]AppVolumeRef, error)
+	// Databases dà i database gestiti da includere (GIT-553, DB14); nil = li legge dal database (core.managed_dbs).
+	Databases func(ctx context.Context) ([]DatabaseRef, error)
+	// DatabaseReadyTimeout e DatabaseReadyPoll: in restore, attesa e intervallo di controllo per istanza ricreata
+	// dal controller (default 10 min e 3 s).
+	DatabaseReadyTimeout time.Duration
+	DatabaseReadyPoll    time.Duration
 	// FreeBytes dà lo spazio libero di una cartella per la stima dello spazio; nil = statfs.
 	FreeBytes func(dir string) (int64, bool)
 }
@@ -292,6 +301,11 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 		return nil, err
 	}
 	acmePath, err := o.locateACME(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// Database gestiti (v3-d): anche l'elenco si legge prima della finestra; i dump si fanno dopo, a servizi riavviati.
+	dbPlan, err := o.planDatabases(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -456,6 +470,10 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 	waitScaledUp()
 
 	// Da qui in poi non serve più fermare niente.
+	dbRefs, err := o.stageDatabases(ctx, st, dbPlan)
+	if err != nil {
+		return nil, err
+	}
 	sb, err := json.Marshal(secrets)
 	if err != nil {
 		return nil, err
@@ -481,6 +499,7 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 		RegistryRepos: regRepos,
 		AppImages:     appImages,
 		AppVolumes:    appRefs,
+		Databases:     dbRefs,
 	}
 	path, sum, err := writeArchive(dest, o.archiveName(m), st, m, o.Key)
 	if err != nil {

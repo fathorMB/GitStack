@@ -690,6 +690,18 @@ var Tools = []Tool{
 		Schema:      "{\"additionalProperties\":false,\"properties\":{\"name\":{\"description\":\"Nome del database gestito (DB1), unico per owner.\",\"maxLength\":30,\"minLength\":1,\"pattern\":\"^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$\",\"type\":\"string\"},\"owner\":{\"description\":\"Nome dell'utente o dell'organizzazione proprietaria (R1).\",\"maxLength\":39,\"minLength\":1,\"pattern\":\"^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$\",\"type\":\"string\"},\"range\":{\"default\":\"1h\",\"enum\":[\"1h\",\"6h\",\"24h\",\"7d\"],\"type\":\"string\"}},\"required\":[\"name\",\"owner\"],\"type\":\"object\"}",
 	},
 	{
+		Name:        "database_upgrade_minor",
+		Operation:   "upgradeDatabaseMinor",
+		Method:      "POST",
+		Path:        "/databases/{owner}/{name}/upgrade-minor",
+		Description: "Chiede l'aggiornamento minor del database all'immagine corrente. Serve `admin` sull'owner (DB2). Il database resta sul digest scelto alla creazione anche quando la tabella delle immagini dell'istanza cambia (DB6); questa e' la richiesta esplicita: il controller fa prima il dump di sicurezza (`safety`, stesso strumento del backup) e solo se riesce passa al digest corrente della tabella per la stessa major (stesso PVC, riavvio del pod, le app collegate si riconnettono). Se il dump fallisce l'immagine non cambia e `operations.upgradeError` dice perche'. La majo…",
+		Destructive: true,
+		PathParams:  []string{"name", "owner"},
+		QueryParams: nil,
+		Body:        false,
+		Schema:      "{\"additionalProperties\":false,\"properties\":{\"name\":{\"description\":\"Nome del database gestito (DB1), unico per owner.\",\"maxLength\":30,\"minLength\":1,\"pattern\":\"^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$\",\"type\":\"string\"},\"owner\":{\"description\":\"Nome dell'utente o dell'organizzazione proprietaria (R1).\",\"maxLength\":39,\"minLength\":1,\"pattern\":\"^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$\",\"type\":\"string\"}},\"required\":[\"name\",\"owner\"],\"type\":\"object\"}",
+	},
+	{
 		Name:        "issue_assignees_set",
 		Operation:   "setIssueAssignees",
 		Method:      "PUT",

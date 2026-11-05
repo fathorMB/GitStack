@@ -31,7 +31,7 @@ func TestMigration0055_OutputsDelJob(t *testing.T) {
 	}
 	mustExec(t, pool, `UPDATE core.ci_jobs SET outputs = '{"digest":"sha256:abc"}' WHERE id = $1`, job)
 
-	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 4); err != nil {
 		t.Fatalf("down 0055: %v", err)
 	}
 	var n int

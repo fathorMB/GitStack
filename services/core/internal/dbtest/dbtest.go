@@ -38,6 +38,7 @@ var (
 	startErr  error
 	createMu  sync.Mutex // CREATE DATABASE da template: una alla volta
 	adminPool *pgxpool.Pool
+	ctrID     string // id del container Postgres (per i test che eseguono pg_dump/pg_restore con docker exec)
 )
 
 // server avvia (una volta per processo) il container e il template migrato.
@@ -58,6 +59,7 @@ func server() (string, error) {
 			startErr = fmt.Errorf("avvio del container Postgres non riuscito (serve un demone Docker raggiungibile): %w", err)
 			return
 		}
+		ctrID = ctr.GetContainerID()
 		dsn, err := ctr.ConnectionString(ctx, "sslmode=disable")
 		if err != nil {
 			startErr = fmt.Errorf("connection string del container Postgres non riuscita: %w", err)
@@ -91,6 +93,16 @@ func server() (string, error) {
 		baseDSN = dsn
 	})
 	return baseDSN, startErr
+}
+
+// ContainerID ritorna l'id del container Postgres dei test (gia' avviato da NewPool). Serve ai test che
+// devono eseguire pg_dump e pg_restore veri nel container (GIT-553): `docker exec -i <id> pg_dump ...`.
+func ContainerID(t *testing.T) string {
+	t.Helper()
+	if _, err := server(); err != nil {
+		t.Fatal(err)
+	}
+	return ctrID
 }
 
 func withDB(dsn, name string) (string, error) {
