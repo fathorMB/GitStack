@@ -28,7 +28,12 @@ func startNATS(t *testing.T) jetstream.JetStream {
 	if !srv.ReadyForConnections(10 * time.Second) {
 		t.Fatal("nats-server non pronto")
 	}
-	t.Cleanup(srv.Shutdown)
+	// LIFO: nc.Close (registrato dopo) gira prima; poi il server si ferma del
+	// tutto, prima del RemoveAll di t.TempDir().
+	t.Cleanup(func() {
+		srv.Shutdown()
+		srv.WaitForShutdown()
+	})
 	nc, err := nats.Connect(srv.ClientURL())
 	if err != nil {
 		t.Fatal(err)
