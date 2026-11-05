@@ -24,8 +24,8 @@ type LANPortPolicy struct {
 	Reserved []int
 }
 
-// pick sceglie la porta piu' bassa libera dell'intervallo, saltando le riservate.
-func (p LANPortPolicy) pick(used map[int]bool) (int, bool) {
+// Pick sceglie la porta piu' bassa libera dell'intervallo, saltando le riservate.
+func (p LANPortPolicy) Pick(used map[int]bool) (int, bool) {
 	reserved := map[int]bool{}
 	for _, r := range p.Reserved {
 		reserved[r] = true
@@ -79,7 +79,7 @@ func (s *Store) SetManagedDBLAN(ctx context.Context, id uuid.UUID, enable bool, 
 		if err := rows.Err(); err != nil {
 			return ManagedDB{}, err
 		}
-		port, ok := pol.pick(used)
+		port, ok := pol.Pick(used)
 		if !ok {
 			return ManagedDB{}, ErrLANPortUnavailable
 		}

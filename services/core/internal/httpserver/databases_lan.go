@@ -53,11 +53,18 @@ func (s *apiServer) SetDatabaseLan(w http.ResponseWriter, r *http.Request, owner
 	if !ok {
 		return
 	}
-	var in openapi.DatabaseLanInput
+	// `enabled` e' obbligatorio: un corpo `{}` non deve spegnere la LAN in silenzio.
+	var in struct {
+		Enabled *bool `json:"enabled"`
+	}
 	if !decodeIssueJSON(w, r, &in, false) {
 		return
 	}
-	next, err := s.databases.Controller.SetLAN(r.Context(), d, in.Enabled, u.actor())
+	if in.Enabled == nil {
+		writeFieldError(w, "enabled", "Serve `enabled`: true accende la LAN, false la spegne.")
+		return
+	}
+	next, err := s.databases.Controller.SetLAN(r.Context(), d, *in.Enabled, u.actor())
 	switch {
 	case errors.Is(err, store.ErrLANPortUnavailable):
 		writeError(w, http.StatusConflict, "port_unavailable", "Nessuna porta libera nell'intervallo delle porte LAN: l'amministratore puo' allargarlo o spegnere la LAN di un altro database.")

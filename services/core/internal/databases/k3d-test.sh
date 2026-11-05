@@ -21,7 +21,11 @@ trap cleanup EXIT
 
 "$k3d_bin" version >/dev/null 2>&1 || { echo "KO: manca k3d"; exit 1; }
 if "$k3d_bin" cluster list -o json | grep -q "\"$cluster\""; then echo "KO: cluster $cluster gia esistente"; exit 1; fi
-"$k3d_bin" cluster create "$cluster" --image "$k3s_image" --wait --timeout "${K3D_TIMEOUT:-300s}" \
+# Porte LAN (GIT-554): le stesse di k3dLANPortFrom/To nel test. Ognuna e' mappata dall'host al load balancer di
+# k3d, che le inoltra a ServiceLB: il test si connette a 127.0.0.1:<porta> come farebbe psql dal PC.
+lan_ports=()
+for p in $(seq 15432 15439); do lan_ports+=(--port "$p:$p@loadbalancer"); done
+"$k3d_bin" cluster create "$cluster" --image "$k3s_image" --wait --timeout "${K3D_TIMEOUT:-300s}" "${lan_ports[@]}" \
   --kubeconfig-update-default=false --kubeconfig-switch-context=false >/dev/null
 created=true
 "$k3d_bin" kubeconfig get "$cluster" >"$work/kubeconfig"
@@ -29,15 +33,15 @@ export GITSTACK_TEST_KUBECONFIG="$work/kubeconfig"
 cd "$root/services/core"
 # Mirata ai soli test su k3d (direttiva del quaderno del repo): niente pacchetti interi, niente ./...
 # Il risultato si legge dall'output: un test SKIP non vale come prova (e' il caso del cluster mancante),
-# quindi lo script fallisce se uno dei 4 test non risulta PASS.
+# quindi lo script fallisce se uno dei 5 test non risulta PASS.
 log="$work/go-test.log"
 set +e
-go test -tags integration -count=1 -timeout 25m -v -run 'TestDatabases_(ContestoDiSicurezza|ConnessioneTls|Isolamento|Eliminazione)SuK3d' ./internal/databases/ ./internal/httpserver/ 2>&1 | tee "$log"
+go test -tags integration -count=1 -timeout 25m -v -run 'TestDatabases_(ContestoDiSicurezza|ConnessioneTls|Isolamento|AccessoLAN|Eliminazione)SuK3d' ./internal/databases/ ./internal/httpserver/ 2>&1 | tee "$log"
 rc=${PIPESTATUS[0]}
 set -e
 [ "$rc" -eq 0 ] || { echo "KO: go test uscito con $rc"; exit "$rc"; }
-for t in ContestoDiSicurezza ConnessioneTls Isolamento Eliminazione; do
+for t in ContestoDiSicurezza ConnessioneTls Isolamento AccessoLAN Eliminazione; do
   if grep -q -- "--- SKIP: TestDatabases_${t}SuK3d" "$log"; then echo "KO: TestDatabases_${t}SuK3d e' SKIP"; exit 1; fi
   if ! grep -q -- "--- PASS: TestDatabases_${t}SuK3d" "$log"; then echo "KO: TestDatabases_${t}SuK3d non risulta PASS"; exit 1; fi
 done
-echo "ok: i 4 test *SuK3d sono PASS"
+echo "ok: i 5 test *SuK3d sono PASS"
