@@ -83,6 +83,25 @@ func printDatabase(p func(string, ...any), d status.Database) {
 	}
 }
 
+// printDatabaseIssues stampa i backup, i ripristini e gli aggiornamenti dei database gestiti non riusciti (GIT-553).
+func printDatabaseIssues(p func(string, ...any), issues []status.ManagedDatabaseIssue) {
+	if len(issues) == 0 {
+		return
+	}
+	p("Database gestiti: problemi aperti")
+	for _, i := range issues {
+		switch i.Kind {
+		case "backup":
+			p("  %s: BACKUP FALLITO: %s", i.Database, i.Reason)
+		case "ripristino":
+			p("  %s: RIPRISTINO FALLITO: %s", i.Database, i.Reason)
+		default:
+			p("  %s: AGGIORNAMENTO MINOR NON ESEGUITO: %s", i.Database, i.Reason)
+		}
+	}
+	p("")
+}
+
 func printReport(w io.Writer, binVersion string, r *status.Report) {
 	p := func(format string, args ...any) { _, _ = fmt.Fprintf(w, format+"\n", args...) }
 	p("GitStack")
@@ -138,6 +157,7 @@ func printReport(w io.Writer, binVersion string, r *status.Report) {
 	p("Database")
 	printDatabase(p, r.Database)
 	p("")
+	printDatabaseIssues(p, r.DatabaseIssues)
 	p("Ultimo backup: %s", r.LastBackup)
 	if r.BackupUpload != "" {
 		p("Backup su S3: %s", r.BackupUpload)

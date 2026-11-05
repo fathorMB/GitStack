@@ -36,6 +36,9 @@ const (
 	envDatabasesCosignBin  = "GITSTACK_CORE_DATABASES_COSIGN_BIN"
 	envDatabasesMajors     = "GITSTACK_CORE_DATABASES_ALLOWED_MAJORS"
 	envDatabasesProgressSe = "GITSTACK_CORE_DATABASES_PROGRESS_TIMEOUT"
+	// GIT-553: chiave di dump (file con i 32 byte del Secret <release>-db-dump-key) e cartella databases-data.
+	envDatabasesDumpKeyFile = "GITSTACK_CORE_DATABASES_DUMP_KEY_FILE"
+	envDatabasesDataDir     = "GITSTACK_CORE_DATABASES_DATA_DIR"
 )
 
 // startDatabases avvia il controller e ritorna l'opzione del router; senza abilitazione ritorna nil e
@@ -67,7 +70,19 @@ func startDatabases(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger
 		Exec:                     &databases.SPDYExecutor{Config: rc, Client: kube},
 		Verifier:                 databases.CosignCLI{Binary: strings.TrimSpace(os.Getenv(envDatabasesCosignBin)), IdentityRegexp: strings.TrimSpace(os.Getenv(envDatabasesCosignID)), Issuer: strings.TrimSpace(os.Getenv(envDatabasesCosignIss))},
 		Log:                      logger,
-		Secrets:                  secrets,
+		// Secrets e' anche cio' che attiva l'AfterRestore predefinito (RelinkAfterRestore): dopo un ripristino i
+		// collegamenti ripartono con password nuove e le app collegate sono ridistribuite (DB15, passo 4).
+		Secrets: secrets,
+	}
+	cfg.DataDir = strings.TrimSpace(os.Getenv(envDatabasesDataDir))
+	if f := strings.TrimSpace(os.Getenv(envDatabasesDumpKeyFile)); f != "" {
+		key, err := os.ReadFile(f)
+		if err != nil || len(key) < databases.MinDumpKeyLen {
+			// Senza chiave i backup dei database non partono (mai in chiaro): l'API risponde backup_unavailable.
+			logger.Error("databases: chiave di dump assente o troppo corta, i backup dei database sono disattivati", "file", f, "err", err)
+		} else {
+			cfg.DumpKey = key
+		}
 	}
 	if v, err := strconv.Atoi(strings.TrimSpace(os.Getenv(envDatabasesProgressSe))); err == nil && v > 0 {
 		cfg.ProgressTimeout = time.Duration(v) * time.Second

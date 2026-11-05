@@ -301,6 +301,68 @@ func (k *KubectlCluster) ApplySecret(ctx context.Context, s Secret) error {
 	return k.run(ctx, bytes.NewReader(s.Raw), io.Discard, "apply", "-f", "-")
 }
 
+// DumpDatabase implementa DatabaseCluster: pg_dump -Fc nel pod del database come gitstack_admin sul socket locale.
+func (k *KubectlCluster) DumpDatabase(ctx context.Context, d DatabaseRef, w io.Writer) error {
+	if err := d.validate(); err != nil {
+		return err
+	}
+	return k.runIn(ctx, d.Namespace(), nil, w, "exec", dbPod, "-c", dbContainer, "--",
+		"pg_dump", "-Fc", "-h", dbSocketDir, "-U", dbAdminRole, "-d", d.Name)
+}
+
+// DatabaseReady implementa DatabaseCluster: il pod e' Ready e il controller ha creato ruoli e database
+// (annotazione gitstack.io/roles-ready sul Secret pg-auth).
+func (k *KubectlCluster) DatabaseReady(ctx context.Context, d DatabaseRef) (bool, error) {
+	if err := d.validate(); err != nil {
+		return false, err
+	}
+	ns := d.Namespace()
+	pod, err := k.outIn(ctx, ns, "get", "pod", dbPod, "--ignore-not-found", "-o", "jsonpath={.status.conditions[?(@.type==\"Ready\")].status}")
+	if err != nil {
+		return false, err
+	}
+	if strings.TrimSpace(string(pod)) != "True" {
+		return false, nil
+	}
+	roles, err := k.outIn(ctx, ns, "get", "secret", "pg-auth", "--ignore-not-found", "-o", "jsonpath={.metadata.annotations.gitstack\\.io/roles-ready}")
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(string(roles)) == "true", nil
+}
+
+// restoreROPrivileges rifa i privilegi di <nome>_ro dopo il ripristino (la stessa routine della creazione, DB15).
+func (d DatabaseRef) restoreROPrivileges() string {
+	owner, ro := quoteIdent(d.ownerRole()), quoteIdent(d.roRole())
+	return fmt.Sprintf(`ALTER SCHEMA public OWNER TO %[1]s;
+GRANT USAGE ON SCHEMA public TO %[2]s;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO %[2]s;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO %[2]s;
+ALTER DEFAULT PRIVILEGES FOR ROLE %[1]s IN SCHEMA public GRANT SELECT ON TABLES TO %[2]s;
+ALTER DEFAULT PRIVILEGES FOR ROLE %[1]s IN SCHEMA public GRANT SELECT ON SEQUENCES TO %[2]s;`, owner, ro)
+}
+
+func quoteIdent(s string) string { return `"` + strings.ReplaceAll(s, `"`, `""`) + `"` }
+
+// RestoreDatabase implementa DatabaseCluster. Sempre --no-owner --no-acl --role=<nome>_owner in una sola
+// transazione (DB15); poi i privilegi di <nome>_ro.
+func (k *KubectlCluster) RestoreDatabase(ctx context.Context, d DatabaseRef, r io.Reader) error {
+	if err := d.validate(); err != nil {
+		return err
+	}
+	ns := d.Namespace()
+	if err := k.runIn(ctx, ns, r, io.Discard, "exec", "-i", dbPod, "-c", dbContainer, "--",
+		"env", "PGOPTIONS=-c lock_timeout=60s", "pg_restore", "-h", dbSocketDir, "-U", dbAdminRole, "-d", d.Name,
+		"--no-owner", "--no-acl", "--role="+d.ownerRole(), "--single-transaction", "--exit-on-error"); err != nil {
+		return fmt.Errorf("pg_restore: %w", err)
+	}
+	if err := k.runIn(ctx, ns, strings.NewReader(d.restoreROPrivileges()), io.Discard, "exec", "-i", dbPod, "-c", dbContainer, "--",
+		"psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", "-h", dbSocketDir, "-U", dbAdminRole, "-d", d.Name, "-f", "-"); err != nil {
+		return fmt.Errorf("privilegi di %s: %w", d.roRole(), err)
+	}
+	return nil
+}
+
 // AppVolumePath implementa AppVolumeCluster.
 func (k *KubectlCluster) AppVolumePath(ctx context.Context, v AppVolumeRef) (string, error) {
 	return k.volumePath(ctx, v.Namespace(), v.PVC())
