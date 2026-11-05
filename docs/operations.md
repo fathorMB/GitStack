@@ -2218,17 +2218,61 @@ La release `sha-<commit-sha>` contiene:
 ### Flusso di firma
 
 1. I job `registry`, `admin-binary` e `gs-binaries` pubblicano immagini, chart e
-   binari nella release GitHub (`sha-<commit-sha>`).
-2. Il job `sign` (dipende da tutti e tre) scarica gli asset, genera gli SBOM
+   binari nella release GitHub (`sha-<commit-sha>`); `registry-databases`
+   copia sul registry le immagini postgres dei database gestiti, per digest
+   (sezione seguente).
+2. Il job `sign` (dipende da tutti e quattro) scarica gli asset, genera gli SBOM
    con syft e firma con cosign:
    - Immagini: `cosign attest --type spdxjson` (SBOM come attestazione in-toto)
      + `cosign sign` (firma keyless OIDC).
+   - Immagini postgres dei database gestiti: `cosign sign --recursive` keyless
+     sui riferimenti per digest copiati da `registry-databases`.
    - Chart: `cosign sign-blob --bundle` (firma del file .tgz, output `.sigstore.json`).
    - Binari: `cosign sign-blob --bundle` (firma di ogni binary/checksum).
 3. Firme (.sigstore.json), SBOM (.spdx.json) e file originali vengono caricati
    nella release GitHub con `gh release upload --clobber`.
-4. Step di verifica interna: `cosign verify` su immagine,
-   `cosign verify-blob` su chart e binario, tutti senza `|| true`.
+4. Step di verifica interna: `cosign verify` su immagine (incluse le postgres
+   dei database gestiti), `cosign verify-blob` su chart e binario, tutti senza `|| true`.
+
+### Database gestiti: immagini postgres copiate e firmate (GIT-566)
+
+Le immagini dei database gestiti non sono immagini GitStack costruite dalla CI:
+sono **copie per digest invariate** dell'immagine ufficiale
+`docker.io/library/postgres:<major>-alpine` (ADR 0003, «Scartate»: niente
+immagine derivata). L'ADR 0003 («Rischi») assegna al job di pubblicazione il
+tenere aggiornata la tabella dei digest (`databases.postgres.images` nei values
+del chart): il job `registry-databases` di `ci.yml` la legge con yq e, per ogni
+major, copia con `skopeo copy --all --preserve-digests` da
+`docker.io/library/postgres@<digest>` a
+`<registry>/<namespace>/gitstack-postgres:<major>-alpine`, fallendo se il
+digest di arrivo è diverso. Il job `sign` firma poi ogni riferimento per
+digest con `cosign sign --recursive` keyless (la stessa identità OIDC delle
+altre immagini) e lo verifica con `cosign verify`. Così `gitstack upgrade` con
+`databases.enabled=true` verifica le voci nuove della tabella come le altre
+immagini GitStack (H10): firma mancante o di altra identità = rifiuto prima di
+`helm upgrade`. Postgres e NATS del database di istanza restano immagini di
+terzi: la CI non li firma e l'upgrade non ne verifica la firma.
+
+**Aggiornare un digest** (nuova minor dell'immagine ufficiale):
+
+1. leggi il digest dell'indice multi-architettura da Docker Hub, ad esempio
+   `skopeo inspect --format '{{.Digest}}' docker://docker.io/library/postgres:16-alpine`;
+2. aggiorna la riga `digest` della major in `deploy/gitstack/values.yaml`;
+3. al merge su `main` la CI copia e firma il nuovo digest. Finché il run non è
+   verde, un `gitstack upgrade` che trovi la tabella nuova rifiuta (firma
+   assente): è voluto, la tabella dei values non va mai avanti della CI.
+
+**Aggiungere una major**: aggiungi una riga alla tabella (chiave la major,
+`tag` `<major>-alpine`, `digest` da Docker Hub). Al push su `main` la CI copia
+e firma la major nuova senza altre modifiche: la lista delle major vive nei
+values, non nel workflow.
+
+**Mirror (N9)**: come gli altri valori del chart, la tabella si sovrascrive
+con `-f`/`--set` (per esempio
+`--set databases.postgres.images.\"16\".repository=<mirror>/gitstack-postgres`).
+Il job di copia gira su GitHub Actions e prende SEMPRE da Docker Hub come
+sorgente: il digest nei values resta la prova di quale immagine ufficiale si
+distribuisce.
 
 ### Rilascio con versione (`vX.Y.Z`, GIT-222)
 
@@ -2330,7 +2374,8 @@ quale artefatto è in causa.
 |---|---|
 | Binario `gitstack` | SHA-256 (`.sha256` della release o `--admin-sha256`) **e** `cosign verify-blob` col bundle `gitstack-linux-amd64.sigstore.json` scaricato accanto al binario |
 | Chart Helm | si scarica il `.tgz` pubblicato dalla CI (`gitstack-<versione>.tgz` nella release `sha-<commit>`) con il suo `.sigstore.json`, si verifica e solo dopo si estrae: il sorgente di codeload non ha i byte firmati e non si usa |
-| Immagini `gitstack-gateway/identity/git/core/web` | `cosign verify` sull'immagine che il chart distribuirebbe (stessi `--set`/`-f` dell'installazione), prima di `helm upgrade --install`. Postgres e NATS sono immagini di terzi: non le firma GitStack |
+| Immagini `gitstack-gateway/identity/git/core/web` | `cosign verify` sull'immagine che il chart distribuirebbe (stessi `--set`/`-f` dell'installazione), prima di `helm upgrade --install`. Postgres e NATS del database di istanza sono immagini di terzi: non le firma GitStack |
+| Immagini `gitstack-postgres` dei database gestiti | `cosign verify` su `repository@digest` di ogni voce nuova della tabella `databases.postgres.images` (letta dal rendering di Helm), prima di `helm upgrade --install`. Sono copie per digest invariate dell'immagine ufficiale, copiate e firmate dalla CI: vedi «Database gestiti: immagini postgres copiate e firmate» qui sopra |
 
 - **Identità fissata**: il workflow `ci.yml` del repository (`GITSTACK_REPO`,
   default `fathorMB/GitStack`) da `main` o da un tag `v*`, regexp

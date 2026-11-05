@@ -837,15 +837,19 @@ databases:
       accessMode: ReadWriteOnce
   postgres:
     # Tabella major -> immagine per DIGEST (DB5). Majors ammesse 16 e 17. `gitstack upgrade`
-    # verifica con cosign il digest di ogni voce nuova prima di applicare il chart (H10). I digest
-    # sono quelli degli indici multi-architettura di Docker Hub letti il 2026-11-05: li aggiorna il
-    # job di pubblicazione del chart a ogni release.
+    # verifica con cosign il digest di ogni voce nuova prima di applicare il chart (H10). I
+    # digest sono quelli degli indici multi-architettura dell'immagine ufficiale
+    # docker.io/library/postgres:<major>-alpine (letti il 2026-11-05): il job
+    # «registry-databases» di ci.yml li copia invariati sul registry GitStack e il job «sign»
+    # li firma con l'identità del workflow, quindi l'upgrade li verifica come le altre immagini
+    # GitStack (GIT-566). Come aggiornare un digest o aggiungere una major: docs/operations.md
+    # (V5, «Database gestiti: immagini postgres copiate e firmate»).
     images:
       "16":
-        repository: docker.io/library/postgres
+        repository: ghcr.io/fathormb/gitstack-postgres
         tag: 16-alpine
         digest: sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab
       "17":
-        repository: docker.io/library/postgres
+        repository: ghcr.io/fathormb/gitstack-postgres
         tag: 17-alpine
         digest: sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b
