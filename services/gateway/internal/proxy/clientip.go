@@ -23,6 +23,8 @@ type options struct {
 
 	// maxBody e maxAttachment: tetti al corpo (0 = default del package).
 	maxBody, maxAttachment int64
+	// uploadTimeout: timeout degli upload (0 = DefaultUploadTimeout).
+	uploadTimeout time.Duration
 }
 
 // WithBodyLimits imposta il tetto al corpo delle richieste (JSON) e quello
@@ -35,7 +37,10 @@ func WithBodyLimits(maxBody, maxAttachment int64) Option {
 // bodyLimit è il tetto al corpo per la richiesta: più ampio solo per
 // l'upload di un allegato.
 func (o *options) bodyLimit(r *http.Request) int64 {
-	if r.Method == http.MethodPost && strings.HasSuffix(strings.TrimSuffix(r.URL.Path, "/"), "/issue-attachments") {
+	if isReleaseAssetUpload(r) {
+		return DefaultMaxReleaseAssetBytes
+	}
+	if isIssueAttachmentUpload(r) {
 		if o.maxAttachment > 0 {
 			return o.maxAttachment + multipartOverhead
 		}

@@ -49,4 +49,17 @@ func TestLimitBody(t *testing.T) {
 	if rec.Code != http.StatusNoContent || gotLen != len(big) {
 		t.Fatalf("allegato: status %d, letti %d", rec.Code, gotLen)
 	}
+	// GIT-571: anche l'upload di un allegato di release e' escluso, ma solo la rotta esatta.
+	gotLen = -1
+	rec = do(http.MethodPost, "/repos/a/b/releases/"+"11111111-1111-1111-1111-111111111111"+"/assets", strings.NewReader(big), int64(len(big)))
+	if rec.Code != http.StatusNoContent || gotLen != len(big) {
+		t.Fatalf("allegato di release: status %d, letti %d", rec.Code, gotLen)
+	}
+	gotLen = -1
+	for _, p := range []string{"/repos/a/b/releases/x/y/assets", "/repos/a/b/releases"} {
+		rec = do(http.MethodPost, p, strings.NewReader(big), int64(len(big)))
+		if rec.Code != http.StatusRequestEntityTooLarge || gotLen != -1 {
+			t.Fatalf("%s: status %d, letti %d", p, rec.Code, gotLen)
+		}
+	}
 }

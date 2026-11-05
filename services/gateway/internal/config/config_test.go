@@ -70,6 +70,18 @@ func TestLoad_CoreURLNonValida(t *testing.T) {
 	}
 }
 
+func TestLoad_UploadTimeout(t *testing.T) {
+	env := map[string]string{envCoreURL: "http://core:8080", envUploadTimeout: "boh"}
+	if _, err := load(lookupFrom(env)); err == nil {
+		t.Fatal("UploadTimeout non valido doveva fallire")
+	}
+	env[envUploadTimeout] = "45m"
+	cfg, err := load(lookupFrom(env))
+	if err != nil || cfg.UploadTimeout != 45*time.Minute {
+		t.Fatalf("UploadTimeout = %v, err %v", cfg.UploadTimeout, err)
+	}
+}
+
 func TestLoad_CoreTimeoutNonValido(t *testing.T) {
 	_, err := load(lookupFrom(map[string]string{
 		envCoreURL:     "http://core:8080",
