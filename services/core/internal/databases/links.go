@@ -2,6 +2,7 @@ package databases
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -14,6 +15,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 )
@@ -132,31 +136,158 @@ func (c *Controller) LinkApp(ctx context.Context, keys store.AppSealer, d store.
 	return link, creds, nil
 }
 
-// RotateLink cambia la password del ruolo del collegamento e chiude le sue sessioni (DB12), poi riscrive i
-// segreti dell'app con una versione nuova: l'app riparte con la password nuova, la vecchia non entra piu'.
+// SecretLinkRotatePrefix: Secret nel namespace del database con l'INTENTO di rotazione di un collegamento
+// (GIT-552). La password nuova vi sta cifrata col portachiavi dei segreti (stessa chiave delle app) e resta
+// finche' ruolo, segreti dell'app e versione non sono allineati: e' cio' che rende la rotazione riprendibile
+// dopo un errore o il riavvio di core.
+const SecretLinkRotatePrefix = "pg-link-rotate-"
+
+type rotateIntent struct {
+	password string
+	actor    *store.AppActor
+}
+
+func rotateSecretName(linkID uuid.UUID) string { return SecretLinkRotatePrefix + linkID.String() }
+
+func (c *Controller) loadIntent(ctx context.Context, keys store.AppSealer, d store.ManagedDB, linkID uuid.UUID) (*rotateIntent, error) {
+	sec, err := c.kube.CoreV1().Secrets(Namespace(d.ID)).Get(ctx, rotateSecretName(linkID), metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	pw, err := keys.Open(linkID, sec.Data["ciphertext"], sec.Data["nonce"], string(sec.Data["key-id"]))
+	if err != nil {
+		return nil, fmt.Errorf("intento di rotazione non decifrabile: %w", err)
+	}
+	in := &rotateIntent{password: pw}
+	if raw := sec.Data["actor"]; len(raw) > 0 {
+		var a store.AppActor
+		if json.Unmarshal(raw, &a) == nil {
+			in.actor = &a
+		}
+	}
+	return in, nil
+}
+
+func (c *Controller) saveIntent(ctx context.Context, keys store.AppSealer, d store.ManagedDB, linkID uuid.UUID, pw string, actor *store.AppActor) error {
+	ct, nonce, keyID, err := keys.Seal(linkID, pw)
+	if err != nil {
+		return err
+	}
+	data := map[string][]byte{"ciphertext": ct, "nonce": nonce, "key-id": []byte(keyID)}
+	if actor != nil {
+		if raw, err := json.Marshal(actor); err == nil {
+			data["actor"] = raw
+		}
+	}
+	ns := Namespace(d.ID)
+	_, err = c.kube.CoreV1().Secrets(ns).Create(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: rotateSecretName(linkID), Namespace: ns, Labels: objectLabels(d.ID)}, Data: data}, metav1.CreateOptions{})
+	return err
+}
+
+func (c *Controller) dropIntent(ctx context.Context, d store.ManagedDB, linkID uuid.UUID) {
+	err := c.kube.CoreV1().Secrets(Namespace(d.ID)).Delete(ctx, rotateSecretName(linkID), metav1.DeleteOptions{})
+	if err != nil && !apierrors.IsNotFound(err) && ctx.Err() == nil {
+		c.cfg.Log.Warn("databases: intento di rotazione non rimosso", "db", d.ID, "link", linkID, "err", err)
+	}
+}
+
+// RotateLink ruota la password del collegamento in modo riprendibile (DB12). Prima si PERSISTE l'intento (la
+// password nuova, cifrata); poi, in modo idempotente: ALTER ROLE e chiusura delle sessioni, riscrittura dei segreti
+// dell'app con la nuova versione e il suo deploy (una transazione), infine si toglie l'intento. Se un passo
+// fallisce (o core riparte) l'intento resta e ResumeRotations porta tutto a convergenza; una nuova richiesta di
+// rotazione riusa la stessa password invece di generarne un'altra.
 func (c *Controller) RotateLink(ctx context.Context, keys store.AppSealer, d store.ManagedDB, link store.ManagedDBLink, actor *store.AppActor) (LinkCredentials, error) {
 	if d.Status != store.DBRunning {
 		return LinkCredentials{}, ErrNotReady
 	}
-	if link.State != "active" {
-		return LinkCredentials{}, ErrLinkUnlinking
-	}
-	pw, err := NewPassword()
-	if err != nil {
-		return LinkCredentials{}, err
-	}
-	c.remember(pw)
 	mu := c.linkLock(d.ID)
 	mu.Lock()
 	defer mu.Unlock()
-	if err := RotateLinkRole(ctx, c.sql, d, link.ID, pw); err != nil {
-		return LinkCredentials{}, fmt.Errorf("rotazione del ruolo del collegamento: %w", err)
-	}
-	creds := NewLinkCredentials(d, link.ID, pw)
-	if _, err := c.st.RotateAppDBLink(ctx, keys, d, link.ID, link.AppID, creds.Env(), actor, c.cfg.Now()); err != nil {
+	// Rilegge sotto serratura: lo stato puo' essere cambiato dopo la lettura dell'API.
+	cur, err := c.st.GetManagedDBLink(ctx, d.ID, link.ID)
+	if err != nil {
 		return LinkCredentials{}, err
 	}
-	return creds, nil
+	if cur.State != "active" {
+		return LinkCredentials{}, ErrLinkUnlinking
+	}
+	in, err := c.loadIntent(ctx, keys, d, cur.ID)
+	if err != nil {
+		return LinkCredentials{}, err
+	}
+	if in == nil {
+		pw, err := NewPassword()
+		if err != nil {
+			return LinkCredentials{}, err
+		}
+		if err := c.saveIntent(ctx, keys, d, cur.ID, pw, actor); err != nil {
+			return LinkCredentials{}, fmt.Errorf("intento di rotazione non salvato: %w", err)
+		}
+		in = &rotateIntent{password: pw, actor: actor}
+	}
+	c.remember(in.password)
+	if err := c.applyRotation(ctx, keys, d, cur, in); err != nil {
+		return LinkCredentials{}, err
+	}
+	return NewLinkCredentials(d, cur.ID, in.password), nil
+}
+
+// applyRotation e' idempotente: se i segreti dell'app hanno gia' la password dell'intento la rotazione e'
+// arrivata in fondo e resta solo da togliere l'intento.
+func (c *Controller) applyRotation(ctx context.Context, keys store.AppSealer, d store.ManagedDB, link store.ManagedDBLink, in *rotateIntent) error {
+	have, err := c.st.AppDBLinkPassword(ctx, keys, link.AppID)
+	if err != nil {
+		return err
+	}
+	if have == in.password {
+		c.dropIntent(ctx, d, link.ID)
+		return nil
+	}
+	if err := RotateLinkRole(ctx, c.sql, d, link.ID, in.password); err != nil {
+		return fmt.Errorf("rotazione del ruolo del collegamento: %w", err)
+	}
+	creds := NewLinkCredentials(d, link.ID, in.password)
+	if _, err := c.st.RotateAppDBLink(ctx, keys, d, link.ID, link.AppID, creds.Env(), in.actor, c.cfg.Now()); err != nil {
+		return err
+	}
+	c.dropIntent(ctx, d, link.ID)
+	return nil
+}
+
+// ResumeRotations riprende le rotazioni rimaste a meta' (intento presente) dei collegamenti attivi di un
+// database pronto. Serve il portachiavi (Config.Secrets).
+func (c *Controller) ResumeRotations(ctx context.Context, d store.ManagedDB) {
+	keys := c.cfg.Secrets
+	if keys == nil || c.sql == nil {
+		return
+	}
+	links, err := c.st.ListManagedDBLinks(ctx, d.ID)
+	if err != nil {
+		return
+	}
+	for _, l := range links {
+		if l.State != "active" {
+			continue
+		}
+		mu := c.linkLock(d.ID)
+		mu.Lock()
+		if cur, err := c.st.GetManagedDBLink(ctx, d.ID, l.ID); err == nil && cur.State == "active" {
+			in, err := c.loadIntent(ctx, keys, d, cur.ID)
+			switch {
+			case err != nil:
+				c.cfg.Log.Warn("databases: intento di rotazione illeggibile", "db", d.ID, "link", cur.ID, "err", err)
+			case in != nil:
+				c.remember(in.password)
+				if err := c.applyRotation(ctx, keys, d, cur, in); err != nil && ctx.Err() == nil {
+					c.cfg.Log.Warn("databases: rotazione non completata, si ritenta", "db", d.ID, "link", cur.ID, "err", err)
+				}
+			}
+		}
+		mu.Unlock()
+	}
 }
 
 // RoleExists dice se il ruolo del collegamento c'e' ancora nel database.
@@ -180,6 +311,16 @@ func (c *Controller) Unlink(ctx context.Context, d store.ManagedDB, link store.M
 }
 
 func (c *Controller) unlinkLocked(ctx context.Context, d store.ManagedDB, link store.ManagedDBLink, actor *store.AppActor, reason string) (bool, error) {
+	// Lo snapshot preso prima della serratura puo' essere obsoleto (scollegamento gia' completato da un altro
+	// giro, app ricollegata): si rilegge la riga ESATTA; se non c'e' piu' non c'e' niente da fare.
+	cur, err := c.st.GetManagedDBLink(ctx, d.ID, link.ID)
+	if errors.Is(err, store.ErrManagedDBLinkNotFound) || (err == nil && cur.AppID != link.AppID) {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	link = cur
 	if link.State != "unlinking" {
 		if err := c.st.SetManagedDBLinkState(ctx, link.ID, "unlinking"); err != nil {
 			return false, err
@@ -212,8 +353,11 @@ func (c *Controller) completeUnlink(ctx context.Context, d store.ManagedDB, link
 	if app, err := c.st.GetAppByID(ctx, link.AppID); err == nil {
 		ref = store.ManagedDBAppRef{Owner: app.Owner, Repo: app.RepoName, Name: app.Name}
 	}
-	_, _, err := c.st.CompleteDBUnlink(ctx, d, link, ref, reason, actor, c.cfg.Now())
-	return err
+	if _, _, err := c.st.CompleteDBUnlink(ctx, d, link, ref, reason, actor, c.cfg.Now()); err != nil {
+		return err
+	}
+	c.dropIntent(ctx, d, link.ID)
+	return nil
 }
 
 // ResumeUnlinks riprende gli scollegamenti rimasti a meta' (`unlinking`) di un database pronto.

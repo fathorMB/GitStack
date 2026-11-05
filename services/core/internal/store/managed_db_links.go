@@ -332,8 +332,19 @@ func (s *Store) CompleteDBUnlink(ctx context.Context, db ManagedDB, link Managed
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
 	var ver AppVersion
 	made := false
+	// Prima di qualsiasi modifica, sotto la serratura dell'app, si blocca la riga ESATTA del collegamento
+	// (id e app). Se non c'e' piu' (scollegamento gia' completato da un altro giro, snapshot obsoleto) non si
+	// tocca niente: l'app puo' nel frattempo essere stata collegata ad altro o avere segreti con quei nomi.
 	switch err := lockApp(ctx, tx, link.AppID); {
 	case err == nil:
+		var cur uuid.UUID
+		err := tx.QueryRow(ctx, `SELECT id FROM core.managed_db_links WHERE id = $1 AND db_id = $2 AND app_id = $3 FOR UPDATE`, link.ID, db.ID, link.AppID).Scan(&cur)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return AppVersion{}, false, nil
+		}
+		if err != nil {
+			return AppVersion{}, false, err
+		}
 		tag, err := tx.Exec(ctx, `DELETE FROM core.app_secrets WHERE app_id = $1 AND name = ANY($2)`, link.AppID, ManagedDBEnvNames)
 		if err != nil {
 			return AppVersion{}, false, err
@@ -354,6 +365,8 @@ func (s *Store) CompleteDBUnlink(ctx context.Context, db ManagedDB, link Managed
 			made = true
 		}
 	case errors.Is(err, ErrNotFound):
+		// App eliminata: il collegamento e' sparito a cascata, niente da fare.
+		return AppVersion{}, false, tx.Commit(ctx)
 	default:
 		return AppVersion{}, false, err
 	}
@@ -395,4 +408,14 @@ func guardManagedEnvName(ctx context.Context, tx pgx.Tx, appID uuid.UUID, name s
 		return ErrManagedEnvName
 	}
 	return nil
+}
+
+// AppDBLinkPassword legge il PGPASSWORD corrente dell'app (vuoto se manca): serve a riconoscere una rotazione
+// gia' arrivata in fondo, per non ripeterla.
+func (s *Store) AppDBLinkPassword(ctx context.Context, keys AppSealer, appID uuid.UUID) (string, error) {
+	v, err := s.AppSecretValuesForNames(ctx, keys, appID, []string{"PGPASSWORD"})
+	if err != nil {
+		return "", err
+	}
+	return v["PGPASSWORD"], nil
 }

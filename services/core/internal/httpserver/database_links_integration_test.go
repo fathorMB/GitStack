@@ -39,7 +39,13 @@ type linkSpy struct {
 	stuck      bool // le sessioni non si chiudono nemmeno dopo pg_terminate_backend
 	terminated bool
 	failCreate bool
+	// rolePw e' la password corrente di ogni ruolo l_<id> (CREATE ROLE / ALTER ROLE ... PASSWORD); failTerminate
+	// fa fallire i prossimi N pg_terminate_backend (errore DOPO l'ALTER ROLE della rotazione).
+	rolePw        map[string]string
+	failTerminate int
 }
+
+var pwRe = regexp.MustCompile(`PASSWORD '([0-9a-f]+)'`)
 
 var linkRoleRe = regexp.MustCompile(`l_[0-9a-f]{32}`)
 
@@ -55,9 +61,20 @@ func (s *linkSpy) Exec(_ context.Context, _ store.ManagedDB, database, sql strin
 			return fmt.Errorf("CREATE ROLE: simulato")
 		}
 		s.roles[role] = true
+		if m := pwRe.FindStringSubmatch(one); m != nil {
+			s.rolePw[role] = m[1]
+		}
+	case strings.HasPrefix(one, "ALTER ROLE \"l_") && strings.Contains(one, " PASSWORD '"):
+		if m := pwRe.FindStringSubmatch(one); m != nil {
+			s.rolePw[role] = m[1]
+		}
 	case strings.HasPrefix(one, "DROP ROLE \"l_"):
 		delete(s.roles, role)
 	case strings.Contains(one, "pg_terminate_backend"):
+		if s.failTerminate > 0 {
+			s.failTerminate--
+			return fmt.Errorf("pg_terminate_backend: simulato")
+		}
 		s.terminated = true
 	}
 	return nil
@@ -106,9 +123,12 @@ func (s *linkSpy) index(prefix string, from int) int {
 
 type linkEnv struct {
 	*appsEnv
-	spy *linkSpy
-	ctl *databases.Controller
-	st  *store.Store
+	spy  *linkSpy
+	ctl  *databases.Controller
+	st   *store.Store
+	kube *fake.Clientset
+	ca   string
+	keys *webhooks.Keyring
 	db  openapi.Database
 }
 
@@ -133,12 +153,13 @@ func newLinkEnv(t *testing.T) *linkEnv {
 	if err := os.WriteFile(filepath.Join(ca, "ca.crt"), []byte("-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	spy := &linkSpy{roles: map[string]bool{}}
+	spy := &linkSpy{roles: map[string]bool{}, rolePw: map[string]string{}}
 	st := store.New(pool)
-	ctl := databases.New(st, fake.NewSimpleClientset(), databases.Config{SQL: spy, CADir: ca, Images: map[int]databases.Image{},
+	kube := fake.NewSimpleClientset()
+	ctl := databases.New(st, kube, databases.Config{SQL: spy, CADir: ca, Images: map[int]databases.Image{}, Secrets: keys,
 		Unlink: databases.UnlinkOptions{Timeout: 150 * time.Millisecond, Every: 10 * time.Millisecond}, SweepEvery: time.Nanosecond})
 	proxy.set(ctl)
-	e := &linkEnv{appsEnv: &appsEnv{issuesEnv: base, clock: clock, git: nil}, spy: spy, ctl: ctl, st: st}
+	e := &linkEnv{appsEnv: &appsEnv{issuesEnv: base, clock: clock, git: nil}, spy: spy, ctl: ctl, st: st, kube: kube, ca: ca, keys: keys}
 	e.db = (&dbEnv{appsEnv: e.appsEnv}).create("alice", "alice", `{"name":"shop","pgMajor":17}`, http.StatusAccepted).Database
 	if err := st.SetManagedDBStatus(context.Background(), uuid.UUID(e.db.Id), store.DBRunning, nil, clock.Now()); err != nil {
 		t.Fatal(err)

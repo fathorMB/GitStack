@@ -420,7 +420,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		return 1
 	}
 	routerOpts = append(routerOpts, appOpts...)
-	dbOpts, err := startDatabases(ctx, pool, logger)
+	dbOpts, err := startDatabases(ctx, pool, logger, keys)
 	if err != nil {
 		logger.Error("controller dei database non avviato", "err", err)
 		return 1

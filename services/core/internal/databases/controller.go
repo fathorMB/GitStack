@@ -54,6 +54,9 @@ type Config struct {
 	Unlink          UnlinkOptions
 	Now             func() time.Time
 	Log             *slog.Logger
+	// Secrets: portachiavi dei segreti (come le app): cifra l'intento di rotazione dei collegamenti. Nil: le
+	// rotazioni interrotte non si riprendono da sole.
+	Secrets store.AppSealer
 	// SweepEvery: ogni quanto si cercano ruoli di collegamento senza collegamento (default LinkSweepEvery).
 	SweepEvery time.Duration
 }
@@ -314,6 +317,7 @@ func (c *Controller) ensure(ctx context.Context, d store.ManagedDB) (string, *st
 	}
 	// Collegamenti (GIT-552): riprende gli scollegamenti rimasti a meta' e toglie i ruoli senza collegamento.
 	c.ResumeUnlinks(ctx, d)
+	c.ResumeRotations(ctx, d)
 	c.SweepOrphanRoles(ctx, d)
 	c.measure(ctx, d)
 	return store.DBRunning, nil, nil
