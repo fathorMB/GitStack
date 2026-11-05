@@ -1,21 +1,19 @@
 package httpserver
 
 import (
-	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
-	corev1 "k8s.io/api/core/v1"
 
 	"github.com/fathorMB/GitStack/services/core/internal/databases"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
@@ -32,7 +30,6 @@ type DatabaseController interface {
 	Provision(ctx context.Context, d store.ManagedDB, ownerPassword string) (string, error)
 	Delete(ctx context.Context, d store.ManagedDB, actor *store.AppActor) error
 	RotateOwner(ctx context.Context, d store.ManagedDB) (string, error)
-	Logs(ctx context.Context, d store.ManagedDB, opts *corev1.PodLogOptions) (io.ReadCloser, error)
 	// Collegamenti con le app (GIT-552): ruolo di login proprio, variabili, scollegamento e rotazione.
 	LinkApp(ctx context.Context, keys store.AppSealer, d store.ManagedDB, app store.App, mode string, actor *store.AppActor) (store.ManagedDBLink, databases.LinkCredentials, error)
 	RotateLink(ctx context.Context, keys store.AppSealer, d store.ManagedDB, link store.ManagedDBLink, actor *store.AppActor) (databases.LinkCredentials, error)
@@ -391,7 +388,9 @@ func (s *apiServer) RotateDatabaseCredentials(w http.ResponseWriter, r *http.Req
 }
 
 // GetDatabaseMetrics implementa GET /databases/{owner}/{name}/metrics: dimensione logica e riavvii dal
-// modello; CPU e RAM non sono lette da nessuno (GIT-568): `available: false` (serie vuote, non zeri) finche' metrics-server non e' letto.
+// modello; CPU e RAM dai campioni di metrics-server raccolti dal controller (GIT-568, DB21). Senza
+// campioni con CPU nell'intervallo la sorgente e' dichiarata non disponibile: available=false con
+// serie vuote, non zeri, mentre dimensione e riavvii restano.
 func (s *apiServer) GetDatabaseMetrics(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.DatabaseNameParam, params openapi.GetDatabaseMetricsParams) {
 	d, _, ok := s.databaseFor(w, r, string(owner), string(name))
 	if !ok {
@@ -401,78 +400,203 @@ func (s *apiServer) GetDatabaseMetrics(w http.ResponseWriter, r *http.Request, o
 	if params.Range != nil {
 		rng = string(*params.Range)
 	}
-	steps := map[string]int{"1h": 60, "6h": 300, "24h": 900, "7d": 3600}
-	step, ok := steps[rng]
+	spec, ok := appMetricRanges[rng]
 	if !ok {
 		writeError(w, http.StatusBadRequest, "bad_request", "range: 1h, 6h, 24h o 7d.")
 		return
 	}
-	out := openapi.DatabaseMetrics{Range: openapi.DatabaseMetricsRange(rng), StepSeconds: step, Restarts24h: d.Restarts,
-		Cpu:           openapi.AppMetricSeries{Unit: openapi.Millicores, Points: []openapi.AppMetricPoint{}},
-		Memory:        openapi.AppMetricSeries{Unit: openapi.Bytes, Points: []openapi.AppMetricPoint{}},
+	ctx := r.Context()
+	since := s.now().UTC().Add(-spec.span)
+	available, err := s.resources.ManagedDBMetricsSourceOK(ctx, d.ID, since)
+	if err != nil {
+		appInternalError(w, "lettura delle metriche del database", err)
+		return
+	}
+	cpu := openapi.AppMetricSeries{Unit: openapi.Millicores, Points: []openapi.AppMetricPoint{}}
+	mem := openapi.AppMetricSeries{Unit: openapi.Bytes, Points: []openapi.AppMetricPoint{}}
+	if available {
+		buckets, err := s.resources.ManagedDBMetricBuckets(ctx, d.ID, since, spec.step)
+		if err != nil {
+			appInternalError(w, "lettura delle serie del database", err)
+			return
+		}
+		for _, b := range buckets {
+			if b.CPUMillis != nil {
+				cpu.Points = append(cpu.Points, openapi.AppMetricPoint{Time: b.Time, Value: float32(*b.CPUMillis)})
+			}
+			if b.MemoryBytes != nil {
+				mem.Points = append(mem.Points, openapi.AppMetricPoint{Time: b.Time, Value: float32(*b.MemoryBytes)})
+			}
+		}
+	}
+	out := openapi.DatabaseMetrics{Available: available, Range: openapi.DatabaseMetricsRange(rng), StepSeconds: spec.step, Restarts24h: d.Restarts,
+		Cpu: cpu, Memory: mem,
 		DatabaseBytes: openapi.AppMetricSeries{Unit: openapi.Bytes, Points: []openapi.AppMetricPoint{}}}
 	if d.UsageBytes != nil {
-		// Available resta false: CPU e RAM (metrics-server) non le legge nessuno in GIT-551 (GIT-568); la dimensione sola non basta.
 		out.DatabaseBytes.Points = append(out.DatabaseBytes.Points, openapi.AppMetricPoint{Time: s.now().UTC(), Value: float32(*d.UsageBytes)})
 		out.Usage = &openapi.DatabaseUsage{DatabaseBytes: *d.UsageBytes, DiskState: openapi.DatabaseUsageDiskState(d.DiskState)}
 	}
 	writeJSON(w, http.StatusOK, out)
 }
 
-// GetDatabaseLogs implementa GET /databases/{owner}/{name}/logs: righe di pods/log del pod di Postgres (DB21).
+// GetDatabaseLogs implementa GET /databases/{owner}/{name}/logs: righe di PostgreSQL conservate dallo
+// store come i log delle app (GIT-568, DB21): rileggibili dopo la sostituzione del pod, con la
+// stessa retention. `follow` tiene aperta la risposta e manda le righe nuove man mano che il
+// controller le scrive.
 func (s *apiServer) GetDatabaseLogs(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.DatabaseNameParam, params openapi.GetDatabaseLogsParams) {
 	d, _, ok := s.databaseFor(w, r, string(owner), string(name))
 	if !ok {
 		return
 	}
-	limit := int64(1000)
-	if params.Limit != nil {
-		limit = int64(*params.Limit)
-	}
-	opts := &corev1.PodLogOptions{Container: databases.WorkloadName, Timestamps: true, TailLines: &limit}
-	if params.Follow != nil && *params.Follow {
-		opts.Follow = true
-	}
-	if params.Since != nil && *params.Since != "" {
-		if dur, err := time.ParseDuration(*params.Since); err == nil && dur > 0 {
-			secs := int64(dur.Seconds())
-			opts.SinceSeconds = &secs
-		}
-	}
-	rc, err := s.databases.Controller.Logs(r.Context(), d, opts)
-	if err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "database_not_ready", "I log non sono disponibili: il database non ha un pod in esecuzione.")
+	q, ok := s.databaseLogQueryFrom(w, params)
+	if !ok {
 		return
 	}
-	defer func() { _ = rc.Close() }()
-	ndjson := params.Format != nil && string(*params.Format) == "ndjson"
-	if ndjson {
-		w.Header().Set("Content-Type", "application/x-ndjson")
-	} else {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	lines, err := s.resources.ListManagedDBLogs(r.Context(), d.ID, q.filter)
+	if err != nil {
+		appInternalError(w, "lettura dei log del database", err)
+		return
 	}
-	grep := ""
+	aw := newDatabaseLogWriter(w, q.ndjson)
+	var cursor int64
+	for _, l := range lines {
+		if l.ID > cursor {
+			cursor = l.ID
+		}
+		if err := aw.line(l); err != nil {
+			return
+		}
+	}
+	aw.flush()
+	if q.follow {
+		s.followDatabaseLogs(r, d.ID, q, aw, cursor)
+	}
+}
+
+// databaseLogQuery sono i parametri letti e validati di GET .../logs.
+type databaseLogQuery struct {
+	filter store.ManagedDBLogFilter
+	follow bool
+	ndjson bool
+}
+
+// databaseLogQueryFrom legge e valida i parametri; un valore sbagliato risponde 400 con il campo.
+func (s *apiServer) databaseLogQueryFrom(w http.ResponseWriter, params openapi.GetDatabaseLogsParams) (databaseLogQuery, bool) {
+	now := s.now()
+	q := databaseLogQuery{follow: params.Follow != nil && *params.Follow}
+	f := store.ManagedDBLogFilter{Limit: appLogsDefaultLimit}
+	if params.Until != nil {
+		u := params.Until.UTC()
+		f.Until = &u
+	}
+	switch {
+	case params.Since != nil:
+		t, ok := parseAppLogSince(*params.Since, now)
+		if !ok {
+			writeError(w, http.StatusBadRequest, "bad_request", "since: una durata (5m, 1h, 7d) o un istante RFC 3339.")
+			return databaseLogQuery{}, false
+		}
+		f.Since = &t
+	case q.follow:
+		t := now.Add(-appLogsFollowWindow)
+		f.Since = &t
+	}
 	if params.Grep != nil {
-		grep = *params.Grep
-	}
-	sc := bufio.NewScanner(rc)
-	sc.Buffer(make([]byte, 0, 64<<10), 1<<20)
-	for sc.Scan() {
-		ts, msg, _ := strings.Cut(sc.Text(), " ")
-		if grep != "" && !strings.Contains(msg, grep) {
-			continue
+		if len(*params.Grep) > appLogsMaxGrep {
+			writeError(w, http.StatusBadRequest, "bad_request", "grep: al massimo 200 caratteri.")
+			return databaseLogQuery{}, false
 		}
-		if ndjson {
-			t, perr := time.Parse(time.RFC3339Nano, ts)
-			if perr != nil {
-				t = s.now()
+		f.Grep = *params.Grep
+	}
+	if params.Limit != nil {
+		if *params.Limit < 1 || *params.Limit > appLogsMaxLimit {
+			writeError(w, http.StatusBadRequest, "bad_request", "limit: da 1 a 10000.")
+			return databaseLogQuery{}, false
+		}
+		f.Limit = *params.Limit
+	}
+	if params.Format != nil {
+		switch string(*params.Format) {
+		case "text", "":
+		case "ndjson":
+			q.ndjson = true
+		default:
+			writeError(w, http.StatusBadRequest, "bad_request", "format: text o ndjson.")
+			return databaseLogQuery{}, false
+		}
+	}
+	q.filter = f
+	return q, true
+}
+
+// followDatabaseLogs tiene aperta la risposta e manda le righe nuove finche' il client resta o
+// finche' `until` non passa. Lo store si interroga ogni secondo a partire dall'ultimo id letto.
+func (s *apiServer) followDatabaseLogs(r *http.Request, dbID uuid.UUID, q databaseLogQuery, aw *databaseLogWriter, cursor int64) {
+	f := q.filter
+	f.Since, f.Limit, f.AfterID = nil, 0, cursor
+	tick := time.NewTicker(appLogsPoll)
+	defer tick.Stop()
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-tick.C:
+		}
+		if f.Until != nil && !s.now().Before(*f.Until) {
+			return
+		}
+		lines, err := s.resources.ListManagedDBLogs(r.Context(), dbID, f)
+		if err != nil {
+			return // la risposta è già iniziata: si chiude, il client riapre con since
+		}
+		for _, l := range lines {
+			if l.ID > f.AfterID {
+				f.AfterID = l.ID
 			}
-			_, _ = fmt.Fprintf(w, `{"time":%s,"message":%s}`+"\n", strconv.Quote(t.UTC().Format(time.RFC3339Nano)), strconv.Quote(msg))
-		} else {
-			_, _ = fmt.Fprintln(w, msg)
+			if err := aw.line(l); err != nil {
+				return
+			}
 		}
-		if f, ok := w.(http.Flusher); ok && opts.Follow {
-			f.Flush()
-		}
+		aw.flush()
 	}
+}
+
+// databaseLogWriter scrive le righe come testo (solo il messaggio) o come ndjson (DatabaseLogLine).
+type databaseLogWriter struct {
+	w      http.ResponseWriter
+	ndjson bool
+	enc    *json.Encoder
+	headed bool
+}
+
+func newDatabaseLogWriter(w http.ResponseWriter, ndjson bool) *databaseLogWriter {
+	return &databaseLogWriter{w: w, ndjson: ndjson, enc: json.NewEncoder(w)}
+}
+
+func (aw *databaseLogWriter) start() {
+	if aw.headed {
+		return
+	}
+	aw.headed = true
+	if aw.ndjson {
+		aw.w.Header().Set("Content-Type", "application/x-ndjson")
+	} else {
+		aw.w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	}
+	aw.w.WriteHeader(http.StatusOK)
+}
+
+func (aw *databaseLogWriter) line(l store.ManagedDBLogLine) error {
+	aw.start()
+	if aw.ndjson {
+		return aw.enc.Encode(openapi.DatabaseLogLine{Time: l.Time, Message: l.Message})
+	}
+	msg := strings.NewReplacer("\r", " ", "\n", " ").Replace(l.Message)
+	_, err := io.WriteString(aw.w, msg+"\n")
+	return err
+}
+
+func (aw *databaseLogWriter) flush() {
+	aw.start()
+	_ = http.NewResponseController(aw.w).Flush()
 }

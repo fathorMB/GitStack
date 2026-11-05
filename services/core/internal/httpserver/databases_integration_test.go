@@ -5,7 +5,6 @@ package httpserver_test
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -13,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -82,9 +80,6 @@ func (l *lateController) Delete(ctx context.Context, d store.ManagedDB, a *store
 }
 func (l *lateController) RotateOwner(ctx context.Context, d store.ManagedDB) (string, error) {
 	return l.get().RotateOwner(ctx, d)
-}
-func (l *lateController) Logs(ctx context.Context, d store.ManagedDB, o *corev1.PodLogOptions) (io.ReadCloser, error) {
-	return l.get().Logs(ctx, d, o)
 }
 func (l *lateController) LinkApp(ctx context.Context, k store.AppSealer, d store.ManagedDB, a store.App, mode string, actor *store.AppActor) (store.ManagedDBLink, databases.LinkCredentials, error) {
 	return l.get().LinkApp(ctx, k, d, a, mode, actor)

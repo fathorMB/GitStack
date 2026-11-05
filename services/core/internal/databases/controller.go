@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
 
@@ -43,6 +44,12 @@ type Config struct {
 	Exec Executor
 	// PodLogs legge i log del pod; nil usa l'API di Kubernetes.
 	PodLogs func(ctx context.Context, ns, pod string, opts *corev1.PodLogOptions) (io.ReadCloser, error)
+	// PodMetrics e' la sorgente di CPU e memoria (metrics.k8s.io); nil la legge con Dyn. I test la
+	// sostituiscono. Nessuna delle due: i campioni si scrivono senza CPU/RAM e l'API dichiara
+	// available=false (DB21), come le app senza metrics-server.
+	PodMetrics PodMetricsReader
+	// Dyn legge metrics.k8s.io; richiesto per PodMetrics nil (wiring in-cluster).
+	Dyn dynamic.Interface
 
 	PriorityClass string
 	StorageClass  string
@@ -51,6 +58,13 @@ type Config struct {
 	LoopInterval    time.Duration
 	UsageEvery      time.Duration
 	ProgressTimeout time.Duration
+	// LogsEvery: ogni quanto si raccolgono le righe di log (default 2 s). MetricsEvery: ogni quanto i
+	// campioni di CPU/RAM (default 30 s). LogRetention: per quanto si tengono log e campioni
+	// (default 7 giorni, come i log delle app); LogMaxBytes: per database (default 1 GiB).
+	LogsEvery    time.Duration
+	MetricsEvery time.Duration
+	LogRetention time.Duration
+	LogMaxBytes  int64
 	Unlink          UnlinkOptions
 	Now             func() time.Time
 	Log             *slog.Logger
@@ -71,6 +85,18 @@ func (c *Config) defaults() {
 	if c.ProgressTimeout <= 0 {
 		c.ProgressTimeout = 5 * time.Minute
 	}
+	if c.LogsEvery <= 0 {
+		c.LogsEvery = 2 * time.Second
+	}
+	if c.MetricsEvery <= 0 {
+		c.MetricsEvery = 30 * time.Second
+	}
+	if c.LogRetention <= 0 {
+		c.LogRetention = 7 * 24 * time.Hour
+	}
+	if c.LogMaxBytes <= 0 {
+		c.LogMaxBytes = int64(1) << 30
+	}
 	if c.SweepEvery <= 0 {
 		c.SweepEvery = LinkSweepEvery
 	}
@@ -86,6 +112,7 @@ func (c *Config) defaults() {
 type Controller struct {
 	st   *store.Store
 	kube kubernetes.Interface
+	dyn  dynamic.Interface
 	cfg  Config
 	sql  SQLRunner
 
@@ -104,7 +131,7 @@ type Controller struct {
 // New crea il controller.
 func New(st *store.Store, kube kubernetes.Interface, cfg Config) *Controller {
 	cfg.defaults()
-	c := &Controller{st: st, kube: kube, cfg: cfg, kick: make(chan struct{}, 1), running: map[uuid.UUID]bool{}, usageAt: map[uuid.UUID]time.Time{}, sweepAt: map[uuid.UUID]time.Time{}}
+	c := &Controller{st: st, kube: kube, dyn: cfg.Dyn, cfg: cfg, kick: make(chan struct{}, 1), running: map[uuid.UUID]bool{}, usageAt: map[uuid.UUID]time.Time{}, sweepAt: map[uuid.UUID]time.Time{}}
 	c.sql = cfg.SQL
 	if c.sql == nil && cfg.Exec != nil {
 		c.sql = &PsqlRunner{Pod: cfg.Exec, Redact: c.redactions}
@@ -138,12 +165,26 @@ func (c *Controller) Kick() {
 	}
 }
 
-// Run riconcilia finche' ctx non finisce.
+// Run riconcilia finche' ctx non finisce; raccoglie anche log e metriche e fa la conservazione,
+// sul modello del ciclo delle app.
 func (c *Controller) Run(ctx context.Context) {
 	t := time.NewTicker(c.cfg.LoopInterval)
 	defer t.Stop()
+	var lastLogs, lastMetrics, lastPrune time.Time
 	for {
 		c.Once(ctx)
+		if now := c.cfg.Now(); now.Sub(lastLogs) >= c.cfg.LogsEvery {
+			lastLogs = now
+			c.CollectLogs(ctx)
+		}
+		if now := c.cfg.Now(); now.Sub(lastMetrics) >= c.cfg.MetricsEvery {
+			lastMetrics = now
+			c.CollectMetrics(ctx)
+		}
+		if now := c.cfg.Now(); now.Sub(lastPrune) >= time.Minute {
+			lastPrune = now
+			c.PruneLogs(ctx)
+		}
 		select {
 		case <-ctx.Done():
 			return
@@ -597,14 +638,6 @@ func (c *Controller) measure(ctx context.Context, d store.ManagedDB) {
 			c.cfg.Log.Warn("databases: avviso di disco non scritto", "db", d.ID, "err", err)
 		}
 	}
-}
-
-// Logs apre i log di PostgreSQL dal pod (pods/log, DB21).
-func (c *Controller) Logs(ctx context.Context, d store.ManagedDB, opts *corev1.PodLogOptions) (io.ReadCloser, error) {
-	if c.cfg.PodLogs != nil {
-		return c.cfg.PodLogs(ctx, Namespace(d.ID), PodName, opts)
-	}
-	return c.kube.CoreV1().Pods(Namespace(d.ID)).GetLogs(PodName, opts).Stream(ctx)
 }
 
 // failedRetryEvery e' ogni quanto si riprova un database in `failed`.
