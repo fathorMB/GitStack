@@ -38,7 +38,7 @@ const (
 // Domains elenca i domini di core, da assicurare con events.EnsureStream.
 var Domains = []string{DomainIssue, DomainIssueComment, DomainRepository,
 	DomainPullRequest, DomainPullRequestReview, DomainPullRequestComment, DomainCommitStatus,
-	DomainWorkflowRun, DomainWorkflowJob, DomainAppDeployment, DomainAppStatus, DomainAppDomain, DomainAppCertificate}
+	DomainWorkflowRun, DomainWorkflowJob, DomainAppDeployment, DomainAppStatus, DomainAppDomain, DomainAppCertificate, DomainDatabase}
 
 // Nomi degli eventi (anche subject NATS).
 const (

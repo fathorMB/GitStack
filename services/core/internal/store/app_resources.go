@@ -116,6 +116,14 @@ func guaranteedApps(ctx context.Context, q queryer) (AppResourceAmount, error) {
 	var out AppResourceAmount
 	err := q.QueryRow(ctx, `SELECT COALESCE(sum(guaranteed_cpu_millis::bigint * copies), 0)::int,
 		COALESCE(sum(guaranteed_memory_bytes * copies), 0)::bigint FROM core.apps`).Scan(&out.CPUMillis, &out.MemoryBytes)
+	if err != nil {
+		return out, err
+	}
+	// I database gestiti (v3-d, priorita' gitstack-apps) consumano la stessa riserva delle app (DB3).
+	var dbCPU, dbMem int64
+	err = q.QueryRow(ctx, `SELECT COALESCE(sum(cpu_millis), 0)::bigint, COALESCE(sum(memory_bytes), 0)::bigint FROM core.managed_dbs`).Scan(&dbCPU, &dbMem)
+	out.CPUMillis += int(dbCPU)
+	out.MemoryBytes += dbMem
 	return out, err
 }
 

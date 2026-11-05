@@ -67,6 +67,8 @@ type apiServer struct {
 	appEgress AppEgressConfig
 	// appDomains: domini propri delle app pubbliche (v3-c, GIT-458).
 	appDomains AppDomainsConfig
+	// databases: database gestiti (v3-d, GIT-551); Controller nil = funzione spenta (422 databases_disabled).
+	databases DatabasesConfig
 }
 
 var _ openapi.ServerInterface = (*apiServer)(nil)
