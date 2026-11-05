@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -414,24 +416,78 @@ func TestDbCredentialsRotate(t *testing.T) {
 	}
 }
 
+// parseConninfo legge una stringa di connessione libpq (PQconninfoParse): chiave=valore separati da spazi; il valore è
+// senza apici fino al primo spazio, oppure tra apici singoli con backslash che protegge apice e backslash.
+func parseConninfo(t *testing.T, s string) map[string]string {
+	t.Helper()
+	out := map[string]string{}
+	i := 0
+	for {
+		for i < len(s) && s[i] == ' ' {
+			i++
+		}
+		if i >= len(s) {
+			return out
+		}
+		j := strings.IndexByte(s[i:], '=')
+		if j < 0 {
+			t.Fatalf("conninfo senza '=' in %q", s[i:])
+		}
+		key := strings.TrimSpace(s[i : i+j])
+		i += j + 1
+		var val strings.Builder
+		if i < len(s) && s[i] == '\'' {
+			i++
+			closed := false
+			for i < len(s) {
+				c := s[i]
+				if c == '\\' && i+1 < len(s) {
+					val.WriteByte(s[i+1])
+					i += 2
+					continue
+				}
+				if c == '\'' {
+					closed = true
+					i++
+					break
+				}
+				val.WriteByte(c)
+				i++
+			}
+			if !closed {
+				t.Fatalf("apice non chiuso in %q", s)
+			}
+		} else {
+			for i < len(s) && s[i] != ' ' {
+				if s[i] == '\\' && i+1 < len(s) {
+					i++
+				}
+				val.WriteByte(s[i])
+				i++
+			}
+		}
+		if _, dup := out[key]; dup {
+			t.Fatalf("parametro %q ripetuto in %q", key, s)
+		}
+		out[key] = val.String()
+	}
+}
+
 func TestDbConnect(t *testing.T) {
 	fk := newFake(t, map[string]reply{"GET " + dbBase + "/lan": {200, lanOn}})
 	var gotPath string
 	var gotArgs []string
-	var caContent string
+	var caContent, caPath string
 	restore := db.SetPsql(
 		func(string) (string, error) { return "/usr/bin/psql", nil },
 		func(path string, args, _ []string, _ *cmdutil.Factory) error {
 			gotPath, gotArgs = path, args
-			for _, kv := range strings.Fields(args[0]) {
-				if p, ok := strings.CutPrefix(kv, "sslrootcert="); ok {
-					b, err := os.ReadFile(p)
-					if err != nil {
-						t.Errorf("CA non leggibile durante psql: %v", err)
-					}
-					caContent = string(b)
-				}
+			caPath = parseConninfo(t, args[0])["sslrootcert"]
+			b, err := os.ReadFile(caPath)
+			if err != nil {
+				t.Errorf("CA non leggibile durante psql: %v", err)
 			}
+			caContent = string(b)
 			return nil
 		})
 	defer restore()
@@ -439,24 +495,153 @@ func TestDbConnect(t *testing.T) {
 	if r.code != 0 {
 		t.Fatalf("connect: %+v", r)
 	}
-	conn := gotArgs[0]
-	for _, want := range []string{"host=home.lan", "port=15432", "dbname=shop", "user=shop_owner", "sslmode=verify-full"} {
-		if !strings.Contains(conn, want) {
-			t.Errorf("manca %q in %q", want, conn)
+	p := parseConninfo(t, gotArgs[0])
+	for k, want := range map[string]string{"host": "home.lan", "port": "15432", "dbname": "shop", "user": "shop_owner", "sslmode": "verify-full"} {
+		if p[k] != want {
+			t.Errorf("%s = %q, atteso %q", k, p[k], want)
 		}
 	}
 	if gotPath != "/usr/bin/psql" || strings.Join(gotArgs[1:], " ") != "-c select 1" || !strings.Contains(caContent, "BEGIN CERTIFICATE") {
 		t.Fatalf("path %q args %q ca %q", gotPath, gotArgs, caContent)
 	}
-	if strings.Contains(conn, "password") {
-		t.Errorf("la password non deve comparire: %q", conn)
+	if _, ok := p["password"]; ok {
+		t.Errorf("la password non deve comparire: %v", p)
 	}
-	for _, kv := range strings.Fields(conn) {
-		if p, ok := strings.CutPrefix(kv, "sslrootcert="); ok {
-			if _, err := os.Stat(p); err == nil {
-				t.Errorf("la CA temporanea doveva sparire: %s", p)
-			}
+	if _, err := os.Stat(caPath); err == nil {
+		t.Errorf("la CA temporanea doveva sparire: %s", caPath)
+	}
+}
+
+// Percorso della CA e utente/database con spazi, apici e backslash: ogni valore arriva intatto e non può aggiungere
+// parametri né abbassare sslmode.
+func TestDbConnect_ValoriConCaratteriSpeciali(t *testing.T) {
+	fk := newFake(t, map[string]reply{"GET " + dbBase + "/lan": {200, lanOn}})
+	dir := filepath.Join(t.TempDir(), "Mario Rossi", "o'neil")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	ca := filepath.Join(dir, `ca\x y.pem`)
+	if runtime.GOOS == "windows" {
+		ca = filepath.Join(dir, "ca x y.pem")
+	}
+	user, dbname := `u ser'x\y`, `d b sslmode=disable host=evil'`
+	var got map[string]string
+	restore := db.SetPsql(
+		func(string) (string, error) { return "/psql", nil },
+		func(_ string, args, _ []string, _ *cmdutil.Factory) error {
+			got = parseConninfo(t, args[0])
+			return nil
+		})
+	defer restore()
+	r := run(t, fk, "db", "connect", "acme/shop", "--ca-out", ca, "--user", user, "--dbname", dbname)
+	if r.code != 0 {
+		t.Fatalf("connect: %+v", r)
+	}
+	want := map[string]string{"host": "home.lan", "port": "15432", "dbname": dbname, "user": user, "sslmode": "verify-full", "sslrootcert": ca}
+	if len(got) != len(want) {
+		t.Errorf("parametri: %v", got)
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("%s = %q, atteso %q", k, got[k], v)
 		}
+	}
+	// Con --ca-out il file resta, con la CA.
+	if b, err := os.ReadFile(ca); err != nil || !strings.Contains(string(b), "BEGIN CERTIFICATE") {
+		t.Errorf("CA salvata: %v %q", err, b)
+	}
+}
+
+func TestDbConnect_JSON(t *testing.T) {
+	fk := newFake(t, map[string]reply{"GET " + dbBase + "/lan": {200, lanOn}})
+	called := false
+	restore := db.SetPsql(func(string) (string, error) { return "/psql", nil }, func(string, []string, []string, *cmdutil.Factory) error { called = true; return nil })
+	defer restore()
+	r := run(t, fk, "db", "connect", "acme/shop", "--jq", ".")
+	var got map[string]any
+	if err := json.Unmarshal([]byte(r.out), &got); r.code != 0 || err != nil {
+		t.Fatalf("json: %v %+v", err, r)
+	}
+	if got["host"] != "home.lan" || got["port"] != float64(15432) || got["database"] != "shop" || got["user"] != "shop_owner" || got["sslmode"] != "verify-full" ||
+		!strings.Contains(got["caCertificate"].(string), "BEGIN CERTIFICATE") {
+		t.Fatalf("contenuto: %v", got)
+	}
+	if _, ok := got["sslRootcert"]; ok || called {
+		t.Fatalf("senza --ca-out niente percorso e niente psql: %v called=%v", got, called)
+	}
+	ca := filepath.Join(t.TempDir(), "ca.pem")
+	r = run(t, fk, "db", "connect", "acme/shop", "--jq", ".", "--ca-out", ca, "--user", "bob")
+	got = nil
+	if err := json.Unmarshal([]byte(r.out), &got); r.code != 0 || err != nil || got["sslRootcert"] != ca || got["user"] != "bob" {
+		t.Fatalf("ca-out: %v %+v", err, r)
+	}
+	if b, err := os.ReadFile(ca); err != nil || !strings.Contains(string(b), "BEGIN CERTIFICATE") {
+		t.Fatalf("CA: %v", err)
+	}
+	// LAN spenta: errore anche in JSON.
+	fk = newFake(t, map[string]reply{"GET " + dbBase + "/lan": {200, lanOff}})
+	if r := run(t, fk, "db", "connect", "acme/shop", "--jq", "."); r.code != 1 {
+		t.Fatalf("lan spenta: %+v", r)
+	}
+}
+
+func TestDbDelete_JSON(t *testing.T) {
+	fk := newFake(t, map[string]reply{"DELETE " + dbBase: {204, ""}})
+	// G8 vale anche con --json: senza --yes e senza terminale non parte niente.
+	if r := run(t, fk, "db", "delete", "acme/shop", "--jq", "."); r.code != 2 || len(fk.find("DELETE", dbBase)) != 0 {
+		t.Fatalf("senza conferma: %+v", r)
+	}
+	r := run(t, fk, "db", "delete", "acme/shop", "--yes", "--jq", ".")
+	var got map[string]any
+	if err := json.Unmarshal([]byte(r.out), &got); r.code != 0 || err != nil || got["deleted"] != true || got["owner"] != "acme" || got["name"] != "shop" {
+		t.Fatalf("json: %v %+v", err, r)
+	}
+	if r := run(t, fk, "db", "delete", "shop", "-y", "--json", "deleted"); r.code != 0 || strings.Contains(r.out, `"owner"`) || !strings.Contains(r.out, `"deleted":true`) {
+		t.Fatalf("campi: %+v", r)
+	}
+}
+
+func TestDbScritture_JSON(t *testing.T) {
+	restorePath := dbBase + "/backups/" + idBackup + "/restore"
+	fk := newFake(t, map[string]reply{
+		"POST " + dbBase + "/links":             {201, `{"link":` + linkJSON + `,"credentials":{"username":"l_e1","password":"LinkPw","host":"pg.svc","port":5432,"database":"shop","sslMode":"verify-full","sslRootcert":"/etc/ca.pem"}}`},
+		"GET " + dbBase + "/links":              {200, `{"items":[` + linkJSON + `]}`},
+		"DELETE " + dbBase + "/links/" + idLink: {202, strings.Replace(linkJSON, `"active"`, `"unlinking"`, 1)},
+		"POST " + dbBase + "/backups":           {202, `{"id":"` + idBackup + `","kind":"on_demand","status":"in_progress","createdAt":"2026-11-05T10:00:00Z"}`},
+		"POST " + restorePath:                   {202, strings.Replace(dbJSON, `"running"`, `"restoring"`, 1)},
+	})
+	obj := func(r result) map[string]any {
+		t.Helper()
+		var m map[string]any
+		if err := json.Unmarshal([]byte(r.out), &m); r.code != 0 || err != nil {
+			t.Fatalf("json non valido (%v): %+v", err, r)
+		}
+		return m
+	}
+	m := obj(run(t, fk, "db", "link", "acme/shop", "--app", "acme/web/api", "--jq", "."))
+	cr, _ := m["credentials"].(map[string]any)
+	lk, _ := m["link"].(map[string]any)
+	if cr["password"] != "LinkPw" || lk["mode"] != "rw" || lk["id"] != idLink {
+		t.Fatalf("link: %v", m)
+	}
+	m = obj(run(t, fk, "db", "unlink", "acme/shop", "--app", "acme/web/api", "--yes", "--jq", "."))
+	if m["state"] != "unlinking" || m["id"] != idLink {
+		t.Fatalf("unlink: %v", m)
+	}
+	m = obj(run(t, fk, "db", "backup", "run", "acme/shop", "--jq", "."))
+	if m["status"] != "in_progress" || m["id"] != idBackup || m["kind"] != "on_demand" {
+		t.Fatalf("backup run: %v", m)
+	}
+	m = obj(run(t, fk, "db", "backup", "restore", "acme/shop", idBackup, "--yes", "--jq", "."))
+	if m["status"] != "restoring" || m["name"] != "shop" {
+		t.Fatalf("restore: %v", m)
+	}
+	// G8 resta anche in JSON.
+	if r := run(t, fk, "db", "backup", "restore", "acme/shop", idBackup, "--jq", "."); r.code != 2 {
+		t.Fatalf("restore senza conferma: %+v", r)
+	}
+	if r := run(t, fk, "db", "unlink", "acme/shop", "--app", "acme/web/api", "--jq", "."); r.code != 2 {
+		t.Fatalf("unlink senza conferma: %+v", r)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -206,6 +207,7 @@ func newConnectCmd(f *cmdutil.Factory) *cobra.Command {
 		ow           ownerFlag
 		user, dbname string
 		caOut        string
+		jo           output.JSONOptions
 	)
 	cmd := &cobra.Command{
 		Use:   "connect <db> [-- argomenti di psql]",
@@ -213,7 +215,9 @@ func newConnectCmd(f *cmdutil.Factory) *cobra.Command {
 		Long: "Legge indirizzo, porta e CA pubblica dalla LAN del database (deve essere accesa: `gs db access lan <db> on`) e lancia " +
 			"psql con sslmode=verify-full e la CA salvata in un file temporaneo. La password non passa da gs: psql la chiede, o " +
 			"leggila da PGPASSWORD. L'utente predefinito è `<nome>_owner` e il database `<nome>`. Serve psql nel PATH: se manca il " +
-			"comando esce con 1 e scrive i parametri di connessione. Con --ca-out la CA resta nel file indicato.",
+			"comando esce con 1 e scrive i parametri di connessione. Con --ca-out la CA resta nel file indicato. Con --json non lancia psql: " +
+			"stampa host, porta, database, utente, sslmode=verify-full e la CA in PEM (caCertificate); sslRootcert c'è solo con --ca-out, " +
+			"perché un file temporaneo sparirebbe prima dell'uso.",
 		Example: "  gs db connect acme/shop\n  gs db connect acme/shop -- -c 'select 1'",
 		Args:    cobra.ArbitraryArgs,
 		RunE: func(c *cobra.Command, args []string) error {
@@ -253,6 +257,18 @@ func newConnectCmd(f *cmdutil.Factory) *cobra.Command {
 			if dbname == "" {
 				dbname = name
 			}
+			if jo.Enabled() {
+				// Solo i parametri, senza lanciare psql. La CA è il PEM; sslRootcert c'è solo se --ca-out l'ha salvata,
+				// perché un file temporaneo sparirebbe prima che chi legge possa usarlo.
+				res := map[string]any{"host": *l.Host, "port": *l.Port, "database": dbname, "user": user, "sslmode": "verify-full", "caCertificate": *l.CaCertificate}
+				if caOut != "" {
+					if err := os.WriteFile(caOut, []byte(*l.CaCertificate), 0o600); err != nil {
+						return err
+					}
+					res["sslRootcert"] = caOut
+				}
+				return jo.Write(f.IO.Out, res, f.IO.OutTTY)
+			}
 			caPath := caOut
 			if caPath == "" {
 				d, err := os.MkdirTemp("", "gs-db-ca-")
@@ -265,7 +281,7 @@ func newConnectCmd(f *cmdutil.Factory) *cobra.Command {
 			if err := os.WriteFile(caPath, []byte(*l.CaCertificate), 0o600); err != nil {
 				return err
 			}
-			conn := fmt.Sprintf("host=%s port=%d dbname=%s user=%s sslmode=verify-full sslrootcert=%s", *l.Host, *l.Port, dbname, user, caPath)
+			conn := conninfo([][2]string{{"host", *l.Host}, {"port", strconv.Itoa(*l.Port)}, {"dbname", dbname}, {"user", user}, {"sslmode", "verify-full"}, {"sslrootcert", caPath}})
 			path, err := psql.lookPath("psql")
 			if err != nil {
 				if caOut != "" {
@@ -288,5 +304,17 @@ func newConnectCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().StringVar(&user, "user", "", "Utente (predefinito: <nome>_owner)")
 	cmd.Flags().StringVar(&dbname, "dbname", "", "Database PostgreSQL (predefinito: il nome)")
 	cmd.Flags().StringVar(&caOut, "ca-out", "", "Salva la CA in questo file invece che in uno temporaneo")
+	output.AddJSONFlags(cmd, &jo, []string{"host", "port", "database", "user", "sslmode", "caCertificate", "sslRootcert"})
 	return cmd
+}
+
+// conninfo costruisce una stringa di connessione libpq: ogni valore tra apici singoli, con apici e backslash preceduti da
+// backslash, così spazi e caratteri speciali non possono spezzare o aggiungere parametri.
+func conninfo(kv [][2]string) string {
+	r := strings.NewReplacer("\\", "\\\\", "'", "\\'")
+	parts := make([]string, 0, len(kv))
+	for _, p := range kv {
+		parts = append(parts, p[0]+"='"+r.Replace(p[1])+"'")
+	}
+	return strings.Join(parts, " ")
 }

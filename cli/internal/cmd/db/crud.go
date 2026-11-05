@@ -315,6 +315,7 @@ func newDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 	var (
 		yes bool
 		ow  ownerFlag
+		jo  output.JSONOptions
 	)
 	cmd := &cobra.Command{
 		Use:     "delete <db>",
@@ -352,5 +353,6 @@ func newDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 	ow.add(cmd)
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Conferma senza chiedere (obbligatorio senza terminale)")
+	output.AddJSONFlags(cmd, &jo, []string{"owner", "name", "deleted"})
 	return cmd
 }
