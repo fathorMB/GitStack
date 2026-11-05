@@ -4,7 +4,8 @@
 # o "STEP FAIL <passo>: motivo" ed esce con 1 al primo errore. Mai la password in uscita.
 #
 #   write      Scrive il marcatore nel database, dal pod, come gitstack_admin (socket locale).
-#              Variabili: GS_DB_NS (gitstack-db-<id>), GS_DB_NAME, GS_DB_MARK.
+#              Variabili: GS_DB_NS (gitstack-db-<id>), GS_DB_NAME, GS_DB_MARK; GS_DB_OWNER (default <nome>_owner):
+#              le istruzioni girano dopo SET ROLE "<owner>", cosi' la tabella e dell'owner.
 #   read       Rilegge il marcatore e lo confronta con GS_DB_MARK (dopo il restore).
 #   lan        Accesso dalla LAN, dalla VM con psql (se manca si installa postgresql-client):
 #              verify-full con la CA privata accettato; senza CA, con sslmode=disable e con un
@@ -26,11 +27,15 @@ db_pod() {
 }
 
 # psql nel pod come gitstack_admin sul socket locale (DB7): ritorna lo stdout senza intestazioni
+# Prima di ogni SQL si passa al proprietario del database (SET ROLE "<nome>_owner", o GS_DB_OWNER): gitstack_admin e
+# superuser e gli oggetti che crea sarebbero suoi, illeggibili dall'owner (DB7); cosi' la tabella e dell'owner, come
+# quelle di un'app, e la sonda LAN (che entra come owner) la legge. L'identificatore e' fra virgolette doppie.
 pod_psql() { # sql
-  local pod
+  local pod owner
   pod="$(db_pod)"
   [ -n "$pod" ] || return 1
-  kc -n "$GS_DB_NS" exec "$pod" -- psql -X -v ON_ERROR_STOP=1 -At -U gitstack_admin -d "${GS_DB_NAME:?}" -c "$1"
+  owner="${GS_DB_OWNER:-${GS_DB_NAME:?}_owner}"
+  kc -n "$GS_DB_NS" exec "$pod" -- psql -X -q -v ON_ERROR_STOP=1 -At -U gitstack_admin -d "$GS_DB_NAME" -c "SET ROLE \"${owner//\"/\"\"}\"; $1"
 }
 
 cmd_write() {
@@ -42,6 +47,8 @@ cmd_write() {
 cmd_read() {
   local out
   out="$(pod_psql 'select v from e2e_marker where id = 1' 2>&1)" || fail read "psql nel pod: $out"
+  out="$(printf '%s
+' "$out" | tail -n 1)"
   if [ "$out" = "${GS_DB_MARK:?}" ]; then ok read; else fail read "atteso il marcatore, letto: $out"; fi
 }
 
