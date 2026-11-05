@@ -14,6 +14,7 @@ import { LoginPage } from './pages/LoginPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { ResourcesPage } from './pages/ResourcesPage';
 import { UserAppsPage } from './pages/UserAppsPage';
+import { DatabasesPage, DatabaseDetailPage, NewDatabasePage } from './pages/DatabasesPage';
 import { NewRepoPage } from "./pages/repos/NewRepoPage";
 import { RepoSettingsPage } from './pages/repos/RepoSettingsPage';
 import { RepoSettingsSecretsPage } from './pages/repos/RepoSettingsSecretsPage';
@@ -101,6 +102,9 @@ export function AppRoutes() {
           </RequireAuth>
         }
       />
+      <Route path="/databases" element={<RequireAuth><AppShell crumb="Databases"><DatabasesPage /></AppShell></RequireAuth>} />
+      <Route path="/databases/new" element={<RequireAuth><AppShell crumb="Databases"><NewDatabasePage /></AppShell></RequireAuth>} />
+      <Route path="/databases/:owner/:name" element={<RequireAuth><AppShell crumb="Databases"><DatabaseDetailPage /></AppShell></RequireAuth>} />
       <Route
         path="/admin/apps"
         element={

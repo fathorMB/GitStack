@@ -9,6 +9,7 @@ import { formatCpu, formatMemory, percent, shortDigest } from '../../../lib/apps
 import { describeError } from '../../../lib/http';
 import type { Repository } from '../../../lib/reposApi';
 import { AppHeader } from './AppHeader';
+import { AppDatabases } from './AppDatabases';
 import { appsPath } from './appMode';
 
 interface Props {
@@ -251,6 +252,7 @@ export function AppOverviewPage({ repo, app, perms, onChange }: Props) {
             </div>
           </div>
         </div>
+        {perms.canConfigure ? <AppDatabases owner={owner} repo={name} app={app.name} /> : null}
       </div>
     </>
   );
