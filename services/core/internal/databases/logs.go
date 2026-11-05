@@ -64,6 +64,19 @@ func (c *Controller) collectDBLogs(ctx context.Context, d store.ManagedDB) {
 	if err != nil {
 		return
 	}
+	// Deduplica su (at, message): SinceTime è troncato al secondo, quindi la lettura può
+	// riguardare l'istante dell'ultima riga già scritta; una raffica spezzata fra due raccolte
+	// non perde righe nuove con lo stesso microsecondo.
+	lastMsgs := map[string]bool{}
+	if !last.IsZero() {
+		msgs, err := c.st.ManagedDBLogMessagesAt(ctx, d.ID, last)
+		if err != nil {
+			return
+		}
+		for _, m := range msgs {
+			lastMsgs[m] = true
+		}
+	}
 	opts := &corev1.PodLogOptions{Container: WorkloadName, Timestamps: true}
 	if last.IsZero() {
 		tail := int64(logTailLines)
@@ -83,7 +96,7 @@ func (c *Controller) collectDBLogs(ctx context.Context, d store.ManagedDB) {
 	now := c.cfg.Now()
 	for sc.Scan() {
 		at, text := parseLogLine(sc.Text(), now)
-		if !last.IsZero() && !at.After(last) {
+		if !last.IsZero() && (at.Before(last) || (at.Equal(last) && lastMsgs[text])) {
 			continue
 		}
 		lines = append(lines, store.NewManagedDBLogLine{Time: at, Message: capLogLine(text)})

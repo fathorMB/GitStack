@@ -122,7 +122,7 @@ func scanManagedDB(row pgx.Row) (ManagedDB, error) {
 }
 
 func (d ManagedDB) snapshot() domainevents.Database {
-	return domainevents.Database{ID: d.ID.String(), Owner: d.OwnerName, Name: d.Name, PgMajor: d.PgMajor}
+	return domainevents.Database{ID: d.ID.String(), Owner: d.OwnerName, OwnerID: d.OwnerID.String(), OwnerType: d.OwnerType, Name: d.Name, PgMajor: d.PgMajor}
 }
 
 // dbCapacityError calcola cosa manca alla quota dell'owner e alla riserva d'istanza per un

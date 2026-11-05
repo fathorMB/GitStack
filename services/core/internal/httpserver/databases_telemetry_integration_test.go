@@ -264,3 +264,32 @@ func TestDatabases_LogConservatiDopoSostituzionePod(t *testing.T) {
 	// Chi non è admin dell'owner non legge i log (DB2).
 	e.want(e.do(http.MethodGet, "/databases/alice/shop/logs", "bob", ""), http.StatusNotFound, "not_found")
 }
+
+// Una raffica spezzata fra due raccolte non perde righe: la deduplica è su
+// (at, message), non sul solo istante (SinceTime è troncato al secondo).
+func TestDatabases_LogRafficaStessoIstante(t *testing.T) {
+	e := newTelemetryEnv(t)
+	created := e.create("alice", "alice", `{"name":"shop","pgMajor":17}`, http.StatusAccepted)
+	id := uuid.UUID(created.Database.Id)
+
+	ts := e.clock.Now().UTC()
+	e.dbPod(id, 0, true)
+	e.pods.set(databases.PodName, ts.Add(-time.Minute).Format(time.RFC3339Nano)+" prima riga")
+	e.ctl.CollectLogs(context.Background())
+
+	// Seconda lettura: la riga già scritta (stesso istante, stesso testo) più due righe nuove
+	// con lo stesso microsecondo dell'ultima salvata: nessuna si perde, nessuna si duplica.
+	e.pods.set(databases.PodName,
+		ts.Add(-time.Minute).Format(time.RFC3339Nano)+" prima riga",
+		ts.Add(-time.Minute).Format(time.RFC3339Nano)+" raffica nuova",
+		ts.Format(time.RFC3339Nano)+" checkpoint starting",
+	)
+	e.ctl.CollectLogs(context.Background())
+
+	rec := e.do(http.MethodGet, "/databases/alice/shop/logs", "alice", "")
+	e.want(rec, http.StatusOK, "")
+	body := rec.Body.String()
+	if strings.Count(body, "prima riga") != 1 || strings.Count(body, "raffica nuova") != 1 || strings.Count(body, "checkpoint starting") != 1 {
+		t.Fatalf("raffica: %q", body)
+	}
+}

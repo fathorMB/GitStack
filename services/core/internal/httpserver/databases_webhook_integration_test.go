@@ -99,15 +99,20 @@ func (e *dbHookEnv) run() {
 }
 
 // TestDatabases_WebhookConsegnaSenzaSegreti crea, ridimensiona ed elimina un database di
-// un'organizzazione e verifica le tre consegne: azioni, schema del payload e divieto di segreti.
+// un'organizzazione SENZA repository e verifica le tre consegne: azioni, schema del payload e
+// divieto di segreti. Il matching va per org_id nell'evento, non per i repo dell'org.
 func TestDatabases_WebhookConsegnaSenzaSegreti(t *testing.T) {
 	e := newDBHookEnv(t)
-	// alice è owner dell'organizzazione acme; l'org ha un repo, che risolve owner_name -> org_id
-	// per la consegna C6.
+	// alice è owner dell'organizzazione acme. L'org NON ha nessun repository: i destinatari si
+	// risolvono da ownerId/ownerType dell'evento (anche per database.deleted, quando la riga
+	// non c'è più).
 	e.hid.orgOwner[acmeID] = []string{aliceID, bobID}
-	e.want(e.do(http.MethodPost, "/repos", "alice", `{"owner":"acme","name":"tools","visibility":"private"}`), http.StatusCreated, "")
 	rec := e.do(http.MethodPost, "/orgs/acme/hooks", "alice", fmt.Sprintf(`{"url":%q,"events":["database"],"secret":"s3cr3t"}`, hookURL))
 	e.want(rec, http.StatusCreated, "")
+	var repos int
+	if err := e.pool.QueryRow(context.Background(), `SELECT count(*) FROM core.repositories`).Scan(&repos); err != nil || repos != 0 {
+		t.Fatalf("il test vuole un'org senza repo: %d %v", repos, err)
+	}
 
 	// Creazione: 202 con la password una tantum (DB22): non deve finire MAI nel webhook.
 	created := e.create("alice", "acme", `{"name":"erp","pgMajor":16}`, http.StatusAccepted)
@@ -208,7 +213,7 @@ func TestDatabases_WebhookConsegnaSenzaSegreti(t *testing.T) {
 		t.Fatal("deleted: deletedAt vuoto")
 	}
 
-	// L'evento della creazione del repo non è database: una sola consegna per evento.
+	// Outbox elaborato tutto: una consegna per evento, nessun residuo.
 	var outbox int
 	if err := e.pool.QueryRow(context.Background(), `SELECT count(*) FROM core.event_outbox WHERE webhooked_at IS NULL`).Scan(&outbox); err != nil || outbox != 0 {
 		t.Fatalf("outbox non svuotato: %d %v", outbox, err)

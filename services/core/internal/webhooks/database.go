@@ -3,8 +3,10 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -13,10 +15,11 @@ import (
 // payload non contiene mai segreti: niente password (né dell'owner né dei link), niente Secret,
 // niente DATABASE_URL: l'evento di dominio porta solo l'istantanea minima della risorsa.
 //
-// Destinatari (C6): i webhook d'organizzazione dell'owner del database iscritti a `database`. Un
-// database di un utente non ha webhook: C6 non prevede uno scope «utente» e qui non se ne inventa
-// uno. L'organizzazione si risolve per nome su core.repositories (owner_name/owner_id): l'org
-// senza repo non ha webhook che la servano.
+// Destinatari (C6): i webhook d'organizzazione dell'owner del database iscritti a `database`, per
+// org_id: l'evento di dominio porta ownerId/ownerType (non segreti), quindi la consegna non
+// dipende dai repo dell'org (che possono non esserci) né dalla riga del database (gia' eliminata
+// per database.deleted). Un database di un utente non ha webhook: C6 non prevede uno scope
+// «utente» e qui non se ne inventa uno.
 
 type databaseKind struct{ action string }
 
@@ -48,11 +51,18 @@ func (e *Engine) handleDatabaseEvent(ctx context.Context, tx pgx.Tx, ev outboxEv
 }
 
 // matchingDatabase trova i webhook attivi d'organizzazione dell'owner iscritti all'evento.
-func matchingDatabase(ctx context.Context, q pgx.Tx, owner, event string) ([]target, error) {
-	rows, err := q.Query(ctx, `SELECT DISTINCT w.id FROM core.webhooks w
-		JOIN core.repositories r ON r.owner_id = w.org_id AND r.owner_type = 'organization'
-		WHERE w.active AND w.scope = 'org' AND $1 = ANY(w.events) AND r.owner_name = lower($2)
-		ORDER BY w.id`, event, owner)
+// Solo owner organization: un database di un utente non ha webhook (C6).
+func matchingDatabase(ctx context.Context, q pgx.Tx, d domainevents.Database, event string) ([]target, error) {
+	if d.OwnerType != "organization" || d.OwnerID == "" {
+		return nil, nil
+	}
+	orgID, err := uuid.Parse(d.OwnerID)
+	if err != nil {
+		return nil, &badEventError{fmt.Errorf("ownerId dell'evento database non valido: %w", err)}
+	}
+	rows, err := q.Query(ctx, `SELECT w.id FROM core.webhooks w
+		WHERE w.active AND w.scope = 'org' AND $1 = ANY(w.events) AND w.org_id = $2
+		ORDER BY w.id`, event, orgID)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +81,7 @@ func matchingDatabase(ctx context.Context, q pgx.Tx, owner, event string) ([]tar
 // dispatchDatabase crea le consegne per l'evento di un database: corpo comune v1 più i campi
 // dell'evento di dominio, senza toccarne i valori (il divieto di segreti vale alla pubblicazione).
 func (e *Engine) dispatchDatabase(ctx context.Context, tx pgx.Tx, ev outboxEvent, action string, p domainevents.DatabasePayload) error {
-	targets, err := matchingDatabase(ctx, tx, p.Database.Owner, EventDatabase)
+	targets, err := matchingDatabase(ctx, tx, p.Database, EventDatabase)
 	if err != nil {
 		return err
 	}

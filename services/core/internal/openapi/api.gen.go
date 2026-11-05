@@ -839,16 +839,16 @@ func (e DatabaseLinkCredentialsSslMode) Valid() bool {
 
 // Defines values for DatabaseLinkMode.
 const (
-	Ro DatabaseLinkMode = "ro"
-	Rw DatabaseLinkMode = "rw"
+	DatabaseLinkModeRo DatabaseLinkMode = "ro"
+	DatabaseLinkModeRw DatabaseLinkMode = "rw"
 )
 
 // Valid indicates whether the value is a known member of the DatabaseLinkMode enum.
 func (e DatabaseLinkMode) Valid() bool {
 	switch e {
-	case Ro:
+	case DatabaseLinkModeRo:
 		return true
-	case Rw:
+	case DatabaseLinkModeRw:
 		return true
 	default:
 		return false
@@ -899,16 +899,16 @@ func (e DatabaseMetricsRange) Valid() bool {
 
 // Defines values for DatabasePgMajor.
 const (
-	N16 DatabasePgMajor = 16
-	N17 DatabasePgMajor = 17
+	DatabasePgMajorN16 DatabasePgMajor = 16
+	DatabasePgMajorN17 DatabasePgMajor = 17
 )
 
 // Valid indicates whether the value is a known member of the DatabasePgMajor enum.
 func (e DatabasePgMajor) Valid() bool {
 	switch e {
-	case N16:
+	case DatabasePgMajorN16:
 		return true
-	case N17:
+	case DatabasePgMajorN17:
 		return true
 	default:
 		return false
@@ -2304,6 +2304,135 @@ func (e WebhookCommitStatusPayloadVersion) Valid() bool {
 	}
 }
 
+// Defines values for WebhookDatabasePayloadAction.
+const (
+	WebhookDatabasePayloadActionBackupCompleted WebhookDatabasePayloadAction = "backup_completed"
+	WebhookDatabasePayloadActionBackupFailed    WebhookDatabasePayloadAction = "backup_failed"
+	WebhookDatabasePayloadActionCreated         WebhookDatabasePayloadAction = "created"
+	WebhookDatabasePayloadActionDeleted         WebhookDatabasePayloadAction = "deleted"
+	WebhookDatabasePayloadActionLanDisabled     WebhookDatabasePayloadAction = "lan_disabled"
+	WebhookDatabasePayloadActionLanEnabled      WebhookDatabasePayloadAction = "lan_enabled"
+	WebhookDatabasePayloadActionLinked          WebhookDatabasePayloadAction = "linked"
+	WebhookDatabasePayloadActionRestored        WebhookDatabasePayloadAction = "restored"
+	WebhookDatabasePayloadActionUnlinked        WebhookDatabasePayloadAction = "unlinked"
+	WebhookDatabasePayloadActionUpdated         WebhookDatabasePayloadAction = "updated"
+)
+
+// Valid indicates whether the value is a known member of the WebhookDatabasePayloadAction enum.
+func (e WebhookDatabasePayloadAction) Valid() bool {
+	switch e {
+	case WebhookDatabasePayloadActionBackupCompleted:
+		return true
+	case WebhookDatabasePayloadActionBackupFailed:
+		return true
+	case WebhookDatabasePayloadActionCreated:
+		return true
+	case WebhookDatabasePayloadActionDeleted:
+		return true
+	case WebhookDatabasePayloadActionLanDisabled:
+		return true
+	case WebhookDatabasePayloadActionLanEnabled:
+		return true
+	case WebhookDatabasePayloadActionLinked:
+		return true
+	case WebhookDatabasePayloadActionRestored:
+		return true
+	case WebhookDatabasePayloadActionUnlinked:
+		return true
+	case WebhookDatabasePayloadActionUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookDatabasePayloadDatabasePgMajor.
+const (
+	WebhookDatabasePayloadDatabasePgMajorN16 WebhookDatabasePayloadDatabasePgMajor = 16
+	WebhookDatabasePayloadDatabasePgMajorN17 WebhookDatabasePayloadDatabasePgMajor = 17
+)
+
+// Valid indicates whether the value is a known member of the WebhookDatabasePayloadDatabasePgMajor enum.
+func (e WebhookDatabasePayloadDatabasePgMajor) Valid() bool {
+	switch e {
+	case WebhookDatabasePayloadDatabasePgMajorN16:
+		return true
+	case WebhookDatabasePayloadDatabasePgMajorN17:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookDatabasePayloadDiskState.
+const (
+	WebhookDatabasePayloadDiskStateFull    WebhookDatabasePayloadDiskState = "full"
+	WebhookDatabasePayloadDiskStateNone    WebhookDatabasePayloadDiskState = "none"
+	WebhookDatabasePayloadDiskStateWarning WebhookDatabasePayloadDiskState = "warning"
+)
+
+// Valid indicates whether the value is a known member of the WebhookDatabasePayloadDiskState enum.
+func (e WebhookDatabasePayloadDiskState) Valid() bool {
+	switch e {
+	case WebhookDatabasePayloadDiskStateFull:
+		return true
+	case WebhookDatabasePayloadDiskStateNone:
+		return true
+	case WebhookDatabasePayloadDiskStateWarning:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookDatabasePayloadEvent.
+const (
+	WebhookDatabasePayloadEventDatabase WebhookDatabasePayloadEvent = "database"
+)
+
+// Valid indicates whether the value is a known member of the WebhookDatabasePayloadEvent enum.
+func (e WebhookDatabasePayloadEvent) Valid() bool {
+	switch e {
+	case WebhookDatabasePayloadEventDatabase:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookDatabasePayloadLinkMode.
+const (
+	WebhookDatabasePayloadLinkModeRo WebhookDatabasePayloadLinkMode = "ro"
+	WebhookDatabasePayloadLinkModeRw WebhookDatabasePayloadLinkMode = "rw"
+)
+
+// Valid indicates whether the value is a known member of the WebhookDatabasePayloadLinkMode enum.
+func (e WebhookDatabasePayloadLinkMode) Valid() bool {
+	switch e {
+	case WebhookDatabasePayloadLinkModeRo:
+		return true
+	case WebhookDatabasePayloadLinkModeRw:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookDatabasePayloadVersion.
+const (
+	WebhookDatabasePayloadVersionN1 WebhookDatabasePayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookDatabasePayloadVersion enum.
+func (e WebhookDatabasePayloadVersion) Valid() bool {
+	switch e {
+	case WebhookDatabasePayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WebhookDeliveryStatus.
 const (
 	WebhookDeliveryStatusFailed  WebhookDeliveryStatus = "failed"
@@ -2386,6 +2515,7 @@ func (e WebhookDeploymentPayloadVersion) Valid() bool {
 const (
 	WebhookEventAppDomain         WebhookEvent = "app_domain"
 	WebhookEventCommitStatus      WebhookEvent = "commit_status"
+	WebhookEventDatabase          WebhookEvent = "database"
 	WebhookEventDeployment        WebhookEvent = "deployment"
 	WebhookEventIssueComment      WebhookEvent = "issue_comment"
 	WebhookEventIssues            WebhookEvent = "issues"
@@ -2404,6 +2534,8 @@ func (e WebhookEvent) Valid() bool {
 	case WebhookEventAppDomain:
 		return true
 	case WebhookEventCommitStatus:
+		return true
+	case WebhookEventDatabase:
 		return true
 	case WebhookEventDeployment:
 		return true
@@ -7344,6 +7476,83 @@ type WebhookCommitStatusPayloadEvent string
 // WebhookCommitStatusPayloadVersion defines model for WebhookCommitStatusPayload.Version.
 type WebhookCommitStatusPayloadVersion int
 
+// WebhookDatabasePayload Payload del webhook `database` (v3-d, DB20). Si configura sul webhook dell'organizzazione proprietaria del database (C6): un database di un utente non ha webhook. `action`: `created` (con `sizeBytes`, `cpuMillis`, `memoryBytes`), `updated` (con `changes`: i valori precedenti), `deleted` (con `deletedAt`), `linked`/`unlinked` (con `link`), `lan_enabled`/`lan_disabled`, `backup_completed`/`backup_failed` (con `backup`) e `restored` (con `backupId` e `target`). I campi opzionali dipendono dall'azione. Nessun segreto: mai password (ne' dell'owner ne' dei collegamenti), ne' Secret, ne' DATABASE_URL (DB20, DB22).
+type WebhookDatabasePayload struct {
+	Action WebhookDatabasePayloadAction `json:"action"`
+
+	// Changes Valori precedenti, solo per `updated`.
+	Changes *struct {
+		CpuMillis *struct {
+			From int `json:"from"`
+		} `json:"cpuMillis,omitempty"`
+		MemoryBytes *struct {
+			From int64 `json:"from"`
+		} `json:"memoryBytes,omitempty"`
+		SizeBytes *struct {
+			From int64 `json:"from"`
+		} `json:"sizeBytes,omitempty"`
+	} `json:"changes,omitempty"`
+
+	// CpuMillis CPU dichiarata alla creazione (millicore), solo per `created`.
+	CpuMillis *int `json:"cpuMillis,omitempty"`
+	Database  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+
+		// Owner Nome dell'owner (utente o organizzazione).
+		Owner   string                                `json:"owner"`
+		PgMajor WebhookDatabasePayloadDatabasePgMajor `json:"pgMajor"`
+	} `json:"database"`
+
+	// DeletedAt Istante dell'eliminazione, solo per `deleted`.
+	DeletedAt *time.Time `json:"deletedAt,omitempty"`
+
+	// DiskState Stato del limite morbido di disco (80%/100%).
+	DiskState *WebhookDatabasePayloadDiskState `json:"diskState,omitempty"`
+	Event     WebhookDatabasePayloadEvent      `json:"event"`
+
+	// Link Collegamento con un'app, solo per `linked`/`unlinked`.
+	Link *struct {
+		App struct {
+			Name  string `json:"name"`
+			Owner string `json:"owner"`
+			Repo  string `json:"repo"`
+		} `json:"app"`
+		Id   openapi_types.UUID             `json:"id"`
+		Mode WebhookDatabasePayloadLinkMode `json:"mode"`
+	} `json:"link,omitempty"`
+
+	// MemoryBytes Memoria dichiarata alla creazione, solo per `created`.
+	MemoryBytes *int64         `json:"memoryBytes,omitempty"`
+	Sender      *WebhookSender `json:"sender"`
+
+	// SizeBytes Dimensione dichiarata alla creazione, solo per `created`.
+	SizeBytes *int64    `json:"sizeBytes,omitempty"`
+	Time      time.Time `json:"time"`
+
+	// UsageBytes Dimensione misurata (pg_database_size).
+	UsageBytes *int64                        `json:"usageBytes,omitempty"`
+	Version    WebhookDatabasePayloadVersion `json:"version"`
+}
+
+// WebhookDatabasePayloadAction defines model for WebhookDatabasePayload.Action.
+type WebhookDatabasePayloadAction string
+
+// WebhookDatabasePayloadDatabasePgMajor defines model for WebhookDatabasePayload.Database.PgMajor.
+type WebhookDatabasePayloadDatabasePgMajor int
+
+// WebhookDatabasePayloadDiskState Stato del limite morbido di disco (80%/100%).
+type WebhookDatabasePayloadDiskState string
+
+// WebhookDatabasePayloadEvent defines model for WebhookDatabasePayload.Event.
+type WebhookDatabasePayloadEvent string
+
+// WebhookDatabasePayloadLinkMode defines model for WebhookDatabasePayload.Link.Mode.
+type WebhookDatabasePayloadLinkMode string
+
+// WebhookDatabasePayloadVersion defines model for WebhookDatabasePayload.Version.
+type WebhookDatabasePayloadVersion int
+
 // WebhookDelivery defines model for WebhookDelivery.
 type WebhookDelivery = WebhookDeliverySummary
 
@@ -7361,7 +7570,7 @@ type WebhookDeliveryDetail struct {
 	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
 	Error *string `json:"error,omitempty"`
 
-	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS, rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`.
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS, rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`. `database` (v3-d, DB20): database gestito creato, ridimensionato, eliminato, collegato/scollegato a un'app, LAN accesa/spenta, backup completato/fallito o ripristinato, payload `WebhookDatabasePayload`. Solo webhook d'organizzazione: un database di un utente non ha webhook.
 	Event WebhookEvent `json:"event"`
 
 	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
@@ -7422,7 +7631,7 @@ type WebhookDeliverySummary struct {
 	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
 	Error *string `json:"error,omitempty"`
 
-	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS, rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`.
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS, rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`. `database` (v3-d, DB20): database gestito creato, ridimensionato, eliminato, collegato/scollegato a un'app, LAN accesa/spenta, backup completato/fallito o ripristinato, payload `WebhookDatabasePayload`. Solo webhook d'organizzazione: un database di un utente non ha webhook.
 	Event WebhookEvent `json:"event"`
 
 	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
@@ -7459,7 +7668,7 @@ type WebhookDeploymentPayloadEvent string
 // WebhookDeploymentPayloadVersion defines model for WebhookDeploymentPayload.Version.
 type WebhookDeploymentPayloadVersion int
 
-// WebhookEvent Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS, rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`.
+// WebhookEvent Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`. `deployment` (app, v3-a H12): deploy avviato, riuscito, fallito o tornato indietro, payload `WebhookDeploymentPayload`. `app_domain` (app, v3-c): dominio che non supera il DNS, rinnovo del certificato fallito o certificato del cliente in scadenza, payload `WebhookAppDomainPayload`. `database` (v3-d, DB20): database gestito creato, ridimensionato, eliminato, collegato/scollegato a un'app, LAN accesa/spenta, backup completato/fallito o ripristinato, payload `WebhookDatabasePayload`. Solo webhook d'organizzazione: un database di un utente non ha webhook.
 type WebhookEvent string
 
 // WebhookList defines model for WebhookList.
@@ -8716,6 +8925,9 @@ type AppDomainJSONRequestBody = WebhookAppDomainPayload
 
 // CommitStatusJSONRequestBody defines body for CommitStatus for application/json ContentType.
 type CommitStatusJSONRequestBody = WebhookCommitStatusPayload
+
+// DatabaseJSONRequestBody defines body for Database for application/json ContentType.
+type DatabaseJSONRequestBody = WebhookDatabasePayload
 
 // DeploymentJSONRequestBody defines body for Deployment for application/json ContentType.
 type DeploymentJSONRequestBody = WebhookDeploymentPayload
@@ -21863,6 +22075,9 @@ type CallbackReceiverInterface interface {
 	// Consegna dell'evento commit_status (PR11)
 	// HandleCommitStatusCallback handles the POST callback for commit_status.
 	HandleCommitStatusCallback(w http.ResponseWriter, r *http.Request)
+	// Consegna dell'evento database (database gestito, v3-d, DB20)
+	// HandleDatabaseCallback handles the POST callback for database.
+	HandleDatabaseCallback(w http.ResponseWriter, r *http.Request)
 	// Consegna dell'evento deployment (app, H12)
 	// HandleDeploymentCallback handles the POST callback for deployment.
 	HandleDeploymentCallback(w http.ResponseWriter, r *http.Request)
@@ -21920,6 +22135,26 @@ func CommitStatusCallbackHandler(si CallbackReceiverInterface, errHandler func(w
 	}
 	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		si.HandleCommitStatusCallback(w, r)
+	})
+	for _, mw := range middlewares {
+		h = mw(h)
+	}
+	return h
+}
+
+// DatabaseCallbackHandler returns the http.Handler for the database callback.
+// Mount this at the URL path advertised to callback senders. errHandler
+// may be nil; if so, parameter-binding errors return 400 with the error
+// message. Middlewares are applied in the order provided -- the last
+// argument becomes the outermost wrapper.
+func DatabaseCallbackHandler(si CallbackReceiverInterface, errHandler func(w http.ResponseWriter, r *http.Request, err error), middlewares ...CallbackReceiverMiddlewareFunc) http.Handler {
+	if errHandler == nil {
+		errHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		si.HandleDatabaseCallback(w, r)
 	})
 	for _, mw := range middlewares {
 		h = mw(h)

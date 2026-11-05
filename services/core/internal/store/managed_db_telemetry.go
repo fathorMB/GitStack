@@ -146,6 +146,26 @@ func (s *Store) LastManagedDBLogTime(ctx context.Context, dbID uuid.UUID) (time.
 	return at.UTC(), nil
 }
 
+// ManagedDBLogMessagesAt elenca i messaggi già scritti a un istante (microsecondo incluso): la
+// raccolta con SinceTime troncato al secondo può rileggere righe dello stesso istante; la
+// deduplica è su (at, message), così una raffica spezzata fra due raccolte non perde righe.
+func (s *Store) ManagedDBLogMessagesAt(ctx context.Context, dbID uuid.UUID, at time.Time) ([]string, error) {
+	rows, err := s.pool.Query(ctx, `SELECT message FROM core.managed_db_log_lines WHERE db_id = $1 AND at = $2`, dbID, at.UTC())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []string{}
+	for rows.Next() {
+		var m string
+		if err := rows.Scan(&m); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
 // ListManagedDBLogs legge le righe secondo il filtro, in ordine di tempo.
 func (s *Store) ListManagedDBLogs(ctx context.Context, dbID uuid.UUID, f ManagedDBLogFilter) ([]ManagedDBLogLine, error) {
 	limit := int64(1) << 62
